@@ -28,12 +28,6 @@ through the workspace (`"@bze/bze-ui-kit": "workspace:*"`) — **no npm tag/publ
   `package.json` (`"packageManager": "pnpm@11.6.0"`).
 - You do **not** need npm/yarn. Everything goes through pnpm.
 
-> ⚠️ **Corepack gotcha (this machine).** There is a broken corepack `pnpm` shim under
-> `~/.nvm/.../bin/pnpm` that can shadow the real standalone pnpm in *non-interactive* shells
-> and crash with a signature error. In your normal terminal it's fine (your `~/.zshrc` puts
-> `~/Library/pnpm/bin` first on `PATH`). If you ever see a `Cannot find matching keyid` corepack
-> crash, call the real binary directly: `~/Library/pnpm/bin/pnpm …`.
-
 ---
 
 ## Install
@@ -90,7 +84,7 @@ Build everything (Turbo runs ui-kit first, then the apps, and caches results):
 
 ```sh
 pnpm build                      # = turbo run build
-pnpm build -- --concurrency=1   # one app at a time (lower memory — recommended on this machine)
+pnpm build -- --concurrency=1   # build apps one at a time (lower peak memory)
 ```
 
 Build a single app (and only its dependencies):
@@ -203,7 +197,7 @@ ls -d node_modules/.pnpm/<pkg>@* | sort   # more than one dir for a single versi
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| corepack `Cannot find matching keyid` crash | broken nvm pnpm shim shadowing the real one | use `~/Library/pnpm/bin/pnpm` directly |
+| corepack `Cannot find matching keyid` crash | a corepack pnpm shim is shadowing your standalone pnpm | ensure your standalone pnpm is first on `PATH` (reinstall via pnpm's standalone installer if needed) |
 | `must be used within a …Provider` | duplicate React-context instance | add the package to `SINGLETONS` in the app's `next.config.ts` |
 | `Cannot find module 'x'` at build | phantom dependency (imported but not declared) | `pnpm --filter <app> add x` |
 | install warns *ignored build scripts* | pnpm 11 build-script gate | add pkg to `allowBuilds:` in `pnpm-workspace.yaml`, reinstall |
