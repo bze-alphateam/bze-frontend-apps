@@ -1,0 +1,48 @@
+{
+  "name": "bze-staking",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@bze/bze-ui-kit": "workspace:*",
+    "@bze/bzejs": "^3.0.0",
+    "@chain-registry/utils": "^2.0.178",
+    "@chain-registry/v2": "^1.71.237",
+    "@chakra-ui/react": "^3.22.0",
+    "@emotion/react": "^11.14.0",
+    "@interchain-kit/core": "0.10.1",
+    "@interchain-kit/cosmostation-extension": "0.10.1",
+    "@interchain-kit/keplr-extension": "0.10.1",
+    "@interchain-kit/leap-extension": "0.10.1",
+    "@interchain-kit/react": "0.10.1",
+    "@tanstack/react-query": "^5.96.2",
+    "@wagmi/core": "^3.4.1",
+    "@walletconnect/ethereum-provider": "^2.23.9",
+    "bignumber.js": "^9.3.1",
+    "chain-registry": "^2.0.178",
+    "next": "16.2.3",
+    "next-themes": "^0.4.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "viem": "^2.47.10",
+    "wagmi": "^3.6.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "axios": "1.13.2"
+  }
+}

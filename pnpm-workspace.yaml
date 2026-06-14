@@ -1,0 +1,31 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Dependency version pins shared across the whole workspace (was dex's package.json "overrides").
+overrides:
+  axios: "1.13.2"
+  # Pin the wagmi/viem set to the versions dex's old package-lock resolved (known-good).
+  # A fresh install drifted upward to wagmi 3.6.16 / @wagmi/core 3.5.0, whose "tempo"
+  # connector has an unresolvable `accounts` import that breaks the Next build.
+  wagmi: "3.6.1"
+  "@wagmi/core": "3.4.2"
+  "@wagmi/connectors": "8.0.1"
+  viem: "2.47.10"
+  # Keep a single @interchain-kit/store at 0.9.1 (what the patch targets + original lock).
+  "@interchain-kit/store": "0.9.1"
+
+# Patches ported from the apps' old patch-package setup, now applied natively by pnpm.
+patchedDependencies:
+  "@interchain-kit/store@0.9.1": "patches/@interchain-kit__store@0.9.1.patch"
+
+# Native/postinstall build scripts we trust to run (all deps the apps already shipped).
+allowBuilds:
+  "@reown/appkit": true
+  bufferutil: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  tiny-secp256k1: true
+  unrs-resolver: true
+  utf-8-validate: true

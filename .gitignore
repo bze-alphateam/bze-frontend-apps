@@ -1,0 +1,54 @@
+# ===== dependencies =====
+node_modules/
+.pnpm-store/
+
+# ===== build output =====
+.next/
+out/
+build/
+dist/
+
+# ===== turbo cache =====
+.turbo/
+
+# ===== typescript =====
+*.tsbuildinfo
+next-env.d.ts
+
+# ===== env files =====
+# Ignore all real env files everywhere, but keep the committed templates.
+.env
+.env.*
+!.env.dist
+!.env.example
+
+# ===== test / coverage =====
+coverage/
+
+# ===== logs =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ===== secrets / certs =====
+*.pem
+*.key
+
+# ===== editor / tooling =====
+.idea/
+.vscode/
+.claude/
+
+# ===== deploy =====
+.vercel
+
+# ===== os =====
+.DS_Store
+Thumbs.db
+
+# ----------------------------------------------------------------------------
+# Intentionally NOT ignored (these MUST be committed):
+#   pnpm-lock.yaml, pnpm-workspace.yaml, .npmrc, turbo.json,
+#   patches/, apps/*/stubs/, and every .env.dist template.
+# ----------------------------------------------------------------------------

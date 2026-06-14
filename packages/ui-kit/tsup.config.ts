@@ -1,0 +1,33 @@
+import { defineConfig } from 'tsup'
+
+export default defineConfig({
+  entry: ['src/index.ts', 'src/server.ts'],
+  format: ['cjs', 'esm'],
+  dts: true,
+  clean: true,
+  splitting: false,
+  sourcemap: true,
+  external: [
+    'react',
+    'react-dom',
+    '@bze/bzejs',
+    '@chakra-ui/react',
+    '@interchain-kit/core',
+    '@interchain-kit/react',
+    '@interchainjs/cosmos',
+    '@interchainjs/encoding',
+    '@chain-registry/types',
+    '@chain-registry/utils',
+    'bignumber.js',
+    'chain-registry',
+    'next-themes',
+    'react-icons',
+    'wagmi',
+    'wagmi/chains',
+    'wagmi/connectors',
+    'viem',
+    '@wagmi/core',
+    '@wagmi/connectors',
+    '@tanstack/react-query',
+  ],
+})
