@@ -48,19 +48,23 @@ Run it again after pulling changes or editing any `package.json` / `pnpm-workspa
 > 🛑 **Memory warning:** running several Next dev servers at once can OOM the machine.
 > Start **one app at a time** unless you know you have the RAM.
 
-Each app runs on its own port. Run from the repo root with `--filter`:
+Run any app from the repo root with `pnpm --filter <name> dev`. The pnpm package name
+differs from the folder name — use the **name** column:
+
+| App | Folder | `--filter` name |
+|---|---|---|
+| DEX     | `apps/dex`     | `bze-dapp-v2` |
+| Burner  | `apps/burner`  | `bze-burner`  |
+| Staking | `apps/staking` | `bze-staking` |
 
 ```sh
-pnpm --filter bze-dapp-v2 dev    # DEX      → http://localhost:3000
-pnpm --filter bze-burner  dev    # Burner   → http://localhost:3000
-pnpm --filter bze-staking dev    # Staking  → http://localhost:3000
+pnpm --filter bze-dapp-v2 dev               # DEX     → http://localhost:3000
+pnpm --filter bze-burner  dev -- -p 3001    # Burner  → http://localhost:3001
+pnpm --filter bze-staking dev -- -p 3002    # Staking → http://localhost:3002
 ```
 
-To run two side by side, give them different ports:
-
-```sh
-pnpm --filter bze-burner dev -- -p 3001
-```
+Each app defaults to port **3000**, so pass `-- -p <port>` if you want to run more than one
+at the same time. Local config comes from each app's own `.env` (copy from `.env.dist`).
 
 > **Why `dev` uses `--webpack`:** the dev scripts run `next dev --webpack` on purpose.
 > The apps rely on webpack `resolve.alias` (see *“The one real gotcha”* below) to force
@@ -105,26 +109,87 @@ pnpm --filter bze-burner lint
 
 ---
 
-## Run in production (pm2 on your server)
+## Deploy (production & testnet — pm2)
 
-1. On the server: `pnpm install --frozen-lockfile` then `pnpm build -- --concurrency=1`.
-2. Each app's production server is `next start` (already its `start` script). Give each a port.
+### One checkout per network
 
-A root `ecosystem.config.js` (create when ready) looks like:
+`NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
+**different builds**. The monorepo is therefore checked out **once per network**, each built
+with that network's `.env` files:
+
+```
+<deploy-root>/bze-frontend-mainnet/current   ← built with mainnet .env files
+<deploy-root>/bze-frontend-testnet/current   ← built with testnet .env files
+```
+
+`current` is a symlink to the active release. All three apps in a checkout share one
+`node_modules` and are built and released together (they share `ui-kit` and version-lock).
+
+### Build (the normal flow — no special config)
+
+In each checkout:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build -- --concurrency=1     # builds ui-kit + all 3 apps, using the .env files present
+```
+
+Each app's output lands in `apps/<app>/.next`. Nothing app-specific to run — one `pnpm build`
+does the whole network.
+
+### Run with pm2
+
+Each app is one pm2 process running `next start` from its app dir **inside the checkout**.
+Point `cwd` at `<checkout>/current/apps/<app>` — the `next` binary resolves through pnpm's
+symlinks, so this is the same `next start` model as before; only `cwd` moves into the monorepo.
+This collapses the old six per-app deploy dirs down to **two** (one per network).
 
 ```js
+// ecosystem.config.js — lives on the server, NOT in this repo.
+// Fill in <node> (an nvm node-24 binary) and <deploy-root>; ports/instances per your infra.
+const node = "<path-to-node-24>";
+const base = "<deploy-root>";
+const next = "node_modules/next/dist/bin/next";
+
 module.exports = {
   apps: [
-    { name: "bze-dex",     cwd: "./apps/dex",     script: "pnpm", args: "start -- -p 3001" },
-    { name: "bze-burner",  cwd: "./apps/burner",  script: "pnpm", args: "start -- -p 3002" },
-    { name: "bze-staking", cwd: "./apps/staking", script: "pnpm", args: "start -- -p 3003" },
+    // ---------- mainnet ----------
+    { name: "dex",     interpreter: node, script: next, args: "start --port 8085",
+      cwd: `${base}/bze-frontend-mainnet/current/apps/dex`,     exec_mode: "cluster", instances: 3 },
+    { name: "burner",  interpreter: node, script: next, args: "start --port 8084",
+      cwd: `${base}/bze-frontend-mainnet/current/apps/burner`,  exec_mode: "cluster", instances: 2 },
+    { name: "staking", interpreter: node, script: next, args: "start --port 8083",
+      cwd: `${base}/bze-frontend-mainnet/current/apps/staking` },
+
+    // ---------- testnet ----------
+    { name: "testnet-dex",     interpreter: node, script: next, args: "start --port 8088",
+      cwd: `${base}/bze-frontend-testnet/current/apps/dex` },
+    { name: "testnet-burner",  interpreter: node, script: next, args: "start --port 8089",
+      cwd: `${base}/bze-frontend-testnet/current/apps/burner` },
+    { name: "testnet-staking", interpreter: node, script: next, args: "start --port 8090",
+      cwd: `${base}/bze-frontend-testnet/current/apps/staking` },
   ],
 };
 ```
 
-Then `pm2 start ecosystem.config.js` and put nginx/Caddy in front routing each domain to its port.
-Deploy flow: `git pull && pnpm install --frozen-lockfile && pnpm build -- --concurrency=1 && pm2 reload ecosystem.config.js`.
-Only changed apps rebuild thanks to Turbo's cache.
+### Deploy a release
+
+Run per network checkout (mainnet and/or testnet):
+
+```sh
+cd <checkout>                     # the mainnet or testnet monorepo clone
+git pull
+pnpm install --frozen-lockfile
+pnpm build -- --concurrency=1     # Turbo's cache skips apps that didn't change
+pm2 reload ecosystem.config.js    # or reload only changed apps: pm2 reload dex burner
+```
+
+Notes:
+- The three apps in a network release **together**; Turbo only rebuilds what actually changed.
+- `.env` files are per checkout and are **not** in git — keep each network's real `.env` on the
+  server (only `.env.dist` templates are committed).
+- Put nginx/Caddy in front routing each domain to its port.
+- First-time setup: `pm2 start ecosystem.config.js` (then `pm2 save`).
 
 ---
 
