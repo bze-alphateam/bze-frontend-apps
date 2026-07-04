@@ -1,4 +1,4 @@
-import {Asset, isLpDenom, poolIdFromPoolDenom, useLiquidityPool, useAsset, TokenLogo, LPTokenLogo} from "@bze/bze-ui-kit";
+import {Asset, isLpDenom, useLiquidityPools, useAsset, TokenLogo, LPTokenLogo} from "@bze/bze-ui-kit";
 import {useMemo} from "react";
 
 interface AssetLogoProps {
@@ -8,8 +8,8 @@ interface AssetLogoProps {
 
 export const AssetLogo = ({asset, size}: AssetLogoProps) => {
     const isLP = useMemo(() => isLpDenom(asset.denom), [asset]);
-    const poolId = useMemo(() => (isLP ? poolIdFromPoolDenom(asset.denom) : ''), [asset, isLP]);
-    const { pool } = useLiquidityPool(poolId);
+    const { getPoolByLpDenom } = useLiquidityPools();
+    const pool = useMemo(() => (isLP ? getPoolByLpDenom(asset.denom) : undefined), [asset, isLP, getPoolByLpDenom]);
     const { asset: baseAsset } = useAsset(pool?.base || '');
     const { asset: quoteAsset } = useAsset(pool?.quote || '');
 

@@ -88,4 +88,23 @@ export const createPoolId = (base: string, quote: string) => {
     return `${base}_${quote}`
 };
 
+/**
+ * @deprecated Only works for legacy `ulp_<base>_<quote>` denoms. Pools created after the
+ * hashed-denom chain upgrade use `ulp/<hash>` denoms that cannot be parsed back into a
+ * pool id. Resolve pools by their stored `lp_denom` instead — see {@link createLpDenomPoolsMap}
+ * or `getPoolByLpDenom` from `useLiquidityPools`.
+ */
 export const poolIdFromPoolDenom = (poolDenom: string) => poolDenom.replace("ulp_", '');
+
+/**
+ * Builds a map of pools keyed by their `lp_denom`. Works for both legacy (`ulp_<base>_<quote>`)
+ * and hashed (`ulp/<hash>`) LP denoms since it relies on the value stored on each pool.
+ */
+export const createLpDenomPoolsMap = (pools: Iterable<LiquidityPoolSDKType>): Map<string, LiquidityPoolSDKType> => {
+    const map = new Map<string, LiquidityPoolSDKType>();
+    for (const pool of pools) {
+        map.set(pool.lp_denom, pool);
+    }
+
+    return map;
+};

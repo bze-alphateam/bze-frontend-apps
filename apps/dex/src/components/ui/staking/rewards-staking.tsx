@@ -15,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 import {LuClock, LuCoins, LuLock, LuShield, LuTrendingUp} from "react-icons/lu";
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {useAsset, calculateRewardsStakingApr, calculateRewardsStakingPendingRewards, shortNumberFormat, isLpDenom, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, useAssetPrice, removeLeadingZeros, TokenLogo, LPTokenLogo} from "@bze/bze-ui-kit";
+import {useAsset, useLiquidityPools, calculateRewardsStakingApr, calculateRewardsStakingPendingRewards, shortNumberFormat, isLpDenom, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, useAssetPrice, removeLeadingZeros, TokenLogo, LPTokenLogo} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
 import {
@@ -43,18 +43,19 @@ export const RewardsStakingBox = ({stakingReward, onClick, userStake, userUnlock
     // Check if staking asset is LP token and fetch base/quote assets
     const isStakingLp = useMemo(() => isLpDenom(stakingReward?.staking_denom ?? ''), [stakingReward?.staking_denom])
     const isPrizeLp = useMemo(() => isLpDenom(stakingReward?.prize_denom ?? ''), [stakingReward?.prize_denom])
+    const {getPoolByLpDenom} = useLiquidityPools()
 
     const stakingLpDenoms = useMemo(() => {
         if (!isStakingLp || !stakingReward?.staking_denom) return { base: '', quote: '' }
-        const split = stakingReward.staking_denom.split('_')
-        return split.length === 3 ? { base: split[1], quote: split[2] } : { base: '', quote: '' }
-    }, [isStakingLp, stakingReward?.staking_denom])
+        const pool = getPoolByLpDenom(stakingReward.staking_denom)
+        return pool ? { base: pool.base, quote: pool.quote } : { base: '', quote: '' }
+    }, [isStakingLp, stakingReward?.staking_denom, getPoolByLpDenom])
 
     const prizeLpDenoms = useMemo(() => {
         if (!isPrizeLp || !stakingReward?.prize_denom) return { base: '', quote: '' }
-        const split = stakingReward.prize_denom.split('_')
-        return split.length === 3 ? { base: split[1], quote: split[2] } : { base: '', quote: '' }
-    }, [isPrizeLp, stakingReward?.prize_denom])
+        const pool = getPoolByLpDenom(stakingReward.prize_denom)
+        return pool ? { base: pool.base, quote: pool.quote } : { base: '', quote: '' }
+    }, [isPrizeLp, stakingReward?.prize_denom, getPoolByLpDenom])
 
     const {asset: stakingBaseAsset} = useAsset(stakingLpDenoms.base)
     const {asset: stakingQuoteAsset} = useAsset(stakingLpDenoms.quote)

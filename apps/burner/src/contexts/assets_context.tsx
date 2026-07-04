@@ -20,7 +20,7 @@ import {
     addDebounce,
     LiquidityPoolData,
     getLiquidityPools,
-    calculatePoolPrice, createPoolId, poolIdFromPoolDenom,
+    calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
     EXCLUDED_MARKETS,
     NextBurn,
     getAllBurnedCoins, getNextBurning,
@@ -290,11 +290,13 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         }
 
         if (lpDenoms.length > 0 && poolsMap.size > 0) {
+            //map pools by their stored lp_denom: works for both legacy (ulp_<base>_<quote>) and hashed (ulp/<hash>) LP denoms
+            const poolsByLpDenom = createLpDenomPoolsMap(poolsMap.values())
             lpDenoms.forEach(denom => {
                 const denomAsset = assetsMap.get(denom)
                 if (!denomAsset) return;
 
-                const pool = poolsMap.get(poolIdFromPoolDenom(denom))
+                const pool = poolsByLpDenom.get(denom)
                 if (!pool) return;
 
                 const basePrice = pricesMap.get(pool.base) || toBigNumber(0)

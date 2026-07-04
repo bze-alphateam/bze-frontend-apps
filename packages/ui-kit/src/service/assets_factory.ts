@@ -14,6 +14,8 @@ import {getExponentByDenomFromAsset} from "@chain-registry/utils";
 import {counterpartyChainForChannel, getHashIBCTrace} from "../query/ibc";
 import {Asset as ChainRegistryAsset} from "@chain-registry/types";
 import {denomOnFirstHopChainFromTrace} from "../utils/ibc";
+import {createLpDenomPoolsMap} from "../utils/liquidity_pool";
+import {getLiquidityPools} from "../query/liquidity_pools";
 
 const ORIGIN_CHAIN_PLACEHOLDER = "Unknown chain"
 
@@ -31,7 +33,7 @@ const getAssetLogo = (asset: ChainRegistryAsset): string => {
 }
 
 export const getChainAssets = async (): Promise<ChainAssets> => {
-    const [metadata, supply] = await Promise.all([getAllMetadataMap(), getAllSupply()])
+    const [metadata, supply, pools] = await Promise.all([getAllMetadataMap(), getAllSupply(), getLiquidityPools()])
     const result = {
         assets: new Map<string, Asset>(),
         ibcData: new Map<string, IBCData>()
@@ -62,14 +64,24 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
         }
     }
 
+    // Resolve each LP asset's base/quote from the pools list (works for both legacy
+    // ulp_<base>_<quote> and hashed ulp/<hash> denoms). Fall back to parsing legacy
+    // denoms in case the pools fetch failed.
+    const poolsByLpDenom = createLpDenomPoolsMap(pools ?? [])
     for (const lpAsset of lpAssets) {
-        const split = lpAsset.denom.split('_')
-        if (split.length !== 3) {
-            continue;
+        const pool = poolsByLpDenom.get(lpAsset.denom)
+        let baseDenom = pool?.base
+        let quoteDenom = pool?.quote
+        if (!baseDenom || !quoteDenom) {
+            const split = lpAsset.denom.split('_')
+            if (split.length === 3) {
+                baseDenom = split[1]
+                quoteDenom = split[2]
+            }
         }
 
-        const baseAsset = result.assets.get(split[1])
-        const quoteAsset = result.assets.get(split[2])
+        const baseAsset = baseDenom ? result.assets.get(baseDenom) : undefined
+        const quoteAsset = quoteDenom ? result.assets.get(quoteDenom) : undefined
         if (!baseAsset || !quoteAsset) {
             result.assets.set(lpAsset.denom, lpAsset)
             continue;

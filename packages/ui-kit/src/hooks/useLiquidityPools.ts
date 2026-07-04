@@ -1,7 +1,7 @@
 import {useCallback, useMemo} from "react";
 import {useAssetsContext} from "./useAssets";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
-import {createPoolId, poolIdFromPoolDenom, calculatePoolOppositeAmount} from "../utils/liquidity_pool";
+import {createPoolId, createLpDenomPoolsMap, calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {toBigNumber} from "../utils/amount";
 import {Asset} from "../types/asset";
 import {LiquidityPoolData} from "../types/liquidity_pool";
@@ -14,10 +14,13 @@ export function useLiquidityPools() {
         return Array.from(poolsMap.values())
     }, [poolsMap])
 
-    const getPoolByLpDenom = (lpDenom: string) => {
-        const poolId = poolIdFromPoolDenom(lpDenom);
-        return poolsMap.get(poolId);
-    }
+    // Keyed by the pool's stored lp_denom so it works for both legacy (ulp_<base>_<quote>)
+    // and hashed (ulp/<hash>) LP denoms.
+    const poolsByLpDenomMap = useMemo(() => createLpDenomPoolsMap(poolsMap.values()), [poolsMap])
+
+    const getPoolByLpDenom = useCallback((lpDenom: string) => {
+        return poolsByLpDenomMap.get(lpDenom);
+    }, [poolsByLpDenomMap])
 
     const getDenomsPool = useCallback((denomA: string, denomB: string) => {
         const poolId = createPoolId(denomA, denomB)

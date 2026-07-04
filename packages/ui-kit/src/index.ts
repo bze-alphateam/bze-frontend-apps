@@ -84,7 +84,7 @@ export {
 } from './utils/cross_chain';
 export {
     calculateUserPoolData, calculatePoolOppositeAmount, calculatePoolPrice,
-    createPoolId, poolIdFromPoolDenom
+    createPoolId, poolIdFromPoolDenom, createLpDenomPoolsMap
 } from './utils/liquidity_pool';
 export {
     createMarketId, calculateTotalAmount, calculatePricePerUnit,
