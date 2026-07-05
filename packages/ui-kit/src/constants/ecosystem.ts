@@ -1,5 +1,5 @@
 import type { IconType } from 'react-icons';
-import { LuGlobe, LuCoins, LuChartColumn, LuFlame, LuFactory } from 'react-icons/lu';
+import { LuGlobe, LuCoins, LuChartColumn, LuFlame, LuFactory, LuUsers } from 'react-icons/lu';
 import { isInHub } from '@bze/hub-connector';
 
 export const ECOSYSTEM_MENU_LABEL = 'Other';
@@ -23,8 +23,9 @@ const DEFAULT_APPS: Array<{ key: string; name: string; href: string; disabled: b
     { key: 'website',  name: 'Website',  href: 'https://getbze.com',          disabled: false, icon: LuGlobe },
     { key: 'staking',  name: 'Staking',  href: 'https://staking.getbze.com',  disabled: false, icon: LuCoins },
     { key: 'dex',      name: 'DEX',      href: 'https://dex.getbze.com',      disabled: false, icon: LuChartColumn },
-    { key: 'burner',   name: 'Burner',   href: 'https://burner.getbze.com',   disabled: false, icon: LuFlame },
-    { key: 'factory',  name: 'Factory',  href: '#',                            disabled: true,  icon: LuFactory },
+    { key: 'burner',      name: 'Burner',      href: 'https://burner.getbze.com',      disabled: false, icon: LuFlame },
+    { key: 'factory',     name: 'Factory',     href: 'https://factory.getbze.com',     disabled: false, icon: LuFactory },
+    { key: 'communities', name: 'Communities', href: 'https://communities.getbze.com', disabled: false, icon: LuUsers },
 ];
 
 /**
@@ -48,16 +49,18 @@ const LINK_OVERRIDES: Record<string, string | undefined> = {
     website: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_WEBSITE,
     staking: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_STAKING,
     dex:     process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_DEX,
-    burner:  process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_BURNER,
-    factory: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_FACTORY,
+    burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_BURNER,
+    factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_FACTORY,
+    communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_COMMUNITIES,
 };
 
 const LABEL_OVERRIDES: Record<string, string | undefined> = {
     website: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_WEBSITE,
     staking: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_STAKING,
     dex:     process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_DEX,
-    burner:  process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_BURNER,
-    factory: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_FACTORY,
+    burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_BURNER,
+    factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_FACTORY,
+    communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_COMMUNITIES,
 };
 
 /**
