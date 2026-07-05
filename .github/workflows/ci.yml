@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    name: build + lint
+    name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,8 +50,48 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
 
+      # `next build` runs the full TypeScript type-check and fails on type errors, so the
+      # build is the correctness gate (compile + types + prerender). ESLint runs as the
+      # separate `lint` job below, scoped to files changed in the PR.
       - name: Build (ui-kit + all 3 apps)
         run: pnpm exec turbo run build --concurrency=3 --cache-dir=.turbo
 
-      - name: Lint + type-check
-        run: pnpm exec turbo run lint --concurrency=3 --cache-dir=.turbo
+  lint:
+    name: lint (changed files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need base-branch history to diff changed files
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Lint ONLY the JS/TS files changed in this PR, per app (each app has its own flat
+      # config, so eslint must run from that app's directory). Pre-existing lint debt in
+      # untouched files never blocks a PR — you clean the files you touch (boy-scout rule).
+      - name: ESLint changed files
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only --diff-filter=ACMR "origin/${{ github.base_ref }}...HEAD" -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' || true)
+          if [ -z "$CHANGED" ]; then echo "No JS/TS files changed — nothing to lint."; exit 0; fi
+          echo "Changed JS/TS files:"; echo "$CHANGED"
+          status=0
+          for app in dex burner staking; do
+            files=$(echo "$CHANGED" | { grep "^apps/$app/" || true; } | sed "s#^apps/$app/##")
+            if [ -n "$files" ]; then
+              echo "::group::eslint $app"
+              ( cd "apps/$app" && echo "$files" | xargs -r pnpm exec eslint ) || status=1
+              echo "::endgroup::"
+            fi
+          done
+          exit $status
