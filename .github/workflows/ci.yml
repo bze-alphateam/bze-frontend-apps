@@ -1,0 +1,57 @@
+name: CI
+
+# Merge gate: runs on every PR targeting develop or main.
+# A green run here is what branch protection requires before a merge is allowed.
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4   # reads the pinned version from package.json "packageManager"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build-time NEXT_PUBLIC_* must exist for `next build`. These are PUBLIC template
+      # values (committed .env.dist) — enough to compile and type-check. No secrets in CI.
+      - name: Seed build-time env from templates
+        run: |
+          for app in dex burner staking; do
+            if [ -f "apps/$app/.env.dist" ]; then
+              cp "apps/$app/.env.dist" "apps/$app/.env"
+            fi
+          done
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Build (ui-kit + all 3 apps)
+        run: pnpm exec turbo run build --concurrency=3 --cache-dir=.turbo
+
+      - name: Lint + type-check
+        run: pnpm exec turbo run lint --concurrency=3 --cache-dir=.turbo
