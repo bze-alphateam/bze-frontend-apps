@@ -86,7 +86,7 @@ jobs:
           if [ -z "$CHANGED" ]; then echo "No JS/TS files changed — nothing to lint."; exit 0; fi
           echo "Changed JS/TS files:"; echo "$CHANGED"
           status=0
-          for app in dex burner staking; do
+          for app in dex burner staking factory communities; do
             files=$(echo "$CHANGED" | { grep "^apps/$app/" || true; } | sed "s#^apps/$app/##")
             if [ -n "$files" ]; then
               echo "::group::eslint $app"

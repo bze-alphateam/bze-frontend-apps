@@ -53,20 +53,26 @@ Run it again after pulling changes or editing any `package.json` / `pnpm-workspa
 Run any app from the repo root with `pnpm --filter <name> dev`. The pnpm package name
 differs from the folder name — use the **name** column:
 
-| App | Folder | `--filter` name |
-|---|---|---|
-| DEX     | `apps/dex`     | `bze-dapp-v2` |
-| Burner  | `apps/burner`  | `bze-burner`  |
-| Staking | `apps/staking` | `bze-staking` |
+| App | Folder | `--filter` name | Dev port |
+|---|---|---|---|
+| DEX         | `apps/dex`         | `bze-dapp-v2`     | 3000 |
+| Burner      | `apps/burner`      | `bze-burner`      | 3001 |
+| Staking     | `apps/staking`     | `bze-staking`     | 3002 |
+| Factory     | `apps/factory`     | `bze-factory`     | 3003 |
+| Communities | `apps/communities` | `bze-communities` | 3004 |
 
 ```sh
-pnpm --filter bze-dapp-v2 dev               # DEX     → http://localhost:3000
-pnpm --filter bze-burner  dev -- -p 3001    # Burner  → http://localhost:3001
-pnpm --filter bze-staking dev -- -p 3002    # Staking → http://localhost:3002
+pnpm --filter bze-dapp-v2     dev   # DEX         → http://localhost:3000
+pnpm --filter bze-burner      dev   # Burner      → http://localhost:3001
+pnpm --filter bze-staking     dev   # Staking     → http://localhost:3002
+pnpm --filter bze-factory     dev   # Factory     → http://localhost:3003
+pnpm --filter bze-communities dev   # Communities → http://localhost:3004
 ```
 
-Each app defaults to port **3000**, so pass `-- -p <port>` if you want to run more than one
-at the same time. Local config comes from each app's own `.env` (copy from `.env.dist`).
+Each app's dev script bakes in its own port (`next dev --webpack -p <port>`), so you can run
+several at once without passing `-- -p`. Local config comes from each app's own `.env`
+(copy from `.env.dist`). Factory and Communities are placeholder apps (under-construction
+pages) with no wallet stack or env yet.
 
 > **Why `dev` uses `--webpack`:** the dev scripts run `next dev --webpack` on purpose.
 > The apps rely on webpack `resolve.alias` (see *“The one real gotcha”* below) to force
