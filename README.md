@@ -1,5 +1,7 @@
 # BZE Frontend Apps
 
+[![CI](https://github.com/bze-alphateam/bze-frontend-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/bze-alphateam/bze-frontend-apps/actions/workflows/ci.yml)
+
 Turborepo + pnpm monorepo for the BeeZee frontend apps and their shared library.
 One repo, one install, no publishing — edit the shared lib and every app sees it instantly.
 
