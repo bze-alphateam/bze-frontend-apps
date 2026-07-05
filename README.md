@@ -87,9 +87,14 @@ pnpm --filter @bze/bze-ui-kit dev   # tsup --watch
 Build everything (Turbo runs ui-kit first, then the apps, and caches results):
 
 ```sh
-pnpm build                      # = turbo run build
-pnpm build -- --concurrency=1   # build apps one at a time (lower peak memory)
+pnpm build                                       # = turbo run build
+pnpm exec turbo run build --concurrency=1        # build apps one at a time (lower peak memory)
+pnpm exec turbo run build --concurrency=3        # build all 3 apps in parallel (needs the RAM)
 ```
+
+> **Don't** write `pnpm build -- --concurrency=1`. The `--` makes turbo pass `--concurrency`
+> through to each package's build command (tsup/next), which don't understand it and error.
+> `--concurrency` is a **turbo** flag, so call turbo directly: `pnpm exec turbo run build --concurrency=N`.
 
 Build a single app (and only its dependencies):
 
@@ -131,7 +136,7 @@ In each checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm build -- --concurrency=1     # builds ui-kit + all 3 apps, using the .env files present
+pnpm exec turbo run build --concurrency=3   # builds ui-kit + all 3 apps, using the .env files present
 ```
 
 Each app's output lands in `apps/<app>/.next`. Nothing app-specific to run — one `pnpm build`
@@ -180,8 +185,8 @@ Run per network checkout (mainnet and/or testnet):
 cd <checkout>                     # the mainnet or testnet monorepo clone
 git pull
 pnpm install --frozen-lockfile
-pnpm build -- --concurrency=1     # Turbo's cache skips apps that didn't change
-pm2 reload ecosystem.config.js    # or reload only changed apps: pm2 reload dex burner
+pnpm exec turbo run build --concurrency=3   # Turbo's cache skips apps that didn't change
+pm2 reload ecosystem.config.js              # reload only changed apps: pm2 reload ecosystem.config.js --only "dex.getbze,burner.getbze"
 ```
 
 Notes:
