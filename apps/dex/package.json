@@ -11,7 +11,7 @@
   "dependencies": {
     "@bze/bze-ui-kit": "workspace:*",
     "@bze/bzejs": "^3.0.0",
-    "@chain-registry/utils": "^2.0.178",
+    "@chain-registry/utils": "^2.0.229",
     "@chain-registry/v2": "^1.71.237",
     "@chakra-ui/react": "^3.22.0",
     "@emotion/react": "^11.14.0",
@@ -26,7 +26,7 @@
     "@wagmi/core": "^3.4.2",
     "@walletconnect/ethereum-provider": "^2.23.9",
     "bignumber.js": "^9.3.1",
-    "chain-registry": "^2.0.178",
+    "chain-registry": "^2.0.229",
     "interchainjs": "^1.21.0",
     "lightweight-charts": "^5.0.9",
     "minimatch": "^10.0.3",
