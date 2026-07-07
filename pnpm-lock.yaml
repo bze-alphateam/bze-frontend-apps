@@ -32,8 +32,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.178
-        version: 2.0.178
+        specifier: ^2.0.229
+        version: 2.0.229
       '@chain-registry/v2':
         specifier: ^1.71.237
         version: 1.71.237
@@ -74,8 +74,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.178
-        version: 2.0.178
+        specifier: ^2.0.229
+        version: 2.0.229
       lightweight-charts:
         specifier: ^5.0.9
         version: 5.2.0
@@ -169,8 +169,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.178
-        version: 2.0.178
+        specifier: ^2.0.229
+        version: 2.0.229
       '@chain-registry/v2':
         specifier: ^1.71.237
         version: 1.71.237
@@ -214,8 +214,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.178
-        version: 2.0.216
+        specifier: ^2.0.229
+        version: 2.0.229
       interchainjs:
         specifier: ^1.21.0
         version: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -312,8 +312,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.178
-        version: 2.0.178
+        specifier: ^2.0.229
+        version: 2.0.229
       '@chain-registry/v2':
         specifier: ^1.71.237
         version: 1.71.237
@@ -351,8 +351,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.178
-        version: 2.0.178
+        specifier: ^2.0.229
+        version: 2.0.229
       next:
         specifier: 16.2.3
         version: 16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -407,11 +407,11 @@ importers:
         specifier: 3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/types':
-        specifier: 2.0.178
-        version: 2.0.178
+        specifier: 2.0.229
+        version: 2.0.229
       '@chain-registry/utils':
-        specifier: 2.0.178
-        version: 2.0.178
+        specifier: 2.0.229
+        version: 2.0.229
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -440,8 +440,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: 2.0.178
-        version: 2.0.178
+        specifier: 2.0.229
+        version: 2.0.229
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -572,8 +572,11 @@ packages:
   '@chain-registry/types@2.0.216':
     resolution: {integrity: sha512-8bQcy/OCKHzJdY4ttkGeCyVeJ8QUVbd2/M2YSSNgdkYykzWiRz+BXxtQc0Yr3n2z4O+9DjDyL7JP8d68AGvrWQ==}
 
-  '@chain-registry/utils@2.0.178':
-    resolution: {integrity: sha512-/nXeonDBeHW/AOlbQ+ogNT62QVYZNKcNeOqFIbStALTS7xagKbIwEOndWGhk3ER3AhaFVar2NT+0Bd1Vv9LdjA==}
+  '@chain-registry/types@2.0.229':
+    resolution: {integrity: sha512-E2mve12emUGtxTYdkveOUaDaudnEh8xJ+ExJRzCh1iT5B9bgVIuO/avoCPD+yewK4ln2UZTh9vPJGFQwbqsLhw==}
+
+  '@chain-registry/utils@2.0.229':
+    resolution: {integrity: sha512-T1NwZEhi578QBqoZ6ESfigSE5j1JFtMnhJvvmeyZyi69M4M4+ip4+SxyueKA35Wb9T3gdzv2ItXrwQMV+1TyHA==}
 
   '@chain-registry/v2-types@0.53.146':
     resolution: {integrity: sha512-GnqdNnEJ+ZTAc/0S9fQbwL5GpIvF3LZ/P3o6qh6EyITSiRA1Y55FXs59eSddltpPX5EgyWDwNpJjY+Q5uYlAkA==}
@@ -3145,11 +3148,11 @@ packages:
     resolution: {integrity: sha512-JSr5eOgoEymtYHBjNWyjrMqet9Am2miJhlfKNdqLp6zoeAh0KN5dRAcxlecj5mAJrmQomgiOBj35xHLrFjqBpw==}
     hasBin: true
 
-  chain-registry@2.0.178:
-    resolution: {integrity: sha512-HYvxf7VXihAivIX34IEu0qeo/sy4QrTEb6EDunvlDWSNp66M+mLQhXxhlc8p/MB2YargkjIFQ/SaikxrbPiKmw==}
-
   chain-registry@2.0.216:
     resolution: {integrity: sha512-auKSsUh1Hxk5d0UglWyPEoRnCmJpyegtXOVClrhRArmY0O0Y5fRkH0ab4P3NUWXbPAbNMsiX+2Jhn9ANJL7//Q==}
+
+  chain-registry@2.0.229:
+    resolution: {integrity: sha512-KhZ5tNP2SAbsqdBfyoXELXBjOJwuV4ZhzkOA7Ekl9OCkQMLIyU9rjyW/dykU600HcUD4TKGp9iOA2oI8YsiWOw==}
 
   chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -5903,11 +5906,13 @@ snapshots:
 
   '@chain-registry/types@2.0.216': {}
 
-  '@chain-registry/utils@2.0.178':
+  '@chain-registry/types@2.0.229': {}
+
+  '@chain-registry/utils@2.0.229':
     dependencies:
-      '@chain-registry/types': 2.0.178
+      '@chain-registry/types': 2.0.229
       bignumber.js: 9.1.2
-      chain-registry: 2.0.178
+      chain-registry: 2.0.229
       sha.js: 2.4.12
 
   '@chain-registry/v2-types@0.53.146': {}
@@ -6441,7 +6446,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.178
+      chain-registry: 2.0.216
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -6494,7 +6499,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.178
+      chain-registry: 2.0.216
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -11104,13 +11109,13 @@ snapshots:
       ansicolors: 0.3.2
       redeyed: 2.1.1
 
-  chain-registry@2.0.178:
-    dependencies:
-      '@chain-registry/types': 2.0.178
-
   chain-registry@2.0.216:
     dependencies:
       '@chain-registry/types': 2.0.216
+
+  chain-registry@2.0.229:
+    dependencies:
+      '@chain-registry/types': 2.0.229
 
   chalk@2.4.2:
     dependencies:
