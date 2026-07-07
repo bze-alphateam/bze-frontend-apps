@@ -3,6 +3,11 @@ import {useCallback, useMemo} from "react";
 import {createMarketId} from "@bze/bze-ui-kit";
 
 const ID_PARAM = 'id'
+const DENOM_PARAM = 'denom'
+
+// Denoms can contain '/' (factory/..., ibc/...), so the denom travels in the
+// query string (URL-encoded), never in the path.
+export const assetPagePath = (denom: string) => `/assets/details?${DENOM_PARAM}=${encodeURIComponent(denom)}`
 
 // Basic navigation without search params (no Suspense needed)
 export const useNavigation = () => {
@@ -25,6 +30,14 @@ export const useNavigation = () => {
         router.push(`/pools/details?${ID_PARAM}=${poolId}`)
     }, [router]);
 
+    const toAssetsPage = useCallback(() => {
+        router.push('/assets')
+    }, [router])
+
+    const toAssetPage = useCallback((denom: string) => {
+        router.push(assetPagePath(denom))
+    }, [router]);
+
     return {
         currentPathName: pathname,
         navigate: router.push,
@@ -32,6 +45,8 @@ export const useNavigation = () => {
         toExchangePage,
         toLpPage,
         toPoolsPage,
+        toAssetsPage,
+        toAssetPage,
     };
 };
 
@@ -48,9 +63,14 @@ export const useNavigationWithParams = () => {
         return searchParams.get(ID_PARAM)
     }, [searchParams]);
 
+    const denomParam = useMemo(() => {
+        return searchParams.get(DENOM_PARAM)
+    }, [searchParams]);
+
     return {
         ...navigation,
         getQueryParam,
         idParam,
+        denomParam,
     };
 };
