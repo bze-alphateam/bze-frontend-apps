@@ -45,31 +45,31 @@ importers:
         version: 11.14.0(@types/react@19.2.17)(react@19.2.7)
       '@interchain-kit/core':
         specifier: 0.10.1
-        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/cosmostation-extension':
         specifier: 0.10.1
-        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/keplr-extension':
         specifier: 0.10.1
-        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/leap-extension':
         specifier: 0.10.1
-        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/react':
         specifier: 0.10.1
-        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
       '@next/third-parties':
         specifier: ^16.0.6
-        version: 16.2.9(next@16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        version: 16.2.9(next@16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
       '@wagmi/core':
         specifier: 3.4.2
-        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@walletconnect/ethereum-provider':
         specifier: ^2.23.9
-        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
       bignumber.js:
         specifier: ^9.3.1
         version: 9.3.1
@@ -84,7 +84,7 @@ importers:
         version: 10.2.5
       next:
         specifier: 16.2.3
-        version: 16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -102,10 +102,10 @@ importers:
         version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@16.13.1)(react@19.2.7)(redux@5.0.1)
       viem:
         specifier: 2.47.10
-        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       wagmi:
         specifier: 3.6.1
-        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76))(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3))(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -124,7 +124,7 @@ importers:
         version: 9.39.4
       eslint-config-next:
         specifier: 16.2.1
-        version: 16.2.1(eslint@9.39.4)(typescript@5.9.3)
+        version: 16.2.1(@typescript-eslint/parser@8.61.0(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -133,7 +133,7 @@ importers:
     dependencies:
       next:
         specifier: 16.2.3
-        version: 16.2.3(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -155,7 +155,7 @@ importers:
         version: 9.39.4
       eslint-config-next:
         specifier: 16.2.1
-        version: 16.2.1(@typescript-eslint/parser@8.61.0(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
+        version: 16.2.1(eslint@9.39.4)(typescript@5.9.3)
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -274,16 +274,79 @@ importers:
 
   apps/factory:
     dependencies:
+      '@bze/bze-ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      '@bze/bzejs':
+        specifier: ^3.0.0
+        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@chain-registry/utils':
+        specifier: ^2.0.229
+        version: 2.0.229
+      '@chain-registry/v2':
+        specifier: ^1.71.237
+        version: 1.71.237
+      '@chakra-ui/react':
+        specifier: ^3.22.0
+        version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@19.2.17)(react@19.2.7)
+      '@interchain-kit/core':
+        specifier: 0.10.1
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@interchain-kit/cosmostation-extension':
+        specifier: 0.10.1
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@interchain-kit/keplr-extension':
+        specifier: 0.10.1
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@interchain-kit/leap-extension':
+        specifier: 0.10.1
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@interchain-kit/react':
+        specifier: 0.10.1
+        version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@tanstack/react-query':
+        specifier: ^5.96.2
+        version: 5.96.2(react@19.2.7)
+      '@wagmi/core':
+        specifier: 3.4.2
+        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+      '@walletconnect/ethereum-provider':
+        specifier: ^2.23.9
+        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+      bignumber.js:
+        specifier: ^9.3.1
+        version: 9.3.1
+      chain-registry:
+        specifier: ^2.0.229
+        version: 2.0.229
       next:
         specifier: 16.2.3
-        version: 16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.0.0
         version: 19.2.7
       react-dom:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
+      react-icons:
+        specifier: ^5.5.0
+        version: 5.6.0(react@19.2.7)
+      viem:
+        specifier: 2.47.10
+        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+      wagmi:
+        specifier: 3.6.1
+        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76))(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
     devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3
+        version: 3.3.5
       '@types/node':
         specifier: ^20
         version: 20.19.43
@@ -355,7 +418,7 @@ importers:
         version: 2.0.229
       next:
         specifier: 16.2.3
-        version: 16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -565,9 +628,6 @@ packages:
 
   '@chain-registry/keplr@2.0.216':
     resolution: {integrity: sha512-C0ghy1cTjU08+9JGqMT/HDsHr+2jPgLv61+gUjilF1GnpbVDW7w0xxchXxBek1OKXA0HTiCCPSwBI10WGLPhMA==}
-
-  '@chain-registry/types@2.0.178':
-    resolution: {integrity: sha512-mLAPh4JmDIhrY7s+S+KWxg25ZSF0KNqz3zs4BT07oe0rgxcDTnwsE44wVByJxNYgpPQXBxfFf/s013QxB8Bp3w==}
 
   '@chain-registry/types@2.0.216':
     resolution: {integrity: sha512-8bQcy/OCKHzJdY4ttkGeCyVeJ8QUVbd2/M2YSSNgdkYykzWiRz+BXxtQc0Yr3n2z4O+9DjDyL7JP8d68AGvrWQ==}
@@ -3147,9 +3207,6 @@ packages:
   cardinal@2.1.1:
     resolution: {integrity: sha512-JSr5eOgoEymtYHBjNWyjrMqet9Am2miJhlfKNdqLp6zoeAh0KN5dRAcxlecj5mAJrmQomgiOBj35xHLrFjqBpw==}
     hasBin: true
-
-  chain-registry@2.0.216:
-    resolution: {integrity: sha512-auKSsUh1Hxk5d0UglWyPEoRnCmJpyegtXOVClrhRArmY0O0Y5fRkH0ab4P3NUWXbPAbNMsiX+2Jhn9ANJL7//Q==}
 
   chain-registry@2.0.229:
     resolution: {integrity: sha512-KhZ5tNP2SAbsqdBfyoXELXBjOJwuV4ZhzkOA7Ekl9OCkQMLIyU9rjyW/dykU600HcUD4TKGp9iOA2oI8YsiWOw==}
@@ -5895,14 +5952,12 @@ snapshots:
 
   '@chain-registry/keplr@2.0.216':
     dependencies:
-      '@chain-registry/types': 2.0.216
+      '@chain-registry/types': 2.0.229
       '@keplr-wallet/cosmos': 0.12.28
       '@keplr-wallet/crypto': 0.12.28
       '@types/semver': 7.7.1
-      chain-registry: 2.0.216
+      chain-registry: 2.0.229
       semver: 7.8.4
-
-  '@chain-registry/types@2.0.178': {}
 
   '@chain-registry/types@2.0.216': {}
 
@@ -6429,7 +6484,7 @@ snapshots:
   '@interchain-kit/core@0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
       '@chain-registry/keplr': 2.0.216
-      '@chain-registry/types': 2.0.178
+      '@chain-registry/types': 2.0.229
       '@interchainjs/amino': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
@@ -6446,7 +6501,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.216
+      chain-registry: 2.0.229
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -6482,7 +6537,7 @@ snapshots:
   '@interchain-kit/core@0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
       '@chain-registry/keplr': 2.0.216
-      '@chain-registry/types': 2.0.178
+      '@chain-registry/types': 2.0.229
       '@interchainjs/amino': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
@@ -6499,7 +6554,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.216
+      chain-registry: 2.0.229
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -6724,7 +6779,7 @@ snapshots:
 
   '@interchain-kit/react@0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
-      '@chain-registry/types': 2.0.178
+      '@chain-registry/types': 2.0.229
       '@interchain-kit/core': 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       '@interchain-kit/store': 0.9.1(patch_hash=a9900d5fea8bdeb418fe6a34ec89e4d8a581957e947806cd8380bd68f44cbd08)(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       '@interchain-ui/react': 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -6778,7 +6833,7 @@ snapshots:
 
   '@interchain-kit/react@0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
-      '@chain-registry/types': 2.0.178
+      '@chain-registry/types': 2.0.229
       '@interchain-kit/core': 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/store': 0.9.1(patch_hash=a9900d5fea8bdeb418fe6a34ec89e4d8a581957e947806cd8380bd68f44cbd08)(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-ui/react': 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7293,9 +7348,9 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.2.9':
     optional: true
 
-  '@next/third-parties@16.2.9(next@16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@next/third-parties@16.2.9(next@16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
-      next: 16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       third-party-capital: 1.0.20
 
@@ -11109,10 +11164,6 @@ snapshots:
       ansicolors: 0.3.2
       redeyed: 2.1.1
 
-  chain-registry@2.0.216:
-    dependencies:
-      '@chain-registry/types': 2.0.216
-
   chain-registry@2.0.229:
     dependencies:
       '@chain-registry/types': 2.0.229
@@ -12549,7 +12600,7 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  next@16.2.3(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  next@16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@next/env': 16.2.3
       '@swc/helpers': 0.5.15
@@ -12558,31 +12609,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(@babel/core@7.29.7)(react@19.2.7)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 16.2.3
-      '@next/swc-darwin-x64': 16.2.3
-      '@next/swc-linux-arm64-gnu': 16.2.3
-      '@next/swc-linux-arm64-musl': 16.2.3
-      '@next/swc-linux-x64-gnu': 16.2.3
-      '@next/swc-linux-x64-musl': 16.2.3
-      '@next/swc-win32-arm64-msvc': 16.2.3
-      '@next/swc-win32-x64-msvc': 16.2.3
-      sharp: 0.34.5
-    transitivePeerDependencies:
-      - '@babel/core'
-      - babel-plugin-macros
-
-  next@16.2.3(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
-    dependencies:
-      '@next/env': 16.2.3
-      '@swc/helpers': 0.5.15
-      baseline-browser-mapping: 2.10.37
-      caniuse-lite: 1.0.30001799
-      postcss: 8.4.31
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(babel-plugin-macros@3.1.0)(react@19.2.7)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react@19.2.7)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.3
       '@next/swc-darwin-x64': 16.2.3
@@ -12606,7 +12633,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
-      styled-jsx: 5.1.6(babel-plugin-macros@3.1.0)(react@19.2.7)
+      styled-jsx: 5.1.6(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react@19.2.7)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.2.9
       '@next/swc-darwin-x64': 16.2.9
@@ -13553,18 +13580,12 @@ snapshots:
 
   strip-json-comments@3.1.1: {}
 
-  styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.7):
+  styled-jsx@5.1.6(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react@19.2.7):
     dependencies:
       client-only: 0.0.1
       react: 19.2.7
     optionalDependencies:
       '@babel/core': 7.29.7
-
-  styled-jsx@5.1.6(babel-plugin-macros@3.1.0)(react@19.2.7):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.2.7
-    optionalDependencies:
       babel-plugin-macros: 3.1.0
 
   stylis@4.2.0: {}

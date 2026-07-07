@@ -36,7 +36,7 @@ jobs:
       # values (committed .env.dist) — enough to compile and type-check. No secrets in CI.
       - name: Seed build-time env from templates
         run: |
-          for app in dex burner staking; do
+          for app in dex burner staking factory communities; do
             if [ -f "apps/$app/.env.dist" ]; then
               cp "apps/$app/.env.dist" "apps/$app/.env"
             fi
