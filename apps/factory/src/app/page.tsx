@@ -51,6 +51,7 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Launch your own token on BeeZee — supply, metadata, and admin strategy in one guided flow.',
         icon: LuCoins,
         feeKey: 'createDenomFee',
+        href: '/token/new',
     },
     {
         key: 'market',

@@ -12,7 +12,9 @@ const navItems = [
     { name: 'Create', href: '/' },
 ]
 
-const navSubitems: { [key: string]: string } = {}
+const navSubitems: { [key: string]: string } = {
+    '/token/new': '/',
+}
 
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
     const {navigate, currentPathName} = useNavigation()

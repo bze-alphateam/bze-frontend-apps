@@ -1,0 +1,131 @@
+"use client"
+
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
+
+export type TokenWizardLane = 'fast' | 'pro'
+
+export interface WizardStep {
+    key: string;
+    title: string;
+}
+
+// Step lists per lane (spec: M1 — Create Token, both lanes). Content for each
+// step ships in BZE-14 (Fast Track), BZE-15 (review/submit), BZE-16 (Pro).
+export const FAST_TRACK_STEPS: WizardStep[] = [
+    { key: 'identity', title: 'Identity' },
+    { key: 'supply', title: 'Supply' },
+    { key: 'review', title: 'Review & Create' },
+]
+
+export const PRO_STEPS: WizardStep[] = [
+    { key: 'identity', title: 'Identity' },
+    { key: 'metadata', title: 'Metadata' },
+    { key: 'supply', title: 'Supply & Admin' },
+    { key: 'review', title: 'Review & Create' },
+]
+
+/**
+ * Everything the wizard collects across both lanes. Fast Track uses a subset;
+ * Pro fills in the extra metadata/admin fields.
+ */
+export interface TokenWizardForm {
+    // Identity
+    name: string;
+    symbol: string;
+    subdenom: string;
+    /** Once the user edits the subdenom by hand, stop auto-suggesting it from the symbol. */
+    subdenomTouched: boolean;
+    decimals: number;
+    // Supply
+    initialSupply: string;
+    /** Renounce admin right after mint → guaranteed fixed supply from block one. */
+    fixedSupply: boolean;
+    // Pro metadata
+    description: string;
+    logoUri: string;
+}
+
+const EMPTY_FORM: TokenWizardForm = {
+    name: '',
+    symbol: '',
+    subdenom: '',
+    subdenomTouched: false,
+    decimals: 6,
+    initialSupply: '',
+    fixedSupply: false,
+    description: '',
+    logoUri: '',
+}
+
+interface TokenWizardContextType {
+    /** Undefined until the user picks a lane — the lane chooser is showing. */
+    lane?: TokenWizardLane;
+    /** Steps for the current lane (Fast Track steps while no lane is picked). */
+    steps: WizardStep[];
+    stepIndex: number;
+    form: TokenWizardForm;
+    setLane: (lane: TokenWizardLane) => void;
+    updateForm: (patch: Partial<TokenWizardForm>) => void;
+    goNext: () => void;
+    /** From the first step, back returns to the lane chooser. */
+    goBack: () => void;
+    reset: () => void;
+}
+
+const TokenWizardContext = createContext<TokenWizardContextType | undefined>(undefined)
+
+/**
+ * Holds the wizard state at the page level so it survives step navigation and
+ * overlays (e.g. opening the Settings drawer from a FeeDisclosure box).
+ */
+export function TokenWizardProvider({ children }: { children: React.ReactNode }) {
+    const [lane, setLaneState] = useState<TokenWizardLane | undefined>(undefined)
+    const [stepIndex, setStepIndex] = useState(0)
+    const [form, setForm] = useState<TokenWizardForm>(EMPTY_FORM)
+
+    const steps = lane === 'pro' ? PRO_STEPS : FAST_TRACK_STEPS
+
+    const setLane = useCallback((next: TokenWizardLane) => {
+        setLaneState(next)
+        setStepIndex(0)
+    }, [])
+
+    const updateForm = useCallback((patch: Partial<TokenWizardForm>) => {
+        setForm(prev => ({ ...prev, ...patch }))
+    }, [])
+
+    const goNext = useCallback(() => {
+        setStepIndex(prev => Math.min(prev + 1, steps.length - 1))
+    }, [steps.length])
+
+    const goBack = useCallback(() => {
+        setStepIndex(prev => {
+            if (prev === 0) {
+                setLaneState(undefined)
+                return 0
+            }
+            return prev - 1
+        })
+    }, [])
+
+    const reset = useCallback(() => {
+        setLaneState(undefined)
+        setStepIndex(0)
+        setForm(EMPTY_FORM)
+    }, [])
+
+    const value = useMemo(
+        () => ({ lane, steps, stepIndex, form, setLane, updateForm, goNext, goBack, reset }),
+        [lane, steps, stepIndex, form, setLane, updateForm, goNext, goBack, reset]
+    )
+
+    return <TokenWizardContext.Provider value={value}>{children}</TokenWizardContext.Provider>
+}
+
+export function useTokenWizard(): TokenWizardContextType {
+    const ctx = useContext(TokenWizardContext)
+    if (!ctx) {
+        throw new Error('useTokenWizard must be used within a TokenWizardProvider')
+    }
+    return ctx
+}
