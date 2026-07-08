@@ -25,6 +25,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
@@ -67,6 +69,7 @@
     "tsup": "^8.0.0",
     "typescript": "^5",
     "viem": "^2.47.10",
+    "vitest": "^4.1.10",
     "wagmi": "^3.6.0"
   },
   "publishConfig": {

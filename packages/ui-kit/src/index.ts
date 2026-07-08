@@ -187,7 +187,13 @@ export {
 } from './query/markets';
 export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
+export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
+export { getTokenFactoryParams } from './query/tokenfactory_params';
+export type { TokenFactoryParamsCache } from './query/tokenfactory_params';
+export { getRewardsParams } from './query/rewards_params';
+export type { RewardsParamsCache } from './query/rewards_params';
+export type { FeeCoin } from './types/fees';
 export {
     getStakingRewards, getAddressPendingUnlock, getPendingUnlockParticipants,
     getStakingRewardParticipantByAddress, getAddressStakingRewards
@@ -225,6 +231,8 @@ export { useEpochs, useEpochsManager } from './hooks/useEpochs';
 export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './hooks/useLiquidityPools';
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
+export { useCreationFees } from './hooks/useCreationFees';
+export type { CreationFees } from './hooks/useCreationFees';
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';
 export { useToast } from './hooks/useToast';
 export { useSDKTx, useBZETx, useIBCTx, TxStatus } from './hooks/useTx';
