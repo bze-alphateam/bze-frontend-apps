@@ -6,14 +6,20 @@ import { LuArrowLeft } from 'react-icons/lu'
 import { InfoBox } from '@/components/ui/info-box'
 import { WizardShell } from '@/components/wizard/wizard-shell'
 import { LaneChooser } from '@/components/token-wizard/lane-chooser'
+import { IdentityStep } from '@/components/token-wizard/steps/identity-step'
+import { MetadataStep } from '@/components/token-wizard/steps/metadata-step'
+import { SupplyStep } from '@/components/token-wizard/steps/supply-step'
+import { ReviewStep } from '@/components/token-wizard/steps/review-step'
+import { SuccessScreen } from '@/components/token-wizard/success-screen'
 import {
     TokenWizardProvider,
     useTokenWizard,
 } from '@/components/token-wizard/token-wizard-context'
+import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { useNavigation } from '@/hooks/useNavigation'
 
-// Step bodies land in the next stories: BZE-14 (Fast Track), BZE-15 (review &
-// submit), BZE-16 (Pro). Until then each step shows this placeholder.
+// Fast Track steps are live (BZE-14); on-chain submit lands in BZE-15 and the
+// Pro-only steps in BZE-16. Until then the remaining steps show this placeholder.
 function StepPlaceholder({ title }: { title: string }) {
     return (
         <VStack align="stretch" gap={4} minH="32" justify="center">
@@ -25,9 +31,22 @@ function StepPlaceholder({ title }: { title: string }) {
     )
 }
 
+// Both lanes share identity/supply/review; metadata is Pro-only.
+const STEP_COMPONENTS: Record<string, React.ComponentType> = {
+    identity: IdentityStep,
+    metadata: MetadataStep,
+    supply: SupplyStep,
+    review: ReviewStep,
+}
+
 function TokenWizard() {
-    const { lane, steps, stepIndex, goNext, goBack } = useTokenWizard()
+    const { lane, steps, stepIndex, goNext, goBack, created } = useTokenWizard()
+    const { isStepValid } = useTokenWizardValidation()
     const { navigate } = useNavigation()
+
+    if (created) {
+        return <SuccessScreen />
+    }
 
     if (!lane) {
         return (
@@ -55,6 +74,7 @@ function TokenWizard() {
     }
 
     const step = steps[stepIndex]
+    const StepComponent = STEP_COMPONENTS[step.key]
 
     return (
         <WizardShell
@@ -64,8 +84,11 @@ function TokenWizard() {
             activeStep={stepIndex}
             onBack={goBack}
             onNext={goNext}
+            canGoNext={isStepValid(step.key)}
+            nextLabel={stepIndex === steps.length - 2 ? 'Review' : 'Next'}
+            hideNext={step.key === 'review'}
         >
-            <StepPlaceholder title={step.title} />
+            {StepComponent ? <StepComponent /> : <StepPlaceholder title={step.title} />}
         </WizardShell>
     )
 }

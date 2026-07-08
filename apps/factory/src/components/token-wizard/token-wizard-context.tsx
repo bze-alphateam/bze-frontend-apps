@@ -24,6 +24,12 @@ export const PRO_STEPS: WizardStep[] = [
     { key: 'review', title: 'Review & Create' },
 ]
 
+/** An additional denom unit between the base (exponent 0) and display (exponent = decimals). */
+export interface ExtraDenomUnit {
+    denom: string;
+    exponent: number;
+}
+
 /**
  * Everything the wizard collects across both lanes. Fast Track uses a subset;
  * Pro fills in the extra metadata/admin fields.
@@ -42,7 +48,9 @@ export interface TokenWizardForm {
     fixedSupply: boolean;
     // Pro metadata
     description: string;
+    /** Bank metadata `uri` — link to the token's info page / logo document. */
     logoUri: string;
+    extraDenomUnits: ExtraDenomUnit[];
 }
 
 const EMPTY_FORM: TokenWizardForm = {
@@ -55,6 +63,12 @@ const EMPTY_FORM: TokenWizardForm = {
     fixedSupply: false,
     description: '',
     logoUri: '',
+    extraDenomUnits: [],
+}
+
+export interface CreatedToken {
+    denom: string;
+    txHash: string;
 }
 
 interface TokenWizardContextType {
@@ -64,11 +78,14 @@ interface TokenWizardContextType {
     steps: WizardStep[];
     stepIndex: number;
     form: TokenWizardForm;
+    /** Set once the creation tx lands on-chain — switches the wizard to the success screen. */
+    created?: CreatedToken;
     setLane: (lane: TokenWizardLane) => void;
     updateForm: (patch: Partial<TokenWizardForm>) => void;
     goNext: () => void;
     /** From the first step, back returns to the lane chooser. */
     goBack: () => void;
+    markCreated: (denom: string, txHash: string) => void;
     reset: () => void;
 }
 
@@ -82,6 +99,7 @@ export function TokenWizardProvider({ children }: { children: React.ReactNode })
     const [lane, setLaneState] = useState<TokenWizardLane | undefined>(undefined)
     const [stepIndex, setStepIndex] = useState(0)
     const [form, setForm] = useState<TokenWizardForm>(EMPTY_FORM)
+    const [created, setCreated] = useState<CreatedToken | undefined>(undefined)
 
     const steps = lane === 'pro' ? PRO_STEPS : FAST_TRACK_STEPS
 
@@ -108,15 +126,20 @@ export function TokenWizardProvider({ children }: { children: React.ReactNode })
         })
     }, [])
 
+    const markCreated = useCallback((denom: string, txHash: string) => {
+        setCreated({ denom, txHash })
+    }, [])
+
     const reset = useCallback(() => {
         setLaneState(undefined)
         setStepIndex(0)
         setForm(EMPTY_FORM)
+        setCreated(undefined)
     }, [])
 
     const value = useMemo(
-        () => ({ lane, steps, stepIndex, form, setLane, updateForm, goNext, goBack, reset }),
-        [lane, steps, stepIndex, form, setLane, updateForm, goNext, goBack, reset]
+        () => ({ lane, steps, stepIndex, form, created, setLane, updateForm, goNext, goBack, markCreated, reset }),
+        [lane, steps, stepIndex, form, created, setLane, updateForm, goNext, goBack, markCreated, reset]
     )
 
     return <TokenWizardContext.Provider value={value}>{children}</TokenWizardContext.Provider>
