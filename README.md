@@ -122,6 +122,67 @@ pnpm --filter bze-burner lint
 
 ---
 
+## Tests
+
+Unit tests run on **Vitest**. They are part of the CI merge gate: the `test` job in
+`ci.yml` is a **required status check** on `develop` and `main` (alongside `build` and
+`lint`), so no code reaches a deploy without passing tests.
+
+### Run them
+
+```sh
+pnpm test                                  # = turbo run test (all packages that have tests)
+pnpm --filter @bze/bze-ui-kit test         # just the ui-kit suite
+pnpm --filter @bze/bze-ui-kit test:watch   # watch mode while developing
+pnpm --filter @bze/bze-ui-kit exec vitest run src/utils/amount.test.ts   # a single file
+```
+
+Turbo caches test runs per package — `pnpm test` with no changes replays from cache.
+The `test` task depends on `^build`, so an app's tests (once they exist) always run
+against a freshly built ui-kit.
+
+### What's covered today
+
+Only `packages/ui-kit` has a suite so far — test files live next to the code they cover
+(`src/**/*.test.ts`, node environment, config in `packages/ui-kit/vitest.config.ts`):
+
+| File | Covers |
+|---|---|
+| `src/utils/amount.test.ts` | uAmount ↔ amount conversions, price ↔ uPrice exponent shifts, big-number precision (> `MAX_SAFE_INTEGER`), `prettyAmount` formatting, round-trips |
+| `src/utils/liquidity_pool.test.ts` | AMM reserve-ratio math (`calculatePoolOppositeAmount`), pool pricing, user share % / USD value, division-by-zero guards |
+| `src/utils/denom.test.ts` | factory / IBC / LP denom classification (legacy `ulp_` **and** hashed `ulp/` formats), native denom, center-truncation |
+| `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
+| `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
+
+Conventions:
+- Pure functions only, no mocks, no network. Anything that needs a live endpoint or a
+  wallet does **not** belong in this suite.
+- ui-kit targets ES2017, so **no BigInt literals** in tests — write `BigInt(1000)`, not `1000n`.
+
+### TODO — next steps (in rough priority order)
+
+- [ ] **Cover the remaining ui-kit utils**: `market.ts`, `charts.ts`, `formatter.ts`,
+      `coins.ts`, `ibc.ts`, `address.ts`, `cross_chain.ts`, `staking.ts`, `tx_state.ts`,
+      `events.ts` (~1,000 untested lines of pure logic left in `src/utils/`).
+- [ ] **Test the storage layer** (`packages/ui-kit/src/storage/` — TTL + key-versioning
+      logic is pure enough; needs a localStorage stub, e.g. happy-dom or a manual mock).
+- [ ] **Hook tests** with `@testing-library/react` + a `QueryClientProvider` wrapper:
+      start with ui-kit query hooks (`useMarkets`, `useBalances`, `usePrices`), then
+      app-local hooks (dex: `useLockedLiquidity`; burner: `useRaffles`, `useNextBurning`).
+      Requires mocking the query layer (vi.mock on `query/*` or MSW).
+- [ ] **Component tests** for form-heavy flows (order placement validation in dex, burn
+      flow in burner) — needs a Chakra provider wrapper + wallet context stubs.
+- [ ] **Playwright smoke suite** as a separate CI job: `next build && next start` each
+      app, load the main pages, assert no crashes / console errors, with network calls
+      mocked via `page.route()` (never hit live chain RPC from CI). This catches the
+      "builds fine but white-screens at runtime" class that `next build` misses.
+- [ ] **Coverage reporting** (`vitest --coverage`) once there's enough surface to make
+      the number meaningful — consider a soft threshold on `packages/ui-kit/src/utils`.
+- [ ] When adding tests to an app: add a `"test": "vitest run"` script to that app's
+      `package.json` — turbo picks it up automatically (the `test` task is already wired).
+
+---
+
 ## Deploy (production & testnet — pm2)
 
 ### One checkout per network
