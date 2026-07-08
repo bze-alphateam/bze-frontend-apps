@@ -20,6 +20,14 @@ import {
     LuGift,
     LuPlus,
 } from 'react-icons/lu'
+import {
+    CreationFees,
+    FeeCoin,
+    prettyAmount,
+    uAmountToBigNumberAmount,
+    useAsset,
+    useCreationFees,
+} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 
 interface CreationCard {
@@ -27,6 +35,8 @@ interface CreationCard {
     title: string;
     description: string;
     icon: IconType;
+    /** Which creation fee (from chain params) this flow charges, if any. */
+    feeKey?: keyof CreationFees;
     /** Internal route — flips the card live once its milestone ships. */
     href?: string;
     /** External link (opens in a new tab), e.g. the Burner. */
@@ -40,18 +50,21 @@ const CREATION_CARDS: CreationCard[] = [
         title: 'Create Token',
         description: 'Launch your own token on BeeZee — supply, metadata, and admin strategy in one guided flow.',
         icon: LuCoins,
+        feeKey: 'createDenomFee',
     },
     {
         key: 'market',
         title: 'Create Market',
         description: 'Open an order-book market on the DEX for any pair of assets.',
         icon: LuChartCandlestick,
+        feeKey: 'createMarketFee',
     },
     {
         key: 'pool',
         title: 'Create Liquidity Pool',
         description: 'Seed an AMM pool, set its swap fee, and decide where the fees go.',
         icon: LuDroplets,
+        feeKey: 'createMarketFee',
     },
     {
         key: 'add-liquidity',
@@ -64,6 +77,7 @@ const CREATION_CARDS: CreationCard[] = [
         title: 'Create Staking Reward',
         description: 'Fund a staking program — your community stakes a token and earns your prize.',
         icon: LuGift,
+        feeKey: 'createStakingRewardFee',
     },
     {
         key: 'burn',
@@ -74,7 +88,19 @@ const CREATION_CARDS: CreationCard[] = [
     },
 ]
 
-function CreationCardItem({ card }: { card: CreationCard }) {
+// Live creation fee (chain params) shown on the card — "fees disclosed upfront".
+function CardFeeLine({ fee }: { fee?: FeeCoin }) {
+    const { asset } = useAsset(fee?.denom ?? '')
+    if (!fee || !asset) return null
+
+    return (
+        <Text fontSize="xs" color="fg.muted" fontWeight="medium">
+            Creation fee: {prettyAmount(uAmountToBigNumberAmount(fee.amount, asset.decimals))} {asset.ticker}
+        </Text>
+    )
+}
+
+function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) {
     const {navigate} = useNavigation()
     const Icon = card.icon
     const isLive = Boolean(card.href || card.externalHref)
@@ -137,12 +163,15 @@ function CreationCardItem({ card }: { card: CreationCard }) {
                 <Text fontSize="sm" color="fg.muted">
                     {card.description}
                 </Text>
+                <CardFeeLine fee={fee} />
             </VStack>
         </Box>
     )
 }
 
 export default function FactoryHubPage() {
+    const { fees } = useCreationFees()
+
     return (
         <Box minH="100vh" bg="bg.subtle">
             <Container maxW="7xl" py={12}>
@@ -161,7 +190,11 @@ export default function FactoryHubPage() {
                     {/* Creation Cards */}
                     <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
                         {CREATION_CARDS.map(card => (
-                            <CreationCardItem key={card.key} card={card} />
+                            <CreationCardItem
+                                key={card.key}
+                                card={card}
+                                fee={card.feeKey ? fees[card.feeKey] : undefined}
+                            />
                         ))}
                     </Grid>
                 </VStack>
