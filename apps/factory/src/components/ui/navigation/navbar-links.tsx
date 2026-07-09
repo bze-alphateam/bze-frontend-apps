@@ -10,10 +10,12 @@ interface NavbarLinksProps extends StackProps {
 // Define your navigation items with their routes
 const navItems = [
     { name: 'Create', href: '/' },
+    { name: 'Manage', href: '/manage' },
 ]
 
 const navSubitems: { [key: string]: string } = {
     '/token/new': '/',
+    '/manage/token': '/manage',
 }
 
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {

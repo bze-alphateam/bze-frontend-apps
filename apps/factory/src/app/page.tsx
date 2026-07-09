@@ -19,6 +19,7 @@ import {
     LuFlame,
     LuGift,
     LuPlus,
+    LuWrench,
 } from 'react-icons/lu'
 import {
     CreationFees,
@@ -86,6 +87,13 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Permanently burn coins or LP tokens in the Burner dApp.',
         icon: LuFlame,
         externalHref: 'https://burner.getbze.com',
+    },
+    {
+        key: 'manage',
+        title: 'Manage My Creations',
+        description: 'Everything you created, in one place — supply, admin status, and lifecycle actions.',
+        icon: LuWrench,
+        href: '/manage',
     },
 ]
 

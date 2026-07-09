@@ -7,7 +7,6 @@ import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import {
     TOKEN_DECIMALS,
     validateDescription,
-    validateExtraDenomUnit,
     validateInitialSupply,
     validateName,
     validateSubdenom,
@@ -27,8 +26,6 @@ export interface SupplyErrors {
 export interface MetadataErrors {
     description: string;
     uri: string;
-    /** One entry per extra denom unit row, '' when the row is valid. */
-    unitErrors: string[];
 }
 
 /**
@@ -66,24 +63,14 @@ export function useTokenWizardValidation() {
         initialSupply: validateInitialSupply(form.initialSupply, TOKEN_DECIMALS),
     }), [form.initialSupply])
 
-    const metadataErrors: MetadataErrors = useMemo(() => {
-        // Unit names reserved by buildMetadata: the base denom's alias and the display denom.
-        const reservedDenoms = [form.subdenom, form.symbol.toLowerCase()]
-        return {
-            description: validateDescription(form.description),
-            uri: validateUri(form.logoUri),
-            unitErrors: form.extraDenomUnits.map((unit, index) =>
-                validateExtraDenomUnit(unit, index, form.extraDenomUnits, TOKEN_DECIMALS, reservedDenoms)
-            ),
-        }
-    }, [form.description, form.logoUri, form.extraDenomUnits, form.subdenom, form.symbol])
+    const metadataErrors: MetadataErrors = useMemo(() => ({
+        description: validateDescription(form.description),
+        uri: validateUri(form.logoUri),
+    }), [form.description, form.logoUri])
 
     const isIdentityValid = Object.values(identityErrors).every(e => e === '')
     const isSupplyValid = Object.values(supplyErrors).every(e => e === '')
-    const isMetadataValid =
-        metadataErrors.description === '' &&
-        metadataErrors.uri === '' &&
-        metadataErrors.unitErrors.every(e => e === '')
+    const isMetadataValid = Object.values(metadataErrors).every(e => e === '')
 
     const isStepValid = (stepKey: string): boolean => {
         switch (stepKey) {

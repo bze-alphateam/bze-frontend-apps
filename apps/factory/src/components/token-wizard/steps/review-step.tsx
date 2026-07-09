@@ -93,14 +93,6 @@ export function ReviewStep() {
                 {form.logoUri.trim() !== '' && (
                     <ReviewRow label="Token info URI" value={form.logoUri.trim()} mono />
                 )}
-                {form.extraDenomUnits.length > 0 && (
-                    <ReviewRow
-                        label="Extra denom units"
-                        value={form.extraDenomUnits
-                            .map(unit => `${unit.denom} (10^${unit.exponent})`)
-                            .join(', ')}
-                    />
-                )}
             </VStack>
 
             {/* Trust messaging: the chain has no supply cap, so say loudly what the

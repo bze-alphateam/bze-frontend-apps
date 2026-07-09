@@ -13,22 +13,15 @@ const { createDenom, mint, setDenomMetadata, changeAdmin } = bze.tokenfactory.Me
 /**
  * Denom-units layout: the base unit is the full factory denom at exponent 0
  * (aliased by the subdenom), the display unit is the lowercased symbol at the
- * fixed TOKEN_DECIMALS. Pro-lane extra units slot in between — the chain
- * requires ascending exponent order. The subdenom ("u" + lowercased symbol)
- * can never collide with the display denom.
+ * fixed TOKEN_DECIMALS. The subdenom ("u" + lowercased symbol) can never
+ * collide with the display denom.
  */
 function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
     const displayDenom = form.symbol.toLowerCase()
-    const extraUnits = form.extraDenomUnits.map(unit => ({
-        denom: unit.denom,
-        exponent: unit.exponent,
-        aliases: [],
-    }))
     const denomUnits = [
         { denom, exponent: 0, aliases: [form.subdenom] },
-        ...extraUnits,
         { denom: displayDenom, exponent: TOKEN_DECIMALS, aliases: [] },
-    ].sort((a, b) => a.exponent - b.exponent)
+    ]
 
     return {
         description: form.description.trim(),
@@ -43,7 +36,7 @@ function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
 }
 
 /**
- * The tx layer both lanes hand off to: ONE multi-message transaction, one
+ * The wizard's tx layer: ONE multi-message transaction, one
  * signature — create denom + mint the initial supply + set bank metadata,
  * plus an atomic admin renounce when the user asked for a fixed supply.
  * On failure useBZETx already toasts the chain error and the wizard state is

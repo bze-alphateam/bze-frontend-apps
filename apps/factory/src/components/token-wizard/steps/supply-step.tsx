@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Box, Field, HStack, Input, Switch, Text, VStack } from '@chakra-ui/react'
+import { Box, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import { LuKeyRound, LuLock } from 'react-icons/lu'
 import type { IconType } from 'react-icons'
 import { prettyAmount, toBigNumber } from '@bze/bze-ui-kit'
@@ -9,7 +9,7 @@ import { InfoBox } from '@/components/ui/info-box'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 
-// Pro lane: the admin strategy is an explicit, first-class choice.
+// The admin strategy is an explicit, first-class choice.
 function AdminStrategyCard({
     icon: Icon,
     title,
@@ -52,7 +52,7 @@ function AdminStrategyCard({
 }
 
 export function SupplyStep() {
-    const { form, updateForm, lane } = useTokenWizard()
+    const { form, updateForm } = useTokenWizard()
     const { supplyErrors } = useTokenWizardValidation()
 
     const [touched, setTouched] = useState(false)
@@ -81,48 +81,27 @@ export function SupplyStep() {
             </Field.Root>
 
             <VStack align="stretch" gap={3}>
-                {lane === 'pro' ? (
-                    <VStack align="stretch" gap={2}>
-                        <Text fontSize="sm" fontWeight="medium">
-                            Admin strategy
-                        </Text>
-                        <HStack gap={3} align="stretch" flexDir={{ base: 'column', sm: 'row' }}>
-                            <AdminStrategyCard
-                                icon={LuKeyRound}
-                                title="Keep admin"
-                                description="You can mint more, burn from your account, update metadata — or renounce later from Manage."
-                                selected={!form.fixedSupply}
-                                onSelect={() => updateForm({ fixedSupply: false })}
-                            />
-                            <AdminStrategyCard
-                                icon={LuLock}
-                                title="Renounce at creation"
-                                description="Provably fixed supply from block one — the renounce is part of the creation transaction. Irreversible."
-                                selected={form.fixedSupply}
-                                onSelect={() => updateForm({ fixedSupply: true })}
-                            />
-                        </HStack>
-                    </VStack>
-                ) : (
-                    <Switch.Root
-                        colorPalette="yellow"
-                        checked={form.fixedSupply}
-                        onCheckedChange={(e) => updateForm({ fixedSupply: e.checked })}
-                    >
-                        <Switch.HiddenInput />
-                        <Switch.Control>
-                            <Switch.Thumb />
-                        </Switch.Control>
-                        <Switch.Label>
-                            <HStack gap={2}>
-                                <Text fontWeight="medium">Make supply fixed</Text>
-                                <Text fontSize="sm" color="fg.muted">
-                                    (renounce admin at creation)
-                                </Text>
-                            </HStack>
-                        </Switch.Label>
-                    </Switch.Root>
-                )}
+                <VStack align="stretch" gap={2}>
+                    <Text fontSize="sm" fontWeight="medium">
+                        Admin strategy
+                    </Text>
+                    <HStack gap={3} align="stretch" flexDir={{ base: 'column', sm: 'row' }}>
+                        <AdminStrategyCard
+                            icon={LuKeyRound}
+                            title="Keep admin"
+                            description="You can mint more, burn from your account, update metadata — or renounce later from Manage."
+                            selected={!form.fixedSupply}
+                            onSelect={() => updateForm({ fixedSupply: false })}
+                        />
+                        <AdminStrategyCard
+                            icon={LuLock}
+                            title="Renounce at creation"
+                            description="Provably fixed supply from block one — the renounce is part of the creation transaction. Irreversible."
+                            selected={form.fixedSupply}
+                            onSelect={() => updateForm({ fixedSupply: true })}
+                        />
+                    </HStack>
+                </VStack>
 
                 <InfoBox title="Why renounce?">
                     BeeZee has no on-chain supply cap — a &quot;fixed supply&quot; only truly exists once

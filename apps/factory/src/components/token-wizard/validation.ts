@@ -5,7 +5,6 @@ export const MAX_NAME_LENGTH = 64
 export const MIN_SYMBOL_LENGTH = 2
 export const MAX_SYMBOL_LENGTH = 12
 export const MAX_SUBDENOM_LENGTH = 44
-export const MAX_DECIMALS = 18
 
 /**
  * Every factory token uses 6 decimals — the ecosystem standard. The wizard
@@ -79,47 +78,20 @@ export function validateUri(uri: string): string {
     return ''
 }
 
-/**
- * Validate one extra denom unit against the reserved units (base at exponent 0,
- * display at `decimals`) and its sibling rows. Returns '' when valid.
- */
-export function validateExtraDenomUnit(
-    unit: { denom: string; exponent: number },
-    index: number,
-    units: { denom: string; exponent: number }[],
-    decimals: number,
-    reservedDenoms: string[],
-): string {
-    const denomError = validateSubdenom(unit.denom)
-    if (denomError) return denomError.replace('Subdenom', 'Unit name')
-    if (!Number.isInteger(unit.exponent) || unit.exponent < 1 || unit.exponent > MAX_DECIMALS) {
-        return `Exponent must be a whole number between 1 and ${MAX_DECIMALS}.`
-    }
-    if (unit.exponent === decimals) {
-        return `Exponent ${decimals} is taken by the display unit (your symbol).`
-    }
-    if (reservedDenoms.includes(unit.denom)) {
-        return 'This unit name is already used by the base or display unit.'
-    }
-    const clash = units.findIndex((other, otherIndex) =>
-        otherIndex !== index && (other.denom === unit.denom || other.exponent === unit.exponent)
-    )
-    if (clash !== -1) {
-        return 'Each unit needs a unique name and a unique exponent.'
+/** Generic token amount check — also used by the manage flows (mint/burn). */
+export function validateAmount(amount: string, decimals: number): string {
+    const trimmed = amount.trim()
+    if (!trimmed) return 'Amount is required.'
+    if (!/^\d+(\.\d+)?$/.test(trimmed)) return 'Enter a valid positive number.'
+    if (!/[1-9]/.test(trimmed)) return 'Amount must be greater than zero.'
+    const fraction = trimmed.split('.')[1]
+    if (fraction && fraction.length > decimals) {
+        return `At most ${decimals} decimal places (the token's decimals).`
     }
     return ''
 }
 
 export function validateInitialSupply(supply: string, decimals: number): string {
-    const trimmed = supply.trim()
-    if (!trimmed) return 'Initial supply is required.'
-    if (!/^\d+(\.\d+)?$/.test(trimmed)) return 'Enter a valid positive number.'
-    if (!/[1-9]/.test(trimmed)) return 'Initial supply must be greater than zero.'
-    const fraction = trimmed.split('.')[1]
-    if (fraction && fraction.length > decimals) {
-        return decimals === 0
-            ? 'This token has 0 decimals — the supply must be a whole number.'
-            : `At most ${decimals} decimal places (your token's decimals).`
-    }
-    return ''
+    const error = validateAmount(supply, decimals)
+    return error ? error.replace('Amount', 'Initial supply') : ''
 }
