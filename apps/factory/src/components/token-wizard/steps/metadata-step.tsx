@@ -17,7 +17,7 @@ import { LuPlus, LuTrash2 } from 'react-icons/lu'
 import { InfoBox } from '@/components/ui/info-box'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
-import { MAX_DECIMALS, MAX_DESCRIPTION_LENGTH } from '@/components/token-wizard/validation'
+import { MAX_DECIMALS, MAX_DESCRIPTION_LENGTH, TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 
 export function MetadataStep() {
     const { form, updateForm } = useTokenWizard()
@@ -87,8 +87,7 @@ export function MetadataStep() {
                 <InfoBox>
                     Units are the names for different powers of ten of your token — like cents vs
                     dollars. Two exist already: the base unit (your full denom, exponent 0) and the
-                    display unit (exponent {Number.isNaN(form.decimals) ? '?' : form.decimals}). Most
-                    tokens don&apos;t need more.
+                    display unit (exponent {TOKEN_DECIMALS}). Most tokens don&apos;t need more.
                 </InfoBox>
 
                 {/* Reserved units, shown for context */}
@@ -96,11 +95,9 @@ export function MetadataStep() {
                     <Badge colorPalette="gray" variant="surface">
                         {form.subdenom || '<subdenom>'} · exponent 0 (base)
                     </Badge>
-                    {form.decimals !== 0 && (
-                        <Badge colorPalette="gray" variant="surface">
-                            {displayDenom} · exponent {Number.isNaN(form.decimals) ? '?' : form.decimals} (display)
-                        </Badge>
-                    )}
+                    <Badge colorPalette="gray" variant="surface">
+                        {displayDenom} · exponent {TOKEN_DECIMALS} (display)
+                    </Badge>
                 </HStack>
 
                 {form.extraDenomUnits.map((unit, index) => (

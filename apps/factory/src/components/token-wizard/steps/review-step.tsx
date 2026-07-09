@@ -17,6 +17,7 @@ import { InfoBox } from '@/components/ui/info-box'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
+import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 
 function ReviewRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
     return (
@@ -73,7 +74,7 @@ export function ReviewStep() {
                         </HStack>
                     }
                 />
-                <ReviewRow label="Decimals" value={form.decimals} />
+                <ReviewRow label="Decimals" value={TOKEN_DECIMALS} />
                 <ReviewRow
                     label="Initial supply"
                     value={`${prettyAmount(toBigNumber(form.initialSupply || '0'))} ${form.symbol}`}

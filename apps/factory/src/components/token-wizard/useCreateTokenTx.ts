@@ -6,38 +6,35 @@ import type { Metadata } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
 import { amountToUAmount, getChainName, useBZETx } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { type TokenWizardForm, useTokenWizard } from '@/components/token-wizard/token-wizard-context'
+import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 
 const { createDenom, mint, setDenomMetadata, changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
 
 /**
- * Default denom-units layout (settles the spec's open question): the base unit
- * is the full factory denom at exponent 0 (aliased by the subdenom), and the
- * display unit is the lowercased symbol at the token's decimals. With 0
- * decimals the base IS the display, so a single unit suffices. Pro-lane extra
- * units slot in between — the chain requires ascending exponent order.
+ * Denom-units layout: the base unit is the full factory denom at exponent 0
+ * (aliased by the subdenom), the display unit is the lowercased symbol at the
+ * fixed TOKEN_DECIMALS. Pro-lane extra units slot in between — the chain
+ * requires ascending exponent order. The subdenom ("u" + lowercased symbol)
+ * can never collide with the display denom.
  */
 function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
     const displayDenom = form.symbol.toLowerCase()
-    const singleUnit = form.decimals === 0
     const extraUnits = form.extraDenomUnits.map(unit => ({
         denom: unit.denom,
         exponent: unit.exponent,
         aliases: [],
     }))
-    const denomUnits = (singleUnit
-        ? [{ denom, exponent: 0, aliases: [form.subdenom] }, ...extraUnits]
-        : [
-            { denom, exponent: 0, aliases: form.subdenom === displayDenom ? [] : [form.subdenom] },
-            ...extraUnits,
-            { denom: displayDenom, exponent: form.decimals, aliases: [] },
-        ]
-    ).sort((a, b) => a.exponent - b.exponent)
+    const denomUnits = [
+        { denom, exponent: 0, aliases: [form.subdenom] },
+        ...extraUnits,
+        { denom: displayDenom, exponent: TOKEN_DECIMALS, aliases: [] },
+    ].sort((a, b) => a.exponent - b.exponent)
 
     return {
         description: form.description.trim(),
         denomUnits,
         base: denom,
-        display: singleUnit ? denom : displayDenom,
+        display: displayDenom,
         name: form.name.trim(),
         symbol: form.symbol,
         uri: form.logoUri.trim(),
@@ -66,7 +63,7 @@ export function useCreateTokenTx() {
             createDenom({ creator: address, subdenom: form.subdenom }),
             mint({
                 creator: address,
-                coins: `${amountToUAmount(form.initialSupply, form.decimals)}${denom}`,
+                coins: `${amountToUAmount(form.initialSupply, TOKEN_DECIMALS)}${denom}`,
             }),
             setDenomMetadata({ creator: address, metadata: buildMetadata(form, denom) }),
             ...(form.fixedSupply ? [changeAdmin({ creator: address, denom, newAdmin: '' })] : []),

@@ -8,8 +8,14 @@ export const MAX_SUBDENOM_LENGTH = 44
 export const MAX_DECIMALS = 18
 
 /**
- * Suggest a subdenom from the symbol, following the ecosystem's micro-unit
- * convention (ubze, uvdl, ...): "u" + lowercased symbol, invalid chars stripped.
+ * Every factory token uses 6 decimals — the ecosystem standard. The wizard
+ * states this instead of offering a field; no other value is ever used.
+ */
+export const TOKEN_DECIMALS = 6
+
+/**
+ * The subdenom is always derived from the symbol, following the ecosystem's
+ * micro-unit convention (ubze, uvdl, ...): "u" + lowercased symbol.
  */
 export function suggestSubdenom(symbol: string): string {
     const sanitized = symbol.toLowerCase().replace(/[^a-z0-9.-]/g, '')
@@ -46,13 +52,6 @@ export function validateSubdenom(subdenom: string): string {
     }
     if (!/^[A-Za-z0-9.-]+$/.test(subdenom)) {
         return 'Subdenom can only contain letters, digits, dots, and dashes.'
-    }
-    return ''
-}
-
-export function validateDecimals(decimals: number): string {
-    if (!Number.isInteger(decimals) || decimals < 0 || decimals > MAX_DECIMALS) {
-        return `Decimals must be a whole number between 0 and ${MAX_DECIMALS}.`
     }
     return ''
 }

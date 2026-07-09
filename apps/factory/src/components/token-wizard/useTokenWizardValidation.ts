@@ -5,7 +5,7 @@ import { getChainName, useAssets } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import {
-    validateDecimals,
+    TOKEN_DECIMALS,
     validateDescription,
     validateExtraDenomUnit,
     validateInitialSupply,
@@ -18,8 +18,6 @@ import {
 export interface IdentityErrors {
     name: string;
     symbol: string;
-    subdenom: string;
-    decimals: string;
 }
 
 export interface SupplyErrors {
@@ -54,18 +52,19 @@ export function useTokenWizardValidation() {
         [assets, resultingDenom]
     )
 
+    // The subdenom is derived from the symbol, so its problems (invalid chars,
+    // duplicates) surface on the symbol field — the only thing the user can change.
     const identityErrors: IdentityErrors = useMemo(() => ({
         name: validateName(form.name),
-        symbol: validateSymbol(form.symbol),
-        subdenom:
+        symbol:
+            validateSymbol(form.symbol) ||
             validateSubdenom(form.subdenom) ||
-            (isDuplicateDenom ? 'You already created a token with this subdenom — pick another one.' : ''),
-        decimals: validateDecimals(form.decimals),
-    }), [form.name, form.symbol, form.subdenom, form.decimals, isDuplicateDenom])
+            (isDuplicateDenom ? 'A token with this symbol already exists in your account — pick another one.' : ''),
+    }), [form.name, form.symbol, form.subdenom, isDuplicateDenom])
 
     const supplyErrors: SupplyErrors = useMemo(() => ({
-        initialSupply: validateInitialSupply(form.initialSupply, form.decimals),
-    }), [form.initialSupply, form.decimals])
+        initialSupply: validateInitialSupply(form.initialSupply, TOKEN_DECIMALS),
+    }), [form.initialSupply])
 
     const metadataErrors: MetadataErrors = useMemo(() => {
         // Unit names reserved by buildMetadata: the base denom's alias and the display denom.
@@ -74,10 +73,10 @@ export function useTokenWizardValidation() {
             description: validateDescription(form.description),
             uri: validateUri(form.logoUri),
             unitErrors: form.extraDenomUnits.map((unit, index) =>
-                validateExtraDenomUnit(unit, index, form.extraDenomUnits, form.decimals, reservedDenoms)
+                validateExtraDenomUnit(unit, index, form.extraDenomUnits, TOKEN_DECIMALS, reservedDenoms)
             ),
         }
-    }, [form.description, form.logoUri, form.extraDenomUnits, form.decimals, form.subdenom, form.symbol])
+    }, [form.description, form.logoUri, form.extraDenomUnits, form.subdenom, form.symbol])
 
     const isIdentityValid = Object.values(identityErrors).every(e => e === '')
     const isSupplyValid = Object.values(supplyErrors).every(e => e === '')

@@ -4,14 +4,15 @@ import React, { useState } from 'react'
 import { Field, Input, Text, VStack } from '@chakra-ui/react'
 import { getChainName } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { InfoBox } from '@/components/ui/info-box'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
-import { MAX_DECIMALS, suggestSubdenom } from '@/components/token-wizard/validation'
+import { suggestSubdenom, TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 
-type TouchedFields = Partial<Record<'name' | 'symbol' | 'subdenom' | 'decimals', boolean>>
+type TouchedFields = Partial<Record<'name' | 'symbol', boolean>>
 
 export function IdentityStep() {
-    const { form, updateForm } = useTokenWizard()
+    const { form, updateForm, lane } = useTokenWizard()
     const { identityErrors } = useTokenWizardValidation()
     const { address } = useChain(getChainName())
 
@@ -23,8 +24,7 @@ export function IdentityStep() {
 
     const onSymbolChange = (raw: string) => {
         const symbol = raw.toUpperCase()
-        // Keep suggesting the subdenom from the symbol until the user edits it by hand.
-        updateForm(form.subdenomTouched ? { symbol } : { symbol, subdenom: suggestSubdenom(symbol) })
+        updateForm({ symbol, subdenom: suggestSubdenom(symbol) })
     }
 
     const denomPreview = `factory/${address ?? '<your address>'}/${form.subdenom || '<subdenom>'}`
@@ -55,42 +55,26 @@ export function IdentityStep() {
                 <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
             </Field.Root>
 
-            <Field.Root invalid={errorFor('subdenom') !== ''}>
-                <Field.Label>Subdenom</Field.Label>
-                <Input
-                    placeholder="e.g. uhoney"
-                    value={form.subdenom}
-                    onChange={(e) => updateForm({ subdenom: e.target.value, subdenomTouched: true })}
-                    onBlur={() => touch('subdenom')}
-                />
-                <Field.HelperText>
-                    <Text as="span" display="block">
-                        The on-chain base unit id — suggested from your symbol, editable.
-                    </Text>
-                    <Text as="span" display="block" fontFamily="mono" fontSize="xs" mt={1} wordBreak="break-all">
-                        {denomPreview}
-                    </Text>
-                </Field.HelperText>
-                <Field.ErrorText>{errorFor('subdenom')}</Field.ErrorText>
-            </Field.Root>
+            {/* The subdenom is never editable — shown for transparency in Pro only. */}
+            {lane === 'pro' && (
+                <Field.Root>
+                    <Field.Label>Subdenom</Field.Label>
+                    <Input value={form.subdenom} placeholder="uhoney" disabled />
+                    <Field.HelperText>
+                        <Text as="span" display="block">
+                            The on-chain base unit id — derived from your symbol (&quot;u&quot; + lowercase).
+                        </Text>
+                        <Text as="span" display="block" fontFamily="mono" fontSize="xs" mt={1} wordBreak="break-all">
+                            {denomPreview}
+                        </Text>
+                    </Field.HelperText>
+                </Field.Root>
+            )}
 
-            <Field.Root invalid={errorFor('decimals') !== ''}>
-                <Field.Label>Decimals</Field.Label>
-                <Input
-                    type="number"
-                    min={0}
-                    max={MAX_DECIMALS}
-                    step={1}
-                    maxW="32"
-                    value={Number.isNaN(form.decimals) ? '' : form.decimals}
-                    onChange={(e) => updateForm({ decimals: e.target.value === '' ? NaN : Number(e.target.value) })}
-                    onBlur={() => touch('decimals')}
-                />
-                <Field.HelperText>
-                    How divisible the token is. 6 is the ecosystem standard (1 token = 1,000,000 base units).
-                </Field.HelperText>
-                <Field.ErrorText>{errorFor('decimals')}</Field.ErrorText>
-            </Field.Root>
+            <InfoBox title={`${TOKEN_DECIMALS} decimals`}>
+                Your token will use {TOKEN_DECIMALS} decimals — the BeeZee ecosystem standard
+                (1 {form.symbol || 'token'} = 1,000,000 base units).
+            </InfoBox>
         </VStack>
     )
 }

@@ -38,10 +38,8 @@ export interface TokenWizardForm {
     // Identity
     name: string;
     symbol: string;
+    /** Always derived from the symbol ("u" + lowercase) — never edited directly. */
     subdenom: string;
-    /** Once the user edits the subdenom by hand, stop auto-suggesting it from the symbol. */
-    subdenomTouched: boolean;
-    decimals: number;
     // Supply
     initialSupply: string;
     /** Renounce admin right after mint → guaranteed fixed supply from block one. */
@@ -57,8 +55,6 @@ const EMPTY_FORM: TokenWizardForm = {
     name: '',
     symbol: '',
     subdenom: '',
-    subdenomTouched: false,
-    decimals: 6,
     initialSupply: '',
     fixedSupply: false,
     description: '',
