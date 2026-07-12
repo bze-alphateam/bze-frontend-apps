@@ -20,6 +20,9 @@ import {
     uAmountToBigNumberAmount,
     useToast,
 } from '@bze/bze-ui-kit'
+import { MyMarkets } from '@/components/manage/my-markets'
+import { MyPools } from '@/components/manage/my-pools'
+import { StakingRewards } from '@/components/manage/staking-rewards'
 import { InfoBox } from '@/components/ui/info-box'
 import { useMyTokens, type MyToken } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
@@ -133,13 +136,19 @@ export default function ManagePage() {
         <Box minH="100vh" bg="bg.subtle">
             <Container maxW="4xl" py={{ base: 6, md: 10 }}>
                 <VStack align="stretch" gap={6}>
+                    <VStack align="start" gap={1}>
+                        <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
+                            My Creations
+                        </Text>
+                        <Text fontSize="sm" color="fg.muted">
+                            Everything created by your connected address — straight from the chain.
+                        </Text>
+                    </VStack>
+
                     <HStack justify="space-between" align="start" flexWrap="wrap" gap={3}>
                         <VStack align="start" gap={1}>
-                            <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
+                            <Text fontSize="xl" fontWeight="bold" letterSpacing="tight">
                                 My Tokens
-                            </Text>
-                            <Text fontSize="sm" color="fg.muted">
-                                Every token created by your connected address — straight from the chain.
                             </Text>
                         </VStack>
                         <Button size="sm" colorPalette="yellow" onClick={() => navigate('/token/new')}>
@@ -186,6 +195,12 @@ export default function ManagePage() {
                         change the supply or metadata again. Open Manage on a token to mint, burn,
                         edit its metadata, transfer the admin, or renounce it for good.
                     </InfoBox>
+
+                    <MyMarkets />
+
+                    <MyPools />
+
+                    <StakingRewards />
                 </VStack>
             </Container>
         </Box>

@@ -15,6 +15,10 @@ const navItems = [
 
 const navSubitems: { [key: string]: string } = {
     '/token/new': '/',
+    '/market/new': '/',
+    '/pool/new': '/',
+    '/pool/add': '/',
+    '/reward/new': '/',
     '/manage/token': '/manage',
 }
 

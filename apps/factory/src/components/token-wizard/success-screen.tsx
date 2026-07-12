@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Badge, Box, Button, Code, Container, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Code, Container, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
 import {
     LuArrowUpRight,
     LuChartCandlestick,
@@ -86,18 +86,24 @@ export function SuccessScreen() {
                     <Text fontSize="sm" color="fg.muted" fontWeight="medium" textAlign="center">
                         What&apos;s next?
                     </Text>
-                    {/* Chaining targets flip live in M3/M4 — they'll link to
-                        /market/new and /pool/new with ?base={denom} preselected. */}
                     <HStack gap={3} justify="center" wrap="wrap">
-                        <Button variant="outline" colorPalette="yellow" size="sm" disabled>
+                        <Button
+                            variant="outline"
+                            colorPalette="yellow"
+                            size="sm"
+                            onClick={() => navigate(`/market/new?base=${encodeURIComponent(created.denom)}`)}
+                        >
                             <LuChartCandlestick />
                             Create a market
-                            <Badge colorPalette="gray" size="sm" variant="surface">soon</Badge>
                         </Button>
-                        <Button variant="outline" colorPalette="yellow" size="sm" disabled>
+                        <Button
+                            variant="outline"
+                            colorPalette="yellow"
+                            size="sm"
+                            onClick={() => navigate(`/pool/new?base=${encodeURIComponent(created.denom)}`)}
+                        >
                             <LuDroplets />
                             Create a liquidity pool
-                            <Badge colorPalette="gray" size="sm" variant="surface">soon</Badge>
                         </Button>
                         <Button variant="outline" colorPalette="yellow" size="sm" onClick={reset}>
                             <LuPlus />

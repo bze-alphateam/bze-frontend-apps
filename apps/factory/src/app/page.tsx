@@ -60,6 +60,7 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Open an order-book market on the DEX for any pair of assets.',
         icon: LuChartCandlestick,
         feeKey: 'createMarketFee',
+        href: '/market/new',
     },
     {
         key: 'pool',
@@ -67,12 +68,14 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Seed an AMM pool, set its swap fee, and decide where the fees go.',
         icon: LuDroplets,
         feeKey: 'createMarketFee',
+        href: '/pool/new',
     },
     {
         key: 'add-liquidity',
         title: 'Add Liquidity',
         description: 'Provide liquidity to an existing pool and receive LP tokens.',
         icon: LuPlus,
+        href: '/pool/add',
     },
     {
         key: 'reward',
@@ -80,6 +83,7 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Fund a staking program — your community stakes a token and earns your prize.',
         icon: LuGift,
         feeKey: 'createStakingRewardFee',
+        href: '/reward/new',
     },
     {
         key: 'burn',
