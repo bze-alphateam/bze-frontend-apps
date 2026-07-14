@@ -14,15 +14,16 @@ import {
 } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import { LuKeyRound, LuLock } from 'react-icons/lu'
-import { Asset, getChainName, useBZETx, validateBZEBech32Address } from '@bze/bze-ui-kit'
+import { Asset, getChainName, validateBZEBech32Address } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { InfoBox } from '@/components/ui/info-box'
 
 const { changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
 
 function TransferAdminCard({ asset, onChanged }: { asset: Asset; onChanged: () => void }) {
     const { address } = useChain(getChainName())
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     const [recipient, setRecipient] = useState('')
     const [touched, setTouched] = useState(false)
@@ -102,7 +103,7 @@ function TransferAdminCard({ asset, onChanged }: { asset: Asset; onChanged: () =
 
 function RenounceAdminCard({ asset, onChanged }: { asset: Asset; onChanged: () => void }) {
     const { address } = useChain(getChainName())
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     const [confirmation, setConfirmation] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)

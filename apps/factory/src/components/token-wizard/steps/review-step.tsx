@@ -1,13 +1,12 @@
 "use client"
 
-import React, { useMemo } from 'react'
+import React from 'react'
 import { Box, Button, HStack, IconButton, Separator, Text, VStack } from '@chakra-ui/react'
 import { LuCopy } from 'react-icons/lu'
 import {
     getChainName,
     prettyAmount,
     toBigNumber,
-    useBalance,
     useCreationFees,
     useToast,
 } from '@bze/bze-ui-kit'
@@ -18,6 +17,7 @@ import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
 import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
+import { useFeePayment } from '@/hooks/useFeePayment'
 
 function ReviewRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
     return (
@@ -40,12 +40,7 @@ export function ReviewStep() {
     const { toast } = useToast()
 
     const fee = fees.createDenomFee
-    const { balance, isLoading: isBalanceLoading } = useBalance(fee?.denom ?? '')
-
-    const hasEnoughForFee = useMemo(() => {
-        if (!fee) return false
-        return balance.amount.gte(fee.amount)
-    }, [fee, balance])
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee)
 
     const denomPreview = resultingDenom ?? `factory/${address ?? '<your address>'}/${form.subdenom}`
 
@@ -55,7 +50,7 @@ export function ReviewStep() {
     }
 
     const { submit, isSubmitting } = useCreateTokenTx()
-    const canConfirm = Boolean(address) && Boolean(fee) && !isBalanceLoading && hasEnoughForFee
+    const canConfirm = Boolean(address) && Boolean(fee) && !isBalanceLoading && canPayFee
 
     return (
         <VStack align="stretch" gap={5}>
@@ -89,9 +84,6 @@ export function ReviewStep() {
                 />
                 {form.description.trim() !== '' && (
                     <ReviewRow label="Description" value={form.description.trim()} />
-                )}
-                {form.logoUri.trim() !== '' && (
-                    <ReviewRow label="Token info URI" value={form.logoUri.trim()} mono />
                 )}
             </VStack>
 

@@ -31,12 +31,12 @@ import {
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
-    useBZETx,
     useBalance,
     useLiquidityPool,
     useLiquidityPools,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { InfoBox } from '@/components/ui/info-box'
 import { PoolPicker } from '@/components/pool-form/pool-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
@@ -98,7 +98,7 @@ function PoolAddContent() {
     const { getQueryParam, navigate } = useNavigationWithParams()
     const { address } = useChain(getChainName())
     const { pools, updateLiquidityPools, isLoading: isPoolsLoading } = useLiquidityPools()
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     // Deep links (e.g. from My Pools) preselect the pool via ?pool=<id>.
     const [poolId, setPoolId] = useState(() => getQueryParam('pool') ?? '')

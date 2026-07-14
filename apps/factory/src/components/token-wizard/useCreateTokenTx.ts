@@ -3,8 +3,9 @@
 import { useCallback, useState } from 'react'
 import { bze } from '@bze/bzejs'
 import type { Metadata } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
-import { amountToUAmount, getChainName, useBZETx } from '@bze/bze-ui-kit'
+import { amountToUAmount, getChainName } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { type TokenWizardForm, useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 
@@ -30,7 +31,7 @@ function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
         display: displayDenom,
         name: form.name.trim(),
         symbol: form.symbol,
-        uri: form.logoUri.trim(),
+        uri: '',
         uriHash: '',
     }
 }
@@ -39,13 +40,13 @@ function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
  * The wizard's tx layer: ONE multi-message transaction, one
  * signature — create denom + mint the initial supply + set bank metadata,
  * plus an atomic admin renounce when the user asked for a fixed supply.
- * On failure useBZETx already toasts the chain error and the wizard state is
+ * On failure the tx hook already toasts the chain error and the wizard state is
  * untouched, so the user can retry without retyping anything.
  */
 export function useCreateTokenTx() {
     const { form, markCreated } = useTokenWizard()
     const { address } = useChain(getChainName())
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const submit = useCallback(async () => {

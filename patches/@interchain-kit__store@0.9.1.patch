@@ -38,3 +38,91 @@ index c23dded..145d079 100644
              }
          };
          const signType = preferSignType || preferredSignTypeFromSettings;
+diff --git a/esm/proxied-wallets/cosmos-wallet.js b/esm/proxied-wallets/cosmos-wallet.js
+--- a/esm/proxied-wallets/cosmos-wallet.js
++++ b/esm/proxied-wallets/cosmos-wallet.js
+@@ -5,10 +5,8 @@
+         advice: {
+             signAmino: {
+                 before(methodName, target, chainId, signer, signDoc, signOptions) {
+-                    console.log('signAmino before - AOP proxy is working!', methodName, chainId);
+                 },
+                 onError(methodName, target, error, chainId, signer, signDoc, signOptions) {
+-                    console.log('signAmino onError - AOP caught error!', error, chainId);
+                     const chain = target.getChainById(chainId);
+                     store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                     throw error; // 重新抛出错误
+@@ -16,14 +14,11 @@
+             },
+             signDirect: {
+                 async around(methodName, target, originalMethod, chainId, signer, signDoc, signOptions) {
+-                    console.log('signDirect around - AOP is working!', methodName, chainId);
+                     try {
+                         const result = await originalMethod(chainId, signer, signDoc, signOptions);
+-                        console.log('signDirect success - AOP is working!', methodName, chainId);
+                         return result;
+                     }
+                     catch (error) {
+-                        console.log('signDirect error - AOP caught the error!', error, chainId);
+                         const chain = target.getChainById(chainId);
+                         store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                         throw error; // 重新抛出错误
+@@ -32,14 +27,11 @@
+             },
+             signArbitrary: {
+                 async around(methodName, target, originalMethod, chainId, signer, data) {
+-                    console.log('signArbitrary around - AOP is working!', methodName, chainId);
+                     try {
+                         const result = await originalMethod(chainId, signer, data);
+-                        console.log('signArbitrary success - AOP is working!', methodName, chainId);
+                         return result;
+                     }
+                     catch (error) {
+-                        console.log('signArbitrary error - AOP caught the error!', error, chainId);
+                         const chain = target.getChainById(chainId);
+                         store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                         throw error; // 重新抛出错误
+diff --git a/proxied-wallets/cosmos-wallet.js b/proxied-wallets/cosmos-wallet.js
+--- a/proxied-wallets/cosmos-wallet.js
++++ b/proxied-wallets/cosmos-wallet.js
+@@ -8,10 +8,8 @@
+         advice: {
+             signAmino: {
+                 before(methodName, target, chainId, signer, signDoc, signOptions) {
+-                    console.log('signAmino before - AOP proxy is working!', methodName, chainId);
+                 },
+                 onError(methodName, target, error, chainId, signer, signDoc, signOptions) {
+-                    console.log('signAmino onError - AOP caught error!', error, chainId);
+                     const chain = target.getChainById(chainId);
+                     store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                     throw error; // 重新抛出错误
+@@ -19,14 +17,11 @@
+             },
+             signDirect: {
+                 async around(methodName, target, originalMethod, chainId, signer, signDoc, signOptions) {
+-                    console.log('signDirect around - AOP is working!', methodName, chainId);
+                     try {
+                         const result = await originalMethod(chainId, signer, signDoc, signOptions);
+-                        console.log('signDirect success - AOP is working!', methodName, chainId);
+                         return result;
+                     }
+                     catch (error) {
+-                        console.log('signDirect error - AOP caught the error!', error, chainId);
+                         const chain = target.getChainById(chainId);
+                         store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                         throw error; // 重新抛出错误
+@@ -35,14 +30,11 @@
+             },
+             signArbitrary: {
+                 async around(methodName, target, originalMethod, chainId, signer, data) {
+-                    console.log('signArbitrary around - AOP is working!', methodName, chainId);
+                     try {
+                         const result = await originalMethod(chainId, signer, data);
+-                        console.log('signArbitrary success - AOP is working!', methodName, chainId);
+                         return result;
+                     }
+                     catch (error) {
+-                        console.log('signArbitrary error - AOP caught the error!', error, chainId);
+                         const chain = target.getChainById(chainId);
+                         store.updateChainWalletState(target.info.name, chain.chainName, { errorMessage: error.message });
+                         throw error; // 重新抛出错误

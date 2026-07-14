@@ -11,7 +11,6 @@ import {
     validateName,
     validateSubdenom,
     validateSymbol,
-    validateUri,
 } from '@/components/token-wizard/validation'
 
 export interface IdentityErrors {
@@ -25,7 +24,6 @@ export interface SupplyErrors {
 
 export interface MetadataErrors {
     description: string;
-    uri: string;
 }
 
 /**
@@ -65,8 +63,7 @@ export function useTokenWizardValidation() {
 
     const metadataErrors: MetadataErrors = useMemo(() => ({
         description: validateDescription(form.description),
-        uri: validateUri(form.logoUri),
-    }), [form.description, form.logoUri])
+    }), [form.description])
 
     const isIdentityValid = Object.values(identityErrors).every(e => e === '')
     const isSupplyValid = Object.values(supplyErrors).every(e => e === '')

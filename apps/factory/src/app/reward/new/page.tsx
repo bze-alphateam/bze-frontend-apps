@@ -33,16 +33,17 @@ import {
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
-    useBZETx,
     useBalance,
     useCreationFees,
     useToast,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
 import { validateAmount } from '@/components/token-wizard/validation'
+import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { createStakingReward } = bze.rewards.MessageComposer.withTypeUrl
@@ -120,7 +121,7 @@ function RewardNewContent() {
     const { getQueryParam, navigate } = useNavigationWithParams()
     const { address } = useChain(getChainName())
     const { fees, isLoading: isFeeLoading } = useCreationFees()
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
     const { toast } = useToast()
 
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -142,6 +143,7 @@ function RewardNewContent() {
 
     const fee = fees.createStakingRewardFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
+    const feePayment = useFeePayment(fee)
 
     const prizeError = prizeAsset ? validateAmount(prizePerDay, prizeAsset.decimals) : ''
     const durationError = validateDays(duration, MIN_DURATION_DAYS, MAX_DURATION_DAYS)
@@ -161,15 +163,16 @@ function RewardNewContent() {
     }, [escrowUAmount, prizeAsset])
 
     // The escrow and the creation fee both leave the wallet at creation — when the
-    // prize IS the fee denom, the balance must cover them together.
+    // prize IS the fee denom, the balance must cover them together. If the fee is
+    // paid in the Settings fee token instead, it never touches the prize balance.
     const hasEnoughForEscrow = useMemo(() => {
         if (!escrowUAmount) return false
         let needed = escrowUAmount
-        if (fee && prizeDenom === fee.denom) {
+        if (fee && prizeDenom === fee.denom && !feePayment.paysWithAlt) {
             needed = needed.plus(fee.amount)
         }
         return prizeBalance.amount.gte(needed)
-    }, [escrowUAmount, fee, prizeDenom, prizeBalance])
+    }, [escrowUAmount, fee, prizeDenom, prizeBalance, feePayment.paysWithAlt])
 
     const hasEnoughForFee = useMemo(() => {
         if (!fee) return false
@@ -180,10 +183,12 @@ function RewardNewContent() {
         return feeBalance.amount.gte(needed)
     }, [fee, feeBalance, escrowUAmount, prizeDenom])
 
+    const canPayFee = hasEnoughForFee || feePayment.paysWithAlt
+
     const isComplete = Boolean(stakingDenom) && Boolean(prizeDenom) &&
         prizeError === '' && durationError === '' && lockError === '' && minStakeError === ''
     const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
-        !isFeeBalanceLoading && hasEnoughForFee && hasEnoughForEscrow
+        !isFeeBalanceLoading && canPayFee && hasEnoughForEscrow
 
     const submit = async () => {
         if (!address || !canConfirm || !stakingAsset || !prizeAsset || !escrowDisplay) return
@@ -465,7 +470,7 @@ function RewardNewContent() {
                             <Text fontSize="sm" color="fg.muted" textAlign="center">
                                 Connect your wallet to create this reward.
                             </Text>
-                        ) : isComplete && !isFeeBalanceLoading && !hasEnoughForFee && (
+                        ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
                             <Text fontSize="sm" color="fg.error" textAlign="center">
                                 Not enough balance to cover the creation fee on top of the escrowed prize.
                             </Text>

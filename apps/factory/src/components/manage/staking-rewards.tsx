@@ -24,11 +24,11 @@ import {
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
-    useBZETx,
     useBalance,
 } from '@bze/bze-ui-kit'
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
 
@@ -60,7 +60,7 @@ function ExtendPanel({
     const { address } = useChain(getChainName())
     const { asset: prizeAsset } = useAsset(reward.prize_denom)
     const { balance } = useBalance(reward.prize_denom)
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     const [extraDays, setExtraDays] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)

@@ -29,8 +29,6 @@ export interface TokenWizardForm {
     fixedSupply: boolean;
     // Pro metadata
     description: string;
-    /** Bank metadata `uri` — link to the token's info page / logo document. */
-    logoUri: string;
 }
 
 const EMPTY_FORM: TokenWizardForm = {
@@ -40,7 +38,6 @@ const EMPTY_FORM: TokenWizardForm = {
     initialSupply: '',
     fixedSupply: false,
     description: '',
-    logoUri: '',
 }
 
 export interface CreatedToken {

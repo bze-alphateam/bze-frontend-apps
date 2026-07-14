@@ -64,20 +64,6 @@ export function validateDescription(description: string): string {
     return ''
 }
 
-export function validateUri(uri: string): string {
-    const trimmed = uri.trim()
-    if (!trimmed) return ''
-    try {
-        const parsed = new URL(trimmed)
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-            return 'The URI must start with https:// (or http://).'
-        }
-    } catch {
-        return 'Enter a valid URL, e.g. https://mytoken.com/info.json.'
-    }
-    return ''
-}
-
 /** Generic token amount check — also used by the manage flows (mint/burn). */
 export function validateAmount(amount: string, decimals: number): string {
     const trimmed = amount.trim()

@@ -35,16 +35,17 @@ import {
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
-    useBZETx,
     useBalance,
     useCreationFees,
     useLiquidityPools,
     useToast,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
+import { useFeePayment } from '@/hooks/useFeePayment'
 import {
     DEFAULT_FEE_SPLIT,
     FeeSplit,
@@ -128,7 +129,7 @@ function PoolNewContent() {
     const { address } = useChain(getChainName())
     const { getDenomsPool, updateLiquidityPools, isLoading: isPoolsLoading } = useLiquidityPools()
     const { fees, isLoading: isFeeLoading } = useCreationFees()
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
     const { toast } = useToast()
 
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -148,6 +149,7 @@ function PoolNewContent() {
 
     const fee = fees.createMarketFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
+    const feePayment = useFeePayment(fee)
 
     // The chain stores pairs alphabetically and swaps the amounts to match.
     const isCanonicalOrder = !baseDenom || !quoteDenom || baseDenom < quoteDenom
@@ -196,10 +198,14 @@ function PoolNewContent() {
         return feeBalance.amount.gte(needed)
     }, [fee, feeBalance, baseAsset, quoteAsset, baseDenom, quoteDenom, baseAmount, quoteAmount])
 
+    // Paying the fee in the Settings fee token keeps the native balance for the
+    // reserves, so either path unlocks the form.
+    const canPayFee = hasEnoughForFee || feePayment.paysWithAlt
+
     const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && pairError === '' &&
         amountsValid && swapFeeError === ''
     const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
-        !isFeeBalanceLoading && hasEnoughForFee && !isPoolsLoading
+        !isFeeBalanceLoading && canPayFee && !isPoolsLoading
 
     const submit = async () => {
         if (!address || !canConfirm || !baseAsset || !quoteAsset) return
@@ -517,7 +523,7 @@ function PoolNewContent() {
                             <Text fontSize="sm" color="fg.muted" textAlign="center">
                                 Connect your wallet to create this pool.
                             </Text>
-                        ) : isComplete && !isFeeBalanceLoading && !hasEnoughForFee && (
+                        ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
                             <Text fontSize="sm" color="fg.error" textAlign="center">
                                 Not enough balance to cover the creation fee on top of the reserves.
                             </Text>

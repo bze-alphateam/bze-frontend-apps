@@ -17,14 +17,14 @@ import {
 import { bze } from '@bze/bzejs'
 import type { Metadata, MetadataSDKType } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
 import { LuArrowRight, LuPencil } from 'react-icons/lu'
-import { Asset, getChainName, useBZETx } from '@bze/bze-ui-kit'
+import { Asset, getChainName } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { InfoBox } from '@/components/ui/info-box'
 import {
     MAX_DESCRIPTION_LENGTH,
     validateDescription,
     validateName,
-    validateUri,
 } from '@/components/token-wizard/validation'
 
 const { setDenomMetadata } = bze.tokenfactory.MessageComposer.withTypeUrl
@@ -32,14 +32,13 @@ const { setDenomMetadata } = bze.tokenfactory.MessageComposer.withTypeUrl
 interface MetadataForm {
     name: string
     description: string
-    uri: string
 }
 
 /**
  * MsgSetDenomMetadata replaces the whole metadata object, so we rebuild it
  * from what's on-chain and swap only the editable fields. Symbol, base,
- * display, and the denom units are carried over untouched — they're not
- * editable here. Tokens that somehow have no metadata yet get the wizard's
+ * display, the denom units, and the URI are carried over untouched — they're
+ * not editable here. Tokens that somehow have no metadata yet get the wizard's
  * canonical layout: base denom at exponent 0 + display unit at the asset's
  * decimals.
  */
@@ -47,7 +46,6 @@ function buildUpdatedMetadata(current: MetadataSDKType | undefined, asset: Asset
     const shared = {
         name: form.name.trim(),
         description: form.description.trim(),
-        uri: form.uri.trim(),
     }
 
     if (current && current.base) {
@@ -61,6 +59,7 @@ function buildUpdatedMetadata(current: MetadataSDKType | undefined, asset: Asset
             base: current.base,
             display: current.display,
             symbol: current.symbol,
+            uri: current.uri,
             uriHash: current.uri_hash,
         }
     }
@@ -76,6 +75,7 @@ function buildUpdatedMetadata(current: MetadataSDKType | undefined, asset: Asset
         base: asset.denom,
         display: displayDenom,
         symbol: asset.ticker,
+        uri: '',
         uriHash: '',
     }
 }
@@ -123,8 +123,8 @@ function DiffRow({ label, oldValue, newValue }: { label: string; oldValue: strin
 
 /**
  * Admin-only card on the token manage panel: view the on-chain metadata,
- * edit the mutable fields (name, description, info URI), review an
- * old → new diff, and sign one MsgSetDenomMetadata.
+ * edit the mutable fields (name, description), review an old → new diff,
+ * and sign one MsgSetDenomMetadata.
  */
 export function MetadataCard({
     asset,
@@ -138,21 +138,19 @@ export function MetadataCard({
     onSaved: () => void;
 }) {
     const { address } = useChain(getChainName())
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     const [mode, setMode] = useState<'view' | 'edit' | 'review'>('view')
-    const [form, setForm] = useState<MetadataForm>({ name: '', description: '', uri: '' })
+    const [form, setForm] = useState<MetadataForm>({ name: '', description: '' })
     const [touched, setTouched] = useState<{ [K in keyof MetadataForm]?: boolean }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const currentName = metadata?.name ?? asset.name
     const currentDescription = metadata?.description ?? ''
-    const currentUri = metadata?.uri ?? ''
 
     const errors = useMemo(() => ({
         name: validateName(form.name),
         description: validateDescription(form.description),
-        uri: validateUri(form.uri),
     }), [form])
     const isValid = Object.values(errors).every(e => e === '')
 
@@ -162,12 +160,11 @@ export function MetadataCard({
         if (form.description.trim() !== currentDescription) {
             diff.push({ label: 'Description', oldValue: currentDescription, newValue: form.description.trim() })
         }
-        if (form.uri.trim() !== currentUri) diff.push({ label: 'Token info URI', oldValue: currentUri, newValue: form.uri.trim() })
         return diff
-    }, [form, currentName, currentDescription, currentUri])
+    }, [form, currentName, currentDescription])
 
     const startEditing = () => {
-        setForm({ name: currentName, description: currentDescription, uri: currentUri })
+        setForm({ name: currentName, description: currentDescription })
         setTouched({})
         setMode('edit')
     }
@@ -228,7 +225,6 @@ export function MetadataCard({
                         <VStack align="stretch" gap={3}>
                             <MetadataRow label="Name" value={currentName} />
                             <MetadataRow label="Description" value={currentDescription} />
-                            <MetadataRow label="Token info URI" value={currentUri} mono />
                         </VStack>
                     )
                 )}
@@ -258,20 +254,6 @@ export function MetadataCard({
                                 Optional — {MAX_DESCRIPTION_LENGTH} characters max.
                             </Field.HelperText>
                             <Field.ErrorText>{errors.description}</Field.ErrorText>
-                        </Field.Root>
-
-                        <Field.Root invalid={Boolean(touched.uri) && errors.uri !== ''}>
-                            <Field.Label>Token info URI</Field.Label>
-                            <Input
-                                placeholder="https://mytoken.com/info.json"
-                                value={form.uri}
-                                onChange={(e) => setForm(prev => ({ ...prev, uri: e.target.value }))}
-                                onBlur={() => setTouched(prev => ({ ...prev, uri: true }))}
-                            />
-                            <Field.HelperText>
-                                Optional — a link to a page or document with more about the token.
-                            </Field.HelperText>
-                            <Field.ErrorText>{errors.uri}</Field.ErrorText>
                         </Field.Root>
 
                         <InfoBox>

@@ -89,14 +89,14 @@ export function SupplyStep() {
                         <AdminStrategyCard
                             icon={LuKeyRound}
                             title="Keep admin"
-                            description="You can mint more, burn from your account, update metadata — or renounce later from Manage."
+                            description="You keep full control: mint more, burn from your account, update metadata. You can still renounce at any time later, from the Manage page."
                             selected={!form.fixedSupply}
                             onSelect={() => updateForm({ fixedSupply: false })}
                         />
                         <AdminStrategyCard
                             icon={LuLock}
                             title="Renounce at creation"
-                            description="Provably fixed supply from block one — the renounce is part of the creation transaction. Irreversible."
+                            description="Gives up every admin right in the creation transaction itself — no more minting, no metadata changes, nothing. This cannot be undone."
                             selected={form.fixedSupply}
                             onSelect={() => updateForm({ fixedSupply: true })}
                         />
@@ -104,12 +104,14 @@ export function SupplyStep() {
                 </VStack>
 
                 <InfoBox title="Why renounce?">
-                    BeeZee has no on-chain supply cap — a &quot;fixed supply&quot; only truly exists once
-                    the token admin is renounced. Turning this on adds the renounce to the creation
-                    transaction itself, so the supply is provably fixed from block one. It cannot be
-                    undone: you will never be able to mint more, burn from other accounts, or change
-                    the token&apos;s metadata. Leave it off to keep the admin — you can still renounce
-                    later from the Manage page.
+                    Renouncing means permanently giving up every right the admin has over the
+                    token: minting more, updating the metadata, or handing the admin to someone
+                    else. It cannot be undone — not even by you.
+                    What you get in return is trust: anyone can verify on-chain that the token
+                    has no admin, so holders know nobody can inflate the supply or change the
+                    token under them. A provably fixed supply is just one example of that
+                    guarantee. You don&apos;t have to decide now — keep the admin today and
+                    renounce whenever you&apos;re ready, from the Manage page.
                 </InfoBox>
             </VStack>
         </VStack>

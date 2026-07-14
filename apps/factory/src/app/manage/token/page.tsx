@@ -26,11 +26,11 @@ import {
     getChainName,
     prettyAmount,
     uAmountToBigNumberAmount,
-    useBZETx,
     useBalance,
     useToast,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AdminActions } from '@/components/manage/admin-card'
 import { MetadataCard } from '@/components/manage/metadata-card'
 import { InfoBox } from '@/components/ui/info-box'
@@ -76,7 +76,7 @@ function SupplyActionCard({
 }) {
     const isMint = mode === 'mint'
     const { address } = useChain(getChainName())
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
     const { balance } = useBalance(asset.denom)
 
     const [amount, setAmount] = useState('')
@@ -308,8 +308,8 @@ function TokenManageContent() {
                 </>
             ) : isRenounced ? (
                 <InfoBox title="Supply provably fixed">
-                    The admin of this token was renounced — nobody, including you, can mint, burn
-                    from other accounts, or change its metadata. That&apos;s the guarantee holders rely on.
+                    The admin of this token was renounced — nobody, including you, can mint more
+                    tokens or change its metadata. That&apos;s the guarantee holders rely on.
                 </InfoBox>
             ) : (
                 <InfoBox title="You are not the admin">

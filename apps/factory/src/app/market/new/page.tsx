@@ -27,15 +27,15 @@ import {
     getChainName,
     getEcosystemApps,
     useAsset,
-    useBZETx,
-    useBalance,
     useCreationFees,
     useMarkets,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
+import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
@@ -47,7 +47,7 @@ function MarketNewContent() {
     const { address } = useChain(getChainName())
     const { marketExists, updateMarkets, isLoading: isMarketsLoading } = useMarkets()
     const { fees, isLoading: isFeeLoading } = useCreationFees()
-    const { tx } = useBZETx()
+    const { tx } = useFactoryTx()
 
     // Chaining links (e.g. the token wizard's success screen) preselect the pair.
     const [baseDenom, setBaseDenom] = useState(() => getQueryParam('base') ?? '')
@@ -61,11 +61,7 @@ function MarketNewContent() {
     const [created, setCreated] = useState<{ txHash: string } | undefined>(undefined)
 
     const fee = fees.createMarketFee
-    const { balance, isLoading: isBalanceLoading } = useBalance(fee?.denom ?? '')
-    const hasEnoughForFee = useMemo(() => {
-        if (!fee) return false
-        return balance.amount.gte(fee.amount)
-    }, [fee, balance])
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee)
 
     // The pair must not exist in EITHER direction — the chain would reject the
     // reversed pair too, so catch it here as a friendly form error instead.
@@ -82,7 +78,7 @@ function MarketNewContent() {
 
     const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && error === ''
     const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
-        !isBalanceLoading && hasEnoughForFee && !isMarketsLoading
+        !isBalanceLoading && canPayFee && !isMarketsLoading
 
     const pairLabel = baseAsset && quoteAsset ? `${baseAsset.ticker}/${quoteAsset.ticker}` : ''
 
@@ -241,7 +237,7 @@ function MarketNewContent() {
                             <Text fontSize="sm" color="fg.muted" textAlign="center">
                                 Connect your wallet to create this market.
                             </Text>
-                        ) : isComplete && !isBalanceLoading && !hasEnoughForFee && (
+                        ) : isComplete && !isBalanceLoading && !canPayFee && (
                             <Text fontSize="sm" color="fg.error" textAlign="center">
                                 Not enough balance to cover the creation fee.
                             </Text>
