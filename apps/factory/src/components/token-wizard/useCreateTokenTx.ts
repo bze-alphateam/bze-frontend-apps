@@ -1,0 +1,77 @@
+'use client'
+
+import { useCallback, useState } from 'react'
+import { bze } from '@bze/bzejs'
+import type { Metadata } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
+import { amountToUAmount, getChainName } from '@bze/bze-ui-kit'
+import { useChain } from '@interchain-kit/react'
+import { useFactoryTx } from '@/hooks/useFactoryTx'
+import { type TokenWizardForm, useTokenWizard } from '@/components/token-wizard/token-wizard-context'
+import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
+
+const { createDenom, mint, setDenomMetadata, changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
+
+/**
+ * Denom-units layout: the base unit is the full factory denom at exponent 0
+ * (aliased by the subdenom), the display unit is the lowercased symbol at the
+ * fixed TOKEN_DECIMALS. The subdenom ("u" + lowercased symbol) can never
+ * collide with the display denom.
+ */
+function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
+    const displayDenom = form.symbol.toLowerCase()
+    const denomUnits = [
+        { denom, exponent: 0, aliases: [form.subdenom] },
+        { denom: displayDenom, exponent: TOKEN_DECIMALS, aliases: [] },
+    ]
+
+    return {
+        description: form.description.trim(),
+        denomUnits,
+        base: denom,
+        display: displayDenom,
+        name: form.name.trim(),
+        symbol: form.symbol,
+        uri: '',
+        uriHash: '',
+    }
+}
+
+/**
+ * The wizard's tx layer: ONE multi-message transaction, one
+ * signature — create denom + mint the initial supply + set bank metadata,
+ * plus an atomic admin renounce when the user asked for a fixed supply.
+ * On failure the tx hook already toasts the chain error and the wizard state is
+ * untouched, so the user can retry without retyping anything.
+ */
+export function useCreateTokenTx() {
+    const { form, markCreated } = useTokenWizard()
+    const { address } = useChain(getChainName())
+    const { tx } = useFactoryTx()
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const submit = useCallback(async () => {
+        if (!address) return
+
+        const denom = `factory/${address}/${form.subdenom}`
+        const msgs = [
+            createDenom({ creator: address, subdenom: form.subdenom }),
+            mint({
+                creator: address,
+                coins: `${amountToUAmount(form.initialSupply, TOKEN_DECIMALS)}${denom}`,
+            }),
+            setDenomMetadata({ creator: address, metadata: buildMetadata(form, denom) }),
+            ...(form.fixedSupply ? [changeAdmin({ creator: address, denom, newAdmin: '' })] : []),
+        ]
+
+        setIsSubmitting(true)
+        try {
+            await tx(msgs, {
+                onSuccess: (res) => markCreated(denom, res.txhash),
+            })
+        } finally {
+            setIsSubmitting(false)
+        }
+    }, [address, form, tx, markCreated])
+
+    return { submit, isSubmitting }
+}
