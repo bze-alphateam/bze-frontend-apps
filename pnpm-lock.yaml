@@ -467,8 +467,8 @@ importers:
         version: 0.1.4(react@19.2.7)
     devDependencies:
       '@bze/bzejs':
-        specifier: 3.0.0
-        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.1.0
+        version: 3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)
       '@chain-registry/types':
         specifier: 2.0.229
         version: 2.0.229
@@ -620,6 +620,9 @@ packages:
 
   '@bze/bzejs@3.0.0':
     resolution: {integrity: sha512-nIaYZlX3yumBbWux8N3VTPiAgYbCqFCrRR0vD4/ZT4vEgvNrgabQoWyPVy9SkBaZAm7Oq7jOIayW4rno21JQBw==}
+
+  '@bze/bzejs@3.1.0':
+    resolution: {integrity: sha512-HFxl0mQiJ+2ERKiWw+LIBz4jSDczgane+x6uOcMgxh1Wg0IeFrhQ9A4zJP/1vTQGWGrkQCN3RGtsyiqupRTfYw==}
 
   '@bze/hub-connector@0.1.4':
     resolution: {integrity: sha512-2BfhleemR0TIaiopn817zq5vYSNznmyuKivL/IIjDun1ZIy8KLR4I/uczZrwB1aRpGMLdEfm6qfWOmeU+BjBCg==}
@@ -6301,6 +6304,23 @@ snapshots:
     optional: true
 
   '@bze/bzejs@3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
+    dependencies:
+      '@cosmology/lcd': 0.16.0
+      '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
+      '@interchainjs/encoding': 1.20.0
+      '@interchainjs/pubkey': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
+      '@interchainjs/types': 1.21.0
+      '@interchainjs/utils': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
+      axios: 1.13.2
+    transitivePeerDependencies:
+      - '@chain-registry/v2'
+      - '@chain-registry/v2-types'
+      - bufferutil
+      - debug
+      - utf-8-validate
+
+  '@bze/bzejs@3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)':
     dependencies:
       '@cosmology/lcd': 0.16.0
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)

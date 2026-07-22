@@ -85,12 +85,9 @@ export function useIbcBridgeTransfer(chainName: string): UseIbcBridgeTransferRet
             });
 
             setProgressMessage('Waiting for signature...');
-            // Force direct sign — bzejs v3 MsgTransfer amino converter is not compatible
-            // with BZE chain's running proto version and fails verification with code 4.
             // For deposits (signing on a foreign chain), we don't know the correct gas
             // price, so we ask Keplr/Leap to compute and fill the fee itself.
             const success = await tx([msg], {
-                useDirectSign: true,
                 letWalletSetFee: isDeposit,
             });
 
