@@ -29,7 +29,7 @@ import {
     amountToUAmount,
     getChainExplorerURL,
     getChainName,
-    getEcosystemApps,
+    getStakingApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -237,7 +237,7 @@ function RewardNewContent() {
     }
 
     if (created) {
-        const stakingUrl = getEcosystemApps().find(app => app.key === 'staking')?.href ?? 'https://staking.getbze.com'
+        const stakingUrl = getStakingApp().href
         const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
 
         return (
