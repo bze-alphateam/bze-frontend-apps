@@ -141,7 +141,7 @@ export {
 export { TOKEN_LOGO_PLACEHOLDER, BZE_CIRCLE_LOGO, DEFAULT_TX_MEMO } from './constants/placeholders';
 export { SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS, VALIDATION_ERRORS, getAppName } from './constants/settings';
 export { EXCLUDED_MARKETS } from './constants/market';
-export { ECOSYSTEM_MENU_LABEL, getEcosystemApps } from './constants/ecosystem';
+export { ECOSYSTEM_MENU_LABEL, getEcosystemApps, getEcosystemApp, getWebsiteApp, getStakingApp, getDexApp, getBurnerApp, getFactoryApp, getCommunitiesApp } from './constants/ecosystem';
 export type { EcosystemApp } from './constants/ecosystem';
 export { MAINNET_CHAIN_INFO_FALLBACK, TESTNET_CHAIN_INFO_FALLBACK } from './constants/keplr';
 export { BZE_TESTNET_2_SUGGEST_CHAIN, BZE_TESTNET_NETWORK } from './constants/testnet';

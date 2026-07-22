@@ -16,7 +16,7 @@ import { LuArrowUpRight, LuCopy, LuDroplets, LuPlus } from 'react-icons/lu'
 import {
     TokenLogo,
     getChainName,
-    getEcosystemApps,
+    getDexApp,
     useAsset,
     useLiquidityPools,
     useToast,
@@ -33,7 +33,7 @@ function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
     const { toast } = useToast()
     const { navigate } = useNavigation()
 
-    const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+    const dexUrl = getDexApp().href
     const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(pool.id)}`
     // The chain stores the fee as a decimal (e.g. "0.002" = 0.2%).
     const feeLabel = `${new BigNumber(pool.fee).multipliedBy(100).toString()}%`

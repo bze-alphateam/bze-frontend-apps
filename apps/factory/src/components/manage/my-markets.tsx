@@ -16,7 +16,7 @@ import {
     TokenLogo,
     createMarketId,
     getChainName,
-    getEcosystemApps,
+    getDexApp,
     useAsset,
     useMarkets,
 } from '@bze/bze-ui-kit'
@@ -30,7 +30,7 @@ function MarketRow({ market }: { market: Market }) {
     const { asset: quoteAsset } = useAsset(market.quote)
 
     const marketId = createMarketId(market.base, market.quote)
-    const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+    const dexUrl = getDexApp().href
     const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(marketId)}`
 
     return (

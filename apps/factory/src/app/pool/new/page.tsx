@@ -30,7 +30,7 @@ import {
     createPoolId,
     getChainExplorerURL,
     getChainName,
-    getEcosystemApps,
+    getDexApp,
     getLiquidityPool,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -273,7 +273,7 @@ function PoolNewContent() {
     }
 
     if (created) {
-        const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+        const dexUrl = getDexApp().href
         const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(created.poolId)}`
         const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
 
@@ -287,8 +287,9 @@ function PoolNewContent() {
                         The {canonicalPairLabel} pool is live!
                     </Text>
                     <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Your seed reserves went into the pool and LP tokens representing your
-                        share were minted to your wallet. Swaps can start right away.
+                        Your seed reserves are permanently locked in the pool. The initial LP
+                        tokens are burned to establish the liquidity floor. Swaps can start
+                        right away.
                     </Text>
                 </VStack>
 
@@ -448,6 +449,13 @@ function PoolNewContent() {
                                 </Text>
                             </Text>
                         )}
+
+                        <InfoBox>
+                            The initial seed is locked in the pool permanently — the LP tokens
+                            for this first deposit are burned, not sent to your wallet. Any
+                            liquidity you add later via &quot;Add Liquidity&quot; will mint LP tokens
+                            to you normally.
+                        </InfoBox>
                     </VStack>
 
                     <Separator />

@@ -20,7 +20,7 @@ import { bze } from '@bze/bzejs'
 import {
     TokenLogo,
     getChainName,
-    getEcosystemApps,
+    getStakingApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -173,7 +173,7 @@ function RewardRow({
     const { asset: prizeAsset } = useAsset(reward.prize_denom)
     const [isExtendOpen, setIsExtendOpen] = useState(false)
 
-    const stakingUrl = getEcosystemApps().find(app => app.key === 'staking')?.href ?? 'https://staking.getbze.com'
+    const stakingUrl = getStakingApp().href
 
     const daysRemaining = reward.duration - reward.payouts
     const minStake = new BigNumber(reward.min_stake.toString())

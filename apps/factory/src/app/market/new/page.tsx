@@ -25,7 +25,7 @@ import {
     createMarketId,
     getChainExplorerURL,
     getChainName,
-    getEcosystemApps,
+    getDexApp,
     useAsset,
     useCreationFees,
     useMarkets,
@@ -109,7 +109,7 @@ function MarketNewContent() {
     }
 
     if (created) {
-        const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+        const dexUrl = getDexApp().href
         const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(createMarketId(baseDenom, quoteDenom))}`
         const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
 

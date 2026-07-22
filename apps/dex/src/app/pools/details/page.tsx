@@ -42,6 +42,7 @@ import {
     useLiquidityPool,
     TokenLogo, LPTokenLogo,
     Tooltip,
+    getBurnerApp,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -1625,7 +1626,7 @@ const PoolDetailsPageContent = () => {
                                     </HighlightText>
                                 </Skeleton>
                                 <Link
-                                    href={`https://burner.getbze.com/coin?coin=${pool?.lp_denom || ''}`}
+                                    href={`${getBurnerApp().href}/coin?coin=${pool?.lp_denom || ''}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     fontSize="xs"

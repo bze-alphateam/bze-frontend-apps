@@ -27,7 +27,7 @@ import {
     amountToUAmount,
     getChainExplorerURL,
     getChainName,
-    getEcosystemApps,
+    getDexApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -231,7 +231,7 @@ function PoolAddContent() {
     }
 
     if (added && pool) {
-        const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+        const dexUrl = getDexApp().href
         const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(pool.id)}`
         const txUrl = `${getChainExplorerURL(getChainName())}/tx/${added.txHash}`
 

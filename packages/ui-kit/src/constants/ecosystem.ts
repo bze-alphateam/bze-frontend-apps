@@ -92,3 +92,31 @@ export const getEcosystemApps = (): EcosystemApp[] => {
             };
         });
 };
+
+/**
+ * Returns a single ecosystem app by key with env var overrides applied.
+ * Unlike getEcosystemApps(), this ignores the exclusion list and Hub mode —
+ * it is intended for deep links and cross-app URLs, not navigation menus.
+ */
+export const getEcosystemApp = (key: string): EcosystemApp | undefined => {
+    const app = DEFAULT_APPS.find(a => a.key === key);
+    if (!app) return undefined;
+
+    const linkOverride = LINK_OVERRIDES[app.key];
+    const labelOverride = LABEL_OVERRIDES[app.key];
+
+    return {
+        key: app.key,
+        name: labelOverride || app.name,
+        href: linkOverride || app.href,
+        disabled: linkOverride ? false : app.disabled,
+        icon: app.icon,
+    };
+};
+
+export const getWebsiteApp      = (): EcosystemApp => getEcosystemApp('website')!;
+export const getStakingApp      = (): EcosystemApp => getEcosystemApp('staking')!;
+export const getDexApp          = (): EcosystemApp => getEcosystemApp('dex')!;
+export const getBurnerApp       = (): EcosystemApp => getEcosystemApp('burner')!;
+export const getFactoryApp      = (): EcosystemApp => getEcosystemApp('factory')!;
+export const getCommunitiesApp  = (): EcosystemApp => getEcosystemApp('communities')!;

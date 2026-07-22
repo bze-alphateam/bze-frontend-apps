@@ -10,7 +10,7 @@ import {
     LuDroplets,
     LuPlus,
 } from 'react-icons/lu'
-import { getChainExplorerURL, getChainName, getEcosystemApps, useToast } from '@bze/bze-ui-kit'
+import { getChainExplorerURL, getChainName, getDexApp, useToast } from '@bze/bze-ui-kit'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useNavigation } from '@/hooks/useNavigation'
 
@@ -23,7 +23,7 @@ export function SuccessScreen() {
 
     if (!created) return null
 
-    const dexUrl = getEcosystemApps().find(app => app.key === 'dex')?.href ?? 'https://dex.getbze.com'
+    const dexUrl = getDexApp().href
     const tokenUrl = `${dexUrl}/assets/details?denom=${encodeURIComponent(created.denom)}`
     const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
 
