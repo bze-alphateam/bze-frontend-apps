@@ -24,6 +24,7 @@ import {
 import {
     CreationFees,
     FeeCoin,
+    getBurnerApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -90,7 +91,7 @@ const CREATION_CARDS: CreationCard[] = [
         title: 'Burn Tokens',
         description: 'Permanently burn coins or LP tokens in the Burner dApp.',
         icon: LuFlame,
-        externalHref: 'https://burner.getbze.com',
+        externalHref: getBurnerApp().href,
     },
     {
         key: 'manage',

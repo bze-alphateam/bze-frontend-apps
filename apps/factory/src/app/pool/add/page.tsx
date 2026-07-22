@@ -20,6 +20,7 @@ import {
     LuArrowUpRight,
     LuCircleCheck,
     LuDroplets,
+    LuGift,
     LuPlus,
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
@@ -259,12 +260,26 @@ function PoolAddContent() {
                     </Button>
                 </HStack>
 
-                <HStack gap={3} justify="center" wrap="wrap">
-                    <Button variant="outline" colorPalette="yellow" size="sm" onClick={addMore}>
-                        <LuPlus />
-                        Add more liquidity
-                    </Button>
-                </HStack>
+                <VStack align="stretch" gap={3}>
+                    <Text fontSize="sm" color="fg.muted" fontWeight="medium" textAlign="center">
+                        What&apos;s next?
+                    </Text>
+                    <HStack gap={3} justify="center" wrap="wrap">
+                        <Button
+                            variant="outline"
+                            colorPalette="yellow"
+                            size="sm"
+                            onClick={() => navigate(`/reward/new?staking=${encodeURIComponent(pool.lp_denom)}`)}
+                        >
+                            <LuGift />
+                            Create a staking reward
+                        </Button>
+                        <Button variant="outline" colorPalette="yellow" size="sm" onClick={addMore}>
+                            <LuPlus />
+                            Add more liquidity
+                        </Button>
+                    </HStack>
+                </VStack>
 
                 <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => navigate('/')}>
                     Back to hub
