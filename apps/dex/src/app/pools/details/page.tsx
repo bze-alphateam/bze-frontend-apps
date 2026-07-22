@@ -712,7 +712,7 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
             if (bRemaining === 0 && aRemaining > 0) return -1;
             return bRemaining - aRemaining;
         });
-    }, [pool?.lp_denom, rewardsMap]);
+    }, [pool, rewardsMap]);
 
     const selectedReward = useMemo(() => {
         if (!selectedRewardId || !rewardsMap) return undefined;
@@ -1175,7 +1175,7 @@ const UserPosition = ({
         })
 
         return result;
-    }, [addressRewardsStaking, rewardsMap, pool?.lp_denom])
+    }, [addressRewardsStaking, rewardsMap, pool])
     const lockedLpShares = useMemo(() => {
         if (!addressRewardsStaking || !rewardsMap || !pool?.lp_denom) return [];
 
@@ -1201,7 +1201,7 @@ const UserPosition = ({
         })
 
         return result;
-    }, [addressRewardsStaking, denomDecimals, denomTicker, pool?.lp_denom, rewardsMap])
+    }, [addressRewardsStaking, denomDecimals, denomTicker, pool, rewardsMap])
     const extraRewards = useMemo(() => {
         if (lockedLpShares.length === 0) return [];
 
@@ -1391,6 +1391,19 @@ const UserPosition = ({
     )
 }
 
+function TabButton({ isActive, onClick, children }: { isActive: boolean; onClick: () => void; children: React.ReactNode }) {
+    return (
+        <Button
+            variant={isActive ? "solid" : "ghost"}
+            colorPalette={isActive ? "blue" : undefined}
+            onClick={onClick}
+            size="sm"
+        >
+            {children}
+        </Button>
+    );
+}
+
 const PoolDetailsPageContent = () => {
     const [activeTab, setActiveTab] = useState<'add' | 'remove' | 'lock'>('add');
 
@@ -1451,7 +1464,7 @@ const PoolDetailsPageContent = () => {
         });
 
         return total;
-    }, [pool?.lp_denom, rewardsMap]);
+    }, [pool, rewardsMap]);
 
     const lockedInRewardsAmount = useMemo(() => {
         return uAmountToAmount(totalLockedInRewards, LP_ASSETS_DECIMALS);
@@ -1478,18 +1491,6 @@ const PoolDetailsPageContent = () => {
     }, [pool]);
 
     const validatorPageUrl = useMemo(() => getValidatorPageUrl(), []);
-
-    // Custom tabs
-    const TabButton = ({ isActive, onClick, children }: { isActive: boolean; onClick: () => void; children: React.ReactNode }) => (
-        <Button
-            variant={isActive ? "solid" : "ghost"}
-            colorPalette={isActive ? "blue" : undefined}
-            onClick={onClick}
-            size="sm"
-        >
-            {children}
-        </Button>
-    );
 
     return (
         <Container maxW="4xl" py={{ base: "4", md: "8" }} px={{ base: "4", md: "6" }} bg="bg.subtle">
