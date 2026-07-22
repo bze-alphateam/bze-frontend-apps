@@ -13,9 +13,10 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuCoins, LuCopy, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
+import { LuArrowUpRight, LuCoins, LuCopy, LuFlame, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
 import {
     TokenLogo,
+    getBurnerApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useToast,
@@ -26,6 +27,8 @@ import { StakingRewards } from '@/components/manage/staking-rewards'
 import { InfoBox } from '@/components/ui/info-box'
 import { useMyTokens, type MyToken } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
+
+const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same trust semantics as the dex assets page: an active admin can mint more,
 // only a renounced admin makes the supply provably fixed.
@@ -45,6 +48,8 @@ function TokenRow({ token }: { token: MyToken }) {
     const { asset, admin } = token
     const { toast } = useToast()
     const { navigate } = useNavigation()
+
+    const burnerUrl = `${getBurnerApp().href}/coin?coin=${encodeURIComponent(asset.denom)}`
 
     const copyDenom = async () => {
         await navigator.clipboard.writeText(asset.denom)
@@ -87,7 +92,7 @@ function TokenRow({ token }: { token: MyToken }) {
                     </VStack>
                 </HStack>
 
-                <HStack gap={4} flexWrap="wrap">
+                <HStack gap={2} flexWrap="wrap">
                     <VStack align="end" gap="0.5">
                         <Text fontSize="xs" color="fg.muted">
                             Total supply
@@ -97,6 +102,14 @@ function TokenRow({ token }: { token: MyToken }) {
                         </Text>
                     </VStack>
                     <TrustBadge renounced={admin === ''} />
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        colorPalette="red"
+                        onClick={() => openExternal(burnerUrl)}
+                    >
+                        <LuFlame /> Burn <LuArrowUpRight />
+                    </Button>
                     <Button
                         size="sm"
                         variant="outline"
