@@ -1,6 +1,6 @@
 'use client'
 import "@interchain-kit/react/styles.css";
-import {InterchainWalletModal, useChain, useWalletManager} from "@interchain-kit/react";
+import {InterchainWalletModal, useChain} from "@interchain-kit/react";
 import {
     Badge,
     Box,
@@ -37,7 +37,6 @@ import {cosmos} from "@bze/bzejs";
 import {openExternalLink} from "../../utils/functions";
 import {shortNumberFormat} from "../../utils/formatter";
 import {HighlightText} from "../highlight";
-import {useIsInHub} from "@bze/hub-connector";
 import {BridgeForm} from './bridge-form';
 import {BuyForm} from './buy-form';
 import {PendingTransactions} from './pending-transactions';
@@ -452,7 +451,6 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
     const [showCopiedTooltip, setShowCopiedTooltip] = useState(false)
     const [clickedBalance, setClickedBalance] = useState('')
     const copyButtonRef = useRef<HTMLButtonElement>(null)
-    const inHub = useIsInHub();
     const crossChainEnabled = useMemo(() => isCrossChainEnabled(), []);
     const skipEnabled = useMemo(() => isSkipEnabled(), []);
 
@@ -463,17 +461,11 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
         disconnect,
         connect,
     } = useChain(getChainName());
-    const walletManager = useWalletManager();
     const {assetsBalances, isLoading: assetsLoading} = useBalances();
 
-    // In BZE Hub: auto-connect to Keplr (our bridge) without showing the modal
     const handleConnect = useCallback(() => {
-        if (inHub) {
-            walletManager.connect("keplr-extension", getChainName());
-        } else {
-            connect();
-        }
-    }, [connect, walletManager, inHub]);
+        connect();
+    }, [connect]);
 
     const balancesWithoutLps = useMemo(() => {
         if (assetsLoading) return [];
@@ -624,7 +616,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
         <VStack gap="6" align="stretch">
             {/* Wallet Status - Always at top */}
             <Box>
-                {!inHub && !skipWalletModal && <InterchainWalletModal />}
+                {!skipWalletModal && <InterchainWalletModal />}
                 <HStack justify="space-between" mb="3">
                     <Text fontSize="sm" fontWeight="medium">
                         Wallet Status
@@ -703,7 +695,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                         w="full"
                         onClick={handleConnect}
                     >
-                        {inHub ? "Connect to Hub Wallet" : "Connect Wallet"}
+                        Connect Wallet
                     </Button>
                 }
             </Box>

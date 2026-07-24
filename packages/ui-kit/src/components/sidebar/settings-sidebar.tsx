@@ -27,15 +27,12 @@ import {useToast} from "../../hooks/useToast"
 import {useConnectionType} from "../../hooks/useConnectionType"
 import {useFeeTokens} from "../../hooks/useFeeTokens"
 import {getChainNativeAssetDenom} from "../../constants/assets"
-import {useIsInHub} from "@bze/hub-connector"
-import {LuInfo} from "react-icons/lu"
 
 interface SettingsSidebarContentProps {
     accentColor?: string
 }
 
 export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebarContentProps) => {
-    const inHub = useIsInHub()
     const { setTheme, resolvedTheme} = useTheme()
     const {toast} = useToast()
     const { settings, isLoaded, updateEndpoints, updatePreferredFeeDenom, defaultSettings } = useSettings()
@@ -155,27 +152,6 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
 
     return (
         <VStack gap="6" align="stretch">
-            {/* Hub info banner */}
-            {inHub && (
-                <Box
-                    p="3"
-                    bg="blue.50"
-                    _dark={{ bg: "blue.950/40" }}
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor={{ base: "blue.200", _dark: "blue.800" }}
-                >
-                    <HStack gap="2" align="start">
-                        <Box mt="0.5">
-                            <LuInfo size={16} color="var(--chakra-colors-blue-500)" />
-                        </Box>
-                        <Text fontSize="xs" color="blue.700" _dark={{ color: "blue.300" }}>
-                            Appearance and endpoint settings are managed by BZE Hub. Use the Hub app to change theme or network configuration.
-                        </Text>
-                    </HStack>
-                </Box>
-            )}
-
             {/* Appearance Section */}
             <Box>
                 <Text fontSize="sm" fontWeight="medium" mb="3">
@@ -183,15 +159,13 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                 </Text>
                 <VStack gap="3" align="stretch">
                     <HStack justify="space-between">
-                        <Text fontSize="sm" color={inHub ? "fg.muted" : undefined}>Dark Mode</Text>
+                        <Text fontSize="sm">Dark Mode</Text>
                         <Switch.Root
                             checked={resolvedTheme === 'dark'}
                             onCheckedChange={(details) => {
                                 const newTheme = details.checked ? 'dark' : 'light'
                                 setTheme(newTheme)
-                            }}
-                            disabled={inHub}
-                        >
+                            }}                        >
                             <Switch.HiddenInput />
                             <Switch.Control>
                                 <Switch.Thumb />
@@ -272,9 +246,7 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                             size="sm"
                             placeholder="https://rest.getbze.com"
                             value={restEndpoint}
-                            onChange={(e) => setRestEndpoint(e.target.value)}
-                            disabled={inHub}
-                        />
+                            onChange={(e) => setRestEndpoint(e.target.value)}                        />
                         {validationResults.rest && (
                             <Box
                                 mt="2"
@@ -303,9 +275,7 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                             size="sm"
                             placeholder="wss://rpc.getbze.com"
                             value={rpcEndpoint}
-                            onChange={(e) => setRpcEndpoint(e.target.value)}
-                            disabled={inHub}
-                        />
+                            onChange={(e) => setRpcEndpoint(e.target.value)}                        />
                         {validationResults.rpc && (
                             <Box
                                 mt="2"
@@ -330,7 +300,7 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                         variant="outline"
                         onClick={() => handleValidateEndpoints(restEndpoint, rpcEndpoint)}
                         loading={isValidating}
-                        disabled={inHub || !restEndpoint.trim() || !rpcEndpoint.trim()}
+                        disabled={!restEndpoint.trim() || !rpcEndpoint.trim()}
                     >
                         {isValidating ? 'Validating...' : 'Validate Endpoints'}
                     </Button>
@@ -345,7 +315,7 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                         width="full"
                         onClick={() => handleSaveSettings(restEndpoint, rpcEndpoint, preferredFeeDenom)}
                         colorPalette={accentColor}
-                        disabled={inHub || !hasUnsavedChanges}
+                        disabled={!hasUnsavedChanges}
                     >
                         Save Settings
                     </Button>
@@ -354,7 +324,6 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
                         width="full"
                         variant="outline"
                         onClick={handleResetToDefaults}
-                        disabled={inHub}
                     >
                         Reset to Defaults
                     </Button>

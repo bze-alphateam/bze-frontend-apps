@@ -1,13 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// isInHub() is mocked so we can test the hub-bypass contract of getEcosystemApp.
-// By default the mock returns false (same as the real implementation in a Node environment
-// where window is undefined).
-vi.mock('@bze/hub-connector', () => ({
-    isInHub: vi.fn().mockReturnValue(false),
-}))
-
-import { isInHub } from '@bze/hub-connector'
 import {
     getBurnerApp,
     getCommunitiesApp,
@@ -18,13 +10,6 @@ import {
     getStakingApp,
     getWebsiteApp,
 } from './ecosystem'
-
-const isInHubMock = vi.mocked(isInHub)
-
-// Prevent queued mockReturnValueOnce calls from leaking across describe blocks.
-afterEach(() => {
-    isInHubMock.mockClear()
-})
 
 describe('getEcosystemApp', () => {
     it('returns the correct app for a known key', () => {
@@ -50,16 +35,6 @@ describe('getEcosystemApp', () => {
             expect(app?.href).toBeTruthy()
             expect(app?.name).toBeTruthy()
         }
-    })
-
-    it('is unaffected by hub mode — does not call isInHub()', () => {
-        // getEcosystemApp() intentionally bypasses isInHub(). The proof: calling it
-        // without any mock setup returns a valid app. If it called isInHub() and
-        // got true, it would need to return undefined or empty — it doesn't.
-        const app = getEcosystemApp('dex')
-        expect(app).toBeDefined()
-        expect(app?.key).toBe('dex')
-        expect(isInHubMock).not.toHaveBeenCalled()
     })
 
     it('returns the app even when the key is in NEXT_PUBLIC_ECOSYSTEM_EXCLUDED', () => {
@@ -158,12 +133,7 @@ describe('getEcosystemApp env var overrides', () => {
     })
 })
 
-describe('getEcosystemApps hub mode and exclusions', () => {
-    it('returns empty array when isInHub() is true', () => {
-        isInHubMock.mockReturnValueOnce(true)
-        expect(getEcosystemApps()).toEqual([])
-    })
-
+describe('getEcosystemApps exclusions', () => {
     it('returns all apps when no exclusions are set', () => {
         const apps = getEcosystemApps()
         expect(apps.length).toBe(6)

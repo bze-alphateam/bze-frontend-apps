@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 
 import {Provider} from "@/components/ui/provider";
 import {TopNavBar} from "@/components/ui/navigation/navbar";
-import {Toaster, TestnetBanner, HubConnectorInit, SettingsProvider, setStorageKeyVersion, setDefaultTxMemo, getAppName} from "@bze/bze-ui-kit";
+import {Toaster, TestnetBanner, SettingsProvider, setStorageKeyVersion, setDefaultTxMemo, getAppName} from "@bze/bze-ui-kit";
 import {AssetsProvider} from "@/contexts/assets_context";
 import {BlockchainListenerWrapper} from "@/components/blockchain-listener-wrapper";
 import {GoogleTagManager} from "@next/third-parties/google";
@@ -49,7 +49,6 @@ export default function RootLayout({children}: { children: React.ReactNode }) {
                   <TopNavBar appLabel={getAppName()} />
                     {children}
                   <Toaster />
-                  <HubConnectorInit />
                   <TestnetBanner />
               </AssetsProvider>
               </SettingsProvider>

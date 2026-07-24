@@ -461,10 +461,6 @@ importers:
         version: 5.9.3
 
   packages/ui-kit:
-    dependencies:
-      '@bze/hub-connector':
-        specifier: ^0.1.4
-        version: 0.1.4(react@19.2.7)
     devDependencies:
       '@bze/bzejs':
         specifier: 3.1.0
@@ -623,14 +619,6 @@ packages:
 
   '@bze/bzejs@3.1.0':
     resolution: {integrity: sha512-HFxl0mQiJ+2ERKiWw+LIBz4jSDczgane+x6uOcMgxh1Wg0IeFrhQ9A4zJP/1vTQGWGrkQCN3RGtsyiqupRTfYw==}
-
-  '@bze/hub-connector@0.1.4':
-    resolution: {integrity: sha512-2BfhleemR0TIaiopn817zq5vYSNznmyuKivL/IIjDun1ZIy8KLR4I/uczZrwB1aRpGMLdEfm6qfWOmeU+BjBCg==}
-    peerDependencies:
-      react: '>=18'
-    peerDependenciesMeta:
-      react:
-        optional: true
 
   '@chain-registry/keplr@2.0.216':
     resolution: {integrity: sha512-C0ghy1cTjU08+9JGqMT/HDsHr+2jPgLv61+gUjilF1GnpbVDW7w0xxchXxBek1OKXA0HTiCCPSwBI10WGLPhMA==}
@@ -6336,10 +6324,6 @@ snapshots:
       - bufferutil
       - debug
       - utf-8-validate
-
-  '@bze/hub-connector@0.1.4(react@19.2.7)':
-    optionalDependencies:
-      react: 19.2.7
 
   '@chain-registry/keplr@2.0.216':
     dependencies:
