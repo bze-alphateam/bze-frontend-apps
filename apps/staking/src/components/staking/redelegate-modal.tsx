@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useMemo, useEffect} from 'react';
+import {useState, useMemo} from 'react';
 import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {
     useAssets,
@@ -42,15 +42,6 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [destValidator, setDestValidator] = useState<ValidatorSDKType | null>(null);
     const [search, setSearch] = useState('');
-
-    useEffect(() => {
-        if (!isOpen) {
-            setAmount('');
-            setIsSubmitting(false);
-            setDestValidator(null);
-            setSearch('');
-        }
-    }, [isOpen]);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);

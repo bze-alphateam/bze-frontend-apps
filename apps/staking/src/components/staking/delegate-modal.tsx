@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect, useMemo} from 'react';
+import {useState, useMemo} from 'react';
 import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
 import {
@@ -37,13 +37,6 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setAmount('');
-            setIsSubmitting(false);
-        }
-    }, [isOpen]);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);

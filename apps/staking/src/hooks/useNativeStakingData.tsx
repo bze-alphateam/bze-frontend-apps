@@ -144,9 +144,13 @@ export function useNativeStakingData() {
     }, [isLoadingAssets, nativeAsset, address])
 
     useEffect(() => {
-        if (!isLoadingAssets && nativeAsset) {
-            load()
+        if (isLoadingAssets || !nativeAsset) {
+            return
         }
+        const run = async () => {
+            await load()
+        }
+        run()
     }, [isLoadingAssets, nativeAsset, load])
 
     return {
