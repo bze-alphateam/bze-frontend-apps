@@ -1,6 +1,5 @@
 import type { IconType } from 'react-icons';
 import { LuGlobe, LuCoins, LuChartColumn, LuFlame, LuFactory, LuUsers } from 'react-icons/lu';
-import { isInHub } from '@bze/hub-connector';
 
 export const ECOSYSTEM_MENU_LABEL = 'Other';
 
@@ -72,9 +71,6 @@ const LABEL_OVERRIDES: Record<string, string | undefined> = {
  * - NEXT_PUBLIC_ECOSYSTEM_EXCLUDED    — comma-separated keys to exclude (e.g. "staking,factory")
  */
 export const getEcosystemApps = (): EcosystemApp[] => {
-    // In BZE Hub: the shell has its own tabs for ecosystem apps, no need for the menu
-    if (isInHub()) return [];
-
     const excluded = getExcludedKeys();
 
     return DEFAULT_APPS
@@ -95,7 +91,7 @@ export const getEcosystemApps = (): EcosystemApp[] => {
 
 /**
  * Returns a single ecosystem app by key with env var overrides applied.
- * Unlike getEcosystemApps(), this ignores the exclusion list and Hub mode —
+ * Unlike getEcosystemApps(), this ignores the exclusion list —
  * it is intended for deep links and cross-app URLs, not navigation menus.
  */
 export const getEcosystemApp = (key: string): EcosystemApp | undefined => {
