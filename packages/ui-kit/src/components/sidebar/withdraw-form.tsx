@@ -66,10 +66,11 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
     // ─── Destination picker collection (only for open-destination assets) ──
     const destinationsCollection = useMemo(() => {
+        type DestinationItem = { label: string; value: string; logo: string };
         if (!selectedAsset || selectedAsset.isDestinationLocked) {
-            return createListCollection({items: []});
+            return createListCollection<DestinationItem>({items: []});
         }
-        return createListCollection({
+        return createListCollection<DestinationItem>({
             items: selectedAsset.destinations.map(d => ({
                 label: d.displayName,
                 value: d.chainName,
