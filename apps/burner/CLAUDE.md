@@ -1,6 +1,8 @@
 # BZE Burner (burner.getbze.com)
 
-Next.js 15 token burner frontend for the BeeZee blockchain. React 19, Chakra UI v3.
+Next.js token burner frontend for the BeeZee blockchain. React 19, Chakra UI v3.
+
+> Commands, env vars, patches, deploy: the **repo root README.md** owns all of that. This file is architecture only.
 
 ## Architecture
 
@@ -54,29 +56,3 @@ import { setStorageKeyVersion, setDefaultTxMemo, Toaster } from '@bze/bze-ui-kit
 setStorageKeyVersion('2');
 setDefaultTxMemo('burner.getbze.com');
 ```
-
-## Next.js config
-
-```ts
-transpilePackages: ["@bze/bze-ui-kit"],
-experimental: {
-    optimizePackageImports: ["@chakra-ui/react", "@bze/bze-ui-kit"]
-}
-```
-
-## Development
-
-```sh
-npm install
-npm run dev     # Start dev server
-npm run build   # Production build
-npm run lint    # ESLint + type check
-```
-
-## Patches
-
-`patches/@interchain-kit+store+0.9.1.patch` — fixes `@interchain-kit/store` passing `{}` instead of `undefined` as signOptions in `ChainWalletStore.getOfflineSigner()`, which caused Keplr to override custom fee denoms. PR submitted upstream: https://github.com/hyperweb-io/interchain-kit/pull/XXX. Remove this patch once the fix is released upstream.
-
-## Environment variables
-
-See `@bze/bze-ui-kit` README for the full list of `NEXT_PUBLIC_*` env vars. Copy `.env.dist` from the lib as a starting template.
