@@ -1,5 +1,6 @@
 'use client';
 
+import {useState} from 'react';
 import {Box, Container, Text, VStack, HStack, Badge, Grid} from '@chakra-ui/react';
 import {LuClock} from 'react-icons/lu';
 import {
@@ -22,6 +23,10 @@ interface UnbondingDelegationsProps {
 export function UnbondingDelegations({unbondingDelegations, allValidators, logos}: UnbondingDelegationsProps) {
     const {nativeAsset} = useAssets();
     const decimals = nativeAsset?.decimals ?? 6;
+    // Capture "now" once at mount rather than calling the impure Date.now() during render.
+    // Unbonding countdowns are day-granular and the list re-fetches on chain events, so a
+    // per-render clock read isn't needed.
+    const [now] = useState(() => Date.now());
 
     if (unbondingDelegations.length === 0) {
         return null;
@@ -52,8 +57,8 @@ export function UnbondingDelegations({unbondingDelegations, allValidators, logos
                 <Grid templateColumns={{base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)'}} gap="3">
                     {entries.map((entry, idx) => {
                         const amountHuman = uAmountToBigNumberAmount(entry.amount, decimals);
-                        const isCompleted = entry.completionTime.getTime() < Date.now();
-                        const timeRemaining = entry.completionTime.getTime() - Date.now();
+                        const isCompleted = entry.completionTime.getTime() < now;
+                        const timeRemaining = entry.completionTime.getTime() - now;
                         const daysRemaining = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
 
                         return (

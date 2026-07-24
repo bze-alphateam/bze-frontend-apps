@@ -26,6 +26,9 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
     const [search, setSearch] = useState('');
     const [delegateValidator, setDelegateValidator] = useState<ValidatorSDKType | null>(null);
     const [isDelegateOpen, setIsDelegateOpen] = useState(false);
+    // Bumped on each open so the modal remounts with fresh local state (replaces the
+    // former reset-on-close effect inside the modal).
+    const [modalNonce, setModalNonce] = useState(0);
 
     const filtered = validators.filter(v => {
         if (!search) return true;
@@ -36,6 +39,7 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
     const openDelegateModal = (validator: ValidatorSDKType) => {
         setDelegateValidator(validator);
         setIsDelegateOpen(true);
+        setModalNonce(n => n + 1);
     };
 
     const closeDelegateModal = () => {
@@ -148,6 +152,7 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
             </VStack>
 
             <DelegateModal
+                key={`delegate-${modalNonce}`}
                 isOpen={isDelegateOpen}
                 onClose={closeDelegateModal}
                 validator={delegateValidator}

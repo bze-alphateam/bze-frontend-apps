@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect, useMemo} from 'react';
+import {useState, useMemo} from 'react';
 import {Box, Button, HStack, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {
     useAssets,
@@ -42,7 +42,6 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
     const {toast} = useToast();
     const {price: bzePrice} = useAssetPrice(nativeAsset?.denom ?? '');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedValidators, setSelectedValidators] = useState<Set<string>>(new Set());
 
     const decimals = nativeAsset?.decimals ?? 6;
 
@@ -52,14 +51,11 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
         [rewardEntries, decimals]
     );
 
-    // Reset selection when modal opens
-    useEffect(() => {
-        if (isOpen) {
-            // Select all by default
-            setSelectedValidators(new Set(claimableEntries.map(e => e.validatorAddress)));
-            setIsSubmitting(false);
-        }
-    }, [isOpen, claimableEntries]);
+    // Select all claimable validators by default. The parent remounts this modal via a
+    // `key` prop on each open, so this initializer re-runs and reselects all every time.
+    const [selectedValidators, setSelectedValidators] = useState<Set<string>>(
+        () => new Set(claimableEntries.map(e => e.validatorAddress))
+    );
 
     const selectedRewardsTotal = useMemo(() => {
         return claimableEntries
