@@ -1,4 +1,4 @@
-import {usePathname, useRouter} from "next/navigation";
+import {usePathname, useRouter, useSearchParams} from "next/navigation";
 
 export const DENOM_PARAM = "denom";
 
@@ -15,4 +15,13 @@ export const useNavigation = () => {
         currentPathName: pathname,
         navigate: router.push,
     };
+};
+
+// Reads the token denom from the `?denom=` query param (already URL-decoded by
+// URLSearchParams). Uses useSearchParams, so any component that calls this must
+// be rendered inside a <Suspense> boundary. Returns null when absent.
+export const useDenomParam = (): string | null => {
+    const searchParams = useSearchParams();
+
+    return searchParams.get(DENOM_PARAM);
 };
