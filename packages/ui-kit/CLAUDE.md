@@ -1,6 +1,6 @@
 # @bze/bze-ui-kit
 
-Shared library for the BZE frontend apps (dex, burner, staking). Consumed via `workspace:*` — **never published to npm**; edit the source and apps pick it up.
+Shared library for the BZE frontend apps (dex, burner, staking, factory, communities). Consumed via `workspace:*` — **never published to npm**; edit the source and apps pick it up.
 
 > Commands, env vars, patches, deploy: the **repo root README.md** owns all of that. This file is architecture only.
 
@@ -26,8 +26,8 @@ src/
 
 ## Key design decisions
 
-- **AssetsContext**: The lib exports the base type and React context object. Each app implements its own `AssetsProvider` because the apps have different state (dex: locked liquidity, market filtering; burner: burns, raffles, pending contributions; staking: delegations). Apps that extend the base `AssetsContextType` should use `extends BaseAssetsContextType` and provide a typed wrapper hook (see burner's `useBurnerContext`, staking's `useStakingContext`).
-- **Sidebar components**: Accept `accentColor` prop (default `"blue"`) to match each app's brand (dex=blue, burner=orange). The Sidebar wrapper, WalletSidebarContent, SettingsSidebarContent, and SettingsToggle are all shared.
+- **AssetsContext**: The lib exports the base type and React context object. Each app implements its own `AssetsProvider` because the apps have different state (dex: locked liquidity, market filtering; burner: burns, raffles, pending contributions; staking: delegations; factory: owned tokens; communities: factory-denom directory). Apps that extend the base `AssetsContextType` should use `extends BaseAssetsContextType` and provide a typed wrapper hook (see burner's `useBurnerContext`, staking's `useStakingContext`).
+- **Sidebar components**: Accept `accentColor` prop (default `"blue"`) to match each app's brand (dex=blue, burner=orange, staking=purple, factory=yellow, communities=green). The Sidebar wrapper, WalletSidebarContent, SettingsSidebarContent, and SettingsToggle are all shared.
 - **Toaster**: The lib creates and exports the Chakra toaster singleton + `<Toaster />` component. Each app must render `<Toaster />` in its layout.
 - **Transaction hooks**: `useSDKTx`, `useBZETx`, `useIBCTx` are in the lib with `useToast` — the apps share them.
 - **App-specific hooks NOT in the lib**: `useBlockchainListener` (different event subscriptions per app), `useNavigation` (different routes), and app-specific hooks like burner's `useBurningHistory`/`useRaffles`.

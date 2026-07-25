@@ -53,7 +53,7 @@ jobs:
       # `next build` runs the full TypeScript type-check and fails on type errors, so the
       # build is the correctness gate (compile + types + prerender). ESLint runs as the
       # separate `lint` job below, scoped to files changed in the PR.
-      - name: Build (ui-kit + all 3 apps)
+      - name: Build (ui-kit + all apps)
         run: pnpm exec turbo run build --concurrency=3 --cache-dir=.turbo
 
   test:
