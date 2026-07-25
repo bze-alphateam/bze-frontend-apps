@@ -3,6 +3,12 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      // `.env` files are gitignored, so Turbo's default inputs (git-tracked files only)
+      // never see them — editing a real `.env` left the task hash unchanged and Turbo
+      // replayed a `.next` built with the previous (or missing) env. NEXT_PUBLIC_* values
+      // are inlined at build time, so that cached output silently keeps the old values.
+      "inputs": ["$TURBO_DEFAULT$", ".env", ".env.*"],
+      "env": ["NEXT_PUBLIC_*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {
