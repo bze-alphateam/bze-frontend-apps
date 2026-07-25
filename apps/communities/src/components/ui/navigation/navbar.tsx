@@ -4,8 +4,9 @@ import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Tex
 import {NavbarLinks} from './navbar-links'
 import {useColorModeValue} from "@/components/ui/color-mode";
 import {LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsToggle, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
+import {Sidebar, WalletSidebarContent, SettingsToggle, TokenLogo, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
 import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
+import {useTokenBranding} from "@/contexts/token_branding_context";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {useMemo} from "react";
@@ -18,6 +19,8 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
     const {nativeAsset} = useAssets()
     const {balance} = useBalance(getChainNativeAssetDenom())
     const {status} = useChain(getChainName());
+    const {brand} = useTokenBranding();
+    const beezeeLogo = useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg");
 
     const walletButtonText = useMemo(() => {
         if (status !== WalletState.Connected || !nativeAsset) {
@@ -34,25 +37,48 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
             <Container py={{ base: '3.5', md: '4' }}>
                 <HStack justify="space-between">
                     <HStack gap="2" align="center">
-                        <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
-                            <Image
-                                height={{base: "22px", md: "28px"}}
-                                src={useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg")}
-                                alt="BZE application logo"
-                            />
-                        </ClientOnly>
-                        <Text
-                            fontSize={{ base: "sm", md: "md" }}
-                            fontWeight="extrabold"
-                            color="#27ae60"
-                            letterSpacing="tighter"
-                            textTransform="uppercase"
-                            opacity="0.9"
-                            transition="all 0.3s ease"
-                            _hover={{ opacity: 1, color: "#2ecc71" }}
-                        >
-                            {appLabel}
-                        </Text>
+                        {brand ? (
+                            // Token page: rebrand the chrome to the token (logo + name) so a
+                            // direct visit feels like the token's own site (Features & Usage §2).
+                            <>
+                                <Box width={{base: "24px", md: "30px"}} height={{base: "24px", md: "30px"}} flexShrink={0}>
+                                    <TokenLogo src={brand.logo} symbol={brand.ticker} circular={true} />
+                                </Box>
+                                <Text
+                                    fontSize={{ base: "sm", md: "md" }}
+                                    fontWeight="extrabold"
+                                    color="#27ae60"
+                                    letterSpacing="tighter"
+                                    opacity="0.9"
+                                    truncate
+                                    maxW={{base: "150px", md: "260px"}}
+                                >
+                                    {brand.name}
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
+                                    <Image
+                                        height={{base: "22px", md: "28px"}}
+                                        src={beezeeLogo}
+                                        alt="BZE application logo"
+                                    />
+                                </ClientOnly>
+                                <Text
+                                    fontSize={{ base: "sm", md: "md" }}
+                                    fontWeight="extrabold"
+                                    color="#27ae60"
+                                    letterSpacing="tighter"
+                                    textTransform="uppercase"
+                                    opacity="0.9"
+                                    transition="all 0.3s ease"
+                                    _hover={{ opacity: 1, color: "#2ecc71" }}
+                                >
+                                    {appLabel}
+                                </Text>
+                            </>
+                        )}
                     </HStack>
                     <Spacer hideFrom="md" />
                     <NavbarLinks hideBelow="md" />
