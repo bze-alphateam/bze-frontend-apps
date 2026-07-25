@@ -11,6 +11,7 @@ export interface Asset {
     stable: boolean; //is stablecoin
     verified: boolean; //is verified
     supply: bigint; //total supply on BZE chain
+    description?: string; //optional description (chain registry or on-chain bank metadata)
     IBCData?: IBCData;
 }
 

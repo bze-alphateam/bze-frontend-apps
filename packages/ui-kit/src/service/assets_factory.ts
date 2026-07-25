@@ -245,6 +245,9 @@ const populateAssetFromBZEChainRegistryAssetList = async (asset: Asset): Promise
     asset.name = assetData.name
     asset.ticker = assetData.display.toUpperCase()
     asset.logo = isNativeDenom(asset.denom) ? BZE_CIRCLE_LOGO : getAssetLogo(assetData as unknown as ChainRegistryAsset)
+    if (assetData.description) {
+        asset.description = assetData.description
+    }
 
     return asset
 }
@@ -259,6 +262,9 @@ const populateAssetFromBlockchainMetadata = (asset: Asset,  meta: MetadataSDKTyp
     }
     if (meta.symbol.length > 0) {
         asset.ticker = meta.symbol.toUpperCase()
+    }
+    if (meta.description.length > 0) {
+        asset.description = meta.description
     }
 
     if (meta.denom_units.length === 0) {
