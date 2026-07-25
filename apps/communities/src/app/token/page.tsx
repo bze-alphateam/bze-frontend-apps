@@ -9,6 +9,7 @@ import {useDenomParam, useNavigation} from "@/hooks/useNavigation";
 import {useTokenBranding} from "@/contexts/token_branding_context";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {TokenBurnStats} from "@/components/ui/tokens/token-burn-stats";
+import {TokenStakingRewards} from "@/components/ui/tokens/token-staking-rewards";
 
 const CopyableDenom = ({denom, ticker}: { denom: string; ticker: string }) => {
     const {toast} = useToast();
@@ -197,6 +198,7 @@ const TokenPageContent = () => {
                     {resolved && (
                         <>
                             <TokenOverview asset={resolved}/>
+                            <TokenStakingRewards asset={resolved}/>
                             <TokenBurnStats asset={resolved}/>
                         </>
                     )}
