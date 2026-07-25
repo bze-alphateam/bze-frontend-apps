@@ -22,16 +22,25 @@ import {
     getLiquidityPools,
     calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
     EXCLUDED_MARKETS,
+    NextBurn,
+    getAllBurnedCoins, getNextBurning,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {EpochInfoSDKType} from "@bze/bzejs/bze/epochs/epoch";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
+import {BurnedCoinsSDKType} from "@bze/bzejs/bze/burner/burned_coins";
 
 import type { AssetsContextType as BaseAssetsContextType } from "@bze/bze-ui-kit";
 
 export interface AssetsContextType extends BaseAssetsContextType {
+    nextBurn: NextBurn | undefined;
+    updateNextBurn: () => Promise<void>;
+
+    burnHistory: BurnedCoinsSDKType[];
+    updateBurnHistory: () => Promise<void>;
+
     settingsVersion: number;
     setSettingsVersion: (version: number) => void;
 }
@@ -72,9 +81,21 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     const [connectionType, setConnectionType] = useState<ConnectionType>(CONNECTION_TYPE_NONE);
     const [poolsMap, setPoolsMap] = useState<Map<string, LiquidityPoolSDKType>>(new Map())
     const [poolsDataMap, setPoolsDataMap] = useState<Map<string, LiquidityPoolData>>(new Map())
+    const [nextBurn, setNextBurn] = useState<NextBurn | undefined>(undefined)
+    const [burnHistory, setBurnHistory] = useState<BurnedCoinsSDKType[]>([]);
     const [settingsVersion, setSettingsVersion] = useState(0);
 
     const {address} = useChain(getChainName());
+
+    const doUpdateNextBurn = useCallback((next?: NextBurn) => {
+        setNextBurn(next)
+    }, [])
+    const doUpdateBurnHistory = useCallback((history: BurnedCoinsSDKType[]) => {
+        if (history.length === 0) {
+            return;
+        }
+        setBurnHistory(history)
+    }, [])
 
     const doUpdateAssets = useCallback((newAssets: ChainAssets) => {
         setAssetsMap(newAssets.assets);
@@ -243,22 +264,39 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         const [pools] = await Promise.all([getLiquidityPools()])
         doUpdateLiquidityPools(pools)
     }, [doUpdateLiquidityPools])
+    const updateNextBurn = useCallback(async () => {
+        try {
+            const data = await getNextBurning();
+            doUpdateNextBurn(data)
+        } catch (error) {
+            console.error('Failed to fetch next burning:', error);
+            setNextBurn(undefined);
+        }
+    }, [doUpdateNextBurn])
+    const updateBurnHistory = useCallback(async () => {
+        const response = await getAllBurnedCoins();
+        doUpdateBurnHistory(response.burnedCoins)
+    }, [doUpdateBurnHistory])
 
     useEffect(() => {
         const init = async () => {
             setIsLoading(true)
-            const [assets, markets, tickers, epochsInfo, pools] = await Promise.all([
+            const [assets, markets, tickers, epochsInfo, pools, nextBurn, burnHistory] = await Promise.all([
                 getChainAssets(),
                 getMarkets(),
                 getAllTickers(),
                 getEpochsInfo(),
                 getLiquidityPools(),
+                getNextBurning(),
+                getAllBurnedCoins(),
             ])
             doUpdateAssets(assets)
             doUpdateMarkets(markets)
             doUpdateMarketsData(tickers)
             doUpdateEpochs(epochsInfo.epochs)
             doUpdateLiquidityPools(pools)
+            doUpdateNextBurn(nextBurn)
+            doUpdateBurnHistory(burnHistory.burnedCoins)
             setIsLoading(false)
         }
         init();
@@ -310,6 +348,10 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
             updateLiquidityPools,
             poolsMap,
             poolsDataMap,
+            nextBurn,
+            updateNextBurn,
+            burnHistory,
+            updateBurnHistory,
             settingsVersion,
             setSettingsVersion,
         } as AssetsContextType}>

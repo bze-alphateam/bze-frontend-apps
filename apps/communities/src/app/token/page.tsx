@@ -8,6 +8,7 @@ import {Asset, isFactoryDenom, prettyAmount, TokenLogo, uAmountToAmount, useAsse
 import {useDenomParam, useNavigation} from "@/hooks/useNavigation";
 import {useTokenBranding} from "@/contexts/token_branding_context";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
+import {TokenBurnStats} from "@/components/ui/tokens/token-burn-stats";
 
 const CopyableDenom = ({denom, ticker}: { denom: string; ticker: string }) => {
     const {toast} = useToast();
@@ -193,7 +194,12 @@ const TokenPageContent = () => {
 
                     {notFound && <NotFound/>}
 
-                    {resolved && <TokenOverview asset={resolved}/>}
+                    {resolved && (
+                        <>
+                            <TokenOverview asset={resolved}/>
+                            <TokenBurnStats asset={resolved}/>
+                        </>
+                    )}
                 </VStack>
             </Container>
         </Box>
