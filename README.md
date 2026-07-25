@@ -8,17 +8,19 @@ One repo, one install, no publishing — edit the shared lib and every app sees 
 ```
 bze-frontend-apps/
 ├── apps/
-│   ├── dex/        → bze-dapp-v2   (the DEX)
-│   ├── burner/     → bze-burner    (token burner + raffles)
-│   └── staking/    → bze-staking   (staking UI)
+│   ├── dex/          → bze-dapp-v2     (the DEX — orderbook + AMM pools)
+│   ├── burner/       → bze-burner      (token burner + raffles)
+│   ├── staking/      → bze-staking     (staking UI)
+│   ├── factory/      → bze-factory     (Token Factory — create/manage tokens, pools, markets, rewards)
+│   └── communities/  → bze-communities (per-token pages for `factory/` denoms)
 ├── packages/
-│   └── ui-kit/     → @bze/bze-ui-kit (shared hooks/utils/query/services/UI)
+│   └── ui-kit/       → @bze/bze-ui-kit (shared hooks/utils/query/services/UI)
 ├── pnpm-workspace.yaml   ← workspace globs + overrides + patches + build approvals
-├── turbo.json            ← task pipeline (build order, caching)
+├── turbo.json            ← task pipeline (build order, caching, env hashing)
 └── package.json          ← root scripts, pins pnpm version
 ```
 
-The three apps are **Next.js 16 / React 19 / Chakra UI v3** and all consume `@bze/bze-ui-kit`
+All five apps are **Next.js 16 / React 19 / Chakra UI v3** and all consume `@bze/bze-ui-kit`
 through the workspace (`"@bze/bze-ui-kit": "workspace:*"`) — **no npm tag/publish/version bump.**
 
 ---
@@ -70,9 +72,8 @@ pnpm --filter bze-communities dev   # Communities → http://localhost:3004
 ```
 
 Each app's dev script bakes in its own port (`next dev --webpack -p <port>`), so you can run
-several at once without passing `-- -p`. Local config comes from each app's own `.env`
-(copy from `.env.dist`). Factory is still a placeholder app (under-construction page) with no
-wallet stack or env yet.
+several at once without passing `-- -p`. Local config comes from each app's own `.env` — copy it
+from that app's committed `.env.dist` template, which every app now has.
 
 > **Why `dev` uses `--webpack`:** the dev scripts run `next dev --webpack` on purpose.
 > The apps rely on webpack `resolve.alias` (see *“The one real gotcha”* below) to force
@@ -97,7 +98,7 @@ Build everything (Turbo runs ui-kit first, then the apps, and caches results):
 ```sh
 pnpm build                                       # = turbo run build
 pnpm exec turbo run build --concurrency=1        # build apps one at a time (lower peak memory)
-pnpm exec turbo run build --concurrency=3        # build all 3 apps in parallel (needs the RAM)
+pnpm exec turbo run build --concurrency=3        # build 3 apps at a time (needs the RAM)
 ```
 
 > **Don't** write `pnpm build -- --concurrency=1`. The `--` makes turbo pass `--concurrency`
@@ -153,6 +154,7 @@ Only `packages/ui-kit` has a suite so far — test files live next to the code t
 | `src/utils/denom.test.ts` | factory / IBC / LP denom classification (legacy `ulp_` **and** hashed `ulp/` formats), native denom, center-truncation |
 | `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
 | `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
+| `src/constants/ecosystem.test.ts` | ecosystem nav list — `NEXT_PUBLIC_ECOSYSTEM_LINK_*` / `_LABEL_*` overrides, `_EXCLUDED` filtering, and `getEcosystemApp()` ignoring exclusions |
 
 Conventions:
 - Pure functions only, no mocks, no network. Anything that needs a live endpoint or a
@@ -242,7 +244,6 @@ module.exports = {
       cwd: `${base}/bze-frontend-mainnet/current/apps/staking` },
     { name: "communities", interpreter: node, script: next, args: "start --port 8086",
       cwd: `${base}/bze-frontend-mainnet/current/apps/communities` },
-    // factory is still an under-construction placeholder — add when it ships
     { name: "factory", interpreter: node, script: next, args: "start --port 8087",
       cwd: `${base}/bze-frontend-mainnet/current/apps/factory` },
 
@@ -314,8 +315,18 @@ to that app's `package.json` and reinstall.
 ### Add a brand-new app
 1. Create `apps/<name>/` (copy an existing app's `next.config.ts` so you inherit the singleton
    aliasing + connector stubs).
-2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`.
-3. `pnpm install`. It's picked up automatically by the `apps/*` glob.
+2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`
+   with a free port, and `build` = `next build --webpack`.
+3. Commit a `.env.dist` template — CI copies it to `.env` to seed the build, and it's the source
+   the deploy checkouts copy from.
+4. `pnpm install`. The workspace picks the app up automatically via the `apps/*` glob, and so does
+   Turbo.
+5. **Add the app to the hardcoded lists that the glob doesn't cover** — easy to miss:
+   - `.github/workflows/ci.yml` — two `for app in dex burner staking factory communities` loops
+     (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
+     with no env; miss the second and its files are never linted.
+   - the server's pm2 `ecosystem.config.js` (both networks) — see *Deploy* above.
+   - the real `.env` on each deploy checkout, **before** that checkout's first build.
 
 ### Pin / override a dependency version everywhere
 Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignores the package.json
