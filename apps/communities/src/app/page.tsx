@@ -1,26 +1,18 @@
+'use client';
+
+import {Container, Heading, Stack, Text} from "@chakra-ui/react";
+
 export default function Home() {
-  return (
-    <main className="uc">
-      <div className="uc-badge">
-        <div className="uc-hex">🐝</div>
-      </div>
-
-      <p className="uc-kicker">BeeZee Blockchain</p>
-      <h1 className="uc-title">Communities</h1>
-      <p className="uc-sub">
-        Discover, join, and grow communities on the BeeZee blockchain. A place
-        for the hive to gather — we&apos;re building it now, check back soon.
-      </p>
-
-      <div className="uc-dots" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
-
-      <p className="uc-foot">
-        Under construction · <a href="https://getbze.com">getbze.com</a>
-      </p>
-    </main>
-  );
+    return (
+        <Container maxW="4xl" py={{base: "12", md: "20"}}>
+            <Stack gap="4" align="center" textAlign="center">
+                <Heading size={{base: "2xl", md: "4xl"}}>Communities</Heading>
+                <Text color="fg.muted" fontSize={{base: "md", md: "lg"}} maxW="2xl">
+                    Every token created on the BeeZee blockchain gets its own dedicated page —
+                    supply, staking rewards, burns, and a built-in way to get the token.
+                    The token directory is being built right now, check back soon.
+                </Text>
+            </Stack>
+        </Container>
+    );
 }
