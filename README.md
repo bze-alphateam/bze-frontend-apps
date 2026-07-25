@@ -71,8 +71,8 @@ pnpm --filter bze-communities dev   # Communities → http://localhost:3004
 
 Each app's dev script bakes in its own port (`next dev --webpack -p <port>`), so you can run
 several at once without passing `-- -p`. Local config comes from each app's own `.env`
-(copy from `.env.dist`). Factory and Communities are placeholder apps (under-construction
-pages) with no wallet stack or env yet.
+(copy from `.env.dist`). Factory is still a placeholder app (under-construction page) with no
+wallet stack or env yet.
 
 > **Why `dev` uses `--webpack`:** the dev scripts run `next dev --webpack` on purpose.
 > The apps rely on webpack `resolve.alias` (see *“The one real gotcha”* below) to force
@@ -196,7 +196,7 @@ with that network's `.env` files:
 <deploy-root>/bze-frontend-testnet/current   ← built with testnet .env files
 ```
 
-`current` is a symlink to the active release. All three apps in a checkout share one
+`current` is a symlink to the active release. All apps in a checkout share one
 `node_modules` and are built and released together (they share `ui-kit` and version-lock).
 
 ### Build (the normal flow — no special config)
@@ -205,8 +205,14 @@ In each checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm exec turbo run build --concurrency=3   # builds ui-kit + all 3 apps, using the .env files present
+pnpm exec turbo run build --concurrency=3   # builds ui-kit + every app, using the .env files present
 ```
+
+Turbo hashes each app's `.env` / `.env.*` (see `inputs` on the `build` task in `turbo.json`), so
+creating or editing an app's `.env` invalidates its cached build and forces a real `next build`.
+That matters because `NEXT_PUBLIC_*` values are inlined at build time — without it, Turbo would
+replay a `.next` built with the old env and the app would serve stale values forever. If you ever
+suspect a cached build is wrong anyway, `--force` bypasses the cache for one run.
 
 Each app's output lands in `apps/<app>/.next`. Nothing app-specific to run — one `pnpm build`
 does the whole network.
@@ -234,6 +240,11 @@ module.exports = {
       cwd: `${base}/bze-frontend-mainnet/current/apps/burner`,  exec_mode: "cluster", instances: 2 },
     { name: "staking", interpreter: node, script: next, args: "start --port 8083",
       cwd: `${base}/bze-frontend-mainnet/current/apps/staking` },
+    { name: "communities", interpreter: node, script: next, args: "start --port 8086",
+      cwd: `${base}/bze-frontend-mainnet/current/apps/communities` },
+    // factory is still an under-construction placeholder — add when it ships
+    { name: "factory", interpreter: node, script: next, args: "start --port 8087",
+      cwd: `${base}/bze-frontend-mainnet/current/apps/factory` },
 
     // ---------- testnet ----------
     { name: "testnet-dex",     interpreter: node, script: next, args: "start --port 8088",
@@ -242,9 +253,16 @@ module.exports = {
       cwd: `${base}/bze-frontend-testnet/current/apps/burner` },
     { name: "testnet-staking", interpreter: node, script: next, args: "start --port 8090",
       cwd: `${base}/bze-frontend-testnet/current/apps/staking` },
+    { name: "testnet-communities", interpreter: node, script: next, args: "start --port 8091",
+      cwd: `${base}/bze-frontend-testnet/current/apps/communities` },
+    { name: "testnet-factory", interpreter: node, script: next, args: "start --port 8092",
+      cwd: `${base}/bze-frontend-testnet/current/apps/factory` },
   ],
 };
 ```
+
+The ports above just continue the existing pattern — they're illustrative, like the rest of this
+example. Use whatever your nginx/Caddy front end actually routes to.
 
 ### Deploy a release
 
@@ -259,9 +277,11 @@ pm2 reload ecosystem.config.js              # reload only changed apps: pm2 relo
 ```
 
 Notes:
-- The three apps in a network release **together**; Turbo only rebuilds what actually changed.
+- All apps in a network release **together**; Turbo only rebuilds what actually changed.
 - `.env` files are per checkout and are **not** in git — keep each network's real `.env` on the
-  server (only `.env.dist` templates are committed).
+  server (only `.env.dist` templates are committed). A new app needs its `.env` in place **before**
+  the first build of that checkout; `turbo.json` hashes `.env` so a later edit does invalidate the
+  cache, but a first build without one bakes in the fallback defaults.
 - Put nginx/Caddy in front routing each domain to its port.
 - First-time setup: `pm2 start ecosystem.config.js` (then `pm2 save`).
 
