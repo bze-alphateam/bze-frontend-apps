@@ -9,6 +9,7 @@ import React, {createContext, useContext, useMemo, useState} from "react";
  * token's own site.
  */
 export interface TokenBrand {
+    denom: string;
     name: string;
     ticker: string;
     logo: string;

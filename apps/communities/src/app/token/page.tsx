@@ -169,7 +169,7 @@ const TokenPageContent = () => {
     // normal branding when the token changes or we leave the page.
     useEffect(() => {
         if (resolved) {
-            setBrand({name: resolved.name, ticker: resolved.ticker, logo: resolved.logo});
+            setBrand({denom: resolved.denom, name: resolved.name, ticker: resolved.ticker, logo: resolved.logo});
         } else {
             setBrand(null);
         }
