@@ -3,9 +3,11 @@
 import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Text} from '@chakra-ui/react'
 import {NavbarLinks} from './navbar-links'
 import {useColorModeValue} from "@/components/ui/color-mode";
-import {LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsToggle, TokenLogo, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
+import {LuSettings, LuWallet} from "react-icons/lu";
+import {Sidebar, WalletSidebarContent, SettingsSidebarContent, TokenLogo, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
 import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
+import {GetTokenSection} from "@/components/ui/wallet/get-token-section";
+import {FeeTokenToggle} from "@/components/ui/settings/fee-token-toggle";
 import {useTokenBranding} from "@/contexts/token_branding_context";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
@@ -93,11 +95,24 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
                                     </Button>
                                 }
                             >
+                                {/* Token pages only: acquire the page token without leaving the app (BFE-40). */}
+                                {brand && <GetTokenSection denom={brand.denom} accentColor="green" />}
                                 <WalletSidebarContent accentColor="green" skipWalletModal />
                             </Sidebar>
                         </ClientOnly>
                         <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <SettingsToggle accentColor="green" />
+                            <Sidebar
+                                ariaLabel="Settings"
+                                trigger={
+                                    <Button variant="subtle" size={{ base: 'sm', md: 'md' }}>
+                                        <LuSettings />
+                                    </Button>
+                                }
+                            >
+                                {/* Token pages only: force the page token as the fee token (BFE-40). */}
+                                {brand && <FeeTokenToggle denom={brand.denom} accentColor="green" />}
+                                <SettingsSidebarContent accentColor="green" />
+                            </Sidebar>
                         </ClientOnly>
                     </Box>
                     <MobileNavbarLinks />
