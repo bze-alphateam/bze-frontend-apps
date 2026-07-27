@@ -17,13 +17,14 @@ import {
     Textarea,
     VStack,
 } from '@chakra-ui/react'
-import {LuCopy, LuExternalLink, LuX} from 'react-icons/lu'
+import {LuChevronDown, LuChevronUp, LuCopy, LuExternalLink, LuX} from 'react-icons/lu'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {getChainExplorerURL, getChainName} from "../../constants/chain";
 import {WalletState} from "@interchain-kit/core";
 import {stringTruncateFromCenter} from "../../utils/strings";
 import {useBalances} from "../../hooks/useBalances";
 import type {AssetBalance} from "../../hooks/useBalances";
+import {useAsset} from "../../hooks/useAssets";
 import {isIbcDenom, isLpDenom} from "../../utils/denom";
 
 import {amountToUAmount, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount} from "../../utils/amount";
@@ -49,6 +50,10 @@ type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
 interface WalletSidebarContentProps {
     accentColor?: string
     skipWalletModal?: boolean
+    // When set (communities token pages), this denom's balance is pinned at the top of the
+    // balances list even when zero, every other balance is collapsed behind an expand control,
+    // and the send form preselects it. Unset (dex/burner/staking/index) → today's behaviour.
+    featuredDenom?: string
 }
 
 interface BalanceItemProps {
@@ -441,8 +446,9 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
     )
 }
 
-export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = false }: WalletSidebarContentProps) => {
+export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = false, featuredDenom }: WalletSidebarContentProps) => {
     const [viewState, setViewState] = useState<ViewState>('balances')
+    const [showAllBalances, setShowAllBalances] = useState(false)
     const [selectedTxId, setSelectedTxId] = useState<string>('')
     // Single tracker instance for the entire sidebar — shared by pending list,
     // tx details view, and buy form via props.
@@ -501,6 +507,40 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
         })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [balancesWithoutLps])
+
+    // Token-first wallet (Business Logic §7): on a token page the page token is always pinned
+    // on top — even at zero balance — so we may have to synthesize a zero AssetBalance from the
+    // asset metadata when the user holds none of it. featuredDenom is "" for every other app.
+    const {asset: featuredAsset} = useAsset(featuredDenom ?? "")
+    const featuredBalance = useMemo<AssetBalance | undefined>(() => {
+        if (!featuredDenom) return undefined;
+
+        const held = balancesWithoutLps.find(bal => bal.denom === featuredDenom)
+        if (held) return held;
+
+        if (featuredAsset) {
+            return {...featuredAsset, amount: BigNumber(0), USDValue: BigNumber(0)}
+        }
+
+        return undefined;
+    }, [featuredDenom, balancesWithoutLps, featuredAsset])
+
+    // Everything except the featured token, in the standard order, revealed by the expand control.
+    const otherBalances = useMemo(() => {
+        if (!featuredDenom) return sortedBalances;
+
+        return sortedBalances.filter(bal => bal.denom !== featuredDenom)
+    }, [featuredDenom, sortedBalances])
+
+    // The send form must be able to preselect the featured token even when the user holds none of
+    // it, so make sure a synthesized zero balance is selectable there.
+    const sendBalances = useMemo(() => {
+        if (featuredBalance && !sortedBalances.some(bal => bal.denom === featuredBalance.denom)) {
+            return [featuredBalance, ...sortedBalances]
+        }
+
+        return sortedBalances;
+    }, [featuredBalance, sortedBalances])
 
     const walletAddress = useMemo(() => stringTruncateFromCenter(address ?? "", 16), [address])
 
@@ -576,9 +616,38 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                     Balances
                 </Text>
                 <VStack gap="2" align="stretch">
-                    {sortedBalances.map((bal) => (
-                        <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)} accentColor={accentColor}/>
-                    ))}
+                    {featuredDenom ? (
+                        <>
+                            {featuredBalance && (
+                                <BalanceItem
+                                    key={featuredBalance.denom}
+                                    asset={featuredBalance}
+                                    onClick={() => onBalanceClick(featuredBalance.ticker)}
+                                    accentColor={accentColor}
+                                />
+                            )}
+                            {otherBalances.length > 0 && (
+                                <>
+                                    <Button
+                                        size="xs"
+                                        variant="ghost"
+                                        colorPalette={accentColor}
+                                        onClick={() => setShowAllBalances(prev => !prev)}
+                                    >
+                                        {showAllBalances ? <LuChevronUp /> : <LuChevronDown />}
+                                        {showAllBalances ? 'Hide other balances' : `Show all balances (${otherBalances.length})`}
+                                    </Button>
+                                    {showAllBalances && otherBalances.map((bal) => (
+                                        <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)} accentColor={accentColor}/>
+                                    ))}
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        sortedBalances.map((bal) => (
+                            <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)} accentColor={accentColor}/>
+                        ))
+                    )}
                 </VStack>
             </Box>
 
@@ -711,7 +780,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                 />
             )}
             {status === WalletState.Connected && viewState === 'balances' && renderBalancesView()}
-            {status === WalletState.Connected && viewState === 'send' && <SendForm balances={sortedBalances} onClose={handleCancel} selectedTicker={clickedBalance} accentColor={accentColor}/>}
+            {status === WalletState.Connected && viewState === 'send' && <SendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')} accentColor={accentColor}/>}
             {status === WalletState.Connected && crossChainEnabled && viewState === 'transfer' && <BridgeForm accentColor={accentColor} onClose={() => setViewState('balances')} />}
             {status === WalletState.Connected && skipEnabled && viewState === 'buy' && <BuyForm accentColor={accentColor} onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
             {status === WalletState.Connected && viewState === 'txDetails' && selectedTxId && (() => {
