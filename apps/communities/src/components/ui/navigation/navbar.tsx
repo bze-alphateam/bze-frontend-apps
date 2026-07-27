@@ -97,7 +97,8 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
                             >
                                 {/* Token pages only: acquire the page token without leaving the app (BFE-40). */}
                                 {brand && <GetTokenSection denom={brand.denom} accentColor="green" />}
-                                <WalletSidebarContent accentColor="green" skipWalletModal />
+                                {/* Token pages only: pin the page token's balance first, others behind an expand (BFE-39). */}
+                                <WalletSidebarContent accentColor="green" skipWalletModal featuredDenom={brand?.denom} />
                             </Sidebar>
                         </ClientOnly>
                         <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
