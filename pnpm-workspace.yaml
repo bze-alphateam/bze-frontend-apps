@@ -15,6 +15,19 @@ overrides:
   # Keep a single @interchain-kit/store at 0.9.1 (what the patch targets + original lock).
   "@interchain-kit/store": "0.9.1"
 
+# Single source of truth for the test-tooling versions (BFE-41). The shared
+# @bze/vitest-preset and every app reference these via `catalog:`, so vitest,
+# jsdom and the Testing Library packages never drift apart between packages
+# (matching versions also keep vitest a single physical instance, so the shared
+# setup's afterEach hooks into the same runner the app uses).
+catalog:
+  vitest: "^4.1.10"
+  jsdom: "^25.0.1"
+  "@vitejs/plugin-react": "^5.0.4"
+  "@testing-library/react": "^16.1.0"
+  "@testing-library/jest-dom": "^6.6.3"
+  "@testing-library/user-event": "^14.5.2"
+
 # Patches ported from the apps' old patch-package setup, now applied natively by pnpm.
 patchedDependencies:
   "@interchain-kit/store@0.9.1": "patches/@interchain-kit__store@0.9.1.patch"
