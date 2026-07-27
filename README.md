@@ -132,15 +132,17 @@ Unit tests run on **Vitest**. They are part of the CI merge gate: the `test` job
 ### Run them
 
 ```sh
-pnpm test                                  # = turbo run test (all packages that have tests)
+pnpm test                                  # = turbo run test (ui-kit + every app)
 pnpm --filter @bze/bze-ui-kit test         # just the ui-kit suite
+pnpm --filter bze-communities test         # just one app's suite
 pnpm --filter @bze/bze-ui-kit test:watch   # watch mode while developing
 pnpm --filter @bze/bze-ui-kit exec vitest run src/utils/amount.test.ts   # a single file
 ```
 
 Turbo caches test runs per package — `pnpm test` with no changes replays from cache.
-The `test` task depends on `^build`, so an app's tests (once they exist) always run
-against a freshly built ui-kit.
+The `test` task depends on `^build`, so an app's tests always run against a freshly
+built ui-kit. Every app defines `"test": "vitest run"`; apps with no tests yet still
+pass the gate (`passWithNoTests`), so `turbo run test` covers the whole workspace.
 
 ### What's covered today
 
@@ -161,6 +163,45 @@ Conventions:
   wallet does **not** belong in this suite.
 - ui-kit targets ES2017, so **no BigInt literals** in tests — write `BigInt(1000)`, not `1000n`.
 
+The **apps** additionally have a component-test harness (jsdom + React Testing Library).
+`apps/communities` is the reference suite:
+
+| File | Covers |
+|---|---|
+| `src/lib/token-directory.test.ts` | pure directory logic — factory-denom filter, alphabetical-by-ticker sort, `getTotalPages` / `pageSlice` (20/page) client-side pagination, `clampPage`, `tokenPagePath()` URL-encoding |
+| `src/app/page.test.tsx` | the directory page renders loading / empty / list states, paginates at 20 and advances on **Next**, and links each card to the URL-encoded token page |
+
+### App tests (Vitest + React Testing Library)
+
+Every app under `apps/*` shares one preset, `@bze/vitest-preset` (`packages/vitest-preset`),
+so the config never drifts. An app's `vitest.config.ts` is just:
+
+```ts
+import { fileURLToPath } from "node:url";
+import { createAppVitestConfig } from "@bze/vitest-preset";
+export default createAppVitestConfig(fileURLToPath(new URL(".", import.meta.url)));
+```
+
+The preset provides: the React plugin (JSX/TSX), a **jsdom** DOM, the `@/*` → `src/*`
+alias, test discovery (`src/**/*.test.{ts,tsx}`), `passWithNoTests`, and a shared setup
+that registers `@testing-library/jest-dom` matchers and auto-`cleanup()`s between tests.
+Tool versions live in one place — the `catalog:` block in `pnpm-workspace.yaml` — and are
+referenced by both the preset and each app, so vitest stays a single physical instance.
+
+Guidelines for writing app tests:
+- **Extract logic, then test it.** Pull inline page/component logic into a pure,
+  React-free `src/lib/*.ts` helper and unit-test that (see `communities/src/lib/token-directory.ts`).
+  Keep those helpers free of `next/*` imports so they test in isolation.
+- **Import test globals explicitly** — `import { describe, it, expect } from "vitest"` (no
+  `globals: true`). This matches ui-kit and keeps ESLint / `next build`'s type-check happy.
+- **Component tests** wrap the tree in a minimal `<ChakraProvider value={defaultSystem}>`
+  and `vi.mock` the app's context hook (e.g. `useCommunitiesContext`) to feed state —
+  no wallet / chain providers needed. See `communities/src/app/page.test.tsx`.
+- Test files (`*.test.ts[x]`) and `vitest.config.ts` are excluded from each app's
+  `tsconfig.json`, so `next build` never type-checks them.
+- Need setup shared across all apps (a new global matcher, a polyfill)? Add it to the
+  preset's `setup.ts` — it runs before every app's tests.
+
 ### TODO — next steps (in rough priority order)
 
 - [ ] **Cover the remaining ui-kit utils**: `market.ts`, `charts.ts`, `formatter.ts`,
@@ -172,16 +213,20 @@ Conventions:
       start with ui-kit query hooks (`useMarkets`, `useBalances`, `usePrices`), then
       app-local hooks (dex: `useLockedLiquidity`; burner: `useRaffles`, `useNextBurning`).
       Requires mocking the query layer (vi.mock on `query/*` or MSW).
+- [x] **App component-test harness** — shared `@bze/vitest-preset` (jsdom + RTL) wired
+      into all 5 apps; `communities` directory suite is the reference (BFE-41).
+- [ ] **Per-app suites** for dex / staking / burner / factory — each is its own follow-up
+      story off this harness (see the "App tests" section for the pattern).
 - [ ] **Component tests** for form-heavy flows (order placement validation in dex, burn
-      flow in burner) — needs a Chakra provider wrapper + wallet context stubs.
+      flow in burner) — Chakra provider wrapper + `vi.mock`ed context/wallet, per above.
 - [ ] **Playwright smoke suite** as a separate CI job: `next build && next start` each
       app, load the main pages, assert no crashes / console errors, with network calls
       mocked via `page.route()` (never hit live chain RPC from CI). This catches the
       "builds fine but white-screens at runtime" class that `next build` misses.
 - [ ] **Coverage reporting** (`vitest --coverage`) once there's enough surface to make
       the number meaningful — consider a soft threshold on `packages/ui-kit/src/utils`.
-- [ ] When adding tests to an app: add a `"test": "vitest run"` script to that app's
-      `package.json` — turbo picks it up automatically (the `test` task is already wired).
+- [ ] **Coverage per app** once each app grows a suite — the `test` script and turbo
+      wiring are already in place, so new test files are picked up automatically.
 
 ---
 
