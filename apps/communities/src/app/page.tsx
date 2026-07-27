@@ -3,26 +3,22 @@
 import React, {useMemo, useState} from "react";
 import {Box, Button, Container, HStack, Skeleton, Stack, Text, VStack} from "@chakra-ui/react";
 import {LuChevronLeft, LuChevronRight, LuInbox} from "react-icons/lu";
-import {Asset, isFactoryDenom} from "@bze/bze-ui-kit";
 
 import {useCommunitiesContext} from "@/hooks/useCommunitiesContext";
 import {TokenCard} from "@/components/ui/tokens/token-card";
-
-const PAGE_SIZE = 20;
+import {filterAndSortFactoryTokens, getTotalPages, pageSlice} from "@/lib/token-directory";
 
 export default function Home() {
     const {assetsMap, isLoading} = useCommunitiesContext();
     const [page, setPage] = useState(1);
 
-    // Every factory token, alphabetical by ticker. Excluded assets are already
-    // dropped upstream in getChainAssets (Business Logic §1).
-    const tokens = useMemo(() => {
-        return Array.from(assetsMap.values())
-            .filter((asset: Asset) => isFactoryDenom(asset.denom))
-            .sort((a, b) => a.ticker.localeCompare(b.ticker));
-    }, [assetsMap]);
+    // Every factory token, alphabetical by ticker (see token-directory helper).
+    const tokens = useMemo(
+        () => filterAndSortFactoryTokens(Array.from(assetsMap.values())),
+        [assetsMap],
+    );
 
-    const totalPages = Math.max(1, Math.ceil(tokens.length / PAGE_SIZE));
+    const totalPages = getTotalPages(tokens.length);
 
     // Keep the current page in range when the token list shrinks (state-during-render
     // pattern — React re-renders immediately, no cascading-effect warning).
@@ -30,10 +26,7 @@ export default function Home() {
         setPage(totalPages);
     }
 
-    const pageTokens = useMemo(() => {
-        const start = (page - 1) * PAGE_SIZE;
-        return tokens.slice(start, start + PAGE_SIZE);
-    }, [tokens, page]);
+    const pageTokens = useMemo(() => pageSlice(tokens, page), [tokens, page]);
 
     return (
         <Box minH="100vh" bg="bg.subtle">

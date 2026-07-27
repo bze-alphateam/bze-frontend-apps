@@ -1,10 +1,10 @@
 import {usePathname, useRouter, useSearchParams} from "next/navigation";
 
-export const DENOM_PARAM = "denom";
+import {DENOM_PARAM, tokenPagePath} from "@/lib/token-directory";
 
-// Canonical token page URL. The denom is always URL-encoded in the query string,
-// never in the path (factory denoms contain `/`). See Business Logic §3.
-export const tokenPagePath = (denom: string) => `/token?${DENOM_PARAM}=${encodeURIComponent(denom)}`;
+// tokenPagePath / DENOM_PARAM live in the pure (React-free) directory helper so
+// they stay unit-testable; re-exported here for the existing import sites.
+export {DENOM_PARAM, tokenPagePath};
 
 // Basic navigation without search params (no Suspense needed)
 export const useNavigation = () => {
