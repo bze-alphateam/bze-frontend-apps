@@ -1,0 +1,18 @@
+{
+  "name": "@bze/vitest-preset",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./setup": "./setup.ts"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "catalog:"
+  },
+  "peerDependencies": {
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -4,7 +4,7 @@ import {LuArrowUpRight} from "react-icons/lu";
 import {Asset, TokenLogo, prettyAmount, uAmountToAmount} from "@bze/bze-ui-kit";
 
 import {VerifiedBadge} from "@/components/ui/badge/verified";
-import {tokenPagePath} from "@/hooks/useNavigation";
+import {tokenPagePath} from "@/lib/token-directory";
 
 interface TokenCardProps {
     asset: Asset;
