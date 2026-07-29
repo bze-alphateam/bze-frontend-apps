@@ -23,6 +23,8 @@ import { useBurningHistory } from "@/hooks/useBurningHistory";
 import { useNextBurning } from "@/hooks/useNextBurning";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
+import { breakdownDuration } from "@/lib/burn-schedule";
+import { sumBurnAmounts } from "@/lib/burn-history";
 
 const MAX_BURN_HISTORY_ITEMS = 30;
 
@@ -46,10 +48,7 @@ const CountdownTimer = ({ targetDate }: { targetDate: Date }) => {
         return () => clearInterval(interval);
     }, [targetDate]);
 
-    const days = Math.floor(timeLeft / 86400);
-    const hours = Math.floor((timeLeft % 86400) / 3600);
-    const minutes = Math.floor((timeLeft % 3600) / 60);
-    const seconds = timeLeft % 60;
+    const { days, hours, minutes, seconds } = breakdownDuration(timeLeft);
 
     return (
         <VStack gap="2">
@@ -245,10 +244,7 @@ export default function BurnerHomePage() {
     const totalBzeBurned = useMemo(() => {
         if (!nativeAsset) return BigNumber(0);
 
-        const nativeBurns = burnHistory.filter(burn => burn.denom === nativeAsset.denom);
-        return nativeBurns.reduce((total, burn) => {
-            return total.plus(burn.amount);
-        }, BigNumber(0));
+        return sumBurnAmounts(burnHistory, nativeAsset.denom);
     }, [burnHistory, nativeAsset]);
 
     // Calculate USD value of total BZE burned
