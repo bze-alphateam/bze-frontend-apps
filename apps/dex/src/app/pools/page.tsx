@@ -1,6 +1,6 @@
 'use client'
 
-import {useState, useMemo, useCallback} from 'react'
+import {useState, useMemo} from 'react'
 import {
     Box,
     Container,
@@ -18,10 +18,18 @@ import { LuSearch, LuChevronUp, LuChevronDown, LuUser } from 'react-icons/lu'
 import {useAsset, useAssets, toBigNumber, useBalances, calculateUserPoolData, shortNumberFormat, HighlightText, LiquidityPoolData, useLiquidityPools, LPTokenLogo} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
+import {sortPools, filterPoolsBySearch, partitionUserPools} from "@/lib/pool-list";
 
 
 type SortField = 'volume24h' | 'totalLiquidity' | 'apr'
 type SortOrder = 'asc' | 'desc'
+
+// Sort-direction chevron for a column header. Declared at module scope (not inside
+// the page) so it keeps a stable identity across renders.
+function SortIcon({ field, sortField, sortOrder }: { field: SortField; sortField: SortField; sortOrder: SortOrder }) {
+    if (sortField !== field) return null
+    return sortOrder === 'asc' ? <LuChevronUp /> : <LuChevronDown />
+}
 
 interface LiquidityPoolCardProps {
     pool: LiquidityPoolSDKType;
@@ -338,65 +346,18 @@ export default function LiquidityPoolsPage() {
         setSortOrder(order)
     }
 
-    const sortedPools = useMemo(() => {
-        return pools.sort((poolA, poolB) => {
-            const poolAData = poolsData.get(poolA.id)
-            const poolBData = poolsData.get(poolB.id)
-            if (!poolAData && !poolBData) return 0;
-            if (!poolAData) return 1;
-            if (!poolBData) return -1;
-
-            let valueA = poolAData.usdVolume
-            let valueB = poolBData.usdVolume
-            if (sortField === 'totalLiquidity') {
-                valueA = poolAData.usdValue
-                valueB = poolBData.usdValue
-            } else if (sortField === 'apr') {
-                valueA = toBigNumber(poolAData.apr)
-                valueB = toBigNumber(poolBData.apr)
-            }
-
-            if (sortOrder === 'asc') {
-                return valueA.minus(valueB).toNumber()
-            }
-
-            return valueB.minus(valueA).toNumber()
-        })
-    }, [sortField, sortOrder, pools, poolsData])
+    const sortedPools = useMemo(
+        () => sortPools(pools, poolsData, sortField, sortOrder),
+        [sortField, sortOrder, pools, poolsData],
+    )
 
     const filteredAndSortedPools = useMemo(() => {
-        const filtered = sortedPools.filter(pool => {
-            const searchLower = searchTerm.toLowerCase()
-            const baseTicker = denomTicker(pool.base).toLowerCase()
-            const quoteTicker = denomTicker(pool.quote).toLowerCase()
+        const filtered = filterPoolsBySearch(sortedPools, denomTicker, searchTerm)
 
-            return (
-                baseTicker.includes(searchLower) ||
-                quoteTicker.includes(searchLower) ||
-                `${baseTicker}-${quoteTicker}`.toLowerCase().includes(searchLower)
-            )
-        })
-
-        // Separate user pools and other pools based on LP token balance
-        const userPools = filtered.filter(pool => {
-            const balance = getBalanceByDenom(pool.lp_denom)
-            return balance && balance.amount.gt(0)
-        })
-
-        const otherPools = filtered.filter(pool => {
-            const balance = getBalanceByDenom(pool.lp_denom)
-            return !balance || balance.amount.isZero()
-        })
-
-        return { otherPools, userPools }
+        // Separate user pools and other pools based on LP token balance.
+        return partitionUserPools(filtered, getBalanceByDenom)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm, sortedPools, getBalanceByDenom])
-
-    const SortIcon = useCallback(({ field }: { field: SortField }) => {
-        if (sortField !== field) return null
-        return sortOrder === 'asc' ? <LuChevronUp /> : <LuChevronDown />
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
 
     return (
         <Box minH="100vh" bg="bg.subtle">
@@ -587,7 +548,7 @@ export default function LiquidityPoolsPage() {
                                                 >
                                                     <HStack gap={1}>
                                                         <Text>24h Volume</Text>
-                                                        <SortIcon field="volume24h" />
+                                                        <SortIcon field="volume24h" sortField={sortField} sortOrder={sortOrder} />
                                                     </HStack>
                                                 </Box>
                                                 <Box
@@ -606,7 +567,7 @@ export default function LiquidityPoolsPage() {
                                                 >
                                                     <HStack gap={1}>
                                                         <Text>Total Liquidity</Text>
-                                                        <SortIcon field="totalLiquidity" />
+                                                        <SortIcon field="totalLiquidity" sortField={sortField} sortOrder={sortOrder} />
                                                     </HStack>
                                                 </Box>
                                                 <Box
@@ -625,7 +586,7 @@ export default function LiquidityPoolsPage() {
                                                 >
                                                     <HStack gap={1}>
                                                         <Text>APR</Text>
-                                                        <SortIcon field="apr" />
+                                                        <SortIcon field="apr" sortField={sortField} sortOrder={sortOrder} />
                                                     </HStack>
                                                 </Box>
                                                 <Box as="th" textAlign="left" p={3} fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase">
