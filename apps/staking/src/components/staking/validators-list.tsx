@@ -9,6 +9,7 @@ import {
     truncateAddress,
 } from '@bze/bze-ui-kit';
 import BigNumber from 'bignumber.js';
+import {filterValidators, formatCommissionRate} from '@/lib/validator-list';
 import {useState} from 'react';
 import {DelegateModal} from './delegate-modal';
 import {ValidatorAvatar} from './validator-avatar';
@@ -30,11 +31,7 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
     // former reset-on-close effect inside the modal).
     const [modalNonce, setModalNonce] = useState(0);
 
-    const filtered = validators.filter(v => {
-        if (!search) return true;
-        const moniker = v.description?.moniker?.toLowerCase() ?? '';
-        return moniker.includes(search.toLowerCase()) || v.operator_address.toLowerCase().includes(search.toLowerCase());
-    });
+    const filtered = filterValidators(validators, search);
 
     const openDelegateModal = (validator: ValidatorSDKType) => {
         setDelegateValidator(validator);
@@ -78,10 +75,7 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
                 <Grid templateColumns={{base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)'}} gap="3">
                     {filtered.map((validator, idx) => {
                         const votingPower = uAmountToBigNumberAmount(new BigNumber(validator.tokens), decimals);
-                        const commission = new BigNumber(validator.commission?.commission_rates?.rate ?? '0')
-                            .multipliedBy(100)
-                            .decimalPlaces(1)
-                            .toString();
+                        const commission = formatCommissionRate(validator.commission?.commission_rates?.rate);
 
                         return (
                             <Box
