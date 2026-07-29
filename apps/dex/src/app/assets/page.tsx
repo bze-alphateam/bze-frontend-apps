@@ -23,10 +23,11 @@ import {
     LuLink,
     LuSearch,
 } from 'react-icons/lu'
-import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, isNativeDenom, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast} from "@bze/bze-ui-kit";
+import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast} from "@bze/bze-ui-kit";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {AssetDetails} from "@/components/ui/assets/asset-details";
 import {assetPagePath} from "@/hooks/useNavigation";
+import {sortAssetsForDirectory, filterAssetsBySearch} from "@/lib/asset-list";
 
 function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpanded: boolean, toggleExpanded: (denom: string) => void}) {
     const [priceLoadedOnce, setPriceLoadedOnce] = useState(false)
@@ -220,36 +221,10 @@ export default function AssetsPage() {
 
     const filteredAssets = useMemo(() => {
         if (searchTerm === '') {
-            return assetsLpExcluded.sort((token1: Asset, token2: Asset) => {
-                // Native denom should always be first
-                const token1IsNative = isNativeDenom(token1.denom);
-                const token2IsNative = isNativeDenom(token2.denom);
-
-                if (token1IsNative && !token2IsNative) {
-                    return -1;
-                }
-                if (!token1IsNative && token2IsNative) {
-                    return 1;
-                }
-
-                // Then verified tokens
-                if (token1.verified && !token2.verified) {
-                    return -1;
-                }
-
-                if (token2.verified && !token1.verified) {
-                    return 1;
-                }
-
-                // Finally alphabetically by name
-                return token1.name > token2.name ? 1 : -1;
-            })
-        } else {
-            return assetsLpExcluded.filter(asset =>
-                asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                asset.ticker.toLowerCase().includes(searchTerm.toLowerCase())
-            )
+            return sortAssetsForDirectory(assetsLpExcluded)
         }
+
+        return filterAssetsBySearch(assetsLpExcluded, searchTerm)
     }, [assetsLpExcluded, searchTerm])
 
     const toggleExpanded = (assetId: string) => {
