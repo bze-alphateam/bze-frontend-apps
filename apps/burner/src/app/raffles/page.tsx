@@ -18,6 +18,7 @@ import { useAsset, HighlightText, uAmountToBigNumberAmount, prettyAmount, toBigN
 import { RaffleSDKType } from "@bze/bzejs/bze/burner/raffle";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
+import { rafflePrize, raffleWinChance } from "@/lib/raffle";
 
 interface RaffleCardProps {
     raffle: RaffleSDKType;
@@ -32,28 +33,17 @@ function RaffleCard({ raffle, currentEpoch, onClick }: RaffleCardProps) {
     const name = useMemo(() => asset?.name || raffle.denom, [asset?.name, raffle.denom]);
     const decimals = useMemo(() => asset?.decimals || 6, [asset?.decimals]);
 
-    const formattedPrize = useMemo(() => {
-        const potAmount = uAmountToBigNumberAmount(raffle.pot, decimals);
-        const ratio = toBigNumber(raffle.ratio);
-        const prizeAmount = potAmount.multipliedBy(ratio);
-        return prettyAmount(prizeAmount);
-    }, [raffle.pot, raffle.ratio, decimals]);
+    const formattedPrize = useMemo(
+        () => rafflePrize(raffle.pot, raffle.ratio, decimals),
+        [raffle.pot, raffle.ratio, decimals],
+    );
 
     const formattedTicketPrice = useMemo(() => {
         const bnAmount = uAmountToBigNumberAmount(raffle.ticket_price, decimals);
         return prettyAmount(bnAmount);
     }, [raffle.ticket_price, decimals]);
 
-    const winChance = useMemo(() => {
-        const chances = toBigNumber(raffle.chances);
-        if (chances.isNaN() || !chances.isPositive()) {
-            return "N/A";
-        }
-        // chances represents the number of chances out of 1 million
-        const oneMillion = toBigNumber(1000000);
-        const odds = oneMillion.dividedBy(chances);
-        return `1 in ${prettyAmount(odds)}`;
-    }, [raffle.chances]);
+    const winChance = useMemo(() => raffleWinChance(raffle.chances), [raffle.chances]);
 
     const timeRemaining = useMemo(() => {
         // end_at is an epoch number (each epoch = 1 hour)
