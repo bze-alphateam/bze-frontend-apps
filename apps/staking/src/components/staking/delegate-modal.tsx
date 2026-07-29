@@ -14,6 +14,15 @@ import {
     amountToUAmount,
     sanitizeNumberInput,
 } from '@bze/bze-ui-kit';
+import {
+    FEE_RESERVE,
+    validateDelegationAmount,
+    isUsingFullBalance as computeIsUsingFullBalance,
+    quickAmount,
+    reserveForFeesAmount,
+    canReserveForFees as computeCanReserveForFees,
+} from '@/lib/delegate-amount';
+import {formatCommissionRate} from '@/lib/validator-list';
 import {useChain} from '@interchain-kit/react';
 import {getChainName} from '@bze/bze-ui-kit';
 import {WalletState} from '@interchain-kit/core';
@@ -40,22 +49,25 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);
-    const commission = new BigNumber(validator?.commission?.commission_rates?.rate ?? '0')
-        .multipliedBy(100)
-        .decimalPlaces(1)
-        .toString();
+    const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
 
     const handleDelegate = async () => {
-        if (!address || !validator || !amount || new BigNumber(amount).lte(0)) {
+        if (!address || !validator) {
             toast.error('Invalid amount', 'Please enter a valid amount to delegate');
             return;
         }
 
-        const uAmount = amountToUAmount(amount, decimals);
-        if (new BigNumber(uAmount).gt(balance.amount)) {
-            toast.error('Insufficient balance', 'You do not have enough tokens');
+        const amountError = validateDelegationAmount(amount, balance.amount, decimals);
+        if (amountError) {
+            if (amountError === 'insufficient-balance') {
+                toast.error('Insufficient balance', 'You do not have enough tokens');
+            } else {
+                toast.error('Invalid amount', 'Please enter a valid amount to delegate');
+            }
             return;
         }
+
+        const uAmount = amountToUAmount(amount, decimals);
 
         setIsSubmitting(true);
         try {
@@ -82,21 +94,18 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
         }
     };
 
-    const FEE_RESERVE = new BigNumber('0.1');
-    const isUsingFullBalance = useMemo(() => {
-        if (!amount) return false;
-        return new BigNumber(amount).gte(availableHuman) && availableHuman.gt(0);
-    }, [amount, availableHuman]);
-    const canReserveForFees = availableHuman.gt(FEE_RESERVE);
+    const isUsingFullBalance = useMemo(
+        () => computeIsUsingFullBalance(amount, availableHuman),
+        [amount, availableHuman],
+    );
+    const canReserveForFees = computeCanReserveForFees(availableHuman);
 
     const setQuickAmount = (fraction: number) => {
-        const val = availableHuman.multipliedBy(fraction).decimalPlaces(decimals).toString();
-        setAmount(val);
+        setAmount(quickAmount(availableHuman, fraction, decimals));
     };
 
     const reserveForFees = () => {
-        const val = availableHuman.minus(FEE_RESERVE).decimalPlaces(decimals).toString();
-        setAmount(val);
+        setAmount(reserveForFeesAmount(availableHuman, decimals));
     };
 
     return (
