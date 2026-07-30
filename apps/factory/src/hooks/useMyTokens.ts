@@ -2,18 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-    Asset,
     getChainName,
     getFactoryDenomAdminAddress,
     useAssets,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { filterMyTokens, toMyTokens, type MyToken } from '@/lib/my-tokens'
 
-export interface MyToken {
-    asset: Asset;
-    /** Current tokenfactory admin — empty string means the admin was renounced. */
-    admin: string;
-}
+export type { MyToken }
 
 /**
  * The connected user's own factory tokens: assets filtered by the
@@ -25,11 +21,7 @@ export function useMyTokens() {
     const { assets, isLoading: isAssetsLoading } = useAssets()
     const { address } = useChain(getChainName())
 
-    const myAssets = useMemo(() => {
-        if (!address) return []
-        const prefix = `factory/${address}/`
-        return (assets ?? []).filter(a => a.denom.startsWith(prefix))
-    }, [assets, address])
+    const myAssets = useMemo(() => filterMyTokens(assets ?? [], address), [assets, address])
 
     // undefined until the first fetch resolves — '' is a real value (renounced).
     const [admins, setAdmins] = useState<Record<string, string> | undefined>(undefined)
@@ -57,7 +49,7 @@ export function useMyTokens() {
     }, [fetchAdmins])
 
     const tokens: MyToken[] = useMemo(
-        () => myAssets.map(a => ({ asset: a, admin: admins?.[a.denom] ?? '' })),
+        () => toMyTokens(myAssets, admins),
         [myAssets, admins]
     )
 
