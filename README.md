@@ -122,87 +122,49 @@ pnpm --filter bze-burner lint
 
 ---
 
-## Deploy (production & testnet — pm2)
+## Deploy (production & testnet — Docker)
 
-### One checkout per network
+### One image per app per network
 
 `NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
-**different builds**. The monorepo is therefore checked out **once per network**, each built
-with that network's `.env` files:
+**different builds**. CI (`.github/workflows/docker-publish.yml`) builds every app on
+every push and publishes self-contained Node images (Next.js standalone) to GHCR:
 
-```
-<deploy-root>/bze-frontend-mainnet/current   ← built with mainnet .env files
-<deploy-root>/bze-frontend-testnet/current   ← built with testnet .env files
-```
+| push to | flavor | env baked in | image tag |
+|---|---|---|---|
+| `main` | mainnet | `apps/<app>/.env.mainnet.dist` | `<sha8>` |
+| `develop` | testnet | `apps/<app>/.env.testnet.dist` | `testnet-<sha8>` |
 
-`current` is a symlink to the active release. All three apps in a checkout share one
-`node_modules` and are built and released together (they share `ui-kit` and version-lock).
+Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
+`factory`, `communities`). All five are built on every push — even single-app changes —
+so any commit on a deploy branch has a complete image set (the server-side release
+pollers rely on that).
 
-### Build (the normal flow — no special config)
+### Env files
 
-In each checkout:
+- `.env.mainnet.dist` / `.env.testnet.dist` (committed, per app) hold the flavor's
+  `NEXT_PUBLIC_*` values. Everything in them is public by definition — it ends up in
+  the client bundle. **No secrets, ever.**
+- `SKIP_API_KEY` is the one runtime-only variable (server-side Skip proxy auth). It is
+  **never baked into an image**: production injects it into the container environment.
+  The dist files list it empty purely as documentation.
+- `.env.dist` remains the local-dev template (copy to `.env`).
 
-```sh
-pnpm install --frozen-lockfile
-pnpm exec turbo run build --concurrency=3   # builds ui-kit + all 3 apps, using the .env files present
-```
-
-Each app's output lands in `apps/<app>/.next`. Nothing app-specific to run — one `pnpm build`
-does the whole network.
-
-### Run with pm2
-
-Each app is one pm2 process running `next start` from its app dir **inside the checkout**.
-Point `cwd` at `<checkout>/current/apps/<app>` — the `next` binary resolves through pnpm's
-symlinks, so this is the same `next start` model as before; only `cwd` moves into the monorepo.
-This collapses the old six per-app deploy dirs down to **two** (one per network).
-
-```js
-// ecosystem.config.js — lives on the server, NOT in this repo.
-// Fill in <node> (an nvm node-24 binary) and <deploy-root>; ports/instances per your infra.
-const node = "<path-to-node-24>";
-const base = "<deploy-root>";
-const next = "node_modules/next/dist/bin/next";
-
-module.exports = {
-  apps: [
-    // ---------- mainnet ----------
-    { name: "dex",     interpreter: node, script: next, args: "start --port 8085",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/dex`,     exec_mode: "cluster", instances: 3 },
-    { name: "burner",  interpreter: node, script: next, args: "start --port 8084",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/burner`,  exec_mode: "cluster", instances: 2 },
-    { name: "staking", interpreter: node, script: next, args: "start --port 8083",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/staking` },
-
-    // ---------- testnet ----------
-    { name: "testnet-dex",     interpreter: node, script: next, args: "start --port 8088",
-      cwd: `${base}/bze-frontend-testnet/current/apps/dex` },
-    { name: "testnet-burner",  interpreter: node, script: next, args: "start --port 8089",
-      cwd: `${base}/bze-frontend-testnet/current/apps/burner` },
-    { name: "testnet-staking", interpreter: node, script: next, args: "start --port 8090",
-      cwd: `${base}/bze-frontend-testnet/current/apps/staking` },
-  ],
-};
-```
-
-### Deploy a release
-
-Run per network checkout (mainnet and/or testnet):
+### Build locally (what CI does)
 
 ```sh
-cd <checkout>                     # the mainnet or testnet monorepo clone
-git pull
-pnpm install --frozen-lockfile
-pnpm exec turbo run build --concurrency=3   # Turbo's cache skips apps that didn't change
-pm2 reload ecosystem.config.js              # reload only changed apps: pm2 reload ecosystem.config.js --only "dex.getbze,burner.getbze"
+docker build -f docker/prod/Dockerfile \
+  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 --build-arg FLAVOR=mainnet .
 ```
 
-Notes:
-- The three apps in a network release **together**; Turbo only rebuilds what actually changed.
-- `.env` files are per checkout and are **not** in git — keep each network's real `.env` on the
-  server (only `.env.dist` templates are committed).
-- Put nginx/Caddy in front routing each domain to its port.
-- First-time setup: `pm2 start ecosystem.config.js` (then `pm2 save`).
+`APP` is the directory under `apps/`, `PKG` its `package.json` name, `FLAVOR` picks the
+env file. The container serves on port 3000.
+
+### Releasing
+
+Server-side deploys (blue/green flip, health-gated, automatic on merge) live in a
+separate private ops repo — nothing in this repo touches the server. Merging to `main`
+deploys mainnet within minutes; rollback = revert on `main`.
 
 ---
 
@@ -234,7 +196,11 @@ to that app's `package.json` and reinstall.
 1. Create `apps/<name>/` (copy an existing app's `next.config.ts` so you inherit the singleton
    aliasing + connector stubs).
 2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`.
-3. `pnpm install`. It's picked up automatically by the `apps/*` glob.
+3. Commit a `.env.dist` template plus the `.env.mainnet.dist` / `.env.testnet.dist` flavor
+   files the Docker builds bake in.
+4. `pnpm install`. It's picked up automatically by the `apps/*` glob.
+5. Add the app to `.github/workflows/docker-publish.yml` (the app/pkg build matrix) and to
+   the private ops repo (deploy dir, port pair, vhost).
 
 ### Pin / override a dependency version everywhere
 Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignores the package.json
