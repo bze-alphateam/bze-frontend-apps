@@ -1,0 +1,14 @@
+# Keep the build context lean and keep local env files (which may hold real
+# values on a dev machine) out of the image. Only the committed templates
+# (.env.dist and the per-flavor .env.<flavor>.dist) are let through.
+.git
+node_modules
+**/node_modules
+**/.next
+.turbo
+**/.turbo
+**/.env
+**/.env.*
+!**/.env.dist
+!**/.env.mainnet.dist
+!**/.env.testnet.dist
