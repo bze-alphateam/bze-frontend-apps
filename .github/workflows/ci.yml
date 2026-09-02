@@ -56,6 +56,37 @@ jobs:
       - name: Build (ui-kit + all 3 apps)
         run: pnpm exec turbo run build --concurrency=3 --cache-dir=.turbo
 
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-test-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-test-${{ runner.os }}-
+
+      # Unit tests (Vitest). Turbo caches per-package, so packages whose inputs
+      # didn't change since the last cached run are skipped entirely.
+      - name: Run tests
+        run: pnpm exec turbo run test --cache-dir=.turbo
+
   lint:
     name: lint (changed files)
     runs-on: ubuntu-latest
