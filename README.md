@@ -230,106 +230,49 @@ Guidelines for writing app tests:
 
 ---
 
-## Deploy (production & testnet — pm2)
+## Deploy (production & testnet — Docker)
 
-### One checkout per network
+### One image per app per network
 
 `NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
-**different builds**. The monorepo is therefore checked out **once per network**, each built
-with that network's `.env` files:
+**different builds**. CI (`.github/workflows/docker-publish.yml`) builds every app on
+every push and publishes self-contained Node images (Next.js standalone) to GHCR:
 
-```
-<deploy-root>/bze-frontend-mainnet/current   ← built with mainnet .env files
-<deploy-root>/bze-frontend-testnet/current   ← built with testnet .env files
-```
+| push to | flavor | env baked in | image tag |
+|---|---|---|---|
+| `main` | mainnet | `apps/<app>/.env.mainnet.dist` | `<sha8>` |
+| `develop` | testnet | `apps/<app>/.env.testnet.dist` | `testnet-<sha8>` |
 
-`current` is a symlink to the active release. All apps in a checkout share one
-`node_modules` and are built and released together (they share `ui-kit` and version-lock).
+Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
+`factory`, `communities`). All five are built on every push — even single-app changes —
+so any commit on a deploy branch has a complete image set (the server-side release
+pollers rely on that).
 
-### Build (the normal flow — no special config)
+### Env files
 
-In each checkout:
+- `.env.mainnet.dist` / `.env.testnet.dist` (committed, per app) hold the flavor's
+  `NEXT_PUBLIC_*` values. Everything in them is public by definition — it ends up in
+  the client bundle. **No secrets, ever.**
+- `SKIP_API_KEY` is the one runtime-only variable (server-side Skip proxy auth). It is
+  **never baked into an image**: production injects it into the container environment.
+  The dist files list it empty purely as documentation.
+- `.env.dist` remains the local-dev template (copy to `.env`).
 
-```sh
-pnpm install --frozen-lockfile
-pnpm exec turbo run build --concurrency=3   # builds ui-kit + every app, using the .env files present
-```
-
-Turbo hashes each app's `.env` / `.env.*` (see `inputs` on the `build` task in `turbo.json`), so
-creating or editing an app's `.env` invalidates its cached build and forces a real `next build`.
-That matters because `NEXT_PUBLIC_*` values are inlined at build time — without it, Turbo would
-replay a `.next` built with the old env and the app would serve stale values forever. If you ever
-suspect a cached build is wrong anyway, `--force` bypasses the cache for one run.
-
-Each app's output lands in `apps/<app>/.next`. Nothing app-specific to run — one `pnpm build`
-does the whole network.
-
-### Run with pm2
-
-Each app is one pm2 process running `next start` from its app dir **inside the checkout**.
-Point `cwd` at `<checkout>/current/apps/<app>` — the `next` binary resolves through pnpm's
-symlinks, so this is the same `next start` model as before; only `cwd` moves into the monorepo.
-This collapses the old six per-app deploy dirs down to **two** (one per network).
-
-```js
-// ecosystem.config.js — lives on the server, NOT in this repo.
-// Fill in <node> (an nvm node-24 binary) and <deploy-root>; ports/instances per your infra.
-const node = "<path-to-node-24>";
-const base = "<deploy-root>";
-const next = "node_modules/next/dist/bin/next";
-
-module.exports = {
-  apps: [
-    // ---------- mainnet ----------
-    { name: "dex",     interpreter: node, script: next, args: "start --port 8085",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/dex`,     exec_mode: "cluster", instances: 3 },
-    { name: "burner",  interpreter: node, script: next, args: "start --port 8084",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/burner`,  exec_mode: "cluster", instances: 2 },
-    { name: "staking", interpreter: node, script: next, args: "start --port 8083",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/staking` },
-    { name: "communities", interpreter: node, script: next, args: "start --port 8086",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/communities` },
-    { name: "factory", interpreter: node, script: next, args: "start --port 8087",
-      cwd: `${base}/bze-frontend-mainnet/current/apps/factory` },
-
-    // ---------- testnet ----------
-    { name: "testnet-dex",     interpreter: node, script: next, args: "start --port 8088",
-      cwd: `${base}/bze-frontend-testnet/current/apps/dex` },
-    { name: "testnet-burner",  interpreter: node, script: next, args: "start --port 8089",
-      cwd: `${base}/bze-frontend-testnet/current/apps/burner` },
-    { name: "testnet-staking", interpreter: node, script: next, args: "start --port 8090",
-      cwd: `${base}/bze-frontend-testnet/current/apps/staking` },
-    { name: "testnet-communities", interpreter: node, script: next, args: "start --port 8091",
-      cwd: `${base}/bze-frontend-testnet/current/apps/communities` },
-    { name: "testnet-factory", interpreter: node, script: next, args: "start --port 8092",
-      cwd: `${base}/bze-frontend-testnet/current/apps/factory` },
-  ],
-};
-```
-
-The ports above just continue the existing pattern — they're illustrative, like the rest of this
-example. Use whatever your nginx/Caddy front end actually routes to.
-
-### Deploy a release
-
-Run per network checkout (mainnet and/or testnet):
+### Build locally (what CI does)
 
 ```sh
-cd <checkout>                     # the mainnet or testnet monorepo clone
-git pull
-pnpm install --frozen-lockfile
-pnpm exec turbo run build --concurrency=3   # Turbo's cache skips apps that didn't change
-pm2 reload ecosystem.config.js              # reload only changed apps: pm2 reload ecosystem.config.js --only "dex.getbze,burner.getbze"
+docker build -f docker/prod/Dockerfile \
+  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 --build-arg FLAVOR=mainnet .
 ```
 
-Notes:
-- All apps in a network release **together**; Turbo only rebuilds what actually changed.
-- `.env` files are per checkout and are **not** in git — keep each network's real `.env` on the
-  server (only `.env.dist` templates are committed). A new app needs its `.env` in place **before**
-  the first build of that checkout; `turbo.json` hashes `.env` so a later edit does invalidate the
-  cache, but a first build without one bakes in the fallback defaults.
-- Put nginx/Caddy in front routing each domain to its port.
-- First-time setup: `pm2 start ecosystem.config.js` (then `pm2 save`).
+`APP` is the directory under `apps/`, `PKG` its `package.json` name, `FLAVOR` picks the
+env file. The container serves on port 3000.
+
+### Releasing
+
+Server-side deploys (blue/green flip, health-gated, automatic on merge) live in a
+separate private ops repo — nothing in this repo touches the server. Merging to `main`
+deploys mainnet within minutes; rollback = revert on `main`.
 
 ---
 
@@ -362,16 +305,16 @@ to that app's `package.json` and reinstall.
    aliasing + connector stubs).
 2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`
    with a free port, and `build` = `next build --webpack`.
-3. Commit a `.env.dist` template — CI copies it to `.env` to seed the build, and it's the source
-   the deploy checkouts copy from.
+3. Commit a `.env.dist` template (CI copies it to `.env` to seed the merge-gate build) plus the
+   `.env.mainnet.dist` / `.env.testnet.dist` flavor files the Docker builds bake in.
 4. `pnpm install`. The workspace picks the app up automatically via the `apps/*` glob, and so does
    Turbo.
 5. **Add the app to the hardcoded lists that the glob doesn't cover** — easy to miss:
    - `.github/workflows/ci.yml` — two `for app in dex burner staking factory communities` loops
      (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
      with no env; miss the second and its files are never linted.
-   - the server's pm2 `ecosystem.config.js` (both networks) — see *Deploy* above.
-   - the real `.env` on each deploy checkout, **before** that checkout's first build.
+   - `.github/workflows/docker-publish.yml` — the app/pkg build matrix.
+   - the private ops repo — deploy dir, port pair, vhost (see *Deploy* above).
 
 ### Pin / override a dependency version everywhere
 Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignores the package.json

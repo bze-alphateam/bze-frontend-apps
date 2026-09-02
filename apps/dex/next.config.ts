@@ -42,6 +42,10 @@ const singletonAlias: Record<string, string> = Object.fromEntries(
 );
 
 const nextConfig: NextConfig = {
+    // Self-contained server build for the production Docker image; trace from the
+    // monorepo root so workspace deps (ui-kit) land in the standalone output.
+    output: "standalone",
+    outputFileTracingRoot: path.join(path.dirname(new URL(import.meta.url).pathname), "../.."),
     experimental: {
         optimizePackageImports: ["@chakra-ui/react", "@bze/bze-ui-kit"]
     },
