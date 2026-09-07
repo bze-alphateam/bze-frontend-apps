@@ -1,6 +1,6 @@
 "use client";
 
-import {Suspense, useCallback, useEffect, useMemo, useState} from 'react';
+import {KeyboardEvent, Suspense, useCallback, useEffect, useMemo, useState} from 'react';
 import {
     Box,
     Container,
@@ -43,6 +43,7 @@ import {bze} from "@bze/bzejs";
 import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
+import {balanceToFormValue} from "@/lib/trading-form";
 
 const {createOrder, fillOrders} = bze.tradebin.MessageComposer.withTypeUrl;
 
@@ -397,6 +398,39 @@ const TradingPageContent = () => {
             setSellPrice(calculatePricePerUnit(sellAmount, total, baseAsset?.decimals ?? 0));
         }
     }, [sellPrice, sellAmount, quoteAsset, baseAsset])
+    //clicking a balance fills the form input that spends it: base funds a sell, quote funds a buy
+    const onBaseBalanceClick = useCallback(() => {
+        if (submittingOrder) {
+            return;
+        }
+
+        const amount = balanceToFormValue(baseBalance?.amount, baseAsset?.decimals ?? 0);
+        if (amount === '') {
+            return;
+        }
+
+        onSellAmountChange(amount);
+    }, [submittingOrder, baseBalance, baseAsset, onSellAmountChange])
+    const onQuoteBalanceClick = useCallback(() => {
+        if (submittingOrder) {
+            return;
+        }
+
+        const total = balanceToFormValue(quoteBalance?.amount, quoteAsset?.decimals ?? 0);
+        if (total === '') {
+            return;
+        }
+
+        onBuyTotalChange(total);
+    }, [submittingOrder, quoteBalance, quoteAsset, onBuyTotalChange])
+    const onBalanceKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, handler: () => void) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        event.preventDefault();
+        handler();
+    }, [])
     const onOrderBookClick = useCallback((price: string, orderType: 'buy' | 'sell', index: number) => {
         const transformedPrice = uPriceToPrice(price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0);
         setBuyPrice(transformedPrice);
@@ -629,7 +663,13 @@ const TradingPageContent = () => {
 
     useEffect(() => {
         if (!marketId || marketId === '') return
-        onMount();
+
+        //loading is done from an inline async function so no state is set synchronously in the effect
+        const load = async () => {
+            await onMount();
+        }
+
+        load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [marketId]);
 
@@ -1284,13 +1324,40 @@ const TradingPageContent = () => {
                             borderWidth="1px"
                             borderColor="green.500/15"
                         >
-                            <Text fontWeight="bold" mb={3} fontSize="sm">Balance</Text>
+                            <Text fontWeight="bold" mb={1} fontSize="sm">Balance</Text>
+                            <Text fontSize="xs" color="fg.muted" mb={3}>Click a balance to fill the order form</Text>
                             <VStack align="stretch" gap={2}>
-                                <HStack justify="space-between">
+                                <HStack
+                                    justify="space-between"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Sell my available ${baseAsset?.ticker ?? ''} balance`}
+                                    cursor="pointer"
+                                    px={2}
+                                    mx={-2}
+                                    py={1}
+                                    borderRadius="sm"
+                                    _hover={{bg: "red.500/10"}}
+                                    onClick={onBaseBalanceClick}
+                                    onKeyDown={(e) => onBalanceKeyDown(e, onBaseBalanceClick)}
+                                >
                                     <Text fontSize="xs" color="fg.muted">{baseAsset?.ticker}</Text>
                                     <HighlightText fontSize="xs" fontWeight="medium">{displayBaseBalance}</HighlightText>
                                 </HStack>
-                                <HStack justify="space-between">
+                                <HStack
+                                    justify="space-between"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`Buy with my available ${quoteAsset?.ticker ?? ''} balance`}
+                                    cursor="pointer"
+                                    px={2}
+                                    mx={-2}
+                                    py={1}
+                                    borderRadius="sm"
+                                    _hover={{bg: "green.500/10"}}
+                                    onClick={onQuoteBalanceClick}
+                                    onKeyDown={(e) => onBalanceKeyDown(e, onQuoteBalanceClick)}
+                                >
                                     <Text fontSize="xs" color="fg.muted">{quoteAsset?.ticker}</Text>
                                     <HighlightText fontSize="xs" fontWeight="medium">{displayQuoteBalance}</HighlightText>
                                 </HStack>
