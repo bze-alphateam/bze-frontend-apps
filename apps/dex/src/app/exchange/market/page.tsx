@@ -663,7 +663,13 @@ const TradingPageContent = () => {
 
     useEffect(() => {
         if (!marketId || marketId === '') return
-        onMount();
+
+        //loading is done from an inline async function so no state is set synchronously in the effect
+        const load = async () => {
+            await onMount();
+        }
+
+        load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [marketId]);
 
