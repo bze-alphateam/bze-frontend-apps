@@ -398,7 +398,8 @@ const TradingPageContent = () => {
             setSellPrice(calculatePricePerUnit(sellAmount, total, baseAsset?.decimals ?? 0));
         }
     }, [sellPrice, sellAmount, quoteAsset, baseAsset])
-    //clicking a balance fills the form input that spends it: base funds a sell, quote funds a buy
+    //clicking a balance fills both forms, like an order book click does: the base balance goes into the
+    //Amount inputs (base denominated), the quote balance into the Total inputs (quote denominated)
     const onBaseBalanceClick = useCallback(() => {
         if (submittingOrder) {
             return;
@@ -409,8 +410,9 @@ const TradingPageContent = () => {
             return;
         }
 
+        onBuyAmountChange(amount);
         onSellAmountChange(amount);
-    }, [submittingOrder, baseBalance, baseAsset, onSellAmountChange])
+    }, [submittingOrder, baseBalance, baseAsset, onBuyAmountChange, onSellAmountChange])
     const onQuoteBalanceClick = useCallback(() => {
         if (submittingOrder) {
             return;
@@ -422,7 +424,8 @@ const TradingPageContent = () => {
         }
 
         onBuyTotalChange(total);
-    }, [submittingOrder, quoteBalance, quoteAsset, onBuyTotalChange])
+        onSellTotalChange(total);
+    }, [submittingOrder, quoteBalance, quoteAsset, onBuyTotalChange, onSellTotalChange])
     const onBalanceKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, handler: () => void) => {
         if (event.key !== 'Enter' && event.key !== ' ') {
             return;
@@ -1324,20 +1327,19 @@ const TradingPageContent = () => {
                             borderWidth="1px"
                             borderColor="green.500/15"
                         >
-                            <Text fontWeight="bold" mb={1} fontSize="sm">Balance</Text>
-                            <Text fontSize="xs" color="fg.muted" mb={3}>Click a balance to fill the order form</Text>
+                            <Text fontWeight="bold" mb={3} fontSize="sm">Balance</Text>
                             <VStack align="stretch" gap={2}>
                                 <HStack
                                     justify="space-between"
                                     role="button"
                                     tabIndex={0}
-                                    aria-label={`Sell my available ${baseAsset?.ticker ?? ''} balance`}
+                                    aria-label={`Use my available ${baseAsset?.ticker ?? ''} balance as amount`}
                                     cursor="pointer"
                                     px={2}
                                     mx={-2}
                                     py={1}
                                     borderRadius="sm"
-                                    _hover={{bg: "red.500/10"}}
+                                    _hover={{bg: "bg.muted"}}
                                     onClick={onBaseBalanceClick}
                                     onKeyDown={(e) => onBalanceKeyDown(e, onBaseBalanceClick)}
                                 >
@@ -1348,13 +1350,13 @@ const TradingPageContent = () => {
                                     justify="space-between"
                                     role="button"
                                     tabIndex={0}
-                                    aria-label={`Buy with my available ${quoteAsset?.ticker ?? ''} balance`}
+                                    aria-label={`Use my available ${quoteAsset?.ticker ?? ''} balance as total`}
                                     cursor="pointer"
                                     px={2}
                                     mx={-2}
                                     py={1}
                                     borderRadius="sm"
-                                    _hover={{bg: "green.500/10"}}
+                                    _hover={{bg: "bg.muted"}}
                                     onClick={onQuoteBalanceClick}
                                     onKeyDown={(e) => onBalanceKeyDown(e, onQuoteBalanceClick)}
                                 >
