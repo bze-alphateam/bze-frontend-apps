@@ -22,10 +22,9 @@ import {
   LuChevronDown,
   LuChevronUp,
   LuArrowRight,
-  LuInfo,
 } from 'react-icons/lu';
-import { useState, useMemo, memo, useEffect } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip} from "@bze/bze-ui-kit";
+import { useState, useMemo, memo, useEffect, useCallback } from 'react';
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees} from "@bze/bze-ui-kit";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
@@ -242,6 +241,7 @@ export default function SwapPage() {
   const { pools, liquidAssets, isLoading } = useLiquidityPools();
   const {toast} = useToast()
   const {tx, progressTrack} = useBZETx()
+  const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
   const {address} = useChain(getChainName())
   const {denomUsdValue} = useAssetsValue()
 
@@ -297,8 +297,9 @@ export default function SwapPage() {
     });
   }, [liquidAssets, getBalanceByDenom]);
 
-  const [fromAsset, setFromAsset] = useState<typeof assetsWithBalanceInfo[0] | null>(null);
-  const [toAsset, setToAsset] = useState<typeof assetsWithBalanceInfo[0] | null>(null);
+  // Only the picked denoms are state; the asset objects (with live balances) are derived below.
+  const [fromDenom, setFromDenom] = useState<string | null>(null);
+  const [toDenom, setToDenom] = useState<string | null>(null);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -308,34 +309,33 @@ export default function SwapPage() {
   const [routeResult, setRouteResult] = useState<SwapRouteResult | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [swapHistory, setSwapHistory] = useState<SwapHistory[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  // Swap history is keyed by the address it was loaded for, so "loading" and "empty"
+  // derive from state instead of being set from an effect.
+  const [historyState, setHistoryState] = useState<{ address: string; history: SwapHistory[] } | null>(null);
+  const swapHistory = useMemo(
+    () => (address && historyState?.address === address ? historyState.history : []),
+    [address, historyState]
+  );
+  const isLoadingHistory = Boolean(address) && historyState?.address !== address;
 
-  // Set default assets once they're loaded
-  useMemo(() => {
-    if (assetsWithBalanceInfo.length > 0 && !fromAsset) {
-      setFromAsset(assetsWithBalanceInfo[0]);
-    }
-    if (assetsWithBalanceInfo.length > 1 && !toAsset) {
-      setToAsset(assetsWithBalanceInfo[1]);
-    }
-  }, [assetsWithBalanceInfo, fromAsset, toAsset]);
+  // Pick the default assets once the list is loaded (React's "adjust state while
+  // rendering" pattern — guarded so it runs once, not on every render).
+  if (fromDenom === null && assetsWithBalanceInfo.length > 0) {
+    setFromDenom(assetsWithBalanceInfo[0].denom);
+  }
+  if (toDenom === null && assetsWithBalanceInfo.length > 1) {
+    setToDenom(assetsWithBalanceInfo[1].denom);
+  }
 
-  // Sync selected assets with updated balance info
-  useEffect(() => {
-    if (fromAsset) {
-      const updatedFromAsset = assetsWithBalanceInfo.find(a => a.denom === fromAsset.denom);
-      if (updatedFromAsset && updatedFromAsset.balance.toString() !== fromAsset.balance.toString()) {
-        setFromAsset(updatedFromAsset);
-      }
-    }
-    if (toAsset) {
-      const updatedToAsset = assetsWithBalanceInfo.find(a => a.denom === toAsset.denom);
-      if (updatedToAsset && updatedToAsset.balance.toString() !== toAsset.balance.toString()) {
-        setToAsset(updatedToAsset);
-      }
-    }
-  }, [assetsWithBalanceInfo, fromAsset, toAsset]);
+  // Selected assets always carry the latest balance info.
+  const fromAsset = useMemo(
+    () => assetsWithBalanceInfo.find(a => a.denom === fromDenom) ?? null,
+    [assetsWithBalanceInfo, fromDenom]
+  );
+  const toAsset = useMemo(
+    () => assetsWithBalanceInfo.find(a => a.denom === toDenom) ?? null,
+    [assetsWithBalanceInfo, toDenom]
+  );
 
   // Recalculate route when assets change
   useEffect(() => {
@@ -344,11 +344,14 @@ export default function SwapPage() {
       return;
     }
 
-    // Don't recalculate if same asset
+    // Don't recalculate if same asset (deferred like the calculation itself, so the
+    // effect never sets state synchronously)
     if (fromAsset.denom === toAsset.denom) {
-      setRouteResult(null);
-      setToAmount('');
-      return;
+      const clear = setTimeout(() => {
+        setRouteResult(null);
+        setToAmount('');
+      }, 0);
+      return () => clearTimeout(clear);
     }
 
     // Recalculate the route with the current fromAmount
@@ -358,9 +361,9 @@ export default function SwapPage() {
     }
 
     const amountInMicro = amountToBigNumberUAmount(amount, fromAsset.decimals);
-    setIsCalculatingRoute(true);
 
     setTimeout(() => {
+      setIsCalculatingRoute(true);
       try {
         const route = ammRouter.findOptimalRoute(
           fromAsset.denom,
@@ -559,12 +562,12 @@ export default function SwapPage() {
   }, [fromAmount, fromAsset, toAsset, hasInsufficientBalance, routeResult, isCalculatingRoute]);
 
   const handleSwapAssets = () => {
-    const tempAsset = fromAsset;
+    const tempDenom = fromDenom;
     const tempAmount = fromAmount;
 
     // Swap assets
-    setFromAsset(toAsset);
-    setToAsset(tempAsset);
+    setFromDenom(toDenom);
+    setToDenom(tempDenom);
 
     // Swap amounts
     setFromAmount(toAmount);
@@ -592,32 +595,41 @@ export default function SwapPage() {
     }
   };
 
-  // Function to refresh swap history
-  const refreshSwapHistory = async () => {
-    if (!address) {
-      setSwapHistory([]);
-      return;
-    }
-
-    setIsLoadingHistory(true);
+  const fetchSwapHistory = useCallback(async (forAddress: string): Promise<SwapHistory[]> => {
     try {
-      const history = await getAddressSwapHistory(address);
-      if (history) {
-        setSwapHistory(history);
-      }
+      return (await getAddressSwapHistory(forAddress)) ?? [];
     } catch (error) {
       console.error('Error fetching swap history:', error);
-      setSwapHistory([]);
-    } finally {
-      setIsLoadingHistory(false);
+      return [];
     }
-  };
+  }, []);
 
   // Fetch swap history when address changes
   useEffect(() => {
-    refreshSwapHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address]);
+    if (!address) {
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      const history = await fetchSwapHistory(address);
+      if (!cancelled) {
+        setHistoryState({ address, history });
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [address, fetchSwapHistory]);
+
+  // Manual refresh (after a swap lands)
+  const refreshSwapHistory = useCallback(async () => {
+    if (!address) {
+      return;
+    }
+    const history = await fetchSwapHistory(address);
+    setHistoryState({ address, history });
+  }, [address, fetchSwapHistory]);
 
   const handleSwapSubmit = async () => {
     if (!address) {
@@ -835,7 +847,7 @@ export default function SwapPage() {
                   <VStack gap="3" align="stretch">
                     <AssetSelector
                         asset={fromAsset}
-                        onSelect={setFromAsset}
+                        onSelect={(asset) => setFromDenom(asset.denom)}
                         placeholder="From"
                         assetsWithBalanceInfo={assetsWithBalanceInfo}
                         isLoading={isLoading && assetsWithBalanceInfo.length === 0}
@@ -933,7 +945,7 @@ export default function SwapPage() {
                   <VStack gap="3" align="stretch">
                     <AssetSelector
                         asset={toAsset}
-                        onSelect={setToAsset}
+                        onSelect={(asset) => setToDenom(asset.denom)}
                         placeholder="To"
                         assetsWithBalanceInfo={assetsWithBalanceInfo}
                         isLoading={isLoading && assetsWithBalanceInfo.length === 0}
@@ -1014,23 +1026,13 @@ export default function SwapPage() {
                               {routeResult.feesPerHop.length > 0 && uAmountToAmount(routeResult.feesPerHop[0], fromAsset?.decimals ?? 6)} {fromAsset?.ticker || ''}
                             </Text>
                           </HStack>
-                          <HStack justify="space-between">
-                            <Tooltip
-                              content="This fee is paid to the network. Starting with network upgrade 8.1.0, you will be able to pay it in your preferred token."
-                              showArrow
-                              openDelay={100}
-                            >
-                              <Box as="span" display="inline-flex" alignItems="center" gap="1" cursor="help">
-                                <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                                  Taker Fee
-                                </Text>
-                                <LuInfo size={14} color="var(--chakra-colors-fg-muted)" />
-                              </Box>
-                            </Tooltip>
-                            <Text fontSize="sm" fontWeight="medium">
-                              0.1 BZE
-                            </Text>
-                          </HStack>
+                          <FeeEstimateRow
+                            size="sm"
+                            label="Taker Fee"
+                            fee={tradingFees.takerFee}
+                            isLoading={tradingFeesLoading}
+                            description="Fee paid to the network for executing the swap."
+                          />
                           <HStack justify="space-between">
                             <Text fontSize="sm" color="fg.muted" fontWeight="medium">
                               Rate

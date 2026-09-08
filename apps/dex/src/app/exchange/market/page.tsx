@@ -35,7 +35,7 @@ import {
     addDebounce, cancelDebounce,
     HighlightText,
     LPTokenLogo,
-    Tooltip,
+    FeeEstimateRow, useTradingFees,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {AggregatedOrderSDKType, HistoryOrderSDKType, OrderSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -166,6 +166,7 @@ const TradingPageContent = () => {
     const {balance: quoteBalance, hasAmount: hasQuoteAmount} = useBalance(market?.quote ?? '')
     const {totalUsdValue, hasPrice} = useAssetPrice(market?.quote ?? '')
     const {tx} = useBZETx()
+    const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
     const {toast} = useToast()
     const {connectionType} = useConnectionType()
 
@@ -1381,32 +1382,20 @@ const TradingPageContent = () => {
                                 <Text fontSize="xs" fontWeight="semibold" color="fg.muted">Trading Fees</Text>
                             </HStack>
                             <VStack gap={1} align="stretch">
-                                <HStack justify="space-between">
-                                    <Tooltip
-                                        content="Fee paid when your order is filled immediately (market order or matching existing orders). Starting with network upgrade 8.1.0, you will be able to pay it in your preferred token."
-                                        showArrow
-                                        openDelay={100}
-                                    >
-                                        <Box as="span" display="inline-flex" alignItems="center" gap="1" cursor="help">
-                                            <Text fontSize="xs" color="fg.muted">Taker Fee</Text>
-                                            <LuInfo size={12} color="var(--chakra-colors-fg-muted)" />
-                                        </Box>
-                                    </Tooltip>
-                                    <Text fontSize="xs" fontWeight="medium">0.1 BZE</Text>
-                                </HStack>
-                                <HStack justify="space-between">
-                                    <Tooltip
-                                        content="Fee paid when your order is placed in the order book and filled later. Starting with network upgrade 8.1.0, you will be able to pay it in your preferred token."
-                                        showArrow
-                                        openDelay={100}
-                                    >
-                                        <Box as="span" display="inline-flex" alignItems="center" gap="1" cursor="help">
-                                            <Text fontSize="xs" color="fg.muted">Maker Fee</Text>
-                                            <LuInfo size={12} color="var(--chakra-colors-fg-muted)" />
-                                        </Box>
-                                    </Tooltip>
-                                    <Text fontSize="xs" fontWeight="medium">0.001 BZE</Text>
-                                </HStack>
+                                <FeeEstimateRow
+                                    size="xs"
+                                    label="Taker Fee"
+                                    fee={tradingFees.takerFee}
+                                    isLoading={tradingFeesLoading}
+                                    description="Fee paid to the network when your order is filled immediately (market order or matching existing orders)."
+                                />
+                                <FeeEstimateRow
+                                    size="xs"
+                                    label="Maker Fee"
+                                    fee={tradingFees.makerFee}
+                                    isLoading={tradingFeesLoading}
+                                    description="Fee paid to the network when your order is placed in the order book and filled later."
+                                />
                             </VStack>
                         </Box>
                     </VStack>
