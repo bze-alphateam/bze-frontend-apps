@@ -153,6 +153,7 @@ Only `packages/ui-kit` has a suite so far — test files live next to the code t
 |---|---|
 | `src/utils/amount.test.ts` | uAmount ↔ amount conversions, price ↔ uPrice exponent shifts, big-number precision (> `MAX_SAFE_INTEGER`), `prettyAmount` formatting, round-trips |
 | `src/utils/liquidity_pool.test.ts` | AMM reserve-ratio math (`calculatePoolOppositeAmount`), pool pricing, user share % / USD value, division-by-zero guards |
+| `src/utils/fee_conversion.test.ts` | fee-token engine — chain-mirrored `calculateOptimalInputForOutput` (constant product + swap fee, ceil), `estimateFeeInPreferredDenom` reasons (native / estimated / no-pool / low-liquidity / pool-too-small), `resolveFeePayment` charging order (preferred → native fallback → insufficient) |
 | `src/utils/denom.test.ts` | factory / IBC / LP denom classification (legacy `ulp_` **and** hashed `ulp/` formats), native denom, center-truncation |
 | `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
 | `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
