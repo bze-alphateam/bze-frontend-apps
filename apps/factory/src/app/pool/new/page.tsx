@@ -149,7 +149,7 @@ function PoolNewContent() {
 
     const fee = fees.createMarketFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
-    const feePayment = useFeePayment(fee)
+    const feePayment = useFeePayment(fee, 'create-pool')
 
     // The chain stores pairs alphabetically and swaps the amounts to match.
     const isCanonicalOrder = !baseDenom || !quoteDenom || baseDenom < quoteDenom
@@ -195,8 +195,12 @@ function PoolNewContent() {
         if (quoteAsset && quoteDenom === fee.denom && validateAmount(quoteAmount, quoteAsset.decimals) === '') {
             needed = needed.plus(amountToUAmount(quoteAmount, quoteAsset.decimals))
         }
+        // The gas fee is deducted first, from the same balance when it is paid in the fee denom.
+        if (feePayment.gasFee.denom === fee.denom) {
+            needed = needed.plus(feePayment.gasFee.amount)
+        }
         return feeBalance.amount.gte(needed)
-    }, [fee, feeBalance, baseAsset, quoteAsset, baseDenom, quoteDenom, baseAmount, quoteAmount])
+    }, [fee, feeBalance, baseAsset, quoteAsset, baseDenom, quoteDenom, baseAmount, quoteAmount, feePayment.gasFee.denom, feePayment.gasFee.amount])
 
     // Paying the fee in the Settings fee token keeps the native balance for the
     // reserves, so either path unlocks the form.
@@ -514,7 +518,7 @@ function PoolNewContent() {
 
                     <Separator />
 
-                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Pool creation fee" />
+                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Pool creation fee" txKind="create-pool" />
 
                     <VStack align="stretch" gap={2}>
                         <Button

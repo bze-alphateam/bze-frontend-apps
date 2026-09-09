@@ -143,7 +143,7 @@ function RewardNewContent() {
 
     const fee = fees.createStakingRewardFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
-    const feePayment = useFeePayment(fee)
+    const feePayment = useFeePayment(fee, 'create-staking-reward')
 
     const prizeError = prizeAsset ? validateAmount(prizePerDay, prizeAsset.decimals) : ''
     const durationError = validateDays(duration, MIN_DURATION_DAYS, MAX_DURATION_DAYS)
@@ -180,8 +180,12 @@ function RewardNewContent() {
         if (escrowUAmount && prizeDenom === fee.denom) {
             needed = needed.plus(escrowUAmount)
         }
+        // The gas fee is deducted first, from the same balance when it is paid in the fee denom.
+        if (feePayment.gasFee.denom === fee.denom) {
+            needed = needed.plus(feePayment.gasFee.amount)
+        }
         return feeBalance.amount.gte(needed)
-    }, [fee, feeBalance, escrowUAmount, prizeDenom])
+    }, [fee, feeBalance, escrowUAmount, prizeDenom, feePayment.gasFee.denom, feePayment.gasFee.amount])
 
     const canPayFee = hasEnoughForFee || feePayment.paysWithAlt
 
@@ -453,7 +457,7 @@ function RewardNewContent() {
 
                     <Separator />
 
-                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Staking reward creation fee" />
+                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Staking reward creation fee" txKind="create-staking-reward" />
 
                     <VStack align="stretch" gap={2}>
                         <Button

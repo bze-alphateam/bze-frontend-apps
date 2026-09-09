@@ -78,7 +78,7 @@ export function IdentityStep() {
 
             {/* First screen of the wizard: disclose the fee before the user invests
                 any time in the form (spec: fees loud and clear everywhere). */}
-            <FeeDisclosure fee={fees.createDenomFee} isLoading={isFeeLoading} label="Token creation fee" />
+            <FeeDisclosure fee={fees.createDenomFee} isLoading={isFeeLoading} label="Token creation fee" txKind={['create-denom', 'mint', 'set-denom-metadata']} />
         </VStack>
     )
 }
