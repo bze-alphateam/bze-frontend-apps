@@ -354,6 +354,8 @@ export const BuyForm = ({accentColor, onClose, addTransaction}: BuyFormProps) =>
         setAmount(sanitizeNumberInput(value)); setAmountError('');
     }, []);
 
+    // MAX fills the full balance on the source chain on purpose: the Skip route is signed on
+    // that chain and its gas is paid there, outside BeeZee's gas engine (useMaxSpendable).
     const setMaxAmount = useCallback(() => {
         if (!selectedAsset || !selectedAsset.decimals) return;
         const raw = assetBalances.get(selectedAsset.denom);
