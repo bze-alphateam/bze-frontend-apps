@@ -87,6 +87,11 @@ export {
     createPoolId, poolIdFromPoolDenom, createLpDenomPoolsMap
 } from './utils/liquidity_pool';
 export {
+    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
+} from './utils/fee_conversion';
+export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod } from './utils/fee_conversion';
+export type { FeeCoin } from './types/fees';
+export {
     createMarketId, calculateTotalAmount, calculatePricePerUnit,
     calculateAmountFromPrice, getMinAmount
 } from './utils/market';
@@ -225,6 +230,10 @@ export { useEpochs, useEpochsManager } from './hooks/useEpochs';
 export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './hooks/useLiquidityPools';
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
+export { useTradingFees } from './hooks/useTradingFees';
+export type { TradingFees } from './hooks/useTradingFees';
+export { useFeeEstimate } from './hooks/useFeeEstimate';
+export type { UseFeeEstimateResult } from './hooks/useFeeEstimate';
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';
 export { useToast } from './hooks/useToast';
 export { useSDKTx, useBZETx, useIBCTx, TxStatus } from './hooks/useTx';
@@ -254,6 +263,8 @@ export { ImageWithFallback } from './components/image';
 export { TokenLogo } from './components/token-logo';
 export { Tooltip } from './components/tooltip';
 export type { TooltipProps } from './components/tooltip';
+export { FeeEstimateRow } from './components/fee-estimate';
+export type { FeeEstimateRowProps } from './components/fee-estimate';
 export type { LPTokenLogoProps } from './components/lp-token-logo';
 export { LPTokenLogo } from './components/lp-token-logo';
 export { Sidebar } from './components/sidebar/sidebar';
