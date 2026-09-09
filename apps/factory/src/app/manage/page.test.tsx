@@ -33,7 +33,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 
 import ManagePage from "./page";
 
-function token(ticker: string, admin = ""): MyToken {
+// `admin` is required on purpose: a default would swallow an explicit undefined
+// (the "lookup failed" state) and turn it into a renounced admin.
+function token(ticker: string, admin: string | undefined): MyToken {
     const denom = `factory/bze1owner/u${ticker.toLowerCase()}`;
     return {
         admin,
@@ -96,6 +98,18 @@ describe("Manage page", () => {
         // Active admin -> Mintable; renounced admin ('') -> Fixed supply.
         expect(screen.getByText("Mintable")).toBeInTheDocument();
         expect(screen.getByText("Fixed supply")).toBeInTheDocument();
+    });
+
+    it("shows a neutral badge when the admin lookup failed, never Fixed supply", () => {
+        useMyTokensMock.mockReturnValue({
+            tokens: [token("HONEY", undefined)],
+            isLoading: false,
+        });
+        renderPage();
+
+        expect(screen.getByText("Admin unknown")).toBeInTheDocument();
+        expect(screen.queryByText("Fixed supply")).not.toBeInTheDocument();
+        expect(screen.queryByText("Mintable")).not.toBeInTheDocument();
     });
 
     it("navigates to the token wizard from the New token button", async () => {

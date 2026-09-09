@@ -62,7 +62,11 @@ describe("validateSymbol", () => {
     });
 
     it("enforces min and max length", () => {
-        expect(validateSymbol("A")).toBe("Symbol must be at least 2 characters.");
+        expect(validateSymbol("A")).toBe("Symbol must be at least 3 characters.");
+        // The lowercased symbol becomes the metadata display denom, which the chain
+        // validates with sdk.ValidateDenom (minimum 3 characters).
+        expect(validateSymbol("AB")).toBe("Symbol must be at least 3 characters.");
+        expect(validateSymbol("ABC")).toBe("");
         expect(validateSymbol("A".repeat(MAX_SYMBOL_LENGTH + 1))).toBe(
             `Symbol must be at most ${MAX_SYMBOL_LENGTH} characters.`,
         );

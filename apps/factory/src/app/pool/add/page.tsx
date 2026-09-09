@@ -25,6 +25,7 @@ import {
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    LP_ASSETS_DECIMALS,
     amountToUAmount,
     getChainExplorerURL,
     getChainName,
@@ -406,13 +407,13 @@ function PoolAddContent() {
                                         <HStack justify="space-between">
                                             <Text fontSize="sm" color="fg.muted">You will receive</Text>
                                             <Text fontSize="sm" fontWeight="medium">
-                                                ~{prettyAmount(expectedLpTokens)} LP tokens
+                                                ~{prettyAmount(uAmountToBigNumberAmount(expectedLpTokens, LP_ASSETS_DECIMALS))} LP tokens
                                             </Text>
                                         </HStack>
                                         <HStack justify="space-between">
                                             <Text fontSize="sm" color="fg.muted">Minimum after {slippage}% slippage</Text>
                                             <Text fontSize="sm" fontWeight="medium">
-                                                {prettyAmount(minLpTokens)} LP tokens
+                                                {prettyAmount(uAmountToBigNumberAmount(minLpTokens, LP_ASSETS_DECIMALS))} LP tokens
                                             </Text>
                                         </HStack>
                                         {shareAfterDeposit && (

@@ -5,8 +5,11 @@ import type { Asset } from "@bze/bze-ui-kit";
 
 export interface MyToken {
     asset: Asset;
-    /** Current tokenfactory admin — empty string means the admin was renounced. */
-    admin: string;
+    /**
+     * Current tokenfactory admin: an address, '' when renounced, or undefined
+     * when the lookup failed (never show a trust badge for undefined).
+     */
+    admin: string | undefined;
 }
 
 /**
@@ -23,14 +26,17 @@ export function filterMyTokens(
     return assets.filter((asset) => asset.denom.startsWith(prefix));
 }
 
+/** Per-denom admin lookups; undefined = the query for that denom failed. */
+export type AdminMap = Record<string, string | undefined>;
+
 /**
  * Pair each owned asset with its tokenfactory admin address, looked up in a
- * per-denom admin map. A missing entry defaults to '' — a renounced or
- * not-yet-loaded admin.
+ * per-denom admin map. A missing entry (or a missing map) stays undefined —
+ * unknown, never mistaken for a renounced admin.
  */
 export function toMyTokens(
     assets: readonly Asset[],
-    admins: Record<string, string> | undefined,
+    admins: AdminMap | undefined,
 ): MyToken[] {
-    return assets.map((asset) => ({ asset, admin: admins?.[asset.denom] ?? "" }));
+    return assets.map((asset) => ({ asset, admin: admins?.[asset.denom] }));
 }

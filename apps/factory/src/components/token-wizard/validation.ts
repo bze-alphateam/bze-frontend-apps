@@ -1,8 +1,11 @@
 // Chain rules verified against x/tokenfactory (2026-07-07): subdenom ≤ 44 chars,
-// no `_` or `/`. Name/symbol limits are UX choices for sane wallet/explorer display.
+// no `_` or `/`. Name/symbol limits are UX choices for sane wallet/explorer display,
+// except the symbol minimum: the lowercased symbol becomes the bank metadata's
+// display denom, which must pass sdk.ValidateDenom (3–128 chars) — verified
+// 2026-09-09, a 2-char symbol makes the whole creation tx fail.
 export const MIN_NAME_LENGTH = 2
 export const MAX_NAME_LENGTH = 64
-export const MIN_SYMBOL_LENGTH = 2
+export const MIN_SYMBOL_LENGTH = 3
 export const MAX_SYMBOL_LENGTH = 12
 export const MAX_SUBDENOM_LENGTH = 44
 

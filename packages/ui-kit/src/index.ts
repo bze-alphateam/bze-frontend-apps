@@ -176,7 +176,7 @@ export {
     getCurrentWeekEpochEndTime, getPeriodicWeekEpochEndTime, getPeriodicEpochEndTime,
     getEpochDurationByIdentifier
 } from './query/epoch';
-export { getFactoryDenomAdminAddress } from './query/factory';
+export { getFactoryDenomAdmin, getFactoryDenomAdminAddress } from './query/factory';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';
