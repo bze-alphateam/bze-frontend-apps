@@ -13,9 +13,9 @@ import {
     VStack,
     Dialog,
 } from "@chakra-ui/react";
-import {useState, useEffect, useMemo, useCallback} from "react";
+import {useState, useMemo, useCallback} from "react";
 import {LuWallet} from "react-icons/lu";
-import { useAsset, useAssets, useBalances, useBalance, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, isLpDenom, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput } from "@bze/bze-ui-kit";
+import { useAsset, useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, isLpDenom, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from '@bze/bzejs'
@@ -117,19 +117,26 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
     const { address } = useChain(getChainName());
     const { toast } = useToast()
     const { tx } = useBZETx()
+    // Shared gas engine: MAX keeps the gas fee back when burning the fee coin, and the form
+    // refuses amounts that would leave no room for it.
+    const maxSpendable = useMaxSpendable(selectedCoin, 'fund-burner');
+    const affordability = useCanAffordTx({
+        spec: selectedCoin && amount ? 'fund-burner' : undefined,
+        spend: selectedCoin && amount ? { denom: selectedCoin, amount: amountToUAmount(amount, denomDecimals(selectedCoin)) } : undefined,
+    });
 
-    // Reset form when modal opens
-    useEffect(() => {
+    // Reset the form each time the modal opens (or opens for another coin). Adjusted during
+    // render instead of in an effect (React's "adjust state while rendering" pattern).
+    const openKey = isOpen ? `open:${preselectedCoin ?? ""}` : "closed";
+    const [lastOpenKey, setLastOpenKey] = useState(openKey);
+    if (openKey !== lastOpenKey) {
+        setLastOpenKey(openKey);
         if (isOpen) {
-            if (preselectedCoin) {
-                setSelectedCoin(preselectedCoin);
-            } else {
-                setSelectedCoin("");
-            }
+            setSelectedCoin(preselectedCoin || "");
             setAmount("");
             setAmountError("");
         }
-    }, [isOpen, preselectedCoin]);
+    }
 
     // Create collection for select
     const tokensCollection = createListCollection({
@@ -169,7 +176,8 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
 
     const handleMaxClick = () => {
         if (selectedAsset && !selectedBalance.isZero()) {
-            setAmount(prettyBalance);
+            setAmount(maxSpendable.inputValue);
+            setAmountError("");
         }
     };
 
@@ -199,6 +207,10 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             setAmountError("Not enough balance!");
             return;
         }
+        if (!affordability.canAfford) {
+            setAmountError(affordability.message || "Not enough balance left for the network fee");
+            return;
+        }
         const uAmount = amountToUAmount(amount, decimals);
         const {fundBurner} = bze.burner.MessageComposer.withTypeUrl;
         const msg = fundBurner({
@@ -212,11 +224,11 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
         setIsSubmitting(false);
         if (success) onClose();
 
-    }, [address, selectedCoin, amount, denomDecimals, selectedBalance, onClose, tx, toast]);
+    }, [address, selectedCoin, amount, denomDecimals, selectedBalance, affordability.canAfford, affordability.message, onClose, tx, toast]);
 
     const isConnected = !!address;
     const hasBalance = useMemo(() => address && selectedCoin && !selectedBalance.isZero(), [address, selectedCoin, selectedBalance]);
-    const isFormValid = useMemo(() => selectedCoin && amount && toBigNumber(amount).gt(0) && !amountError && hasBalance, [selectedCoin, amount, amountError, hasBalance]);
+    const isFormValid = useMemo(() => selectedCoin && amount && toBigNumber(amount).gt(0) && !amountError && hasBalance && affordability.canAfford, [selectedCoin, amount, amountError, hasBalance, affordability.canAfford]);
 
     const handleConnectWallet = useCallback(() => {
         onClose();
