@@ -258,6 +258,13 @@ pollers rely on that).
   **never baked into an image**: production injects it into the container environment.
   The dist files list it empty purely as documentation.
 - `.env.dist` remains the local-dev template (copy to `.env`).
+- **Release gate for `apps/communities`:** `NEXT_PUBLIC_COMMUNITIES_ENABLED` (default
+  enabled; only the literal `false` hides the app) makes the build serve the "under
+  construction" placeholder on every route — no providers, no wallet/RPC traffic, Skip
+  proxy answers 404. It exists so `develop` can merge into `main` before the app is
+  public: `.env.mainnet.dist` sets it to `false`, testnet leaves it enabled. Launching
+  communities.getbze.com is a one-line change to the mainnet dist file (value is baked
+  in at build time, so it needs a new image, not a container restart).
 
 ### Build locally (what CI does)
 

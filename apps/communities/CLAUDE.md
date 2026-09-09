@@ -24,6 +24,10 @@ src/
     useBlockchainListener.tsx  # WebSocket event subscriptions
 ```
 
+## Release gate
+
+`NEXT_PUBLIC_COMMUNITIES_ENABLED` (`src/lib/app-gate.ts`, default enabled, only the literal `false` hides the app). `src/app/layout.tsx` swaps the whole app — providers included — for `src/components/under-construction/` when it is off, and the Skip proxy route returns 404. Mainnet (`.env.mainnet.dist`) ships with `false` until the public launch; testnet and local dev leave it on. Baked in at build time.
+
 ## Domain rules (short version — Confluence is the authority)
 
 - Only `factory/` denoms get pages; the token page URL carries the denom URL-encoded in the `?denom=` query param (never in the path).
