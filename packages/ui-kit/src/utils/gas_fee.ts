@@ -65,44 +65,46 @@ export interface GasProfile {
 }
 
 /**
- * Measured `gas_used` per message kind, rounded UP from real transactions (2026-09-09):
- * testnet `bzetestnet-3` for the kinds it had traffic for (create/cancel order, swap) and
- * mainnet `beezee-1` for everything else (p90 of the latest successful single-message txs,
- * plus headroom). Conservative on purpose: `useTx` still simulates the real gas at submit,
+ * `gas_used` per message kind, rounded UP with headroom from real transactions (2026-09-09):
+ * testnet `bzetestnet-3` for the kinds it had traffic for (create/cancel order), mainnet
+ * `beezee-1` for everything else — p90/max of the latest successful single-message txs.
+ * Kinds marked "no on-chain sample" had no transaction to measure yet and carry a generous
+ * estimate instead. Conservative on purpose: `useTx` still simulates the real gas at submit,
  * these only decide how much MAX leaves behind and when to warn — over-estimating by a few
  * thousand gas costs a fraction of a cent, under-estimating fails the transaction.
  *
- * Re-measure when the chain upgrades (`gas_used` of any recent tx of that type, e.g. from
- * the explorer or `GET /cosmos/tx/v1beta1/txs?query=message.action='<type url>'`).
+ * Re-measure when the chain upgrades (`gas_used` of recent txs of that type, e.g. from the
+ * explorer or `GET /cosmos/tx/v1beta1/txs?query=message.action='/bze.tradebin.MsgCreateOrder'`
+ * — BZE type URLs have no version segment).
  */
 export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
-    'send': {base: 150_000},
-    'ibc-transfer': {base: 350_000},
-    'create-order': {base: 170_000},
-    'fill-orders': {base: 210_000, perItem: 55_000},
-    'cancel-order': {base: 100_000},
-    'swap': {base: 260_000, perItem: 110_000},
-    'add-liquidity': {base: 200_000},
-    'remove-liquidity': {base: 200_000},
-    'create-market': {base: 200_000},
-    'create-pool': {base: 300_000},
-    'delegate': {base: 250_000},
-    'undelegate': {base: 300_000},
-    'redelegate': {base: 400_000},
-    'withdraw-delegator-reward': {base: 200_000, perItem: 100_000},
-    'fund-burner': {base: 150_000},
-    'join-raffle': {base: 150_000},
-    'create-denom': {base: 200_000},
-    'mint': {base: 150_000},
-    'burn-tokens': {base: 150_000},
-    'set-denom-metadata': {base: 150_000},
-    'change-admin': {base: 120_000},
-    'create-staking-reward': {base: 250_000},
-    'create-trading-reward': {base: 250_000},
-    'update-staking-reward': {base: 150_000},
-    'join-staking': {base: 200_000},
-    'exit-staking': {base: 200_000},
-    'claim-staking-reward': {base: 150_000, perItem: 80_000},
+    'send': {base: 160_000},                                  // measured p90 123k, max 146k
+    'ibc-transfer': {base: 450_000},                          // measured p90 330k, max 419k
+    'create-order': {base: 180_000},                          // measured (testnet) p90 155k, max 162k
+    'fill-orders': {base: 220_000, perItem: 60_000},          // measured 2 orders 240k … 15 orders 961k
+    'cancel-order': {base: 100_000},                          // measured (testnet) 84k
+    'swap': {base: 260_000, perItem: 60_000},                 // measured 1 hop 224k–242k, 2 hops 251k
+    'add-liquidity': {base: 220_000},                         // measured p90 194k, max 201k
+    'remove-liquidity': {base: 220_000},                      // measured max 203k
+    'create-market': {base: 220_000},                         // measured 165k (single sample)
+    'create-pool': {base: 300_000},                           // measured max 252k
+    'delegate': {base: 260_000},                              // measured p90 233k, max 241k
+    'undelegate': {base: 320_000},                            // measured p90 275k, max 284k
+    'redelegate': {base: 460_000},                            // measured p90 404k, max 425k
+    'withdraw-delegator-reward': {base: 200_000, perItem: 120_000}, // measured max 179k per message
+    'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
+    'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
+    'create-denom': {base: 300_000},                          // no on-chain sample — estimate with headroom
+    'mint': {base: 200_000},                                  // no on-chain sample — estimate with headroom
+    'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom
+    'set-denom-metadata': {base: 200_000},                    // no on-chain sample — estimate with headroom
+    'change-admin': {base: 150_000},                          // no on-chain sample — estimate with headroom
+    'create-staking-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
+    'create-trading-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
+    'update-staking-reward': {base: 160_000},                 // measured max 137k
+    'join-staking': {base: 200_000},                          // measured p90 162k
+    'exit-staking': {base: 1_200_000},                        // measured median 142k but up to 1.14M
+    'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
 };
 
 /** A message kind with an optional item count (orders, hops, validators, reward ids, …). */
