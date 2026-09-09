@@ -7,28 +7,28 @@ afterEach(() => {
 });
 
 describe("isCommunitiesEnabled", () => {
-    it("defaults to enabled when the env var is not set", () => {
+    it("defaults to hidden when the env var is not set", () => {
         vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", undefined);
-        expect(isCommunitiesEnabled()).toBe(true);
+        expect(isCommunitiesEnabled()).toBe(false);
     });
 
-    it("is enabled for 'true'", () => {
+    it("is enabled only for 'true', ignoring case and whitespace", () => {
         vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", "true");
         expect(isCommunitiesEnabled()).toBe(true);
+
+        vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", " TRUE ");
+        expect(isCommunitiesEnabled()).toBe(true);
     });
 
-    it("is disabled only for 'false', ignoring case and whitespace", () => {
+    it("is hidden for 'false'", () => {
         vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", "false");
         expect(isCommunitiesEnabled()).toBe(false);
-
-        vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", " FALSE ");
-        expect(isCommunitiesEnabled()).toBe(false);
     });
 
-    it("treats any other value (empty, typo, 0) as enabled — never hides the app by accident", () => {
-        for (const value of ["", "0", "no", "flase"]) {
+    it("treats any other value (empty, typo, 1, yes) as hidden — never exposes the app by accident", () => {
+        for (const value of ["", "1", "yes", "ture"]) {
             vi.stubEnv("NEXT_PUBLIC_COMMUNITIES_ENABLED", value);
-            expect(isCommunitiesEnabled(), `value=${JSON.stringify(value)}`).toBe(true);
+            expect(isCommunitiesEnabled(), `value=${JSON.stringify(value)}`).toBe(false);
         }
     });
 });

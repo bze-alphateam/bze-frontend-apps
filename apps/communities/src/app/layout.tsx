@@ -12,7 +12,7 @@ const inter = Inter({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communities.getbze.com";
 
-// Release gate (NEXT_PUBLIC_COMMUNITIES_ENABLED, inlined at build time): a hidden build
+// Release gate (NEXT_PUBLIC_COMMUNITIES_ENABLED, inlined at build time, hidden unless `true`): a hidden build
 // serves the "under construction" placeholder on every route and never mounts the app
 // providers, so no wallet / RPC / WebSocket code runs on a deployment that isn't public yet.
 const APP_ENABLED = isCommunitiesEnabled();
