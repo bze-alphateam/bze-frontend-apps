@@ -2,24 +2,23 @@ import { describe, it, expect } from "vitest";
 import BigNumber from "bignumber.js";
 
 import {
-    FEE_RESERVE,
-    canReserveForFees,
-    isUsingFullBalance,
+    exceedsSpendable,
     quickAmount,
-    reserveForFeesAmount,
     validateDelegationAmount,
 } from "./delegate-amount";
 
 const DECIMALS = 6;
 // 10 BZE expressed in uamount (6 decimals).
 const TEN_BZE_UAMOUNT = "10000000";
+// 10 BZE minus a 0.0045 BZE gas reserve.
+const SPENDABLE_UAMOUNT = "9995500";
 
 describe("validateDelegationAmount", () => {
     it("accepts a positive amount within balance", () => {
         expect(validateDelegationAmount("5", TEN_BZE_UAMOUNT, DECIMALS)).toBeNull();
     });
 
-    it("accepts spending the exact full balance", () => {
+    it("accepts spending the exact full balance when no spendable limit is known", () => {
         expect(validateDelegationAmount("10", TEN_BZE_UAMOUNT, DECIMALS)).toBeNull();
     });
 
@@ -37,26 +36,38 @@ describe("validateDelegationAmount", () => {
             "insufficient-balance",
         );
     });
+
+    it("accepts the exact spendable amount and flags anything above it as leaving no fee reserve", () => {
+        expect(validateDelegationAmount("9.9955", TEN_BZE_UAMOUNT, DECIMALS, SPENDABLE_UAMOUNT)).toBeNull();
+        expect(validateDelegationAmount("9.9956", TEN_BZE_UAMOUNT, DECIMALS, SPENDABLE_UAMOUNT)).toBe("no-fee-reserve");
+        expect(validateDelegationAmount("10", TEN_BZE_UAMOUNT, DECIMALS, SPENDABLE_UAMOUNT)).toBe("no-fee-reserve");
+    });
+
+    it("still reports insufficient-balance above the balance even with a spendable limit", () => {
+        expect(validateDelegationAmount("11", TEN_BZE_UAMOUNT, DECIMALS, SPENDABLE_UAMOUNT)).toBe("insufficient-balance");
+    });
 });
 
-describe("isUsingFullBalance", () => {
+describe("exceedsSpendable", () => {
     const available = new BigNumber("10");
+    const spendable = new BigNumber("9.9955");
 
     it("is false for an empty amount", () => {
-        expect(isUsingFullBalance("", available)).toBe(false);
+        expect(exceedsSpendable("", spendable, available)).toBe(false);
     });
 
-    it("is true when the amount meets or exceeds the available balance", () => {
-        expect(isUsingFullBalance("10", available)).toBe(true);
-        expect(isUsingFullBalance("12", available)).toBe(true);
+    it("is true when the amount eats into the gas reserve", () => {
+        expect(exceedsSpendable("10", spendable, available)).toBe(true);
+        expect(exceedsSpendable("9.9956", spendable, available)).toBe(true);
     });
 
-    it("is false when some balance is left over", () => {
-        expect(isUsingFullBalance("9.99", available)).toBe(false);
+    it("is false when the reserve is left intact", () => {
+        expect(exceedsSpendable("9.9955", spendable, available)).toBe(false);
+        expect(exceedsSpendable("5", spendable, available)).toBe(false);
     });
 
     it("is false when there is no balance at all", () => {
-        expect(isUsingFullBalance("0", new BigNumber(0))).toBe(false);
+        expect(exceedsSpendable("1", new BigNumber(0), new BigNumber(0))).toBe(false);
     });
 });
 
@@ -69,23 +80,10 @@ describe("quickAmount", () => {
         expect(quickAmount(available, 1, DECIMALS)).toBe("10");
     });
 
-    it("rounds to the token's decimal precision", () => {
+    it("rounds down to the token's decimal precision so the result never exceeds the balance", () => {
         // A third of 10 is 3.3333… — clamped to 6 decimal places.
         expect(quickAmount(available, 1 / 3, DECIMALS)).toBe("3.333333");
-    });
-});
-
-describe("reserveForFeesAmount", () => {
-    it("subtracts the fee reserve from the available balance", () => {
-        expect(reserveForFeesAmount(new BigNumber("10"), DECIMALS)).toBe("9.9");
-    });
-});
-
-describe("canReserveForFees", () => {
-    it("is true only when the balance strictly exceeds the fee reserve", () => {
-        expect(canReserveForFees(new BigNumber("10"))).toBe(true);
-        // Exactly the reserve is not enough — it must be exceeded.
-        expect(canReserveForFees(FEE_RESERVE)).toBe(false);
-        expect(canReserveForFees(new BigNumber("0.05"))).toBe(false);
+        // 2/3 of 10 is 6.6666… — rounding half-up would give 6.666667, above 2/3.
+        expect(quickAmount(available, 2 / 3, DECIMALS)).toBe("6.666666");
     });
 });

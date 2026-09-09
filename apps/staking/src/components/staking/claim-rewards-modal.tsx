@@ -5,6 +5,7 @@ import {Box, Button, HStack, Text, VStack, Dialog, Portal} from '@chakra-ui/reac
 import {
     useAssets,
     useSDKTx,
+    useCanAffordTx,
     useToast,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -68,6 +69,14 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
 
     const allSelected = claimableEntries.length > 0 && selectedValidators.size === claimableEntries.length;
 
+    // One MsgWithdrawDelegatorReward per selected validator — the gas grows with the count,
+    // and the wallet (not the rewards) must hold the fee.
+    const feeCheck = useCanAffordTx({
+        spec: isConnected && selectedValidators.size > 0
+            ? {kind: 'withdraw-delegator-reward', count: selectedValidators.size}
+            : undefined,
+    });
+
     const toggleValidator = (validatorAddress: string) => {
         setSelectedValidators(prev => {
             const next = new Set(prev);
@@ -91,6 +100,10 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
     const handleClaim = async () => {
         if (!address || selectedValidators.size === 0) {
             toast.error('No validators selected', 'Please select at least one validator to claim from');
+            return;
+        }
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message);
             return;
         }
 
@@ -244,6 +257,10 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
                                     </VStack>
                                 </Box>
 
+                                {feeCheck.message && (
+                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
+                                )}
+
                                 {progressTrack && (
                                     <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
                                 )}
@@ -270,7 +287,7 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
                                             colorPalette="purple"
                                             onClick={handleClaim}
                                             loading={isSubmitting}
-                                            disabled={!address || selectedValidators.size === 0}
+                                            disabled={!address || selectedValidators.size === 0 || !feeCheck.canAfford}
                                             flex="1"
                                         >
                                             Claim{selectedValidators.size > 0 ? ` (${selectedValidators.size})` : ''}
