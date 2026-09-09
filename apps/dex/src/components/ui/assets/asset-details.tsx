@@ -545,7 +545,7 @@ export function AssetDetails({ asset }: { asset: Asset }) {
                                                 Decentralized Supply
                                             </Text>
                                             <Text fontSize="xs" color="fg.muted">
-                                                Ownership has been renounced. No one can mint or burn tokens, ensuring the supply remains fixed.
+                                                Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.
                                             </Text>
                                         </VStack>
                                     </HStack>
