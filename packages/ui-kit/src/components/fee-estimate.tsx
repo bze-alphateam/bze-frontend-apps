@@ -251,11 +251,8 @@ const PreferredTokenExplanation = ({
                 <Text fontSize="xs" color="fg.muted" mb={1}>Estimated cost in your fee token ({preferredTicker})</Text>
                 <Text fontWeight="bold">{preferredText}</Text>
                 <Text fontSize="xs" color="fg.muted" mt={1}>
-                    This is an estimate, not the final amount. The network converts {nativeText} into {preferredTicker} through
-                    the {poolName} liquidity pool when your transaction executes, and the pool&apos;s reserves move with every
-                    trade — so the exact amount is only known at that moment. The estimate uses the pool&apos;s current price
-                    and includes the liquidity pool&apos;s own fee (not a trading fee). The transaction&apos;s gas fee is charged
-                    on top, in {preferredTicker} as well.
+                    This is an estimate, and it represents the equivalent of {nativeText}. It can change depending on the
+                    liquidity of {preferredTicker} and {nativeTicker}.
                 </Text>
             </Box>
 
