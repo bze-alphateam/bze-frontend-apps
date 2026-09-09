@@ -84,7 +84,14 @@ export {
 export {
     calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
 } from './utils/fee_conversion';
-export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod } from './utils/fee_conversion';
+export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
+export {
+    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, maxSpendableAmount, canAffordTx
+} from './utils/gas_fee';
+export type {
+    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin,
+    SpendCoin, CanAffordTxInput, CanAffordTxResult, TxShortfall
+} from './utils/gas_fee';
 export {
     createMarketId, calculateTotalAmount, calculatePricePerUnit,
     calculateAmountFromPrice, getMinAmount
@@ -235,7 +242,15 @@ export type { CreationFees } from './hooks/useCreationFees';
 export { useTradingFees } from './hooks/useTradingFees';
 export type { TradingFees } from './hooks/useTradingFees';
 export { useFeeEstimate } from './hooks/useFeeEstimate';
-export type { UseFeeEstimateResult } from './hooks/useFeeEstimate';
+export type { UseFeeEstimateResult, UseFeeEstimateOptions } from './hooks/useFeeEstimate';
+export { useTxFeeDenom } from './hooks/useTxFeeDenom';
+export type { UseTxFeeDenomResult } from './hooks/useTxFeeDenom';
+export { useGasPrice, useGasFeeEstimator, useGasFeeEstimate } from './hooks/useGasFeeEstimate';
+export type { UseGasFeeEstimatorResult, UseGasFeeEstimateResult } from './hooks/useGasFeeEstimate';
+export { useMaxSpendable } from './hooks/useMaxSpendable';
+export type { UseMaxSpendableResult } from './hooks/useMaxSpendable';
+export { useCanAffordTx } from './hooks/useCanAffordTx';
+export type { UseCanAffordTxInput, UseCanAffordTxResult } from './hooks/useCanAffordTx';
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';
 export { useToast } from './hooks/useToast';
 export { useSDKTx, useBZETx, useIBCTx, TxStatus } from './hooks/useTx';
@@ -271,7 +286,8 @@ export type { LPTokenLogoProps } from './components/lp-token-logo';
 export { LPTokenLogo } from './components/lp-token-logo';
 export { Sidebar } from './components/sidebar/sidebar';
 export { SettingsSidebarContent } from './components/sidebar/settings-sidebar';
-export { WalletSidebarContent } from './components/sidebar/wallet-sidebar';
+export { WalletSidebarContent, WalletSendForm } from './components/sidebar/wallet-sidebar';
+export type { WalletSendFormProps } from './components/sidebar/wallet-sidebar';
 export { SettingsToggle } from './components/settings-toggle';
 export { TestnetBanner } from './components/testnet-banner';
 export { BridgeForm } from './components/sidebar/bridge-form';
