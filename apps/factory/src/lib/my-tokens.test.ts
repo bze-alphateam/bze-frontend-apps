@@ -59,11 +59,19 @@ describe("toMyTokens", () => {
         ]);
     });
 
-    it("defaults a missing admin entry to an empty string (renounced/unknown)", () => {
-        expect(toMyTokens([MINE_A], {})).toEqual([{ asset: MINE_A, admin: "" }]);
+    it("keeps a missing admin entry undefined (unknown), never renounced", () => {
+        expect(toMyTokens([MINE_A], {})).toEqual([{ asset: MINE_A, admin: undefined }]);
     });
 
-    it("treats an undefined admin map (not yet loaded) as all empty", () => {
-        expect(toMyTokens([MINE_A], undefined)).toEqual([{ asset: MINE_A, admin: "" }]);
+    it("keeps a failed lookup (undefined value) distinct from a renounced admin", () => {
+        const admins = { [MINE_A.denom]: undefined, [MINE_B.denom]: "" };
+        expect(toMyTokens([MINE_A, MINE_B], admins)).toEqual([
+            { asset: MINE_A, admin: undefined },
+            { asset: MINE_B, admin: "" },
+        ]);
+    });
+
+    it("treats an undefined admin map (not yet loaded) as all unknown", () => {
+        expect(toMyTokens([MINE_A], undefined)).toEqual([{ asset: MINE_A, admin: undefined }]);
     });
 });

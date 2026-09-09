@@ -13,7 +13,7 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowUpRight, LuCoins, LuCopy, LuFlame, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
+import { LuArrowUpRight, LuCircleHelp, LuCoins, LuCopy, LuFlame, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
 import {
     TokenLogo,
     getBurnerApp,
@@ -31,9 +31,17 @@ import { useNavigation } from '@/hooks/useNavigation'
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same trust semantics as the dex assets page: an active admin can mint more,
-// only a renounced admin makes the supply provably fixed.
-function TrustBadge({ renounced }: { renounced: boolean }) {
-    return renounced ? (
+// only a renounced admin makes the supply provably fixed. A failed lookup
+// (undefined) gets a neutral badge — it must never read as "fixed supply".
+function TrustBadge({ admin }: { admin: string | undefined }) {
+    if (admin === undefined) {
+        return (
+            <Badge colorPalette="gray" variant="surface" size="sm">
+                <LuCircleHelp size={12} /> Admin unknown
+            </Badge>
+        )
+    }
+    return admin === '' ? (
         <Badge colorPalette="green" variant="surface" size="sm">
             <LuLock size={12} /> Fixed supply
         </Badge>
@@ -101,7 +109,7 @@ function TokenRow({ token }: { token: MyToken }) {
                             {prettyAmount(uAmountToBigNumberAmount(asset.supply, asset.decimals))} {asset.ticker}
                         </Text>
                     </VStack>
-                    <TrustBadge renounced={admin === ''} />
+                    <TrustBadge admin={admin} />
                     <Button
                         size="sm"
                         variant="ghost"

@@ -17,7 +17,7 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowLeft, LuArrowUpRight, LuCopy, LuFlame, LuLock, LuPlus, LuSearchX, LuTriangleAlert } from 'react-icons/lu'
+import { LuArrowLeft, LuArrowUpRight, LuCircleHelp, LuCopy, LuFlame, LuLock, LuPlus, LuRefreshCw, LuSearchX, LuTriangleAlert } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     Asset,
@@ -227,6 +227,8 @@ function TokenManageContent() {
     }
 
     const asset = token.asset
+    // undefined = the authority query failed; never present that as renounced.
+    const isAdminUnknown = token.admin === undefined
     const isRenounced = token.admin === ''
     const isAdmin = Boolean(address) && token.admin === address
 
@@ -255,7 +257,11 @@ function TokenManageContent() {
                             {asset.name}
                         </Text>
                         <Text color="fg.muted">{asset.ticker}</Text>
-                        {isRenounced ? (
+                        {isAdminUnknown ? (
+                            <Badge colorPalette="gray" variant="surface" size="sm">
+                                <LuCircleHelp size={12} /> Admin unknown
+                            </Badge>
+                        ) : isRenounced ? (
                             <Badge colorPalette="green" variant="surface" size="sm">
                                 <LuLock size={12} /> Fixed supply
                             </Badge>
@@ -291,7 +297,7 @@ function TokenManageContent() {
                 />
                 <StatBox
                     label="Admin"
-                    value={isRenounced ? 'Nobody — renounced' : isAdmin ? 'You' : token.admin}
+                    value={isAdminUnknown ? 'Unknown' : isRenounced ? 'Nobody — renounced' : isAdmin ? 'You' : token.admin}
                 />
             </HStack>
 
@@ -320,6 +326,20 @@ function TokenManageContent() {
                     />
                     <AdminActions asset={asset} onChanged={refreshAdmins} />
                 </>
+            ) : isAdminUnknown ? (
+                <VStack align="stretch" gap={3}>
+                    <InfoBox title="Couldn't load the admin">
+                        The chain query for this token&apos;s admin failed, so the admin status
+                        is unknown. Mint, burn and the other admin actions stay hidden until it
+                        loads — this says nothing about whether the supply is fixed.
+                    </InfoBox>
+                    <Box>
+                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => void refreshAdmins()}>
+                            <LuRefreshCw />
+                            Retry
+                        </Button>
+                    </Box>
+                </VStack>
             ) : isRenounced ? (
                 <InfoBox title="Supply provably fixed">
                     The admin of this token was renounced — nobody, including you, can mint more
