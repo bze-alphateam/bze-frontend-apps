@@ -35,7 +35,7 @@ import {
     addDebounce, cancelDebounce,
     HighlightText,
     LPTokenLogo,
-    FeeEstimateRow, useTradingFees,
+    FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {AggregatedOrderSDKType, HistoryOrderSDKType, OrderSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -162,13 +162,24 @@ const TradingPageContent = () => {
     const {asset: baseAsset} = useAsset(market?.base ?? '')
     const {asset: quoteAsset} = useAsset(market?.quote ?? '')
     const {address} = useChain(getChainName())
-    const {balance: baseBalance, hasAmount: hasBaseAmount} = useBalance(market?.base ?? '')
-    const {balance: quoteBalance, hasAmount: hasQuoteAmount} = useBalance(market?.quote ?? '')
+    const {balance: baseBalance} = useBalance(market?.base ?? '')
+    const {balance: quoteBalance} = useBalance(market?.quote ?? '')
     const {totalUsdValue, hasPrice} = useAssetPrice(market?.quote ?? '')
     const {tx} = useBZETx()
     const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
     const {toast} = useToast()
     const {connectionType} = useConnectionType()
+    // Shared gas engine: a balance click fills the spendable amount (gas kept back when the
+    // clicked balance is the fee coin) and submitting checks amount + gas + trading fee in the
+    // chain's charging order. The gas is estimated for the final shape (one MsgCreateOrder, or
+    // one MsgFillOrders with N orders) right before sending.
+    const baseSpendable = useMaxSpendable(market?.base ?? '', 'create-order')
+    const quoteSpendable = useMaxSpendable(market?.quote ?? '', 'create-order')
+    const {estimate: estimateGasFee} = useGasFeeEstimator()
+    const {getBalanceByDenom} = useBalances()
+    const orderGasFee = useMemo(() => estimateGasFee('create-order'), [estimateGasFee])
+    const takerFeeEstimate = useFeeEstimate(tradingFees.takerFee, {gasFee: orderGasFee})
+    const makerFeeEstimate = useFeeEstimate(tradingFees.makerFee, {gasFee: orderGasFee})
 
     const timeframes = [CHART_4H, CHART_1D, CHART_7D, CHART_30D, CHART_1Y];
 
@@ -406,27 +417,27 @@ const TradingPageContent = () => {
             return;
         }
 
-        const amount = balanceToFormValue(baseBalance?.amount, baseAsset?.decimals ?? 0);
+        const amount = balanceToFormValue(baseSpendable.amount, baseAsset?.decimals ?? 0);
         if (amount === '') {
             return;
         }
 
         onBuyAmountChange(amount);
         onSellAmountChange(amount);
-    }, [submittingOrder, baseBalance, baseAsset, onBuyAmountChange, onSellAmountChange])
+    }, [submittingOrder, baseSpendable.amount, baseAsset, onBuyAmountChange, onSellAmountChange])
     const onQuoteBalanceClick = useCallback(() => {
         if (submittingOrder) {
             return;
         }
 
-        const total = balanceToFormValue(quoteBalance?.amount, quoteAsset?.decimals ?? 0);
+        const total = balanceToFormValue(quoteSpendable.amount, quoteAsset?.decimals ?? 0);
         if (total === '') {
             return;
         }
 
         onBuyTotalChange(total);
         onSellTotalChange(total);
-    }, [submittingOrder, quoteBalance, quoteAsset, onBuyTotalChange, onSellTotalChange])
+    }, [submittingOrder, quoteSpendable.amount, quoteAsset, onBuyTotalChange, onSellTotalChange])
     const onBalanceKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, handler: () => void) => {
         if (event.key !== 'Enter' && event.key !== ' ') {
             return;
@@ -608,13 +619,25 @@ const TradingPageContent = () => {
             return;
         }
 
-        if (orderType === ORDER_TYPE_BUY && !hasQuoteAmount(amount.multipliedBy(price))) {
-            //he must have enough quote asset balance
-            toast.error(`Insufficient ${quoteAsset.ticker} balance`);
-            return;
-        }
-        if (orderType === ORDER_TYPE_SELL && !hasBaseAmount(amount)) {
-            toast.error(`Insufficient ${baseAsset.ticker} balance`);
+        //a buy locks quote, a sell locks base — plus the gas fee and the trading fee the chain
+        //takes on top, from the same balances (chain charging order: gas, module fee, amount)
+        const toFill = getMatchingOrders(orderType, price, amount);
+        const txSpec = toFill.length > 1 ? {kind: 'fill-orders' as const, count: toFill.length} : 'create-order' as const;
+        const moduleFee = (toFill.length > 0 ? takerFeeEstimate : makerFeeEstimate).resolvedFee;
+        const spendAsset = orderType === ORDER_TYPE_BUY ? quoteAsset : baseAsset;
+        const spendAmount = orderType === ORDER_TYPE_BUY ? amount.multipliedBy(price) : amount;
+        const affordability = canAffordTx({
+            spend: {denom: spendAsset.denom, amount: spendAmount},
+            gasFee: estimateGasFee(txSpec),
+            moduleFee,
+            balanceOf: (denom) => getBalanceByDenom(denom).amount,
+        });
+        if (!affordability.canAfford) {
+            const shortDenom = affordability.shortfalls[0]?.denom;
+            const shortTicker = shortDenom === baseAsset.denom ? baseAsset.ticker : shortDenom === quoteAsset.denom ? quoteAsset.ticker : shortDenom;
+            toast.error(affordability.shortOnFees
+                ? `Not enough ${shortTicker} left for the network and trading fees`
+                : `Insufficient ${shortTicker} balance`);
             return;
         }
 
@@ -624,7 +647,6 @@ const TradingPageContent = () => {
             return;
         }
 
-        const toFill = getMatchingOrders(orderType, price, amount);
         if (toFill.length === 0) {
             return submitCreateOrderMsg(orderType, price, amount);
         } else if (toFill.length === 1) {
@@ -634,7 +656,7 @@ const TradingPageContent = () => {
         return submitFillOrdersMsg(toFill);
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [quoteAsset, baseAsset, buyAmount, buyPrice, sellAmount, sellPrice, hasQuoteAmount, hasBaseAmount, getMatchingOrders, submitCreateOrderMsg, submitFillOrdersMsg])
+    }, [quoteAsset, baseAsset, buyAmount, buyPrice, sellAmount, sellPrice, getMatchingOrders, submitCreateOrderMsg, submitFillOrdersMsg, estimateGasFee, getBalanceByDenom, takerFeeEstimate.resolvedFee, makerFeeEstimate.resolvedFee])
 
     const multipleOrdersFillMessage = useCallback((orderType: string, price: string, amount: string) => {
         if (!activeOrders) return undefined;
@@ -1388,6 +1410,7 @@ const TradingPageContent = () => {
                                     fee={tradingFees.takerFee}
                                     isLoading={tradingFeesLoading}
                                     description="Fee paid to the network when your order is filled immediately (market order or matching existing orders)."
+                                    txKind="create-order"
                                 />
                                 <FeeEstimateRow
                                     size="xs"
@@ -1395,6 +1418,7 @@ const TradingPageContent = () => {
                                     fee={tradingFees.makerFee}
                                     isLoading={tradingFeesLoading}
                                     description="Fee paid to the network when your order is placed in the order book and filled later."
+                                    txKind="create-order"
                                 />
                             </VStack>
                         </Box>

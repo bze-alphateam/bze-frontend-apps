@@ -34,7 +34,7 @@ import {
     useAsset, useAssets, useAssetPrice,
     amountToBigNumberUAmount, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount,
     shortNumberFormat, sanitizeNumberInput, toPercentage, removeLeadingZeros,
-    useBalance, useBZETx, useToast, getChainName,
+    useBalance, useBZETx, useToast, getChainName, useMaxSpendable, useCanAffordTx,
     AddressRewardsStaking, ExtendedPendingUnlockParticipantSDKType,
     calculateRewardsStakingPendingRewards,
     PrettyBalance, useAssetsValue, HighlightText,
@@ -103,6 +103,18 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
 
     const baseBalanceAmount = useMemo(() => uAmountToAmount(baseBalance.amount, baseAsset?.decimals ?? 0), [baseAsset, baseBalance])
     const quoteBalanceAmount = useMemo(() => uAmountToAmount(quoteBalance.amount, quoteAsset?.decimals ?? 0), [quoteAsset, quoteBalance])
+
+    // Shared gas engine: MAX keeps the gas back on the side that pays the fee, and submitting
+    // checks both reserves plus the gas fee.
+    const baseSpendable = useMaxSpendable(pool?.base || '', 'add-liquidity')
+    const quoteSpendable = useMaxSpendable(pool?.quote || '', 'add-liquidity')
+    const affordability = useCanAffordTx({
+        spec: addLiquidityBaseAmount && addLiquidityQuoteAmount ? 'add-liquidity' : undefined,
+        spend: [
+            {denom: pool?.base || '', amount: amountToBigNumberUAmount(addLiquidityBaseAmount || '0', baseAsset?.decimals ?? 0)},
+            {denom: pool?.quote || '', amount: amountToBigNumberUAmount(addLiquidityQuoteAmount || '0', quoteAsset?.decimals ?? 0)},
+        ],
+    })
 
     const onAddLiquidityBaseAmountChange = useCallback((value: string) => {
         setAddLiquidityBaseAmount(value);
@@ -182,6 +194,11 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
             return
         }
 
+        if (!affordability.canAfford) {
+            toast.error(affordability.message || 'Not enough balance left for the network fee')
+            return
+        }
+
         const slippageDecimal = toBigNumber(addLiquiditySlippage).dividedBy(100);
         if (slippageDecimal.isNaN() || slippageDecimal.lt(0) || slippageDecimal.gt(1)) {
             toast.error('Slippage must be a valid number between 0 and 100')
@@ -208,7 +225,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
         setIsSubmitting(false)
         if (success && onAddLiquiditySuccess) onAddLiquiditySuccess()
         //eslint-disable-next-line
-    }, [pool, addLiquidityBaseAmount, addLiquidityQuoteAmount, addLiquiditySlippage, expectedShares, quoteBalance, baseBalance, baseAsset, quoteAsset, address])
+    }, [pool, addLiquidityBaseAmount, addLiquidityQuoteAmount, addLiquiditySlippage, expectedShares, quoteBalance, baseBalance, baseAsset, quoteAsset, address, affordability.canAfford, affordability.message])
 
     return (
         <VStack gap="4" w="full">
@@ -228,7 +245,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
                             flex="1"
                             disabled={isSubmitting}
                         />
-                        <Button variant="outline" size="sm" onClick={() => onAddLiquidityBaseAmountChange(baseBalanceAmount)}>MAX</Button>
+                        <Button variant="outline" size="sm" onClick={() => onAddLiquidityBaseAmountChange(baseSpendable.inputValue)}>MAX</Button>
                     </HStack>
                 </Box>
 
@@ -247,7 +264,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
                             flex="1"
                             disabled={isSubmitting}
                         />
-                        <Button variant="outline" size="sm" onClick={() => onAddLiquidityQuoteAmountChange(quoteBalanceAmount)}>MAX</Button>
+                        <Button variant="outline" size="sm" onClick={() => onAddLiquidityQuoteAmountChange(quoteSpendable.inputValue)}>MAX</Button>
                     </HStack>
                 </Box>
 
@@ -434,6 +451,8 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
     }, [userSharesAmount]);
 
     const canRemove = useMemo(() => !isSubmitting && userShares.gt(0), [isSubmitting, userShares]);
+    // MAX removes all the LP shares (not a fee asset), but the wallet must still hold the gas fee.
+    const feeCheck = useCanAffordTx({spec: address ? 'remove-liquidity' : undefined});
 
     const handleRemove = useCallback(async () => {
         if (!pool || !address) {
@@ -443,6 +462,11 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
 
         if (!removeAmount || removeAmount === '0') {
             toast.error('Please enter an amount to remove');
+            return;
+        }
+
+        if (!feeCheck.canAfford) {
+            toast.error(feeCheck.message || 'Not enough balance for the network fee');
             return;
         }
 
@@ -480,7 +504,7 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
 
         setIsSubmitting(false);
         if (success) onRemove();
-    }, [pool, address, removeAmount, userShares, removeSlippage, minimumBaseAmount, minimumQuoteAmount, baseAsset, quoteAsset, toast, tx, onRemove]);
+    }, [pool, address, removeAmount, userShares, removeSlippage, minimumBaseAmount, minimumQuoteAmount, baseAsset, quoteAsset, toast, tx, onRemove, feeCheck.canAfford, feeCheck.message]);
 
     return (
         <VStack gap="4" w="full">
@@ -689,6 +713,8 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
     const { tx } = useBZETx();
     const { toast } = useToast();
     const { denomTicker, denomDecimals } = useAssets();
+    // MAX locks all the LP shares (not a fee asset), but the wallet must still hold the gas fee.
+    const feeCheck = useCanAffordTx({spec: address ? 'join-staking' : undefined});
 
     // Filter staking rewards that match the pool's LP denom
     const eligibleRewards = useMemo(() => {
@@ -831,6 +857,11 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
             return;
         }
 
+        if (!feeCheck.canAfford) {
+            toast.error(feeCheck.message || 'Not enough balance for the network fee');
+            return;
+        }
+
         setIsSubmitting(true);
 
         const { joinStaking } = bze.rewards.MessageComposer.withTypeUrl;
@@ -848,7 +879,7 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
             setSelectedRewardId('');
             if (onLockSuccess) onLockSuccess();
         }
-    }, [pool, address, selectedReward, lockAmount, userShares, userActiveStake, isRewardActive, toast, tx, onLockSuccess]);
+    }, [pool, address, selectedReward, lockAmount, userShares, userActiveStake, isRewardActive, toast, tx, onLockSuccess, feeCheck.canAfford, feeCheck.message]);
 
     if (eligibleRewards.length === 0) {
         return (
