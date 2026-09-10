@@ -6,7 +6,8 @@
     "dev": "next dev --webpack -p 3000",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bze/bze-ui-kit": "workspace:*",
@@ -40,13 +41,19 @@
     "wagmi": "^3.6.1"
   },
   "devDependencies": {
+    "@bze/vitest-preset": "workspace:*",
     "@eslint/eslintrc": "^3",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
-    "typescript": "^5"
+    "jsdom": "catalog:",
+    "typescript": "^5",
+    "vitest": "catalog:"
   },
   "overrides": {
     "axios": "1.13.2"

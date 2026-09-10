@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useEffect} from 'react';
+import {useState} from 'react';
 import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {
     useAssets,
@@ -36,13 +36,6 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setAmount('');
-            setIsSubmitting(false);
-        }
-    }, [isOpen]);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);

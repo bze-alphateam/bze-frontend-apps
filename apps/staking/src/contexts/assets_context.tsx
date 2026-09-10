@@ -245,8 +245,8 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [doUpdateLiquidityPools])
 
     useEffect(() => {
-        setIsLoading(true)
         const init = async () => {
+            setIsLoading(true)
             const [assets, markets, tickers, epochsInfo, pools] = await Promise.all([
                 getChainAssets(),
                 getMarkets(),
@@ -276,11 +276,11 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [usdPricesMap, assetsMap]);
 
     useEffect(() => {
-        if (!address) {
-            doUpdateBalances([]);
-            return
-        }
         const fetchBalances = async () => {
+            if (!address) {
+                doUpdateBalances([]);
+                return
+            }
             setIsLoading(true)
             const balances = await getAddressBalances(address);
             doUpdateBalances(balances);

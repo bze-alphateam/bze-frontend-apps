@@ -25,10 +25,12 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "@bze/bzejs": "3.0.0",
+    "@bze/bzejs": "3.1.0",
     "@chain-registry/types": "2.0.229",
     "@chain-registry/utils": "2.0.229",
     "@chakra-ui/react": "^3.0.0",
@@ -47,7 +49,7 @@
     "wagmi": "^3.6.0"
   },
   "devDependencies": {
-    "@bze/bzejs": "3.0.0",
+    "@bze/bzejs": "3.1.0",
     "@chain-registry/types": "2.0.229",
     "@chain-registry/utils": "2.0.229",
     "@chakra-ui/react": "^3.22.0",
@@ -67,13 +69,11 @@
     "tsup": "^8.0.0",
     "typescript": "^5",
     "viem": "^2.47.10",
+    "vitest": "^4.1.10",
     "wagmi": "^3.6.0"
   },
   "publishConfig": {
     "access": "public"
   },
-  "license": "MIT",
-  "dependencies": {
-    "@bze/hub-connector": "^0.1.4"
-  }
+  "license": "MIT"
 }

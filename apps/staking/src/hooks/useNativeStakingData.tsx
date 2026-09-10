@@ -11,14 +11,12 @@ import {
     getValidators, getDelegatorValidators, getDelegatorDelegations, getAddressUnbondingDelegations, getAddressRewards,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
-import {ValidatorSDKType, DelegationResponseSDKType, UnbondingDelegationSDKType} from "@bze/bzejs/cosmos/staking/v1beta1/staking";
+import {ValidatorSDKType, UnbondingDelegationSDKType} from "@bze/bzejs/cosmos/staking/v1beta1/staking";
 import {DelegationDelegatorRewardSDKType} from "@bze/bzejs/cosmos/distribution/v1beta1/distribution";
+import {buildMyValidators, type ValidatorWithDelegation} from "@/lib/my-validators";
+import {sortValidatorsByTokens} from "@/lib/validator-list";
 
-export interface ValidatorWithDelegation {
-    validator: ValidatorSDKType;
-    delegation?: DelegationResponseSDKType;
-    rewards: BigNumber;
-}
+export type {ValidatorWithDelegation};
 
 export interface StakingFullData {
     stakingData: NativeStakingData;
@@ -100,38 +98,20 @@ export function useNativeStakingData() {
                 unbondingDelegations = unbonding;
                 validatorRewards = rewards.rewards;
 
-                // Build my validators list. `allValidators` only contains bonded validators (used for
-                // the global list and dropdowns), so merge in `delegatorValidators` which includes any
-                // jailed/unbonding/unbonded validators the user has delegations with — otherwise those
-                // delegations would be silently hidden and users couldn't take action on them.
-                const validatorMap = new Map<string, ValidatorSDKType>();
-                allValidators.forEach(v => validatorMap.set(v.operator_address, v));
-                delegatorValidators.forEach(v => validatorMap.set(v.operator_address, v));
-
-                myValidators = delegations
-                    .filter(d => d.delegation && validatorMap.has(d.delegation.validator_address) && new BigNumber(d.balance?.amount ?? '0').gte(1))
-                    .map(d => {
-                        const valAddr = d.delegation!.validator_address;
-                        const rewardEntry = rewards.rewards.find(r => r.validator_address === valAddr);
-                        const nativeReward = rewardEntry?.reward.find(r => r.denom === nativeAsset.denom);
-                        return {
-                            validator: validatorMap.get(valAddr)!,
-                            delegation: d,
-                            rewards: new BigNumber(nativeReward?.amount ?? "0").integerValue(),
-                        };
-                    })
-                    .sort((a, b) => {
-                        const aAmount = new BigNumber(a.delegation?.balance?.amount ?? "0");
-                        const bAmount = new BigNumber(b.delegation?.balance?.amount ?? "0");
-                        return bAmount.minus(aAmount).toNumber();
-                    });
+                // Merge the bonded global list with the delegator's own validators so
+                // jailed/unbonding validators the user still has stake with stay visible.
+                myValidators = buildMyValidators({
+                    allValidators,
+                    delegatorValidators,
+                    delegations,
+                    rewards: rewards.rewards,
+                    nativeDenom: nativeAsset.denom,
+                });
             }
 
             setFullData({
                 stakingData: data,
-                allValidators: allValidators.sort((a, b) => {
-                    return new BigNumber(b.tokens).minus(new BigNumber(a.tokens)).toNumber();
-                }),
+                allValidators: sortValidatorsByTokens(allValidators),
                 myValidators,
                 unbondingDelegations,
                 validatorRewards,
@@ -144,9 +124,13 @@ export function useNativeStakingData() {
     }, [isLoadingAssets, nativeAsset, address])
 
     useEffect(() => {
-        if (!isLoadingAssets && nativeAsset) {
-            load()
+        if (isLoadingAssets || !nativeAsset) {
+            return
         }
+        const run = async () => {
+            await load()
+        }
+        run()
     }, [isLoadingAssets, nativeAsset, load])
 
     return {

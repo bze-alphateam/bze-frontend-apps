@@ -3,7 +3,7 @@ import NextLink from 'next/link'
 import {useNavigation} from "@/hooks/useNavigation";
 import { useState } from 'react';
 import { SearchCoinModal } from '@/components/search-coin-modal';
-import {getEcosystemApps, useIsInHub} from '@bze/bze-ui-kit'
+import {getEcosystemApps} from '@bze/bze-ui-kit'
 
 interface NavbarLinksProps extends StackProps {
     onLinkClick?: () => void
@@ -21,9 +21,6 @@ const navSubitems: { [key: string]: string } = {}
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
     const {navigate, currentPathName} = useNavigation()
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
-    // useIsInHub triggers a re-render when the Hub handshake resolves,
-    // ensuring getEcosystemApps() sees the correct isInHub() state.
-    useIsInHub()
     const appsItems = getEcosystemApps()
 
     const handleClick = (item: typeof navItems[0]) => {

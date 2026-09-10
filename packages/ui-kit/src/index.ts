@@ -3,11 +3,6 @@
 export { setStorageKeyVersion } from './storage/storage';
 export { setDefaultTxMemo, getDefaultTxMemo } from './constants/placeholders';
 
-// === Hub Connector ===
-export { HubConnectorInit } from './components/hub-connector-init';
-// Re-exported from @bze/hub-connector for convenience
-export { isInHub, useIsInHub, getHubConfig } from '@bze/hub-connector';
-
 // === Types ===
 export type { Asset, IBCData, IBCCounterparty, IbcTransitionMock, ChainAssets } from './types/asset';
 export { LP_ASSETS_DECIMALS } from './types/asset';
@@ -90,7 +85,6 @@ export {
     calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod } from './utils/fee_conversion';
-export type { FeeCoin } from './types/fees';
 export {
     createMarketId, calculateTotalAmount, calculatePricePerUnit,
     calculateAmountFromPrice, getMinAmount
@@ -146,7 +140,7 @@ export {
 export { TOKEN_LOGO_PLACEHOLDER, BZE_CIRCLE_LOGO, DEFAULT_TX_MEMO } from './constants/placeholders';
 export { SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS, VALIDATION_ERRORS, getAppName } from './constants/settings';
 export { EXCLUDED_MARKETS } from './constants/market';
-export { ECOSYSTEM_MENU_LABEL, getEcosystemApps } from './constants/ecosystem';
+export { ECOSYSTEM_MENU_LABEL, getEcosystemApps, getEcosystemApp, getWebsiteApp, getStakingApp, getDexApp, getBurnerApp, getFactoryApp, getCommunitiesApp } from './constants/ecosystem';
 export type { EcosystemApp } from './constants/ecosystem';
 export { MAINNET_CHAIN_INFO_FALLBACK, TESTNET_CHAIN_INFO_FALLBACK } from './constants/keplr';
 export { BZE_TESTNET_2_SUGGEST_CHAIN, BZE_TESTNET_NETWORK } from './constants/testnet';
@@ -182,7 +176,7 @@ export {
     getCurrentWeekEpochEndTime, getPeriodicWeekEpochEndTime, getPeriodicEpochEndTime,
     getEpochDurationByIdentifier
 } from './query/epoch';
-export { getFactoryDenomAdminAddress } from './query/factory';
+export { getFactoryDenomAdmin, getFactoryDenomAdminAddress } from './query/factory';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';
@@ -192,7 +186,13 @@ export {
 } from './query/markets';
 export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
+export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
+export { getTokenFactoryParams } from './query/tokenfactory_params';
+export type { TokenFactoryParamsCache } from './query/tokenfactory_params';
+export { getRewardsParams } from './query/rewards_params';
+export type { RewardsParamsCache } from './query/rewards_params';
+export type { FeeCoin } from './types/fees';
 export {
     getStakingRewards, getAddressPendingUnlock, getPendingUnlockParticipants,
     getStakingRewardParticipantByAddress, getAddressStakingRewards
@@ -230,6 +230,8 @@ export { useEpochs, useEpochsManager } from './hooks/useEpochs';
 export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './hooks/useLiquidityPools';
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
+export { useCreationFees } from './hooks/useCreationFees';
+export type { CreationFees } from './hooks/useCreationFees';
 export { useTradingFees } from './hooks/useTradingFees';
 export type { TradingFees } from './hooks/useTradingFees';
 export { useFeeEstimate } from './hooks/useFeeEstimate';

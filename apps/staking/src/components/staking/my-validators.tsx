@@ -40,6 +40,9 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
     const decimals = nativeAsset?.decimals ?? 6;
     const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [selectedValidator, setSelectedValidator] = useState<ValidatorWithDelegation | null>(null);
+    // Bumped on each open so the modals remount with fresh local state (replaces the
+    // former reset-on-close effects inside each modal).
+    const [modalNonce, setModalNonce] = useState(0);
 
     const rewardEntries: ValidatorRewardEntry[] = useMemo(() =>
         myValidators.map(item => ({
@@ -58,6 +61,7 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
     const openModal = (modal: ModalType, validator?: ValidatorWithDelegation) => {
         if (validator) setSelectedValidator(validator);
         setActiveModal(modal);
+        setModalNonce(n => n + 1);
     };
 
     const closeModal = () => {
@@ -231,12 +235,14 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
 
             {/* Modals — always rendered, controlled by isOpen */}
             <DelegateModal
+                key={`delegate-${modalNonce}`}
                 isOpen={activeModal === 'delegate'}
                 onClose={closeModal}
                 validator={selectedValidator?.validator ?? null}
                 onSuccess={handleActionComplete}
             />
             <UndelegateModal
+                key={`undelegate-${modalNonce}`}
                 isOpen={activeModal === 'undelegate'}
                 onClose={closeModal}
                 validator={selectedValidator?.validator ?? null}
@@ -244,6 +250,7 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                 onSuccess={handleActionComplete}
             />
             <RedelegateModal
+                key={`redelegate-${modalNonce}`}
                 isOpen={activeModal === 'redelegate'}
                 onClose={closeModal}
                 sourceValidator={selectedValidator?.validator ?? null}
@@ -253,6 +260,7 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                 logos={logos}
             />
             <ClaimRewardsModal
+                key={`claim-${modalNonce}`}
                 isOpen={activeModal === 'claim'}
                 onClose={closeModal}
                 rewardEntries={rewardEntries}

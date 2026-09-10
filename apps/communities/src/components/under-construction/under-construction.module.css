@@ -1,0 +1,166 @@
+/* "Under construction" placeholder — the same page the pre-release `main` branch
+   served, ported to a CSS module so it stays self-contained (no global styles, no
+   Chakra) and can be shown without booting the app's providers. */
+
+.page {
+  --bg: #0b0e14;
+  --honey: #f5b301;
+  --honey-soft: #ffcf4d;
+  --text: #f4f6fb;
+  --muted: #8b93a7;
+
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 28px;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(245, 179, 1, 0.14), transparent 60%),
+    var(--bg);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.badge {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  display: grid;
+  place-items: center;
+}
+
+/* Hexagon honeycomb tile */
+.hex {
+  width: 108px;
+  height: 108px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: linear-gradient(160deg, var(--honey-soft), var(--honey));
+  display: grid;
+  place-items: center;
+  font-size: 52px;
+  line-height: 1;
+  box-shadow: 0 12px 40px rgba(245, 179, 1, 0.25);
+  animation: bob 3.6s ease-in-out infinite;
+}
+
+.badge::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 179, 1, 0.25), transparent 70%);
+  animation: pulse 3.6s ease-in-out infinite;
+}
+
+.kicker {
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--honey);
+  font-weight: 600;
+}
+
+.title {
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.sub {
+  max-width: 520px;
+  font-size: clamp(1rem, 2.4vw, 1.15rem);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.dots {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--honey);
+  opacity: 0.35;
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.foot {
+  position: fixed;
+  bottom: 22px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.foot a {
+  color: var(--honey-soft);
+  text-decoration: none;
+}
+.foot a:hover {
+  text-decoration: underline;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex,
+  .badge::before,
+  .dots span {
+    animation: none;
+  }
+}
