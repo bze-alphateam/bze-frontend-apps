@@ -5,6 +5,7 @@ import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-
 import {
     useAssets,
     useSDKTx,
+    useCanAffordTx,
     useToast,
     getChainNativeAssetDenom,
     prettyAmount,
@@ -39,10 +40,17 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
+    // Max undelegates the full delegation (not a wallet balance), but the wallet must still
+    // hold the gas fee for the transaction.
+    const feeCheck = useCanAffordTx({spec: isConnected ? 'undelegate' : undefined});
 
     const handleUndelegate = async () => {
         if (!address || !validator || !amount || new BigNumber(amount).lte(0)) {
             toast.error('Invalid amount', 'Please enter a valid amount to undelegate');
+            return;
+        }
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message);
             return;
         }
 
@@ -124,6 +132,10 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                                     </HStack>
                                 </VStack>
 
+                                {feeCheck.message && (
+                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
+                                )}
+
                                 {progressTrack && (
                                     <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
                                 )}
@@ -141,7 +153,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                                         colorPalette="orange"
                                         onClick={handleUndelegate}
                                         loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address}
+                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || !feeCheck.canAfford}
                                         w="full"
                                     >
                                         Undelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}

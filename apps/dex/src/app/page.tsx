@@ -24,7 +24,7 @@ import {
   LuArrowRight,
 } from 'react-icons/lu';
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees} from "@bze/bze-ui-kit";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx} from "@bze/bze-ui-kit";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
@@ -538,6 +538,25 @@ export default function SwapPage() {
     return amount.gt(fromAsset.balance);
   }, [fromAsset, fromAmount]);
 
+  // Shared gas engine: MAX / 100 % keep the gas fee back when the sold asset is the fee coin
+  // (sized for the worst case, a 3-hop route, since the route is only known after the amount),
+  // and the submit check covers amount + gas + taker fee in the chain's charging order.
+  const maxSpendable = useMaxSpendable(fromAsset?.denom ?? '', {kind: 'swap', count: 3});
+  const swapSpec = useMemo(
+    () => ({kind: 'swap' as const, count: Math.max(1, routeResult?.route.length ?? 1)}),
+    [routeResult]
+  );
+  const swapGasFee = useGasFeeEstimate(swapSpec);
+  const takerFeeEstimate = useFeeEstimate(tradingFees.takerFee, {gasFee: swapGasFee.estimate});
+  const affordability = useCanAffordTx({
+    spec: fromAsset && fromAmount ? swapSpec : undefined,
+    spend: fromAsset && fromAmount
+      ? {denom: fromAsset.denom, amount: amountToBigNumberUAmount(fromAmount, fromAsset.decimals)}
+      : undefined,
+    moduleFee: takerFeeEstimate.resolvedFee,
+  });
+  const hasFeeShortfall = !hasInsufficientBalance && Boolean(fromAmount) && !affordability.canAfford;
+
   // Determine if swap can be submitted
   const canSubmit = useMemo(() => {
     // Must have valid amount
@@ -549,8 +568,8 @@ export default function SwapPage() {
     if (!fromAsset || !toAsset) return false;
     if (fromAsset.denom === toAsset.denom) return false;
 
-    // Must have sufficient balance
-    if (hasInsufficientBalance) return false;
+    // Must have sufficient balance, gas and taker fee included
+    if (hasInsufficientBalance || hasFeeShortfall) return false;
 
     // Must have a valid route
     if (!routeResult) return false;
@@ -559,7 +578,7 @@ export default function SwapPage() {
     if (isCalculatingRoute) return false;
 
     return true;
-  }, [fromAmount, fromAsset, toAsset, hasInsufficientBalance, routeResult, isCalculatingRoute]);
+  }, [fromAmount, fromAsset, toAsset, hasInsufficientBalance, hasFeeShortfall, routeResult, isCalculatingRoute]);
 
   const handleSwapAssets = () => {
     const tempDenom = fromDenom;
@@ -879,7 +898,7 @@ export default function SwapPage() {
                           <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleFromAmountChange(fromAsset?.balance.toString() || '0')}
+                              onClick={() => handleFromAmountChange(maxSpendable.inputValue)}
                               disabled={!fromAsset || fromAsset.balance.lte(0)}
                               colorPalette="blue"
                           >
@@ -894,8 +913,9 @@ export default function SwapPage() {
                                   variant="outline"
                                   onClick={() => {
                                     if (fromAsset) {
-                                      const amount = fromAsset.balance.multipliedBy(percentage).dividedBy(100);
-                                      handleFromAmountChange(amount.toString());
+                                      // Percentages of the spendable balance, so 100 % equals MAX.
+                                      const amount = maxSpendable.displayAmount.multipliedBy(percentage).dividedBy(100);
+                                      handleFromAmountChange(amount.toFixed());
                                     }
                                   }}
                                   disabled={!fromAsset || fromAsset.balance.lte(0)}
@@ -1032,6 +1052,7 @@ export default function SwapPage() {
                             fee={tradingFees.takerFee}
                             isLoading={tradingFeesLoading}
                             description="Fee paid to the network for executing the swap."
+                            txKind={swapSpec}
                           />
                           <HStack justify="space-between">
                             <Text fontSize="sm" color="fg.muted" fontWeight="medium">
@@ -1172,6 +1193,21 @@ export default function SwapPage() {
                           <Alert.Title>Insufficient Balance</Alert.Title>
                           <Alert.Description>
                             You have {fromAsset?.balanceFormatted || '0'} {fromAsset?.ticker || ''}
+                          </Alert.Description>
+                        </Alert.Content>
+                      </Alert.Root>
+                    </Box>
+                )}
+
+                {/* Balance covers the amount but not the fees on top of it */}
+                {hasFeeShortfall && (
+                    <Box px="6" pt="2">
+                      <Alert.Root status="error">
+                        <Alert.Indicator />
+                        <Alert.Content>
+                          <Alert.Title>Not enough left for fees</Alert.Title>
+                          <Alert.Description>
+                            {affordability.message || 'Your balance does not cover the swap plus its fees.'}
                           </Alert.Description>
                         </Alert.Content>
                       </Alert.Root>

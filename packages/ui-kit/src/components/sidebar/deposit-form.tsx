@@ -164,6 +164,9 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
         setAmountError('');
     }, []);
 
+    // MAX fills the full balance on the source chain on purpose: the deposit is signed on
+    // that chain and its gas is paid in that chain's own coin by the wallet (letWalletSetFee),
+    // so BeeZee's gas engine (useMaxSpendable) has nothing to reserve here.
     const setMaxAmount = useCallback(() => {
         if (!sourceBalance || sourceBalance.status !== 'ready') return;
         setAmount(sourceBalance.display.toString());

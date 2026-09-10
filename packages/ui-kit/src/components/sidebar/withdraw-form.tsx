@@ -23,8 +23,10 @@ import {
     type WithdrawDestinationChain,
 } from '../../hooks/useWithdrawableBalances';
 import {useBridgeTransfer} from '../../hooks/useBridgeTransfer';
+import {useMaxSpendable} from '../../hooks/useMaxSpendable';
+import {useCanAffordTx} from '../../hooks/useCanAffordTx';
 import {sanitizeNumberInput} from '../../utils/number';
-import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
+import {amountToUAmount, prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {formatDuration} from '../../utils/cross_chain';
 import {getChainName} from '../../constants/chain';
 
@@ -144,16 +146,29 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
         };
     }, [selectedAsset]);
 
+    // The IBC transfer is signed on BeeZee, so its gas fee comes out of the BZE-side balance:
+    // MAX leaves it behind when withdrawing the fee token, and the form refuses amounts that
+    // would leave no room for it.
+    const maxSpendable = useMaxSpendable(selectedAsset?.balance.denom ?? '', 'ibc-transfer');
+    const affordability = useCanAffordTx({
+        spec: selectedAsset && amount !== '' ? 'ibc-transfer' : undefined,
+        spend: selectedAsset && amount !== ''
+            ? {denom: selectedAsset.balance.denom, amount: amountToUAmount(amount, selectedAsset.balance.decimals)}
+            : undefined,
+    });
+    const amountErrorText = amountError !== '' ? amountError : (amount !== '' ? affordability.message : '');
+
     const canExecute = useMemo(() => {
         return selectedAsset
             && selectedDestination
             && amount !== ''
             && amountError === ''
+            && affordability.canAfford
             && !isExecuting
             && destWalletStatus === WalletState.Connected
             && sourceBalance
             && sourceBalance.display.isGreaterThan(0);
-    }, [selectedAsset, selectedDestination, amount, amountError, isExecuting, destWalletStatus, sourceBalance]);
+    }, [selectedAsset, selectedDestination, amount, amountError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
 
     const handleExecute = useCallback(async () => {
         const success = await executeTransfer();
@@ -186,9 +201,9 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
     const setMaxAmount = useCallback(() => {
         if (!sourceBalance) return;
-        setAmount(sourceBalance.display.toString());
+        setAmount(maxSpendable.inputValue);
         setAmountError('');
-    }, [sourceBalance]);
+    }, [sourceBalance, maxSpendable.inputValue]);
 
     const validateAmount = useCallback(() => {
         if (!amount || !sourceBalance) return;
@@ -321,7 +336,7 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
             {/* Amount input */}
             {selectedAsset && selectedDestination && (
                 <Box>
-                    <Field.Root invalid={amountError !== ''}>
+                    <Field.Root invalid={amountErrorText !== ''}>
                         <Field.Label>Amount to send</Field.Label>
                         <Group attached w="full">
                             <Input
@@ -335,7 +350,12 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
                                 Max
                             </Button>
                         </Group>
-                        <Field.ErrorText>{amountError}</Field.ErrorText>
+                        <Field.ErrorText>{amountErrorText}</Field.ErrorText>
+                        {maxSpendable.isReserving && amountErrorText === '' && (
+                            <Field.HelperText>
+                                Max keeps ≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker} for the network fee.
+                            </Field.HelperText>
+                        )}
                     </Field.Root>
 
                     {sourceBalance && (

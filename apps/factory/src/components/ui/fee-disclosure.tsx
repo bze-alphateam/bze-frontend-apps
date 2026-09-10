@@ -8,6 +8,7 @@ import {
     Sidebar,
     SettingsSidebarContent,
     TokenLogo,
+    TxSpec,
     useAsset,
     useAssetPrice,
     useBalance,
@@ -26,25 +27,35 @@ interface FeeDisclosureProps {
     isLoading?: boolean;
     /** e.g. "Token creation fee". Shown as the box label in forms and at review. */
     label?: string;
+    /**
+     * The message(s) the form will send (`'create-market'`, `['create-denom', 'mint', …]`).
+     * When set, the transaction's gas fee is shown and reserved in the balance check.
+     */
+    txKind?: TxSpec;
 }
 
 /**
  * Spec's Fee UX principles: the fee is shown loud and clear in every creation form
- * and again at review, with an approximate value in the fee token picked in Settings,
- * a quick way to open Settings without losing form state, and a balance indicator.
+ * and again at review, with its value in the fee token picked in Settings (estimated
+ * from the liquidity pool, the way the chain converts it), the gas fee alongside, a
+ * quick way to open Settings without losing form state, and a balance indicator.
  *
  * The balance indicator follows the chain's actual charging order (see
- * useFeePayment): selected fee token first, silent fallback to the native denom.
+ * useFeePayment / ui-kit's useFeeEstimate): gas first, then the selected fee token,
+ * silent fallback to the native denom.
  */
-export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDisclosureProps) {
+export function FeeDisclosure({ fee, isLoading, label = 'Creation fee', txKind }: FeeDisclosureProps) {
     const { address } = useChain(getChainName())
     const { asset: feeAsset } = useAsset(fee?.denom ?? '')
     const feeTokenPrice = useAssetPrice(fee?.denom ?? '')
     const { balance, isLoading: isBalanceLoading } = useBalance(fee?.denom ?? '')
-    const payment = useFeePayment(fee)
+    const payment = useFeePayment(fee, txKind)
 
     const nativeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
     const altTicker = payment.altAsset?.ticker ?? ''
+    const gasText = txKind && payment.gasFee.amount.gt(0)
+        ? `≈ ${prettyAmount(payment.gasFee.displayAmount)} ${payment.gasFee.ticker}`
+        : ''
 
     const displayAmount = useMemo(() => {
         if (!fee || !feeAsset) return undefined
@@ -111,6 +122,12 @@ export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDis
                             )}
                         </HStack>
 
+                        {gasText && (
+                            <Text fontSize="xs" color="fg.muted">
+                                Plus the transaction&apos;s network fee: {gasText} (taken first, from the same balance).
+                            </Text>
+                        )}
+
                         {!address ? (
                             <Text fontSize="sm" color="fg.muted">
                                 Connect your wallet to check your balance.
@@ -121,7 +138,7 @@ export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDis
                             <HStack gap={1.5} color="green.500">
                                 <LuCircleCheck size={14} />
                                 <Text fontSize="sm">
-                                    You have enough {altTicker} to pay this fee.
+                                    You have enough {altTicker} to pay this fee{gasText ? ' and the network fee' : ''}.
                                 </Text>
                             </HStack>
                         ) : payment.method === 'fallback' ? (
@@ -131,7 +148,7 @@ export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDis
                                 </Box>
                                 <Text fontSize="sm">
                                     Not enough {altTicker} (you have{' '}
-                                    {prettyAmount(payment.altBalanceDisplay)}) — the fee will be
+                                    {prettyAmount(payment.altBalanceDisplay)}{gasText ? `, the network fee goes first` : ''}) — the fee will be
                                     charged in {nativeTicker} instead. You have enough {nativeTicker}.
                                 </Text>
                             </HStack>
@@ -139,7 +156,7 @@ export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDis
                             <HStack gap={1.5} color="green.500">
                                 <LuCircleCheck size={14} />
                                 <Text fontSize="sm">
-                                    You have enough {nativeTicker} to pay this fee.
+                                    You have enough {nativeTicker} to pay this fee{gasText ? ' and the network fee' : ''}.
                                 </Text>
                             </HStack>
                         ) : (
@@ -147,8 +164,8 @@ export function FeeDisclosure({ fee, isLoading, label = 'Creation fee' }: FeeDis
                                 <LuCircleAlert size={14} />
                                 <Text fontSize="sm">
                                     {payment.isAltSelected
-                                        ? `Not enough ${altTicker} or ${nativeTicker} to pay this fee — you have ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))} ${nativeTicker}.`
-                                        : `Not enough ${nativeTicker} — you have ${prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))}.`}
+                                        ? `Not enough ${altTicker} or ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))} ${nativeTicker}.`
+                                        : `Not enough ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))}.`}
                                 </Text>
                             </HStack>
                         )}

@@ -153,7 +153,8 @@ Only `packages/ui-kit` has a suite so far — test files live next to the code t
 |---|---|
 | `src/utils/amount.test.ts` | uAmount ↔ amount conversions, price ↔ uPrice exponent shifts, big-number precision (> `MAX_SAFE_INTEGER`), `prettyAmount` formatting, round-trips |
 | `src/utils/liquidity_pool.test.ts` | AMM reserve-ratio math (`calculatePoolOppositeAmount`), pool pricing, user share % / USD value, division-by-zero guards |
-| `src/utils/fee_conversion.test.ts` | fee-token engine — chain-mirrored `calculateOptimalInputForOutput` (constant product + swap fee, ceil), `estimateFeeInPreferredDenom` reasons (native / estimated / no-pool / low-liquidity / pool-too-small), `resolveFeePayment` charging order (preferred → native fallback → insufficient) |
+| `src/utils/fee_conversion.test.ts` | fee-token engine — chain-mirrored `calculateOptimalInputForOutput` (constant product + swap fee, ceil), `estimateFeeInPreferredDenom` reasons (native / estimated / no-pool / low-liquidity / pool-too-small), `resolveFeePayment` charging order (preferred → native fallback → insufficient) with the gas fee reserved first |
+| `src/utils/gas_fee.test.ts` | pre-submit gas engine — `GAS_ESTIMATES` table sanity, `estimateGasUsed` (per-item kinds, multi-message sums), `resolveGasPrice` (chain param vs env fallback), `estimateGasFee` mirroring `useTx.simulateFee` (multipliers, rounding, pool conversion + slippage, never below what `useTx` sends), `maxSpendableAmount` (reserve only on the fee denom, floor 0), `canAffordTx` (spend + gas + module fee per denom, fee-only shortfalls) |
 | `src/utils/denom.test.ts` | factory / IBC / LP denom classification (legacy `ulp_` **and** hashed `ulp/` formats), native denom, center-truncation |
 | `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
 | `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
@@ -171,6 +172,15 @@ The **apps** additionally have a component-test harness (jsdom + React Testing L
 |---|---|
 | `src/lib/token-directory.test.ts` | pure directory logic — factory-denom filter, alphabetical-by-ticker sort, `getTotalPages` / `pageSlice` (20/page) client-side pagination, `clampPage`, `tokenPagePath()` URL-encoding |
 | `src/app/page.test.tsx` | the directory page renders loading / empty / list states, paginates at 20 and advances on **Next**, and links each card to the URL-encoded token page |
+
+Gas-fee-aware MAX buttons (shared engine, see "Gas fees, MAX buttons and balance checks" below) are covered in `apps/dex`:
+
+| File | Covers |
+|---|---|
+| `src/app/page.test.tsx` | the swap page's **MAX** and percentage presets fill the *spendable* amount (balance minus gas when selling the fee token, full balance otherwise), sized for a 3-hop route |
+| `src/components/wallet-send-form.test.tsx` | ui-kit's `WalletSendForm` running the **real** engine (`GAS_ESTIMATES` → `useMaxSpendable` / `useCanAffordTx`): Max keeps the send gas back for BZE, fills the full balance for another token, and an amount that leaves no room for gas shows the fee error |
+
+`apps/staking/src/lib/delegate-amount.test.ts` covers the delegate modal's helpers on top of the engine (`no-fee-reserve` validation, `exceedsSpendable`, rounded-down quick amounts).
 
 ### App tests (Vitest + React Testing Library)
 
@@ -200,6 +210,13 @@ Guidelines for writing app tests:
   no wallet / chain providers needed. See `communities/src/app/page.test.tsx`.
 - Test files (`*.test.ts[x]`) and `vitest.config.ts` are excluded from each app's
   `tsconfig.json`, so `next build` never type-checks them.
+- **Rendering a ui-kit component in an app test**: apps import the built `dist`, so a
+  `vi.mock` of one of *its* dependencies (`@bze/bzejs`, `@interchain-kit/react`, …) does
+  not reach the code inside the bundle. Feed it through the real seams instead — wrap it
+  in `<SettingsProvider>` + `<AssetsContext.Provider value={…}>` for assets / balances /
+  pools, and seed the query layer's localStorage caches with `setInLocalStorage(key, json, ttl)`
+  (`tradebin_params`, `txfeecollector_params`, …) so the param hooks never open a socket.
+  See `dex/src/components/wallet-send-form.test.tsx`.
 - Need setup shared across all apps (a new global matcher, a polyfill)? Add it to the
   preset's `setup.ts` — it runs before every app's tests.
 
@@ -291,6 +308,38 @@ deploys mainnet within minutes; rollback = revert on `main`.
 - Apps must keep `transpilePackages: ["@bze/bze-ui-kit"]` in their `next.config.ts` (already set).
 - The lib's runtime deps (React, Chakra, interchain-kit, wagmi, bzejs, …) are **peerDependencies**
   — provided by each app, not bundled by the lib. Keep app versions aligned with the lib's peers.
+
+### Gas fees, MAX buttons and balance checks
+
+Every form that sends a transaction goes through one shared engine in ui-kit (BFE-56) — no app
+keeps its own fee reserve:
+
+- **`useTxFeeDenom()`** — the denom the tx fee is *really* paid in: the Settings fee token when its
+  BZE pool is deep enough (the same `isValidFeeDenom` rule `useTx.simulateFee` applies), BZE
+  otherwise. Every check below uses this, never the raw Settings value.
+- **`useGasFeeEstimate(spec)`** — pre-submit gas fee for a transaction shape: `'send'`,
+  `{kind: 'fill-orders', count: 3}`, `['create-denom', 'mint', …]`. Pure core in
+  `src/utils/gas_fee.ts`: `GAS_ESTIMATES[kind]` (measured `gas_used`, rounded up) × gas
+  multiplier × gas price (chain `validator_min_gas_fee` param, env fallback — `resolveGasPrice`,
+  shared with `useTx`), converted through the fee token's pool with the same slippage / non-native
+  multiplier `useTx` uses, so the estimate is never below what `useTx` sends.
+  `useGasFeeEstimator()` returns the same as a function for shapes only known at submit time.
+- **`useMaxSpendable(denom, spec)`** — what a MAX / ALL / 100 % button may fill in: the balance
+  minus the gas fee *only* when `denom` is the tx fee denom (floored at 0), the full balance
+  otherwise. `inputValue` is ready for an input.
+- **`useCanAffordTx({spec, spend, moduleFee})`** — pre-submit affordability in the chain's charging
+  order (gas first, then module fee, then the amount) with a ready-to-show `message`; forms gate
+  their submit button on `canAfford`. Pure core: `canAffordTx`.
+- **`useFeeEstimate(fee, {gasFee})`** / **`FeeEstimateRow txKind=…`** — module fees (trading,
+  creation) estimated in the fee token; with a `gasFee` the balance status reserves the gas first
+  and the details dialog names it.
+
+Kinds that move a non-fee asset (undelegate, redelegate, remove liquidity, lock LP shares) keep the
+full amount on MAX but still check the fee-denom balance for gas. Deposits / Buy BZE sign on a
+foreign chain (the wallet sets that chain's fee), so their MAX deliberately fills the full balance.
+**Re-measure `GAS_ESTIMATES` after a chain upgrade** — `gas_used` of recent txs per type, e.g.
+`GET /cosmos/tx/v1beta1/txs?query=message.action='/bze.tradebin.MsgCreateOrder'` (BZE type URLs have
+no version segment).
 
 ---
 

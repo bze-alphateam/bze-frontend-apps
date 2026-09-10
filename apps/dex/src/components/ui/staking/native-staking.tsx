@@ -11,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import {LuClock, LuCoins, LuGift, LuInfinity, LuLock, LuLockOpen, LuShield, LuTrendingUp} from "react-icons/lu";
 import React, {useMemo, useState} from "react";
-import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, openExternalLink, useToast, getChainName, useSDKTx, NativeStakingData, TokenLogo} from "@bze/bze-ui-kit";
+import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, openExternalLink, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo} from "@bze/bze-ui-kit";
 import {cosmos} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
 import {
@@ -42,6 +42,11 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
     const {toast} = useToast()
     const {address} = useChain(getChainName())
     const {tx} = useSDKTx(getChainName())
+    // One MsgWithdrawDelegatorReward per validator; the wallet must hold the gas for all of them.
+    const claimValidators = stakingData?.currentStaking?.pendingRewards.validators?.length ?? 0
+    const feeCheck = useCanAffordTx({
+        spec: hasRewards && claimValidators > 0 ? {kind: 'withdraw-delegator-reward', count: claimValidators} : undefined,
+    })
 
     const yourStake = useMemo(() => {
         return `${prettyAmount(uAmountToAmount(stakingData?.currentStaking?.staked.amount, nativeAsset?.decimals || 0))} ${nativeAsset?.ticker}`
@@ -80,6 +85,11 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
     const onClaimRewards = async () => {
         if (!hasRewards || !stakingData?.currentStaking?.pendingRewards.validators || !address) {
             toast.error('Error', `Rewards amount is too low to claim. Minimum amount is ${uAmountToAmount(MIN_CLAIM_AMOUNT, nativeAsset?.decimals || 6)} ${nativeAsset?.ticker}.`)
+            return
+        }
+
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message)
             return
         }
 
@@ -433,10 +443,13 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                             {modalType === 'claim' && hasRewards && (
                                 <VStack gap="4">
                                     <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards} />
+                                    {feeCheck.message && (
+                                        <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
+                                    )}
                                     <RewardsStakingButton
                                         buttonType={TYPE_REWARDS}
                                         onClick={onClaimRewards}
-                                        disabled={pendingClaim}
+                                        disabled={pendingClaim || !feeCheck.canAfford}
                                     >
                                         Claim Rewards
                                     </RewardsStakingButton>

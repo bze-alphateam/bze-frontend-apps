@@ -61,7 +61,7 @@ function MarketNewContent() {
     const [created, setCreated] = useState<{ txHash: string } | undefined>(undefined)
 
     const fee = fees.createMarketFee
-    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee)
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, 'create-market')
 
     // The pair must not exist in EITHER direction — the chain would reject the
     // reversed pair too, so catch it here as a friendly form error instead.
@@ -220,7 +220,7 @@ function MarketNewContent() {
 
                     <Separator />
 
-                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Market creation fee" />
+                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Market creation fee" txKind="create-market" />
 
                     <VStack align="stretch" gap={2}>
                         <Button
