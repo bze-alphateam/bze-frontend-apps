@@ -1,6 +1,8 @@
-# Keep the build context lean and keep local env files (which may hold real
-# values on a dev machine) out of the image. Only the committed templates
-# (.env.dist and the per-flavor .env.<flavor>.dist) are let through.
+# Keep the build context lean and keep env files out of the image. No env file
+# with real values ever enters the context: the build-time env is handed to
+# `docker build` as a BuildKit secret (see docker/prod/Dockerfile) and only the
+# committed .env.dist templates are let through. deploy/ is where CI checks out
+# the private deploy repo — never part of the context either.
 .git
 node_modules
 **/node_modules
@@ -10,5 +12,4 @@ node_modules
 **/.env
 **/.env.*
 !**/.env.dist
-!**/.env.mainnet.dist
-!**/.env.testnet.dist
+deploy
