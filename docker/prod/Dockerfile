@@ -25,9 +25,13 @@ RUN pnpm install --frozen-lockfile
 ARG APP
 ARG PKG
 # Next reads apps/<APP>/.env at build time; turbo builds workspace deps first.
+# Output tracing copies that .env into the standalone folder — drop it there:
+# every value it holds is already inlined into the bundles, and the runtime
+# env comes from the container environment, not from a file.
 RUN --mount=type=secret,id=build_env,target=/repo/apps/${APP}/.env,required=true \
     mkdir -p "apps/${APP}/public" \
-    && pnpm exec turbo run build --filter="${PKG}"
+    && pnpm exec turbo run build --filter="${PKG}" \
+    && rm -f "apps/${APP}/.next/standalone/apps/${APP}/.env"
 
 FROM node:24-alpine
 ENV NODE_ENV=production \
