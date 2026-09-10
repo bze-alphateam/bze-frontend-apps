@@ -254,50 +254,64 @@ Guidelines for writing app tests:
 
 `NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
 **different builds**. CI (`.github/workflows/docker-publish.yml`) builds every app on
-every push and publishes self-contained Node images (Next.js standalone) to GHCR:
+every push, publishes self-contained Node images (Next.js standalone) to GHCR and then
+deploys them:
 
-| push to | flavor | env baked in | image tag |
-|---|---|---|---|
-| `main` | mainnet | `apps/<app>/.env.mainnet.dist` | `<sha8>` |
-| `develop` | testnet | `apps/<app>/.env.testnet.dist` | `testnet-<sha8>` |
+| push to | flavor | build env (in the private deploy repo) | image tag | deployed to |
+|---|---|---|---|---|
+| `main` | mainnet | `<app>.getbze.com/build.env` | `<sha8>` | `<app>.getbze.com` |
+| `develop` | testnet | `testnet-<app>.getbze.com/build.env` | `testnet-<sha8>` | `testnet-<app>.getbze.com` |
 
 Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
 `factory`, `communities`). All five are built on every push — even single-app changes —
-so any commit on a deploy branch has a complete image set (the server-side release
-pollers rely on that).
+so any commit on a deploy branch has a complete image set that can be released or rolled
+back for every app.
 
 ### Env files
 
-- `.env.mainnet.dist` / `.env.testnet.dist` (committed, per app) hold the flavor's
-  `NEXT_PUBLIC_*` values. Everything in them is public by definition — it ends up in
-  the client bundle. **No secrets, ever.**
+- **Build-time env is not in this repo.** Each deploy target has a `build.env` in the
+  private deploy repo (`bze-alphateam/bze-deploy`, one dir per target). CI checks that
+  dir out with the `DEPLOY_REPO_TOKEN` org secret and hands the file to `docker build`
+  as a BuildKit secret, mounted as `apps/<app>/.env` for the build step only — it never
+  enters the build context, an image layer or a log. Everything in it is public by
+  definition (it ends up in the client bundle); **no secrets, ever**. Changing a value
+  = PR in the deploy repo + a new image (push, or re-run `docker-publish`).
 - `SKIP_API_KEY` is the one runtime-only variable (server-side Skip proxy auth). It is
   **never baked into an image**: production injects it into the container environment.
-  The dist files list it empty purely as documentation.
-- `.env.dist` remains the local-dev template (copy to `.env`).
+- `.env.dist` (committed, per app) is the local-dev template (copy to `.env`) and what
+  the PR merge gate (`ci.yml`) builds with. It holds testnet values.
 - **Release gate for `apps/communities`:** `NEXT_PUBLIC_COMMUNITIES_ENABLED` — the app is
   hidden unless it is the literal `true`. A hidden build serves the "under construction"
   placeholder on every route — no providers, no wallet/RPC traffic, Skip proxy answers
-  404. It exists so `develop` can merge into `main` before the app is public:
-  `.env.mainnet.dist` keeps it `false`, `.env.dist` / `.env.testnet.dist` set `true`.
-  Launching communities.getbze.com is a one-line change to the mainnet dist file (value
-  is baked in at build time, so it needs a new image, not a container restart).
+  404. It exists so `develop` can merge into `main` before the app is public: the
+  mainnet `build.env` keeps it `false`, `.env.dist` and the testnet `build.env` set
+  `true`. Launching communities.getbze.com is a one-line change to the mainnet
+  `build.env` in the deploy repo (the value is baked in at build time, so it needs a new
+  image, not a container restart).
 
 ### Build locally (what CI does)
 
 ```sh
 docker build -f docker/prod/Dockerfile \
-  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 --build-arg FLAVOR=mainnet .
+  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 \
+  --secret id=build_env,src=apps/dex/.env.dist .
 ```
 
-`APP` is the directory under `apps/`, `PKG` its `package.json` name, `FLAVOR` picks the
-env file. The container serves on port 3000.
+`APP` is the directory under `apps/`, `PKG` its `package.json` name, and the `build_env`
+secret is the env file to build with (`.env.dist` for a testnet-flavoured local build, or
+a target's `build.env` from the deploy repo). The container serves on port 3000.
 
 ### Releasing
 
-Server-side deploys (blue/green flip, health-gated, automatic on merge) live in a
-separate private ops repo — nothing in this repo touches the server. Merging to `main`
-deploys mainnet within minutes; rollback = revert on `main`.
+Deploys are **push-based**: after pushing its image, each build job dispatches the deploy
+repo's `deploy` workflow for its target (`deploy <app> <tag>`) and waits for it — that
+workflow runs the blue/green, health-gated release script on the server through an SSH
+gate. Merging to `develop` deploys testnet and merging to `main` deploys mainnet, within
+minutes; a failed release turns both runs red and the previous tag stays live. The `dex`
+job comments the deploy links on the merged PR. Rollback = re-run the deploy workflow
+with an older tag (or revert on the branch). A manual `workflow_dispatch` of
+`docker-publish` rebuilds and pushes but never deploys. Nothing in this repo touches the
+server.
 
 ---
 
@@ -362,8 +376,8 @@ to that app's `package.json` and reinstall.
    aliasing + connector stubs).
 2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`
    with a free port, and `build` = `next build --webpack`.
-3. Commit a `.env.dist` template (CI copies it to `.env` to seed the merge-gate build) plus the
-   `.env.mainnet.dist` / `.env.testnet.dist` flavor files the Docker builds bake in.
+3. Commit a `.env.dist` template (CI copies it to `.env` to seed the merge-gate build). The
+   mainnet/testnet `build.env` files the Docker builds bake in live in the private deploy repo.
 4. `pnpm install`. The workspace picks the app up automatically via the `apps/*` glob, and so does
    Turbo.
 5. **Add the app to the hardcoded lists that the glob doesn't cover** — easy to miss:
@@ -371,7 +385,8 @@ to that app's `package.json` and reinstall.
      (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
      with no env; miss the second and its files are never linted.
    - `.github/workflows/docker-publish.yml` — the app/pkg build matrix.
-   - the private ops repo — deploy dir, port pair, vhost (see *Deploy* above).
+   - the private ops repo — deploy dir with `build.env`, port pair, vhost, gate allowlist entry
+     (see *Deploy* above).
 
 ### Pin / override a dependency version everywhere
 Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignores the package.json
