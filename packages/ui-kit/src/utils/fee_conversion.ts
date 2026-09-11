@@ -168,15 +168,51 @@ export function estimateFeeInPreferredDenom(input: FeeEstimateInput): FeeEstimat
  */
 export type FeePaymentMethod = 'native' | 'preferred' | 'fallback' | 'insufficient';
 
+/**
+ * Balance already spoken for before the module fee is charged — the transaction's gas fee,
+ * which the ante handler deducts first. Micro-units of the respective denom.
+ */
+export interface FeeReserves {
+    /** Reserved from the native balance (gas paid in the native coin). */
+    reservedNative?: BigNumber | string | number;
+    /** Reserved from the preferred-token balance (gas paid in the preferred token). */
+    reservedPreferred?: BigNumber | string | number;
+}
+
+function reservedAmount(value: BigNumber | string | number | undefined): BigNumber {
+    if (value === undefined) {
+        return toBigNumber(0);
+    }
+    const reserved = toBigNumber(value);
+    return reserved.isNaN() || reserved.lt(0) ? toBigNumber(0) : reserved;
+}
+
+/**
+ * Which balance the chain takes the module fee from, given optional reserves (the gas fee,
+ * deducted first). A reserve larger than its balance means the gas itself cannot be paid:
+ * the ante handler rejects the transaction outright, so the result is `insufficient`
+ * regardless of the other balance.
+ */
 export function resolveFeePayment(
     estimate: FeeEstimate,
     preferredBalance: BigNumber | string | number,
     nativeBalance: BigNumber | string | number,
+    reserves: FeeReserves = {},
 ): FeePaymentMethod {
-    const hasEnoughNative = toBigNumber(nativeBalance).gte(estimate.nativeAmount);
+    const reservedNative = reservedAmount(reserves.reservedNative);
+    const reservedPreferred = reservedAmount(reserves.reservedPreferred);
+    const native = toBigNumber(nativeBalance);
+    const preferred = toBigNumber(preferredBalance);
+
+    // Gas must be payable before anything else happens.
+    if (native.lt(reservedNative) || preferred.lt(reservedPreferred)) {
+        return 'insufficient';
+    }
+
+    const hasEnoughNative = native.minus(reservedNative).gte(estimate.nativeAmount);
 
     if (estimate.reason === 'estimated' && estimate.preferredAmount) {
-        if (toBigNumber(preferredBalance).gte(estimate.preferredAmount)) {
+        if (preferred.minus(reservedPreferred).gte(estimate.preferredAmount)) {
             return 'preferred';
         }
         return hasEnoughNative ? 'fallback' : 'insufficient';

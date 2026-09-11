@@ -179,4 +179,35 @@ describe('resolveFeePayment', () => {
     it('accepts BigNumber balances', () => {
         expect(resolveFeePayment(estimated, new BigNumber(2000), new BigNumber(0))).toBe('preferred')
     })
+
+    describe('with gas reserves', () => {
+        it('subtracts the native reserve before checking the native balance', () => {
+            // 100000 fee + 4500 gas → 104500 needed
+            expect(resolveFeePayment(nativeOnly, '0', '104500', { reservedNative: '4500' })).toBe('native')
+            expect(resolveFeePayment(nativeOnly, '0', '104499', { reservedNative: '4500' })).toBe('insufficient')
+        })
+
+        it('subtracts the preferred reserve before checking the preferred balance', () => {
+            // 1004 fee + 500 gas → 1504 needed in USDC
+            expect(resolveFeePayment(estimated, '1504', '0', { reservedPreferred: '500' })).toBe('preferred')
+            // short in USDC after gas, native covers the fee → fallback
+            expect(resolveFeePayment(estimated, '1503', '100000', { reservedPreferred: '500' })).toBe('fallback')
+            expect(resolveFeePayment(estimated, '1503', '99999', { reservedPreferred: '500' })).toBe('insufficient')
+        })
+
+        it('is insufficient when the gas itself cannot be paid, whatever the other balance', () => {
+            expect(resolveFeePayment(estimated, '499', '999999999', { reservedPreferred: '500' })).toBe('insufficient')
+            expect(resolveFeePayment(nativeOnly, '999999999', '4499', { reservedNative: '4500' })).toBe('insufficient')
+        })
+
+        it('applies both reserves when both are given', () => {
+            expect(resolveFeePayment(estimated, '1503', '104500', { reservedPreferred: '500', reservedNative: '4500' })).toBe('fallback')
+            expect(resolveFeePayment(estimated, '1503', '104499', { reservedPreferred: '500', reservedNative: '4500' })).toBe('insufficient')
+        })
+
+        it('treats negative or NaN reserves as zero', () => {
+            expect(resolveFeePayment(nativeOnly, '0', '100000', { reservedNative: '-5' })).toBe('native')
+            expect(resolveFeePayment(nativeOnly, '0', '100000', { reservedNative: 'abc' })).toBe('native')
+        })
+    })
 })

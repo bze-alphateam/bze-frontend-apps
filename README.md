@@ -153,7 +153,8 @@ Only `packages/ui-kit` has a suite so far — test files live next to the code t
 |---|---|
 | `src/utils/amount.test.ts` | uAmount ↔ amount conversions, price ↔ uPrice exponent shifts, big-number precision (> `MAX_SAFE_INTEGER`), `prettyAmount` formatting, round-trips |
 | `src/utils/liquidity_pool.test.ts` | AMM reserve-ratio math (`calculatePoolOppositeAmount`), pool pricing, user share % / USD value, division-by-zero guards |
-| `src/utils/fee_conversion.test.ts` | fee-token engine — chain-mirrored `calculateOptimalInputForOutput` (constant product + swap fee, ceil), `estimateFeeInPreferredDenom` reasons (native / estimated / no-pool / low-liquidity / pool-too-small), `resolveFeePayment` charging order (preferred → native fallback → insufficient) |
+| `src/utils/fee_conversion.test.ts` | fee-token engine — chain-mirrored `calculateOptimalInputForOutput` (constant product + swap fee, ceil), `estimateFeeInPreferredDenom` reasons (native / estimated / no-pool / low-liquidity / pool-too-small), `resolveFeePayment` charging order (preferred → native fallback → insufficient) with the gas fee reserved first |
+| `src/utils/gas_fee.test.ts` | pre-submit gas engine — `GAS_ESTIMATES` table sanity, `estimateGasUsed` (per-item kinds, multi-message sums), `resolveGasPrice` (chain param vs env fallback), `estimateGasFee` mirroring `useTx.simulateFee` (multipliers, rounding, pool conversion + slippage, never below what `useTx` sends), `maxSpendableAmount` (reserve only on the fee denom, floor 0), `canAffordTx` (spend + gas + module fee per denom, fee-only shortfalls) |
 | `src/utils/denom.test.ts` | factory / IBC / LP denom classification (legacy `ulp_` **and** hashed `ulp/` formats), native denom, center-truncation |
 | `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
 | `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
@@ -171,6 +172,15 @@ The **apps** additionally have a component-test harness (jsdom + React Testing L
 |---|---|
 | `src/lib/token-directory.test.ts` | pure directory logic — factory-denom filter, alphabetical-by-ticker sort, `getTotalPages` / `pageSlice` (20/page) client-side pagination, `clampPage`, `tokenPagePath()` URL-encoding |
 | `src/app/page.test.tsx` | the directory page renders loading / empty / list states, paginates at 20 and advances on **Next**, and links each card to the URL-encoded token page |
+
+Gas-fee-aware MAX buttons (shared engine, see "Gas fees, MAX buttons and balance checks" below) are covered in `apps/dex`:
+
+| File | Covers |
+|---|---|
+| `src/app/page.test.tsx` | the swap page's **MAX** and percentage presets fill the *spendable* amount (balance minus gas when selling the fee token, full balance otherwise), sized for a 3-hop route |
+| `src/components/wallet-send-form.test.tsx` | ui-kit's `WalletSendForm` running the **real** engine (`GAS_ESTIMATES` → `useMaxSpendable` / `useCanAffordTx`): Max keeps the send gas back for BZE, fills the full balance for another token, and an amount that leaves no room for gas shows the fee error |
+
+`apps/staking/src/lib/delegate-amount.test.ts` covers the delegate modal's helpers on top of the engine (`no-fee-reserve` validation, `exceedsSpendable`, rounded-down quick amounts).
 
 ### App tests (Vitest + React Testing Library)
 
@@ -200,6 +210,13 @@ Guidelines for writing app tests:
   no wallet / chain providers needed. See `communities/src/app/page.test.tsx`.
 - Test files (`*.test.ts[x]`) and `vitest.config.ts` are excluded from each app's
   `tsconfig.json`, so `next build` never type-checks them.
+- **Rendering a ui-kit component in an app test**: apps import the built `dist`, so a
+  `vi.mock` of one of *its* dependencies (`@bze/bzejs`, `@interchain-kit/react`, …) does
+  not reach the code inside the bundle. Feed it through the real seams instead — wrap it
+  in `<SettingsProvider>` + `<AssetsContext.Provider value={…}>` for assets / balances /
+  pools, and seed the query layer's localStorage caches with `setInLocalStorage(key, json, ttl)`
+  (`tradebin_params`, `txfeecollector_params`, …) so the param hooks never open a socket.
+  See `dex/src/components/wallet-send-form.test.tsx`.
 - Need setup shared across all apps (a new global matcher, a polyfill)? Add it to the
   preset's `setup.ts` — it runs before every app's tests.
 
@@ -237,50 +254,64 @@ Guidelines for writing app tests:
 
 `NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
 **different builds**. CI (`.github/workflows/docker-publish.yml`) builds every app on
-every push and publishes self-contained Node images (Next.js standalone) to GHCR:
+every push, publishes self-contained Node images (Next.js standalone) to GHCR and then
+deploys them:
 
-| push to | flavor | env baked in | image tag |
-|---|---|---|---|
-| `main` | mainnet | `apps/<app>/.env.mainnet.dist` | `<sha8>` |
-| `develop` | testnet | `apps/<app>/.env.testnet.dist` | `testnet-<sha8>` |
+| push to | flavor | build env (in the private deploy repo) | image tag | deployed to |
+|---|---|---|---|---|
+| `main` | mainnet | `<app>.getbze.com/build.env` | `<sha8>` | `<app>.getbze.com` |
+| `develop` | testnet | `testnet-<app>.getbze.com/build.env` | `testnet-<sha8>` | `testnet-<app>.getbze.com` |
 
 Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
 `factory`, `communities`). All five are built on every push — even single-app changes —
-so any commit on a deploy branch has a complete image set (the server-side release
-pollers rely on that).
+so any commit on a deploy branch has a complete image set that can be released or rolled
+back for every app.
 
 ### Env files
 
-- `.env.mainnet.dist` / `.env.testnet.dist` (committed, per app) hold the flavor's
-  `NEXT_PUBLIC_*` values. Everything in them is public by definition — it ends up in
-  the client bundle. **No secrets, ever.**
+- **Build-time env is not in this repo.** Each deploy target has a `build.env` in the
+  private deploy repo (`bze-alphateam/bze-deploy`, one dir per target). CI checks that
+  dir out with the `DEPLOY_REPO_TOKEN` org secret and hands the file to `docker build`
+  as a BuildKit secret, mounted as `apps/<app>/.env` for the build step only — it never
+  enters the build context, an image layer or a log. Everything in it is public by
+  definition (it ends up in the client bundle); **no secrets, ever**. Changing a value
+  = PR in the deploy repo + a new image (push, or re-run `docker-publish`).
 - `SKIP_API_KEY` is the one runtime-only variable (server-side Skip proxy auth). It is
   **never baked into an image**: production injects it into the container environment.
-  The dist files list it empty purely as documentation.
-- `.env.dist` remains the local-dev template (copy to `.env`).
+- `.env.dist` (committed, per app) is the local-dev template (copy to `.env`) and what
+  the PR merge gate (`ci.yml`) builds with. It holds testnet values.
 - **Release gate for `apps/communities`:** `NEXT_PUBLIC_COMMUNITIES_ENABLED` — the app is
   hidden unless it is the literal `true`. A hidden build serves the "under construction"
   placeholder on every route — no providers, no wallet/RPC traffic, Skip proxy answers
-  404. It exists so `develop` can merge into `main` before the app is public:
-  `.env.mainnet.dist` keeps it `false`, `.env.dist` / `.env.testnet.dist` set `true`.
-  Launching communities.getbze.com is a one-line change to the mainnet dist file (value
-  is baked in at build time, so it needs a new image, not a container restart).
+  404. It exists so `develop` can merge into `main` before the app is public: the
+  mainnet `build.env` keeps it `false`, `.env.dist` and the testnet `build.env` set
+  `true`. Launching communities.getbze.com is a one-line change to the mainnet
+  `build.env` in the deploy repo (the value is baked in at build time, so it needs a new
+  image, not a container restart).
 
 ### Build locally (what CI does)
 
 ```sh
 docker build -f docker/prod/Dockerfile \
-  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 --build-arg FLAVOR=mainnet .
+  --build-arg APP=dex --build-arg PKG=bze-dapp-v2 \
+  --secret id=build_env,src=apps/dex/.env.dist .
 ```
 
-`APP` is the directory under `apps/`, `PKG` its `package.json` name, `FLAVOR` picks the
-env file. The container serves on port 3000.
+`APP` is the directory under `apps/`, `PKG` its `package.json` name, and the `build_env`
+secret is the env file to build with (`.env.dist` for a testnet-flavoured local build, or
+a target's `build.env` from the deploy repo). The container serves on port 3000.
 
 ### Releasing
 
-Server-side deploys (blue/green flip, health-gated, automatic on merge) live in a
-separate private ops repo — nothing in this repo touches the server. Merging to `main`
-deploys mainnet within minutes; rollback = revert on `main`.
+Deploys are **push-based**: after pushing its image, each build job dispatches the deploy
+repo's `deploy` workflow for its target (`deploy <app> <tag>`) and waits for it — that
+workflow runs the blue/green, health-gated release script on the server through an SSH
+gate. Merging to `develop` deploys testnet and merging to `main` deploys mainnet, within
+minutes; a failed release turns both runs red and the previous tag stays live. The `dex`
+job comments the deploy links on the merged PR. Rollback = re-run the deploy workflow
+with an older tag (or revert on the branch). A manual `workflow_dispatch` of
+`docker-publish` rebuilds and pushes but never deploys. Nothing in this repo touches the
+server.
 
 ---
 
@@ -291,6 +322,38 @@ deploys mainnet within minutes; rollback = revert on `main`.
 - Apps must keep `transpilePackages: ["@bze/bze-ui-kit"]` in their `next.config.ts` (already set).
 - The lib's runtime deps (React, Chakra, interchain-kit, wagmi, bzejs, …) are **peerDependencies**
   — provided by each app, not bundled by the lib. Keep app versions aligned with the lib's peers.
+
+### Gas fees, MAX buttons and balance checks
+
+Every form that sends a transaction goes through one shared engine in ui-kit (BFE-56) — no app
+keeps its own fee reserve:
+
+- **`useTxFeeDenom()`** — the denom the tx fee is *really* paid in: the Settings fee token when its
+  BZE pool is deep enough (the same `isValidFeeDenom` rule `useTx.simulateFee` applies), BZE
+  otherwise. Every check below uses this, never the raw Settings value.
+- **`useGasFeeEstimate(spec)`** — pre-submit gas fee for a transaction shape: `'send'`,
+  `{kind: 'fill-orders', count: 3}`, `['create-denom', 'mint', …]`. Pure core in
+  `src/utils/gas_fee.ts`: `GAS_ESTIMATES[kind]` (measured `gas_used`, rounded up) × gas
+  multiplier × gas price (chain `validator_min_gas_fee` param, env fallback — `resolveGasPrice`,
+  shared with `useTx`), converted through the fee token's pool with the same slippage / non-native
+  multiplier `useTx` uses, so the estimate is never below what `useTx` sends.
+  `useGasFeeEstimator()` returns the same as a function for shapes only known at submit time.
+- **`useMaxSpendable(denom, spec)`** — what a MAX / ALL / 100 % button may fill in: the balance
+  minus the gas fee *only* when `denom` is the tx fee denom (floored at 0), the full balance
+  otherwise. `inputValue` is ready for an input.
+- **`useCanAffordTx({spec, spend, moduleFee})`** — pre-submit affordability in the chain's charging
+  order (gas first, then module fee, then the amount) with a ready-to-show `message`; forms gate
+  their submit button on `canAfford`. Pure core: `canAffordTx`.
+- **`useFeeEstimate(fee, {gasFee})`** / **`FeeEstimateRow txKind=…`** — module fees (trading,
+  creation) estimated in the fee token; with a `gasFee` the balance status reserves the gas first
+  and the details dialog names it.
+
+Kinds that move a non-fee asset (undelegate, redelegate, remove liquidity, lock LP shares) keep the
+full amount on MAX but still check the fee-denom balance for gas. Deposits / Buy BZE sign on a
+foreign chain (the wallet sets that chain's fee), so their MAX deliberately fills the full balance.
+**Re-measure `GAS_ESTIMATES` after a chain upgrade** — `gas_used` of recent txs per type, e.g.
+`GET /cosmos/tx/v1beta1/txs?query=message.action='/bze.tradebin.MsgCreateOrder'` (BZE type URLs have
+no version segment).
 
 ---
 
@@ -313,8 +376,8 @@ to that app's `package.json` and reinstall.
    aliasing + connector stubs).
 2. Set `"@bze/bze-ui-kit": "workspace:*"` in its `package.json`; make `dev` = `next dev --webpack`
    with a free port, and `build` = `next build --webpack`.
-3. Commit a `.env.dist` template (CI copies it to `.env` to seed the merge-gate build) plus the
-   `.env.mainnet.dist` / `.env.testnet.dist` flavor files the Docker builds bake in.
+3. Commit a `.env.dist` template (CI copies it to `.env` to seed the merge-gate build). The
+   mainnet/testnet `build.env` files the Docker builds bake in live in the private deploy repo.
 4. `pnpm install`. The workspace picks the app up automatically via the `apps/*` glob, and so does
    Turbo.
 5. **Add the app to the hardcoded lists that the glob doesn't cover** — easy to miss:
@@ -322,7 +385,8 @@ to that app's `package.json` and reinstall.
      (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
      with no env; miss the second and its files are never linted.
    - `.github/workflows/docker-publish.yml` — the app/pkg build matrix.
-   - the private ops repo — deploy dir, port pair, vhost (see *Deploy* above).
+   - the private ops repo — deploy dir with `build.env`, port pair, vhost, gate allowlist entry
+     (see *Deploy* above).
 
 ### Pin / override a dependency version everywhere
 Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignores the package.json

@@ -6,6 +6,7 @@ import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
 import {
     useAssets,
     useBalance,
+    useMaxSpendable,
     useSDKTx,
     useToast,
     getChainNativeAssetDenom,
@@ -15,12 +16,9 @@ import {
     sanitizeNumberInput,
 } from '@bze/bze-ui-kit';
 import {
-    FEE_RESERVE,
     validateDelegationAmount,
-    isUsingFullBalance as computeIsUsingFullBalance,
+    exceedsSpendable as computeExceedsSpendable,
     quickAmount,
-    reserveForFeesAmount,
-    canReserveForFees as computeCanReserveForFees,
 } from '@/lib/delegate-amount';
 import {formatCommissionRate} from '@/lib/validator-list';
 import {useChain} from '@interchain-kit/react';
@@ -49,6 +47,10 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);
+    // Shared gas engine: the balance minus the estimated delegate gas fee (BZE is both the
+    // delegated coin and, by default, the fee coin).
+    const maxSpendable = useMaxSpendable(getChainNativeAssetDenom(), 'delegate');
+    const spendableHuman = maxSpendable.displayAmount;
     const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
 
     const handleDelegate = async () => {
@@ -57,10 +59,12 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
             return;
         }
 
-        const amountError = validateDelegationAmount(amount, balance.amount, decimals);
+        const amountError = validateDelegationAmount(amount, balance.amount, decimals, maxSpendable.amount);
         if (amountError) {
             if (amountError === 'insufficient-balance') {
                 toast.error('Insufficient balance', 'You do not have enough tokens');
+            } else if (amountError === 'no-fee-reserve') {
+                toast.error('Not enough left for fees', `Keep ≈ ${prettyAmount(maxSpendable.gasFee.displayAmount)} ${maxSpendable.gasFee.ticker} for the network fee.`);
             } else {
                 toast.error('Invalid amount', 'Please enter a valid amount to delegate');
             }
@@ -94,18 +98,19 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
         }
     };
 
-    const isUsingFullBalance = useMemo(
-        () => computeIsUsingFullBalance(amount, availableHuman),
-        [amount, availableHuman],
+    const exceedsSpendable = useMemo(
+        () => computeExceedsSpendable(amount, spendableHuman, availableHuman),
+        [amount, spendableHuman, availableHuman],
     );
-    const canReserveForFees = computeCanReserveForFees(availableHuman);
 
+    // Quick amounts are fractions of the spendable balance, so 100 % (Max) already keeps
+    // the gas fee back.
     const setQuickAmount = (fraction: number) => {
-        setAmount(quickAmount(availableHuman, fraction, decimals));
+        setAmount(quickAmount(spendableHuman, fraction, decimals));
     };
 
-    const reserveForFees = () => {
-        setAmount(reserveForFeesAmount(availableHuman, decimals));
+    const useSpendableMax = () => {
+        setAmount(maxSpendable.inputValue);
     };
 
     return (
@@ -148,23 +153,25 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                     </HStack>
                                 </VStack>
 
-                                {isUsingFullBalance && (
+                                {exceedsSpendable && (
                                     <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
                                         <HStack gap="2" align="start">
                                             <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
                                             <VStack align="stretch" gap="2" flex="1">
                                                 <Text fontSize="xs" color="fg.muted">
-                                                    You are delegating your entire balance. You may not have enough left to pay transaction fees.
+                                                    This amount leaves less than the network fee
+                                                    (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
+                                                    so the transaction would fail.
                                                 </Text>
-                                                {canReserveForFees && (
+                                                {maxSpendable.amount.gt(0) && (
                                                     <Button
                                                         size="xs"
                                                         variant="outline"
                                                         colorPalette="orange"
-                                                        onClick={reserveForFees}
+                                                        onClick={useSpendableMax}
                                                         alignSelf="start"
                                                     >
-                                                        Reserve {FEE_RESERVE.toString()} {nativeAsset?.ticker} for fees
+                                                        Delegate {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
                                                     </Button>
                                                 )}
                                             </VStack>
@@ -189,7 +196,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                         colorPalette="purple"
                                         onClick={handleDelegate}
                                         loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address}
+                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
                                         w="full"
                                     >
                                         Delegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}

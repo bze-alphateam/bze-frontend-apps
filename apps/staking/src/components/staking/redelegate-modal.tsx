@@ -5,6 +5,7 @@ import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-
 import {
     useAssets,
     useSDKTx,
+    useCanAffordTx,
     useToast,
     getChainNativeAssetDenom,
     prettyAmount,
@@ -45,6 +46,9 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
+    // Max redelegates the full delegation (not a wallet balance), but the wallet must still
+    // hold the gas fee for the transaction.
+    const feeCheck = useCanAffordTx({spec: isConnected ? 'redelegate' : undefined});
 
     const filteredValidators = useMemo(() => {
         return allValidators
@@ -65,6 +69,10 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
         const uAmount = amountToUAmount(amount, decimals);
         if (new BigNumber(uAmount).gt(delegatedAmount)) {
             toast.error('Exceeds delegation', 'Amount exceeds your delegated balance');
+            return;
+        }
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message);
             return;
         }
 
@@ -198,6 +206,10 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                                     </HStack>
                                 </VStack>
 
+                                {feeCheck.message && (
+                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
+                                )}
+
                                 {progressTrack && (
                                     <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
                                 )}
@@ -215,7 +227,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                                         colorPalette="blue"
                                         onClick={handleRedelegate}
                                         loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator}
+                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator || !feeCheck.canAfford}
                                         w="full"
                                     >
                                         Redelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}

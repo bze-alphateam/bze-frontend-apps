@@ -11,9 +11,9 @@ import {
     VStack,
     Dialog,
 } from "@chakra-ui/react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useChain } from "@interchain-kit/react";
-import { getChainName, useToast, useBZETx, useBalance, toBigNumber, uAmountToBigNumberAmount, sanitizeIntegerInput, useAsset } from "@bze/bze-ui-kit";
+import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, amountToUAmount, sanitizeIntegerInput, useAsset } from "@bze/bze-ui-kit";
 import { bze } from '@bze/bzejs';
 import BigNumber from "bignumber.js";
 import {useRaffleContributions} from "@/hooks/useRaffles";
@@ -50,14 +50,17 @@ export const RaffleModal = ({
     const { asset } = useAsset(denom);
     const {addPendingRaffleContribution} = useRaffleContributions()
 
-    // Reset state when modal opens
-    useEffect(() => {
+    // Reset the form each time the modal opens. Adjusted during render instead of in an
+    // effect (React's "adjust state while rendering" pattern).
+    const [wasOpen, setWasOpen] = useState(isOpen);
+    if (isOpen !== wasOpen) {
+        setWasOpen(isOpen);
         if (isOpen) {
             setNumContributions("1");
             setIsSubmitting(false);
             setContributionsError("");
         }
-    }, [isOpen]);
+    }
 
     // Calculate total cost for tickets
     const totalCost = useMemo(() => {
@@ -73,9 +76,16 @@ export const RaffleModal = ({
         return uAmountToBigNumberAmount(balance.amount, asset.decimals || 6);
     }, [balance, asset]);
 
+    // Tickets plus the gas fee must fit the balance (gas matters when the raffle coin is the
+    // fee coin, e.g. a BZE raffle).
+    const affordability = useCanAffordTx({
+        spec: totalCost.gt(0) ? 'join-raffle' : undefined,
+        spend: totalCost.gt(0) ? { denom, amount: amountToUAmount(totalCost, asset?.decimals || 6) } : undefined,
+    });
+
     const hasEnoughBalance = useMemo(() => {
-        return userBalance.gte(totalCost);
-    }, [userBalance, totalCost]);
+        return userBalance.gte(totalCost) && affordability.canAfford;
+    }, [userBalance, totalCost, affordability.canAfford]);
 
     const handleContributionsChange = (value: string) => {
         setNumContributions(value);
@@ -96,7 +106,9 @@ export const RaffleModal = ({
         }
 
         if (!hasEnoughBalance) {
-            setContributionsError(`Not enough balance! You need ${totalCost.toFixed(2)} ${ticker}`);
+            setContributionsError(affordability.shortOnFees
+                ? affordability.message
+                : `Not enough balance! You need ${totalCost.toFixed(2)} ${ticker}`);
             return;
         }
 
@@ -117,7 +129,7 @@ export const RaffleModal = ({
         setIsSubmitting(false);
         onClose();
 
-    }, [address, numContributions, hasEnoughBalance, totalCost, ticker, denom, tx, onClose, toast, addPendingRaffleContribution]);
+    }, [address, numContributions, hasEnoughBalance, affordability.shortOnFees, affordability.message, totalCost, ticker, denom, tx, onClose, toast, addPendingRaffleContribution]);
 
     const handleClose = () => {
         if (!isSubmitting) {

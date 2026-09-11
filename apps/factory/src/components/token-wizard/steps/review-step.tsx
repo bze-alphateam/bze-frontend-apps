@@ -40,7 +40,11 @@ export function ReviewStep() {
     const { toast } = useToast()
 
     const fee = fees.createDenomFee
-    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee)
+    // The wizard sends one multi-message tx: create + mint + metadata (+ admin renounce).
+    const txKind = form.fixedSupply
+        ? ['create-denom', 'mint', 'set-denom-metadata', 'change-admin'] as const
+        : ['create-denom', 'mint', 'set-denom-metadata'] as const
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, [...txKind])
 
     const denomPreview = resultingDenom ?? `factory/${address ?? '<your address>'}/${form.subdenom}`
 
@@ -97,7 +101,7 @@ export function ReviewStep() {
 
             <Separator />
 
-            <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Token creation fee" />
+            <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Token creation fee" txKind={[...txKind]} />
 
             <VStack align="stretch" gap={2}>
                 <Button size="lg" colorPalette="yellow" onClick={submit} disabled={!canConfirm} loading={isSubmitting} loadingText="Waiting for signature...">

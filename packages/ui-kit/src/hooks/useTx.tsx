@@ -20,6 +20,7 @@ import {useFeeTokens} from "./useFeeTokens";
 import {calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
+import {resolveGasPrice} from "../utils/gas_fee";
 
 // The actual payload delivered to onSuccess — the result of broadcastResult.wait(),
 // which is a TxResponse from @interchainjs/cosmos containing the inclusion details.
@@ -168,15 +169,10 @@ const useTx = (chainName: string) => {
 
         // Prefer the chain's validator_min_gas_fee param over the env default, so
         // governance changes propagate without a frontend redeploy. Fall back to env
-        // if the query fails or returns an unexpected denom.
-        let gasPrice = getGasPrice();
+        // if the query fails or returns an unexpected denom. Shared with the pre-submit
+        // estimate (utils/gas_fee) so both always agree on the price.
         const txFeeParams = await getTxFeeCollectorParams();
-        if (txFeeParams?.validatorMinGasFee?.denom === nativeDenom) {
-            const chainGasPrice = parseFloat(txFeeParams.validatorMinGasFee.amount);
-            if (!isNaN(chainGasPrice) && chainGasPrice > 0) {
-                gasPrice = chainGasPrice;
-            }
-        }
+        const gasPrice = resolveGasPrice(txFeeParams?.validatorMinGasFee, nativeDenom, getGasPrice());
 
         const signer = signingClient as any;
 

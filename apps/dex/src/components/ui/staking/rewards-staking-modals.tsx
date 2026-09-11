@@ -17,7 +17,7 @@ import {
 import {LuGift, LuLockOpen, LuTrendingUp, LuPercent} from "react-icons/lu";
 import React, {useCallback, useMemo, useState} from "react";
 import {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx} from "@bze/bze-ui-kit";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -65,6 +65,17 @@ export const RewardsStakingActionModal = ({
     const {address} = useChain(getChainName())
     const {tx, progressTrack} = useBZETx()
     const {toast} = useToast()
+    // Shared gas engine: Max keeps the gas back when the staked coin is the fee coin; every
+    // action (stake / unstake / claim) needs the fee in the wallet.
+    const maxSpendable = useMaxSpendable(stakingReward?.staking_denom ?? '', 'join-staking')
+    const stakeAffordability = useCanAffordTx({
+        spec: stakingReward && stakeAmount ? 'join-staking' : undefined,
+        spend: stakingReward && stakeAmount && stakingAsset
+            ? {denom: stakingReward.staking_denom, amount: amountToBigNumberUAmount(stakeAmount, stakingAsset.decimals)}
+            : undefined,
+    })
+    const unstakeFeeCheck = useCanAffordTx({spec: address && userStake ? 'exit-staking' : undefined})
+    const claimFeeCheck = useCanAffordTx({spec: address ? 'claim-staking-reward' : undefined})
 
     const actionsModalTitle = useMemo(() => {
         if (!stakingReward) return 'Actions';
@@ -206,6 +217,11 @@ export const RewardsStakingActionModal = ({
             return;
         }
 
+        if (!stakeAffordability.canAfford) {
+            setFormError(stakeAffordability.message)
+            return;
+        }
+
         //do not validate MIN staking amount if the user is already staking this asset on this staking reward
         if (hasUserStake) {
             setFormError('')
@@ -218,7 +234,7 @@ export const RewardsStakingActionModal = ({
         }
 
         setFormError('')
-    }, [stakingReward, stakingAsset, stakeAmount, hasUserStake, userStakingAssetBalance, minStakeAmount])
+    }, [stakingReward, stakingAsset, stakeAmount, hasUserStake, userStakingAssetBalance, minStakeAmount, stakeAffordability.canAfford, stakeAffordability.message])
     const handleConfirmStake = useCallback(async () => {
         if (!stakingReward || !stakeAmount) return;
 
@@ -243,6 +259,11 @@ export const RewardsStakingActionModal = ({
             return;
         }
 
+        if (!stakeAffordability.canAfford) {
+            setFormError(stakeAffordability.message)
+            return;
+        }
+
         setIsSubmitting(true)
         const msg = joinStaking({
             creator: address,
@@ -257,7 +278,7 @@ export const RewardsStakingActionModal = ({
         }
 
         setIsSubmitting(false)
-    }, [stakingReward, stakeAmount, address, stakingAsset, userStake, stakingAssetBalance, tx, onActionPerformed, minStakeAmount])
+    }, [stakingReward, stakeAmount, address, stakingAsset, userStake, stakingAssetBalance, tx, onActionPerformed, minStakeAmount, stakeAffordability.canAfford, stakeAffordability.message])
     const handleUnstake = useCallback(async () => {
         if (!stakingReward) return;
 
@@ -268,6 +289,11 @@ export const RewardsStakingActionModal = ({
 
         if (!userStake) {
             toast.error('No stake found')
+            return;
+        }
+
+        if (!unstakeFeeCheck.canAfford) {
+            toast.error('Not enough for the network fee', unstakeFeeCheck.message)
             return;
         }
 
@@ -284,7 +310,7 @@ export const RewardsStakingActionModal = ({
         }
 
         setIsSubmitting(false)
-    }, [stakingReward, userStake, address, tx, onActionPerformed, toast])
+    }, [stakingReward, userStake, address, tx, onActionPerformed, toast, unstakeFeeCheck.canAfford, unstakeFeeCheck.message])
     const handleRewardsClaim = useCallback(async () => {
         if (!stakingReward) return;
 
@@ -295,6 +321,11 @@ export const RewardsStakingActionModal = ({
 
         if (!hasPendingRewards) {
             toast.error('No rewards to claim')
+            return;
+        }
+
+        if (!claimFeeCheck.canAfford) {
+            toast.error('Not enough for the network fee', claimFeeCheck.message)
             return;
         }
 
@@ -311,7 +342,7 @@ export const RewardsStakingActionModal = ({
         }
 
         setIsSubmitting(false)
-    }, [stakingReward, address, tx, onActionPerformed, hasPendingRewards, toast])
+    }, [stakingReward, address, tx, onActionPerformed, hasPendingRewards, toast, claimFeeCheck.canAfford, claimFeeCheck.message])
 
     return (
         <Skeleton asChild loading={stakingAssetIsLoading || prizeAssetIsLoading || isLoadingAssets}>
@@ -409,7 +440,8 @@ export const RewardsStakingActionModal = ({
                                         <Button variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                    setStakeAmount(userStakingAssetBalance)
+                                                    setFormError('')
+                                                    setStakeAmount(maxSpendable.inputValue)
                                                 }}
                                                 disabled={stakingAssetBalance.amount.isZero() || isSubmitting}
                                         >
@@ -599,6 +631,12 @@ export const RewardsStakingPendingRewardsModal = ({
     const {toast} = useToast()
     const {tx, progressTrack} = useBZETx()
     const {address} = useChain(getChainName())
+    // One MsgClaimStakingRewards per reward id; the wallet must hold the gas for all of them.
+    const feeCheck = useCanAffordTx({
+        spec: address && pendingRewardsIds && pendingRewardsIds.length > 0
+            ? {kind: 'claim-staking-reward', count: pendingRewardsIds.length}
+            : undefined,
+    })
 
     const canClaim = useMemo(() => {
         if (!pendingRewardsIds || !pendingRewards) return false;
@@ -615,6 +653,10 @@ export const RewardsStakingPendingRewardsModal = ({
             toast.error('No rewards to claim')
             return
         }
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message)
+            return
+        }
 
         const msgs: EncodeObject[] = [];
         pendingRewardsIds?.forEach(rewardId => {
@@ -628,7 +670,7 @@ export const RewardsStakingPendingRewardsModal = ({
         const success = await tx(msgs)
         setIsClaiming(false)
         if (success) onClaimSuccess?.()
-    }, [address, canClaim, onClaimSuccess, pendingRewardsIds, toast, tx])
+    }, [address, canClaim, onClaimSuccess, pendingRewardsIds, toast, tx, feeCheck.canAfford, feeCheck.message])
 
     return (
         <Box

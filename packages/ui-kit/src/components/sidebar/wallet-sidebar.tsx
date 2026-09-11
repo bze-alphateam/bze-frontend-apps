@@ -34,6 +34,8 @@ import {validateBZEBech32Address} from "../../utils/address";
 import BigNumber from "bignumber.js";
 import {useToast} from "../../hooks/useToast";
 import {useSDKTx} from "../../hooks/useTx";
+import {useMaxSpendable} from "../../hooks/useMaxSpendable";
+import {useCanAffordTx} from "../../hooks/useCanAffordTx";
 import {cosmos} from "@bze/bzejs";
 import {openExternalLink} from "../../utils/functions";
 import {shortNumberFormat} from "../../utils/formatter";
@@ -147,7 +149,22 @@ const BalanceItem = ({asset, onClick, accentColor}: BalanceItemProps) => {
     )
 }
 
-const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: AssetBalance[], onClose: () => void, selectedTicker: string, accentColor: string}) => {
+export interface WalletSendFormProps {
+    /** The wallet's balances (the coin picker's options). */
+    balances: AssetBalance[];
+    /** Called after a successful send or on cancel. */
+    onClose: () => void;
+    /** Ticker to preselect ('' = none). */
+    selectedTicker: string;
+    /** App accent palette. */
+    accentColor: string;
+}
+
+/**
+ * The wallet sidebar's "Send Coins" form. Exported on its own so it can be rendered (and
+ * tested) outside the sidebar; the sidebar mounts it as `SendForm`.
+ */
+export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}: WalletSendFormProps) => {
     // Send form state
     const [isLoading, setIsLoading] = useState(false)
     const [selectedCoin, setSelectedCoin] = useState<AssetBalance|undefined>()
@@ -165,6 +182,16 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
     const { toast } = useToast()
     const { status, address } = useChain(getChainName());
     const {tx} = useSDKTx(getChainName());
+    // MAX leaves the gas fee behind when the sent coin is the one the fee is paid in, and
+    // the form refuses amounts that would leave no room for the fee.
+    const maxSpendable = useMaxSpendable(selectedCoin?.denom ?? '', 'send');
+    const affordability = useCanAffordTx({
+        spec: selectedCoin && sendAmount !== '' ? 'send' : undefined,
+        spend: selectedCoin && sendAmount !== ''
+            ? {denom: selectedCoin.denom, amount: amountToUAmount(sendAmount, selectedCoin.decimals)}
+            : undefined,
+    });
+    const amountErrorText = sendAmountError !== '' ? sendAmountError : (sendAmount !== '' ? affordability.message : '');
 
     // Create collections for selects
     const coinsCollection = createListCollection({
@@ -180,9 +207,10 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
             memoError === "" &&
             recipientError === "" &&
             sendAmountError === "" &&
+            affordability.canAfford &&
             sendAmount !== "" &&
             recipient !== ""
-    }, [selectedCoin, memoError, recipientError, sendAmountError, sendAmount, recipient])
+    }, [selectedCoin, memoError, recipientError, sendAmountError, affordability.canAfford, sendAmount, recipient])
 
     const resetSendForm = useCallback(() => {
         setSelectedCoin(undefined)
@@ -260,10 +288,10 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
 
     const setMaxAmount = useCallback(() => {
         if (!selectedCoin) return
-        const maxAmount = uAmountToBigNumberAmount(selectedCoin.amount, selectedCoin.decimals)
-        onAmountChange(maxAmount.toString())
-        validateAmount(maxAmount.toString(), selectedCoin, setSendAmountError)
-    }, [selectedCoin, onAmountChange])
+        const maxAmount = maxSpendable.inputValue
+        onAmountChange(maxAmount)
+        validateAmount(maxAmount, selectedCoin, setSendAmountError)
+    }, [selectedCoin, maxSpendable.inputValue, onAmountChange])
 
     const onMemoChange = useCallback((memo: string) => {
         setMemo(memo)
@@ -367,7 +395,7 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
             </Box>
 
             <Box>
-                <Field.Root invalid={sendAmountError !== ""}>
+                <Field.Root invalid={amountErrorText !== ""}>
                     <Field.Label>Amount</Field.Label>
                     <Group attached w="full" maxW="sm">
                         <Input
@@ -381,7 +409,12 @@ const SendForm = ({balances, onClose, selectedTicker, accentColor}: {balances: A
                             Max
                         </Button>
                     </Group>
-                    <Field.ErrorText>{sendAmountError}</Field.ErrorText>
+                    <Field.ErrorText>{amountErrorText}</Field.ErrorText>
+                    {maxSpendable.isReserving && amountErrorText === "" && (
+                        <Field.HelperText>
+                            Max keeps ≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker} for the network fee.
+                        </Field.HelperText>
+                    )}
                 </Field.Root>
             </Box>
             <Box>
@@ -780,7 +813,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                 />
             )}
             {status === WalletState.Connected && viewState === 'balances' && renderBalancesView()}
-            {status === WalletState.Connected && viewState === 'send' && <SendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')} accentColor={accentColor}/>}
+            {status === WalletState.Connected && viewState === 'send' && <WalletSendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')} accentColor={accentColor}/>}
             {status === WalletState.Connected && crossChainEnabled && viewState === 'transfer' && <BridgeForm accentColor={accentColor} onClose={() => setViewState('balances')} />}
             {status === WalletState.Connected && skipEnabled && viewState === 'buy' && <BuyForm accentColor={accentColor} onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
             {status === WalletState.Connected && viewState === 'txDetails' && selectedTxId && (() => {

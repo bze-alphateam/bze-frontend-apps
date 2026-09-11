@@ -20,6 +20,8 @@ import {
     useAssets,
     useBalance,
     useBZETx,
+    useMaxSpendable,
+    useCanAffordTx,
     useFeeTokens,
     useLiquidityPools,
     useSkipTxTracker,
@@ -94,6 +96,14 @@ const GetTokenSectionInner = ({asset, accentColor}: { asset: Asset; accentColor:
         () => uAmountToBigNumberAmount(bzeBalance.amount, bzeDecimals),
         [bzeBalance.amount, bzeDecimals],
     );
+    // Shared gas engine: BZE is being swapped and (by default) pays the fee, so MAX keeps the
+    // gas back and the form refuses amounts that leave no room for it.
+    const maxSpendable = useMaxSpendable(nativeDenom, 'swap');
+    const affordability = useCanAffordTx({
+        spec: fromAmount !== '' ? 'swap' : undefined,
+        spend: fromAmount !== '' ? {denom: nativeDenom, amount: amountToBigNumberUAmount(toBigNumber(fromAmount || '0'), bzeDecimals)} : undefined,
+    });
+    const gasMessage = amountError === '' && fromAmount !== '' ? affordability.message : '';
 
     const quote = useCallback((value: string) => {
         setNoRoute(false);
@@ -151,11 +161,11 @@ const GetTokenSectionInner = ({asset, accentColor}: { asset: Asset; accentColor:
     }, [quote, validateAmount]);
 
     const onMaxClick = useCallback(() => {
-        const max = bzeHumanBalance.toFixed(bzeDecimals);
+        const max = maxSpendable.inputValue;
         setFromAmount(max);
         validateAmount(max);
         quote(max);
-    }, [bzeHumanBalance, bzeDecimals, quote, validateAmount]);
+    }, [maxSpendable.inputValue, quote, validateAmount]);
 
     const expectedOutput = useMemo(() => {
         if (!routeResult) return null;
@@ -178,6 +188,7 @@ const GetTokenSectionInner = ({asset, accentColor}: { asset: Asset; accentColor:
         && !!address
         && !!routeResult
         && !amountError
+        && affordability.canAfford
         && fromAmount !== ''
         && !isCalculating
         && !isSubmitting;
@@ -277,7 +288,7 @@ const GetTokenSectionInner = ({asset, accentColor}: { asset: Asset; accentColor:
                                 Step 2 · Swap BZE for {asset.ticker}
                             </Text>
 
-                            <Field.Root invalid={amountError !== ''}>
+                            <Field.Root invalid={amountError !== '' || gasMessage !== ''}>
                                 <Field.Label fontSize="xs">
                                     Pay
                                     <Badge size="xs" variant="surface" ml="1">
@@ -293,7 +304,7 @@ const GetTokenSectionInner = ({asset, accentColor}: { asset: Asset; accentColor:
                                     />
                                     <Button variant="outline" size="sm" onClick={onMaxClick}>Max</Button>
                                 </Group>
-                                <Field.ErrorText>{amountError}</Field.ErrorText>
+                                <Field.ErrorText>{amountError || gasMessage}</Field.ErrorText>
                             </Field.Root>
 
                             <HStack justify="center">

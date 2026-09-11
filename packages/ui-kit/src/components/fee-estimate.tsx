@@ -6,8 +6,10 @@ import {type ReactNode, useState} from 'react';
 import {LuCircleAlert, LuCircleCheck, LuInfo, LuTriangleAlert} from 'react-icons/lu';
 import {getChainName} from '../constants/chain';
 import {useFeeEstimate, UseFeeEstimateResult} from '../hooks/useFeeEstimate';
+import {useGasFeeEstimate} from '../hooks/useGasFeeEstimate';
 import {FeeCoin} from '../types/fees';
 import {prettyAmount} from '../utils/amount';
+import {TxSpec} from '../utils/gas_fee';
 import {TokenLogo} from './token-logo';
 import {Tooltip} from './tooltip';
 
@@ -22,6 +24,12 @@ export interface FeeEstimateRowProps {
     isLoading?: boolean;
     /** Text size of the row; defaults to `sm`. */
     size?: 'xs' | 'sm';
+    /**
+     * The transaction this fee belongs to (`'swap'`, `'create-order'`, …). When set, the
+     * transaction's gas fee is estimated too: the balance status accounts for it and the
+     * details dialog names it. Omit when the gas fee is irrelevant or unknown.
+     */
+    txKind?: TxSpec;
 }
 
 /**
@@ -33,9 +41,10 @@ export interface FeeEstimateRowProps {
  *
  * Shared by every app; the math lives in `useFeeEstimate` / `utils/fee_conversion`.
  */
-export const FeeEstimateRow = ({fee, label, description, isLoading, size = 'sm'}: FeeEstimateRowProps) => {
+export const FeeEstimateRow = ({fee, label, description, isLoading, size = 'sm', txKind}: FeeEstimateRowProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const estimate = useFeeEstimate(fee);
+    const gasFee = useGasFeeEstimate(txKind);
+    const estimate = useFeeEstimate(fee, {gasFee: txKind ? gasFee.estimate : undefined});
     const loading = Boolean(isLoading) || (Boolean(fee) && estimate.isLoading && !estimate.nativeAsset);
     const iconSize = size === 'xs' ? 12 : 14;
 
@@ -139,6 +148,10 @@ const FeeDetailsDialog = ({isOpen, onClose, label, description, fee, estimate}: 
         ? `≈ ${prettyAmount(estimate.preferredDisplayAmount)} ${preferredTicker}`
         : '';
     const poolName = `${preferredTicker}/${nativeTicker}`;
+    // "plus ≈ 0.0045 BZE gas" — only when the row knows which transaction it belongs to.
+    const gasText = estimate.gasFee && estimate.gasFeeDisplayAmount
+        ? `≈ ${prettyAmount(estimate.gasFeeDisplayAmount)} ${estimate.gasFeeTicker} gas`
+        : '';
 
     return (
         <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="md">
@@ -172,6 +185,13 @@ const FeeDetailsDialog = ({isOpen, onClose, label, description, fee, estimate}: 
                                             </HStack>
                                         </Box>
 
+                                        {gasText && (
+                                            <Text fontSize="sm" color="fg.muted">
+                                                The transaction also pays a network gas fee of {gasText.replace(' gas', '')} — it is
+                                                taken before this fee, from the same balance.
+                                            </Text>
+                                        )}
+
                                         {isPreferredSelected ? (
                                             <PreferredTokenExplanation
                                                 reason={result.reason}
@@ -197,6 +217,7 @@ const FeeDetailsDialog = ({isOpen, onClose, label, description, fee, estimate}: 
                                                 preferredTicker={preferredTicker}
                                                 nativeBalance={prettyAmount(estimate.nativeBalanceDisplay)}
                                                 preferredBalance={prettyAmount(estimate.preferredBalanceDisplay)}
+                                                gasText={gasText}
                                             />
                                         )}
                                     </>
@@ -285,6 +306,8 @@ interface BalanceStatusProps {
     preferredTicker: string;
     nativeBalance: string;
     preferredBalance: string;
+    /** "≈ 0.0045 BZE gas" when the gas fee is known, empty otherwise. */
+    gasText: string;
 }
 
 const BalanceStatus = ({
@@ -295,13 +318,16 @@ const BalanceStatus = ({
     preferredTicker,
     nativeBalance,
     preferredBalance,
+    gasText,
 }: BalanceStatusProps) => {
+    const plusGas = gasText ? ` (plus ${gasText})` : " (plus the transaction's gas fee)";
+
     if (method === 'preferred') {
         return (
             <HStack gap={2} align="start" color="green.500">
                 <Box mt="0.5"><LuCircleCheck size={16}/></Box>
                 <Text fontSize="sm">
-                    You have enough {preferredTicker} for this fee — you will pay {preferredText} (plus the transaction&apos;s gas fee).
+                    You have enough {preferredTicker} for this fee — you will pay {preferredText}{plusGas}.
                 </Text>
             </HStack>
         );
@@ -312,8 +338,8 @@ const BalanceStatus = ({
             <HStack gap={2} align="start" color="orange.500">
                 <Box mt="0.5"><LuTriangleAlert size={16}/></Box>
                 <Text fontSize="sm">
-                    Not enough {preferredTicker} (you have {preferredBalance}) — the network will charge {nativeText} instead.
-                    You have enough {nativeTicker}.
+                    Not enough {preferredTicker} (you have {preferredBalance}{gasText ? `, ${gasText} goes first` : ''}) — the
+                    network will charge {nativeText} instead. You have enough {nativeTicker}.
                 </Text>
             </HStack>
         );
@@ -323,18 +349,19 @@ const BalanceStatus = ({
         return (
             <HStack gap={2} align="start" color="green.500">
                 <Box mt="0.5"><LuCircleCheck size={16}/></Box>
-                <Text fontSize="sm">You have enough {nativeTicker} to pay this fee.</Text>
+                <Text fontSize="sm">You have enough {nativeTicker} to pay this fee{gasText ? ` plus ${gasText}` : ''}.</Text>
             </HStack>
         );
     }
 
+    const withGas = gasText ? ` plus ${gasText}` : '';
     return (
         <HStack gap={2} align="start" color="red.500">
             <Box mt="0.5"><LuCircleAlert size={16}/></Box>
             <Text fontSize="sm">
                 {preferredText
-                    ? `Not enough ${preferredTicker} or ${nativeTicker} to pay this fee — you have ${preferredBalance} ${preferredTicker} and ${nativeBalance} ${nativeTicker}.`
-                    : `Not enough ${nativeTicker} to pay this fee — you have ${nativeBalance} ${nativeTicker}.`}
+                    ? `Not enough ${preferredTicker} or ${nativeTicker} to pay this fee${withGas} — you have ${preferredBalance} ${preferredTicker} and ${nativeBalance} ${nativeTicker}.`
+                    : `Not enough ${nativeTicker} to pay this fee${withGas} — you have ${nativeBalance} ${nativeTicker}.`}
             </Text>
         </HStack>
     );
