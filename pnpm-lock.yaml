@@ -55,9 +55,6 @@ importers:
       '@chain-registry/utils':
         specifier: ^2.0.229
         version: 2.0.229
-      '@chain-registry/v2':
-        specifier: ^1.71.237
-        version: 1.71.237
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -179,9 +176,6 @@ importers:
       '@chain-registry/utils':
         specifier: ^2.0.229
         version: 2.0.229
-      '@chain-registry/v2':
-        specifier: ^1.71.237
-        version: 1.71.237
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -288,9 +282,6 @@ importers:
       '@chain-registry/utils':
         specifier: ^2.0.229
         version: 2.0.229
-      '@chain-registry/v2':
-        specifier: ^1.71.237
-        version: 1.71.237
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -418,9 +409,6 @@ importers:
       '@chain-registry/utils':
         specifier: ^2.0.229
         version: 2.0.229
-      '@chain-registry/v2':
-        specifier: ^1.71.237
-        version: 1.71.237
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -530,9 +518,6 @@ importers:
       '@chain-registry/utils':
         specifier: ^2.0.229
         version: 2.0.229
-      '@chain-registry/v2':
-        specifier: ^1.71.237
-        version: 1.71.237
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -3804,6 +3789,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-what@6.2.2:
     resolution: {integrity: sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA==}
@@ -4183,6 +4169,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
