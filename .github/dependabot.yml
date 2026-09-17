@@ -1,0 +1,53 @@
+# Dependabot is deliberately narrow here: the ONLY dependencies it may update are
+# the three chain-registry metadata packages, grouped into a single weekly PR
+# against `develop`. Everything else is bumped by hand — the wagmi/viem set,
+# @interchain-kit/store and the test-tooling catalog are pinned to known-good
+# versions in pnpm-workspace.yaml and must never move on their own.
+#
+# GitHub reads this file from the DEFAULT branch (`main`), so the weekly schedule
+# only starts once this change is promoted from `develop` to `main`.
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    # pnpm workspace root: Dependabot reads pnpm-lock.yaml (v9) and updates the
+    # manifests of every workspace member (packages/ui-kit + apps/*) from here.
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Bucharest"
+    # Bump the version requirement in place so ui-kit's exact pins and the apps'
+    # caret ranges both follow the new version instead of being left behind.
+    versioning-strategy: "increase"
+    # At most one open Dependabot PR at a time.
+    open-pull-requests-limit: 1
+    allow:
+      - dependency-name: "chain-registry"
+      - dependency-name: "@chain-registry/types"
+      - dependency-name: "@chain-registry/utils"
+    # Majors are a manual decision (the registry packages changed shape between
+    # v1 and v2); Dependabot never proposes one.
+    ignore:
+      - dependency-name: "chain-registry"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@chain-registry/types"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@chain-registry/utils"
+        update-types: ["version-update:semver-major"]
+    # One PR for all three, so ui-kit and the apps never sit on mixed versions.
+    groups:
+      chain-registry:
+        patterns:
+          - "chain-registry"
+          - "@chain-registry/types"
+          - "@chain-registry/utils"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
