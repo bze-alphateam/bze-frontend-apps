@@ -393,6 +393,18 @@ Edit `overrides:` in `pnpm-workspace.yaml` (NOT `package.json` — pnpm 11 ignor
 `pnpm.overrides` field). Current pins: `axios`, the `wagmi`/`@wagmi/core`/`@wagmi/connectors`/`viem`
 set, and `@interchain-kit/store` — these keep the tree on known-good versions.
 
+### Automated dependency updates (Dependabot)
+`.github/dependabot.yml` covers **only** the three chain-registry metadata packages
+(`chain-registry`, `@chain-registry/types`, `@chain-registry/utils`): one grouped PR, at most once a
+week, targeting `develop`, patch/minor only. Everything else in this repo is bumped by hand on
+purpose — the wagmi/viem set, `@interchain-kit/store` and the test-tooling catalog are pinned to
+known-good versions and must not move on their own.
+
+Two things to know: GitHub reads the config from the **default branch** (`main`), so changes to it
+only take effect once they are promoted there; and Dependabot does not touch `peerDependencies`,
+which is why ui-kit's chain-registry peers are caret ranges — a pinned peer would silently drift
+away from the bumped `devDependencies`.
+
 ### Patches to node_modules
 Handled natively by pnpm via `patchedDependencies:` in `pnpm-workspace.yaml` (we no longer use
 `patch-package`). The one active patch is `patches/@interchain-kit__store@0.9.1.patch`.
