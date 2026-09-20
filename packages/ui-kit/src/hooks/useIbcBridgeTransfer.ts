@@ -4,7 +4,7 @@ import {useCallback, useState} from "react";
 import {ibc} from "@bze/bzejs";
 import {useIBCTx} from "./useTx";
 import {amountToUAmount} from "../utils/amount";
-import {getIbcTransferTimeout} from "../utils/ibc";
+import {getIbcTransferTimeout, ibcTransferTxOptions} from "../utils/ibc";
 import {useAssetsContext} from "./useAssets";
 import {sleep} from "../utils/functions";
 
@@ -85,11 +85,9 @@ export function useIbcBridgeTransfer(chainName: string): UseIbcBridgeTransferRet
             });
 
             setProgressMessage('Waiting for signature...');
-            // For deposits (signing on a foreign chain), we don't know the correct gas
-            // price, so we ask Keplr/Leap to compute and fill the fee itself.
-            const success = await tx([msg], {
-                letWalletSetFee: isDeposit,
-            });
+            // Direct signing is forced and the wallet fills the fee on deposits —
+            // see ibcTransferTxOptions for why amino cannot be used here yet.
+            const success = await tx([msg], ibcTransferTxOptions(isDeposit));
 
             if (success) {
                 setProgressMessage('Waiting for relayer...');
