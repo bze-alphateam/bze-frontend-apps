@@ -12,8 +12,9 @@ overrides:
   "@wagmi/core": "3.4.2"
   "@wagmi/connectors": "8.0.1"
   viem: "2.47.10"
-  # Keep a single @interchain-kit/store at 0.9.1 (what the patch targets + original lock).
-  "@interchain-kit/store": "0.9.1"
+  # Keep a single @interchain-kit/store. 0.9.3 ships the signOptions fix (preferNoSetFee kept,
+  # so Keplr no longer overrides fees paid in non-native denoms) that we used to patch locally.
+  "@interchain-kit/store": "0.9.3"
 
 # Single source of truth for the test-tooling versions (BFE-41). The shared
 # @bze/vitest-preset and every app reference these via `catalog:`, so vitest,
@@ -28,10 +29,6 @@ catalog:
   "@testing-library/jest-dom": "^6.6.3"
   "@testing-library/user-event": "^14.5.2"
 
-# Patches ported from the apps' old patch-package setup, now applied natively by pnpm.
-patchedDependencies:
-  "@interchain-kit/store@0.9.1": "patches/@interchain-kit__store@0.9.1.patch"
-
 # Native/postinstall build scripts we trust to run (all deps the apps already shipped).
 allowBuilds:
   "@reown/appkit": true
@@ -44,7 +41,9 @@ allowBuilds:
   utf-8-validate: true
 
 minimumReleaseAgeExclude:
-  - '@chain-registry/types@2.0.229'
-  - '@chain-registry/utils@2.0.229'
-  - chain-registry@2.0.229
   - '@bze/bzejs@3.1.0'
+  - '@interchain-kit/react@0.10.3'
+  - '@interchain-kit/store@0.9.3'
+  - '@chain-registry/types@2.0.281'
+  - '@chain-registry/utils@2.0.281'
+  - chain-registry@2.0.281
