@@ -407,7 +407,9 @@ away from the bumped `devDependencies`.
 
 ### Patches to node_modules
 Handled natively by pnpm via `patchedDependencies:` in `pnpm-workspace.yaml` (we no longer use
-`patch-package`). The one active patch is `patches/@interchain-kit__store@0.9.1.patch`.
+`patch-package`). There are no active patches: the `@interchain-kit/store` signOptions patch was
+dropped once the fix shipped upstream in 0.9.3. To add one, run `pnpm patch <pkg>@<version>`, edit,
+then `pnpm patch-commit`, which writes the file under `patches/` and the `patchedDependencies:` entry.
 
 ### Native build scripts (sharp, esbuild, secp256k1, …)
 pnpm 11 blocks postinstall build scripts until approved. Approved packages are listed under
