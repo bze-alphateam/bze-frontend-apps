@@ -50,8 +50,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -89,8 +89,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       lightweight-charts:
         specifier: ^5.0.9
         version: 5.2.0
@@ -171,8 +171,8 @@ importers:
         specifier: ^3.0.0
         version: 3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -207,8 +207,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       next:
         specifier: 16.2.3
         version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -277,8 +277,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -319,8 +319,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       interchainjs:
         specifier: ^1.21.0
         version: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -404,8 +404,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -440,8 +440,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       next:
         specifier: 16.2.3
         version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -513,8 +513,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -549,8 +549,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.251
-        version: 2.0.251
+        specifier: ^2.0.281
+        version: 2.0.281
       next:
         specifier: 16.2.3
         version: 16.2.3(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -619,11 +619,11 @@ importers:
         specifier: 3.1.0
         version: 3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/types':
-        specifier: 2.0.251
-        version: 2.0.251
+        specifier: 2.0.281
+        version: 2.0.281
       '@chain-registry/utils':
-        specifier: 2.0.251
-        version: 2.0.251
+        specifier: 2.0.281
+        version: 2.0.281
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -652,8 +652,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: 2.0.251
-        version: 2.0.251
+        specifier: 2.0.281
+        version: 2.0.281
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -813,11 +813,11 @@ packages:
   '@chain-registry/keplr@2.0.216':
     resolution: {integrity: sha512-C0ghy1cTjU08+9JGqMT/HDsHr+2jPgLv61+gUjilF1GnpbVDW7w0xxchXxBek1OKXA0HTiCCPSwBI10WGLPhMA==}
 
-  '@chain-registry/types@2.0.251':
-    resolution: {integrity: sha512-9kwqb6i42YML0yg/OQ4e0iet62ckCFC2qIJDuz+ayg79wZbitbzNNa5N1m4QLGpSdC3v/U0P2V0iA8WEXWHj/g==}
+  '@chain-registry/types@2.0.281':
+    resolution: {integrity: sha512-CTH8Uq5yRd37KjpsYglWfaMskbYwqIsjzEWd48ZQQj/TghwZ2xShO2QpvzZ23dYHnNXrGsfnVJofR1yvaU81OA==}
 
-  '@chain-registry/utils@2.0.251':
-    resolution: {integrity: sha512-jQTDZz7zT+9Oopf9Qdv300+OsQug4t/hfZ46WrAKmnPtJKGb9GoYAvp0J6V9mpddgpVvxC2isJwhEWRNXTjk0w==}
+  '@chain-registry/utils@2.0.281':
+    resolution: {integrity: sha512-bfcLstdN4p/Xk7grT0fxuaNEruCq1+3lGHxtpaq4JE4FhwdimYo5ghzK4zK2jG7+uAz6ZC5oUyFMHklDGut+eQ==}
 
   '@chain-registry/v2-types@0.53.146':
     resolution: {integrity: sha512-GnqdNnEJ+ZTAc/0S9fQbwL5GpIvF3LZ/P3o6qh6EyITSiRA1Y55FXs59eSddltpPX5EgyWDwNpJjY+Q5uYlAkA==}
@@ -3658,8 +3658,8 @@ packages:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
 
-  chain-registry@2.0.251:
-    resolution: {integrity: sha512-6eh/54I2cOGC7lywb63VPDqJKKNTby7TT3l9bdgLze6R06v77oMLJh2lXB4A1zaux/Dxp8gpf9tBx2kKD7kVxA==}
+  chain-registry@2.0.281:
+    resolution: {integrity: sha512-qn1L6BfZ/6+QVf7DSif/jw4kvsmUKp7Ftbh3xaY2Y97iQzs5GVospUCgYxm/4a9BQxY7qPRMk96tHmzVtO/Vtw==}
 
   chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -6800,20 +6800,20 @@ snapshots:
 
   '@chain-registry/keplr@2.0.216':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@keplr-wallet/cosmos': 0.12.28
       '@keplr-wallet/crypto': 0.12.28
       '@types/semver': 7.7.1
-      chain-registry: 2.0.251
+      chain-registry: 2.0.281
       semver: 7.8.4
 
-  '@chain-registry/types@2.0.251': {}
+  '@chain-registry/types@2.0.281': {}
 
-  '@chain-registry/utils@2.0.251':
+  '@chain-registry/utils@2.0.281':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       bignumber.js: 9.1.2
-      chain-registry: 2.0.251
+      chain-registry: 2.0.281
       sha.js: 2.4.12
 
   '@chain-registry/v2-types@0.53.146': {}
@@ -7366,7 +7366,7 @@ snapshots:
   '@interchain-kit/core@0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
       '@chain-registry/keplr': 2.0.216
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchainjs/amino': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
@@ -7383,7 +7383,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.251
+      chain-registry: 2.0.281
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -7419,7 +7419,7 @@ snapshots:
   '@interchain-kit/core@0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
       '@chain-registry/keplr': 2.0.216
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchainjs/amino': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
@@ -7436,7 +7436,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.251
+      chain-registry: 2.0.281
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -7661,7 +7661,7 @@ snapshots:
 
   '@interchain-kit/react@0.10.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchain-kit/core': 0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       '@interchain-kit/store': 0.9.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       '@interchain-ui/react': 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7715,7 +7715,7 @@ snapshots:
 
   '@interchain-kit/react@0.10.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchain-kit/core': 0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/store': 0.9.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-ui/react': 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7769,7 +7769,7 @@ snapshots:
 
   '@interchain-kit/store@0.9.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchain-kit/core': 0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/types': 1.21.0
@@ -7804,7 +7804,7 @@ snapshots:
 
   '@interchain-kit/store@0.9.3(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)':
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
       '@interchain-kit/core': 0.10.2(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@interchainjs/types': 1.21.0
@@ -12255,9 +12255,9 @@ snapshots:
 
   chai@6.2.2: {}
 
-  chain-registry@2.0.251:
+  chain-registry@2.0.281:
     dependencies:
-      '@chain-registry/types': 2.0.251
+      '@chain-registry/types': 2.0.281
 
   chalk@2.4.2:
     dependencies:
