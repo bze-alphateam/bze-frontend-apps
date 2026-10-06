@@ -235,7 +235,7 @@ function PoolAddContent() {
     if (added && pool) {
         const dexUrl = getDexApp().href
         const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(pool.id)}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${added.txHash}`
+        const txUrl = `${getChainExplorerURL()}/tx/${added.txHash}`
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>

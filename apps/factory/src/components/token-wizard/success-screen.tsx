@@ -10,7 +10,7 @@ import {
     LuDroplets,
     LuPlus,
 } from 'react-icons/lu'
-import { getChainExplorerURL, getChainName, getDexApp, useToast } from '@bze/bze-ui-kit'
+import { getChainExplorerURL, getDexApp, useToast } from '@bze/bze-ui-kit'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useNavigation } from '@/hooks/useNavigation'
 
@@ -25,7 +25,7 @@ export function SuccessScreen() {
 
     const dexUrl = getDexApp().href
     const tokenUrl = `${dexUrl}/assets/details?denom=${encodeURIComponent(created.denom)}`
-    const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+    const txUrl = `${getChainExplorerURL()}/tx/${created.txHash}`
 
     const copyDenom = async () => {
         await navigator.clipboard.writeText(created.denom)

@@ -780,7 +780,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                             justify="center"
                             mt="2"
                             cursor="pointer"
-                            onClick={() => openExternalLink(`${getChainExplorerURL(getChainName())}/account/${address}`)}
+                            onClick={() => openExternalLink(`${getChainExplorerURL()}/account/${address}`)}
                             _hover={{ opacity: 0.8 }}
                         >
                             <LuExternalLink size="10" />

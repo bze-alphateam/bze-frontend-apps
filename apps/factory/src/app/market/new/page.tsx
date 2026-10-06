@@ -111,7 +111,7 @@ function MarketNewContent() {
     if (created) {
         const dexUrl = getDexApp().href
         const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(createMarketId(baseDenom, quoteDenom))}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+        const txUrl = `${getChainExplorerURL()}/tx/${created.txHash}`
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>

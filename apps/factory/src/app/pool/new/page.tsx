@@ -279,7 +279,7 @@ function PoolNewContent() {
     if (created) {
         const dexUrl = getDexApp().href
         const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(created.poolId)}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+        const txUrl = `${getChainExplorerURL()}/tx/${created.txHash}`
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>
