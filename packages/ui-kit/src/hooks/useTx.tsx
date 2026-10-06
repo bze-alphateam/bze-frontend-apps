@@ -13,7 +13,7 @@ import {useSigningClient} from "./useSigningClient";
 import {openExternalLink, sleep} from "../utils/functions";
 import BigNumber from "bignumber.js";
 import {getDefaultTxMemo} from "../constants/placeholders";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useState} from "react";
 import {useLiquidityPools} from "./useLiquidityPools";
 import {useSettings} from "./useSettings";
 import {useFeeTokens} from "./useFeeTokens";
@@ -150,8 +150,6 @@ const useTx = (chainName: string) => {
     const {feeDenom} = useSettings()
     const {isValidFeeDenom} = useFeeTokens()
 
-    const defaultChainName = useMemo(() => getChainName(), []);
-
     const canUseClient = useCallback(async () => {
         if (!isSigningClientReady) {
             //TODO: this is a hack to make sure the signing client is ready. Remove this when we have a better way to
@@ -287,7 +285,7 @@ const useTx = (chainName: string) => {
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(`${getChainExplorerURL(chainName ?? defaultChainName)}/tx/${txHash}`)}, 'View in Explorer');
+                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(`${getChainExplorerURL()}/tx/${txHash}`)}, 'View in Explorer');
 
                     if (options?.onSuccess) {
                         options.onSuccess(resp as TxSuccessResponse)
@@ -324,7 +322,7 @@ const useTx = (chainName: string) => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)
         return success;
-    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient]);
+    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, buildDirectSigningClient]);
 
     return {
         tx,
