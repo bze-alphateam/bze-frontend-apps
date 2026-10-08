@@ -33,6 +33,10 @@ export function getAtomOneRpcUrl(): string {
     return process.env.NEXT_PUBLIC_RPC_URL_ATOMONE || '';
 }
 
+export function getInjectiveRpcUrl(): string {
+    return process.env.NEXT_PUBLIC_RPC_URL_INJECTIVE || '';
+}
+
 export function getArchwayRestURL(): string {
     return process.env.NEXT_PUBLIC_REST_URL_ARCHWAY || '';
 }
@@ -57,6 +61,10 @@ export function getAtomOneRestURL(): string {
     return process.env.NEXT_PUBLIC_REST_URL_ATOMONE || '';
 }
 
+export function getInjectiveRestURL(): string {
+    return process.env.NEXT_PUBLIC_REST_URL_INJECTIVE || '';
+}
+
 export const getAggregatorHost = (): string => {
     return process.env.NEXT_PUBLIC_AGG_API_HOST ?? "https://getbze.com";
 }
@@ -75,6 +83,7 @@ export function getEnvRestURL(chainName: string): string {
         jackal: process.env.NEXT_PUBLIC_REST_URL_JACKAL,
         omniflixhub: process.env.NEXT_PUBLIC_REST_URL_FLIX,
         atomone: process.env.NEXT_PUBLIC_REST_URL_ATOMONE,
+        injective: process.env.NEXT_PUBLIC_REST_URL_INJECTIVE,
     };
     const value = envMap[chainName];
     return value ? value.replace(/\/$/, '') : '';

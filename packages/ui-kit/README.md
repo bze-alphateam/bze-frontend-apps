@@ -137,7 +137,7 @@ The library reads these `NEXT_PUBLIC_*` env vars at build time (inlined by Next.
 | `NEXT_PUBLIC_CHAIN_IS_TESTNET` | `false` | Set to `true` or `1` for testnet |
 | `NEXT_PUBLIC_CHAIN_ADDRESS_PREFIX` | `bze` | Bech32 address prefix |
 | `NEXT_PUBLIC_CHAIN_NATIVE_ASSET_DENOM` | `ubze` | Native staking/fee denom |
-| `NEXT_PUBLIC_USDC_IBC_DENOM` | _(empty)_ | IBC denom for USDC on BZE chain |
+| `NEXT_PUBLIC_USDC_IBC_DENOM` | _(empty)_ | Denom of the USD price anchor on BZE (pinned to $1). Apps price BZE from the BZE/anchor **market**, so that market must exist (with trades) before the anchor is switched |
 | `NEXT_PUBLIC_EXPLORER_URL` | `https://explorer.chaintools.tech` | Block explorer base URL |
 | `NEXT_PUBLIC_EXPLORER_CHAIN` | `beezee` | Path segment the explorer serves the chain under (its own slug, not the chain name) |
 | `NEXT_PUBLIC_WALLET_CHAINS_NAMES` | _(auto)_ | Comma-separated chain names for wallet connection |
@@ -165,12 +165,14 @@ The library reads these `NEXT_PUBLIC_*` env vars at build time (inlined by Next.
 | `NEXT_PUBLIC_RPC_URL_JACKAL` | Jackal RPC |
 | `NEXT_PUBLIC_RPC_URL_FLIX` | OmniFlix RPC |
 | `NEXT_PUBLIC_RPC_URL_ATOMONE` | AtomOne RPC |
+| `NEXT_PUBLIC_RPC_URL_INJECTIVE` | Injective RPC |
 | `NEXT_PUBLIC_REST_URL_ARCHWAY` | Archway REST |
 | `NEXT_PUBLIC_REST_URL_OSMOSIS` | Osmosis REST |
 | `NEXT_PUBLIC_REST_URL_NOBLE` | Noble REST |
 | `NEXT_PUBLIC_REST_URL_JACKAL` | Jackal REST |
 | `NEXT_PUBLIC_REST_URL_FLIX` | OmniFlix REST |
 | `NEXT_PUBLIC_REST_URL_ATOMONE` | AtomOne REST |
+| `NEXT_PUBLIC_REST_URL_INJECTIVE` | Injective REST |
 
 ### Ecosystem navigation
 
