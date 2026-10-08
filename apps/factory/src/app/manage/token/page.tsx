@@ -34,6 +34,7 @@ import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AdminActions } from '@/components/manage/admin-card'
 import { MetadataCard } from '@/components/manage/metadata-card'
+import { DenomRewardCard } from '@/components/manage/denom-reward-card'
 import { InfoBox } from '@/components/ui/info-box'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useMyTokens } from '@/hooks/useMyTokens'
@@ -351,6 +352,9 @@ function TokenManageContent() {
                     admin can mint, burn, or update it.
                 </InfoBox>
             )}
+
+            {/* Not an admin action: anyone may create and fund a token's denom reward. */}
+            <DenomRewardCard asset={asset} />
         </VStack>
     )
 }

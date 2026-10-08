@@ -29,6 +29,9 @@ const TYPE_URL_KINDS: Record<string, TxKind> = {
     '/bze.rewards.MsgCreateStakingReward': 'create-staking-reward',
     '/bze.rewards.MsgCreateTradingReward': 'create-trading-reward',
     '/bze.rewards.MsgUpdateStakingReward': 'update-staking-reward',
+    '/bze.rewards.MsgCreateDenomReward': 'create-denom-reward',
+    '/bze.rewards.MsgCreateDenomRewardSchedule': 'create-denom-reward-schedule',
+    '/bze.rewards.MsgUpdateDenomRewardSchedule': 'update-denom-reward-schedule',
 }
 
 /**
