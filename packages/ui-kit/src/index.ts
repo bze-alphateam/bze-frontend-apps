@@ -73,6 +73,7 @@ export {
 export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
 export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout } from './utils/ibc';
+export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
 export {
     formatDuration, generateTxRecordId,
     convertSkipMsgToEncodeObject, resolveAddressesForRoute, chainIdToChainName,
@@ -128,9 +129,10 @@ export type { UseSkipTxTrackerReturn } from './hooks/useSkipTxTracker';
 export {
     ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, ASSET_TYPE_LP,
     VERIFIED_ASSETS, EXCLUDED_ASSETS, STABLE_COINS,
-    DEPOSIT_EXCLUDED_ASSETS, WITHDRAW_EXCLUDED_ASSETS,
+    DEPOSIT_EXCLUDED_ASSETS, WITHDRAW_EXCLUDED_ASSETS, LEGACY_ASSET_NOTICES,
     getChainNativeAssetDenom, getUSDCDenom
 } from './constants/assets';
+export type { LegacyAssetNotice } from './constants/assets';
 export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
@@ -139,8 +141,8 @@ export {
 } from './constants/chain';
 export {
     getRestURL, getRpcURL, getArchwayRpcURL, getOsmosisRpcUrl, getNobleRpcUrl,
-    getJackalRpcUrl, getOmniFlixRpcUrl, getAtomOneRpcUrl, getArchwayRestURL,
-    getOsmosisRestURL, getNobleRestURL, getJackalRestURL, getOmniFlixRestURL,
+    getJackalRpcUrl, getOmniFlixRpcUrl, getAtomOneRpcUrl, getInjectiveRpcUrl, getArchwayRestURL,
+    getOsmosisRestURL, getNobleRestURL, getJackalRestURL, getOmniFlixRestURL, getInjectiveRestURL,
     getAtomOneRestURL, getAggregatorHost,
     getChainRestURL, getEnvRestURL, getRegistryRestURLs
 } from './constants/endpoints';
@@ -195,6 +197,7 @@ export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
 export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
+export type { TxFeeCollectorParamsCache, BlockedIbcInbound } from './query/txfeecollector_params';
 export { getTokenFactoryParams } from './query/tokenfactory_params';
 export type { TokenFactoryParamsCache } from './query/tokenfactory_params';
 export { getRewardsParams } from './query/rewards_params';
@@ -268,6 +271,7 @@ export type { UseSkipAssetsResult } from './hooks/useSkipAssets';
 export { useBuyRoute } from './hooks/useBuyRoute';
 export type { UseBuyRouteResult } from './hooks/useBuyRoute';
 export { useBridgeableAssets } from './hooks/useBridgeableAssets';
+export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';
 export type { BridgeableAsset, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
 export { useWithdrawableBalances } from './hooks/useWithdrawableBalances';
 export type { WithdrawableAsset, WithdrawableAssetKind, WithdrawDestinationChain, UseWithdrawableBalancesResult } from './hooks/useWithdrawableBalances';
@@ -278,6 +282,7 @@ export { Toaster } from './components/toaster';
 export { HighlightText } from './components/highlight';
 export { ImageWithFallback } from './components/image';
 export { TokenLogo } from './components/token-logo';
+export { LegacyAssetNoticeBox } from './components/legacy-asset-notice';
 export { Tooltip } from './components/tooltip';
 export type { TooltipProps } from './components/tooltip';
 export { FeeEstimateRow } from './components/fee-estimate';

@@ -39,7 +39,31 @@ export const WITHDRAW_EXCLUDED_ASSETS: { [key: string]: boolean } = {
 export const STABLE_COINS: { [key: string]: boolean } = {
     "factory/testbz1z3mkcr2jz424w6m49frgjmy9uhlrx69p4cvrgf/uusdt": true,
     "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd": true,
+    // USDC.n — USDC issued on Noble
     "ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4": true,
+    // USDC.inj — USDC issued on Injective
+    "ibc/81DA528F4C5546208D1D50F84C2D0B388B45D37AA36FCA622A3CB2D8EF014838": true,
+}
+
+export interface LegacyAssetNotice {
+    title: string;
+    text: string;
+    /** Optional "learn more" link, e.g. the announcement. */
+    url?: string;
+}
+
+/**
+ * Explanations for assets being wound down, keyed by BZE-side denom. A notice is
+ * shown only while the chain refuses new deposits of that asset (txfeecollector
+ * `blocked_ibc_inbound` param), see `getLegacyAssetNotice`. Copy and link live here
+ * so they can change without touching components.
+ */
+export const LEGACY_ASSET_NOTICES: { [denom: string]: LegacyAssetNotice } = {
+    // USDC.n — Circle is retiring USDC on Noble; chain v8.2.0 blocks new deposits.
+    "ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4": {
+        title: "USDC.n is being retired",
+        text: "USDC.n is USDC issued on the Noble chain, which Circle is retiring. New deposits to BZE are closed; you can still withdraw it to Noble, trade it and send it.",
+    },
 }
 
 export const getChainNativeAssetDenom = (): string => {
