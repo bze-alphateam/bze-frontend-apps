@@ -9,6 +9,7 @@ const errorsMap: { [key: string]: string } = {
     "a denom reward already exists for this denom": "This token already has a denom reward — there can only be one per token. Refresh the page to see it.",
     "prize denom cap reached for this denom reward": "This denom reward already uses the maximum number of prize tokens. Fund it with a prize token it already has.",
     "invalid duration": "Invalid duration: a schedule runs between 1 and 36,500 days, also after extending it.",
+    "denom reward has no stakers": "Nobody is staking this token yet, so there is no one to pay — nothing left your wallet. Try again once someone stakes.",
     "denom reward schedule not found": "This schedule no longer exists — it may have paid its last day. Refresh the page.",
     "broadcast failed with code 7": "Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.",
 };
