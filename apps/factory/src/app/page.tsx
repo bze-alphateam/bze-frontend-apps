@@ -19,6 +19,7 @@ import {
     LuFlame,
     LuGift,
     LuPlus,
+    LuUsers,
     LuWrench,
 } from 'react-icons/lu'
 import {
@@ -85,6 +86,14 @@ const CREATION_CARDS: CreationCard[] = [
         icon: LuGift,
         feeKey: 'createStakingRewardFee',
         href: '/reward/new',
+    },
+    {
+        key: 'denom-reward',
+        title: 'Denom Rewards',
+        description: 'Reward the holders of any token — set up its denom reward and fund daily prizes, from the token’s manage page.',
+        icon: LuUsers,
+        feeKey: 'createDenomRewardFee',
+        href: '/manage',
     },
     {
         key: 'burn',

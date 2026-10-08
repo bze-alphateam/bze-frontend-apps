@@ -47,8 +47,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@bze/bzejs':
-        specifier: ^3.0.0
-        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
         specifier: ^2.0.281
         version: 2.0.281
@@ -168,8 +168,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@bze/bzejs':
-        specifier: ^3.0.0
-        version: 3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
         specifier: ^2.0.281
         version: 2.0.281
@@ -274,8 +274,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@bze/bzejs':
-        specifier: ^3.0.0
-        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
         specifier: ^2.0.281
         version: 2.0.281
@@ -401,8 +401,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@bze/bzejs':
-        specifier: ^3.0.0
-        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
         specifier: ^2.0.281
         version: 2.0.281
@@ -510,8 +510,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui-kit
       '@bze/bzejs':
-        specifier: ^3.0.0
-        version: 3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
         specifier: ^2.0.281
         version: 2.0.281
@@ -616,8 +616,8 @@ importers:
   packages/ui-kit:
     devDependencies:
       '@bze/bzejs':
-        specifier: 3.1.0
-        version: 3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: 3.2.0
+        version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/types':
         specifier: 2.0.281
         version: 2.0.281
@@ -810,11 +810,8 @@ packages:
   '@base-org/account@2.4.0':
     resolution: {integrity: sha512-A4Umpi8B9/pqR78D1Yoze4xHyQaujioVRqqO3d6xuDFw9VRtjg6tK3bPlwE0aW+nVH/ntllCpPa2PbI8Rnjcug==}
 
-  '@bze/bzejs@3.0.0':
-    resolution: {integrity: sha512-nIaYZlX3yumBbWux8N3VTPiAgYbCqFCrRR0vD4/ZT4vEgvNrgabQoWyPVy9SkBaZAm7Oq7jOIayW4rno21JQBw==}
-
-  '@bze/bzejs@3.1.0':
-    resolution: {integrity: sha512-HFxl0mQiJ+2ERKiWw+LIBz4jSDczgane+x6uOcMgxh1Wg0IeFrhQ9A4zJP/1vTQGWGrkQCN3RGtsyiqupRTfYw==}
+  '@bze/bzejs@3.2.0':
+    resolution: {integrity: sha512-8UAB4iFneL5qgzXZ2xWfnfVsr0oMSObZH1SR3ruyrCK7NBZzJJbM9BAmORdSasHD8GoublqF4hBgBrXEsT4mVA==}
 
   '@chain-registry/keplr@2.0.216':
     resolution: {integrity: sha512-C0ghy1cTjU08+9JGqMT/HDsHr+2jPgLv61+gUjilF1GnpbVDW7w0xxchXxBek1OKXA0HTiCCPSwBI10WGLPhMA==}
@@ -6770,24 +6767,7 @@ snapshots:
       - zod
     optional: true
 
-  '@bze/bzejs@3.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
-    dependencies:
-      '@cosmology/lcd': 0.16.0
-      '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      '@interchainjs/cosmos-types': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
-      '@interchainjs/encoding': 1.20.0
-      '@interchainjs/pubkey': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
-      '@interchainjs/types': 1.21.0
-      '@interchainjs/utils': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)
-      axios: 1.13.2
-    transitivePeerDependencies:
-      - '@chain-registry/v2'
-      - '@chain-registry/v2-types'
-      - bufferutil
-      - debug
-      - utf-8-validate
-
-  '@bze/bzejs@3.1.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
+  '@bze/bzejs@3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@cosmology/lcd': 0.16.0
       '@interchainjs/cosmos': 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
