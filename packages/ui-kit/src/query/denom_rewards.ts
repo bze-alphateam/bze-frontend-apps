@@ -1,6 +1,15 @@
 import {PageRequest} from "@bze/bzejs/cosmos/base/query/v1beta1/pagination";
 import {getRestClient} from "./client";
-import {DenomReward, DenomRewardPrize, DenomRewardSchedule} from "../types/denom_rewards";
+import {getAddressPendingUnlock} from "./rewards";
+import {parsePendingUnlockIndex} from "../utils/denom_rewards";
+import {
+    DenomReward,
+    DenomRewardParticipant,
+    DenomRewardPosition,
+    DenomRewardPrize,
+    DenomRewardSchedule,
+    DenomRewardUnlock,
+} from "../types/denom_rewards";
 
 /**
  * Denom Rewards queries (chain v8.2.0). The denom always travels as the `?denom=` query string —
@@ -81,4 +90,50 @@ export async function getDenomRewardSchedules(denom: string): Promise<DenomRewar
     return readAllPages<DenomRewardSchedule>(async (pagination) =>
         (await client.bze.rewards.denomRewardSchedules({denom, pagination})) as unknown as { list?: DenomRewardSchedule[]; pagination?: LcdPagination }
     );
+}
+
+/**
+ * The position of `address` in the DR of `denom` with its claimable coins, or `undefined` when the
+ * address has no position there. Other failures are thrown.
+ */
+export async function getDenomRewardParticipant(address: string, denom: string): Promise<DenomRewardPosition | undefined> {
+    try {
+        const client = await getRestClient();
+        const response = await client.bze.rewards.denomRewardParticipant({address, denom}) as unknown as Partial<DenomRewardPosition>;
+        if (!response.participant) {
+            return undefined;
+        }
+        return {participant: response.participant, pending: response.pending ?? []};
+    } catch (e) {
+        if (isNotFound(e)) {
+            return undefined;
+        }
+        throw e;
+    }
+}
+
+/** Every DR position of `address`. Throws when the query fails. */
+export async function getDenomRewardParticipations(address: string): Promise<DenomRewardParticipant[]> {
+    const client = await getRestClient();
+    return readAllPages<DenomRewardParticipant>(async (pagination) =>
+        (await client.bze.rewards.denomRewardParticipations({address, pagination})) as unknown as { list?: DenomRewardParticipant[]; pagination?: LcdPagination }
+    );
+}
+
+/**
+ * The stakes `address` exited from denom rewards that are still locked, read from the shared
+ * pending-unlock store (index `<epoch>/dr/<denom>/<address>`). Empty when the query fails.
+ */
+export async function getAddressDenomRewardUnlocks(address: string): Promise<DenomRewardUnlock[]> {
+    if (!address) return [];
+
+    const pending = await getAddressPendingUnlock(address);
+    const result: DenomRewardUnlock[] = [];
+    for (const entry of pending) {
+        const parsed = parsePendingUnlockIndex(entry.index);
+        if (parsed?.kind !== 'denom-reward') continue;
+        result.push({staking_denom: parsed.denom, amount: entry.amount, unlockEpoch: parsed.epoch});
+    }
+
+    return result;
 }

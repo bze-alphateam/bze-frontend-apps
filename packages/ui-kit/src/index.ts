@@ -203,11 +203,18 @@ export type { TokenFactoryParamsCache } from './query/tokenfactory_params';
 export { getRewardsParams } from './query/rewards_params';
 export type { RewardsParamsCache } from './query/rewards_params';
 export {
-    getDenomReward, getAllDenomRewards, getDenomRewardPrizes, getDenomRewardSchedules
+    getDenomReward, getAllDenomRewards, getDenomRewardPrizes, getDenomRewardSchedules,
+    getDenomRewardParticipant, getDenomRewardParticipations, getAddressDenomRewardUnlocks
 } from './query/denom_rewards';
 export type {
-    DenomReward, DenomRewardPrize, DenomRewardSchedule, DenomRewardParticipant
+    DenomReward, DenomRewardPrize, DenomRewardSchedule, DenomRewardParticipant,
+    DenomRewardCoin, DenomRewardPosition, DenomRewardUnlock
 } from './types/denom_rewards';
+export {
+    parsePendingUnlockIndex, summarizeDailyPrizes, estimateDailyShare, validateDenomRewardStake,
+    claimableCoins, sumClaimableCoins, denomRewardUnlockDate, formatUnlockCountdown, sortDenomRewardItems
+} from './utils/denom_rewards';
+export type { DenomRewardHolderItem, DenomRewardStakeProblem } from './utils/denom_rewards';
 export type { FeeCoin } from './types/fees';
 export {
     getStakingRewards, getAddressPendingUnlock, getPendingUnlockParticipants,
@@ -247,6 +254,8 @@ export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './h
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
 export { useCreationFees } from './hooks/useCreationFees';
+export { useDenomRewardsData, loadDenomRewardsData } from './hooks/useDenomRewardsData';
+export type { UseDenomRewardsDataResult, DenomRewardsQueries } from './hooks/useDenomRewardsData';
 export type { CreationFees, DenomRewardLimits } from './hooks/useCreationFees';
 export { useTradingFees } from './hooks/useTradingFees';
 export type { TradingFees } from './hooks/useTradingFees';
@@ -293,6 +302,10 @@ export { Tooltip } from './components/tooltip';
 export type { TooltipProps } from './components/tooltip';
 export { FeeEstimateRow } from './components/fee-estimate';
 export type { FeeEstimateRowProps } from './components/fee-estimate';
+export {
+    DenomRewardCoinLine, DenomRewardStakePanel, DenomRewardClaimPanel, DenomRewardClaimAllPanel, DenomRewardExitPanel
+} from './components/denom-reward-panels';
+export type { DenomRewardPanelProps } from './components/denom-reward-panels';
 export type { LPTokenLogoProps } from './components/lp-token-logo';
 export { LPTokenLogo } from './components/lp-token-logo';
 export { Sidebar } from './components/sidebar/sidebar';
