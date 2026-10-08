@@ -2,8 +2,9 @@ import { getRestClient } from "./client";
 import { getFromLocalStorage, setInLocalStorage } from "../storage/storage";
 import { FeeCoin } from "../types/fees";
 
-const CACHE_KEY = "tradebin_params";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// _v2: entries written before the TTL fix carry a ~3.5-day expiry; the new key ignores them.
+const CACHE_KEY = "tradebin_params_v2";
+const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes — setInLocalStorage takes seconds
 
 export interface TradebinParamsCache {
     minNativeLiquidityForModuleSwap: string;
@@ -74,7 +75,7 @@ export const getTradebinParams = async (): Promise<TradebinParamsCache | undefin
             if (marketTakerFee) {
                 params.marketTakerFee = marketTakerFee;
             }
-            setInLocalStorage(CACHE_KEY, JSON.stringify(params), CACHE_TTL_MS);
+            setInLocalStorage(CACHE_KEY, JSON.stringify(params), CACHE_TTL_SECONDS);
             return params;
         }
     } catch (e) {
