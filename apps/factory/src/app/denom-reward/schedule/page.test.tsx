@@ -213,7 +213,7 @@ describe("schedule form — extend", () => {
 });
 
 describe("schedule form — no denom reward", () => {
-    it("points back to the manage page to create it first", () => {
+    it("points back to the denom reward page to create it first", () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, schedules: [], prizes: [] }));
         renderPage();
 

@@ -30,6 +30,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return {
         ...actual,
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
+        useEpochs: () => ({ dayEpochInfo: { identifier: "day", current_epoch: "100" } }),
         useCreationFees: () => ({
             fees: { createDenomRewardFee: { denom: "ubze", amount: "25000000000" } },
             denomRewardLimits: { denomRewardLock: 7, denomRewardMinStake: "0", maxPrizeDenomsPerDr: 50 },
@@ -148,6 +149,31 @@ describe("DenomRewardCard — denom reward exists", () => {
 
         await userEvent.click(screen.getByRole("button", { name: /Add schedule/ }));
         expect(navigateMock).toHaveBeenLastCalledWith("/denom-reward/schedule?denom=factory%2Fbze1owner%2Futok");
+    });
+
+    it("lists the prize tokens against the cap with when each was last paid, never the accumulator", () => {
+        const prizes = [
+            { staking_denom: TOKEN.denom, prize_denom: "ubze", distributed_stake: "0.123456", last_distribution_epoch: "97" },
+            { staking_denom: TOKEN.denom, prize_denom: "uatom", distributed_stake: "0", last_distribution_epoch: "0" },
+        ];
+        useDenomRewardMock.mockReturnValue(state({ denomReward: dr, schedules: [schedule], prizes }));
+        renderCard();
+
+        expect(screen.getByTestId("denom-reward-prize-slots")).toHaveTextContent("2 of 50 used");
+        const rows = screen.getAllByTestId("denom-reward-prize");
+        expect(rows[0]).toHaveTextContent("BZE");
+        expect(rows[0]).toHaveTextContent("Last paid: 3 days ago");
+        expect(rows[1]).toHaveTextContent("uatom");
+        expect(rows[1]).toHaveTextContent("Last paid: Never");
+        expect(screen.queryByText(/0\.123456/)).not.toBeInTheDocument();
+    });
+
+    it("links Airdrop to the deep-linkable airdrop form", async () => {
+        useDenomRewardMock.mockReturnValue(state({ denomReward: dr }));
+        renderCard();
+
+        await userEvent.click(screen.getByRole("button", { name: /Airdrop/ }));
+        expect(navigateMock).toHaveBeenLastCalledWith("/denom-reward/airdrop?denom=factory%2Fbze1owner%2Futok");
     });
 
     it("says so when no schedule is running", () => {

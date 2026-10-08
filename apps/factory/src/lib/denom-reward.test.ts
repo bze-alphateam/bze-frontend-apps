@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
     MAX_SCHEDULE_DAYS,
+    airdropBlocker,
+    airdropFormHref,
+    denomRewardHref,
+    formatLastPaid,
+    summarizeAirdropCosts,
     prizeSlot,
     scheduleDaysLeft,
     scheduleFormHref,
@@ -146,5 +151,81 @@ describe('scheduleFormHref', () => {
     it('encodes factory denoms (with slashes) as the query param', () => {
         expect(scheduleFormHref('factory/bze1x/tok')).toBe('/denom-reward/schedule?denom=factory%2Fbze1x%2Ftok')
         expect(scheduleFormHref('factory/bze1x/tok', '000007')).toBe('/denom-reward/schedule?denom=factory%2Fbze1x%2Ftok&schedule=000007')
+    })
+})
+
+describe('links', () => {
+    it('deep-link the airdrop form and the public denom reward page with an encoded denom', () => {
+        expect(airdropFormHref('factory/bze1x/utok')).toBe('/denom-reward/airdrop?denom=factory%2Fbze1x%2Futok')
+        expect(denomRewardHref('ibc/ABC')).toBe('/denom-reward/token?denom=ibc%2FABC')
+    })
+})
+
+describe('summarizeAirdropCosts', () => {
+    it('takes the amount and, for a prize token new to the DR, the prize fee', () => {
+        const costs = summarizeAirdropCosts({ uAmount: '5000000', prizeDenom: 'uatom', prizeFee: BZE_FEE, isNewPrize: true })
+        expect(costs.escrow).toEqual({ denom: 'uatom', amount: '5000000' })
+        expect(costs.fees).toEqual([{ label: 'New prize token fee', coin: BZE_FEE }])
+        expect(costs.feeTotals).toEqual([BZE_FEE])
+        expect(costs.feesKnown).toBe(true)
+    })
+
+    it('charges no fee for a prize token the DR already pays', () => {
+        const costs = summarizeAirdropCosts({ uAmount: '5000000', prizeDenom: 'ubze', prizeFee: BZE_FEE, isNewPrize: false })
+        expect(costs.fees).toEqual([])
+        expect(costs.feeTotals).toEqual([])
+        expect(costs.feesKnown).toBe(true)
+    })
+
+    it('never treats an unreadable prize fee as free', () => {
+        expect(summarizeAirdropCosts({ uAmount: '1', prizeDenom: 'uatom', isNewPrize: true }).feesKnown).toBe(false)
+    })
+
+    it('has no amount while the input is invalid or zero', () => {
+        expect(summarizeAirdropCosts({ prizeDenom: 'uatom' }).escrow).toBeUndefined()
+        expect(summarizeAirdropCosts({ uAmount: '0', prizeDenom: 'uatom' }).escrow).toBeUndefined()
+        expect(summarizeAirdropCosts({ uAmount: '5', prizeDenom: '' }).escrow).toBeUndefined()
+    })
+})
+
+describe('airdropBlocker', () => {
+    const freeSlot = { isNewPrize: false, capReached: false, used: 1 }
+
+    it('refuses a DR without stakers, whatever the prize', () => {
+        expect(airdropBlocker({ stakedAmount: '0', prizeDenom: '', slot: freeSlot, feesKnown: true })).toMatch(/no one to pay/)
+        expect(airdropBlocker({ stakedAmount: '', prizeDenom: 'ubze', slot: freeSlot, feesKnown: true })).toMatch(/no one to pay/)
+    })
+
+    it('refuses a new prize token once the cap is reached', () => {
+        const slot = { isNewPrize: true, capReached: true, used: 2 }
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'uatom', slot, feesKnown: true })).toMatch(/maximum number of prize tokens/)
+    })
+
+    it('refuses a new prize token whose fee is unknown', () => {
+        const slot = { isNewPrize: true, capReached: false, used: 1 }
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'uatom', slot, feesKnown: false })).toMatch(/couldn't be read/)
+    })
+
+    it('lets a staked DR through', () => {
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'ubze', slot: freeSlot, feesKnown: true })).toBe('')
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: '', slot: freeSlot, feesKnown: true })).toBe('')
+    })
+})
+
+describe('formatLastPaid', () => {
+    it('reads epoch 0 as never paid', () => {
+        expect(formatLastPaid('0', '120')).toBe('Never')
+        expect(formatLastPaid(0)).toBe('Never')
+    })
+
+    it('counts days back from the current day epoch', () => {
+        expect(formatLastPaid('120', '120')).toBe('Today')
+        expect(formatLastPaid('119', 120)).toBe('Yesterday')
+        expect(formatLastPaid('100', '1100')).toBe('1,000 days ago')
+    })
+
+    it('falls back to the raw day when the current epoch is unknown', () => {
+        expect(formatLastPaid('42')).toBe('Day 42')
+        expect(formatLastPaid('42', '')).toBe('Day 42')
     })
 })

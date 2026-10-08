@@ -32,6 +32,7 @@ const TYPE_URL_KINDS: Record<string, TxKind> = {
     '/bze.rewards.MsgCreateDenomReward': 'create-denom-reward',
     '/bze.rewards.MsgCreateDenomRewardSchedule': 'create-denom-reward-schedule',
     '/bze.rewards.MsgUpdateDenomRewardSchedule': 'update-denom-reward-schedule',
+    '/bze.rewards.MsgDistributeDenomRewards': 'distribute-denom-rewards',
 }
 
 /**

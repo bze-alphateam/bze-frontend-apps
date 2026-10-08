@@ -6,16 +6,14 @@ import {
     Button,
     Card,
     Container,
-    Field,
     HStack,
-    Input,
     Separator,
     Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowLeft, LuCalendarPlus, LuLock, LuSearchX, LuTriangleAlert } from 'react-icons/lu'
+import { LuArrowLeft, LuCalendarPlus, LuLock, LuTriangleAlert } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     TokenLogo,
@@ -34,6 +32,7 @@ import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { AssetPicker } from '@/components/ui/asset-picker'
+import { FeeLine, Notice, TextField } from '@/components/manage/denom-reward-form-parts'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
 import { validateAmount } from '@/components/token-wizard/validation'
@@ -43,66 +42,11 @@ import {
     prizeSlot,
     scheduleDaysLeft,
     summarizeScheduleCosts,
+    denomRewardHref,
     validateScheduleDays,
 } from '@/lib/denom-reward'
 
 const { createDenomRewardSchedule, updateDenomRewardSchedule } = bze.rewards.MessageComposer.withTypeUrl
-
-const manageHref = (denom: string) => `/manage/token?denom=${encodeURIComponent(denom)}`
-
-function TextField({
-    label,
-    helper,
-    error,
-    value,
-    onChange,
-    placeholder,
-    inputMode = 'decimal',
-}: {
-    label: string;
-    helper?: string;
-    error: string;
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    inputMode?: 'decimal' | 'numeric';
-}) {
-    const [touched, setTouched] = useState(false)
-
-    return (
-        <Field.Root invalid={touched && error !== ''}>
-            <Field.Label>{label}</Field.Label>
-            <Input
-                placeholder={placeholder}
-                inputMode={inputMode}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onBlur={() => setTouched(true)}
-            />
-            {helper && <Field.HelperText>{helper}</Field.HelperText>}
-            <Field.ErrorText>{error}</Field.ErrorText>
-        </Field.Root>
-    )
-}
-
-function Notice({ title, children, onBack }: { title: string; children: React.ReactNode; onBack: () => void }) {
-    return (
-        <Card.Root variant="outline" p="10">
-            <VStack gap={4}>
-                <Box p={3} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                    <LuSearchX size={28} />
-                </Box>
-                <VStack gap={1}>
-                    <Text fontWeight="semibold">{title}</Text>
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">{children}</Text>
-                </VStack>
-                <Button colorPalette="yellow" variant="outline" onClick={onBack}>
-                    <LuArrowLeft /> Back to the token
-                </Button>
-            </VStack>
-        </Card.Root>
-    )
-}
 
 function ScheduleFormContent() {
     const { denomParam, getQueryParam, navigate } = useNavigationWithParams()
@@ -171,7 +115,7 @@ function ScheduleFormContent() {
     const canConfirm = isComplete && Boolean(address) && !slot.capReached && feesReady &&
         !afford.isLoading && afford.canAfford
 
-    const back = () => navigate(manageHref(denom))
+    const back = () => navigate(denomRewardHref(denom))
 
     const submit = async () => {
         if (!address || !canConfirm || dailyUAmount === undefined) return
@@ -188,14 +132,14 @@ function ScheduleFormContent() {
 
         setIsSubmitting(true)
         try {
-            await tx([msg], { onSuccess: () => navigate(manageHref(denom)) })
+            await tx([msg], { onSuccess: () => navigate(denomRewardHref(denom)) })
         } finally {
             setIsSubmitting(false)
         }
     }
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate('/manage')}>Open this form from a token&apos;s manage page.</Notice>
+        return <Notice title="No token selected" onBack={() => navigate('/denom-reward')}>Open this form from a token&apos;s denom reward.</Notice>
     }
 
     if (isLoading) {
@@ -219,7 +163,7 @@ function ScheduleFormContent() {
         return (
             <Notice title="No denom reward yet" onBack={back}>
                 {stakingAsset?.ticker ?? 'This token'} has no denom reward. Create it from the token&apos;s
-                manage page first, then add a schedule.
+                denom reward page first, then add a schedule.
             </Notice>
         )
     }
@@ -395,18 +339,6 @@ function ScheduleFormContent() {
                 </VStack>
             </Card.Root>
         </VStack>
-    )
-}
-
-function FeeLine({ label, denom, amount }: { label: string; denom: string; amount: string }) {
-    const { asset } = useAsset(denom)
-    return (
-        <HStack justify="space-between">
-            <Text fontSize="sm" color="fg.muted">{label}</Text>
-            <Text fontSize="sm" fontWeight="medium">
-                {prettyAmount(uAmountToBigNumberAmount(amount, asset?.decimals ?? 0))} {asset?.ticker ?? denom}
-            </Text>
-        </HStack>
     )
 }
 

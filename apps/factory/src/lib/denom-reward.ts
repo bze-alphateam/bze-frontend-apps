@@ -135,3 +135,89 @@ export function summarizeScheduleCosts(input: ScheduleCostInput): ScheduleCostSu
 
     return { escrow, fees, feeTotals: sumByDenom(charged), feesKnown }
 }
+
+/** Deep link to the airdrop form of the DR of `denom`. */
+export const airdropFormHref = (denom: string) => `/denom-reward/airdrop?denom=${encodeURIComponent(denom)}`
+
+/**
+ * The public denom reward page of a token: the DR card for any wallet and any token. The manage
+ * token page only opens a wallet's own factory tokens, so the directory and the forms link here.
+ */
+export const denomRewardHref = (denom: string) => `/denom-reward/token?denom=${encodeURIComponent(denom)}`
+
+export interface AirdropCostInput {
+    /** Airdrop amount in prize base units; undefined while the input is invalid. */
+    uAmount?: BigNumber | string;
+    prizeDenom: string;
+    prizeFee?: FeeCoin;
+    isNewPrize?: boolean;
+}
+
+/** What an airdrop takes from the wallet, before gas: the amount itself plus, for a prize denom new to the DR, the prize fee. */
+export function summarizeAirdropCosts(input: AirdropCostInput): ScheduleCostSummary {
+    const { uAmount, prizeDenom, prizeFee, isNewPrize } = input
+
+    let escrow: FeeCoin | undefined
+    if (uAmount !== undefined && prizeDenom) {
+        const amount = new BigNumber(uAmount)
+        if (amount.isFinite() && amount.gt(0)) {
+            escrow = { denom: prizeDenom, amount: amount.integerValue(BigNumber.ROUND_DOWN).toFixed(0) }
+        }
+    }
+
+    const fees: { label: string; coin: FeeCoin }[] = []
+    let feesKnown = true
+    if (isNewPrize) {
+        if (prizeFee) {
+            fees.push({ label: 'New prize token fee', coin: prizeFee })
+        } else {
+            feesKnown = false
+        }
+    }
+    const charged = fees.map(f => f.coin).filter(c => new BigNumber(c.amount).gt(0))
+
+    return { escrow, fees, feeTotals: sumByDenom(charged), feesKnown }
+}
+
+export interface AirdropGuardInput {
+    /** The DR's live staked total (base units). */
+    stakedAmount: string;
+    prizeDenom: string;
+    slot: PrizeSlot;
+    feesKnown: boolean;
+}
+
+/**
+ * Why an airdrop can't be sent as configured, or '' when nothing blocks it. Mirrors the chain's
+ * refusals (5018 no stakers, 5017 prize cap) — a convenience only, the chain stays the gate.
+ */
+export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: AirdropGuardInput): string {
+    if (!new BigNumber(stakedAmount || 0).gt(0)) {
+        return 'Nobody is staking this token yet, so there is no one to pay. The chain refuses an airdrop into a denom reward without stakers — nothing would leave your wallet.'
+    }
+    if (!prizeDenom) return ''
+    if (slot.capReached) {
+        return 'This denom reward already uses the maximum number of prize tokens. Pick a prize token it already pays.'
+    }
+    if (slot.isNewPrize && !feesKnown) {
+        return "The new prize token fee couldn't be read from the chain. Try again later."
+    }
+    return ''
+}
+
+/**
+ * "Last paid" of a prize entry from its `last_distribution_epoch` (day-epoch count, 0 = never paid)
+ * and the chain's current day-epoch count. Without the current count the raw epoch is shown.
+ */
+export function formatLastPaid(lastDistributionEpoch: string | number, currentDayEpoch?: string | number): string {
+    const last = Number(lastDistributionEpoch)
+    if (!Number.isFinite(last) || last <= 0) return 'Never'
+
+    const current = currentDayEpoch === undefined ? NaN : Number(currentDayEpoch)
+    if (!Number.isFinite(current) || current <= 0) return `Day ${last.toLocaleString('en-US')}`
+
+    const ago = Math.max(0, current - last)
+    if (ago === 0) return 'Today'
+    if (ago === 1) return 'Yesterday'
+    return `${ago.toLocaleString('en-US')} days ago`
+}
