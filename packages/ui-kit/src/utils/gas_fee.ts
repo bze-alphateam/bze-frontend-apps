@@ -52,7 +52,14 @@ export type TxKind =
     | 'update-staking-reward'
     | 'join-staking'
     | 'exit-staking'
-    | 'claim-staking-reward';
+    | 'claim-staking-reward'
+    | 'create-denom-reward'
+    | 'create-denom-reward-schedule'
+    | 'update-denom-reward-schedule'
+    | 'distribute-denom-rewards'
+    | 'join-denom-reward'
+    | 'claim-denom-rewards'
+    | 'exit-denom-reward';
 
 /**
  * Gas profile of a message kind: `base` is the gas one message uses; `perItem`, when set,
@@ -105,6 +112,17 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'join-staking': {base: 200_000},                          // measured p90 162k
     'exit-staking': {base: 1_200_000},                        // measured median 142k but up to 1.14M
     'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
+    // Denom Rewards (chain v8.2.0): no on-chain sample yet — estimates with headroom, sized from the
+    // staking-reward equivalents above. Re-measure on bzetestnet-3 once it runs v8.2.0.
+    'create-denom-reward': {base: 300_000},                   // no on-chain sample — fee capture-and-swap, like create-staking-reward
+    'create-denom-reward-schedule': {base: 350_000},          // no on-chain sample — escrow + schedule fee + (new prize) prize fee captures
+    'update-denom-reward-schedule': {base: 180_000},          // no on-chain sample — escrow only, like update-staking-reward (137k)
+    'distribute-denom-rewards': {base: 300_000, perItem: 60_000}, // no on-chain sample — per prize coin; a new prize denom adds a fee capture
+    'join-denom-reward': {base: 250_000},                     // no on-chain sample — settles every prize accumulator of the DR
+    'claim-denom-rewards': {base: 250_000},                   // no on-chain sample — settles every prize accumulator of the DR
+    // The keeper consumes the extra_gas_for_denom_exit param (default 1,000,000) on every exit, on
+    // top of the message's own ~200k — the same scheme as exit-staking / extra_gas_for_exit_stake.
+    'exit-denom-reward': {base: 1_200_000},                   // no on-chain sample — 200k base + 1M extra_gas_for_denom_exit
 };
 
 /** A message kind with an optional item count (orders, hops, validators, reward ids, …). */

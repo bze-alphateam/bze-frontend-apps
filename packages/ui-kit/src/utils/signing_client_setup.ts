@@ -17,6 +17,8 @@ import {
 import {
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
     MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
+    MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
 } from "@bze/bzejs/bze/rewards/tx";
 import {MsgFundBurner, MsgStartRaffle, MsgJoinRaffle} from "@bze/bzejs/bze/burner/tx";
 import {MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata} from "@bze/bzejs/bze/tokenfactory/tx";
@@ -72,6 +74,9 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     // BZE rewards
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
     MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    // BZE rewards — denom rewards (chain v8.2.0)
+    MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
+    MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
     // BZE burner
     MsgFundBurner, MsgStartRaffle, MsgJoinRaffle,
     // BZE tokenfactory

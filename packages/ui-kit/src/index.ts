@@ -202,6 +202,12 @@ export { getTokenFactoryParams } from './query/tokenfactory_params';
 export type { TokenFactoryParamsCache } from './query/tokenfactory_params';
 export { getRewardsParams } from './query/rewards_params';
 export type { RewardsParamsCache } from './query/rewards_params';
+export {
+    getDenomReward, getAllDenomRewards, getDenomRewardPrizes, getDenomRewardSchedules
+} from './query/denom_rewards';
+export type {
+    DenomReward, DenomRewardPrize, DenomRewardSchedule, DenomRewardParticipant
+} from './types/denom_rewards';
 export type { FeeCoin } from './types/fees';
 export {
     getStakingRewards, getAddressPendingUnlock, getPendingUnlockParticipants,
@@ -241,7 +247,7 @@ export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './h
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
 export { useCreationFees } from './hooks/useCreationFees';
-export type { CreationFees } from './hooks/useCreationFees';
+export type { CreationFees, DenomRewardLimits } from './hooks/useCreationFees';
 export { useTradingFees } from './hooks/useTradingFees';
 export type { TradingFees } from './hooks/useTradingFees';
 export { useFeeEstimate } from './hooks/useFeeEstimate';
