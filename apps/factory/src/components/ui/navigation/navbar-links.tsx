@@ -20,7 +20,10 @@ const navSubitems: { [key: string]: string } = {
     '/pool/add': '/',
     '/reward/new': '/',
     '/manage/token': '/manage',
+    '/denom-reward': '/manage',
     '/denom-reward/schedule': '/manage',
+    '/denom-reward/airdrop': '/manage',
+    '/denom-reward/token': '/manage',
 }
 
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {

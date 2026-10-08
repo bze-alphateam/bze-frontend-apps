@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react'
 import { Badge, Box, Button, Card, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuCalendarPlus, LuGift, LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu'
+import { LuCalendarPlus, LuGift, LuPlus, LuRefreshCw, LuSend, LuUsers } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     Asset,
+    DenomRewardPrize,
     DenomRewardSchedule,
     TokenLogo,
     getChainName,
@@ -13,6 +14,7 @@ import {
     uAmountToBigNumberAmount,
     useAsset,
     useCreationFees,
+    useEpochs,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
@@ -21,7 +23,13 @@ import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigation } from '@/hooks/useNavigation'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
-import { scheduleDaysLeft, scheduleFormHref, scheduleRemainingBudget } from '@/lib/denom-reward'
+import {
+    airdropFormHref,
+    formatLastPaid,
+    scheduleDaysLeft,
+    scheduleFormHref,
+    scheduleRemainingBudget,
+} from '@/lib/denom-reward'
 
 const { createDenomReward } = bze.rewards.MessageComposer.withTypeUrl
 
@@ -72,6 +80,24 @@ function ScheduleRow({ schedule, onExtend }: { schedule: DenomRewardSchedule; on
     )
 }
 
+function PrizeRow({ prize, currentDayEpoch }: { prize: DenomRewardPrize; currentDayEpoch?: string }) {
+    const { asset: prizeAsset } = useAsset(prize.prize_denom)
+    const ticker = prizeAsset?.ticker ?? prize.prize_denom
+
+    // distributed_stake is an internal accumulator — never shown.
+    return (
+        <HStack justify="space-between" gap={3} data-testid="denom-reward-prize">
+            <HStack gap={2} minW={0}>
+                <TokenLogo src={prizeAsset?.logo} symbol={ticker} size="5" circular={true} />
+                <Text fontSize="sm" fontWeight="medium" truncate>{ticker}</Text>
+            </HStack>
+            <Text fontSize="xs" color="fg.muted" flexShrink={0}>
+                Last paid: {formatLastPaid(prize.last_distribution_epoch, currentDayEpoch)}
+            </Text>
+        </HStack>
+    )
+}
+
 /**
  * The token's denom reward (chain v8.2.0): one permissionless staking pool per denom where anyone
  * can fund daily prize schedules and holders earn by staking the token. Shown to every wallet —
@@ -81,7 +107,9 @@ export function DenomRewardCard({ asset }: { asset: Asset }) {
     const { address } = useChain(getChainName())
     const { navigate } = useNavigation()
     const { tx } = useFactoryTx()
-    const { denomReward, schedules, isLoading, hasError, refresh } = useDenomReward(asset.denom)
+    const { denomReward, schedules, prizes, isLoading, hasError, refresh } = useDenomReward(asset.denom)
+    const { dayEpochInfo } = useEpochs()
+    const currentDayEpoch = dayEpochInfo?.current_epoch?.toString()
     const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
     const fee = fees.createDenomRewardFee
     const feePayment = useFeePayment(fee, 'create-denom-reward')
@@ -224,11 +252,38 @@ export function DenomRewardCard({ asset }: { asset: Asset }) {
                             )}
                         </VStack>
 
-                        <Box>
+                        <VStack align="stretch" gap={2}>
+                            <HStack justify="space-between" gap={2}>
+                                <Text fontSize="sm" fontWeight="semibold">Prize tokens</Text>
+                                <Text fontSize="xs" color="fg.muted" data-testid="denom-reward-prize-slots">
+                                    {denomRewardLimits.maxPrizeDenomsPerDr !== undefined
+                                        ? `${prizes.length} of ${denomRewardLimits.maxPrizeDenomsPerDr} used`
+                                        : `${prizes.length} used`}
+                                </Text>
+                            </HStack>
+                            {prizes.length === 0 ? (
+                                <Text fontSize="sm" color="fg.muted">
+                                    No prize token has been paid yet.
+                                </Text>
+                            ) : (
+                                prizes.map(prize => (
+                                    <PrizeRow key={prize.prize_denom} prize={prize} currentDayEpoch={currentDayEpoch} />
+                                ))
+                            )}
+                            <Text fontSize="xs" color="fg.muted">
+                                Every prize token ever used keeps its slot, also after its schedules finish.
+                                Funding with one of these costs no prize token fee.
+                            </Text>
+                        </VStack>
+
+                        <HStack gap={2} flexWrap="wrap">
                             <Button colorPalette="yellow" onClick={() => navigate(scheduleFormHref(asset.denom))}>
                                 <LuPlus /> Add schedule
                             </Button>
-                        </Box>
+                            <Button colorPalette="yellow" variant="outline" onClick={() => navigate(airdropFormHref(asset.denom))}>
+                                <LuSend /> Airdrop
+                            </Button>
+                        </HStack>
                     </VStack>
                 )}
             </VStack>
