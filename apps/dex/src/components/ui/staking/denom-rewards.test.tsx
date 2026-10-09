@@ -14,7 +14,7 @@ import {
     type AssetsContextType,
     type DenomRewardHolderItem,
 } from "@bze/bze-ui-kit";
-import { DenomRewardBox, denomRewardActionBlockers } from "@/components/ui/staking/denom-reward-box";
+import { DenomRewardBox } from "@/components/ui/staking/denom-reward-box";
 import { filterDenomRewardItems } from "@/components/ui/staking/denom-rewards-section";
 
 // The panels are the shared ui-kit bodies running the REAL gas engine; only the wallet is mocked
@@ -101,35 +101,6 @@ const DR = { staking_denom: TOKEN_DENOM, lock: 7, min_stake: "10000000", staked_
 const PAYS = [{ denom: "ubze", amount: "5000000" }];
 const positionOf = (amount: string, pending = [{ denom: "ubze", amount: "1500000" }]) => ({
     participant: { address: "bze1test", staking_denom: TOKEN_DENOM, amount }, pending,
-});
-
-describe("denomRewardActionBlockers", () => {
-    const item = (extra: Partial<DenomRewardHolderItem> = {}): DenomRewardHolderItem =>
-        ({ denomReward: DR, dailyPrizes: PAYS, unlocks: [], ...extra });
-
-    it("asks for a wallet first", () => {
-        const b = denomRewardActionBlockers({ item: item(), hasWallet: false, balance: new BigNumber(0) });
-        expect(b.stake).toMatch(/Connect your wallet/);
-        expect(b.claim).toMatch(/Connect your wallet/);
-    });
-
-    it("blocks a first stake when the balance is below the minimum stake", () => {
-        const b = denomRewardActionBlockers({ item: item(), hasWallet: true, balance: new BigNumber(9_999_999) });
-        expect(b.stake).toMatch(/below the minimum stake/);
-        expect(b.claim).toMatch(/no stake/);
-        expect(b.exit).toMatch(/no stake/);
-    });
-
-    it("lets an existing position add any amount, and claims only when something is pending", () => {
-        const withPending = denomRewardActionBlockers({ item: item({ position: positionOf("20000000") }), hasWallet: true, balance: new BigNumber(1) });
-        expect(withPending).toEqual({ stake: "", claim: "", exit: "" });
-
-        const nothing = denomRewardActionBlockers({
-            item: item({ position: positionOf("20000000", [{ denom: "ubze", amount: "0" }]) }), hasWallet: true, balance: new BigNumber(1),
-        });
-        expect(nothing.claim).toMatch(/Nothing to claim yet/);
-        expect(nothing.exit).toBe("");
-    });
 });
 
 describe("DenomRewardBox", () => {

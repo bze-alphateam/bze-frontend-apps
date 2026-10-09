@@ -9,6 +9,7 @@ import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
 import {RewardsStakingBox} from "@/components/ui/staking/rewards-staking";
 import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
+import {TokenDenomReward} from "@/components/ui/tokens/token-denom-reward";
 
 // Same cadence as the DEX staking page: refresh programs and positions periodically.
 const STAKING_DATA_RELOAD_INTERVAL = 150_000;
@@ -73,8 +74,6 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
         return {stakeThisToken: sortPrograms(stake), earnThisToken: sortPrograms(earn)};
     }, [rewards, asset.denom, sortPrograms]);
 
-    const hasPrograms = stakeThisToken.length > 0 || earnThisToken.length > 0;
-
     const openModal = useCallback((sr?: StakingRewardSDKType) => {
         if (!sr) return;
         setSelectedStaking(sr);
@@ -112,48 +111,25 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
                     <Text fontWeight="bold" fontSize={{base: "lg", md: "xl"}}>Staking rewards</Text>
                 </HStack>
 
-                {isLoading && (
-                    <VStack align="stretch" gap={3}>
-                        <Skeleton height="120px" borderRadius="xl"/>
-                        <Skeleton height="120px" borderRadius="xl"/>
-                    </VStack>
-                )}
-
-                {!isLoading && !hasPrograms && (
-                    <Box
-                        borderWidth="1px"
-                        borderColor="border.subtle"
-                        borderRadius="lg"
-                        bg="bg.surface"
-                        p={6}
-                    >
-                        <VStack gap={1}>
-                            <Text fontWeight="semibold">No staking programs yet</Text>
-                            <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                There are no reward programs involving {asset.ticker} at the moment.
-                            </Text>
-                        </VStack>
-                    </Box>
-                )}
-
-                {!isLoading && stakeThisToken.length > 0 && (
-                    <VStack align="stretch" gap={3}>
-                        <SectionHeading
-                            icon={<LuArrowUpFromLine size={18}/>}
-                            title={`Stake ${asset.ticker} to earn`}
-                            subtitle={`Programs where you stake ${asset.ticker} to earn other coins`}
+                {/* The token's denom reward loads on its own, so the group shows while the programs load. */}
+                <VStack align="stretch" gap={3}>
+                    <SectionHeading
+                        icon={<LuArrowUpFromLine size={18}/>}
+                        title={`Stake ${asset.ticker} to earn`}
+                        subtitle={`Stake ${asset.ticker} to earn the prizes of its denom reward and of reward programs`}
+                    />
+                    <TokenDenomReward asset={asset}/>
+                    {isLoading && <Skeleton height="120px" borderRadius="xl"/>}
+                    {!isLoading && stakeThisToken.map(sr => (
+                        <RewardsStakingBox
+                            key={sr.reward_id}
+                            stakingReward={sr}
+                            userStake={addressData?.active.get(sr.reward_id)}
+                            userUnlocking={addressData?.unlocking.get(sr.reward_id)}
+                            onClick={openModal}
                         />
-                        {stakeThisToken.map(sr => (
-                            <RewardsStakingBox
-                                key={sr.reward_id}
-                                stakingReward={sr}
-                                userStake={addressData?.active.get(sr.reward_id)}
-                                userUnlocking={addressData?.unlocking.get(sr.reward_id)}
-                                onClick={openModal}
-                            />
-                        ))}
-                    </VStack>
-                )}
+                    ))}
+                </VStack>
 
                 {!isLoading && earnThisToken.length > 0 && (
                     <VStack align="stretch" gap={3}>

@@ -2,13 +2,13 @@ import {Box, Button, Card, Heading, HStack} from "@chakra-ui/react";
 import React, {type ReactNode} from "react";
 import {
     DenomRewardClaimAllPanel,
+    DenomRewardAction,
     DenomRewardClaimPanel,
     DenomRewardExitPanel,
     DenomRewardHolderItem,
     DenomRewardStakePanel,
     useAsset,
 } from "@bze/bze-ui-kit";
-import {DenomRewardAction} from "@/components/ui/staking/denom-reward-box";
 
 const ModalShell = ({title, onClose, children}: { title: string; onClose: () => void; children: ReactNode }) => (
     <Box position="fixed" inset="0" bg="blackAlpha.600" display="flex" alignItems="center" justifyContent="center" zIndex="modal">

@@ -1,9 +1,10 @@
 import {Badge, Box, Card, Heading, HStack, SimpleGrid, Stack, Text, VStack} from "@chakra-ui/react";
 import {LuClock, LuCoins, LuGift, LuLock, LuTrendingUp} from "react-icons/lu";
 import React, {type ReactNode} from "react";
-import BigNumber from "bignumber.js";
 import {
     claimableCoins,
+    DenomRewardAction,
+    denomRewardActionBlockers,
     DenomRewardCoinLine,
     DenomRewardHolderItem,
     estimateDailyShare,
@@ -18,35 +19,6 @@ import {
 } from "@bze/bze-ui-kit";
 import {RewardStakingAlert, TYPE_UNLOCK} from "@/components/ui/staking/rewards-staking-alerts";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
-
-export type DenomRewardAction = 'stake' | 'claim' | 'exit';
-
-/** Why each action is unavailable, or '' when it can be opened. */
-export function denomRewardActionBlockers({item, hasWallet, balance}: {
-    item: DenomRewardHolderItem;
-    hasWallet: boolean;
-    /** Wallet balance of the staking denom, base units. */
-    balance: BigNumber;
-}): Record<DenomRewardAction, string> {
-    if (!hasWallet) {
-        const reason = 'Connect your wallet first.';
-        return {stake: reason, claim: reason, exit: reason};
-    }
-
-    const {position, denomReward} = item;
-    let stake = '';
-    if (!balance.gt(0)) {
-        stake = 'You hold none of this token.';
-    } else if (!position && balance.lt(denomReward.min_stake)) {
-        stake = 'Your balance is below the minimum stake.';
-    }
-
-    return {
-        stake,
-        claim: !position ? 'You have no stake here.' : claimableCoins(position).length === 0 ? 'Nothing to claim yet.' : '',
-        exit: !position ? 'You have no stake here.' : '',
-    };
-}
 
 const Stat = ({icon, label, children}: { icon: ReactNode; label: string; children: ReactNode }) => (
     <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">

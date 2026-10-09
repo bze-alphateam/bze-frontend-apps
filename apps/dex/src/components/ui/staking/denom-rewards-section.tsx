@@ -1,8 +1,8 @@
 import {Box, Button, HStack, Skeleton, Text, VStack} from "@chakra-ui/react";
 import {LuGift, LuRefreshCw} from "react-icons/lu";
 import React, {useState} from "react";
-import {claimableCoins, DenomRewardHolderItem, useAssets} from "@bze/bze-ui-kit";
-import {DenomRewardAction, DenomRewardBox} from "@/components/ui/staking/denom-reward-box";
+import {claimableCoins, DenomRewardAction, DenomRewardHolderItem, useAssets} from "@bze/bze-ui-kit";
+import {DenomRewardBox} from "@/components/ui/staking/denom-reward-box";
 import {DenomRewardActionModal, DenomRewardClaimAllModal} from "@/components/ui/staking/denom-reward-modals";
 
 /** Matches a DR by the ticker of its staking denom or of any prize it pays / owes me. */
