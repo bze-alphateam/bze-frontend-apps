@@ -109,3 +109,29 @@ describe("asset details page — legacy asset notice", () => {
         expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
     });
 });
+
+describe("asset details page — halted asset", () => {
+    beforeEach(() => {
+        useAssetMock.mockReset();
+        useBlockedIbcInboundMock.mockReset().mockReturnValue([]);
+    });
+
+    it("badges a governance-halted asset and explains which exits stay open", () => {
+        useAssetMock.mockReturnValue({ asset: { ...BZE, ticker: "HALT", name: "Halted", halted: true }, isLoading: false });
+
+        renderPage();
+
+        expect(screen.getByText("Trading halted")).toBeInTheDocument();
+        expect(screen.getByText("HALT is no longer tradeable on BZE")).toBeInTheDocument();
+        expect(screen.getByText(/You can still cancel your open orders, remove your liquidity/)).toBeInTheDocument();
+    });
+
+    it("shows neither badge nor notice for a tradeable asset", () => {
+        useAssetMock.mockReturnValue({ asset: BZE, isLoading: false });
+
+        renderPage();
+
+        expect(screen.queryByText("Trading halted")).toBeNull();
+        expect(screen.queryByText(/no longer tradeable/)).toBeNull();
+    });
+});

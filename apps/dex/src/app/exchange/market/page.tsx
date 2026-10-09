@@ -36,6 +36,7 @@ import {
     HighlightText,
     LPTokenLogo,
     FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
+    HaltedBadge, HaltedNotice, useHaltedDenoms,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {AggregatedOrderSDKType, HistoryOrderSDKType, OrderSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -161,6 +162,13 @@ const TradingPageContent = () => {
     const {marketData, market, marketId} = useMarket(idParam ?? '')
     const {asset: baseAsset} = useAsset(market?.base ?? '')
     const {asset: quoteAsset} = useAsset(market?.quote ?? '')
+    // A governance-halted market keeps its order book, history and "Your Orders" (cancel works);
+    // only the buy/sell forms give way to the notice, since the chain refuses new orders.
+    const {isDenomHalted, isMarketHalted} = useHaltedDenoms()
+    const isHalted = isMarketHalted(market)
+    const haltedTickers = [baseAsset, quoteAsset]
+        .filter(asset => asset && isDenomHalted(asset.denom))
+        .map(asset => asset!.ticker)
     const {address} = useChain(getChainName())
     const {balance: baseBalance} = useBalance(market?.base ?? '')
     const {balance: quoteBalance} = useBalance(market?.quote ?? '')
@@ -773,6 +781,7 @@ const TradingPageContent = () => {
                                             <Text fontSize="xl" fontWeight="bold" letterSpacing="tight">
                                                 {marketTicker}
                                             </Text>
+                                            {isHalted && <HaltedBadge />}
                                             <Badge
                                                 colorPalette={(marketData?.change || 0) >= 0 ? 'green' : 'red'}
                                                 variant="subtle"
@@ -951,6 +960,12 @@ const TradingPageContent = () => {
                         </Box>
 
                         {/* Buy/Sell Forms */}
+                        {isHalted && (
+                            <HaltedNotice tickers={haltedTickers}>
+                                Resting orders on this market will not execute while trading is halted. Cancel them in Your Orders to get your funds back.
+                            </HaltedNotice>
+                        )}
+                        {!isHalted && (
                         <Grid templateColumns="1fr 1fr" gap={3}>
                             {/* Buy Form */}
                             <Box p={3} bg="bg.panel" borderRadius="md" borderWidth="1px">
@@ -1164,6 +1179,7 @@ const TradingPageContent = () => {
                                 </VStack>
                             </Box>
                         </Grid>
+                        )}
                     </VStack>
 
                     {/* Right: Market History/My History & Active Orders */}
