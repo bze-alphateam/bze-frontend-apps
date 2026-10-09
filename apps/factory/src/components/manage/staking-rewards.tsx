@@ -15,7 +15,7 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuGift, LuPlus } from 'react-icons/lu'
+import { LuArrowUpRight, LuChevronDown, LuChevronRight, LuGift, LuPlus, LuTrash2 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     TokenLogo,
@@ -31,8 +31,9 @@ import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
+import { splitStakingRewards, stakingRewardDeletion } from '@/lib/staking-rewards'
 
-const { updateStakingReward } = bze.rewards.MessageComposer.withTypeUrl
+const { updateStakingReward, deleteStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
@@ -162,16 +163,72 @@ function ExtendPanel({
     )
 }
 
-function RewardRow({
+// MsgDeleteStakingReward (chain v8.2.0) is permissionless too: once a program has paid every day
+// and every staker has exited, anyone may remove the record. The chain re-checks both, so a race
+// (someone staked in between) comes back as its mapped error and the list is refreshed either way.
+function DeletePanel({
     reward,
-    onExtended,
+    onDeleted,
 }: {
     reward: StakingRewardSDKType;
-    onExtended: () => void;
+    onDeleted: () => void;
+}) {
+    const { address } = useChain(getChainName())
+    const { tx } = useFactoryTx()
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const submit = async () => {
+        if (!address) return
+
+        const msg = deleteStakingReward({ creator: address, rewardId: reward.reward_id })
+
+        setIsSubmitting(true)
+        try {
+            await tx([msg], { onSuccess: onDeleted, onFailure: onDeleted })
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    return (
+        <VStack align="stretch" gap={3} pt={3} data-testid="staking-reward-delete-panel">
+            <Separator />
+            <Text fontSize="sm">
+                This removes the finished program from the chain. It paid everything it had and
+                holds no stake, so nothing is paid out and nothing is lost.
+            </Text>
+            <Box>
+                <Button
+                    size="sm"
+                    colorPalette="red"
+                    onClick={submit}
+                    disabled={!address}
+                    loading={isSubmitting}
+                    loadingText="Waiting for signature..."
+                >
+                    Delete program #{reward.reward_id}
+                </Button>
+            </Box>
+        </VStack>
+    )
+}
+
+function RewardRow({
+    reward,
+    onChanged,
+}: {
+    reward: StakingRewardSDKType;
+    onChanged: () => void;
 }) {
     const { asset: stakingAsset } = useAsset(reward.staking_denom)
     const { asset: prizeAsset } = useAsset(reward.prize_denom)
-    const [isExtendOpen, setIsExtendOpen] = useState(false)
+    const [openPanel, setOpenPanel] = useState<'extend' | 'delete' | undefined>()
+    const togglePanel = (panel: 'extend' | 'delete') => setOpenPanel(open => (open === panel ? undefined : panel))
+
+    const deletion = stakingRewardDeletion(reward)
+    const stakedLeft = deletion.kind === 'staked'
+        ? `${stakingAsset ? prettyAmount(uAmountToBigNumberAmount(deletion.stakedAmount, stakingAsset.decimals)) : deletion.stakedAmount} ${stakingAsset?.ticker ?? reward.staking_denom}`
+        : ''
 
     const stakingUrl = getStakingApp().href
 
@@ -200,22 +257,39 @@ function RewardRow({
                             <Text fontWeight="semibold">
                                 Stake {stakingAsset?.ticker ?? reward.staking_denom}, earn {prizeAsset?.ticker ?? reward.prize_denom}
                             </Text>
-                            <Badge colorPalette="yellow" variant="surface" size="sm" fontFamily="mono">
-                                #{reward.reward_id}
-                            </Badge>
+                            <HStack gap="1.5">
+                                <Badge colorPalette="yellow" variant="surface" size="sm" fontFamily="mono">
+                                    #{reward.reward_id}
+                                </Badge>
+                                {deletion.kind !== 'running' && (
+                                    <Badge colorPalette="gray" variant="subtle" size="sm">Finished</Badge>
+                                )}
+                            </HStack>
                         </VStack>
                     </HStack>
 
                     <HStack gap={2} flexWrap="wrap">
                         <Button
                             size="sm"
-                            variant={isExtendOpen ? 'solid' : 'outline'}
+                            variant={openPanel === 'extend' ? 'solid' : 'outline'}
                             colorPalette="yellow"
-                            onClick={() => setIsExtendOpen(open => !open)}
+                            onClick={() => togglePanel('extend')}
                         >
                             <LuPlus />
                             Extend
                         </Button>
+                        {deletion.kind !== 'running' && (
+                            <Button
+                                size="sm"
+                                variant={openPanel === 'delete' ? 'solid' : 'outline'}
+                                colorPalette="red"
+                                disabled={deletion.kind !== 'deletable'}
+                                onClick={() => togglePanel('delete')}
+                            >
+                                <LuTrash2 />
+                                Delete
+                            </Button>
+                        )}
                         <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => openExternal(stakingUrl)}>
                             View on Staking app <LuArrowUpRight />
                         </Button>
@@ -245,7 +319,14 @@ function RewardRow({
                     />
                 </HStack>
 
-                {isExtendOpen && <ExtendPanel reward={reward} onExtended={onExtended} />}
+                {stakedLeft && (
+                    <Text fontSize="xs" color="fg.muted" data-testid="staking-reward-delete-blocker">
+                        {stakedLeft} still staked — stakers must exit first before it can be deleted.
+                    </Text>
+                )}
+
+                {openPanel === 'extend' && <ExtendPanel reward={reward} onExtended={onChanged} />}
+                {openPanel === 'delete' && deletion.kind === 'deletable' && <DeletePanel reward={reward} onDeleted={onChanged} />}
             </VStack>
         </Card.Root>
     )
@@ -268,14 +349,35 @@ function RewardRowSkeleton() {
     )
 }
 
+/** Finished programs, collapsed by default so they stop cluttering the running ones. */
+function FinishedRewards({ rewards, onChanged }: { rewards: StakingRewardSDKType[]; onChanged: () => void }) {
+    const [isOpen, setIsOpen] = useState(false)
+
+    return (
+        <VStack align="stretch" gap={3} data-testid="finished-staking-rewards">
+            <Box>
+                <Button size="sm" variant="ghost" onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
+                    {isOpen ? <LuChevronDown /> : <LuChevronRight />}
+                    Finished ({rewards.length})
+                </Button>
+            </Box>
+            {isOpen && rewards.map(reward => (
+                <RewardRow key={reward.reward_id} reward={reward} onChanged={onChanged} />
+            ))}
+        </VStack>
+    )
+}
+
 /**
- * All active staking reward programs. The chain stores no creator on a reward,
+ * All staking reward programs on the chain, running ones first and finished ones in a collapsed
+ * group (where an emptied one can be deleted). The chain stores no creator on a reward,
  * so this is the full list rather than "mine" — and extensions are open to
  * anyone willing to escrow the extra prize.
  */
 export function StakingRewards() {
     const { rewards, isLoading, refresh } = useStakingRewards()
     const { navigate } = useNavigation()
+    const { active, finished } = useMemo(() => splitStakingRewards(rewards), [rewards])
 
     return (
         <VStack align="stretch" gap={4}>
@@ -285,7 +387,7 @@ export function StakingRewards() {
                         Staking Rewards
                     </Text>
                     <Text fontSize="sm" color="fg.muted">
-                        Active reward programs on the chain — extend any of them with extra days.
+                        Reward programs on the chain — extend any of them with extra days, or delete a finished, emptied one.
                     </Text>
                 </VStack>
                 <Button size="sm" colorPalette="yellow" variant="outline" onClick={() => navigate('/reward/new')}>
@@ -319,9 +421,13 @@ export function StakingRewards() {
                 </Card.Root>
             ) : (
                 <VStack align="stretch" gap={3}>
-                    {rewards.map(reward => (
-                        <RewardRow key={reward.reward_id} reward={reward} onExtended={refresh} />
+                    {active.map(reward => (
+                        <RewardRow key={reward.reward_id} reward={reward} onChanged={refresh} />
                     ))}
+                    {active.length === 0 && (
+                        <Text fontSize="sm" color="fg.muted">No running programs — every program below has paid all its days.</Text>
+                    )}
+                    {finished.length > 0 && <FinishedRewards rewards={finished} onChanged={refresh} />}
                 </VStack>
             )}
         </VStack>
