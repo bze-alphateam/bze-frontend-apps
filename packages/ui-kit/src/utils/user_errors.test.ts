@@ -19,6 +19,13 @@ describe('prettyError — Denom Rewards (x/rewards)', () => {
         expect(prettyError(raw)).toMatch(expected)
     })
 
+    it.each([
+        ['failed to execute message; message index: 0: payouts 3 of 10 executed: staking reward is not finished', /still has days left to pay/],
+        ['failed to execute message; message index: 0: staking reward still has staked funds: stakers must exit first', /every staker has exited/],
+    ])('maps the staking reward delete error %s', (raw, expected) => {
+        expect(prettyError(raw)).toMatch(expected)
+    })
+
     it('passes unknown errors through unchanged', () => {
         expect(prettyError('something else')).toBe('something else')
     })
