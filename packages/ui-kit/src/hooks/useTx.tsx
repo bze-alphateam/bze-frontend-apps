@@ -1,5 +1,7 @@
 import {EncodeObject, StdFee} from "@bze/bzejs/types";
 import {TxBody, SignerInfo} from "@bze/bzejs/cosmos/tx/v1beta1/tx";
+import {SimulateRequest} from "@bze/bzejs/cosmos/tx/v1beta1/service";
+import {getSimulate} from "@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func";
 import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
@@ -21,6 +23,7 @@ import {calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {resolveGasPrice} from "../utils/gas_fee";
+import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 
 // The actual payload delivered to onSuccess — the result of broadcastResult.wait(),
 // which is a TxResponse from @interchainjs/cosmos containing the inclusion details.
@@ -185,7 +188,13 @@ const useTx = (chainName: string) => {
         // BZE ante handler checks sequence even in simulation — use the real sequence
         const sequence = await signer.getSequence(address);
         const signerInfo = SignerInfo.fromPartial({modeInfo: {single: {mode: 1}}, sequence});
-        const {gasInfo} = await signer.simulateByTxBody(txBody, [signerInfo]);
+        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why). The signer's
+        // own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
+        const simulationDenom = feeDenom !== nativeDenom && isValidFeeDenom(feeDenom) && getDenomsPool(feeDenom, nativeDenom)
+            ? feeDenom
+            : nativeDenom;
+        const txBytes = buildSimulationTxBytes(txBody, [signerInfo], simulationFeeCoins(simulationDenom, nativeDenom));
+        const {gasInfo} = await getSimulate(signer.config.queryClient, SimulateRequest.fromPartial({txBytes}));
         const gasEstimated = Number(gasInfo?.gasUsed ?? BigInt(0));
         if (gasEstimated === 0) {
             throw new Error("Gas simulation returned 0");
