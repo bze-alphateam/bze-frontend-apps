@@ -43,6 +43,7 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
+import { haltedPairError } from '@/lib/halted'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
 import { useFeePayment } from '@/hooks/useFeePayment'
@@ -162,11 +163,13 @@ function PoolNewContent() {
     const pairError = useMemo(() => {
         if (!baseDenom || !quoteDenom) return ''
         if (baseDenom === quoteDenom) return 'Base and quote must be different assets.'
+        const halted = haltedPairError(baseAsset, quoteAsset)
+        if (halted !== '') return halted
         if (getDenomsPool(baseDenom, quoteDenom)) {
             return 'A pool for this pair already exists — add liquidity to it instead of creating a new one.'
         }
         return ''
-    }, [baseDenom, quoteDenom, getDenomsPool])
+    }, [baseDenom, quoteDenom, getDenomsPool, baseAsset, quoteAsset])
 
     const amountsValid = useMemo(() => {
         if (!baseAsset || !quoteAsset) return false
@@ -395,12 +398,14 @@ function PoolNewContent() {
                         label="First asset"
                         value={baseDenom}
                         excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
+                        excludeHalted
                         onSelect={(asset) => setBaseDenom(asset.denom)}
                     />
                     <AssetPicker
                         label="Second asset"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
+                        excludeHalted
                         ownFirst={false}
                         onSelect={(asset) => setQuoteDenom(asset.denom)}
                     />

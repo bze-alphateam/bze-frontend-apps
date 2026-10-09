@@ -33,6 +33,7 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
+import { haltedPairError } from '@/lib/halted'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
 import { useFeePayment } from '@/hooks/useFeePayment'
@@ -70,11 +71,13 @@ function MarketNewContent() {
         if (baseDenom === quoteDenom) {
             return 'Base and quote must be different assets.'
         }
+        const halted = haltedPairError(baseAsset, quoteAsset)
+        if (halted !== '') return halted
         if (marketExists(createMarketId(baseDenom, quoteDenom)) || marketExists(createMarketId(quoteDenom, baseDenom))) {
             return 'A market for this pair already exists on the DEX — every pair can have only one order book.'
         }
         return ''
-    }, [baseDenom, quoteDenom, marketExists])
+    }, [baseDenom, quoteDenom, marketExists, baseAsset, quoteAsset])
 
     const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && error === ''
     const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
@@ -195,12 +198,14 @@ function MarketNewContent() {
                         label="Base asset — the one being traded"
                         value={baseDenom}
                         excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
+                        excludeHalted
                         onSelect={(asset) => setBaseDenom(asset.denom)}
                     />
                     <AssetPicker
                         label="Quote asset — the one it's priced in"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
+                        excludeHalted
                         ownFirst={false}
                         onSelect={(asset) => setQuoteDenom(asset.denom)}
                     />

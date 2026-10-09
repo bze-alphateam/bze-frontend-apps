@@ -36,6 +36,7 @@ import {
     useBalance,
     useLiquidityPool,
     useLiquidityPools,
+    HaltedNotice,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
@@ -126,6 +127,8 @@ function PoolAddContent() {
     const { balance: quoteBalance } = useBalance(pool?.quote ?? '')
 
     const pairLabel = baseAsset && quoteAsset ? `${baseAsset.ticker}/${quoteAsset.ticker}` : ''
+    // The picker hides halted pools; a `?pool=` deep link to one lands on the notice instead.
+    const isHalted = Boolean(baseAsset?.halted || quoteAsset?.halted)
 
     // Deposits must match the pool ratio — typing on one side computes the other
     // from the current reserves, so the pair can never be sent unbalanced.
@@ -198,7 +201,7 @@ function PoolAddContent() {
         return reserveQuote.dividedBy(reserveBase)
     }, [pool, baseAsset, quoteAsset])
 
-    const isComplete = Boolean(pool) && amountsValid && expectedLpTokens.gt(0)
+    const isComplete = Boolean(pool) && !isHalted && amountsValid && expectedLpTokens.gt(0)
     const canConfirm = isComplete && Boolean(address) && !isPoolsLoading
 
     const submit = async () => {
@@ -314,7 +317,13 @@ function PoolAddContent() {
 
             <Card.Root variant="outline" p={{ base: 5, md: 6 }}>
                 <VStack align="stretch" gap={5}>
-                    <PoolPicker label="Pool" value={poolId} onSelect={onPoolSelect} />
+                    <PoolPicker label="Pool" value={poolId} onSelect={onPoolSelect} excludeHalted />
+
+                    {pool && isHalted && (
+                        <HaltedNotice tickers={[baseAsset, quoteAsset].filter(asset => asset?.halted).map(asset => asset!.ticker)}>
+                            New liquidity cannot be added to this pool. Remove your existing position from the DEX pool page.
+                        </HaltedNotice>
+                    )}
 
                     {!isPoolsLoading && pools.length === 0 && (
                         <InfoBox title="No pools yet">
@@ -323,7 +332,7 @@ function PoolAddContent() {
                         </InfoBox>
                     )}
 
-                    {pool && baseAsset && quoteAsset && (
+                    {pool && baseAsset && quoteAsset && !isHalted && (
                         <>
                             <Box p={4} borderWidth="1px" borderColor="border.muted" borderRadius="lg">
                                 <VStack align="stretch" gap={1}>
