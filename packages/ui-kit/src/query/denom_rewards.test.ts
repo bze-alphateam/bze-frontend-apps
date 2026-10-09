@@ -2,12 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The queries go through bzejs' LCD client; the client is replaced so each test controls the
 // wire response and can inspect the request (denom as query param, pagination key).
-const { denomRewardMock, denomRewardAllMock, denomRewardPrizesMock, denomRewardSchedulesMock } = vi.hoisted(() => ({
+const {
+    denomRewardMock, denomRewardAllMock, denomRewardPrizesMock, denomRewardSchedulesMock,
+    denomRewardParticipantMock, denomRewardParticipationsMock, pendingUnlockMock,
+} = vi.hoisted(() => ({
     denomRewardMock: vi.fn(),
     denomRewardAllMock: vi.fn(),
     denomRewardPrizesMock: vi.fn(),
     denomRewardSchedulesMock: vi.fn(),
+    denomRewardParticipantMock: vi.fn(),
+    denomRewardParticipationsMock: vi.fn(),
+    pendingUnlockMock: vi.fn(),
 }))
+
+vi.mock('./rewards', () => ({ getAddressPendingUnlock: pendingUnlockMock }))
 
 vi.mock('./client', () => ({
     getRestClient: async () => ({
@@ -17,12 +25,17 @@ vi.mock('./client', () => ({
                 denomRewardAll: denomRewardAllMock,
                 denomRewardPrizes: denomRewardPrizesMock,
                 denomRewardSchedules: denomRewardSchedulesMock,
+                denomRewardParticipant: denomRewardParticipantMock,
+                denomRewardParticipations: denomRewardParticipationsMock,
             },
         },
     }),
 }))
 
 import {
+    getAddressDenomRewardUnlocks,
+    getDenomRewardParticipant,
+    getDenomRewardParticipations,
     getAllDenomRewards,
     getDenomReward,
     getDenomRewardPrizes,
@@ -131,5 +144,70 @@ describe('getDenomRewardPrizes', () => {
 
         expect(await getDenomRewardPrizes(FACTORY_DENOM)).toEqual([prize])
         expect(denomRewardPrizesMock).toHaveBeenCalledWith({ denom: FACTORY_DENOM })
+    })
+})
+
+const HOLDER = 'bze1holder'
+
+describe('getDenomRewardParticipant', () => {
+    beforeEach(() => { denomRewardParticipantMock.mockReset() })
+
+    it('passes the address as path and the denom as query param, returning position + pending', async () => {
+        const participant = { address: HOLDER, staking_denom: FACTORY_DENOM, amount: '500' }
+        denomRewardParticipantMock.mockResolvedValue({ participant, pending: [{ denom: 'ubze', amount: '12' }] })
+
+        expect(await getDenomRewardParticipant(HOLDER, FACTORY_DENOM))
+            .toEqual({ participant, pending: [{ denom: 'ubze', amount: '12' }] })
+        expect(denomRewardParticipantMock).toHaveBeenCalledWith({ address: HOLDER, denom: FACTORY_DENOM })
+    })
+
+    it('defaults a missing pending (omitempty) to an empty list', async () => {
+        const participant = { address: HOLDER, staking_denom: FACTORY_DENOM, amount: '500' }
+        denomRewardParticipantMock.mockResolvedValue({ participant })
+
+        expect((await getDenomRewardParticipant(HOLDER, FACTORY_DENOM))?.pending).toEqual([])
+    })
+
+    it('returns undefined when the address has no position (404 / code 5)', async () => {
+        denomRewardParticipantMock.mockRejectedValue(httpError(404, 5))
+        expect(await getDenomRewardParticipant(HOLDER, FACTORY_DENOM)).toBeUndefined()
+    })
+
+    it('throws on any other failure', async () => {
+        denomRewardParticipantMock.mockRejectedValue(httpError(501, 12))
+        await expect(getDenomRewardParticipant(HOLDER, FACTORY_DENOM)).rejects.toThrow()
+    })
+})
+
+describe('getDenomRewardParticipations', () => {
+    beforeEach(() => { denomRewardParticipationsMock.mockReset() })
+
+    it('follows next_key across pages', async () => {
+        const p = (denom: string) => ({ address: HOLDER, staking_denom: denom, amount: '1' })
+        denomRewardParticipationsMock
+            .mockResolvedValueOnce({ list: [p('ubze')], pagination: { next_key: btoa('k') } })
+            .mockResolvedValueOnce({ list: [p(FACTORY_DENOM)], pagination: { next_key: null } })
+
+        expect(await getDenomRewardParticipations(HOLDER)).toEqual([p('ubze'), p(FACTORY_DENOM)])
+        expect(denomRewardParticipationsMock.mock.calls[0][0].address).toBe(HOLDER)
+    })
+})
+
+describe('getAddressDenomRewardUnlocks', () => {
+    beforeEach(() => { pendingUnlockMock.mockReset() })
+
+    it('keeps only the denom reward entries of the shared pending-unlock store', async () => {
+        pendingUnlockMock.mockResolvedValue([
+            { index: `1200/0007/${HOLDER}`, address: HOLDER, amount: '5', denom: 'ubze' },
+            { index: `1368/dr/${FACTORY_DENOM}/${HOLDER}`, address: HOLDER, amount: '900', denom: FACTORY_DENOM },
+        ])
+
+        expect(await getAddressDenomRewardUnlocks(HOLDER))
+            .toEqual([{ staking_denom: FACTORY_DENOM, amount: '900', unlockEpoch: 1368 }])
+    })
+
+    it('reads nothing without an address', async () => {
+        expect(await getAddressDenomRewardUnlocks('')).toEqual([])
+        expect(pendingUnlockMock).not.toHaveBeenCalled()
     })
 })

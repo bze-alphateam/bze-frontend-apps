@@ -5,6 +5,11 @@ const errorsMap: { [key: string]: string } = {
     "can not buy more than 50 tickets": "You can only contribute up to 50 times per transaction.",
     "can be used to pay for fees only if enough liquidity is available": "Your selected fee token does not have enough liquidity. Please switch to the native token in Settings.",
     // Denom Rewards (x/rewards, chain v8.2.0). Keys are the chain's registered error messages.
+    // holder side; listed before "denom reward not found" because the chain wraps that error
+    "you are not a participant in this denom reward": "You have no stake in this denom reward any more — it may already have been exited. Refresh the page.",
+    "amount is smaller than denom reward min stake": "Your stake would stay below this denom reward's minimum stake. Stake enough for your whole position to reach it.",
+    "amount should be greater than 0": "Enter an amount greater than zero.",
+    "no rewards available to claim": "There is nothing to claim yet — amounts smaller than one base unit keep accruing until they add up.",
     "denom reward not found": "This token has no denom reward yet — create it first.",
     "a denom reward already exists for this denom": "This token already has a denom reward — there can only be one per token. Refresh the page to see it.",
     "prize denom cap reached for this denom reward": "This denom reward already uses the maximum number of prize tokens. Fund it with a prize token it already has.",

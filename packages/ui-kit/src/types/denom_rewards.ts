@@ -47,3 +47,25 @@ export interface DenomRewardParticipant {
     /** Staked amount, base units (Int as string). */
     amount: string;
 }
+
+/** A coin as the REST gateway returns it (Int amount as string). */
+export interface DenomRewardCoin {
+    denom: string;
+    amount: string;
+}
+
+/** A position plus what a claim would pay right now — the chain's own read-only settlement. */
+export interface DenomRewardPosition {
+    participant: DenomRewardParticipant;
+    /** One coin per prize denom, sub-unit dust excluded — exactly what a claim pays. */
+    pending: DenomRewardCoin[];
+}
+
+/** A stake released by an exit, waiting in the shared pending-unlock store. */
+export interface DenomRewardUnlock {
+    staking_denom: string;
+    /** Base units (Int as string). */
+    amount: string;
+    /** The hour epoch at which the chain pays it back. */
+    unlockEpoch: number;
+}
