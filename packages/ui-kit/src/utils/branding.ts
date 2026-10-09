@@ -15,6 +15,15 @@ export const isValidBrandingColor = (color: string): boolean => BRANDING_COLOR_R
 export const brandingFont = (slug: string): BrandingFont | undefined =>
     BRANDING_FONTS.find(font => font.slug === slug);
 
+/**
+ * One Google Fonts stylesheet URL that loads `fonts` (default: every curated font) in the weights
+ * the apps use, so a page can render a brand kit's font without bundling it.
+ */
+export function brandingFontsStylesheetUrl(fonts: BrandingFont[] = BRANDING_FONTS): string {
+    const families = fonts.map(font => `family=${font.label.replace(/ /g, '+')}:wght@400;600;700`);
+    return `https://fonts.googleapis.com/css2?${families.join('&')}&display=swap`;
+}
+
 /** Field key of one colour in a kit, e.g. `light.background`. */
 export type BrandingField = 'font' | `${BrandingPalette}.${BrandingColorKey}`;
 
