@@ -10,6 +10,7 @@ export interface Asset {
     logo: string; //logo or placeholder
     stable: boolean; //is stablecoin
     verified: boolean; //is verified
+    halted?: boolean; //trading halted by governance (tradebin HaltedDenoms); LP shares follow their pool
     supply: bigint; //total supply on BZE chain
     description?: string; //optional description (chain registry or on-chain bank metadata)
     IBCData?: IBCData;
