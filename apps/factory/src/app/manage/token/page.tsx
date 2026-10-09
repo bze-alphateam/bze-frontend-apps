@@ -34,6 +34,7 @@ import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AdminActions } from '@/components/manage/admin-card'
 import { MetadataCard } from '@/components/manage/metadata-card'
+import { BrandKitCard } from '@/components/manage/brand-kit-card'
 import { DenomRewardCard } from '@/components/manage/denom-reward-card'
 import { InfoBox } from '@/components/ui/info-box'
 import { validateAmount } from '@/components/token-wizard/validation'
@@ -325,6 +326,7 @@ function TokenManageContent() {
                         isLoading={isMetadataLoading}
                         onSaved={refreshMetadata}
                     />
+                    <BrandKitCard asset={asset} access="admin" />
                     <AdminActions asset={asset} onChanged={refreshAdmins} />
                 </>
             ) : isAdminUnknown ? (
@@ -342,15 +344,21 @@ function TokenManageContent() {
                     </Box>
                 </VStack>
             ) : isRenounced ? (
-                <InfoBox title="Supply provably fixed">
-                    The admin of this token was renounced — nobody, including you, can mint more
-                    tokens or change its metadata. That&apos;s the guarantee holders rely on.
-                </InfoBox>
+                <>
+                    <InfoBox title="Supply provably fixed">
+                        The admin of this token was renounced — nobody, including you, can mint more
+                        tokens or change its metadata. That&apos;s the guarantee holders rely on.
+                    </InfoBox>
+                    <BrandKitCard asset={asset} access="renounced" />
+                </>
             ) : (
-                <InfoBox title="You are not the admin">
-                    You created this token, but its admin is now {token.admin}. Only the current
-                    admin can mint, burn, or update it.
-                </InfoBox>
+                <>
+                    <InfoBox title="You are not the admin">
+                        You created this token, but its admin is now {token.admin}. Only the current
+                        admin can mint, burn, or update it.
+                    </InfoBox>
+                    <BrandKitCard asset={asset} access="not-admin" />
+                </>
             )}
 
             {/* Not an admin action: anyone may create and fund a token's denom reward. */}
