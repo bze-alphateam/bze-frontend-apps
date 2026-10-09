@@ -16,7 +16,7 @@ import {
 } from "@bze/bzejs/bze/tradebin/tx";
 import {
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
-    MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward, MsgDeleteStakingReward,
     MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
     MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
 } from "@bze/bzejs/bze/rewards/tx";
@@ -74,6 +74,8 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     // BZE rewards
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
     MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    // BZE rewards — finished staking reward cleanup (chain v8.2.0)
+    MsgDeleteStakingReward,
     // BZE rewards — denom rewards (chain v8.2.0)
     MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
     MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
