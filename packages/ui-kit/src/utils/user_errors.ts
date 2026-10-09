@@ -19,6 +19,8 @@ const errorsMap: { [key: string]: string } = {
     // Finished staking reward cleanup (MsgDeleteStakingReward, chain v8.2.0)
     "staking reward is not finished": "This program still has days left to pay — it can only be deleted once it has finished. Refresh the page.",
     "staking reward still has staked funds": "Someone still has a stake in this program — it can only be deleted once every staker has exited. Refresh the page.",
+    // Token brand kit (MsgSetDenomBranding, chain v8.2.0)
+    "invalid branding": "The brand kit was refused: it needs a lowercase font slug and all eight colours as 6-digit hex values like #1A2B3C. Check the fields and try again.",
     "broadcast failed with code 7": "Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.",
 };
 

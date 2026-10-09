@@ -186,6 +186,12 @@ export {
     getEpochDurationByIdentifier
 } from './query/epoch';
 export { getFactoryDenomAdmin, getFactoryDenomAdminAddress } from './query/factory';
+export { getDenomBranding, getAllDenomBranding } from './query/branding';
+export type { DenomBranding, BrandingColors, DenomBrandingRecord, BrandingPalette, BrandingColorKey } from './types/branding';
+export { BRANDING_FONTS, BRANDING_PALETTES, BRANDING_COLOR_KEYS, DEFAULT_DENOM_BRANDING } from './constants/branding';
+export type { BrandingFont } from './constants/branding';
+export { isValidBrandingFont, isValidBrandingColor, brandingFont, validateDenomBranding } from './utils/branding';
+export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';

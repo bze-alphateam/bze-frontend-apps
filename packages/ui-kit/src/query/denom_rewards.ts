@@ -1,5 +1,5 @@
-import {PageRequest} from "@bze/bzejs/cosmos/base/query/v1beta1/pagination";
 import {getRestClient} from "./client";
+import {isNotFound, LcdPagination, readAllPages} from "./lcd";
 import {getAddressPendingUnlock} from "./rewards";
 import {parsePendingUnlockIndex} from "../utils/denom_rewards";
 import {
@@ -16,38 +16,6 @@ import {
  * factory and IBC denoms contain `/`, which a path segment can't carry (BZE-140); bzejs' LCD
  * client does that for these routes. On a node older than v8.2.0 every route answers HTTP 501.
  */
-
-const PAGE_LIMIT = 500;
-// Hard stop for a misbehaving node that keeps returning a next_key.
-const MAX_PAGES = 50;
-
-type LcdPagination = { next_key?: string | null } | undefined;
-
-const base64ToBytes = (value: string): Uint8Array =>
-    Uint8Array.from(atob(value), c => c.charCodeAt(0));
-
-/** Reads every page of a paginated route by following `pagination.next_key`. */
-async function readAllPages<T>(
-    fetchPage: (pagination: PageRequest) => Promise<{ list?: T[]; pagination?: LcdPagination }>
-): Promise<T[]> {
-    const all: T[] = [];
-    let key: Uint8Array | undefined;
-    for (let page = 0; page < MAX_PAGES; page++) {
-        const response = await fetchPage(PageRequest.fromPartial({key, limit: BigInt(PAGE_LIMIT)}));
-        all.push(...(response.list ?? []));
-        const nextKey = response.pagination?.next_key;
-        if (!nextKey) break;
-        key = base64ToBytes(nextKey);
-    }
-
-    return all;
-}
-
-/** gRPC NotFound reaches REST as HTTP 404 with `code: 5` in the body. */
-function isNotFound(e: unknown): boolean {
-    const response = (e as { response?: { status?: number; data?: { code?: number } } })?.response;
-    return response?.status === 404 || response?.data?.code === 5;
-}
 
 /**
  * The denom reward of `denom`, or `undefined` when the denom has none. Any other failure (node
