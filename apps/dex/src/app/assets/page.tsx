@@ -23,7 +23,7 @@ import {
     LuLink,
     LuSearch,
 } from 'react-icons/lu'
-import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast} from "@bze/bze-ui-kit";
+import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast, HaltedBadge} from "@bze/bze-ui-kit";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {AssetDetails} from "@/components/ui/assets/asset-details";
 import {assetPagePath} from "@/hooks/useNavigation";
@@ -141,6 +141,7 @@ function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpa
                                 {asset.type.toUpperCase()}
                             </Badge>
                             {asset.verified && (<VerifiedBadge/>)}
+                            {asset.halted && (<HaltedBadge/>)}
                         </HStack>
                         <Text color="fg.muted" fontSize="sm">
                             {asset.ticker}

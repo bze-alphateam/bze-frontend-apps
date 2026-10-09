@@ -24,7 +24,7 @@ import {
   LuArrowRight,
 } from 'react-icons/lu';
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx} from "@bze/bze-ui-kit";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms} from "@bze/bze-ui-kit";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
@@ -245,16 +245,23 @@ export default function SwapPage() {
   const {address} = useChain(getChainName())
   const {denomUsdValue} = useAssetsValue()
 
+  const {isDenomHalted, isPoolHalted} = useHaltedDenoms()
+
+  // The chain refuses any swap whose route crosses a pool holding a governance-halted denom, so
+  // those pools never reach the router and halted denoms never reach the pickers.
+  const tradeablePools = useMemo(() => pools.filter(pool => !isPoolHalted(pool)), [pools, isPoolHalted]);
+  const tradeableAssets = useMemo(() => liquidAssets.filter(asset => !isDenomHalted(asset.denom)), [liquidAssets, isDenomHalted]);
+
   // Update AMM router whenever pools change
   useEffect(() => {
     if (pools && pools.length > 0) {
-      ammRouter.updatePools(pools);
+      ammRouter.updatePools(tradeablePools);
     }
-  }, [pools]);
+  }, [pools, tradeablePools]);
 
   // Get assets with balance information for display
   const assetsWithBalanceInfo = useMemo(() => {
-    const assetsWithBalance = liquidAssets.map(asset => {
+    const assetsWithBalance = tradeableAssets.map(asset => {
       const balance = getBalanceByDenom(asset.denom);
       const balanceAmount = uAmountToBigNumberAmount(balance.amount, asset.decimals);
       return {
@@ -295,7 +302,7 @@ export default function SwapPage() {
 
       return 0;
     });
-  }, [liquidAssets, getBalanceByDenom]);
+  }, [tradeableAssets, getBalanceByDenom]);
 
   // Only the picked denoms are state; the asset objects (with live balances) are derived below.
   const [fromDenom, setFromDenom] = useState<string | null>(null);
@@ -317,6 +324,15 @@ export default function SwapPage() {
     [address, historyState]
   );
   const isLoadingHistory = Boolean(address) && historyState?.address !== address;
+
+  // A pick that left the list (its denom got halted after it was chosen) is dropped, so the
+  // defaults below pick a tradeable asset instead of quoting through a halted pool.
+  if (fromDenom !== null && assetsWithBalanceInfo.length > 0 && !assetsWithBalanceInfo.some(a => a.denom === fromDenom)) {
+    setFromDenom(null);
+  }
+  if (toDenom !== null && assetsWithBalanceInfo.length > 1 && !assetsWithBalanceInfo.some(a => a.denom === toDenom)) {
+    setToDenom(null);
+  }
 
   // Pick the default assets once the list is loaded (React's "adjust state while
   // rendering" pattern — guarded so it runs once, not on every render).

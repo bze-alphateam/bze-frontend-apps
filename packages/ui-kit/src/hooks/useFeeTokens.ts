@@ -46,7 +46,8 @@ export function useFeeTokens() {
 
         const tokens = Array.from(feeTokenDenoms)
             .map(denom => assetsMap.get(denom))
-            .filter(asset => asset !== undefined)
+            // The chain refuses a halted denom as fee denom (tradebin HaltedDenoms).
+            .filter((asset): asset is NonNullable<typeof asset> => asset !== undefined && !asset.halted)
             .sort((a, b) => {
                 if (!a || !b) return 0;
                 return a.denom.localeCompare(b.denom);
@@ -65,7 +66,7 @@ export function useFeeTokens() {
         return new Set(feeTokens.map(t => t.denom));
     }, [feeTokens]);
 
-    // Auto-reset preferred fee denom if it's no longer valid (e.g. liquidity dropped)
+    // Auto-reset preferred fee denom if it's no longer valid (e.g. liquidity dropped or the denom got halted)
     useEffect(() => {
         if (poolsLoading || assetsLoading || feeTokens.length === 0) {
             return;

@@ -16,6 +16,7 @@ import {Asset as ChainRegistryAsset} from "@chain-registry/types";
 import {denomOnFirstHopChainFromTrace} from "../utils/ibc";
 import {createLpDenomPoolsMap} from "../utils/liquidity_pool";
 import {getLiquidityPools} from "../query/liquidity_pools";
+import {getHaltedDenoms} from "../query/halted_denoms";
 
 const ORIGIN_CHAIN_PLACEHOLDER = "Unknown chain"
 
@@ -33,7 +34,8 @@ const getAssetLogo = (asset: ChainRegistryAsset): string => {
 }
 
 export const getChainAssets = async (): Promise<ChainAssets> => {
-    const [metadata, supply, pools] = await Promise.all([getAllMetadataMap(), getAllSupply(), getLiquidityPools()])
+    const [metadata, supply, pools, haltedList] = await Promise.all([getAllMetadataMap(), getAllSupply(), getLiquidityPools(), getHaltedDenoms()])
+    const halted = new Set(haltedList)
     const result = {
         assets: new Map<string, Asset>(),
         ibcData: new Map<string, IBCData>()
@@ -47,6 +49,7 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
     const lpAssets = []
     for (const asset of filtered) {
         const baseAsset = createAsset(asset.denom, BigInt(asset.amount));
+        baseAsset.halted = halted.has(asset.denom)
         if (isLpDenom(asset.denom)) {
             lpAssets.push(baseAsset)
             continue
@@ -90,6 +93,7 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
         lpAsset.name = `${baseAsset.ticker}/${quoteAsset.ticker} LP Shares`
         lpAsset.ticker = `${baseAsset.ticker}/${quoteAsset.ticker} LP`
         lpAsset.verified = true
+        lpAsset.halted = halted.has(baseAsset.denom) || halted.has(quoteAsset.denom)
         lpAsset.decimals = LP_ASSETS_DECIMALS
 
         result.assets.set(lpAsset.denom, lpAsset)

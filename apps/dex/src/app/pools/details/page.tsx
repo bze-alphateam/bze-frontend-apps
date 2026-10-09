@@ -43,6 +43,7 @@ import {
     TokenLogo, LPTokenLogo,
     Tooltip,
     getBurnerApp,
+    HaltedBadge, HaltedNotice, useHaltedDenoms,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -1452,6 +1453,12 @@ const PoolDetailsPageContent = () => {
     } = useLiquidityPool(idParam ?? '')
     const {asset: baseAsset, isLoading: isLoadingBaseAsset} = useAsset(pool?.base || '')
     const {asset: quoteAsset, isLoading: isLoadingQuoteAsset} = useAsset(pool?.quote || '')
+    // A governance-halted pool refuses new liquidity; removing it (and the other tabs) stays open.
+    const {isDenomHalted, isPoolHalted} = useHaltedDenoms()
+    const isHalted = isPoolHalted(pool)
+    const haltedTickers = [baseAsset, quoteAsset]
+        .filter(asset => asset && isDenomHalted(asset.denom))
+        .map(asset => asset!.ticker)
     const {isUSDC: baseAssetIsUsdc, totalUsdValue: baseAssetTotalUsdcValue, isLoading: baseAssetPriceLoading} = useAssetPrice(pool?.base || '')
     const {isUSDC: quoteAssetIsUsdc, totalUsdValue: quoteAssetTotalUsdcValue, isLoading: quoteAssetPriceLoading} = useAssetPrice(pool?.quote || '')
     const {rewardsMap, addressData, reload: reloadStakingData} = useRewardsStakingData()
@@ -1537,6 +1544,7 @@ const PoolDetailsPageContent = () => {
                     </Button>
                     <Box h="4" w="1px" bg="border" />
                     <Text ml={2} fontSize="2xl" fontWeight="bold" color="fg.emphasized">Pool Details</Text>
+                    {isHalted && <HaltedBadge />}
                 </HStack>
 
                 {/* Pool Overview */}
@@ -1833,7 +1841,12 @@ const PoolDetailsPageContent = () => {
                             <Separator borderColor="border.emphasized" />
                         </VStack>
                         {/* Tab Content */}
-                        {activeTab === 'add' && (
+                        {activeTab === 'add' && isHalted && (
+                            <HaltedNotice tickers={haltedTickers}>
+                                New liquidity cannot be added to this pool. Your existing position can be removed at any time.
+                            </HaltedNotice>
+                        )}
+                        {activeTab === 'add' && !isHalted && (
                             <AddLiquidityTab
                                 baseAsset={baseAsset}
                                 quoteAsset={quoteAsset}

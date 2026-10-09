@@ -11,6 +11,8 @@ import type { Asset } from "@bze/bze-ui-kit";
 const mocks = vi.hoisted(() => ({
     useMaxSpendable: vi.fn(),
     liquidAssets: [] as unknown[],
+    pools: [] as { id: string; base: string; quote: string }[],
+    halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
 }));
 
@@ -43,7 +45,14 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             assetsBalances: [],
             isLoading: false,
         }),
-        useLiquidityPools: () => ({ pools: [], liquidAssets: mocks.liquidAssets, isLoading: false }),
+        useLiquidityPools: () => ({ pools: mocks.pools, liquidAssets: mocks.liquidAssets, isLoading: false }),
+        useHaltedDenoms: () => ({
+            haltedDenoms: mocks.halted,
+            isDenomHalted: (denom: string) => mocks.halted.has(denom),
+            isPoolHalted: (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote),
+            isMarketHalted: () => false,
+            isLoading: false,
+        }),
         useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
         useBZETx: () => ({ tx: vi.fn(), progressTrack: "" }),
         useAssetsValue: () => ({ denomUsdValue: () => new BigNumber(0) }),
@@ -63,6 +72,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 });
 
 import SwapPage from "./page";
+import { ammRouter } from "@bze/bze-ui-kit";
 
 function makeAsset(ticker: string, denom: string): Asset {
     return {
@@ -113,6 +123,8 @@ const fromInput = () => screen.getAllByPlaceholderText("0.0")[0] as HTMLInputEle
 beforeEach(() => {
     mocks.useMaxSpendable.mockReset();
     mocks.balances.clear();
+    mocks.pools = [];
+    mocks.halted = new Set();
 });
 
 describe("Swap page MAX button", () => {
@@ -163,5 +175,50 @@ describe("Swap page MAX button", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "100%" }));
         expect(fromInput().value).toBe("9.9955");
+    });
+});
+
+describe("Swap page with a governance-halted denom", () => {
+    const HALTED = "factory/bze1creator/uhalt";
+
+    beforeEach(() => {
+        mocks.useMaxSpendable.mockImplementation(() => spendable("0", "0"));
+        mocks.pools = [
+            { id: "ubze_uusdc", base: "ubze", quote: "uusdc" },
+            { id: `${HALTED}_ubze`, base: HALTED, quote: "ubze" },
+        ];
+    });
+
+    it("never offers the halted denom, even when it would sort first", () => {
+        // AAA (halted) holds the only balance, so without the halt it would be the default "from".
+        mocks.liquidAssets = [makeAsset("AAA", HALTED), makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
+        mocks.balances.set(HALTED, new BigNumber(10).shiftedBy(6));
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        expect(screen.queryByText("AAA")).toBeNull();
+        expect(screen.getAllByText("BZE").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("USDC").length).toBeGreaterThan(0);
+    });
+
+    it("never hands a halted pool to the swap router", () => {
+        const updatePools = vi.spyOn(ammRouter, "updatePools");
+        mocks.liquidAssets = [makeAsset("AAA", HALTED), makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        expect(updatePools).toHaveBeenLastCalledWith([{ id: "ubze_uusdc", base: "ubze", quote: "uusdc" }]);
+        updatePools.mockRestore();
+    });
+
+    it("changes nothing when nothing is halted", () => {
+        const updatePools = vi.spyOn(ammRouter, "updatePools");
+        mocks.liquidAssets = [makeAsset("AAA", HALTED), makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
+        mocks.balances.set(HALTED, new BigNumber(10).shiftedBy(6));
+        renderSwap();
+
+        expect(screen.getAllByText("AAA").length).toBeGreaterThan(0);
+        expect(updatePools).toHaveBeenLastCalledWith(mocks.pools);
+        updatePools.mockRestore();
     });
 });

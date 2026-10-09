@@ -49,6 +49,8 @@ interface AssetPickerProps {
     excludeDenoms?: string[];
     /** Show the connected user's own factory denoms first. Default true. */
     ownFirst?: boolean;
+    /** Hide governance-halted denoms (markets / pools the chain refuses). Default false. */
+    excludeHalted?: boolean;
 }
 
 export function AssetPicker({
@@ -58,6 +60,7 @@ export function AssetPicker({
     includeLP = false,
     excludeDenoms,
     ownFirst = true,
+    excludeHalted = false,
 }: AssetPickerProps) {
     const { assets, assetsLpExcluded, isLoading } = useAssets()
     const { getBalanceByDenom } = useBalances()
@@ -75,7 +78,7 @@ export function AssetPicker({
     const selectableAssets = useMemo(() => {
         const source = includeLP ? assets : assetsLpExcluded
         const excluded = new Set(excludeDenoms ?? [])
-        const filtered = (source ?? []).filter(a => a.supply > BigInt(0) && !excluded.has(a.denom))
+        const filtered = (source ?? []).filter(a => a.supply > BigInt(0) && !excluded.has(a.denom) && !(excludeHalted && a.halted))
 
         // Stable ordering: user's own factory denoms first, then verified assets.
         const rank = (a: Asset) => (ownFirst && isOwn(a) ? 0 : a.verified ? 1 : 2)
@@ -83,7 +86,7 @@ export function AssetPicker({
             .map((asset, index) => ({ asset, index }))
             .sort((a, b) => rank(a.asset) - rank(b.asset) || a.index - b.index)
             .map(({ asset }) => asset)
-    }, [assets, assetsLpExcluded, includeLP, excludeDenoms, ownFirst, isOwn])
+    }, [assets, assetsLpExcluded, includeLP, excludeDenoms, ownFirst, isOwn, excludeHalted])
 
     const filteredAssets = useMemo(() => {
         if (!searchTerm) {

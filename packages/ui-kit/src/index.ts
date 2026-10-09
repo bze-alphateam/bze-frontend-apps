@@ -74,6 +74,8 @@ export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
 export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout } from './utils/ibc';
 export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
+export { isDenomHaltedIn, isPairHaltedIn } from './utils/halted_denoms';
+export type { DenomPair } from './utils/halted_denoms';
 export {
     formatDuration, generateTxRecordId,
     convertSkipMsgToEncodeObject, resolveAddressesForRoute, chainIdToChainName,
@@ -201,6 +203,7 @@ export {
 } from './query/markets';
 export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
+export { getHaltedDenoms } from './query/halted_denoms';
 export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
 export type { TxFeeCollectorParamsCache, BlockedIbcInbound } from './query/txfeecollector_params';
@@ -260,6 +263,8 @@ export { useEpochs, useEpochsManager } from './hooks/useEpochs';
 export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './hooks/useLiquidityPools';
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
+export { useHaltedDenoms } from './hooks/useHaltedDenoms';
+export type { UseHaltedDenomsResult } from './hooks/useHaltedDenoms';
 export { useCreationFees } from './hooks/useCreationFees';
 export { useDenomRewardsData, loadDenomRewardsData } from './hooks/useDenomRewardsData';
 export type { UseDenomRewardsDataResult, DenomRewardsQueries } from './hooks/useDenomRewardsData';
@@ -307,6 +312,7 @@ export { HighlightText } from './components/highlight';
 export { ImageWithFallback } from './components/image';
 export { TokenLogo } from './components/token-logo';
 export { LegacyAssetNoticeBox } from './components/legacy-asset-notice';
+export { HaltedBadge, HaltedNotice } from './components/halted-denom';
 export { Tooltip } from './components/tooltip';
 export type { TooltipProps } from './components/tooltip';
 export { FeeEstimateRow } from './components/fee-estimate';

@@ -15,7 +15,7 @@ import {
     NativeSelectField, Spacer,
 } from '@chakra-ui/react'
 import { LuSearch, LuChevronUp, LuChevronDown, LuUser } from 'react-icons/lu'
-import {useAsset, useAssets, toBigNumber, useBalances, calculateUserPoolData, shortNumberFormat, HighlightText, LiquidityPoolData, useLiquidityPools, LPTokenLogo} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, toBigNumber, useBalances, calculateUserPoolData, shortNumberFormat, HighlightText, LiquidityPoolData, useLiquidityPools, LPTokenLogo, HaltedBadge} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
 import {sortPools, filterPoolsBySearch, partitionUserPools} from "@/lib/pool-list";
@@ -41,6 +41,7 @@ const DesktopLiquidityPoolCard = ({ pool, isUserPool = false, poolData }: Liquid
     const {asset: baseAsset} = useAsset(pool.base)
     const {asset: quoteAsset} = useAsset(pool.quote)
     const {asset: lpAsset} = useAsset(pool.lp_denom)
+    const isHalted = !!baseAsset?.halted || !!quoteAsset?.halted
     const {toLpPage} = useNavigation()
     const {getBalanceByDenom} = useBalances()
 
@@ -71,9 +72,12 @@ const DesktopLiquidityPoolCard = ({ pool, isUserPool = false, poolData }: Liquid
                         size="10"
                     />
                     <VStack gap={0} align="start">
-                        <Text fontWeight="700" fontSize="md">
-                            {baseAsset?.ticker}/{quoteAsset?.ticker}
-                        </Text>
+                        <HStack gap={2}>
+                            <Text fontWeight="700" fontSize="md">
+                                {baseAsset?.ticker}/{quoteAsset?.ticker}
+                            </Text>
+                            {isHalted && <HaltedBadge />}
+                        </HStack>
                         <Text fontSize="xs" color="fg.muted" fontWeight="medium">
                             {baseAsset?.ticker}-{quoteAsset?.ticker} LP
                         </Text>
@@ -151,6 +155,7 @@ const MobileLiquidityPoolCard = ({ pool, isUserPool = false, poolData }: Liquidi
     const {asset: baseAsset} = useAsset(pool.base)
     const {asset: quoteAsset} = useAsset(pool.quote)
     const {asset: lpAsset} = useAsset(pool.lp_denom)
+    const isHalted = !!baseAsset?.halted || !!quoteAsset?.halted
     const {toLpPage} = useNavigation()
     const {getBalanceByDenom} = useBalances()
 
@@ -194,9 +199,12 @@ const MobileLiquidityPoolCard = ({ pool, isUserPool = false, poolData }: Liquidi
                             size="10"
                         />
                         <VStack gap={0.5} align="start" minW="0">
-                            <Text fontWeight="700" fontSize="md">
-                                {baseAsset?.ticker}/{quoteAsset?.ticker}
-                            </Text>
+                            <HStack gap={2} wrap="wrap">
+                                <Text fontWeight="700" fontSize="md">
+                                    {baseAsset?.ticker}/{quoteAsset?.ticker}
+                                </Text>
+                                {isHalted && <HaltedBadge />}
+                            </HStack>
                             <Text fontSize="xs" color="fg.muted" fontWeight="medium">
                                 {baseAsset?.ticker}-{quoteAsset?.ticker} LP
                             </Text>

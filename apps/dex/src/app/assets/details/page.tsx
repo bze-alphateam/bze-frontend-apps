@@ -33,6 +33,7 @@ import {
     useBlockedIbcInbound,
     getLegacyAssetNotice,
     LegacyAssetNoticeBox,
+    HaltedBadge, HaltedNotice,
 } from "@bze/bze-ui-kit";
 import {useNavigationWithParams, assetPagePath} from "@/hooks/useNavigation";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
@@ -115,6 +116,7 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
                                     {asset.type.toUpperCase()}
                                 </Badge>
                                 {asset.verified && (<VerifiedBadge/>)}
+                                {asset.halted && (<HaltedBadge/>)}
                             </HStack>
                             <Text color="fg.muted" fontSize="sm">
                                 {asset.ticker}
@@ -213,6 +215,7 @@ const AssetDetailsPageContent = () => {
                         <>
                             <AssetHeader asset={asset} />
                             {legacyNotice && <LegacyAssetNoticeBox notice={legacyNotice} />}
+                            {asset.halted && <HaltedNotice tickers={[asset.ticker]} />}
                             <Box
                                 bgGradient="to-br"
                                 gradientFrom="blue.500/5"
