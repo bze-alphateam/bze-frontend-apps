@@ -1,7 +1,7 @@
 'use client';
 
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {Box, HStack, Skeleton, Text, VStack} from "@chakra-ui/react";
+import {Box, HStack, Portal, Skeleton, Text, VStack} from "@chakra-ui/react";
 import {LuArrowDownToLine, LuArrowUpFromLine, LuSprout} from "react-icons/lu";
 import {Asset} from "@bze/bze-ui-kit";
 import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
@@ -151,14 +151,17 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
                 )}
             </VStack>
 
+            {/* Portaled so the dialog sits outside the token page's brand scope (no kit on tx dialogs). */}
             {isModalOpen && (
-                <RewardsStakingActionModal
-                    stakingReward={selectedStaking}
-                    userStake={addressData?.active.get(selectedStaking?.reward_id ?? '')}
-                    userUnlocking={addressData?.unlocking.get(selectedStaking?.reward_id ?? '')}
-                    onClose={closeModal}
-                    onActionPerformed={onModalAction}
-                />
+                <Portal>
+                    <RewardsStakingActionModal
+                        stakingReward={selectedStaking}
+                        userStake={addressData?.active.get(selectedStaking?.reward_id ?? '')}
+                        userUnlocking={addressData?.unlocking.get(selectedStaking?.reward_id ?? '')}
+                        onClose={closeModal}
+                        onActionPerformed={onModalAction}
+                    />
+                </Portal>
             )}
         </Box>
     );

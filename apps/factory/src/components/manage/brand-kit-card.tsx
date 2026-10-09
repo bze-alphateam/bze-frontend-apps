@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useMemo, useState } from 'react'
+import { preinit } from 'react-dom'
 import {
     Box,
     Button,
@@ -98,10 +99,12 @@ function PalettePreview({ asset, branding, palette }: { asset: Asset; branding: 
 }
 
 function BrandKitPreview({ asset, branding }: { asset: Asset; branding: DenomBranding }) {
+    // Load the curated fonts so the preview renders the real font. preinit dedupes and, unlike a
+    // `<link precedence>`, never suspends the page (inside a Suspense boundary) while it downloads.
+    preinit(brandingFontsStylesheetUrl(), { as: 'style', precedence: 'default' })
+
     return (
         <VStack align="stretch" gap={2}>
-            {/* React hoists and dedupes the stylesheet, so the preview renders the real font. */}
-            <link rel="stylesheet" href={brandingFontsStylesheetUrl()} precedence="default" />
             <Text fontSize="sm" color="fg.muted">
                 Font: <Text as="span" fontWeight="medium" color="fg">{brandingFont(branding.font)?.label ?? `${branding.font} (not supported — shown in the default font)`}</Text>
             </Text>
