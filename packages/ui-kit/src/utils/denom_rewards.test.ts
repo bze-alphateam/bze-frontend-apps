@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import BigNumber from 'bignumber.js'
 import {
     claimableCoins,
+    denomRewardActionBlockers,
     DenomRewardHolderItem,
     denomRewardUnlockDate,
     estimateDailyShare,
@@ -165,5 +166,40 @@ describe('sortDenomRewardItems', () => {
         expect(sortDenomRewardItems(items).map(i => i.denomReward.staking_denom)).toEqual([
             'mine-idle', 'unlocking', 'paying-big', 'paying-small', 'idle-big', 'unknown',
         ])
+    })
+})
+
+describe('denomRewardActionBlockers', () => {
+    // min stake 10 TOK (6 decimals)
+    const dr = { staking_denom: FACTORY, lock: 7, min_stake: '10000000', staked_amount: '1000000000' }
+    const position = (pending: string) => ({
+        participant: { address: ADDR, staking_denom: FACTORY, amount: '20000000' },
+        pending: [{ denom: 'ubze', amount: pending }],
+    })
+    const item = (extra: Partial<DenomRewardHolderItem> = {}): DenomRewardHolderItem =>
+        ({ denomReward: dr, dailyPrizes: [], unlocks: [], ...extra })
+
+    it('asks for a wallet first', () => {
+        const b = denomRewardActionBlockers({ item: item(), hasWallet: false, balance: 0 })
+        expect(b.stake).toMatch(/Connect your wallet/)
+        expect(b.claim).toMatch(/Connect your wallet/)
+        expect(b.exit).toMatch(/Connect your wallet/)
+    })
+
+    it('blocks a first stake below the minimum and without any balance', () => {
+        const below = denomRewardActionBlockers({ item: item(), hasWallet: true, balance: new BigNumber(9_999_999) })
+        expect(below.stake).toMatch(/below the minimum stake/)
+        expect(below.claim).toMatch(/no stake/)
+        expect(below.exit).toMatch(/no stake/)
+        expect(denomRewardActionBlockers({ item: item(), hasWallet: true, balance: '0' }).stake).toMatch(/hold none/)
+    })
+
+    it('lets a position add any amount, and claims only when something is pending', () => {
+        expect(denomRewardActionBlockers({ item: item({ position: position('1500000') }), hasWallet: true, balance: 1 }))
+            .toEqual({ stake: '', claim: '', exit: '' })
+
+        const nothing = denomRewardActionBlockers({ item: item({ position: position('0') }), hasWallet: true, balance: 1 })
+        expect(nothing.claim).toMatch(/Nothing to claim yet/)
+        expect(nothing.exit).toBe('')
     })
 })

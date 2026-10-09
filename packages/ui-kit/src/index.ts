@@ -212,9 +212,10 @@ export type {
 } from './types/denom_rewards';
 export {
     parsePendingUnlockIndex, summarizeDailyPrizes, estimateDailyShare, validateDenomRewardStake,
-    claimableCoins, sumClaimableCoins, denomRewardUnlockDate, formatUnlockCountdown, sortDenomRewardItems
+    claimableCoins, sumClaimableCoins, denomRewardUnlockDate, formatUnlockCountdown, sortDenomRewardItems,
+    denomRewardActionBlockers
 } from './utils/denom_rewards';
-export type { DenomRewardHolderItem, DenomRewardStakeProblem } from './utils/denom_rewards';
+export type { DenomRewardHolderItem, DenomRewardStakeProblem, DenomRewardAction } from './utils/denom_rewards';
 export type { FeeCoin } from './types/fees';
 export {
     getStakingRewards, getAddressPendingUnlock, getPendingUnlockParticipants,
@@ -256,6 +257,8 @@ export { useFeeTokens } from './hooks/useFeeTokens';
 export { useCreationFees } from './hooks/useCreationFees';
 export { useDenomRewardsData, loadDenomRewardsData } from './hooks/useDenomRewardsData';
 export type { UseDenomRewardsDataResult, DenomRewardsQueries } from './hooks/useDenomRewardsData';
+export { useTokenDenomReward, loadTokenDenomReward } from './hooks/useTokenDenomReward';
+export type { UseTokenDenomRewardResult, TokenDenomRewardQueries, TokenDenomReward } from './hooks/useTokenDenomReward';
 export type { CreationFees, DenomRewardLimits } from './hooks/useCreationFees';
 export { useTradingFees } from './hooks/useTradingFees';
 export type { TradingFees } from './hooks/useTradingFees';

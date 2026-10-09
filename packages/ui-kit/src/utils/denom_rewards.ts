@@ -155,3 +155,34 @@ export function sortDenomRewardItems(items: DenomRewardHolderItem[]): DenomRewar
         return new BigNumber(b.denomReward.staked_amount).comparedTo(a.denomReward.staked_amount) ?? 0;
     });
 }
+
+/** The holder actions on one denom reward. */
+export type DenomRewardAction = 'stake' | 'claim' | 'exit';
+
+/** Why each holder action is unavailable, or '' when it can be opened. */
+export function denomRewardActionBlockers({item, hasWallet, balance}: {
+    item: DenomRewardHolderItem;
+    hasWallet: boolean;
+    /** Wallet balance of the staking denom, base units. */
+    balance: BigNumber.Value;
+}): Record<DenomRewardAction, string> {
+    if (!hasWallet) {
+        const reason = 'Connect your wallet first.';
+        return {stake: reason, claim: reason, exit: reason};
+    }
+
+    const {position, denomReward} = item;
+    const held = new BigNumber(balance);
+    let stake = '';
+    if (!held.gt(0)) {
+        stake = 'You hold none of this token.';
+    } else if (!position && held.lt(denomReward.min_stake)) {
+        stake = 'Your balance is below the minimum stake.';
+    }
+
+    return {
+        stake,
+        claim: !position ? 'You have no stake here.' : claimableCoins(position).length === 0 ? 'Nothing to claim yet.' : '',
+        exit: !position ? 'You have no stake here.' : '',
+    };
+}
