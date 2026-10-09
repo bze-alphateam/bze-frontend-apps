@@ -21,7 +21,9 @@ import {
     MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
 } from "@bze/bzejs/bze/rewards/tx";
 import {MsgFundBurner, MsgStartRaffle, MsgJoinRaffle} from "@bze/bzejs/bze/burner/tx";
-import {MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata} from "@bze/bzejs/bze/tokenfactory/tx";
+import {
+    MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata, MsgSetDenomBranding,
+} from "@bze/bzejs/bze/tokenfactory/tx";
 import {MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher} from "@bze/bzejs/bze/cointrunk/tx";
 
 // Cosmos modules
@@ -83,6 +85,8 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     MsgFundBurner, MsgStartRaffle, MsgJoinRaffle,
     // BZE tokenfactory
     MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata,
+    // BZE tokenfactory — token brand kit (chain v8.2.0)
+    MsgSetDenomBranding,
     // BZE cointrunk
     MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher,
     // Cosmos bank

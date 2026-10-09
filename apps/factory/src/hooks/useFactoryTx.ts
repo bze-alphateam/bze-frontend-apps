@@ -23,6 +23,7 @@ const TYPE_URL_KINDS: Record<string, TxKind> = {
     '/bze.tokenfactory.MsgBurn': 'burn-tokens',
     '/bze.tokenfactory.MsgSetDenomMetadata': 'set-denom-metadata',
     '/bze.tokenfactory.MsgChangeAdmin': 'change-admin',
+    '/bze.tokenfactory.MsgSetDenomBranding': 'set-denom-branding',
     '/bze.tradebin.MsgCreateMarket': 'create-market',
     '/bze.tradebin.MsgCreateLiquidityPool': 'create-pool',
     '/bze.tradebin.MsgAddLiquidity': 'add-liquidity',

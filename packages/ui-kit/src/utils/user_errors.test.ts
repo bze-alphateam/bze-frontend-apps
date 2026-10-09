@@ -26,6 +26,10 @@ describe('prettyError — Denom Rewards (x/rewards)', () => {
         expect(prettyError(raw)).toMatch(expected)
     })
 
+    it('maps the brand kit validation error', () => {
+        expect(prettyError('failed to execute message; message index: 0: invalid light primary color: #12: invalid branding')).toMatch(/brand kit was refused/)
+    })
+
     it('passes unknown errors through unchanged', () => {
         expect(prettyError('something else')).toBe('something else')
     })
