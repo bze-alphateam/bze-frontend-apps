@@ -1,6 +1,7 @@
 'use client';
 
 import React, {createContext, useContext, useMemo, useState} from "react";
+import type {DenomBranding} from "@bze/bze-ui-kit";
 
 /**
  * Branding shown in the shared chrome (navbar) when the user is on a token page.
@@ -13,6 +14,8 @@ export interface TokenBrand {
     name: string;
     ticker: string;
     logo: string;
+    /** The on-chain brand kit (chain v8.2.0): undefined while loading, null when none. */
+    kit?: DenomBranding | null;
 }
 
 interface TokenBrandingContextValue {

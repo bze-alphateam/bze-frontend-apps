@@ -1,7 +1,7 @@
 'use client';
 
 import React, {type ReactNode, useEffect, useState} from "react";
-import {Badge, Box, Button, Card, Heading, HStack, Link, SimpleGrid, Skeleton, Stack, Text, VStack} from "@chakra-ui/react";
+import {Badge, Box, Button, Card, Heading, HStack, Link, Portal, SimpleGrid, Skeleton, Stack, Text, VStack} from "@chakra-ui/react";
 import {LuClock, LuCoins, LuExternalLink, LuGift, LuLock, LuRefreshCw, LuTrendingUp} from "react-icons/lu";
 import {useChain} from "@interchain-kit/react";
 import {
@@ -46,18 +46,21 @@ const Stat = ({icon, label, children}: { icon: ReactNode; label: string; childre
     </Box>
 );
 
+// Portaled so the dialog sits outside the token page's brand scope (no kit on tx dialogs).
 const ModalShell = ({title, onClose, children}: { title: string; onClose: () => void; children: ReactNode }) => (
-    <Box position="fixed" inset="0" bg="blackAlpha.600" display="flex" alignItems="center" justifyContent="center" zIndex="modal">
-        <Card.Root maxW="md" w="full" mx="4" maxH="90vh" overflowY="auto">
-            <Card.Header>
-                <HStack justify="space-between" align="center">
-                    <Heading size="lg">{title}</Heading>
-                    <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">✕</Button>
-                </HStack>
-            </Card.Header>
-            <Card.Body>{children}</Card.Body>
-        </Card.Root>
-    </Box>
+    <Portal>
+        <Box position="fixed" inset="0" bg="blackAlpha.600" display="flex" alignItems="center" justifyContent="center" zIndex="modal">
+            <Card.Root maxW="md" w="full" mx="4" maxH="90vh" overflowY="auto">
+                <Card.Header>
+                    <HStack justify="space-between" align="center">
+                        <Heading size="lg">{title}</Heading>
+                        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">✕</Button>
+                    </HStack>
+                </Card.Header>
+                <Card.Body>{children}</Card.Body>
+            </Card.Root>
+        </Box>
+    </Portal>
 );
 
 const actionTitle = (action: DenomRewardAction, ticker: string, hasPosition: boolean) => {

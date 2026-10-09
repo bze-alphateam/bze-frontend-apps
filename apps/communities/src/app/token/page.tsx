@@ -7,6 +7,8 @@ import {Asset, isFactoryDenom, prettyAmount, TokenLogo, uAmountToAmount, useAsse
 
 import {useDenomParam, useNavigation} from "@/hooks/useNavigation";
 import {useTokenBranding} from "@/contexts/token_branding_context";
+import {useBrandKit} from "@/hooks/useBrandKit";
+import {BrandScope} from "@/components/ui/branding/brand-scope";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {TokenBurnStats} from "@/components/ui/tokens/token-burn-stats";
 import {TokenStakingRewards} from "@/components/ui/tokens/token-staking-rewards";
@@ -164,47 +166,50 @@ const TokenPageContent = () => {
     }, [isLoading, asset]);
 
     const notFound = !isLoading && !resolved;
+    const kit = useBrandKit(resolved?.denom);
 
     // Rebrand the shared chrome to this token while the page is mounted; restore
     // normal branding when the token changes or we leave the page.
     useEffect(() => {
         if (resolved) {
-            setBrand({denom: resolved.denom, name: resolved.name, ticker: resolved.ticker, logo: resolved.logo});
+            setBrand({denom: resolved.denom, name: resolved.name, ticker: resolved.ticker, logo: resolved.logo, kit});
         } else {
             setBrand(null);
         }
 
         return () => setBrand(null);
-    }, [resolved, setBrand]);
+    }, [resolved, kit, setBrand]);
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="3xl" py={{base: 8, md: 12}}>
-                <VStack align="stretch" gap={6}>
-                    <Box>
-                        <Button variant="ghost" size="sm" colorPalette="green" onClick={() => navigate("/")}>
-                            <LuArrowLeft/>Directory
-                        </Button>
-                    </Box>
+        <BrandScope kit={kit}>
+            <Box minH="100vh" bg="bg.subtle">
+                <Container maxW="3xl" py={{base: 8, md: 12}}>
+                    <VStack align="stretch" gap={6}>
+                        <Box>
+                            <Button variant="ghost" size="sm" colorPalette="green" onClick={() => navigate("/")}>
+                                <LuArrowLeft/>Directory
+                            </Button>
+                        </Box>
 
-                    {isLoading && (
-                        <VStack align="stretch" gap={4}>
-                            <Skeleton height="200px" borderRadius="xl"/>
-                        </VStack>
-                    )}
+                        {isLoading && (
+                            <VStack align="stretch" gap={4}>
+                                <Skeleton height="200px" borderRadius="xl"/>
+                            </VStack>
+                        )}
 
-                    {notFound && <NotFound/>}
+                        {notFound && <NotFound/>}
 
-                    {resolved && (
-                        <>
-                            <TokenOverview asset={resolved}/>
-                            <TokenStakingRewards asset={resolved}/>
-                            <TokenBurnStats asset={resolved}/>
-                        </>
-                    )}
-                </VStack>
-            </Container>
-        </Box>
+                        {resolved && (
+                            <>
+                                <TokenOverview asset={resolved}/>
+                                <TokenStakingRewards asset={resolved}/>
+                                <TokenBurnStats asset={resolved}/>
+                            </>
+                        )}
+                    </VStack>
+                </Container>
+            </Box>
+        </BrandScope>
     );
 };
 
