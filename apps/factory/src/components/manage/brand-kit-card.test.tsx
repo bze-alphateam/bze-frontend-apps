@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
@@ -52,6 +52,27 @@ beforeEach(() => {
 });
 
 describe("BrandKitCard", () => {
+    it("shows the preview without suspending the page while the font stylesheet loads", async () => {
+        // The manage page renders inside a Suspense boundary and the kit arrives from a promise,
+        // like the real hook. A `<link precedence>` stylesheet would then hold the page on the
+        // fallback until Google Fonts answers (forever in jsdom).
+        useDenomBrandingMock.mockImplementation(function useLoadedKit() {
+            const [branding, setBranding] = useState<DenomBranding | null>(null);
+            useEffect(() => { void Promise.resolve(KIT).then(setBranding); }, []);
+            return { branding, isLoading: branding === null, hasError: false, refresh: refreshMock };
+        });
+        render(
+            <ChakraProvider value={defaultSystem}>
+                <Suspense fallback={<p>page loading</p>}>
+                    <BrandKitCard asset={TOKEN} access="not-admin" />
+                </Suspense>
+            </ChakraProvider>,
+        );
+
+        expect(await screen.findByTestId("brand-kit-preview-light")).toBeVisible();
+        expect(screen.queryByText("page loading")).not.toBeInTheDocument();
+    });
+
     it("shows a non-admin the kit in both palettes with no inputs", () => {
         renderCard("not-admin", { branding: KIT });
 
