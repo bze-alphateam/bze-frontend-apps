@@ -23,7 +23,7 @@ import { useFeeTokens } from './useFeeTokens'
 
 const asset = (denom: string, halted = false): Asset => ({
     type: 'Factory', denom, decimals: 6, name: denom, ticker: denom, logo: '', stable: false, verified: true,
-    supply: 1000n, halted,
+    supply: BigInt(1000), halted,
 })
 
 const DEEP = '200000000000'
