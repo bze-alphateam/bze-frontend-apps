@@ -51,6 +51,28 @@ describe('getDenomBranding', () => {
         expect(await getDenomBranding(FACTORY_DENOM)).toBeNull()
     })
 
+    // The chain never stores such kits, but the answer comes from a user-configurable endpoint and
+    // its values are written into CSS, so a forged answer must render as "no brand kit".
+    it.each([
+        ['a font that is not a slug', { ...KIT, font: "x');}body{background:url(https://evil.example)" }],
+        ['a colour that is not #rrggbb', { ...KIT, light: { ...KIT.light, primary: 'red;background:url(https://evil.example)' } }],
+        ['a colour that is not a string', { ...KIT, dark: { ...KIT.dark, text: 42 } }],
+        ['a missing palette', { font: KIT.font, light: KIT.light }],
+        ['a missing colour', { ...KIT, dark: { background: '#000000', text: '#eeeeee', primary: '#ff4444' } }],
+    ])('returns null when the node answers with %s', async (_, branding) => {
+        denomBrandingMock.mockResolvedValue({ branding })
+
+        expect(await getDenomBranding(FACTORY_DENOM)).toBeNull()
+    })
+
+    it('drops fields the kit does not have', async () => {
+        denomBrandingMock.mockResolvedValue({
+            branding: { ...KIT, extra: '<script>', light: { ...KIT.light, extra: 'url(x)' } },
+        })
+
+        expect(await getDenomBranding(FACTORY_DENOM)).toEqual(KIT)
+    })
+
     it('throws on a pre-v8.2.0 node (HTTP 501) so an error is never shown as "no brand kit"', async () => {
         denomBrandingMock.mockRejectedValue(httpError(501, 12))
 
@@ -72,5 +94,19 @@ describe('getAllDenomBranding', () => {
         expect(allDenomBrandingMock).toHaveBeenCalledTimes(2)
         const secondKey = allDenomBrandingMock.mock.calls[1][0].pagination.key
         expect(Array.from(secondKey)).toEqual(['k'.charCodeAt(0)])
+    })
+
+    it('drops records whose kit or denom is invalid', async () => {
+        allDenomBrandingMock.mockResolvedValueOnce({
+            denom_brandings: [
+                { denom: 'good', branding: KIT },
+                { denom: 'bad-colour', branding: { ...KIT, light: { ...KIT.light, text: 'expression(alert(1))' } } },
+                { denom: 'no-kit', branding: null },
+                { denom: 7, branding: KIT },
+            ],
+            pagination: { next_key: null },
+        })
+
+        expect(await getAllDenomBranding()).toEqual([{ denom: 'good', branding: KIT }])
     })
 })
