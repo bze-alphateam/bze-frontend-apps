@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
-    "./setup": "./setup.ts"
+    "./setup": "./setup.ts",
+    "./no-network": "./no-network.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "catalog:"

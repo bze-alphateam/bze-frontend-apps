@@ -1,0 +1,34 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/all_staking_rewards?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=1000&pagination.reverse=true",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/rewards/all_staking_rewards",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "1000",
+    "pagination.reverse": "true"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "reward_id": "000000000000",
+        "prize_amount": "10000000",
+        "prize_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "duration": 15,
+        "payouts": 15,
+        "min_stake": "1000000",
+        "lock": 1,
+        "staked_amount": "37000000",
+        "distributed_stake": "22.972972972972972970"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

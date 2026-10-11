@@ -28,6 +28,7 @@ catalog:
   "@testing-library/react": "^16.1.0"
   "@testing-library/jest-dom": "^6.6.3"
   "@testing-library/user-event": "^14.5.2"
+  "@playwright/test": "^1.64.0"
 
 # Native/postinstall build scripts we trust to run (all deps the apps already shipped).
 allowBuilds:

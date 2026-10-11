@@ -39,6 +39,10 @@
     "node_modules",
     "vitest.config.ts",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "e2e",
+    "playwright.config.ts",
+    "playwright-report",
+    "test-results"
   ]
 }

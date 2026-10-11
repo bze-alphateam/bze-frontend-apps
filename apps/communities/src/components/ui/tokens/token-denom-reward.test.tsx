@@ -36,9 +36,12 @@ vi.mock("@interchain-kit/react", () => ({
 }));
 
 import {TokenDenomReward} from "./token-denom-reward";
+import {forbidNetwork} from "@bze/vitest-preset/no-network";
+
+forbidNetwork();
 
 beforeAll(() => {
-    setInLocalStorage("tradebin_params", JSON.stringify({
+    setInLocalStorage("tradebin_params_v2", JSON.stringify({
         minNativeLiquidityForModuleSwap: "100000000000",
         createMarketFee: {denom: "ubze", amount: "1000000"},
         marketMakerFee: {denom: "ubze", amount: "1000"},
@@ -46,6 +49,7 @@ beforeAll(() => {
     }), 60_000);
     setInLocalStorage("txfeecollector_params", JSON.stringify({
         validatorMinGasFee: {denom: "ubze", amount: "0.02"},
+        blockedIbcInbound: [],
     }), 60_000);
 });
 
