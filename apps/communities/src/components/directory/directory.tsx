@@ -1,7 +1,7 @@
 'use client';
 
 import {useCallback, useEffect, useMemo, useState} from "react";
-import {usePathname, useRouter, useSearchParams} from "next/navigation";
+import {usePathname, useSearchParams} from "next/navigation";
 import {Box, Button, Container, Flex, SimpleGrid, Skeleton, Text, VStack} from "@chakra-ui/react";
 import {LuInbox, LuSearch} from "react-icons/lu";
 import {getChainNativeAssetDenom, getUSDCDenom} from "@bze/bze-ui-kit";
@@ -74,7 +74,6 @@ export function DirectoryLayout({children}: { children: React.ReactNode }) {
  */
 export function Directory() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const pathname = usePathname();
     const urlState = useMemo(() => parseDirectoryQuery(searchParams), [searchParams]);
 
@@ -89,10 +88,13 @@ export function Directory() {
 
     const state: DirectoryState = useMemo(() => ({...urlState, q: query}), [urlState, query]);
 
+    // The native History API, which Next syncs into useSearchParams without a server round trip.
+    // router.replace fetched the page's server payload on every change, and in the e2e run a
+    // Clear search left the old query in the URL while those fetches were in flight.
     const write = useCallback((next: DirectoryState) => {
         const search = directoryQueryString(next);
-        router.replace(search ? `${pathname}?${search}` : pathname, {scroll: false});
-    }, [router, pathname]);
+        window.history.replaceState(null, "", search ? `${pathname}?${search}` : pathname);
+    }, [pathname]);
 
     // Changing the search, filter or sort starts again from page 1.
     const update = (patch: Partial<Omit<DirectoryState, "page">>) => write({...state, ...patch, page: 1});

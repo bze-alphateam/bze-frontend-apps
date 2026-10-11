@@ -7,8 +7,8 @@ import BigNumber from "bignumber.js";
 import type {Asset} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
-// The URL is a tiny external store: router.replace writes it and useSearchParams re-renders,
-// like Next's client router does.
+// The URL is a tiny external store: history.replaceState writes it and useSearchParams
+// re-renders, as Next syncs the native History API into its router.
 const nav = vi.hoisted(() => {
     let search = "";
     const listeners = new Set<() => void>();
@@ -27,14 +27,8 @@ const nav = vi.hoisted(() => {
 
 vi.mock("next/navigation", async () => {
     const {useMemo, useSyncExternalStore} = await import("react");
-    const router = {
-        replace: (url: string) => {
-            nav.set(url.split("?")[1] ?? "");
-        },
-    };
     return {
         usePathname: () => "/",
-        useRouter: () => router,
         useSearchParams: () => {
             const search = useSyncExternalStore(nav.subscribe, nav.get);
             return useMemo(() => new URLSearchParams(search), [search]);
@@ -103,6 +97,9 @@ function renderHome(search = "") {
 const tickers = () => screen.getAllByTestId("directory-card").map((card) => within(card).getByText(/^TKN\d+$/).textContent);
 
 beforeEach(() => {
+    vi.spyOn(window.history, "replaceState").mockImplementation((_data, _unused, url) => {
+        nav.set(String(url ?? "").split("?")[1] ?? "");
+    });
     useCommunitiesContext.mockReset();
     useDirectoryData.mockReset();
     useDirectoryData.mockReturnValue({kits: new Map(), denomRewards: [], stakingRewards: [], isLoading: false});
