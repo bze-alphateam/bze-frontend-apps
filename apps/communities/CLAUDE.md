@@ -15,7 +15,9 @@ All shared code comes from `@bze/bze-ui-kit`; this app only contains communities
 src/
   app/              # Next.js pages (token directory at /, token pages at /token?denom=…) + api/skip proxy
   components/
-    ui/             # Navbar, color mode, Chakra provider
+    directory/      # Token directory (home): search, filters, sort, pages, brand-coloured cards
+    token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars)
+    ui/             # BeeZee navbar (directory only), color mode, Chakra provider, pre-redesign token sections
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType
   hooks/
@@ -31,5 +33,5 @@ src/
 ## Domain rules (short version — Confluence is the authority)
 
 - Only `factory/` denoms get pages; the token page URL carries the denom URL-encoded in the `?denom=` query param (never in the path).
-- The token page rebrands the chrome to the token (logo + name) — direct visits should feel like the token's own site.
+- The token page is a standalone site in the token's on-chain brand kit (`DEFAULT_DENOM_BRANDING` without one): no BeeZee navbar, logo or app links. Its visuals are communities-only components in `components/token-site/` — never restyle ui-kit visual components for it. The directory keeps the shared BeeZee top bar.
 - "Get the token" buy flow and the fee-token setting are gated by fee-eligibility: an AMM pool paired with BZE whose BZE reserve exceeds tradebin `min_native_liquidity_for_module_swap`.
