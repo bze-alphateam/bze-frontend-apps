@@ -1,7 +1,15 @@
 import {describe, it, expect, vi} from "vitest";
 import type {DenomBranding} from "@bze/bze-ui-kit";
 
-import {brandCssVars, brandFontStylesheetUrl, contrastText, createBrandKitCache, resolveBrandFont} from "./brand-kit";
+import {
+    brandCssVars,
+    brandFontStylesheetUrl,
+    cardBrandColor,
+    contrastText,
+    createBrandKitCache,
+    createBrandKitListCache,
+    resolveBrandFont,
+} from "./brand-kit";
 
 const KIT: DenomBranding = {
     font: "poppins",
@@ -94,5 +102,45 @@ describe("createBrandKitCache", () => {
         expect(await cache.get("factory/a/u")).toBeNull();
         expect(cache.peek("factory/a/u")).toBeUndefined();
         expect(await cache.get("factory/a/u")).toBe(KIT);
+    });
+});
+
+describe("createBrandKitListCache", () => {
+    it("maps every kit by denom and reuses the map within the TTL", async () => {
+        let now = 0;
+        const fetchAll = vi.fn().mockResolvedValue([{denom: "factory/a/u", branding: KIT}]);
+        const cache = createBrandKitListCache(fetchAll, 1000, () => now);
+
+        expect((await cache.get()).get("factory/a/u")).toBe(KIT);
+        now = 999;
+        await cache.get();
+        expect(fetchAll).toHaveBeenCalledTimes(1);
+
+        now = 1000;
+        await cache.get();
+        expect(fetchAll).toHaveBeenCalledTimes(2);
+    });
+
+    it("fails open to an empty map and retries next time", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const fetchAll = vi.fn()
+            .mockRejectedValueOnce(new Error("501"))
+            .mockResolvedValueOnce([{denom: "factory/a/u", branding: KIT}]);
+        const cache = createBrandKitListCache(fetchAll, 1000, () => 0);
+
+        expect((await cache.get()).size).toBe(0);
+        expect((await cache.get()).get("factory/a/u")).toBe(KIT);
+    });
+});
+
+describe("cardBrandColor", () => {
+    it("is the kit's primary of the colour mode", () => {
+        expect(cardBrandColor(KIT, "light")).toBe("#FFD000");
+        expect(cardBrandColor(KIT, "dark")).toBe("#1A2B3C");
+    });
+
+    it("is undefined without a kit", () => {
+        expect(cardBrandColor(null, "light")).toBeUndefined();
+        expect(cardBrandColor(undefined, "dark")).toBeUndefined();
     });
 });
