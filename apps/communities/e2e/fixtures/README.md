@@ -22,6 +22,8 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 
 - Supply holds four factory tokens, all created by `bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l`: `noadmin` (NoAdminToken), `testusd` (USDollar, the app's USDC), `uxfct` (XFactor) and `vidulum` (Vidulum). It also holds `ubze`, one IBC token and three LP shares.
 - `noadmin` is the only token with a brand kit and a holders pool (denom reward). The holders pool has two prizes, `noadmin` and `vidulum`.
+- The one reward program (SR) stakes `vidulum` and is finished (15 of 15 payouts), so no token counts as having an active one.
+- Pools: `noadmin`/`testusd`, `testusd`/`ubze` and the IBC token/`ubze`. `uxfct` and `vidulum` are not traded.
 - The other three tokens answer 404 (gRPC NotFound) for branding and denom reward, exactly as the chain does.
 
 ## Files
@@ -41,9 +43,11 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/tradebin.params.json` | tradebin params | fee-token eligibility |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
 | `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | |
+| `lcd/rewards.all_denom_rewards.json` | every holders pool, limit 500 | the directory's "Holders pool" badge and Staking rewards filter |
 | `lcd/rewards.denom_reward.<token>.json` | holders pool of each token | 200 for `noadmin`, 404 for the rest |
 | `lcd/rewards.denom_reward_schedules.noadmin.json` | holders pool schedules, limit 500 | |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | holders pool prizes | |
+| `lcd/tokenfactory.all_denom_branding.json` | every brand kit, limit 500 | the directory's card colours (only `noadmin` has one) |
 | `lcd/tokenfactory.denom_branding.<token>.json` | brand kit of each token | 200 for `noadmin`, 404 for the rest |
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |
 | `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms) |

@@ -4,6 +4,7 @@ import {
     brandingFontsStylesheetUrl,
     type BrandingPalette,
     type DenomBranding,
+    type DenomBrandingRecord,
 } from "@bze/bze-ui-kit";
 
 /** Kits change only through an admin tx, so a token page may reuse one for this long. */
@@ -124,3 +125,35 @@ export function createBrandKitCache(
 
     return {get, peek};
 }
+
+/**
+ * Every stored kit by denom, fetched with one query and cached for `ttlMs` (the directory cards).
+ * Fails open like the per-denom cache: a failed query resolves to an empty map (every card gets
+ * the neutral strip) and is not cached.
+ */
+export function createBrandKitListCache(
+    fetchAll: () => Promise<DenomBrandingRecord[]>,
+    ttlMs: number = BRAND_KIT_TTL_MS,
+    now: Clock = Date.now,
+) {
+    let entry: { kits: Map<string, DenomBranding>; at: number } | undefined;
+
+    const get = async (): Promise<Map<string, DenomBranding>> => {
+        if (entry && now() - entry.at < ttlMs) return entry.kits;
+
+        try {
+            const records = await fetchAll();
+            entry = {kits: new Map(records.map((record) => [record.denom, record.branding])), at: now()};
+            return entry.kits;
+        } catch (e) {
+            console.error("failed to load the brand kits", e);
+            return new Map();
+        }
+    };
+
+    return {get};
+}
+
+/** The colour a directory card is drawn in: the kit's primary for `mode`, `undefined` without a kit. */
+export const cardBrandColor = (kit: DenomBranding | null | undefined, mode: BrandingPalette): string | undefined =>
+    kit?.[mode].primary;
