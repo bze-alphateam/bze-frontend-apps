@@ -26,6 +26,9 @@ next-env.d.ts
 
 # ===== test / coverage =====
 coverage/
+playwright-report/
+test-results/
+blob-report/
 
 # ===== logs =====
 *.log

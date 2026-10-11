@@ -1,0 +1,68 @@
+name: e2e-communities
+
+# Playwright e2e suite of apps/communities (BFE-124), a check of its own next to ci.yml.
+# It builds the app with apps/communities/.env.e2e, whose chain/aggregator hosts are fake
+# *.e2e.test names answered from recorded fixtures (apps/communities/e2e/fixtures), so the
+# run never reaches a real node. See apps/communities/e2e/README.md.
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "apps/communities/**"
+      - "packages/ui-kit/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/e2e-communities.yml"
+
+concurrency:
+  group: e2e-communities-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e (communities)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4   # reads the pinned version from package.json "packageManager"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check specs
+        run: pnpm --filter bze-communities e2e:typecheck
+
+      - name: Build ui-kit
+        run: pnpm --filter @bze/bze-ui-kit build
+
+      # NEXT_PUBLIC_* values come from apps/communities/.env.e2e only; no .env is seeded.
+      - name: Build communities (e2e env)
+        run: pnpm --filter bze-communities e2e:build
+
+      - name: Install Chromium
+        run: pnpm --filter bze-communities exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm --filter bze-communities e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/communities/playwright-report/
+            apps/communities/test-results/
+          retention-days: 14

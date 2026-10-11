@@ -1,0 +1,18 @@
+{
+  "source": "https://testnet.getbze.com/bze/txfeecollector/params",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/txfeecollector/params",
+  "query": {},
+  "status": 200,
+  "body": {
+    "params": {
+      "ValidatorMinGasFee": {
+        "denom": "ubze",
+        "amount": "0.010000000000000000"
+      },
+      "MaxBalanceIterations": "100",
+      "BlockedIbcInbound": []
+    }
+  }
+}
