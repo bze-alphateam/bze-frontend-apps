@@ -36,6 +36,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/epochs.epochs.json` | epochs | |
 | `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | |
 | `lcd/tradebin.all_markets.json` | order-book markets, limit 1000 | |
+| `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (ULMN/TUSDC), limit 50, reversed | **trimmed** to the latest trade; the price calculation reads it when a token has no pool or ticker price, so whether it is requested depends on timing |
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/tradebin.params.json` | tradebin params | fee-token eligibility |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
