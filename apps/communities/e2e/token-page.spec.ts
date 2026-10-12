@@ -159,3 +159,78 @@ test("a token without a holders pool says so and links to the Factory to start o
     await expect(page.getByRole("link", {name: "Start a holders pool"}))
         .toHaveAttribute("href", `https://testnet-factory.getbze.com/manage/token?denom=${encodeURIComponent(VIDULUM)}`);
 });
+
+// Two NOAD burns (1,000 and 500) among a BZE one, as the burner's history lists them, with the
+// block each happened at.
+const BURN_HISTORY: Fixture[] = [
+    {
+        method: "GET",
+        path: "/bze/burner/all_burned_coins",
+        query: recorded("burner.all_burned_coins.json").query,
+        status: 200,
+        body: {
+            burnedCoins: [
+                {burned: `500000000${NOAD},7000000ubze`, height: "3600000"},
+                {burned: `1000000000${NOAD}`, height: "3500000"},
+            ],
+            pagination: {next_key: null, total: "2"},
+        },
+    },
+    ...[["3600000", "2026-10-03T14:00:00Z"], ["3500000", "2026-08-22T09:30:00Z"]].map(([height, time]): Fixture => ({
+        method: "GET",
+        path: `/cosmos/base/tendermint/v1beta1/blocks/${height}`,
+        status: 200,
+        body: {block_id: {hash: "AA"}, block: {header: {height, time}}},
+    })),
+];
+
+test("the burn section sums NOAD's burns, its share of the supply and lists them", async ({page, network}) => {
+    for (const fixture of BURN_HISTORY) network.use("lcd", fixture);
+
+    await page.goto(tokenPage(NOAD));
+
+    const burn = page.locator("#burn");
+    await expect(burn.getByRole("heading", {level: 2})).toHaveText("Every burn makes NOAD scarcer");
+    // 1,500 ÷ (1,001,000 + 1,500) = 0.1496…%, at $0.10 a NOAD.
+    await expect(burn.getByTestId("burn-total-amount")).toHaveText("1,500");
+    await expect(burn.getByTestId("burn-total-details")).toHaveText("NOAD · $150.00 · 0.14% of the original supply");
+    const rows = burn.getByTestId("burn-history").getByRole("row");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(1)).toContainText("500 NOAD$50.003,600,000");
+    await expect(rows.nth(2)).toContainText("1,000 NOAD$100.003,500,000");
+    await expect(page.getByTestId("key-number-burned")).toHaveText("Burned1,500");
+});
+
+test("without burns the section shows 0 and an empty history, and no burn scheduled for NOAD", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    const burn = page.locator("#burn");
+    await expect(burn.getByTestId("burn-total-amount")).toHaveText("0");
+    await expect(burn.getByTestId("burn-total-details")).toHaveText("NOAD · 0% of the original supply");
+    await expect(burn.getByTestId("burn-history-empty")).toBeVisible();
+    // The burner holds TUSDC and BZE, no NOAD.
+    await expect(burn.getByTestId("next-burn-none")).toHaveText("No burn scheduled");
+});
+
+test("the next burn shows the NOAD the burner holds", async ({page, network}) => {
+    const burner = recorded("bank.spendable_balances.burner.json");
+    const body = burner.body as { balances: { denom: string; amount: string }[] };
+    network.use("lcd", {...burner, body: {...body, balances: [...body.balances, {denom: NOAD, amount: "25000000"}]}});
+
+    await page.goto(tokenPage(NOAD));
+
+    await expect(page.getByTestId("next-burn-amount")).toHaveText("25 NOAD queued");
+    await expect(page.getByTestId("next-burn-countdown")).toBeVisible();
+});
+
+test("Burn NOAD opens the burn dialog, which asks for a wallet first", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    await page.locator("#burn").getByRole("button", {name: "Burn NOAD"}).click();
+
+    const dialog = page.getByRole("dialog", {name: "Burn NOAD"});
+    await expect(dialog.getByTestId("burn-connect-prompt")).toHaveText(/Connect a wallet to burn NOAD/);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+});
