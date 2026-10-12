@@ -61,7 +61,7 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
     );
 }
 
-/** When the next burn happens and how much T it destroys; `children` is the raffle slot. */
+/** When the next burn happens and how much T it destroys; `children` is the raffle slot, which draws its own divider. */
 function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; children?: React.ReactNode }) {
     const now = useNow();
 
@@ -80,7 +80,7 @@ function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; 
             ) : (
                 <chakra.span fontSize="22px" fontWeight={700} data-testid="next-burn-none">No burn scheduled</chakra.span>
             )}
-            {children && <Box borderTopWidth="1px" borderStyle="solid" borderColor={ts.border} pt="18px">{children}</Box>}
+            {children}
         </TsCard>
     );
 }

@@ -235,6 +235,63 @@ test("Burn NOAD opens the burn dialog, which asks for a wallet first", async ({p
     await expect(dialog).toBeHidden();
 });
 
+// Testnet runs no raffle, so the raffle specs make one up: 10 NOAD tickets, 1 in 20 to win half
+// of a 480 NOAD pot, ending at hour 5,583 (the fixture's hour epoch is 5,533), with two winners.
+const raffles = (): Fixture => {
+    const fixture = recorded("burner.raffles.json");
+    const raffle = {
+        pot: "480000000", duration: "720", chances: "50000", ratio: "0.5", end_at: "5583", winners: "2",
+        ticket_price: "10000000", denom: NOAD, total_won: "250000000",
+    };
+
+    return {...fixture, body: {list: [raffle], pagination: {next_key: null, total: "1"}}};
+};
+const RAFFLE_WINNERS: Fixture = {
+    method: "GET",
+    path: "/bze/burner/raffle_winners",
+    query: {denom: NOAD},
+    status: 200,
+    body: {
+        list: [
+            {index: "1", denom: NOAD, amount: "200000000", winner: "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"},
+            {index: "2", denom: NOAD, amount: "50000000", winner: "bze1kfsu0rz2d0n9yx0d5hv8gdqjmcd7jtdcvmz7cu"},
+        ],
+        pagination: {next_key: null, total: "2"},
+    },
+};
+
+test("a NOAD raffle shows its odds, pot and latest winners under the next burn", async ({page, network}) => {
+    network.use("lcd", raffles());
+    network.use("lcd", RAFFLE_WINNERS);
+
+    await page.goto(tokenPage(NOAD));
+
+    const card = page.locator("#burn").getByTestId("raffle-card");
+    await expect(card.getByRole("heading", {name: "Burn raffle"})).toBeVisible();
+    await expect(card.getByTestId("raffle-copy")).toContainText("Each ticket has a 1 in 20 chance to win 50% of the pot.");
+    await expect(card.getByTestId("raffle-odds")).toHaveText("1 in 20");
+    await expect(card.getByTestId("raffle-pot")).toHaveText("480 NOAD");
+    await expect(card.getByTestId("raffle-prize")).toHaveText("240 NOAD");
+    await expect(card.getByTestId("raffle-ends")).toHaveText("2d 2h");
+
+    // Winner 2 is the newest.
+    const winners = page.getByTestId("raffle-winners").getByRole("listitem");
+    await expect(winners).toHaveCount(2);
+    await expect(winners.nth(0)).toContainText("50 NOAD");
+    await expect(winners.nth(1)).toContainText("200 NOAD");
+
+    // No wallet in e2e: buying asks to connect one.
+    await card.getByRole("button", {name: "Buy tickets"}).click();
+    await expect(page.getByRole("dialog", {name: "NOAD burn raffle"}).getByTestId("raffle-connect-prompt")).toBeVisible();
+});
+
+test("without a raffle for the token the next burn shows none", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    await expect(page.getByTestId("next-burn")).toBeVisible();
+    await expect(page.getByTestId("raffle-card")).toHaveCount(0);
+});
+
 // One running NOAD program paying NOAD and one finished one paying VDL, next to the recorded VDL
 // program (finished too).
 const stakingRewards = (): Fixture => {
