@@ -16,6 +16,7 @@ import {Hero} from "./hero";
 import {KeyNumbers} from "./key-numbers";
 import {PHONE_ACTION_BAR_SPACE, PhoneActionBar} from "./phone-action-bar";
 import {SiteFooter} from "./site-footer";
+import {StakeSection} from "./stake";
 import {type SiteSection, SiteHeader} from "./site-header";
 import {TokenDetails} from "./token-details";
 import {WalletDrawer} from "./wallet";
@@ -92,9 +93,9 @@ export function TokenSite({denom}: { denom: string }) {
                     <chakra.main>
                         <Hero asset={resolved} hasStake={true}/>
                         <KeyNumbers denom={resolved.denom}/>
-                        <TsSection id="stake" eyebrow="Stake" title={`Stake your ${resolved.ticker}`}>
+                        <StakeSection asset={resolved}>
                             <LegacySectionScope><TokenStakingRewards asset={resolved}/></LegacySectionScope>
-                        </TsSection>
+                        </StakeSection>
                         <TsSection id="burn" eyebrow="Burn" title={`Every burn makes ${resolved.ticker} scarcer`}>
                             <LegacySectionScope><TokenBurnStats asset={resolved}/></LegacySectionScope>
                         </TsSection>

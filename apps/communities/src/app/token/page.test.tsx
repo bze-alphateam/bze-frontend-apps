@@ -41,6 +41,7 @@ vi.mock("@/components/ui/color-mode", () => ({
 
 // Sections with data of their own, covered by their own tests.
 vi.mock("@/components/token-site/key-numbers", () => ({KeyNumbers: () => <div data-testid="key-numbers"/>}));
+vi.mock("@/components/token-site/stake/holders-pool", () => ({HoldersPool: () => <div data-testid="holders-pool"/>}));
 vi.mock("@/components/ui/tokens/token-staking-rewards", () => ({TokenStakingRewards: () => <div data-testid="legacy-stake"/>}));
 vi.mock("@/components/ui/tokens/token-burn-stats", () => ({TokenBurnStats: () => <div data-testid="legacy-burn"/>}));
 
@@ -135,6 +136,7 @@ describe("Communities token page", () => {
             expect(link).toHaveAttribute("href", "#stake");
         }
         expect(screen.getByTestId("key-numbers")).toBeInTheDocument();
+        expect(screen.getByTestId("holders-pool")).toBeInTheDocument();
         expect(screen.getByTestId("legacy-stake")).toBeInTheDocument();
         expect(screen.getByTestId("legacy-burn")).toBeInTheDocument();
         expect(screen.getByText("factory/bze1owner/ufull")).toBeInTheDocument();
