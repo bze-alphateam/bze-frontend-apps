@@ -117,6 +117,8 @@ test("no element links to other BeeZee apps and no BeeZee chrome shows", async (
 
     // The holders pool's "Add rewards to the pool" is the one deliberate link out (R5).
     const addRewards = `https://testnet-factory.getbze.com/denom-reward/schedule?denom=${encodeURIComponent(NOAD)}`;
+    // The pool loads after network idle can settle, so wait for its link before collecting.
+    await expect(page.getByRole("link", {name: "Add rewards to the pool"})).toHaveAttribute("href", addRewards);
     const hrefs = await page.locator("a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
     expect(hrefs.filter((href) => /\.getbze\.com/.test(href))).toEqual([addRewards]);
 
@@ -136,7 +138,7 @@ test("the holders pool lists what it pays, the unpriced reward last and no APR",
     await expect(pool.getByTestId("holders-pool-apr")).toHaveCount(0);
     await expect(pool).toContainText("Total staked20 NOAD");
     await expect(pool).toContainText("Unlock time7 days");
-    await expect(pool.getByRole("button", {name: "Connect wallet"})).toBeVisible();
+    await expect(pool.getByRole("button", {name: "Connect to stake"})).toBeVisible();
 });
 
 test("the holders pool shows its APR when every reward has a price", async ({page, network}) => {

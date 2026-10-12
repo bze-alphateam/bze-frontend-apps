@@ -156,7 +156,7 @@ describe("HoldersPool", () => {
         await screen.findByTestId("holders-pool-prizes");
 
         expect(screen.queryByTestId("holders-pool-position")).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", {name: "Connect wallet"}));
+        await user.click(screen.getByRole("button", {name: "Connect to stake"}));
         expect(connect).toHaveBeenCalled();
     });
 

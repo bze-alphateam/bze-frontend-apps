@@ -175,7 +175,7 @@ function JoinPanel({asset, item, connected, onAction}: PositionProps & { connect
             <Flex direction="column" gap="16px">
                 <chakra.span {...tsLabel}>Your position</chakra.span>
                 <chakra.p m="0" color={ts.muted}>Connect a wallet to stake {asset.ticker} and earn from the pool.</chakra.p>
-                <TsButton variant="primary" onClick={() => connect()}>Connect wallet</TsButton>
+                <TsButton variant="primary" onClick={() => connect()}>Connect to stake</TsButton>
             </Flex>
         );
     }
