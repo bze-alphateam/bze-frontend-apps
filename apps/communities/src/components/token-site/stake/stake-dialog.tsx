@@ -227,7 +227,7 @@ export function StakeDialog({asset, target, action, item, onClose, onDone}: Stak
                                 </>
                             )}
                         </Flex>
-                        <TsNotice data-testid="stake-dialog-unlock">
+                        <TsNotice tone="danger" data-testid="stake-dialog-unlock">
                             {unlockDate
                                 ? `Your whole stake leaves the pool and comes back to your wallet in ${formatDays(denomReward.lock)}. It earns nothing meanwhile.`
                                 : "Your whole stake leaves the pool and comes back to your wallet in this transaction."}
@@ -235,12 +235,12 @@ export function StakeDialog({asset, target, action, item, onClose, onDone}: Stak
                     </>
                 )}
 
-                {error && <chakra.span id="stake-dialog-error" role="alert" fontSize="13px" color={ts.pri}>{error}</chakra.span>}
+                {error && <chakra.span id="stake-dialog-error" role="alert" fontSize="13px" color={ts.danger}>{error}</chakra.span>}
                 {ready && afford.gasFee.displayAmount.gt(0) && (
                     <Row label="Network fee">≈ {walletAmount(afford.gasFee.displayAmount)} {afford.gasFee.ticker}</Row>
                 )}
 
-                <TsButton type="submit" variant="primary" w="100%" minH="52px" fontSize="16px" disabled={!canSubmit}>
+                <TsButton type="submit" variant={action === "unstake" ? "danger" : "primary"} w="100%" minH="52px" fontSize="16px" disabled={!canSubmit}>
                     {isSubmitting
                         ? (progressTrack || "Waiting for signature…")
                         : action === "stake" ? (position ? "Stake more" : "Stake") : action === "claim" ? "Claim all" : "Unstake"}

@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import type {DenomBranding} from "@bze/bze-ui-kit";
 
-import {tokenSiteVars} from "./theme";
+import {dangerColor, tokenSiteVars} from "./theme";
 
 const KIT: DenomBranding = {
     font: "space-grotesk",
@@ -41,8 +41,30 @@ describe("tokenSiteVars", () => {
         expect(tokenSiteVars(KIT, "dark")["--ts-on-sec"]).toBe("#000000");
     });
 
+    it("fits the danger red to the background", () => {
+        expect(tokenSiteVars(KIT, "light")["--ts-danger"]).toBe("#B92318");
+        expect(tokenSiteVars(KIT, "dark")["--ts-danger"]).toBe("#F5524A");
+    });
+
     it("uses the curated font with a system fallback, and only the fallback for an unknown slug", () => {
         expect(tokenSiteVars(KIT, "light")["--ts-font"]).toBe("'Space Grotesk', system-ui, sans-serif");
         expect(tokenSiteVars({...KIT, font: "papyrus"}, "light")["--ts-font"]).toBe("system-ui, sans-serif");
+    });
+});
+
+describe("dangerColor", () => {
+    it("keeps the saturated red where it reads, on white and on black", () => {
+        expect(dangerColor("#FFFFFF")).toBe("#DC3328");
+        expect(dangerColor("#000000")).toBe("#DC3328");
+    });
+
+    it("walks darker on a light background and lighter on a dark one until it reads", () => {
+        expect(dangerColor("#FBF7F0")).toBe("#B92318");
+        expect(dangerColor("#FFD000")).toBe("#941B12");
+        expect(dangerColor("#15161A")).toBe("#F5524A");
+    });
+
+    it("takes the best-reading red on a mid-tone background no red reaches AA on", () => {
+        expect(dangerColor("#808080")).toBe("#70140D");
     });
 });

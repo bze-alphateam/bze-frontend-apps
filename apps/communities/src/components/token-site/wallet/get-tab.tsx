@@ -132,7 +132,7 @@ export function GetTab({asset}: { asset: Asset }) {
             />
             <Flex justify="space-between" align="center" gap="8px" px="4px">
                 {amountError
-                    ? <chakra.span id="get-amount-error" role="alert" fontSize="13px" color={ts.pri}>{amountError}</chakra.span>
+                    ? <chakra.span id="get-amount-error" role="alert" fontSize="13px" color={ts.danger}>{amountError}</chakra.span>
                     : (
                         <chakra.span fontSize="13px" color={ts.muted}>
                             Balance {walletAmount(uAmountToBigNumberAmount(paying.amount, paying.decimals))} {paying.ticker}

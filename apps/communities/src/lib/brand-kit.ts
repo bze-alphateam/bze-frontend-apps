@@ -26,10 +26,15 @@ function luminance(hex: string): number {
     return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
 }
 
+/** WCAG contrast ratio of two `#rrggbb` colours (1 to 21). */
+export function contrastRatio(a: string, b: string): number {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+}
+
 /** Black or white, whichever reads better on `hex` (text on a primary-coloured button). */
 export function contrastText(hex: string): string {
-    const l = luminance(hex);
-    return (l + 0.05) / 0.05 > 1.05 / (l + 0.05) ? "#000000" : "#FFFFFF";
+    return contrastRatio(hex, "#000000") > contrastRatio(hex, "#FFFFFF") ? "#000000" : "#FFFFFF";
 }
 
 const mix = (color: string, percent: number, base: string) => `color-mix(in srgb, ${color} ${percent}%, ${base})`;

@@ -195,6 +195,15 @@ describe("HoldersPool", () => {
         expect(screen.getByRole("button", {name: "Unstake"})).toBeEnabled();
     });
 
+    it("draws staking and claiming in the token's primary colour and keeps Unstake neutral on the card", async () => {
+        pool.item = item({position: position("5000000000", [{denom: "ubze", amount: "12500000"}])});
+        renderPool();
+
+        expect(await screen.findByRole("button", {name: "Stake more"})).toHaveAttribute("data-variant", "primary");
+        expect(screen.getByRole("button", {name: "Claim all"})).toHaveAttribute("data-variant", "primary");
+        expect(screen.getByRole("button", {name: "Unstake"})).toHaveAttribute("data-variant", "ghost");
+    });
+
     it("shows the position panel for a wallet that is only unlocking", async () => {
         pool.item = item({unlocks: [{staking_denom: T, amount: "1000000000", unlockEpoch: 1005}]});
         renderPool();
@@ -300,6 +309,8 @@ describe("StakeDialog", () => {
         expect(dialog).toHaveTextContent("Your stake5,000 PAGE");
         expect(dialog).toHaveTextContent("Paid out first");
         expect(within(dialog).getByTestId("stake-dialog-unlock")).toHaveTextContent("comes back to your wallet in 7 days");
+        expect(within(dialog).getByTestId("stake-dialog-unlock")).toHaveAttribute("data-tone", "danger");
+        expect(within(dialog).getByRole("button", {name: "Unstake"})).toHaveAttribute("data-variant", "danger");
         await user.click(within(dialog).getByRole("button", {name: "Unstake"}));
 
         const [msg] = tx.mock.calls[0][0];
