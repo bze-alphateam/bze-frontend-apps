@@ -54,7 +54,7 @@ test("the header's wallet button opens the token's wallet drawer with a connect 
     await page.goto(tokenPage(NOAD));
 
     // No wallet extension in e2e, so the drawer asks to connect one.
-    await page.getByRole("button", {name: "Connect wallet"}).click();
+    await page.locator("header").getByRole("button", {name: "Connect wallet"}).click();
 
     const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
     await expect(drawer).toBeVisible();
@@ -93,7 +93,7 @@ test("the wallet drawer's settings switch the page to the kit's dark palette, no
     await expect(page.getByRole("heading", {level: 1, name: "NoAdminToken"})).toBeVisible();
     const lightBackground = await site.evaluate((element) => getComputedStyle(element).backgroundColor);
 
-    await page.getByRole("button", {name: "Connect wallet"}).click();
+    await page.locator("header").getByRole("button", {name: "Connect wallet"}).click();
     const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
     await drawer.getByRole("button", {name: "Settings"}).click();
     await expect(drawer.getByTestId("wallet-settings")).toBeVisible();
