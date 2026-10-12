@@ -58,8 +58,9 @@ function RaffleCard({asset, raffle, onBuy}: { asset: Asset; raffle: RaffleSDKTyp
                 <TsTag>Live</TsTag>
             </Flex>
             <chakra.p m="0" color={ts.muted} fontSize="15px" lineHeight="1.5" data-testid="raffle-copy">
-                Each ticket has a {odds} chance to win {raffleShare(raffle.ratio)} of the pot. Losing tickets grow the pot,
-                and what&apos;s left when the raffle ends is burned.
+                {/* One string: the production build dropped the space after an inline expression here. */}
+                {`Each ticket has a ${odds} chance to win ${raffleShare(raffle.ratio)} of the pot. Losing tickets grow the pot, `
+                    + "and what's left when the raffle ends is burned."}
             </chakra.p>
             <chakra.div display="grid" gridTemplateColumns="repeat(2, minmax(0, 1fr))" gap="12px">
                 <Fact label="Ticket" value={tAmount(asset, raffle.ticket_price)} testId="raffle-ticket"/>
