@@ -17,7 +17,8 @@ src/
   components/
     directory/      # Token directory (home): search, filters, sort, pages, brand-coloured cards
     token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars),
-                    # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; swaps via hooks/token-site/useTokenSwap) and its settings view (state in hooks/token-site/useTokenWallet)
+                    # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; Get is trade/'s SwapForm) and its settings view (state in hooks/token-site/useTokenWallet)
+                    # trade/ = the Trade section: pool price chart (hooks/token-site/usePoolChart, aggregator candles) + Buy/Sell panel; SwapForm (swaps via hooks/token-site/useTokenSwap) is shared with the wallet's Get tab
                     # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
                     # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab
     ui/             # BeeZee navbar (directory only), color mode, Chakra provider

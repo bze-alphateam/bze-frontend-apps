@@ -2,11 +2,12 @@
 
 import React from "react";
 import {Box, chakra, Flex, Skeleton} from "@chakra-ui/react";
-import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset} from "@bze/bze-ui-kit";
+import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset, useLiquidityPools} from "@bze/bze-ui-kit";
 
 import {useNavigation} from "@/hooks/useNavigation";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
+import {isTradable} from "@/lib/token-site/swap";
 
 import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer} from "./kit";
 import {BurnSection} from "./burn";
@@ -17,6 +18,7 @@ import {SiteFooter} from "./site-footer";
 import {StakeSection} from "./stake";
 import {type SiteSection, SiteHeader} from "./site-header";
 import {TokenDetails} from "./token-details";
+import {TradeSection} from "./trade";
 import {WalletDrawer} from "./wallet";
 
 function NotFound() {
@@ -56,6 +58,7 @@ export function TokenSite({denom}: { denom: string }) {
     // A resolved non-factory denom (BZE, IBC) exists in the assets map but has no site.
     const resolved = !isLoading && asset && isFactoryDenom(asset.denom) ? asset : undefined;
     const kit = useTokenBrandKit(resolved?.denom);
+    const {pools} = useLiquidityPools();
 
     if (isLoading || (resolved && !kit)) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><Loading/></TokenSiteTheme>;
@@ -65,9 +68,10 @@ export function TokenSite({denom}: { denom: string }) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><NotFound/></TokenSiteTheme>;
     }
 
-    // Stake and Burn always exist (R5, R10); later stories add Earn and Trade when they apply.
+    // Stake and Burn always exist (R5, R10), Trade while T sits in a pool (R8); Earn comes later.
     const sections: SiteSection[] = [
         {id: "stake", label: "Stake"},
+        ...(isTradable(resolved.denom, pools) ? [{id: "trade", label: "Trade"}] : []),
         {id: "burn", label: "Burn"},
         {id: "details", label: "Token"},
     ];
@@ -81,6 +85,7 @@ export function TokenSite({denom}: { denom: string }) {
                         <Hero asset={resolved} hasStake={true}/>
                         <KeyNumbers denom={resolved.denom}/>
                         <StakeSection asset={resolved}/>
+                        <TradeSection asset={resolved}/>
                         <BurnSection asset={resolved}/>
                         <TokenDetails asset={resolved}/>
                     </chakra.main>

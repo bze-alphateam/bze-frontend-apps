@@ -12,6 +12,7 @@ import {forbidNetwork} from "@bze/vitest-preset/no-network";
 const useAsset = vi.fn();
 const getDenomBranding = vi.fn();
 const getFactoryDenomAdmin = vi.fn();
+let pools: { base: string; quote: string }[] = [];
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useAsset: (denom: string) => useAsset(denom),
@@ -20,7 +21,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
     useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
     useFeeTokens: () => ({isLoading: false, isValidFeeDenom: () => true}),
-    useLiquidityPools: () => ({pools: [], isLoading: true}),
+    useLiquidityPools: () => ({pools, isLoading: true}),
 }));
 
 vi.mock("@interchain-kit/react", () => ({
@@ -44,6 +45,7 @@ vi.mock("@/components/token-site/key-numbers", () => ({KeyNumbers: () => <div da
 vi.mock("@/components/token-site/stake/holders-pool", () => ({HoldersPool: () => <div data-testid="holders-pool"/>}));
 vi.mock("@/components/token-site/stake/fixed-term-programs", () => ({FixedTermPrograms: () => <div data-testid="fixed-term-programs"/>}));
 vi.mock("@/components/token-site/burn/burn-section", () => ({BurnSection: () => <div data-testid="burn-section"/>}));
+vi.mock("@/components/token-site/trade/trade-section", () => ({TradeSection: () => <div data-testid="trade-section"/>}));
 
 import TokenPage from "./page";
 
@@ -76,6 +78,7 @@ const siteVar = (name: string) => site().style.getPropertyValue(name);
 
 beforeEach(() => {
     colorMode = "light";
+    pools = [];
     useAsset.mockReset();
     getDenomBranding.mockReset();
     getFactoryDenomAdmin.mockReset().mockResolvedValue("");
@@ -146,6 +149,23 @@ describe("Communities token page", () => {
         expect(screen.queryByText(/directory/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/BZE/)).not.toBeInTheDocument();
         expect(screen.queryByText("Runs on BeeZee")).not.toBeInTheDocument();
+    });
+
+    it("links the Trade section only while the token sits in a pool", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        const {unmount} = renderPage("factory/bze1owner/ufull");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        // The header's links sit in a nav jsdom treats as hidden (phone width), so look them up directly.
+        expect(document.querySelector('header a[href="#trade"]')).toBeNull();
+        unmount();
+
+        pools = [{base: "factory/bze1owner/ufull", quote: "ubze"}];
+        renderPage("factory/bze1owner/ufull");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(document.querySelector('header a[href="#trade"]')).toHaveTextContent("Trade");
+        expect(screen.getByTestId("trade-section")).toBeInTheDocument();
     });
 
     it("opens the wallet drawer from the hero's and the phone bar's Get buttons", async () => {
