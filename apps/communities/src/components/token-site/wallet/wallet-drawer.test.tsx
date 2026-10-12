@@ -54,11 +54,21 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useAssetsContext: () => ({updateBalances}),
     useBZETx: () => ({tx, progressTrack: ""}),
     useSDKTx: () => ({tx: sdkTx, progressTrack: ""}),
-    useMaxSpendable: () => ({amount: maxSpendable, inputValue: maxSpendable.dividedBy(1e6).toFixed(), isLoading: false}),
-    useCanAffordTx: () => ({canAfford: feeMessage === "", message: feeMessage, isLoading: false}),
+    useMaxSpendable: (denom: string) => ({
+        amount: maxSpendable, balance: balances[denom] ?? new BigNumber(0), inputValue: maxSpendable.dividedBy(1e6).toFixed(), isLoading: false,
+    }),
+    useCanAffordTx: () => ({
+        canAfford: feeMessage === "", message: feeMessage, isLoading: false,
+        gasFee: {displayAmount: new BigNumber("0.5"), ticker: "PAGE"},
+    }),
     useLiquidityPools: () => ({pools, isLoading: false}),
     useGasFeeEstimate: () => ({displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
     useTokenDenomReward: () => ({item: holdersPool, prizeDenoms: [], isLoading: false, hasError: false, reload: reloadHoldersPool}),
+}));
+
+const reloadNextBurn = vi.fn();
+vi.mock("@/hooks/useNextBurning", () => ({
+    useNextBurning: () => ({nextBurn: undefined, isLoading: false, reload: reloadNextBurn}),
 }));
 
 vi.mock("@/hooks/useRewardsStakingData", () => ({
@@ -308,6 +318,37 @@ describe("WalletDrawer", () => {
 
         expect(disconnect).toHaveBeenCalled();
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    describe("burn", () => {
+        it("is a tab of the drawer, after Send", async () => {
+            const {drawer} = await renderDrawer("burn");
+
+            expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Get PAGE", "Send", "Burn"]);
+            expect(within(drawer).getByRole("tab", {name: "Burn"})).toHaveAttribute("aria-selected", "true");
+        });
+
+        it("fills Max with the balance minus the fee reserve, confirms, and sends one fundBurner", async () => {
+            const {user, drawer} = await renderDrawer("burn");
+            const panel = within(drawer).getByRole("tabpanel", {name: "Burn"});
+
+            await user.click(within(panel).getByRole("button", {name: "Max"}));
+            expect(within(panel).getByLabelText("Amount to burn")).toHaveValue("12479.5");
+
+            await user.click(within(panel).getByRole("button", {name: "Burn PAGE"}));
+            expect(tx).not.toHaveBeenCalled();
+            await user.click(within(panel).getByRole("button", {name: "Confirm burn"}));
+
+            expect(tx).toHaveBeenCalledTimes(1);
+            const msgs = tx.mock.calls[0][0];
+            expect(msgs).toHaveLength(1);
+            expect(msgs[0].typeUrl).toBe("/bze.burner.MsgFundBurner");
+            expect(msgs[0].value).toEqual({creator: ME, amount: `12479500000${T}`});
+            // Back on an empty form, the balances and the burner's queue read again.
+            await waitFor(() => expect(within(panel).getByLabelText("Amount to burn")).toHaveValue(""));
+            expect(updateBalances).toHaveBeenCalled();
+            expect(reloadNextBurn).toHaveBeenCalledTimes(1);
+        });
     });
 
     it("opens on the Get tab when Get T is asked for", async () => {
