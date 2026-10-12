@@ -14,6 +14,7 @@ import {TokenMark} from "../token-mark";
 import {BalanceCard} from "./balance-card";
 import {OtherAssets} from "./other-assets";
 import {RewardsReady} from "./rewards-ready";
+import {SettingsPanel} from "./settings-panel";
 import {WALLET_TABS} from "./tabs";
 
 function ConnectPrompt({asset}: { asset: Asset }) {
@@ -29,26 +30,28 @@ function ConnectPrompt({asset}: { asset: Asset }) {
     );
 }
 
-function WalletFooter({asset, onSettings}: { asset: Asset; onSettings?: () => void }) {
-    const {close} = useTokenWallet();
+/** Settings, plus (when connected) the wallet's other assets and Disconnect. */
+function WalletFooter({asset, connected}: { asset: Asset; connected: boolean }) {
+    const {close, setView} = useTokenWallet();
     const {disconnect} = useChain(getChainName());
 
     return (
         <Flex direction="column" gap="12px" pt="16px" mt="auto" borderTopWidth="1px" borderStyle="solid" borderColor={ts.border}>
-            <OtherAssets asset={asset}/>
+            {connected && <OtherAssets asset={asset}/>}
             <Flex gap="12px">
-                {/* Settings (BFE-128) plugs in here. */}
-                {onSettings && <TsButton variant="ghost" flex="1" onClick={onSettings}>Settings</TsButton>}
-                <TsButton
-                    variant="ghost"
-                    flex="1"
-                    onClick={() => {
-                        disconnect();
-                        close();
-                    }}
-                >
-                    Disconnect
-                </TsButton>
+                <TsButton variant="ghost" flex="1" onClick={() => setView("settings")}>Settings</TsButton>
+                {connected && (
+                    <TsButton
+                        variant="ghost"
+                        flex="1"
+                        onClick={() => {
+                            disconnect();
+                            close();
+                        }}
+                    >
+                        Disconnect
+                    </TsButton>
+                )}
             </Flex>
         </Flex>
     );
@@ -70,23 +73,30 @@ function ConnectedWallet({asset, address}: { asset: Asset; address: string }) {
                 onChange={setTab}
             />
             <div role="tabpanel" aria-label={active.label(asset)}>{active.render(asset)}</div>
-            <WalletFooter asset={asset}/>
         </>
     );
 }
 
 /**
  * The token site's own wallet (Business Logic R4), dedicated to the page token T: balance and
- * positions, rewards with "Claim all", the action tabs and the wallet's other assets.
+ * positions, rewards with "Claim all", the action tabs and the wallet's other assets; and the
+ * settings panel (R13), reachable connected or not.
  */
 export function WalletDrawer({asset}: { asset: Asset }) {
-    const {isOpen, close} = useTokenWallet();
+    const {isOpen, close, view, setView} = useTokenWallet();
     const {status, address} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
 
     return (
         <TsDrawer open={isOpen} onClose={close} title={`Your ${asset.name} wallet`} icon={<TokenMark asset={asset} size={32}/>}>
-            {connected && address ? <ConnectedWallet asset={asset} address={address}/> : <ConnectPrompt asset={asset}/>}
+            {view === "settings" ? (
+                <SettingsPanel onBack={() => setView("wallet")}/>
+            ) : (
+                <>
+                    {connected && address ? <ConnectedWallet asset={asset} address={address}/> : <ConnectPrompt asset={asset}/>}
+                    <WalletFooter asset={asset} connected={connected}/>
+                </>
+            )}
         </TsDrawer>
     );
 }

@@ -12,12 +12,18 @@ const useBalance = vi.fn();
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useBalance: (denom: string) => useBalance(denom),
+    useSettings: () => ({
+        settings: {endpoints: {restEndpoint: "https://rest.example.com", rpcEndpoint: "wss://rpc.example.com"}},
+        updateEndpoints: vi.fn(),
+        defaultSettings: {endpoints: {restEndpoint: "https://rest.example.com", rpcEndpoint: "wss://rpc.example.com"}},
+    }),
+    useConnectionType: () => ({connectionType: 2}),
 }));
 
 const connect = vi.fn();
 let walletStatus = WalletState.Disconnected;
 vi.mock("@interchain-kit/react", () => ({
-    useChain: () => ({status: walletStatus, connect}),
+    useChain: () => ({status: walletStatus, connect, disconnect: vi.fn()}),
 }));
 
 const toggleColorMode = vi.fn();
@@ -108,5 +114,17 @@ describe("SiteHeader", () => {
         await user.click(screen.getByRole("button", {name: "Switch to dark mode"}));
 
         expect(toggleColorMode).toHaveBeenCalled();
+    });
+
+    it("opens the settings panel from the phone menu", async () => {
+        const user = userEvent.setup();
+        renderHeader();
+
+        await user.click(screen.getByRole("button", {name: "Open menu"}));
+        await user.click(screen.getByRole("button", {name: "Settings"}));
+
+        const drawer = screen.getByRole("dialog", {name: "Your Page Token wallet"});
+        expect(drawer).toContainElement(screen.getByTestId("wallet-settings"));
+        expect(screen.queryByRole("navigation", {name: "Sections"})).not.toBeInTheDocument();
     });
 });
