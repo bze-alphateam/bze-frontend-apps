@@ -84,7 +84,7 @@ export function Hero({asset, hasStake}: { asset: Asset; hasStake: boolean }) {
                     </Flex>
                 )}
                 <Flex wrap="wrap" gap="12px">
-                    <TsButton variant="primary" minH="52px" px="28px" fontSize="16px" onClick={open}>
+                    <TsButton variant="primary" minH="52px" px="28px" fontSize="16px" onClick={() => open("get")}>
                         Get {asset.ticker}
                     </TsButton>
                     {hasStake && (

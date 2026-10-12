@@ -6,6 +6,7 @@ import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset} from "@bze/bze-ui-kit"
 
 import {useNavigation} from "@/hooks/useNavigation";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
+import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {brandCssVars} from "@/lib/brand-kit";
 import {TokenBurnStats} from "@/components/ui/tokens/token-burn-stats";
 import {TokenStakingRewards} from "@/components/ui/tokens/token-staking-rewards";
@@ -17,6 +18,7 @@ import {PHONE_ACTION_BAR_SPACE, PhoneActionBar} from "./phone-action-bar";
 import {SiteFooter} from "./site-footer";
 import {type SiteSection, SiteHeader} from "./site-header";
 import {TokenDetails} from "./token-details";
+import {WalletDrawer} from "./wallet";
 
 /**
  * The pre-redesign staking and burn sections still draw with Chakra tokens; this maps those
@@ -84,22 +86,25 @@ export function TokenSite({denom}: { denom: string }) {
 
     return (
         <TokenSiteTheme kit={kit}>
-            <Box pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
-                <SiteHeader asset={resolved} sections={sections}/>
-                <chakra.main>
-                    <Hero asset={resolved} hasStake={true}/>
-                    <KeyNumbers denom={resolved.denom}/>
-                    <TsSection id="stake" eyebrow="Stake" title={`Stake your ${resolved.ticker}`}>
-                        <LegacySectionScope><TokenStakingRewards asset={resolved}/></LegacySectionScope>
-                    </TsSection>
-                    <TsSection id="burn" eyebrow="Burn" title={`Every burn makes ${resolved.ticker} scarcer`}>
-                        <LegacySectionScope><TokenBurnStats asset={resolved}/></LegacySectionScope>
-                    </TsSection>
-                    <TokenDetails asset={resolved}/>
-                </chakra.main>
-                <SiteFooter asset={resolved}/>
-                <PhoneActionBar asset={resolved} hasStake={true}/>
-            </Box>
+            <TokenWalletProvider>
+                <Box pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
+                    <SiteHeader asset={resolved} sections={sections}/>
+                    <chakra.main>
+                        <Hero asset={resolved} hasStake={true}/>
+                        <KeyNumbers denom={resolved.denom}/>
+                        <TsSection id="stake" eyebrow="Stake" title={`Stake your ${resolved.ticker}`}>
+                            <LegacySectionScope><TokenStakingRewards asset={resolved}/></LegacySectionScope>
+                        </TsSection>
+                        <TsSection id="burn" eyebrow="Burn" title={`Every burn makes ${resolved.ticker} scarcer`}>
+                            <LegacySectionScope><TokenBurnStats asset={resolved}/></LegacySectionScope>
+                        </TsSection>
+                        <TokenDetails asset={resolved}/>
+                    </chakra.main>
+                    <SiteFooter asset={resolved}/>
+                    <PhoneActionBar asset={resolved} hasStake={true}/>
+                </Box>
+                <WalletDrawer asset={resolved}/>
+            </TokenWalletProvider>
         </TokenSiteTheme>
     );
 }

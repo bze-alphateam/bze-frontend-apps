@@ -43,6 +43,22 @@ test.describe("in dark mode", () => {
     });
 });
 
+test("the header's wallet button opens the token's wallet drawer with a connect prompt", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    // No wallet extension in e2e, so the drawer asks to connect one.
+    await page.getByRole("button", {name: "Connect wallet"}).click();
+
+    const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
+    // Portaled outside the page, still in the kit's colours.
+    await expect(drawer.getByRole("button", {name: "Connect wallet"})).toHaveCSS("background-color", "rgb(190, 25, 129)");
+
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+});
+
 test("no element links to other BeeZee apps and no BeeZee chrome shows", async ({page}) => {
     await page.goto(tokenPage(NOAD));
     await expect(page.getByRole("heading", {level: 1, name: "NoAdminToken"})).toBeVisible();

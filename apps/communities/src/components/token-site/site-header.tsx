@@ -3,7 +3,9 @@
 import React, {useState} from "react";
 import {Box, chakra, Flex} from "@chakra-ui/react";
 import {LuMenu, LuMoon, LuSun, LuX} from "react-icons/lu";
-import {type Asset, shortNumberFormat, uAmountToBigNumberAmount, useBalance} from "@bze/bze-ui-kit";
+import {useChain} from "@interchain-kit/react";
+import {WalletState} from "@interchain-kit/core";
+import {type Asset, getChainName, shortNumberFormat, uAmountToBigNumberAmount, useBalance} from "@bze/bze-ui-kit";
 
 import {useColorMode} from "@/components/ui/color-mode";
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
@@ -16,14 +18,16 @@ export interface SiteSection {
     label: string;
 }
 
-/** The header's wallet button: the connected wallet's T balance, or a connect prompt. */
+/** The header's wallet button: the connected wallet's T balance, or "Connect". Opens the drawer. */
 function WalletButton({asset}: { asset: Asset }) {
-    const {isConnected, open} = useTokenWallet();
+    const {open} = useTokenWallet();
+    const {status} = useChain(getChainName());
+    const isConnected = status === WalletState.Connected;
     const {balance} = useBalance(asset.denom);
     const amount = shortNumberFormat(uAmountToBigNumberAmount(balance.amount, asset.decimals));
 
     return (
-        <TsButton variant="ghost" onClick={open} aria-label={isConnected ? "Open wallet" : "Connect wallet"} px={{base: "14px", md: "22px"}}>
+        <TsButton variant="ghost" onClick={() => open("get")} aria-label={isConnected ? "Open wallet" : "Connect wallet"} px={{base: "14px", md: "22px"}}>
             <chakra.span aria-hidden="true" w="8px" h="8px" borderRadius="50%" bg={ts.pri}/>
             <chakra.span fontVariantNumeric="tabular-nums">
                 {isConnected ? `${amount} ${asset.ticker}` : "Connect"}
