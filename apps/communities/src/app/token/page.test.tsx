@@ -46,6 +46,13 @@ vi.mock("@/components/token-site/stake/holders-pool", () => ({HoldersPool: () =>
 vi.mock("@/components/token-site/stake/fixed-term-programs", () => ({FixedTermPrograms: () => <div data-testid="fixed-term-programs"/>}));
 vi.mock("@/components/token-site/burn/burn-section", () => ({BurnSection: () => <div data-testid="burn-section"/>}));
 vi.mock("@/components/token-site/trade/trade-section", () => ({TradeSection: () => <div data-testid="trade-section"/>}));
+vi.mock("@/components/token-site/earn/earn-section", () => ({
+    EarnSection: ({opportunities}: { opportunities: unknown[] }) => (opportunities.length > 0 ? <div data-testid="earn-section"/> : null),
+}));
+let opportunities: unknown[] = [];
+vi.mock("@/hooks/token-site/useEarnOpportunities", () => ({
+    useEarnOpportunities: () => ({opportunities, isLoading: false}),
+}));
 
 import TokenPage from "./page";
 
@@ -79,6 +86,7 @@ const siteVar = (name: string) => site().style.getPropertyValue(name);
 beforeEach(() => {
     colorMode = "light";
     pools = [];
+    opportunities = [];
     useAsset.mockReset();
     getDenomBranding.mockReset();
     getFactoryDenomAdmin.mockReset().mockResolvedValue("");
@@ -166,6 +174,23 @@ describe("Communities token page", () => {
         await screen.findByRole("heading", {level: 1, name: "Brand Token"});
         expect(document.querySelector('header a[href="#trade"]')).toHaveTextContent("Trade");
         expect(screen.getByTestId("trade-section")).toBeInTheDocument();
+    });
+
+    it("links the Earn section only while another token's staking pays this one", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        const {unmount} = renderPage("factory/bze1owner/ufull");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(document.querySelector('header a[href="#earn"]')).toBeNull();
+        expect(screen.queryByTestId("earn-section")).not.toBeInTheDocument();
+        unmount();
+
+        opportunities = [{kind: "pool"}];
+        renderPage("factory/bze1owner/ufull");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(document.querySelector('header a[href="#earn"]')).toHaveTextContent("Earn");
+        expect(screen.getByTestId("earn-section")).toBeInTheDocument();
     });
 
     it("opens the wallet drawer from the hero's and the phone bar's Get buttons", async () => {
