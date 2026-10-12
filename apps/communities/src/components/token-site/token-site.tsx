@@ -10,7 +10,7 @@ import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {isTradable} from "@/lib/token-site/swap";
 
 import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer} from "./kit";
-import {BurnSection} from "./burn";
+import {BurnRaffle, BurnSection} from "./burn";
 import {Hero} from "./hero";
 import {KeyNumbers} from "./key-numbers";
 import {PHONE_ACTION_BAR_SPACE, PhoneActionBar} from "./phone-action-bar";
@@ -86,7 +86,7 @@ export function TokenSite({denom}: { denom: string }) {
                         <KeyNumbers denom={resolved.denom}/>
                         <StakeSection asset={resolved}/>
                         <TradeSection asset={resolved}/>
-                        <BurnSection asset={resolved}/>
+                        <BurnSection asset={resolved} raffle={<BurnRaffle asset={resolved}/>}/>
                         <TokenDetails asset={resolved}/>
                     </chakra.main>
                     <SiteFooter asset={resolved}/>

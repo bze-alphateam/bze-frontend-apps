@@ -20,7 +20,8 @@ src/
                     # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; Get is trade/'s SwapForm) and its settings view (state in hooks/token-site/useTokenWallet)
                     # trade/ = the Trade section: pool price chart (hooks/token-site/usePoolChart, aggregator candles) + Buy/Sell panel; SwapForm (swaps via hooks/token-site/useTokenSwap) is shared with the wallet's Get tab
                     # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
-                    # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab
+                    # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab;
+                    #         raffle.tsx = the burn raffle in its slot (hooks/token-site/useTokenRaffle: joins + per-ticket results, toasts once the dialog is closed)
     ui/             # BeeZee navbar (directory only), color mode, Chakra provider
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType

@@ -35,6 +35,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | "next burn" |
 | `lcd/burner.params.json` | burner params | burn period |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
+| `lcd/burner.raffles.json` | burn raffles | recorded 2026-10-12; testnet runs none (empty list), the raffle spec answers a made-up one with `network.use` |
 | `lcd/epochs.epochs.json` | epochs | |
 | `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | |
 | `lcd/tradebin.all_markets.json` | order-book markets, limit 1000 | |
