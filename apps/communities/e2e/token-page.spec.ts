@@ -336,8 +336,70 @@ test("a token whose only program has finished shows no fixed-term programs", asy
     await expect(page.getByTestId("fixed-term-programs")).toHaveCount(0);
 });
 
+const TESTUSD = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd";
+
+test("Ways to earn VDL lists the program and the other pool paying it, not the finished program", async ({page, network}) => {
+    // The programs above (NOAD → NOAD running, NOAD → VDL finished) plus a running NOAD → VDL one.
+    const programs = stakingRewards();
+    const body = programs.body as { list: object[] };
+    network.use("lcd", {
+        ...programs,
+        body: {
+            ...body,
+            list: [...body.list, {
+                reward_id: "000000000003", staking_denom: NOAD, prize_denom: VIDULUM, prize_amount: "4000000",
+                duration: 20, payouts: 5, lock: 2, min_stake: "1000000", staked_amount: "50000000", distributed_stake: "0",
+            }],
+        },
+    });
+    // NOAD's pool pays VDL among three prizes: the recorded VDL and NOAD schedules plus a TUSDC one.
+    const schedules = recorded("rewards.denom_reward_schedules.noadmin.json");
+    const scheduleBody = schedules.body as { list: object[] };
+    network.use("lcd", {
+        ...schedules,
+        body: {
+            ...scheduleBody,
+            list: [...scheduleBody.list, {
+                schedule_id: "000000000002", staking_denom: NOAD, prize_denom: TESTUSD, daily_amount: "1000000", duration: 30, payouts: 1,
+            }],
+        },
+    });
+
+    await page.goto(tokenPage(VIDULUM));
+
+    const earn = page.locator("section#earn");
+    await expect(earn.getByRole("heading", {level: 2, name: "Ways to earn VDL"})).toBeVisible();
+    await expect(page.locator('header a[href="#earn"]')).toHaveCount(1);
+    // No APR without a VDL price, so the bigger daily payout comes first.
+    await expect(earn.getByTestId(/^earn-(pool|program)-/)).toHaveCount(2);
+
+    const pool = earn.getByTestId(`earn-pool-${NOAD}`);
+    await expect(pool.getByTestId("earn-kind")).toHaveText("Holders pool");
+    await expect(pool.getByTestId("earn-daily")).toHaveText("10VDL paid out daily");
+    await expect(pool).toContainText("Unlock time7 days");
+    await expect(pool).toContainText("Funded for198 days");
+    await expect(pool.getByTestId("earn-also-pays")).toHaveText("Also pays NOAD and TUSDC.");
+    await expect(pool.getByTestId("earn-apr")).toHaveCount(0);
+
+    const program = earn.getByTestId("earn-program-000000000003");
+    await expect(program.getByTestId("earn-kind")).toHaveText("Fixed-term program");
+    await expect(program.getByTestId("earn-daily")).toHaveText("4VDL paid out daily");
+    await expect(program).toContainText("Ends in15 days");
+    await expect(program.getByRole("button", {name: "Stake NOAD"})).toBeVisible();
+    await expect(earn.getByTestId("earn-program-000000000002")).toHaveCount(0);
+});
+
+test("a token nothing else pays has no Earn section", async ({page}) => {
+    // The only holders pool is NOAD's own, which belongs to the Stake section.
+    await page.goto(tokenPage(NOAD));
+
+    await expect(page.getByTestId("holders-pool")).toBeVisible();
+    await expect(page.locator("section#earn")).toHaveCount(0);
+    await expect(page.locator('header a[href="#earn"]')).toHaveCount(0);
+});
+
 // NOAD's one pool is NOAD/TUSDC with NOAD as the base, so the aggregator's closes are TUSDC per NOAD.
-const NOAD_POOL = `${NOAD}_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd`;
+const NOAD_POOL = `${NOAD}_${TESTUSD}`;
 const candles = (minutes: number, limit: number, closes: number[]): Fixture => ({
     path: "/api/dex/intervals",
     query: {market_id: NOAD_POOL, minutes: String(minutes), limit: String(limit), format: "tv"},
