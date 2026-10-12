@@ -8,10 +8,10 @@ import {useNavigation} from "@/hooks/useNavigation";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {brandCssVars} from "@/lib/brand-kit";
-import {TokenBurnStats} from "@/components/ui/tokens/token-burn-stats";
 import {TokenStakingRewards} from "@/components/ui/tokens/token-staking-rewards";
 
-import {TokenSiteTheme, TsButton, TsCard, TsSection, ts, tsContainer, useTokenSiteTheme} from "./kit";
+import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer, useTokenSiteTheme} from "./kit";
+import {BurnSection} from "./burn";
 import {Hero} from "./hero";
 import {KeyNumbers} from "./key-numbers";
 import {PHONE_ACTION_BAR_SPACE, PhoneActionBar} from "./phone-action-bar";
@@ -22,8 +22,8 @@ import {TokenDetails} from "./token-details";
 import {WalletDrawer} from "./wallet";
 
 /**
- * The pre-redesign staking and burn sections still draw with Chakra tokens; this maps those
- * tokens onto the kit until BFE-130/BFE-132 (Stake) and BFE-131 (Burn) replace them.
+ * The pre-redesign staking programs still draw with Chakra tokens; this maps those tokens onto
+ * the kit until BFE-132 replaces them.
  */
 function LegacySectionScope({children}: { children: React.ReactNode }) {
     const {kit, mode} = useTokenSiteTheme();
@@ -96,9 +96,7 @@ export function TokenSite({denom}: { denom: string }) {
                         <StakeSection asset={resolved}>
                             <LegacySectionScope><TokenStakingRewards asset={resolved}/></LegacySectionScope>
                         </StakeSection>
-                        <TsSection id="burn" eyebrow="Burn" title={`Every burn makes ${resolved.ticker} scarcer`}>
-                            <LegacySectionScope><TokenBurnStats asset={resolved}/></LegacySectionScope>
-                        </TsSection>
+                        <BurnSection asset={resolved}/>
                         <TokenDetails asset={resolved}/>
                     </chakra.main>
                     <SiteFooter asset={resolved}/>

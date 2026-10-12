@@ -5,7 +5,7 @@ import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {getChainName} from "@bze/bze-ui-kit";
 
-/** The wallet drawer's action tabs. Burn arrives with BFE-131. */
+/** The wallet drawer's action tabs. */
 export type WalletTab = "get" | "send" | "burn";
 
 /** What the drawer shows: the wallet itself or the settings panel (BFE-128). */
