@@ -1,16 +1,14 @@
 'use client';
 
-import React, {useMemo} from "react";
+import React from "react";
 import {Box, chakra, Flex, Skeleton} from "@chakra-ui/react";
 import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset} from "@bze/bze-ui-kit";
 
 import {useNavigation} from "@/hooks/useNavigation";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
-import {brandCssVars} from "@/lib/brand-kit";
-import {TokenStakingRewards} from "@/components/ui/tokens/token-staking-rewards";
 
-import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer, useTokenSiteTheme} from "./kit";
+import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer} from "./kit";
 import {BurnSection} from "./burn";
 import {Hero} from "./hero";
 import {KeyNumbers} from "./key-numbers";
@@ -20,17 +18,6 @@ import {StakeSection} from "./stake";
 import {type SiteSection, SiteHeader} from "./site-header";
 import {TokenDetails} from "./token-details";
 import {WalletDrawer} from "./wallet";
-
-/**
- * The pre-redesign staking programs still draw with Chakra tokens; this maps those tokens onto
- * the kit until BFE-132 replaces them.
- */
-function LegacySectionScope({children}: { children: React.ReactNode }) {
-    const {kit, mode} = useTokenSiteTheme();
-    const style = useMemo(() => brandCssVars(kit, mode) as React.CSSProperties, [kit, mode]);
-
-    return <Box style={style} color={ts.fg}>{children}</Box>;
-}
 
 function NotFound() {
     const {navigate} = useNavigation();
@@ -93,9 +80,7 @@ export function TokenSite({denom}: { denom: string }) {
                     <chakra.main>
                         <Hero asset={resolved} hasStake={true}/>
                         <KeyNumbers denom={resolved.denom}/>
-                        <StakeSection asset={resolved}>
-                            <LegacySectionScope><TokenStakingRewards asset={resolved}/></LegacySectionScope>
-                        </StakeSection>
+                        <StakeSection asset={resolved}/>
                         <BurnSection asset={resolved}/>
                         <TokenDetails asset={resolved}/>
                     </chakra.main>
