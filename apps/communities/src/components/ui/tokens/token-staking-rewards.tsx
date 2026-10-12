@@ -9,7 +9,6 @@ import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
 import {RewardsStakingBox} from "@/components/ui/staking/rewards-staking";
 import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
-import {TokenDenomReward} from "@/components/ui/tokens/token-denom-reward";
 
 // Same cadence as the DEX staking page: refresh programs and positions periodically.
 const STAKING_DATA_RELOAD_INTERVAL = 150_000;
@@ -94,6 +93,9 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
         return () => clearInterval(interval);
     }, [reload]);
 
+    // The holders pool above it is the section's main block; this box shows only reward programs.
+    if (!isLoading && stakeThisToken.length === 0 && earnThisToken.length === 0) return null;
+
     return (
         <Box
             bgGradient="to-br"
@@ -111,14 +113,12 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
                     <Text fontWeight="bold" fontSize={{base: "lg", md: "xl"}}>Staking rewards</Text>
                 </HStack>
 
-                {/* The token's denom reward loads on its own, so the group shows while the programs load. */}
-                <VStack align="stretch" gap={3}>
+                {(isLoading || stakeThisToken.length > 0) && <VStack align="stretch" gap={3}>
                     <SectionHeading
                         icon={<LuArrowUpFromLine size={18}/>}
                         title={`Stake ${asset.ticker} to earn`}
-                        subtitle={`Stake ${asset.ticker} to earn the prizes of its denom reward and of reward programs`}
+                        subtitle={`Reward programs that pay for staking ${asset.ticker}`}
                     />
-                    <TokenDenomReward asset={asset}/>
                     {isLoading && <Skeleton height="120px" borderRadius="xl"/>}
                     {!isLoading && stakeThisToken.map(sr => (
                         <RewardsStakingBox
@@ -129,7 +129,7 @@ export const TokenStakingRewards = ({asset}: { asset: Asset }) => {
                             onClick={openModal}
                         />
                     ))}
-                </VStack>
+                </VStack>}
 
                 {!isLoading && earnThisToken.length > 0 && (
                     <VStack align="stretch" gap={3}>

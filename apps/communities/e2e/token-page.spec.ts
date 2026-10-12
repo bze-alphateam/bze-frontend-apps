@@ -1,4 +1,7 @@
-import {expect, test} from "./support/mock-network";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+
+import {expect, type Fixture, test} from "./support/mock-network";
 
 // The token site shell (BFE-125), against the testnet fixtures. NOAD (NoAdminToken) has a brand
 // kit (JetBrains Mono, light primary #be1981, dark primary #e67fc0), a holders pool with 20 NOAD
@@ -9,6 +12,8 @@ const NOAD = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin";
 // Vidulum (VDL) sits in no pool, so it can't be swapped into.
 const VIDULUM = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum";
 const tokenPage = (denom: string) => `/token?denom=${encodeURIComponent(denom)}`;
+const recorded = (file: string): Fixture =>
+    JSON.parse(readFileSync(join(__dirname, "fixtures", "lcd", file), "utf8")) as Fixture;
 
 test("the branded token renders its name, hero and key numbers", async ({page}) => {
     await page.goto(tokenPage(NOAD));
@@ -110,11 +115,47 @@ test("no element links to other BeeZee apps and no BeeZee chrome shows", async (
     // Let the sections that load later (staking, burns, footer) settle.
     await page.waitForLoadState("networkidle");
 
+    // The holders pool's "Add rewards to the pool" is the one deliberate link out (R5).
+    const addRewards = `https://testnet-factory.getbze.com/denom-reward/schedule?denom=${encodeURIComponent(NOAD)}`;
+    // The pool loads after network idle can settle, so wait for its link before collecting.
+    await expect(page.getByRole("link", {name: "Add rewards to the pool"})).toHaveAttribute("href", addRewards);
     const hrefs = await page.locator("a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
-    expect(hrefs.filter((href) => /\.getbze\.com/.test(href))).toEqual([]);
+    expect(hrefs.filter((href) => /\.getbze\.com/.test(href))).toEqual([addRewards]);
 
     await expect(page.getByAltText("BZE application logo")).toHaveCount(0);
     await expect(page.getByRole("button", {name: /directory/i})).toHaveCount(0);
     // NOAD has no BZE pool, so it can't pay fees itself: the footer names the network (R12).
     await expect(page.getByRole("link", {name: "Runs on BeeZee"})).toHaveAttribute("href", "https://getbze.com");
+});
+
+test("the holders pool lists what it pays, the unpriced reward last and no APR", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    // NOAD's pool pays 10 NOAD and 10 VDL a day; VDL sits in no pool, so it has no price.
+    const pool = page.getByTestId("holders-pool");
+    const rows = pool.getByTestId("holders-pool-prizes").getByRole("row");
+    await expect(rows).toHaveText(["RewardPaid dailyFunded for", "NOAD10363 days", "VDL10198 days"]);
+    await expect(pool.getByTestId("holders-pool-apr")).toHaveCount(0);
+    await expect(pool).toContainText("Total staked20 NOAD");
+    await expect(pool).toContainText("Unlock time7 days");
+    await expect(pool.getByRole("button", {name: "Connect to stake"})).toBeVisible();
+});
+
+test("the holders pool shows its APR when every reward has a price", async ({page, network}) => {
+    // Only the NOAD schedule: 10 NOAD a day over 20 NOAD staked is 18,250% whatever NOAD's price.
+    const schedules = recorded("rewards.denom_reward_schedules.noadmin.json");
+    const body = schedules.body as { list: { prize_denom: string }[] };
+    network.use("lcd", {...schedules, body: {...body, list: body.list.filter((schedule) => schedule.prize_denom === NOAD)}});
+
+    await page.goto(tokenPage(NOAD));
+
+    await expect(page.getByTestId("holders-pool-apr")).toHaveText("18,250.0%Est. APR");
+});
+
+test("a token without a holders pool says so and links to the Factory to start one", async ({page}) => {
+    await page.goto(tokenPage(VIDULUM));
+
+    await expect(page.getByTestId("holders-pool-empty")).toContainText("No holders pool yet");
+    await expect(page.getByRole("link", {name: "Start a holders pool"}))
+        .toHaveAttribute("href", `https://testnet-factory.getbze.com/manage/token?denom=${encodeURIComponent(VIDULUM)}`);
 });
