@@ -1,0 +1,37 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/params",
+  "recorded": "2026-10-12",
+  "method": "GET",
+  "path": "/bze/rewards/params",
+  "query": {},
+  "status": 200,
+  "body": {
+    "params": {
+      "createStakingRewardFee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      },
+      "createTradingRewardFee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      },
+      "extraGasForExitStake": "1000000",
+      "createDenomRewardFee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      },
+      "createDenomRewardPrizeFee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      },
+      "addDenomRewardScheduleFee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      },
+      "maxPrizeDenomsPerDr": 50,
+      "extraGasForDenomExit": "1000000",
+      "denomRewardLock": 7,
+      "denomRewardMinStake": "0"
+    }
+  }
+}

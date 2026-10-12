@@ -1,0 +1,16 @@
+{
+  "source": "https://testnet.getbze.com/bze/tokenfactory/params",
+  "recorded": "2026-10-12",
+  "method": "GET",
+  "path": "/bze/tokenfactory/params",
+  "query": {},
+  "status": 200,
+  "body": {
+    "params": {
+      "create_denom_fee": {
+        "denom": "ubze",
+        "amount": "25000000000"
+      }
+    }
+  }
+}

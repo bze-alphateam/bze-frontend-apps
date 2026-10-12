@@ -1,0 +1,68 @@
+name: e2e-factory
+
+# Playwright e2e suite of apps/factory (BFE-143), a check of its own next to ci.yml.
+# It builds the app with apps/factory/.env.e2e, whose chain/aggregator hosts are fake
+# *.e2e.test names answered from recorded fixtures (apps/factory/e2e/fixtures), so the
+# run never reaches a real node. See apps/factory/e2e/README.md.
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "apps/factory/**"
+      - "packages/ui-kit/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/e2e-factory.yml"
+
+concurrency:
+  group: e2e-factory-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e (factory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4   # reads the pinned version from package.json "packageManager"
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check specs
+        run: pnpm --filter bze-factory e2e:typecheck
+
+      - name: Build ui-kit
+        run: pnpm --filter @bze/bze-ui-kit build
+
+      # NEXT_PUBLIC_* values come from apps/factory/.env.e2e only; no .env is seeded.
+      - name: Build factory (e2e env)
+        run: pnpm --filter bze-factory e2e:build
+
+      - name: Install Chromium
+        run: pnpm --filter bze-factory exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm --filter bze-factory e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/factory/playwright-report/
+            apps/factory/test-results/
+          retention-days: 14

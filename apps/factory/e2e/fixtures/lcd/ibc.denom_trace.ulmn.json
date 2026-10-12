@@ -1,0 +1,14 @@
+{
+  "source": "https://testnet.getbze.com/ibc/apps/transfer/v1/denom_traces/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/ibc/apps/transfer/v1/denom_traces/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+  "query": {},
+  "status": 200,
+  "body": {
+    "denom_trace": {
+      "path": "transfer/channel-0",
+      "base_denom": "ulmn"
+    }
+  }
+}
