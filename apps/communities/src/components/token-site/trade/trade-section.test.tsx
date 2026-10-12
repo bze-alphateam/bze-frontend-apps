@@ -55,6 +55,9 @@ vi.mock("@interchain-kit/react", () => ({
     useChain: () => ({status: walletStatus, address: walletStatus === WalletState.Connected ? ME : undefined, connect}),
 }));
 
+// The pools table has its own suite (liquidity-pools.test.tsx).
+vi.mock("./liquidity-pools", () => ({LiquidityPools: () => <div data-testid="liquidity-pools"/>}));
+
 import {TokenSiteTheme} from "../kit";
 import {TradeSection} from "./trade-section";
 

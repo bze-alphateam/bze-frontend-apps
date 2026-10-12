@@ -19,6 +19,7 @@ src/
     token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars),
                     # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; Get is trade/'s SwapForm) and its settings view (state in hooks/token-site/useTokenWallet)
                     # trade/ = the Trade section: pool price chart (hooks/token-site/usePoolChart, aggregator candles) + Buy/Sell panel; SwapForm (swaps via hooks/token-site/useTokenSwap) is shared with the wallet's Get tab
+                    #         + "Liquidity pools" (hooks/token-site/useTokenPools): table of T's pools, inline Add/Remove liquidity forms (math in lib/token-site/liquidity)
                     # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
                     # earn/ = "Ways to earn T": programs paying T + other tokens' pools paying T (hooks/token-site/useEarnOpportunities, read by token-site.tsx
                     #         so the header links it only when it renders); its Stake buttons open the StakeDialog on the *other* token

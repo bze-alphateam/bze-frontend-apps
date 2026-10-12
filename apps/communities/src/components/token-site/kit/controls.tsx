@@ -102,8 +102,24 @@ export function TsField({label, suffix, id, ...props}: TsFieldProps) {
     );
 }
 
-/** Table that scrolls sideways on narrow screens instead of squeezing its columns. */
-export function TsTable({children, ...props}: BoxProps) {
+// Below the md breakpoint a stacked table drops its header and shows each row as a card: one
+// cell per line, labelled from the cell's `data-label`.
+const STACKED_ON_PHONE = {
+    "@media screen and (max-width: 47.99rem)": {
+        "& thead": {display: "none"},
+        "& tr, & td": {display: "block"},
+        "& tbody > tr": {borderTop: `1px solid ${ts.border}`, padding: "10px 0"},
+        "& td": {borderTop: "0", padding: "6px 16px"},
+        "& td[data-label]": {display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px"},
+        "& td[data-label]::before": {content: "attr(data-label)", color: ts.muted, fontSize: "13px"},
+    },
+} as const;
+
+/**
+ * Table that scrolls sideways on narrow screens instead of squeezing its columns, or with
+ * `stackOnPhone` turns each row into a card there.
+ */
+export function TsTable({children, stackOnPhone, ...props}: BoxProps & { stackOnPhone?: boolean }) {
     return (
         <Box overflowX="auto" {...props}>
             <chakra.table
@@ -124,6 +140,7 @@ export function TsTable({children, ...props}: BoxProps) {
                         borderTop: `1px solid ${ts.border}`,
                         fontVariantNumeric: "tabular-nums",
                     },
+                    ...(stackOnPhone ? STACKED_ON_PHONE : {}),
                 }}
             >
                 {children}

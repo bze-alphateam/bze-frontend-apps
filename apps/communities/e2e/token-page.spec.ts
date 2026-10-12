@@ -440,6 +440,42 @@ test("the chart draws the pool's candles and refetches on a range change", async
     await expect(chart.getByTestId("pool-chart-price")).toHaveText("0.25 TUSDC");
 });
 
+test("the Trade section lists the token's pools, and adding liquidity asks for a wallet first", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    const pools = page.getByTestId("liquidity-pools");
+    await expect(pools.getByRole("heading", {level: 3, name: "Liquidity pools"})).toBeVisible();
+    const rows = pools.getByTestId(/^liquidity-pool-/);
+    await expect(rows).toHaveCount(1);
+
+    // 10 NOAD at $0.10 and 1 TUSDC at $1; the recorded aggregator has no volume for it, so no APR.
+    const row = pools.getByTestId(`liquidity-pool-${NOAD_POOL}`);
+    await expect(row.getByRole("cell").first()).toHaveText("NOAD / TUSDC");
+    await expect(row.getByTestId("pool-liquidity")).toHaveText("$2.00");
+    await expect(row.getByTestId("pool-volume")).toHaveText("$0.00");
+    await expect(row.getByTestId("pool-apr")).toHaveText("—");
+    await expect(row.getByTestId("pool-share")).toHaveText("—");
+    await expect(row.getByRole("button", {name: /^Remove/})).toHaveCount(0);
+
+    await row.getByRole("button", {name: "Add liquidity to NOAD / TUSDC"}).click();
+
+    const prompt = pools.getByTestId("liquidity-connect-prompt");
+    await expect(prompt).toHaveText(/Connect a wallet to add liquidity to the NOAD \/ TUSDC pool\./);
+    await expect(prompt.getByRole("button", {name: "Connect wallet"})).toBeVisible();
+    await expect(row.getByRole("button", {name: "Close adding to NOAD / TUSDC"})).toHaveAttribute("aria-expanded", "true");
+});
+
+test("a token in several pools lists them all, the most liquidity first", async ({page}) => {
+    await page.goto(tokenPage(TESTUSD));
+
+    // TUSDC/BZE holds 383,015 TUSDC; NOAD/TUSDC only 1. TUSDC comes first in both pairs.
+    const rows = page.getByTestId("liquidity-pools").getByTestId(/^liquidity-pool-/);
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toHaveAttribute("data-testid", `liquidity-pool-${TESTUSD}_ubze`);
+    await expect(rows.nth(0).getByRole("cell").first()).toHaveText("TUSDC / BZE");
+    await expect(rows.nth(1).getByRole("cell").first()).toHaveText("TUSDC / NOAD");
+});
+
 test("a token in no pool has no Trade section", async ({page}) => {
     await page.goto(tokenPage(VIDULUM));
 
