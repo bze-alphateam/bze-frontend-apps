@@ -9,6 +9,7 @@ export const ts = {
     muted: "var(--ts-muted)",
     card: "var(--ts-card)",
     border: "var(--ts-border)",
+    danger: "var(--ts-danger)",
     font: "var(--ts-font)",
 } as const;
 

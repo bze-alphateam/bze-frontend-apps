@@ -2,6 +2,7 @@
 
 import React from "react";
 import {Box, type BoxProps, chakra, Flex, type FlexProps} from "@chakra-ui/react";
+import {LuTriangleAlert} from "react-icons/lu";
 
 import {ts, tsContainer, tsLabel, tsMix} from "./tokens";
 
@@ -81,19 +82,33 @@ export function TsTag(props: BoxProps) {
     );
 }
 
-/** Informational notice on a secondary tint (e.g. the BZE network-fee notice). */
-export function TsNotice(props: BoxProps) {
+/**
+ * Notice on a tint: `info` (default) on the secondary colour, e.g. the BZE network-fee notice;
+ * `danger` on the kit's danger red with a warning icon, for what loses the user something.
+ */
+export function TsNotice({tone = "info", children, ...props}: FlexProps & { tone?: "info" | "danger" }) {
+    const danger = tone === "danger";
+
     return (
-        <Box
+        <Flex
             role="note"
+            data-tone={tone}
+            gap="10px"
+            align="flex-start"
             borderRadius="14px"
             px="14px"
             py="12px"
             fontSize="14px"
             lineHeight="1.45"
-            bg={tsMix(ts.sec, 14)}
+            bg={danger ? tsMix(ts.danger, 12) : tsMix(ts.sec, 14)}
+            borderWidth={danger ? "1px" : undefined}
+            borderStyle={danger ? "solid" : undefined}
+            borderColor={danger ? tsMix(ts.danger, 45) : undefined}
             color={ts.fg}
             {...props}
-        />
+        >
+            {danger && <Box as="span" color={ts.danger} flexShrink={0} pt="2px" aria-hidden><LuTriangleAlert size={16}/></Box>}
+            <Box flex="1" minW="0">{children}</Box>
+        </Flex>
     );
 }

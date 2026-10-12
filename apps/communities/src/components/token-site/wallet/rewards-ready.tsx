@@ -64,7 +64,7 @@ export function RewardsReady({asset, address, positions, onClaimed}: RewardsRead
                         {coins}
                     </chakra.span>
                 </Flex>
-                <TsButton variant="secondary" onClick={claim} disabled={isSubmitting}>
+                <TsButton variant="primary" onClick={claim} disabled={isSubmitting}>
                     {isSubmitting ? (progressTrack || "Waiting for signature…") : "Claim all"}
                 </TsButton>
             </Flex>

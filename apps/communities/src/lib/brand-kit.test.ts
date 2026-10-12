@@ -5,6 +5,7 @@ import {
     brandCssVars,
     brandFontStylesheetUrl,
     cardBrandColor,
+    contrastRatio,
     contrastText,
     createBrandKitCache,
     createBrandKitListCache,
@@ -38,6 +39,14 @@ describe("contrastText", () => {
     it("picks black on light colours and white on dark ones", () => {
         expect(contrastText("#FFD000")).toBe("#000000");
         expect(contrastText("#1A2B3C")).toBe("#FFFFFF");
+    });
+});
+
+describe("contrastRatio", () => {
+    it("is the WCAG ratio, whatever the order", () => {
+        expect(contrastRatio("#000000", "#FFFFFF")).toBeCloseTo(21);
+        expect(contrastRatio("#FFFFFF", "#000000")).toBeCloseTo(21);
+        expect(contrastRatio("#DC3328", "#DC3328")).toBe(1);
     });
 });
 

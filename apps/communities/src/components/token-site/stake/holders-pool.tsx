@@ -151,7 +151,7 @@ function YourPosition({asset, item, onAction}: PositionProps) {
                 </TsButton>
                 {position && (
                     <>
-                        <TsButton flex="1 1 auto" variant="secondary" disabled={blockers.claim !== ""} onClick={() => onAction("claim")}>
+                        <TsButton flex="1 1 auto" variant="primary" disabled={blockers.claim !== ""} onClick={() => onAction("claim")}>
                             Claim all
                         </TsButton>
                         <TsButton flex="1 1 auto" variant="ghost" disabled={blockers.exit !== ""} onClick={() => onAction("unstake")}>

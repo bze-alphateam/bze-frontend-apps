@@ -5,12 +5,14 @@ import {chakra, type HTMLChakraProps} from "@chakra-ui/react";
 
 import {ts, tsMix} from "./tokens";
 
-export type TsButtonVariant = "primary" | "secondary" | "ghost";
+export type TsButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS = {
     primary: {bg: ts.pri, color: ts.onPri, borderColor: ts.pri},
     secondary: {bg: ts.sec, color: ts.onSec, borderColor: ts.sec},
     ghost: {bg: "transparent", color: ts.fg, borderColor: tsMix(ts.fg, 24)},
+    // Never filled, so it stays distinct from a red brand's primary.
+    danger: {bg: tsMix(ts.danger, 10), color: ts.danger, borderColor: ts.danger},
 } as const;
 
 const base = {
@@ -37,12 +39,12 @@ const base = {
 type ButtonProps = HTMLChakraProps<"button"> & { variant?: TsButtonVariant };
 type LinkProps = HTMLChakraProps<"a"> & { variant?: TsButtonVariant; href: string };
 
-/** Pill button in the kit's colours: primary (main action), secondary (claims, Earn) or ghost. */
+/** Pill button in the kit's colours: primary (main action), secondary (Earn), ghost, or danger (confirming an unstake). */
 export function TsButton({variant = "primary", ...props}: ButtonProps) {
-    return <chakra.button type="button" {...base} {...VARIANTS[variant]} {...props}/>;
+    return <chakra.button type="button" data-variant={variant} {...base} {...VARIANTS[variant]} {...props}/>;
 }
 
 /** A link that looks like a `TsButton` (in-page anchors such as "Stake T"). */
 export function TsLinkButton({variant = "primary", ...props}: LinkProps) {
-    return <chakra.a {...base} {...VARIANTS[variant]} {...props}/>;
+    return <chakra.a data-variant={variant} {...base} {...VARIANTS[variant]} {...props}/>;
 }

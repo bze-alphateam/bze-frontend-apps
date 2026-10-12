@@ -33,7 +33,7 @@ function amountProblem(amount: string, balance: BigNumber, decimals: number): st
 }
 
 function FieldError({id, children}: { id: string; children: React.ReactNode }) {
-    return <chakra.span id={id} role="alert" fontSize="13px" color={ts.pri} px="4px">{children}</chakra.span>;
+    return <chakra.span id={id} role="alert" fontSize="13px" color={ts.danger} px="4px">{children}</chakra.span>;
 }
 
 /**
