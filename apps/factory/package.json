@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e:build": "node e2e/support/build.mjs",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@bze/bze-ui-kit": "workspace:*",
@@ -36,6 +39,7 @@
   "devDependencies": {
     "@bze/vitest-preset": "workspace:*",
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@testing-library/user-event": "catalog:",
