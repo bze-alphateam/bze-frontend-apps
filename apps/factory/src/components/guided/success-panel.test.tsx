@@ -1,0 +1,73 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ReactNode } from "react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+
+const { params, navigateMock, toastSuccess } = vi.hoisted(() => ({
+    params: { current: new URLSearchParams() },
+    navigateMock: vi.fn(),
+    toastSuccess: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({ useSearchParams: () => params.current }));
+vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: navigateMock }) }));
+vi.mock("@bze/bze-ui-kit", () => ({ useToast: () => ({ toast: { success: toastSuccess } }) }));
+
+import { SuccessPanel } from "./success-panel";
+
+const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
+
+beforeEach(() => {
+    params.current = new URLSearchParams();
+    navigateMock.mockReset();
+    toastSuccess.mockReset();
+});
+
+describe("SuccessPanel", () => {
+    it("goes back to the Factory home without a return path", async () => {
+        render(<SuccessPanel title="Done!" />, { wrapper });
+        await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
+        expect(navigateMock).toHaveBeenCalledWith("/");
+    });
+
+    it("goes back to the return path when there is one", async () => {
+        params.current = new URLSearchParams({ return: "/manage/token?denom=x&tab=trading", returnLabel: "TOK" });
+        render(<SuccessPanel title="Done!" />, { wrapper });
+        await userEvent.click(screen.getByRole("button", { name: "Back to TOK" }));
+        expect(navigateMock).toHaveBeenCalledWith("/manage/token?denom=x&tab=trading");
+        expect(screen.queryByRole("button", { name: "Back to the Factory" })).not.toBeInTheDocument();
+    });
+
+    it("opens links in a new tab, navigates next steps, and runs Do another", async () => {
+        const open = vi.spyOn(window, "open").mockReturnValue(null);
+        const again = vi.fn();
+        render(
+            <SuccessPanel
+                title="Done!"
+                links={[{ label: "View transaction", href: "https://explorer/tx/1" }]}
+                next={[{ label: "Create a liquidity pool", href: "/pool/new?base=a&quote=b" }]}
+                again={{ label: "Create another market", onClick: again }}
+            />,
+            { wrapper },
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
+        expect(open).toHaveBeenCalledWith("https://explorer/tx/1", "_blank", "noopener,noreferrer");
+
+        await userEvent.click(screen.getByRole("button", { name: "Create a liquidity pool" }));
+        expect(navigateMock).toHaveBeenCalledWith("/pool/new?base=a&quote=b");
+
+        await userEvent.click(screen.getByRole("button", { name: "Create another market" }));
+        expect(again).toHaveBeenCalledOnce();
+        open.mockRestore();
+    });
+
+    it("copies the code value and confirms with a toast", async () => {
+        const user = userEvent.setup();
+        render(<SuccessPanel title="Done!" code={{ label: "Denom", value: "factory/bze1abc/utok" }} />, { wrapper });
+
+        await user.click(screen.getByRole("button", { name: "Copy Denom" }));
+        expect(await navigator.clipboard.readText()).toBe("factory/bze1abc/utok");
+        expect(toastSuccess).toHaveBeenCalledWith("Copied", "Denom copied to clipboard.");
+    });
+});
