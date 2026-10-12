@@ -26,6 +26,7 @@ let programStakes = new Map<string, { address: string; reward_id: string; amount
 let maxSpendable = new BigNumber(0);
 let feeMessage = "";
 let hasPrice = true;
+let pools: { base: string; quote: string }[] = [];
 
 const ASSETS: Record<string, { ticker: string; decimals: number }> = {
     [T]: {ticker: "PAGE", decimals: 6},
@@ -55,6 +56,8 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useSDKTx: () => ({tx: sdkTx, progressTrack: ""}),
     useMaxSpendable: () => ({amount: maxSpendable, inputValue: maxSpendable.dividedBy(1e6).toFixed(), isLoading: false}),
     useCanAffordTx: () => ({canAfford: feeMessage === "", message: feeMessage, isLoading: false}),
+    useLiquidityPools: () => ({pools, isLoading: false}),
+    useGasFeeEstimate: () => ({displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
     useTokenDenomReward: () => ({item: holdersPool, prizeDenoms: [], isLoading: false, hasError: false, reload: reloadHoldersPool}),
 }));
 
@@ -83,7 +86,7 @@ vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode: "light", setColorMode: vi.fn(), toggleColorMode: vi.fn()}),
 }));
 
-import {TokenWalletProvider, useTokenWallet} from "@/hooks/token-site/useTokenWallet";
+import {TokenWalletProvider, useTokenWallet, type WalletTab} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "../kit";
 import {WalletDrawer} from "./index";
 
@@ -93,14 +96,15 @@ const ASSET: Asset = {
     type: "factory", denom: T, decimals: 6, name: "Page", ticker: "PAGE", logo: "", stable: false, verified: false, supply: 1n,
 };
 
-function OpenButton() {
+function OpenButton({tab}: { tab: WalletTab }) {
     const {open} = useTokenWallet();
-    return <button type="button" onClick={() => open("get")}>Open</button>;
+    return <button type="button" onClick={() => open(tab)}>Open</button>;
 }
 
-async function renderDrawer() {
+/** Opens the drawer on `tab` (Send by default: the Get tab has its own tests). */
+async function renderDrawer(tab: WalletTab = "send") {
     const user = userEvent.setup();
-    render(<><OpenButton/><WalletDrawer asset={ASSET}/></>, {
+    render(<><OpenButton tab={tab}/><WalletDrawer asset={ASSET}/></>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>
                 <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><TokenWalletProvider>{children}</TokenWalletProvider></TokenSiteTheme>
@@ -132,6 +136,7 @@ beforeEach(() => {
     maxSpendable = new BigNumber("12479500000");
     feeMessage = "";
     hasPrice = true;
+    pools = [];
     tx.mockResolvedValue(true);
     sdkTx.mockResolvedValue(true);
 });
@@ -150,6 +155,19 @@ describe("WalletDrawer", () => {
 
             expect(connect).toHaveBeenCalled();
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("says T is not tradable yet when Get is asked for on a token in no pool", async () => {
+            const {drawer} = await renderDrawer("get");
+
+            expect(within(drawer).getByTestId("wallet-connect-prompt")).toHaveTextContent("Not tradable yet");
+        });
+
+        it("asks for a wallet only when T is tradable", async () => {
+            pools = [{base: T, quote: "ubze"}];
+            const {drawer} = await renderDrawer("get");
+
+            expect(within(drawer).queryByText("Not tradable yet")).not.toBeInTheDocument();
         });
     });
 
@@ -292,10 +310,10 @@ describe("WalletDrawer", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("shows the Send tab when the Get tab is asked for (until BFE-129)", async () => {
-        const {drawer} = await renderDrawer();
+    it("opens on the Get tab when Get T is asked for", async () => {
+        const {drawer} = await renderDrawer("get");
 
-        expect(within(drawer).getByRole("tab", {name: "Send"})).toHaveAttribute("aria-selected", "true");
-        expect(within(drawer).getByRole("button", {name: "Send PAGE"})).toBeInTheDocument();
+        expect(within(drawer).getByRole("tab", {name: "Get PAGE"})).toHaveAttribute("aria-selected", "true");
+        expect(within(drawer).getByRole("tabpanel", {name: "Get PAGE"})).toHaveTextContent("Not tradable yet");
     });
 });

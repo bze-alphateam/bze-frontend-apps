@@ -20,6 +20,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
     useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
     useFeeTokens: () => ({isLoading: false, isValidFeeDenom: () => true}),
+    useLiquidityPools: () => ({pools: [], isLoading: true}),
 }));
 
 vi.mock("@interchain-kit/react", () => ({

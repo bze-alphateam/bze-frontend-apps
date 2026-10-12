@@ -6,6 +6,8 @@ import {expect, test} from "./support/mock-network";
 // aggregator tickers carry no testnet pool, so its 24h volume is $0, and the burn history is empty.
 
 const NOAD = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin";
+// Vidulum (VDL) sits in no pool, so it can't be swapped into.
+const VIDULUM = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum";
 const tokenPage = (denom: string) => `/token?denom=${encodeURIComponent(denom)}`;
 
 test("the branded token renders its name, hero and key numbers", async ({page}) => {
@@ -57,6 +59,27 @@ test("the header's wallet button opens the token's wallet drawer with a connect 
 
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
+});
+
+test("Get on a tradable token opens the drawer's Get tab on a connect prompt", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    await page.getByRole("button", {name: "Get NOAD"}).first().click();
+
+    const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
+    await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
+    await expect(drawer.getByText("Not tradable yet")).toHaveCount(0);
+});
+
+test("Get on a token in no pool says it is not tradable yet", async ({page}) => {
+    await page.goto(tokenPage(VIDULUM));
+    await expect(page.getByRole("heading", {level: 1, name: "Vidulum"})).toBeVisible();
+
+    await page.getByRole("button", {name: "Get VDL"}).first().click();
+
+    const drawer = page.getByRole("dialog", {name: "Your Vidulum wallet"});
+    await expect(drawer.getByTestId("get-not-tradable")).toHaveText(/Not tradable yet/);
+    await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
 });
 
 test("the wallet drawer's settings switch the page to the kit's dark palette, no wallet needed", async ({page}) => {
