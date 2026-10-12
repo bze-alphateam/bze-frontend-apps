@@ -37,6 +37,14 @@ describe("BrandedTokenLogo", () => {
         expect(container.querySelector("text")).toHaveStyle({fill: "#FFFFFF"});
     });
 
+    it("sizes the initials with an inline style, so page CSS cannot override it", () => {
+        const {container} = renderLogo();
+        const text = container.querySelector("text")!;
+
+        expect(text.style.fontSize).toBe("68px");
+        expect(text.getAttribute("font-size")).toBeNull();
+    });
+
     it("shows the token's own logo when it has one", () => {
         const {container} = renderLogo({src: "https://example.com/page.svg"});
 

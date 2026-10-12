@@ -61,9 +61,9 @@ export function Hero({asset, hasStake}: { asset: Asset; hasStake: boolean }) {
                 </Flex>
                 <chakra.h1
                     m="0"
-                    fontSize={{base: "56px", md: "clamp(56px, 9vw, 128px)"}}
-                    lineHeight="0.92"
-                    letterSpacing="-0.04em"
+                    fontSize={{base: "40px", md: "56px"}}
+                    lineHeight="1.05"
+                    letterSpacing="-0.03em"
                     fontWeight={800}
                     maxW="900px"
                     overflowWrap="anywhere"
