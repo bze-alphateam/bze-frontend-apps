@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import type {ReactNode} from "react";
 import {render, screen, waitFor} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import {WalletState} from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
@@ -142,6 +143,25 @@ describe("Communities token page", () => {
         expect(screen.queryByText(/directory/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/BZE/)).not.toBeInTheDocument();
         expect(screen.queryByText("Runs on BeeZee")).not.toBeInTheDocument();
+    });
+
+    it("opens the wallet drawer from the hero's and the phone bar's Get buttons", async () => {
+        const user = userEvent.setup();
+        getDenomBranding.mockResolvedValue(KIT);
+        renderPage("factory/bze1owner/uwallet");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        const getButtons = screen.getAllByRole("button", {name: "Get BRAND"});
+        expect(getButtons).toHaveLength(2);
+
+        for (const button of getButtons) {
+            await user.click(button);
+            expect(screen.getByRole("dialog", {name: "Your Brand Token wallet"})).toBeInTheDocument();
+            expect(screen.getByTestId("wallet-connect-prompt")).toBeInTheDocument();
+
+            await user.keyboard("{Escape}");
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        }
     });
 
     it("shows the admin of a token that still has one", async () => {

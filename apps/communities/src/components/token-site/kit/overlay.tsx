@@ -13,7 +13,33 @@ interface OverlayProps {
     onClose: () => void;
     /** Accessible name and visible heading. */
     title: string;
+    /** Shown before the heading (e.g. the token's mark). */
+    icon?: React.ReactNode;
     children: React.ReactNode;
+}
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Keeps Tab and Shift+Tab inside `container` (the layer is modal). */
+function trapTab(event: KeyboardEvent, container: HTMLElement) {
+    const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (focusable.length === 0) {
+        event.preventDefault();
+        container.focus();
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    const outside = !container.contains(active);
+    if (event.shiftKey && (active === first || active === container || outside)) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && (active === last || outside)) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 interface LayerProps extends OverlayProps {
@@ -24,20 +50,26 @@ interface LayerProps extends OverlayProps {
  * The portaled layer behind `TsDrawer` and `TsDialog`. It renders under `document.body`, outside
  * the `TokenSiteTheme` element, so it re-applies the theme variables on its own root.
  */
-function OverlayLayer({open, onClose, title, children, placement}: LayerProps) {
+function OverlayLayer({open, onClose, title, icon, children, placement}: LayerProps) {
     const {vars} = useTokenSiteTheme();
     const panel = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!open) return;
+        const opener = document.activeElement as HTMLElement | null;
         panel.current?.focus();
 
         const onKey = (event: KeyboardEvent) => {
             if (event.key === "Escape") onClose();
+            if (event.key === "Tab" && panel.current) trapTab(event, panel.current);
         };
         document.addEventListener("keydown", onKey);
 
-        return () => document.removeEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            // Back to whatever opened the layer, as long as it is still on the page.
+            if (opener?.isConnected) opener.focus();
+        };
     }, [open, onClose]);
 
     if (!open || typeof document === "undefined") return null;
@@ -76,7 +108,10 @@ function OverlayLayer({open, onClose, title, children, placement}: LayerProps) {
                     })}
             >
                 <Flex align="center" justify="space-between" gap="12px">
-                    <chakra.h2 m="0" fontSize="20px" fontWeight={700}>{title}</chakra.h2>
+                    <Flex align="center" gap="10px" minW="0">
+                        {icon}
+                        <chakra.h2 m="0" fontSize={{base: "17px", md: "20px"}} fontWeight={700}>{title}</chakra.h2>
+                    </Flex>
                     <chakra.button
                         type="button"
                         aria-label="Close"

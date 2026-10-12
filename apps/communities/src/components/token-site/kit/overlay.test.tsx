@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import type {ReactNode} from "react";
+import {type ReactNode, useState} from "react";
 import {render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
@@ -53,6 +53,56 @@ describe("TsDrawer", () => {
         await user.keyboard("{Escape}");
 
         expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it("closes when the backdrop is clicked", async () => {
+        const user = userEvent.setup();
+        const onClose = vi.fn();
+        renderInTheme(<TsDrawer open onClose={onClose} title="Your wallet"><p>balance</p></TsDrawer>);
+
+        const layer = screen.getByRole("dialog").closest<HTMLElement>("[data-testid='token-site-layer']")!;
+        await user.click(layer.firstElementChild as HTMLElement);
+
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps Tab inside the drawer and gives focus back to the opener on close", async () => {
+        const user = userEvent.setup();
+
+        function Harness() {
+            const [open, setOpen] = useState(false);
+            return (
+                <>
+                    <button type="button" onClick={() => setOpen(true)}>Open wallet</button>
+                    <button type="button">Page link</button>
+                    <TsDrawer open={open} onClose={() => setOpen(false)} title="Your wallet" icon={<span data-testid="mark"/>}>
+                        <button type="button">Claim all</button>
+                        <button type="button">Disconnect</button>
+                    </TsDrawer>
+                </>
+            );
+        }
+        renderInTheme(<Harness/>);
+
+        const opener = screen.getByRole("button", {name: "Open wallet"});
+        await user.click(opener);
+        const dialog = screen.getByRole("dialog", {name: "Your wallet"});
+        expect(dialog).toContainElement(screen.getByTestId("mark"));
+        expect(dialog).toHaveFocus();
+
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Close"})).toHaveFocus();
+        await user.tab();
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Disconnect"})).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Close"})).toHaveFocus();
+        await user.tab({shift: true});
+        expect(screen.getByRole("button", {name: "Disconnect"})).toHaveFocus();
+
+        await user.keyboard("{Escape}");
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(opener).toHaveFocus();
     });
 });
 

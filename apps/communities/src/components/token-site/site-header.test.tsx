@@ -25,8 +25,10 @@ vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode: "light", setColorMode: vi.fn(), toggleColorMode}),
 }));
 
+import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "./kit";
 import {SiteHeader} from "./site-header";
+import {WalletDrawer} from "./wallet";
 
 forbidNetwork();
 
@@ -38,10 +40,10 @@ const ASSET: Asset = {
 const SECTIONS = [{id: "stake", label: "Stake"}, {id: "burn", label: "Burn"}];
 
 function renderHeader(asset: Asset = ASSET) {
-    return render(<SiteHeader asset={asset} sections={SECTIONS}/>, {
+    return render(<><SiteHeader asset={asset} sections={SECTIONS}/><WalletDrawer asset={asset}/></>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>
-                <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme>
+                <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><TokenWalletProvider>{children}</TokenWalletProvider></TokenSiteTheme>
             </ChakraProvider>
         ),
     });
@@ -79,13 +81,15 @@ describe("SiteHeader", () => {
         expect([...nav.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["#stake", "#burn"]);
     });
 
-    it("opens the connect modal from the wallet button while disconnected", async () => {
+    it("opens the wallet drawer with a connect prompt while disconnected", async () => {
         const user = userEvent.setup();
         renderHeader();
 
         await user.click(screen.getByRole("button", {name: "Connect wallet"}));
 
-        expect(connect).toHaveBeenCalled();
+        const drawer = screen.getByRole("dialog", {name: "Your Page Token wallet"});
+        expect(drawer).toContainElement(screen.getByTestId("wallet-connect-prompt"));
+        expect(connect).not.toHaveBeenCalled();
     });
 
     it("shows the wallet's balance of the token once connected", () => {

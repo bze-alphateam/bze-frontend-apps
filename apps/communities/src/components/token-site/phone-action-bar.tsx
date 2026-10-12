@@ -33,7 +33,7 @@ export function PhoneActionBar({asset, hasStake}: { asset: Asset; hasStake: bool
             borderStyle="solid"
             borderColor={tsMix(ts.fg, 11)}
         >
-            <TsButton variant="primary" flex="1" minH="48px" onClick={open}>Get {asset.ticker}</TsButton>
+            <TsButton variant="primary" flex="1" minH="48px" onClick={() => open("get")}>Get {asset.ticker}</TsButton>
             {hasStake && <TsLinkButton variant="ghost" flex="1" minH="48px" href="#stake">Stake {asset.ticker}</TsLinkButton>}
         </Flex>
     );
