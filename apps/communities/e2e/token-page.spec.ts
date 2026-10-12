@@ -59,6 +59,28 @@ test("the header's wallet button opens the token's wallet drawer with a connect 
     await expect(drawer).toBeHidden();
 });
 
+test("the wallet drawer's settings switch the page to the kit's dark palette, no wallet needed", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+    const site = page.getByTestId("token-site");
+    await expect(page.getByRole("heading", {level: 1, name: "NoAdminToken"})).toBeVisible();
+    const lightBackground = await site.evaluate((element) => getComputedStyle(element).backgroundColor);
+
+    await page.getByRole("button", {name: "Connect wallet"}).click();
+    const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
+    await drawer.getByRole("button", {name: "Settings"}).click();
+    await expect(drawer.getByTestId("wallet-settings")).toBeVisible();
+
+    const darkMode = drawer.getByRole("switch", {name: "Dark mode"});
+    await darkMode.click();
+    await expect(darkMode).toHaveAttribute("aria-checked", "true");
+    await expect(site).not.toHaveCSS("background-color", lightBackground);
+    // The kit's dark primary, as in the dark-mode test above.
+    await expect(page.getByRole("button", {name: "Get NOAD"}).first()).toHaveCSS("background-color", "rgb(230, 127, 192)");
+
+    await drawer.getByRole("button", {name: "Back to wallet"}).click();
+    await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
+});
+
 test("no element links to other BeeZee apps and no BeeZee chrome shows", async ({page}) => {
     await page.goto(tokenPage(NOAD));
     await expect(page.getByRole("heading", {level: 1, name: "NoAdminToken"})).toBeVisible();

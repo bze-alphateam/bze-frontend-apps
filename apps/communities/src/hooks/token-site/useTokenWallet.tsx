@@ -8,13 +8,21 @@ import {getChainName} from "@bze/bze-ui-kit";
 /** The wallet drawer's action tabs. Get arrives with BFE-129 and Burn with BFE-131. */
 export type WalletTab = "get" | "send" | "burn";
 
+/** What the drawer shows: the wallet itself or the settings panel (BFE-128). */
+export type WalletView = "wallet" | "settings";
+
 interface TokenWalletValue {
     isOpen: boolean;
     /** The tab asked for; the drawer shows the first available one when this one isn't. */
     tab: WalletTab;
+    view: WalletView;
+    /** Opens the drawer on the wallet view, on `tab`. */
     open: (tab?: WalletTab) => void;
+    /** Opens the drawer on the settings panel. */
+    openSettings: () => void;
     close: () => void;
     setTab: (tab: WalletTab) => void;
+    setView: (view: WalletView) => void;
     /**
      * Opens the interchain-kit connect modal. The drawer would cover it, so the drawer closes
      * first and opens again once the wallet is connected.
@@ -29,10 +37,16 @@ export function TokenWalletProvider({children}: { children: React.ReactNode }) {
     const {status, connect: openConnectModal} = useChain(getChainName());
     const [isOpen, setIsOpen] = useState(false);
     const [tab, setTab] = useState<WalletTab>("get");
+    const [view, setView] = useState<WalletView>("wallet");
     const [reopenOnConnect, setReopenOnConnect] = useState(false);
 
     const open = useCallback((next: WalletTab = "get") => {
         setTab(next);
+        setView("wallet");
+        setIsOpen(true);
+    }, []);
+    const openSettings = useCallback(() => {
+        setView("settings");
         setIsOpen(true);
     }, []);
     const close = useCallback(() => setIsOpen(false), []);
@@ -48,13 +62,14 @@ export function TokenWalletProvider({children}: { children: React.ReactNode }) {
         setSeenStatus(status);
         if (reopenOnConnect && status === WalletState.Connected) {
             setReopenOnConnect(false);
+            setView("wallet");
             setIsOpen(true);
         }
     }
 
     const value = useMemo(
-        () => ({isOpen, tab, open, close, setTab, connect}),
-        [isOpen, tab, open, close, connect],
+        () => ({isOpen, tab, view, open, openSettings, close, setTab, setView, connect}),
+        [isOpen, tab, view, open, openSettings, close, connect],
     );
 
     return <TokenWalletContext.Provider value={value}>{children}</TokenWalletContext.Provider>;

@@ -72,6 +72,7 @@ const linkStyle = {
  */
 export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSection[] }) {
     const [menuOpen, setMenuOpen] = useState(false);
+    const {openSettings} = useTokenWallet();
 
     return (
         <Box as="header" {...tsContainer} py={{base: "14px", md: "20px"}}>
@@ -124,7 +125,18 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
                             {section.label}
                         </chakra.a>
                     ))}
-                    <Box pt="8px"><ModeButton/></Box>
+                    <Flex pt="8px" gap="10px" align="center">
+                        <ModeButton/>
+                        <TsButton
+                            variant="ghost"
+                            onClick={() => {
+                                setMenuOpen(false);
+                                openSettings();
+                            }}
+                        >
+                            Settings
+                        </TsButton>
+                    </Flex>
                 </Flex>
             )}
         </Box>
