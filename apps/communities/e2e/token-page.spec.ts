@@ -234,3 +234,47 @@ test("Burn NOAD opens the burn dialog, which asks for a wallet first", async ({p
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 });
+
+// One running NOAD program paying NOAD and one finished one paying VDL, next to the recorded VDL
+// program (finished too).
+const stakingRewards = (): Fixture => {
+    const fixture = recorded("rewards.all_staking_rewards.json");
+    const body = fixture.body as { list: object[] };
+    const program = {staking_denom: NOAD, lock: 3, min_stake: "5000000", distributed_stake: "0"};
+
+    return {
+        ...fixture,
+        body: {
+            ...body,
+            list: [
+                ...body.list,
+                {...program, reward_id: "000000000001", prize_denom: NOAD, prize_amount: "10000000", duration: 30, payouts: 7, staked_amount: "1000000000"},
+                {...program, reward_id: "000000000002", prize_denom: VIDULUM, prize_amount: "4000000", duration: 10, payouts: 10, staked_amount: "200000000"},
+            ],
+        },
+    };
+};
+
+test("fixed-term programs show only the running ones to a visitor", async ({page, network}) => {
+    network.use("lcd", stakingRewards());
+
+    await page.goto(tokenPage(NOAD));
+
+    const programs = page.getByTestId("fixed-term-programs");
+    await expect(programs.getByRole("heading", {name: "Fixed-term programs"})).toBeVisible();
+    await expect(programs.getByTestId(/^program-\d+$/)).toHaveCount(1);
+    const running = programs.getByTestId("program-000000000001");
+    await expect(running).toContainText("Pays inNOAD");
+    // 10 NOAD a day over 1,000 NOAD staked.
+    await expect(running.getByTestId("program-apr")).toHaveText("365%APR");
+    await expect(running.getByTestId("program-terms"))
+        .toHaveText("Paid daily10 NOADEnds in23 daysUnlock time3 daysTotal staked1,000 NOADMinimum5 NOAD");
+    await expect(running.getByRole("button")).toHaveCount(0);
+});
+
+test("a token whose only program has finished shows no fixed-term programs", async ({page}) => {
+    await page.goto(tokenPage(VIDULUM));
+
+    await expect(page.getByTestId("holders-pool-empty")).toBeVisible();
+    await expect(page.getByTestId("fixed-term-programs")).toHaveCount(0);
+});

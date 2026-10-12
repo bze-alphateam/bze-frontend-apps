@@ -288,9 +288,8 @@ export function HoldersPool({asset}: { asset: Asset }) {
             {action && (
                 <StakeDialog
                     asset={asset}
-                    target={{kind: "dr", stakingDenom: asset.denom}}
+                    target={{kind: "dr", stakingDenom: asset.denom, item}}
                     action={action}
-                    item={item}
                     onClose={() => setAction(undefined)}
                     onDone={() => void reload()}
                 />

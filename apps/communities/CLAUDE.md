@@ -18,9 +18,9 @@ src/
     directory/      # Token directory (home): search, filters, sort, pages, brand-coloured cards
     token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars),
                     # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; swaps via hooks/token-site/useTokenSwap) and its settings view (state in hooks/token-site/useTokenWallet)
-                    # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool) + StakeDialog
+                    # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
                     # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab
-    ui/             # BeeZee navbar (directory only), color mode, Chakra provider, pre-redesign token sections
+    ui/             # BeeZee navbar (directory only), color mode, Chakra provider
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType
   hooks/

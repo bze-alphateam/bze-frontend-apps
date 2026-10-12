@@ -4,13 +4,14 @@ import React from "react";
 import type {Asset} from "@bze/bze-ui-kit";
 
 import {TsSection} from "../kit";
+import {FixedTermPrograms} from "./fixed-term-programs";
 import {HoldersPool} from "./holders-pool";
 
 /**
- * "Stake your T" (Business Logic R5), always on the page: the holders pool first, then whatever
- * else stakes T (`children`, the pre-redesign programs until BFE-132 replaces them).
+ * "Stake your T" (Business Logic R5, R6), always on the page: the holders pool first, then the
+ * fixed-term programs staking T when there are any.
  */
-export function StakeSection({asset, children}: { asset: Asset; children?: React.ReactNode }) {
+export function StakeSection({asset}: { asset: Asset }) {
     return (
         <TsSection
             id="stake"
@@ -19,7 +20,7 @@ export function StakeSection({asset, children}: { asset: Asset; children?: React
             description="Stake in the holders pool to share every reward it pays out each day."
         >
             <HoldersPool asset={asset}/>
-            {children}
+            <FixedTermPrograms asset={asset}/>
         </TsSection>
     );
 }

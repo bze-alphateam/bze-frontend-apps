@@ -42,7 +42,7 @@ vi.mock("@/components/ui/color-mode", () => ({
 // Sections with data of their own, covered by their own tests.
 vi.mock("@/components/token-site/key-numbers", () => ({KeyNumbers: () => <div data-testid="key-numbers"/>}));
 vi.mock("@/components/token-site/stake/holders-pool", () => ({HoldersPool: () => <div data-testid="holders-pool"/>}));
-vi.mock("@/components/ui/tokens/token-staking-rewards", () => ({TokenStakingRewards: () => <div data-testid="legacy-stake"/>}));
+vi.mock("@/components/token-site/stake/fixed-term-programs", () => ({FixedTermPrograms: () => <div data-testid="fixed-term-programs"/>}));
 vi.mock("@/components/token-site/burn/burn-section", () => ({BurnSection: () => <div data-testid="burn-section"/>}));
 
 import TokenPage from "./page";
@@ -137,7 +137,7 @@ describe("Communities token page", () => {
         }
         expect(screen.getByTestId("key-numbers")).toBeInTheDocument();
         expect(screen.getByTestId("holders-pool")).toBeInTheDocument();
-        expect(screen.getByTestId("legacy-stake")).toBeInTheDocument();
+        expect(screen.getByTestId("fixed-term-programs")).toBeInTheDocument();
         expect(screen.getByTestId("burn-section")).toBeInTheDocument();
         expect(screen.getByText("factory/bze1owner/ufull")).toBeInTheDocument();
         await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent("Admin renounced"));
