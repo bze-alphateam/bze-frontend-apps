@@ -60,10 +60,9 @@ export function BrandedTokenLogo({src, ticker, size, fill, ink}: BrandedTokenLog
                 y="100"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize="62"
-                fontWeight="800"
-                fontFamily="inherit"
-                style={{fill: ink}}
+                // Inline style, not presentation attributes: any page CSS setting font-size
+                // (e.g. a global reset) beats an attribute and shrinks the initials to nothing.
+                style={{fill: ink, fontSize: "68px", fontWeight: 800, fontFamily: "inherit", letterSpacing: "-0.02em"}}
             >
                 {initials(ticker)}
             </text>
