@@ -465,14 +465,21 @@ test("the Trade section lists the token's pools, and adding liquidity asks for a
     await expect(row.getByRole("button", {name: "Close adding to NOAD / TUSDC"})).toHaveAttribute("aria-expanded", "true");
 });
 
-test("a token in several pools lists them all, the most liquidity first", async ({page}) => {
+test("a token in several pools lists them all, the most liquidity first", async ({page, network}) => {
+    // The chart opens on the largest pool; the aggregator has no candles for it.
+    network.use("agg", {
+        path: "/api/dex/intervals",
+        query: {market_id: `${TESTUSD}_ubze`, minutes: "240", limit: "180", format: "tv"},
+        status: 200,
+        body: [],
+    });
     await page.goto(tokenPage(TESTUSD));
 
-    // TUSDC/BZE holds 383,015 TUSDC; NOAD/TUSDC only 1. TUSDC comes first in both pairs.
+    // TUSDC/TBZE (testnet BZE) holds 383,015 TUSDC; NOAD/TUSDC only 1. TUSDC comes first in both pairs.
     const rows = page.getByTestId("liquidity-pools").getByTestId(/^liquidity-pool-/);
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toHaveAttribute("data-testid", `liquidity-pool-${TESTUSD}_ubze`);
-    await expect(rows.nth(0).getByRole("cell").first()).toHaveText("TUSDC / BZE");
+    await expect(rows.nth(0).getByRole("cell").first()).toHaveText("TUSDC / TBZE");
     await expect(rows.nth(1).getByRole("cell").first()).toHaveText("TUSDC / NOAD");
 });
 
