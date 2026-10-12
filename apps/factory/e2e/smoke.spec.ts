@@ -9,10 +9,10 @@ test("the hub shows the creation cards with their live fee", async ({page}) => {
     await expect(page.getByText("What do you want to create?")).toBeVisible();
 
     // The card's title, description and fee line share one stack. The fee comes from
-    // fixtures/lcd/tokenfactory.params.json (create_denom_fee, 25,000 BZE on testnet).
+    // fixtures/lcd/tokenfactory.params.json (create_denom_fee: 25,000 TBZE, testnet's native ticker).
     const tokenCard = page.getByText("Create Token", {exact: true}).locator("..");
     await expect(tokenCard).toBeVisible();
-    await expect(tokenCard.getByText(/^Creation fee: \S+ BZE$/)).toBeVisible();
+    await expect(tokenCard.getByText("Creation fee: 25,000 TBZE", {exact: true})).toBeVisible();
 });
 
 test("/manage without a wallet shows the empty state", async ({page}) => {

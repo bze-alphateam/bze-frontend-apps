@@ -21,7 +21,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 ## Testnet data the specs rely on
 
 - Supply holds four factory tokens, all created by `bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l`: `noadmin` (NoAdminToken), `testusd` (USDollar, the app's USDC), `uxfct` (XFactor) and `vidulum` (Vidulum). It also holds `ubze`, one IBC token and three LP shares.
-- Every creation fee (tokenfactory, tradebin and rewards params) is 25,000 BZE.
+- Every creation fee (tokenfactory, tradebin and rewards params) is 25,000 TBZE (testnet's native ticker).
 - `noadmin` is the only token with a denom reward, so `/denom-reward` lists one row. It has two prize tokens, `noadmin` and `vidulum`.
 - The one staking reward (SR) stakes `vidulum` and is finished (15 of 15 payouts).
 - Pools: `noadmin`/`testusd`, `testusd`/`ubze` and the IBC token/`ubze`.
