@@ -53,3 +53,4 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |
 | `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms), so every testnet pool has a 24h volume of $0 |
 | `agg/prices.json` | `/api/prices` | BZE/USD price |
+| `agg/dex.intervals.noadmin_testusd.240.json` | `/api/dex/intervals` for the NOAD/TUSDC pool, 240-minute candles, limit 180 (the Trade chart's default 30D) | recorded 2026-10-12; the aggregator indexes mainnet, so it answers **400** for this testnet pool and the chart shows no trades; specs that need candles answer with `network.use` |

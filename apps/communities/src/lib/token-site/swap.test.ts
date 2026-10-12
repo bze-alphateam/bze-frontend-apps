@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import BigNumber from "bignumber.js";
 
-import {denomsWithRoute, formatPriceImpact, isTradable, minimumOutput, payableTokens} from "./swap";
+import {denomsWithRoute, formatPriceImpact, isTradable, minimumOutput, payableTokens, receivableTokens} from "./swap";
 
 const T = "factory/bze1owner/upage";
 // T/BZE, BZE/USDC, USDC/ATOM, ATOM/OSMO: OSMO is 4 hops away from T.
@@ -57,5 +57,29 @@ describe("payableTokens", () => {
         ], T, POOLS);
 
         expect(tokens.map((token) => token.denom)).toEqual(["uusdc", "ubze"]);
+    });
+});
+
+describe("receivableTokens", () => {
+    const TICKERS: Record<string, string> = {ubze: "BZE", uusdc: "USDC", uatom: "ATOM"};
+    const assetOf = (denom: string) => (TICKERS[denom] ? {denom, ticker: TICKERS[denom]} : undefined);
+
+    it("lists the tokens reachable from T, the preferred one first, then by ticker", () => {
+        expect(receivableTokens(T, POOLS, assetOf, "ubze").map((asset) => asset.ticker)).toEqual(["BZE", "ATOM", "USDC"]);
+    });
+
+    it("leaves out denoms without a known asset and those too many hops away", () => {
+        const pools = [...POOLS, {base: T, quote: "uunknown"}];
+
+        expect(receivableTokens(T, pools, assetOf, "ubze").map((asset) => asset.denom)).not.toContain("uunknown");
+        expect(receivableTokens(T, pools, (denom) => ({denom, ticker: denom}), "ubze").map((asset) => asset.denom)).not.toContain("uosmo");
+    });
+
+    it("sorts by ticker alone when the preferred token can't be reached", () => {
+        expect(receivableTokens(T, POOLS, assetOf, "uother").map((asset) => asset.ticker)).toEqual(["ATOM", "BZE", "USDC"]);
+    });
+
+    it("is empty when T sits in no pool", () => {
+        expect(receivableTokens(T, [{base: "ujuno", quote: "ustars"}], assetOf, "ubze")).toEqual([]);
     });
 });

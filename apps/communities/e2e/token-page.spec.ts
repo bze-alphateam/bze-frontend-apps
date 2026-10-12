@@ -278,3 +278,53 @@ test("a token whose only program has finished shows no fixed-term programs", asy
     await expect(page.getByTestId("holders-pool-empty")).toBeVisible();
     await expect(page.getByTestId("fixed-term-programs")).toHaveCount(0);
 });
+
+// NOAD's one pool is NOAD/TUSDC with NOAD as the base, so the aggregator's closes are TUSDC per NOAD.
+const NOAD_POOL = `${NOAD}_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd`;
+const candles = (minutes: number, limit: number, closes: number[]): Fixture => ({
+    path: "/api/dex/intervals",
+    query: {market_id: NOAD_POOL, minutes: String(minutes), limit: String(limit), format: "tv"},
+    status: 200,
+    body: closes.map((close, index) => ({time: 1791806400 + index * minutes * 60, low: close, open: close, high: close, close, value: 1})),
+});
+
+test("a token in a pool gets a Trade section, its chart empty while the aggregator has no candles", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    await expect(page.locator('header a[href="#trade"]')).toHaveText("Trade");
+    const trade = page.locator("section#trade");
+    await expect(trade.getByRole("heading", {level: 2, name: "Buy and sell NOAD"})).toBeVisible();
+    // The recorded aggregator (mainnet) doesn't know this testnet pool.
+    await expect(trade.getByTestId("pool-chart-empty")).toHaveText("No trades in this range yet");
+    await expect(trade.getByTestId("trade-connect-prompt")).toBeVisible();
+});
+
+test("the chart draws the pool's candles and refetches on a range change", async ({page, network}) => {
+    network.use("agg", candles(240, 180, [0.1, 0.12, 0.11]));
+    network.use("agg", candles(60, 168, [0.2, 0.25]));
+
+    await page.goto(tokenPage(NOAD));
+
+    const chart = page.getByTestId("pool-chart");
+    await expect(chart.getByRole("img", {name: "NOAD price in TUSDC, last 30D"})).toBeVisible();
+    await expect(chart.getByTestId("pool-chart-line")).toHaveAttribute("points", /^\S+ \S+ \S+$/);
+    await expect(chart.getByTestId("pool-chart-price")).toHaveText("0.11 TUSDC");
+
+    const sevenDays = page.waitForRequest((request) => {
+        const url = new URL(request.url());
+        return url.pathname === "/api/dex/intervals" && url.searchParams.get("minutes") === "60" && url.searchParams.get("limit") === "168";
+    });
+    await chart.getByRole("button", {name: "7D"}).click();
+    await sevenDays;
+
+    await expect(chart.getByRole("img", {name: "NOAD price in TUSDC, last 7D"})).toBeVisible();
+    await expect(chart.getByTestId("pool-chart-price")).toHaveText("0.25 TUSDC");
+});
+
+test("a token in no pool has no Trade section", async ({page}) => {
+    await page.goto(tokenPage(VIDULUM));
+
+    await expect(page.getByRole("heading", {level: 1, name: "Vidulum"})).toBeVisible();
+    await expect(page.locator("section#trade")).toHaveCount(0);
+    await expect(page.locator('header a[href="#trade"]')).toHaveCount(0);
+});

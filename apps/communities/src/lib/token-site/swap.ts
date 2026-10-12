@@ -83,3 +83,19 @@ export function payableTokens<H extends HeldToken>(held: H[], target: string, po
         .filter((token) => token.denom !== target && token.amount.gt(0) && routable.has(token.denom))
         .sort((a, b) => b.USDValue.comparedTo(a.USDValue) ?? 0);
 }
+
+/**
+ * The tokens T can be sold into: every denom with a route of at most 3 hops from T that has a
+ * known asset, `preferred` (BZE) first as the default, then by ticker.
+ */
+export function receivableTokens<A extends { denom: string; ticker: string }>(
+    target: string,
+    pools: PoolPair[],
+    assetOf: (denom: string) => A | undefined,
+    preferred: string,
+): A[] {
+    return [...denomsWithRoute(target, pools)]
+        .map(assetOf)
+        .filter((asset): asset is A => asset !== undefined)
+        .sort((a, b) => Number(b.denom === preferred) - Number(a.denom === preferred) || a.ticker.localeCompare(b.ticker));
+}
