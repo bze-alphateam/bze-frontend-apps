@@ -3,18 +3,18 @@ import {AuthInfo, Fee, SignerInfo, Tx, TxBody} from "@bze/bzejs/cosmos/tx/v1beta
 /**
  * The fee a gas simulation must carry so the chain runs the same code path as the real tx.
  *
- * With an empty fee the txfeecollector ante handler never records the fee denom in the context,
- * so every module fee (create market/pool/reward, ...) is captured in the native denom. A tx that
- * pays in another token captures that module fee in the token and swaps it through its pool,
- * which costs far more gas (BZE testnet: create denom reward simulated ~77k, executed ~175k).
- * One unit of the fee token is enough to select that path; the simulated amount does not matter.
+ * The fee is never empty: the ante handler only deducts a fee that is present, so a simulation
+ * without one skips the transfer to the fee collector and under-counts every tx by ~20k gas
+ * (BZE testnet: set denom branding simulated 41.6k with an empty fee, 62k with 1ubze, executed
+ * 60.5k — out of gas at the 60k a 1.5 multiplier gave it).
+ *
+ * In another token the fee also makes the txfeecollector record the fee denom, so module fees
+ * (create market/pool/reward, ...) are captured in the token and swapped through its pool,
+ * which costs far more gas than the native capture (create denom reward simulated ~77k,
+ * executed ~175k). One unit of the fee denom is enough either way; the amount does not matter.
  */
 export function simulationFeeCoins(feeDenom: string, nativeDenom: string): { denom: string; amount: string }[] {
-    if (!feeDenom || feeDenom === nativeDenom) {
-        return [];
-    }
-
-    return [{denom: feeDenom, amount: "1"}];
+    return [{denom: feeDenom || nativeDenom, amount: "1"}];
 }
 
 /** The unsigned tx bytes sent to `cosmos.tx.v1beta1.Service/Simulate`. */
