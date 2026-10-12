@@ -11,8 +11,9 @@ import {
     uAmountToBigNumberAmount,
 } from "@bze/bze-ui-kit";
 
+import {BrandedTokenLogo} from "@/components/branded-token-logo";
 import {useColorMode} from "@/components/ui/color-mode";
-import {cardBrandColor} from "@/lib/brand-kit";
+import {cardBrandColor, contrastText} from "@/lib/brand-kit";
 import {tokenPagePath} from "@/lib/token-directory";
 
 export interface DirectoryCardProps {
@@ -41,7 +42,8 @@ function Stat({label, value, color}: { label: string; value: string; color?: str
 
 /**
  * A token in the directory, coloured with its brand kit (the kit's primary for the current colour
- * mode). The whole card links to the token page in a new tab (Business Logic §3).
+ * mode): strip, logo ring and, for a token without a logo, the coin placeholder. Without a kit the
+ * card stays neutral and shows ui-kit's default logo. The whole card links to the token page in a new tab (Business Logic §3).
  */
 export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPrograms, tradable}: DirectoryCardProps) {
     const {colorMode} = useColorMode();
@@ -90,7 +92,11 @@ export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPro
                             flexShrink={0}
                             data-testid="directory-card-logo"
                         >
-                            <TokenLogo src={asset.logo} symbol={asset.ticker} size="36px" circular={true}/>
+                            {brand ? (
+                                <BrandedTokenLogo src={asset.logo} ticker={asset.ticker} size={36} fill={brand} ink={contrastText(brand)}/>
+                            ) : (
+                                <TokenLogo src={asset.logo} symbol={asset.ticker} size="36px" circular={true}/>
+                            )}
                         </Box>
                         <Box minW={0}>
                             <HStack gap="1.5" minW={0}>

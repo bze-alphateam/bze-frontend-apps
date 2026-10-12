@@ -65,6 +65,20 @@ describe("DirectoryCard", () => {
         expect(screen.getByTestId("directory-card-logo").getAttribute("style")).toBeNull();
     });
 
+    it("draws a token without a logo as the coin placeholder in the kit's primary", () => {
+        renderCard();
+        const placeholder = screen.getByTestId("token-initials");
+
+        expect(placeholder).toHaveTextContent("PA");
+        expect(placeholder.querySelector("circle")).toHaveStyle({fill: "#BE1981"});
+        expect(placeholder.querySelector("text")).toHaveStyle({fill: "#FFFFFF"});
+    });
+
+    it("keeps ui-kit's default logo for a token without a logo or a kit", () => {
+        renderCard({kit: undefined});
+        expect(screen.queryByTestId("token-initials")).not.toBeInTheDocument();
+    });
+
     it("shows name, verified mark, ticker, price, change and supply, and links to the token page", () => {
         renderCard();
         const card = screen.getByRole("link");
