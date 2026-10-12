@@ -1,6 +1,6 @@
 import {expect, test} from "./support/mock-network";
 
-// Smoke spec for the current (pre-redesign) app, against the testnet fixtures in e2e/fixtures/.
+// Smoke spec for the directory and the token page, against the testnet fixtures in e2e/fixtures/.
 // The four factory tokens below come from fixtures/lcd/bank.supply.json and their names from
 // fixtures/lcd/bank.denoms_metadata.json.
 

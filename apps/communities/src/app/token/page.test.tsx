@@ -1,35 +1,50 @@
-import {describe, it, expect, vi, beforeEach} from "vitest";
+import {beforeEach, describe, expect, it, vi} from "vitest";
 import type {ReactNode} from "react";
 import {render, screen, waitFor} from "@testing-library/react";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
+import {WalletState} from "@interchain-kit/core";
+import BigNumber from "bignumber.js";
 import type {Asset, DenomBranding} from "@bze/bze-ui-kit";
+import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
-import {TokenBrandingProvider, useTokenBranding} from "@/contexts/token_branding_context";
-
+// The page's data comes from ui-kit hooks and queries; each is mocked.
 const useAsset = vi.fn();
 const getDenomBranding = vi.fn();
+const getFactoryDenomAdmin = vi.fn();
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useAsset: (denom: string) => useAsset(denom),
     getDenomBranding: (denom: string) => getDenomBranding(denom),
-    useToast: () => ({toast: {success: vi.fn(), error: vi.fn()}}),
+    getFactoryDenomAdmin: (denom: string) => getFactoryDenomAdmin(denom),
+    useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
+    useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
+    useFeeTokens: () => ({isLoading: false, isValidFeeDenom: () => true}),
+}));
+
+vi.mock("@interchain-kit/react", () => ({
+    useChain: () => ({status: WalletState.Disconnected, connect: vi.fn()}),
 }));
 
 const useDenomParam = vi.fn();
+const navigate = vi.fn();
 vi.mock("@/hooks/useNavigation", () => ({
     useDenomParam: () => useDenomParam(),
-    useNavigation: () => ({navigate: vi.fn()}),
+    useNavigation: () => ({navigate}),
 }));
 
+let colorMode: "light" | "dark" = "light";
 vi.mock("@/components/ui/color-mode", () => ({
-    useColorMode: () => ({colorMode: "dark"}),
+    useColorMode: () => ({colorMode, setColorMode: vi.fn(), toggleColorMode: vi.fn()}),
 }));
 
-// The reward and burn sections fetch chain data of their own; they're not under test here.
-vi.mock("@/components/ui/tokens/token-staking-rewards", () => ({TokenStakingRewards: () => null}));
-vi.mock("@/components/ui/tokens/token-burn-stats", () => ({TokenBurnStats: () => null}));
+// Sections with data of their own, covered by their own tests.
+vi.mock("@/components/token-site/key-numbers", () => ({KeyNumbers: () => <div data-testid="key-numbers"/>}));
+vi.mock("@/components/ui/tokens/token-staking-rewards", () => ({TokenStakingRewards: () => <div data-testid="legacy-stake"/>}));
+vi.mock("@/components/ui/tokens/token-burn-stats", () => ({TokenBurnStats: () => <div data-testid="legacy-burn"/>}));
 
 import TokenPage from "./page";
+
+forbidNetwork();
 
 const KIT: DenomBranding = {
     font: "roboto",
@@ -37,74 +52,126 @@ const KIT: DenomBranding = {
     dark: {background: "#0A0A0A", text: "#FAFAFA", primary: "#ABCDEF", secondary: "#FEDCBA"},
 };
 
-function makeAsset(denom: string): Asset {
+function makeAsset(denom: string, extra: Partial<Asset> = {}): Asset {
     return {
-        type: "factory",
-        denom,
-        decimals: 6,
-        name: "Brand Token",
-        ticker: "BRAND",
-        logo: "",
-        stable: false,
-        verified: false,
-        supply: 1_000_000n,
+        type: "factory", denom, decimals: 6, name: "Brand Token", ticker: "BRAND", logo: "", stable: false,
+        verified: true, supply: 1_000_000n, description: "The brand's own token.", ...extra,
     };
 }
 
-// Shows what the navbar would read from the branding context.
-const BrandProbe = () => {
-    const {brand} = useTokenBranding();
-    return <span data-testid="probe">{brand ? `${brand.name}:${brand.kit === undefined ? "loading" : brand.kit?.font ?? "none"}` : "none"}</span>;
-};
-
-function renderPage(denom: string) {
+function renderPage(denom: string, asset: Asset | null = makeAsset(denom)) {
     useDenomParam.mockReturnValue(denom);
-    useAsset.mockReturnValue({asset: makeAsset(denom), isLoading: false});
+    useAsset.mockReturnValue({asset: asset ?? undefined, isLoading: false});
 
-    return render(<><TokenPage/><BrandProbe/></>, {
-        wrapper: ({children}: { children: ReactNode }) => (
-            <ChakraProvider value={defaultSystem}>
-                <TokenBrandingProvider>{children}</TokenBrandingProvider>
-            </ChakraProvider>
-        ),
+    return render(<TokenPage/>, {
+        wrapper: ({children}: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>,
     });
 }
 
+const site = () => screen.getByTestId("token-site");
+const siteVar = (name: string) => site().style.getPropertyValue(name);
+
 beforeEach(() => {
+    colorMode = "light";
     useAsset.mockReset();
     getDenomBranding.mockReset();
+    getFactoryDenomAdmin.mockReset().mockResolvedValue("");
     useDenomParam.mockReset();
 });
 
-// The page caches kits per denom for a few minutes, so every test uses its own denom.
-describe("Communities token page brand kit", () => {
-    it("applies the token's kit in the active colour mode and hands it to the chrome", async () => {
+// Kits are cached per denom for a few minutes, so every test uses its own denom.
+describe("Communities token page", () => {
+    it("draws the site in the token's kit for the light colour mode", async () => {
         getDenomBranding.mockResolvedValue(KIT);
-        renderPage("factory/bze1owner/ukit");
+        renderPage("factory/bze1owner/ulight");
 
-        const scope = await screen.findByTestId("brand-scope");
-        expect(scope.style.getPropertyValue("--brand-bg")).toBe("#0A0A0A");
-        expect(scope.style.getPropertyValue("--brand-primary")).toBe("#ABCDEF");
-        expect(screen.getByText("Brand Token", {selector: "p"})).toBeInTheDocument();
-        await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("Brand Token:roboto"));
-        expect(getDenomBranding).toHaveBeenCalledWith("factory/bze1owner/ukit");
+        expect(await screen.findByRole("heading", {level: 1, name: "Brand Token"})).toBeInTheDocument();
+        expect(siteVar("--ts-bg")).toBe("#FFFFFF");
+        expect(siteVar("--ts-pri")).toBe("#123456");
+        expect(siteVar("--ts-font")).toBe("'Roboto', system-ui, sans-serif");
     });
 
-    it("keeps the default theme for a token without a kit", async () => {
+    it("uses the kit's dark palette in dark mode", async () => {
+        colorMode = "dark";
+        getDenomBranding.mockResolvedValue(KIT);
+        renderPage("factory/bze1owner/udark");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(siteVar("--ts-bg")).toBe("#0A0A0A");
+        expect(siteVar("--ts-pri")).toBe("#ABCDEF");
+    });
+
+    it("draws a token without a kit in the default kit", async () => {
         getDenomBranding.mockResolvedValue(null);
         renderPage("factory/bze1owner/unokit");
 
-        await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("Brand Token:none"));
-        expect(screen.queryByTestId("brand-scope")).not.toBeInTheDocument();
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(siteVar("--ts-pri")).toBe("#D97706");
     });
 
-    it("fails open to the default theme when the query fails", async () => {
+    it("still renders, in the default kit, when the branding query fails", async () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         getDenomBranding.mockRejectedValue(new Error("501 Not Implemented"));
         renderPage("factory/bze1owner/uold");
 
-        await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("Brand Token:none"));
-        expect(screen.queryByTestId("brand-scope")).not.toBeInTheDocument();
-        expect(screen.getByText("Brand Token", {selector: "p"})).toBeInTheDocument();
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(siteVar("--ts-pri")).toBe("#D97706");
+    });
+
+    it("shows the hero, key numbers, sections, details and footer with no BeeZee chrome", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        renderPage("factory/bze1owner/ufull");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(screen.getByText("The brand's own token.")).toBeInTheDocument();
+        expect(screen.getByText("Verified")).toBeInTheDocument();
+        expect(screen.getByText("$0.0412")).toBeInTheDocument();
+        expect(screen.getByTestId("token-site-change")).toHaveTextContent("−1.50% today");
+        expect(screen.getAllByRole("button", {name: "Get BRAND"}).length).toBeGreaterThan(0);
+        // Hero and phone bar both scroll to the Stake section.
+        for (const link of screen.getAllByRole("link", {name: "Stake BRAND"})) {
+            expect(link).toHaveAttribute("href", "#stake");
+        }
+        expect(screen.getByTestId("key-numbers")).toBeInTheDocument();
+        expect(screen.getByTestId("legacy-stake")).toBeInTheDocument();
+        expect(screen.getByTestId("legacy-burn")).toBeInTheDocument();
+        expect(screen.getByText("factory/bze1owner/ufull")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent("Admin renounced"));
+
+        expect(screen.queryByAltText("BZE application logo")).not.toBeInTheDocument();
+        expect(screen.queryByText(/directory/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/BZE/)).not.toBeInTheDocument();
+        expect(screen.queryByText("Runs on BeeZee")).not.toBeInTheDocument();
+    });
+
+    it("shows the admin of a token that still has one", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        getFactoryDenomAdmin.mockResolvedValue("bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l");
+        renderPage("factory/bze1owner/uadmin");
+
+        await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent(/^Admin bze1z3/));
+    });
+
+    it("shows not found for a denom that isn't a factory token", () => {
+        renderPage("ubze", makeAsset("ubze", {type: "native"}));
+
+        expect(screen.getByRole("heading", {name: "Token not found"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Browse all tokens"})).toBeInTheDocument();
+        expect(getDenomBranding).not.toHaveBeenCalled();
+    });
+
+    it("shows not found for an unknown denom", () => {
+        renderPage("factory/bze1owner/umissing", null);
+
+        expect(screen.getByRole("heading", {name: "Token not found"})).toBeInTheDocument();
+    });
+
+    it("shows the loading state while the assets load", () => {
+        useDenomParam.mockReturnValue("factory/bze1owner/uslow");
+        useAsset.mockReturnValue({asset: undefined, isLoading: true});
+        render(<ChakraProvider value={defaultSystem}><TokenPage/></ChakraProvider>);
+
+        expect(screen.getByTestId("token-site-loading")).toBeInTheDocument();
+        expect(screen.queryByText("Token not found")).not.toBeInTheDocument();
     });
 });

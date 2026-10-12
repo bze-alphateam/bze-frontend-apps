@@ -46,6 +46,11 @@ vi.mock("@/hooks/useDirectoryData", () => ({
     useDirectoryData: () => useDirectoryData(),
 }));
 
+// The shared BeeZee top bar (wallet + settings sidebars) is ui-kit chrome, unchanged by the directory.
+vi.mock("@/components/ui/navigation/navbar", () => ({
+    TopNavBar: () => <nav aria-label="BeeZee top bar"/>,
+}));
+
 vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode: "light", setColorMode: vi.fn(), toggleColorMode: vi.fn()}),
 }));
@@ -106,6 +111,13 @@ beforeEach(() => {
 });
 
 describe("Communities token directory page", () => {
+    it("is a BeeZee app page with the shared top bar", () => {
+        useCommunitiesContext.mockReturnValue(context(factoryAssets(1)));
+        renderHome();
+
+        expect(screen.getByRole("navigation", {name: "BeeZee top bar"})).toBeInTheDocument();
+    });
+
     it("shows the heading and a skeleton while loading, without empty or list content", () => {
         useCommunitiesContext.mockReturnValue(context(new Map(), {isLoading: true}));
         renderHome();

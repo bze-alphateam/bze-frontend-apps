@@ -49,6 +49,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | holders pool prizes | |
 | `lcd/tokenfactory.all_denom_branding.json` | every brand kit, limit 500 | the directory's card colours (only `noadmin` has one) |
 | `lcd/tokenfactory.denom_branding.<token>.json` | brand kit of each token | 200 for `noadmin`, 404 for the rest |
+| `lcd/tokenfactory.denom_authority.<token>.json` | tokenfactory admin of each token | the token page's "Supply control"; all four still have an admin |
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |
-| `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms) |
+| `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms), so every testnet pool has a 24h volume of $0 |
 | `agg/prices.json` | `/api/prices` | BZE/USD price |
