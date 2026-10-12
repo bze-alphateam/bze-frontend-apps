@@ -17,7 +17,7 @@ src/
   components/
     directory/      # Token directory (home): search, filters, sort, pages, brand-coloured cards
     token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars),
-                    # wallet/ = the token's own wallet drawer and its settings view (state in hooks/token-site/useTokenWallet)
+                    # wallet/ = the token's own wallet drawer (Get/Send tabs; swaps via hooks/token-site/useTokenSwap) and its settings view (state in hooks/token-site/useTokenWallet)
     ui/             # BeeZee navbar (directory only), color mode, Chakra provider, pre-redesign token sections
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType

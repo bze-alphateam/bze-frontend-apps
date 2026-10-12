@@ -18,6 +18,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
         defaultSettings: {endpoints: {restEndpoint: "https://rest.example.com", rpcEndpoint: "wss://rpc.example.com"}},
     }),
     useConnectionType: () => ({connectionType: 2}),
+    useLiquidityPools: () => ({pools: [], isLoading: true}),
 }));
 
 const connect = vi.fn();

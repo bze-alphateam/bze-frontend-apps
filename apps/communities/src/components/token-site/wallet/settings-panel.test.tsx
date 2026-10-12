@@ -22,6 +22,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     }),
     useConnectionType: () => ({connectionType: CONNECTION_TYPE_POLLING}),
     validateEndpoints: (rest: string, rpc: string) => validateEndpoints(rest, rpc),
+    useLiquidityPools: () => ({pools: [], isLoading: true}),
 }));
 
 let walletStatus = WalletState.Disconnected;

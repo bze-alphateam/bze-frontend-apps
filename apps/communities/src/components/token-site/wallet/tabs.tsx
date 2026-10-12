@@ -5,6 +5,7 @@ import type {Asset} from "@bze/bze-ui-kit";
 
 import type {WalletTab} from "@/hooks/token-site/useTokenWallet";
 
+import {GetTab} from "./get-tab";
 import {SendForm} from "./send-form";
 
 interface WalletTabDefinition {
@@ -15,8 +16,9 @@ interface WalletTabDefinition {
 
 /**
  * The drawer's action tabs, in display order; the first one is shown when the requested tab
- * isn't available. Get (BFE-129) and Burn (BFE-131) each add one entry here.
+ * isn't available. Burn (BFE-131) adds one entry here.
  */
 export const WALLET_TABS: WalletTabDefinition[] = [
+    {value: "get", label: (asset) => `Get ${asset.ticker}`, render: (asset) => <GetTab asset={asset}/>},
     {value: "send", label: () => "Send", render: (asset) => <SendForm asset={asset}/>},
 ];

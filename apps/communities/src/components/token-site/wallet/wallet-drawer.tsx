@@ -12,16 +12,19 @@ import {useTokenWalletPositions} from "@/hooks/token-site/useTokenWalletPosition
 import {TsButton, TsDrawer, TsSegmented, ts} from "../kit";
 import {TokenMark} from "../token-mark";
 import {BalanceCard} from "./balance-card";
+import {NotTradableNotice} from "./get-tab";
 import {OtherAssets} from "./other-assets";
 import {RewardsReady} from "./rewards-ready";
 import {SettingsPanel} from "./settings-panel";
 import {WALLET_TABS} from "./tabs";
 
 function ConnectPrompt({asset}: { asset: Asset }) {
-    const {connect} = useTokenWallet();
+    const {connect, tab} = useTokenWallet();
 
     return (
         <Flex direction="column" gap="16px" data-testid="wallet-connect-prompt">
+            {/* Asked for Get on a token nobody can swap into: say so before asking for a wallet. */}
+            {tab === "get" && <NotTradableNotice asset={asset}/>}
             <chakra.p m="0" color={ts.muted} lineHeight="1.55">
                 Connect a wallet to see your {asset.ticker} balance, claim your rewards and send {asset.ticker}.
             </chakra.p>
