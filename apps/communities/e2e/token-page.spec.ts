@@ -198,7 +198,7 @@ test("the burn section sums NOAD's burns, its share of the supply and lists them
     await expect(rows).toHaveCount(3);
     await expect(rows.nth(1)).toContainText("500 NOAD$50.003,600,000");
     await expect(rows.nth(2)).toContainText("1,000 NOAD$100.003,500,000");
-    await expect(page.getByTestId("key-number-burned")).toHaveText("Burned1,500");
+    await expect(page.getByTestId("key-number-burned")).toHaveText("Burned1.5K");
 });
 
 test("without burns the section shows 0 and an empty history, and no burn scheduled for NOAD", async ({page}) => {
