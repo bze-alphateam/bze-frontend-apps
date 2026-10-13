@@ -10,6 +10,8 @@ import {
     useSettings,
 } from "@bze/bze-ui-kit";
 
+import {clearTokenPageFeeDenom, markTokenPageFeeDenom} from "@/hooks/useLeftoverTokenFeeReset";
+
 export interface TokenFeeMode {
     /** The fee tokens are still loading: neither mode is known yet. */
     isLoading: boolean;
@@ -31,7 +33,9 @@ const readOptOut = (denom: string) => getFromLocalStorage(optOutKey(denom)) === 
  * The token page's fee mode (Business Logic R12, R13). An eligible T pays network fees by
  * default, unless the viewer opted out for it; any other token pays in BZE. The choice is applied
  * to the app-wide preferred fee denom, re-applied when eligibility flips, and reset to BZE when
- * the page goes away, so the directory and other tokens start from BZE.
+ * the page goes away, so the directory and other tokens start from BZE. While T is applied, a
+ * marker says the token page set it, so the directory can reset it if the page never unmounted
+ * (browser closed on it, see `useLeftoverTokenFeeReset`).
  */
 export function useTokenFeeMode(denom: string): TokenFeeMode {
     const {isValidFeeDenom, isLoading, nativeDenom} = useFeeTokens();
@@ -49,12 +53,17 @@ export function useTokenFeeMode(denom: string): TokenFeeMode {
     const feeDenom = eligible && !optOut ? denom : nativeDenom;
 
     useEffect(() => {
-        if (isLoading || preferred === feeDenom) return;
+        if (isLoading) return;
+        if (feeDenom === nativeDenom) clearTokenPageFeeDenom();
+        else markTokenPageFeeDenom(feeDenom);
+
+        if (preferred === feeDenom) return;
         updatePreferredFeeDenom(feeDenom === nativeDenom ? undefined : feeDenom);
     }, [isLoading, preferred, feeDenom, nativeDenom, updatePreferredFeeDenom]);
 
     useEffect(() => () => {
         updatePreferredFeeDenom(undefined);
+        clearTokenPageFeeDenom();
     }, [updatePreferredFeeDenom]);
 
     const setOptOut = useCallback((next: boolean) => {
