@@ -26,7 +26,7 @@ src/
                     # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab;
                     #         raffle.tsx = the burn raffle in its slot (hooks/token-site/useTokenRaffle: joins + per-ticket results, toasts once the dialog is closed)
                     # fee mode (R12/R13): hooks/token-site/useTokenFeeMode (TokenFeeModeProvider in token-site.tsx) pays fees in T when it's eligible unless opted out
-                    #         (communities:feeOptOut:<denom>), resets to BZE on leaving; low-liquidity mode = wallet/bze-fee.tsx notices + wallet/get-bze-panel.tsx (ui-kit useBuyBze)
+                    #         (communities:feeOptOut:<denom>), resets to BZE on leaving (and marks T as its own, so hooks/useLeftoverTokenFeeReset on the directory resets it after a browser close); low-liquidity mode = wallet/bze-fee.tsx notices + wallet/get-bze-panel.tsx (ui-kit useBuyBze)
     ui/             # BeeZee navbar (directory only), color mode, Chakra provider
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType

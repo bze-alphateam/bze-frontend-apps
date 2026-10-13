@@ -4,7 +4,16 @@ import {act, render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
-import type {Asset} from "@bze/bze-ui-kit";
+import {
+    type Asset,
+    DEFAULT_SETTINGS,
+    getChainNativeAssetDenom,
+    getSettings,
+    setInLocalStorage,
+    setSettings,
+    SettingsProvider,
+    TTL_NO_EXPIRY,
+} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 // The URL is a tiny external store: history.replaceState writes it and useSearchParams
@@ -94,7 +103,7 @@ function renderHome(search = "") {
     nav.set(search);
     return render(<Home/>, {
         wrapper: ({children}: { children: ReactNode }) => (
-            <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+            <SettingsProvider><ChakraProvider value={defaultSystem}>{children}</ChakraProvider></SettingsProvider>
         ),
     });
 }
@@ -102,6 +111,7 @@ function renderHome(search = "") {
 const tickers = () => screen.getAllByTestId("directory-card").map((card) => within(card).getByText(/^TKN\d+$/).textContent);
 
 beforeEach(() => {
+    localStorage.clear();
     vi.spyOn(window.history, "replaceState").mockImplementation((_data, _unused, url) => {
         nav.set(String(url ?? "").split("?")[1] ?? "");
     });
@@ -247,5 +257,29 @@ describe("Communities token directory page", () => {
         expect(first).toHaveTextContent("Not traded yet");
         expect(second).toHaveTextContent("Reward programs");
         expect(second).not.toHaveTextContent("Not traded yet");
+    });
+
+    describe("network fee denom left behind by a token page", () => {
+        const T = denomOf("PAGE");
+        const storePreferred = (denom: string) => setSettings({...DEFAULT_SETTINGS, preferredFeeDenom: denom});
+
+        it("is reset to BZE when the browser was closed on the token page (marker left)", () => {
+            storePreferred(T);
+            setInLocalStorage("communities:feeDenomSetByTokenPage", T, TTL_NO_EXPIRY);
+            useCommunitiesContext.mockReturnValue(context(factoryAssets(1)));
+
+            renderHome();
+
+            expect(getSettings().preferredFeeDenom).toBe(getChainNativeAssetDenom());
+        });
+
+        it("is kept when the viewer chose it in the directory's settings (no marker)", () => {
+            storePreferred(T);
+            useCommunitiesContext.mockReturnValue(context(factoryAssets(1)));
+
+            renderHome();
+
+            expect(getSettings().preferredFeeDenom).toBe(T);
+        });
     });
 });

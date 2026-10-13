@@ -1,9 +1,11 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
+import {getFromLocalStorage} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 const T = "factory/bze1owner/upage";
 const OTHER = "factory/bze1owner/uother";
+const marker = () => getFromLocalStorage("communities:feeDenomSetByTokenPage");
 
 let feeTokens = {isLoading: false, eligible: new Set<string>([T])};
 let preferred = "ubze";
@@ -98,5 +100,42 @@ describe("useTokenFeeMode", () => {
 
         expect(updatePreferredFeeDenom).toHaveBeenLastCalledWith(undefined);
         expect(preferred).toBe("ubze");
+    });
+
+    it("marks the fee denom as the token page's while it pays in T, and clears the mark in BZE", () => {
+        const {result} = renderMode();
+        expect(marker()).toBe(T);
+
+        act(() => result.current.setOptOut(true));
+        expect(marker()).toBeNull();
+
+        act(() => result.current.setOptOut(false));
+        expect(marker()).toBe(T);
+    });
+
+    it("marks T even when it already was the preferred denom (e.g. after a reload)", () => {
+        preferred = T;
+        renderMode();
+
+        expect(updatePreferredFeeDenom).not.toHaveBeenCalled();
+        expect(marker()).toBe(T);
+    });
+
+    it("leaves no mark for a token that can't pay fees, nor while loading", () => {
+        feeTokens = {isLoading: true, eligible: new Set()};
+        const {rerender} = renderMode();
+        expect(marker()).toBeNull();
+
+        feeTokens = {isLoading: false, eligible: new Set()};
+        rerender({denom: T});
+        expect(marker()).toBeNull();
+    });
+
+    it("clears the mark when the page goes away", () => {
+        const {unmount} = renderMode();
+
+        unmount();
+
+        expect(marker()).toBeNull();
     });
 });
