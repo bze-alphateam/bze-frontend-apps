@@ -490,3 +490,56 @@ test("a token in no pool has no Trade section", async ({page}) => {
     await expect(page.locator("section#trade")).toHaveCount(0);
     await expect(page.locator('header a[href="#trade"]')).toHaveCount(0);
 });
+
+// Fee mode (BFE-137). The testnet's tradebin param asks for 100,000 BZE in a token's BZE pool
+// before it can pay fees, and TUSDC's pool holds ~75,895: lowering the param makes TUSDC eligible.
+const lowFeeThreshold = (): Fixture => {
+    const params = recorded("tradebin.params.json");
+    const body = params.body as { params: Record<string, unknown> };
+    return {...params, body: {...body, params: {...body.params, minNativeLiquidityForModuleSwap: "1000000000"}}};
+};
+
+test("a token that can't pay fees says each transaction needs BZE, without Get BZE while Skip is off", async ({page}) => {
+    await page.goto(tokenPage(NOAD));
+
+    await page.getByRole("button", {name: "Get NOAD"}).first().click();
+
+    const drawer = page.getByRole("dialog", {name: "Your NoAdminToken wallet"});
+    await expect(drawer.getByTestId("bze-fee-notice")).toHaveText(
+        "NOAD runs on the BeeZee network. Each transaction needs a small amount of TBZE for the network fee.",
+    );
+    await expect(drawer.getByRole("button", {name: "Get TBZE"})).toHaveCount(0);
+    await expect(page.getByRole("link", {name: "Runs on BeeZee"})).toBeVisible();
+
+    await drawer.getByRole("button", {name: "Settings"}).click();
+    await expect(drawer.getByRole("switch", {name: /Pay network fees/})).toHaveCount(0);
+});
+
+test("a token that can pay fees never mentions BeeZee and lets the viewer pay in BZE instead", async ({page, network}) => {
+    network.use("lcd", lowFeeThreshold());
+    network.use("agg", {
+        path: "/api/dex/intervals",
+        query: {market_id: `${TESTUSD}_ubze`, minutes: "240", limit: "180", format: "tv"},
+        status: 200,
+        body: [],
+    });
+    await page.goto(tokenPage(TESTUSD));
+    await expect(page.getByTestId("liquidity-pools")).toBeVisible();
+
+    await page.locator("header").getByRole("button", {name: "Connect wallet"}).click();
+    const drawer = page.getByRole("dialog", {name: /wallet$/});
+    await drawer.getByRole("button", {name: "Settings"}).click();
+
+    const feeSwitch = drawer.getByRole("switch", {name: "Pay network fees in TUSDC"});
+    await expect(feeSwitch).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText(/BeeZee/)).toHaveCount(0);
+
+    await feeSwitch.click();
+    await expect(feeSwitch).toHaveAttribute("aria-checked", "false");
+
+    // The choice is remembered for this token.
+    await page.reload();
+    await page.locator("header").getByRole("button", {name: "Connect wallet"}).click();
+    await drawer.getByRole("button", {name: "Settings"}).click();
+    await expect(drawer.getByRole("switch", {name: "Pay network fees in TUSDC"})).toHaveAttribute("aria-checked", "false");
+});

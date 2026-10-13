@@ -23,6 +23,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useConnectionType: () => ({connectionType: CONNECTION_TYPE_POLLING}),
     validateEndpoints: (rest: string, rpc: string) => validateEndpoints(rest, rpc),
     useLiquidityPools: () => ({pools: [], isLoading: true}),
+    useAssets: () => ({denomTicker: () => "BZE", denomDecimals: () => 6}),
 }));
 
 let walletStatus = WalletState.Disconnected;
@@ -34,6 +35,11 @@ const setColorMode = vi.fn();
 let colorMode = "light";
 vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode, setColorMode, toggleColorMode: vi.fn()}),
+}));
+type FeeMode = {isLoading: boolean; eligible: boolean; needsBze: boolean; feeDenom: string; optOut: boolean; setOptOut: (optOut: boolean) => void};
+let feeMode: FeeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: "", optOut: false, setOptOut: vi.fn()};
+vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
+    useFeeMode: () => feeMode,
 }));
 
 import {TokenWalletProvider, useTokenWallet} from "@/hooks/token-site/useTokenWallet";
@@ -76,6 +82,7 @@ beforeEach(() => {
     walletStatus = WalletState.Disconnected;
     colorMode = "light";
     updateEndpoints.mockReturnValue(true);
+    feeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: ASSET.denom, optOut: false, setOptOut: vi.fn()};
 });
 
 describe("SettingsPanel", () => {
@@ -97,6 +104,34 @@ describe("SettingsPanel", () => {
         const {panel} = await openSettings();
 
         expect(panel).toBeInTheDocument();
+    });
+
+    it("pays network fees in an eligible token by default, and turns it off for that token", async () => {
+        const {user} = await openSettings();
+
+        const toggle = screen.getByRole("switch", {name: "Pay network fees in PAGE"});
+        expect(toggle).toHaveAttribute("aria-checked", "true");
+
+        await user.click(toggle);
+        expect(feeMode.setOptOut).toHaveBeenCalledWith(true);
+    });
+
+    it("shows a token's opt-out as off and turns it back on", async () => {
+        feeMode = {...feeMode, optOut: true, feeDenom: "ubze"};
+        const {user} = await openSettings();
+
+        const toggle = screen.getByRole("switch", {name: "Pay network fees in PAGE"});
+        expect(toggle).toHaveAttribute("aria-checked", "false");
+
+        await user.click(toggle);
+        expect(feeMode.setOptOut).toHaveBeenCalledWith(false);
+    });
+
+    it("has no fee switch for a token that can't pay fees", async () => {
+        feeMode = {...feeMode, eligible: false, needsBze: true, feeDenom: "ubze"};
+        await openSettings();
+
+        expect(screen.queryByRole("switch", {name: /Pay network fees/})).not.toBeInTheDocument();
     });
 
     it("switches dark mode through the theme", async () => {

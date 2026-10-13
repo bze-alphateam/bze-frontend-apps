@@ -12,6 +12,8 @@ import {useTokenWalletPositions} from "@/hooks/token-site/useTokenWalletPosition
 import {TsButton, TsDrawer, TsSegmented, ts} from "../kit";
 import {TokenMark} from "../token-mark";
 import {BalanceCard} from "./balance-card";
+import {BzeFeeNotice, BzeFeeRow} from "./bze-fee";
+import {GetBzePanel} from "./get-bze-panel";
 import {NotTradableNotice} from "./get-tab";
 import {OtherAssets} from "./other-assets";
 import {RewardsReady} from "./rewards-ready";
@@ -25,6 +27,7 @@ function ConnectPrompt({asset}: { asset: Asset }) {
         <Flex direction="column" gap="16px" data-testid="wallet-connect-prompt">
             {/* Asked for Get on a token nobody can swap into: say so before asking for a wallet. */}
             {tab === "get" && <NotTradableNotice asset={asset}/>}
+            {tab === "get" && <BzeFeeNotice asset={asset}/>}
             <chakra.p m="0" color={ts.muted} lineHeight="1.55">
                 Connect a wallet to see your {asset.ticker} balance, claim your rewards and send {asset.ticker}.
             </chakra.p>
@@ -69,6 +72,7 @@ function ConnectedWallet({asset, address}: { asset: Asset; address: string }) {
         <>
             <BalanceCard asset={asset} address={address} positions={positions}/>
             <RewardsReady asset={asset} address={address} positions={positions} onClaimed={reload}/>
+            <BzeFeeRow/>
             <TsSegmented
                 label="Wallet actions"
                 options={WALLET_TABS.map((definition) => ({value: definition.value, label: definition.label(asset)}))}
@@ -83,7 +87,7 @@ function ConnectedWallet({asset, address}: { asset: Asset; address: string }) {
 /**
  * The token site's own wallet (Business Logic R4), dedicated to the page token T: balance and
  * positions, rewards with "Claim all", the action tabs and the wallet's other assets; and the
- * settings panel (R13), reachable connected or not.
+ * settings panel (R13), reachable connected or not, and the Get BZE panel in low-liquidity mode (R12).
  */
 export function WalletDrawer({asset}: { asset: Asset }) {
     const {isOpen, close, view, setView} = useTokenWallet();
@@ -93,7 +97,9 @@ export function WalletDrawer({asset}: { asset: Asset }) {
     return (
         <TsDrawer open={isOpen} onClose={close} title={`Your ${asset.name} wallet`} icon={<TokenMark asset={asset} size={32}/>}>
             {view === "settings" ? (
-                <SettingsPanel onBack={() => setView("wallet")}/>
+                <SettingsPanel asset={asset} onBack={() => setView("wallet")}/>
+            ) : view === "get-bze" ? (
+                <GetBzePanel onBack={() => setView("wallet")}/>
             ) : (
                 <>
                     {connected && address ? <ConnectedWallet asset={asset} address={address}/> : <ConnectPrompt asset={asset}/>}

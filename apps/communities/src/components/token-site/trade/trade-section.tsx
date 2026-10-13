@@ -7,6 +7,7 @@ import {type Asset, useLiquidityPools} from "@bze/bze-ui-kit";
 import {tokenPools} from "@/lib/token-site/chart";
 
 import {TsSection} from "../kit";
+import {BzeFeeNotice} from "../wallet/bze-fee";
 import {LiquidityPools} from "./liquidity-pools";
 import {PoolChart} from "./pool-chart";
 import {SwapPanel} from "./swap-panel";
@@ -25,7 +26,7 @@ export function TradeSection({asset}: { asset: Asset }) {
         <TsSection id="trade" eyebrow="Trade" title={`Buy and sell ${asset.ticker}`}>
             <Flex wrap="wrap" gap="20px" align="stretch">
                 <PoolChart asset={asset} pools={own}/>
-                <SwapPanel asset={asset}/>
+                <SwapPanel asset={asset} notice={<BzeFeeNotice asset={asset}/>}/>
             </Flex>
             <LiquidityPools asset={asset}/>
         </TsSection>

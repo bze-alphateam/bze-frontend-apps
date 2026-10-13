@@ -32,7 +32,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
         })),
     }),
     useLiquidityPools: () => ({pools, isLoading: false}),
-    useAssets: () => ({denomDecimals: () => 6}),
+    useAssets: () => ({denomDecimals: () => 6, denomTicker: (denom: string) => TICKERS[denom] ?? denom}),
     useBZETx: () => ({tx, progressTrack: ""}),
     useMaxSpendable: (denom: string, spec: unknown) => useMaxSpendable(denom, spec),
     useGasFeeEstimate: () => ({displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
@@ -42,7 +42,13 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 vi.mock("@interchain-kit/react", () => ({
     useChain: () => ({status: WalletState.Connected, address: ME}),
 }));
+type FeeMode = {isLoading: boolean; eligible: boolean; needsBze: boolean; feeDenom: string; optOut: boolean; setOptOut: (optOut: boolean) => void};
+let feeMode: FeeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: "", optOut: false, setOptOut: vi.fn()};
+vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
+    useFeeMode: () => feeMode,
+}));
 
+import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "../kit";
 import {GetTab} from "./get-tab";
 
@@ -56,7 +62,7 @@ function renderTab() {
     const user = userEvent.setup();
     render(<GetTab asset={ASSET}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
-            <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
+            <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><TokenWalletProvider>{children}</TokenWalletProvider></TokenSiteTheme></ChakraProvider>
         ),
     });
     return user;
@@ -72,6 +78,7 @@ const getButton = () => screen.getByRole("button", {name: "Get PAGE"});
 
 beforeEach(() => {
     vi.clearAllMocks();
+    feeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: T, optOut: false, setOptOut: vi.fn()};
     // T/BZE and BZE/USDC: USDC pays through BZE; OSMO has no pool at all.
     pools = [{base: T, quote: "ubze"}, {base: "ubze", quote: "uusdc"}];
     balances = {
@@ -92,6 +99,18 @@ beforeEach(() => {
 });
 
 describe("GetTab", () => {
+    it("says nothing about BZE fees while T pays its own", () => {
+        renderTab();
+        expect(screen.queryByTestId("bze-fee-notice")).not.toBeInTheDocument();
+    });
+
+    it("shows the BZE notice above the button in low-liquidity mode", () => {
+        feeMode = {...feeMode, eligible: false, needsBze: true, feeDenom: "ubze"};
+        renderTab();
+
+        expect(screen.getByTestId("bze-fee-notice")).toHaveTextContent("PAGE runs on the BeeZee network. Each transaction needs a small amount of BZE for the network fee.");
+    });
+
     it("pays with held tokens that route to T, the most valuable preselected", () => {
         renderTab();
 

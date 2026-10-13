@@ -13,6 +13,8 @@ const useAsset = vi.fn();
 const getDenomBranding = vi.fn();
 const getFactoryDenomAdmin = vi.fn();
 let pools: { base: string; quote: string }[] = [];
+const preferredFeeDenom = "ubze";
+const updatePreferredFeeDenom = vi.fn();
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useAsset: (denom: string) => useAsset(denom),
@@ -20,7 +22,8 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     getFactoryDenomAdmin: (denom: string) => getFactoryDenomAdmin(denom),
     useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
     useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
-    useFeeTokens: () => ({isLoading: false, isValidFeeDenom: () => true}),
+    useFeeTokens: () => ({isLoading: false, nativeDenom: "ubze", isValidFeeDenom: () => true}),
+    useSettings: () => ({feeDenom: preferredFeeDenom, updatePreferredFeeDenom}),
     useLiquidityPools: () => ({pools, isLoading: true}),
 }));
 
@@ -91,6 +94,7 @@ beforeEach(() => {
     getDenomBranding.mockReset();
     getFactoryDenomAdmin.mockReset().mockResolvedValue("");
     useDenomParam.mockReset();
+    updatePreferredFeeDenom.mockReset();
 });
 
 // Kits are cached per denom for a few minutes, so every test uses its own denom.
@@ -157,6 +161,17 @@ describe("Communities token page", () => {
         expect(screen.queryByText(/directory/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/BZE/)).not.toBeInTheDocument();
         expect(screen.queryByText("Runs on BeeZee")).not.toBeInTheDocument();
+    });
+
+    it("pays network fees in an eligible token on its page and in BZE again once the page is left", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        const {unmount} = renderPage("factory/bze1owner/ufees");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        expect(updatePreferredFeeDenom).toHaveBeenLastCalledWith("factory/bze1owner/ufees");
+
+        unmount();
+        expect(updatePreferredFeeDenom).toHaveBeenLastCalledWith(undefined);
     });
 
     it("links the Trade section only while the token sits in a pool", async () => {

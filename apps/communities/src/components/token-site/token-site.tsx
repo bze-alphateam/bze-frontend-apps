@@ -7,6 +7,7 @@ import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset, useLiquidityPools} fro
 import {useNavigation} from "@/hooks/useNavigation";
 import {useEarnOpportunities} from "@/hooks/token-site/useEarnOpportunities";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
+import {TokenFeeModeProvider} from "@/hooks/token-site/useTokenFeeMode";
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {isTradable} from "@/lib/token-site/swap";
 
@@ -82,23 +83,25 @@ export function TokenSite({denom}: { denom: string }) {
 
     return (
         <TokenSiteTheme kit={kit}>
-            <TokenWalletProvider>
-                <Box pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
-                    <SiteHeader asset={resolved} sections={sections}/>
-                    <chakra.main>
-                        <Hero asset={resolved} hasStake={true}/>
-                        <KeyNumbers denom={resolved.denom}/>
-                        <StakeSection asset={resolved}/>
-                        <EarnSection asset={resolved} opportunities={opportunities}/>
-                        <TradeSection asset={resolved}/>
-                        <BurnSection asset={resolved} raffle={<BurnRaffle asset={resolved}/>}/>
-                        <TokenDetails asset={resolved}/>
-                    </chakra.main>
-                    <SiteFooter asset={resolved}/>
-                    <PhoneActionBar asset={resolved} hasStake={true}/>
-                </Box>
-                <WalletDrawer asset={resolved}/>
-            </TokenWalletProvider>
+            <TokenFeeModeProvider denom={resolved.denom}>
+                <TokenWalletProvider>
+                    <Box pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
+                        <SiteHeader asset={resolved} sections={sections}/>
+                        <chakra.main>
+                            <Hero asset={resolved} hasStake={true}/>
+                            <KeyNumbers denom={resolved.denom}/>
+                            <StakeSection asset={resolved}/>
+                            <EarnSection asset={resolved} opportunities={opportunities}/>
+                            <TradeSection asset={resolved}/>
+                            <BurnSection asset={resolved} raffle={<BurnRaffle asset={resolved}/>}/>
+                            <TokenDetails asset={resolved}/>
+                        </chakra.main>
+                        <SiteFooter asset={resolved}/>
+                        <PhoneActionBar asset={resolved} hasStake={true}/>
+                    </Box>
+                    <WalletDrawer asset={resolved}/>
+                </TokenWalletProvider>
+            </TokenFeeModeProvider>
         </TokenSiteTheme>
     );
 }

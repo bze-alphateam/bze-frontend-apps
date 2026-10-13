@@ -95,6 +95,10 @@ vi.mock("@interchain-kit/react", () => ({
 vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode: "light", setColorMode: vi.fn(), toggleColorMode: vi.fn()}),
 }));
+const feeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: "", optOut: false, setOptOut: vi.fn()};
+vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
+    useFeeMode: () => feeMode,
+}));
 
 import {TokenWalletProvider, useTokenWallet, type WalletTab} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "../kit";

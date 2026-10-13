@@ -4,6 +4,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {chakra, Flex} from "@chakra-ui/react";
 import {LuArrowLeft} from "react-icons/lu";
 import {
+    type Asset,
     type BeeZeeEndpoints,
     CONNECTION_TYPE_NONE,
     CONNECTION_TYPE_POLLING,
@@ -17,6 +18,7 @@ import {
 } from "@bze/bze-ui-kit";
 
 import {useColorMode} from "@/components/ui/color-mode";
+import {useFeeMode} from "@/hooks/token-site/useTokenFeeMode";
 
 import {TsButton, TsCard, TsField, ts, tsLabel, tsMix} from "../kit";
 
@@ -38,19 +40,27 @@ function Group({title, aside, children}: { title: string; aside?: React.ReactNod
     );
 }
 
-function DarkModeSwitch() {
-    const {colorMode, setColorMode} = useColorMode();
-    const isDark = colorMode === "dark";
-
+/** An on/off row of the settings panel. */
+function SwitchRow({id, label, hint, checked, onChange}: {
+    id: string;
+    label: string;
+    hint?: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+}) {
     return (
         <Flex align="center" justify="space-between" gap="12px">
-            <chakra.span id="settings-dark-mode" fontWeight={600}>Dark mode</chakra.span>
+            <Flex direction="column" gap="2px">
+                <chakra.span id={id} fontWeight={600}>{label}</chakra.span>
+                {hint && <chakra.span id={`${id}-hint`} fontSize="13px" color={ts.muted}>{hint}</chakra.span>}
+            </Flex>
             <chakra.button
                 type="button"
                 role="switch"
-                aria-checked={isDark}
-                aria-labelledby="settings-dark-mode"
-                onClick={() => setColorMode(isDark ? "light" : "dark")}
+                aria-checked={checked}
+                aria-labelledby={id}
+                aria-describedby={hint ? `${id}-hint` : undefined}
+                onClick={() => onChange(!checked)}
                 position="relative"
                 w="52px"
                 h="30px"
@@ -59,22 +69,49 @@ function DarkModeSwitch() {
                 border="0"
                 borderRadius="999px"
                 cursor="pointer"
-                bg={isDark ? ts.pri : tsMix(ts.fg, 18)}
+                bg={checked ? ts.pri : tsMix(ts.fg, 18)}
                 _focusVisible={{outline: `2px solid ${ts.fg}`, outlineOffset: "2px"}}
             >
                 <chakra.span
                     aria-hidden="true"
                     position="absolute"
                     top="3px"
-                    left={isDark ? "25px" : "3px"}
+                    left={checked ? "25px" : "3px"}
                     w="24px"
                     h="24px"
                     borderRadius="50%"
-                    bg={isDark ? ts.onPri : ts.bg}
+                    bg={checked ? ts.onPri : ts.bg}
                     transition="left 0.15s ease"
                 />
             </chakra.button>
         </Flex>
+    );
+}
+
+function DarkModeSwitch() {
+    const {colorMode, setColorMode} = useColorMode();
+    const isDark = colorMode === "dark";
+
+    return <SwitchRow id="settings-dark-mode" label="Dark mode" checked={isDark} onChange={(dark) => setColorMode(dark ? "dark" : "light")}/>;
+}
+
+/**
+ * "Pay network fees in T" (Business Logic R13): on by default, shown only while T can pay them.
+ * Turning it off pays in BZE, remembered for this token.
+ */
+function FeeModeSettings({asset}: { asset: Asset }) {
+    const {eligible, optOut, setOptOut} = useFeeMode();
+    if (!eligible) return null;
+
+    return (
+        <Group title="Network fees">
+            <SwitchRow
+                id="settings-fee-mode"
+                label={`Pay network fees in ${asset.ticker}`}
+                checked={!optOut}
+                onChange={(payInToken) => setOptOut(!payInToken)}
+            />
+        </Group>
     );
 }
 
@@ -204,10 +241,10 @@ function ConnectionSettings() {
 }
 
 /**
- * The token site's settings (Business Logic R13): dark mode and the BeeZee endpoints, a second view
+ * The token site's settings (Business Logic R13): dark mode, paying fees in T and the BeeZee endpoints, a second view
  * of the wallet drawer. Same storage as the rest of the app, so the directory sees these too.
  */
-export function SettingsPanel({onBack}: { onBack: () => void }) {
+export function SettingsPanel({asset, onBack}: { asset: Asset; onBack: () => void }) {
     // The button that opened the panel is gone: keep the keyboard inside the drawer.
     const panel = useRef<HTMLDivElement>(null);
     useEffect(() => panel.current?.querySelector<HTMLButtonElement>("button[aria-label='Back to wallet']")?.focus(), []);
@@ -223,7 +260,7 @@ export function SettingsPanel({onBack}: { onBack: () => void }) {
             <Group title="Appearance">
                 <DarkModeSwitch/>
             </Group>
-            {/* The "Pay network fees in T" row (BFE-137) goes here. */}
+            <FeeModeSettings asset={asset}/>
             <ConnectionSettings/>
         </Flex>
     );

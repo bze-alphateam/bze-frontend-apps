@@ -57,6 +57,10 @@ vi.mock("@interchain-kit/react", () => ({
 
 // The pools table has its own suite (liquidity-pools.test.tsx).
 vi.mock("./liquidity-pools", () => ({LiquidityPools: () => <div data-testid="liquidity-pools"/>}));
+const feeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: "", optOut: false, setOptOut: vi.fn()};
+vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
+    useFeeMode: () => feeMode,
+}));
 
 import {TokenSiteTheme} from "../kit";
 import {TradeSection} from "./trade-section";
