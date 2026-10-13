@@ -8,8 +8,8 @@ import {getChainName} from "@bze/bze-ui-kit";
 /** The wallet drawer's action tabs. */
 export type WalletTab = "get" | "send" | "burn";
 
-/** What the drawer shows: the wallet itself or the settings panel (BFE-128). */
-export type WalletView = "wallet" | "settings";
+/** What the drawer shows: the wallet itself, the settings panel (BFE-128) or the Get BZE panel (BFE-137). */
+export type WalletView = "wallet" | "settings" | "get-bze";
 
 interface TokenWalletValue {
     isOpen: boolean;
@@ -20,6 +20,8 @@ interface TokenWalletValue {
     open: (tab?: WalletTab) => void;
     /** Opens the drawer on the settings panel. */
     openSettings: () => void;
+    /** Opens the drawer on the Get BZE panel (low-liquidity mode). */
+    openGetBze: () => void;
     close: () => void;
     setTab: (tab: WalletTab) => void;
     setView: (view: WalletView) => void;
@@ -49,6 +51,10 @@ export function TokenWalletProvider({children}: { children: React.ReactNode }) {
         setView("settings");
         setIsOpen(true);
     }, []);
+    const openGetBze = useCallback(() => {
+        setView("get-bze");
+        setIsOpen(true);
+    }, []);
     const close = useCallback(() => setIsOpen(false), []);
     const connect = useCallback(() => {
         setIsOpen(false);
@@ -68,8 +74,8 @@ export function TokenWalletProvider({children}: { children: React.ReactNode }) {
     }
 
     const value = useMemo(
-        () => ({isOpen, tab, view, open, openSettings, close, setTab, setView, connect}),
-        [isOpen, tab, view, open, openSettings, close, connect],
+        () => ({isOpen, tab, view, open, openSettings, openGetBze, close, setTab, setView, connect}),
+        [isOpen, tab, view, open, openSettings, openGetBze, close, connect],
     );
 
     return <TokenWalletContext.Provider value={value}>{children}</TokenWalletContext.Provider>;

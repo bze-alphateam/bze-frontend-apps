@@ -31,6 +31,10 @@ const toggleColorMode = vi.fn();
 vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode: "light", setColorMode: vi.fn(), toggleColorMode}),
 }));
+const feeMode = {isLoading: false, eligible: true, needsBze: false, feeDenom: "", optOut: false, setOptOut: vi.fn()};
+vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
+    useFeeMode: () => feeMode,
+}));
 
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "./kit";

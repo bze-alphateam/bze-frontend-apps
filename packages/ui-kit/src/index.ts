@@ -298,6 +298,8 @@ export type { SkipChainWithStatus, UseSkipChainsResult } from './hooks/useSkipCh
 export { useSkipAssets } from './hooks/useSkipAssets';
 export type { UseSkipAssetsResult } from './hooks/useSkipAssets';
 export { useBuyRoute } from './hooks/useBuyRoute';
+export { useBuyBze } from './hooks/useBuyBze';
+export type { UseBuyBzeOptions, UseBuyBzeResult, SkipAssetWithBalance } from './hooks/useBuyBze';
 export type { UseBuyRouteResult } from './hooks/useBuyRoute';
 export { useBridgeableAssets } from './hooks/useBridgeableAssets';
 export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';

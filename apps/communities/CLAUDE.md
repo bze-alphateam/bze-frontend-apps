@@ -25,6 +25,8 @@ src/
                     #         so the header links it only when it renders); its Stake buttons open the StakeDialog on the *other* token
                     # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab;
                     #         raffle.tsx = the burn raffle in its slot (hooks/token-site/useTokenRaffle: joins + per-ticket results, toasts once the dialog is closed)
+                    # fee mode (R12/R13): hooks/token-site/useTokenFeeMode (TokenFeeModeProvider in token-site.tsx) pays fees in T when it's eligible unless opted out
+                    #         (communities:feeOptOut:<denom>), resets to BZE on leaving; low-liquidity mode = wallet/bze-fee.tsx notices + wallet/get-bze-panel.tsx (ui-kit useBuyBze)
     ui/             # BeeZee navbar (directory only), color mode, Chakra provider
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType
@@ -42,4 +44,4 @@ src/
 
 - Only `factory/` denoms get pages; the token page URL carries the denom URL-encoded in the `?denom=` query param (never in the path).
 - The token page is a standalone site in the token's on-chain brand kit (`DEFAULT_DENOM_BRANDING` without one): no BeeZee navbar, logo or app links. Its visuals are communities-only components in `components/token-site/` — never restyle ui-kit visual components for it. The directory keeps the shared BeeZee top bar.
-- "Get the token" buy flow and the fee-token setting are gated by fee-eligibility: an AMM pool paired with BZE whose BZE reserve exceeds tradebin `min_native_liquidity_for_module_swap`.
+- Fee-eligibility (ui-kit `useFeeTokens().isValidFeeDenom`): an AMM pool paired with BZE whose BZE reserve exceeds tradebin `min_native_liquidity_for_module_swap`, and the token not halted. Eligible tokens pay network fees in themselves on their page (switch in the settings panel); the others show the BZE notices, the wallet's BZE row, "Runs on BeeZee" and Get BZE (Skip only).

@@ -2,7 +2,9 @@
 
 import React from "react";
 import {Box, chakra, Flex} from "@chakra-ui/react";
-import {type Asset, useFeeTokens} from "@bze/bze-ui-kit";
+import type {Asset} from "@bze/bze-ui-kit";
+
+import {useFeeMode} from "@/hooks/token-site/useTokenFeeMode";
 
 import {ts, tsContainer} from "./kit";
 import {TokenMark} from "./token-mark";
@@ -12,8 +14,7 @@ import {TokenMark} from "./token-mark";
  * token can't pay network fees itself (Business Logic R12) — otherwise BeeZee is never mentioned.
  */
 export function SiteFooter({asset}: { asset: Asset }) {
-    const {isValidFeeDenom, isLoading} = useFeeTokens();
-    const lowLiquidity = !isLoading && !isValidFeeDenom(asset.denom);
+    const {needsBze} = useFeeMode();
 
     return (
         <Box as="footer" {...tsContainer} pt={{base: "56px", md: "120px"}} pb={{base: "24px", md: "48px"}}>
@@ -31,7 +32,7 @@ export function SiteFooter({asset}: { asset: Asset }) {
                     <TokenMark asset={asset} size={32}/>
                     <chakra.span fontWeight={700}>{asset.name}</chakra.span>
                 </Flex>
-                {lowLiquidity && (
+                {needsBze && (
                     <chakra.a href="https://getbze.com" target="_blank" rel="noopener noreferrer" color={ts.muted} fontSize="14px" textDecoration="none">
                         Runs on BeeZee
                     </chakra.a>

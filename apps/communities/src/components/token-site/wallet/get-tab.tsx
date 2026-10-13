@@ -8,6 +8,7 @@ import {isTradable} from "@/lib/token-site/swap";
 
 import {TsNotice, ts} from "../kit";
 import {SwapForm} from "../trade/swap-form";
+import {BzeFeeNotice} from "./bze-fee";
 
 /** "Not tradable yet" when T sits in no pool (R8); nothing while it does or the pools are loading. */
 export function NotTradableNotice({asset}: { asset: Asset }) {
@@ -24,7 +25,8 @@ export function NotTradableNotice({asset}: { asset: Asset }) {
 
 /**
  * Get T (Business Logic R8): an instant swap into T, paying with any held token that has a route
- * of at most 3 hops; the swap form is the one the Trade section uses for Buy.
+ * of at most 3 hops; the swap form is the one the Trade section uses for Buy. In low-liquidity
+ * mode it says the swap's fee is paid in BZE (R12).
  */
 export function GetTab({asset}: { asset: Asset }) {
     const {pools, isLoading} = useLiquidityPools();
@@ -33,5 +35,5 @@ export function GetTab({asset}: { asset: Asset }) {
         return isLoading ? <chakra.p m="0" color={ts.muted}>Loading pools…</chakra.p> : <NotTradableNotice asset={asset}/>;
     }
 
-    return <SwapForm asset={asset} direction="buy" idPrefix="get" cta={`Get ${asset.ticker}`}/>;
+    return <SwapForm asset={asset} direction="buy" idPrefix="get" cta={`Get ${asset.ticker}`} notice={<BzeFeeNotice asset={asset}/>}/>;
 }
