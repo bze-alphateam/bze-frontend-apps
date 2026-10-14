@@ -22,7 +22,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 
 - Supply holds four factory tokens, all created by `bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l`: `noadmin` (NoAdminToken), `testusd` (USDollar, the app's USDC), `uxfct` (XFactor) and `vidulum` (Vidulum). It also holds `ubze`, one IBC token and three LP shares.
 - Every creation fee (tokenfactory, tradebin and rewards params) is 25,000 TBZE (testnet's native ticker).
-- `noadmin` is the only token with a denom reward, so `/denom-reward` lists one row. It has two prize tokens, `noadmin` and `vidulum`.
+- `noadmin` is the only token with a denom reward, so `/rewards` lists one row. It has two prize tokens, `noadmin` and `vidulum`.
 - The one staking reward (SR) stakes `vidulum` and is finished (15 of 15 payouts).
 - Pools: `noadmin`/`testusd`, `testusd`/`ubze` and the IBC token/`ubze`.
 
@@ -45,7 +45,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
 | `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | |
-| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/denom-reward` |
+| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards` |
 | `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`). Recorded 2026-10-14 |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule form's new-prize check |
 | `lcd/rewards.denom_reward_schedules.noadmin.json` | schedules of the `noadmin` denom reward, limit 500 | its "Running schedules" count; the schedule form's extend mode (`000000000000`, 200 days) |

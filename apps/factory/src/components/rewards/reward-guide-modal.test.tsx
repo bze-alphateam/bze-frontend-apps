@@ -56,13 +56,13 @@ describe("RewardGuideModal", () => {
         await userEvent.click(await screen.findByTestId("reward-guide-program"));
         expect(navigateMock).toHaveBeenCalledWith("/reward/new");
         await userEvent.click(screen.getByTestId("reward-guide-airdrop"));
-        expect(navigateMock).toHaveBeenLastCalledWith("/denom-reward");
+        expect(navigateMock).toHaveBeenLastCalledWith("/rewards");
     });
 
     it("offers to browse holder rewards without a denom", async () => {
         render(<RewardGuideModal open={true} onClose={() => {}} />, { wrapper });
         await userEvent.click(await screen.findByRole("button", { name: "Browse holder rewards" }));
-        expect(navigateMock).toHaveBeenCalledWith("/denom-reward");
+        expect(navigateMock).toHaveBeenCalledWith("/rewards");
     });
 
     it("offers to make the token stakable with a denom", async () => {

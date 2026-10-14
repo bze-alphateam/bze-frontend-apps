@@ -97,7 +97,7 @@ const CREATION_CARDS: CreationCard[] = [
         description: 'Reward the holders of any token — browse every denom reward, fund daily prizes or airdrop to stakers.',
         icon: LuUsers,
         feeKey: 'createDenomRewardFee',
-        href: '/denom-reward',
+        href: '/rewards',
         rewardInfo: true,
     },
     {

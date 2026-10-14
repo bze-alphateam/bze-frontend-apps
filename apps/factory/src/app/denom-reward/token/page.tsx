@@ -17,7 +17,7 @@ function DenomRewardTokenContent() {
     const { denomParam, navigate } = useNavigationWithParams()
     const denom = denomParam ?? ''
     const { asset, isLoading } = useAsset(denom)
-    const toDirectory = () => navigate('/denom-reward')
+    const toDirectory = () => navigate('/rewards')
 
     if (!denom) {
         return <Notice title="No token selected" onBack={toDirectory}>Pick a denom reward from the list.</Notice>

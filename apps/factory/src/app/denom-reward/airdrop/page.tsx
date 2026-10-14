@@ -93,7 +93,7 @@ function AirdropFormContent() {
     }
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate('/denom-reward')}>Open this form from a token&apos;s denom reward.</Notice>
+        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s denom reward.</Notice>
     }
 
     if (isLoading) {

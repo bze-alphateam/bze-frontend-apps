@@ -480,7 +480,7 @@ function MultiSendContent() {
             <TipNote lead="Want to reach people who are already active?">
                 Gifting the stakers of a token goes only to wallets that hold and stake it.{' '}
                 <Link asChild colorPalette="yellow" color="colorPalette.fg">
-                    <NextLink href="/denom-reward">Gift the stakers</NextLink>
+                    <NextLink href="/rewards">Gift the stakers</NextLink>
                 </Link>
             </TipNote>
         </>

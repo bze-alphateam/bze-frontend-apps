@@ -21,6 +21,7 @@ const navSubitems: { [key: string]: string } = {
     '/reward/new': '/',
     '/multisend': '/',
     '/manage/token': '/manage',
+    '/rewards': '/manage',
     '/denom-reward': '/manage',
     '/denom-reward/schedule': '/manage',
     '/denom-reward/airdrop': '/manage',
