@@ -37,6 +37,7 @@ vi.mock("@/hooks/useTokenSupply", () => ({
 }));
 vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup() }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
+vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@/components/manage/denom-reward-card", () => ({ DenomRewardCard: () => <div>denom reward card</div> }));
 vi.mock("@/components/rewards/staking-programs-list", () => ({
@@ -46,7 +47,10 @@ vi.mock("@/components/rewards/staking-programs-list", () => ({
 }));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
 vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: ({ access }: { access: string }) => <div>metadata {access}</div> }));
-vi.mock("@/components/manage/admin-card", () => ({ AdminActions: () => <div>admin actions</div> }));
+vi.mock("@/components/workspace/lock-dialog", async (importActual) => ({
+    ...(await importActual<typeof import("@/components/workspace/lock-dialog")>()),
+    LockDialog: ({ open }: { open: boolean }) => (open ? <div>lock dialog</div> : null),
+}));
 vi.mock("@/components/workspace/supply-action-card", () => ({
     SupplyActionCard: ({ mode }: { mode: string }) => <div>supply {mode}</div>,
 }));
@@ -135,7 +139,7 @@ describe("token workspace", () => {
     it("opens the tab in ?tab= and switches tabs with replace", async () => {
         m.query.tab = "control";
         renderPage();
-        expect(await screen.findByText("admin actions")).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: "Lock the supply" })).toBeInTheDocument();
         expect(screen.queryByTestId("setup-progress")).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("tab", { name: "Supply" }));
@@ -280,15 +284,15 @@ describe("token workspace", () => {
         });
 
         it.each([
-            ["", "Supply provably fixed"],
-            ["bze1other", "its admin is now bze1other"],
-            [undefined, "The chain query for this token.s admin failed"],
+            ["", "Nobody can ever mint, edit or brand TOK again"],
+            ["bze1other", "controls TOK now"],
+            [undefined, "Couldn.t load who controls TOK"],
         ])("control for admin %s", async (admin, text) => {
             m.query.tab = "control";
             m.tokens.mockReturnValue([token(admin)]);
             renderPage();
             expect(screen.getByText(new RegExp(text))).toBeInTheDocument();
-            expect(screen.queryByText("admin actions")).not.toBeInTheDocument();
+            expect(screen.queryByRole("region", { name: "Lock the supply" })).not.toBeInTheDocument();
             if (admin === undefined) {
                 await userEvent.click(screen.getByRole("button", { name: "Retry" }));
                 expect(m.refreshAdmins).toHaveBeenCalled();
