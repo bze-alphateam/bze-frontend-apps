@@ -3,9 +3,10 @@
 import { useMemo } from 'react'
 import { getChainName, useAssets } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
+import type { TokenForm } from '@/lib/token-draft'
 import {
     TOKEN_DECIMALS,
+    suggestSubdenom,
     validateDescription,
     validateInitialSupply,
     validateName,
@@ -13,34 +14,25 @@ import {
     validateSymbol,
 } from '@/components/token-wizard/validation'
 
-export interface IdentityErrors {
+export interface TokenFormErrors {
     name: string;
     symbol: string;
-}
-
-export interface SupplyErrors {
+    description: string;
     initialSupply: string;
 }
 
-export interface MetadataErrors {
-    description: string;
-}
-
 /**
- * Single source of truth for wizard validation: step components use the field
- * errors for inline display, the wizard page uses isStepValid to gate Next.
+ * Single source of truth for the token form's validation: the questions show the field
+ * errors, the page gates each question and the Create button on the validity flags.
  */
-export function useTokenWizardValidation() {
-    const { form } = useTokenWizard()
+export function useTokenWizardValidation(form: TokenForm) {
     const { assets } = useAssets()
     const { address } = useChain(getChainName())
+    const subdenom = suggestSubdenom(form.symbol)
 
-    // The denom this wizard will create. Without a connected wallet we can only
-    // show a generic preview — the duplicate check needs the real address.
-    const resultingDenom = useMemo(
-        () => (address && form.subdenom ? `factory/${address}/${form.subdenom}` : undefined),
-        [address, form.subdenom]
-    )
+    // The denom the form will create. Without a connected wallet we can only show a
+    // generic preview, and the duplicate check needs the real address.
+    const resultingDenom = address && subdenom ? `factory/${address}/${subdenom}` : undefined
 
     const isDuplicateDenom = useMemo(
         () => Boolean(resultingDenom && (assets ?? []).some(a => a.denom === resultingDenom)),
@@ -48,50 +40,28 @@ export function useTokenWizardValidation() {
     )
 
     // The subdenom is derived from the symbol, so its problems (invalid chars,
-    // duplicates) surface on the symbol field — the only thing the user can change.
-    const identityErrors: IdentityErrors = useMemo(() => ({
+    // duplicates) surface on the symbol field, the only thing the user can change.
+    const errors: TokenFormErrors = {
         name: validateName(form.name),
         symbol:
             validateSymbol(form.symbol) ||
-            validateSubdenom(form.subdenom) ||
+            validateSubdenom(subdenom) ||
             (isDuplicateDenom ? 'A token with this symbol already exists in your account — pick another one.' : ''),
-    }), [form.name, form.symbol, form.subdenom, isDuplicateDenom])
-
-    const supplyErrors: SupplyErrors = useMemo(() => ({
-        initialSupply: validateInitialSupply(form.initialSupply, TOKEN_DECIMALS),
-    }), [form.initialSupply])
-
-    const metadataErrors: MetadataErrors = useMemo(() => ({
         description: validateDescription(form.description),
-    }), [form.description])
-
-    const isIdentityValid = Object.values(identityErrors).every(e => e === '')
-    const isSupplyValid = Object.values(supplyErrors).every(e => e === '')
-    const isMetadataValid = Object.values(metadataErrors).every(e => e === '')
-
-    const isStepValid = (stepKey: string): boolean => {
-        switch (stepKey) {
-            case 'identity':
-                return isIdentityValid
-            case 'metadata':
-                return isMetadataValid
-            case 'supply':
-                return isSupplyValid
-            case 'review':
-                return isIdentityValid && isMetadataValid && isSupplyValid
-            default:
-                return true
-        }
+        initialSupply: validateInitialSupply(form.initialSupply, TOKEN_DECIMALS),
     }
 
+    const isIdentityValid = errors.name === '' && errors.symbol === ''
+    const isDescriptionValid = errors.description === ''
+    const isSupplyValid = errors.initialSupply === ''
+
     return {
-        identityErrors,
-        supplyErrors,
-        metadataErrors,
-        isIdentityValid,
-        isSupplyValid,
-        isMetadataValid,
-        isStepValid,
+        errors,
+        subdenom,
         resultingDenom,
+        isIdentityValid,
+        isDescriptionValid,
+        isSupplyValid,
+        isValid: isIdentityValid && isDescriptionValid && isSupplyValid,
     }
 }
