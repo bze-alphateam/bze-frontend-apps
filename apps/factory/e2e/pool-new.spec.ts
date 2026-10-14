@@ -14,7 +14,8 @@ test("shows the preselected token, the three questions and the pool fee", async 
 
     const q1 = page.getByRole("region", {name: "Which pair?"});
     await expect(q1).toHaveAttribute("data-state", "active");
-    await expect(q1.getByText("Vidulum")).toBeVisible();
+    // The picker's (closed) option list also renders the name; the first match is the selection.
+    await expect(q1.getByText("Vidulum", {exact: true}).first()).toBeVisible();
     await expect(page.getByRole("region", {name: "How much to put in?"})).toHaveAttribute("data-state", "todo");
     await expect(page.getByRole("region", {name: "Swap fee and where it goes"})).toHaveAttribute("data-state", "todo");
 
