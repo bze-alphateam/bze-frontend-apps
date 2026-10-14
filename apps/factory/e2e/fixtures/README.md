@@ -32,6 +32,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 |---|---|---|
 | `lcd/bank.supply.json` | total supply, limit 200 | the asset list |
 | `lcd/bank.denoms_metadata.json` | denom metadata, limit 200 | token names and tickers |
+| `lcd/bank.denom_metadata.vidulum.json` | VDL bank metadata (query-string route) | the registry entry `/official` generates (`official.spec.ts`). Recorded 2026-10-14 |
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | |
 | `lcd/burner.params.json` | burner params | |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |

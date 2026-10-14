@@ -8,11 +8,13 @@ const { DENOM, mocks } = vi.hoisted(() => ({ DENOM: "factory/bze1owner/utok", mo
     denomReward: vi.fn(),
     pools: vi.fn(),
     markets: vi.fn(),
+    registry: vi.fn(),
 } }));
 
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => mocks.metadata() }));
 vi.mock("@/hooks/useDenomBranding", () => ({ useDenomBranding: () => mocks.branding() }));
 vi.mock("@/hooks/useDenomReward", () => ({ useDenomReward: () => mocks.denomReward() }));
+vi.mock("@/hooks/useRegistryListing", () => ({ useRegistryListing: () => mocks.registry() }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     const tickers: Record<string, string> = { [DENOM]: "TOK", ubze: "BZE", uusdc: "USDC" };
@@ -44,6 +46,8 @@ function setFacts({
     mocks.denomReward.mockReturnValue({ prizes: [], isLoading: false, refresh: vi.fn(), ...denomReward });
     mocks.pools.mockReturnValue({ pools, isLoading: false });
     mocks.markets.mockReturnValue({ markets, isLoading: false });
+    // Off (testnet) unless a test says otherwise, so the item counts below stay the six chain items.
+    mocks.registry.mockReturnValue({ status: "off", retry: vi.fn() });
 }
 
 const run = (admin: string | undefined = "bze1owner") => renderHook(() => useTokenSetup(DENOM, { admin })).result.current;
@@ -150,5 +154,42 @@ describe("useTokenSetup", () => {
         expect(stateOf(result, "brandKit")).toBe("done");
         expect(result.totalCount).toBe(6);
         expect(result.doneCount).toBe(3);
+    });
+
+    it("registry: left out on testnet, todo when not listed, done when listed, unknown on error", () => {
+        expect(run().items.some(i => i.key === "registry")).toBe(false);
+
+        mocks.registry.mockReturnValue({ status: "not-listed", retry: vi.fn() });
+        let result = run();
+        expect(result.items.map(i => i.key)).toEqual(["created", "description", "brandKit", "pool", "holderRewards", "registry", "market"]);
+        expect(result.items.find(i => i.key === "registry")).toMatchObject({
+            state: "todo",
+            optional: false,
+            title: "Logo in every wallet · Cosmos Chain Registry",
+            href: "/official?denom=factory%2Fbze1owner%2Futok",
+            action: { label: "Get it listed", href: "/official?denom=factory%2Fbze1owner%2Futok" },
+        });
+        expect(result.totalCount).toBe(7);
+
+        mocks.registry.mockReturnValue({ status: "listed", retry: vi.fn() });
+        result = run();
+        expect(stateOf(result, "registry")).toBe("done");
+        expect(result.doneCount).toBe(2);
+
+        const retry = vi.fn();
+        mocks.registry.mockReturnValue({ status: "error", retry });
+        result = run();
+        expect(stateOf(result, "registry")).toBe("unknown");
+        expect(result.hasError).toBe(true);
+        void result.refresh();
+        expect(retry).toHaveBeenCalledOnce();
+    });
+
+    it("registry: a locked token still gets it, and loading reads as loading", () => {
+        mocks.registry.mockReturnValue({ status: "not-listed", retry: vi.fn() });
+        expect(stateOf(run(""), "registry")).toBe("todo");
+
+        mocks.registry.mockReturnValue({ status: "loading", retry: vi.fn() });
+        expect(run().isLoading).toBe(true);
     });
 });
