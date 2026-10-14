@@ -74,13 +74,13 @@ export function RunProgress({
     return (
         <Box as="section" aria-label="Sending progress" p={4} borderRadius="xl" borderWidth="1px" borderColor="border" bg="bg.panel">
             <VStack align="stretch" gap={3}>
-                <Text fontSize="sm" fontWeight="semibold">Transaction {Math.min(sent + 1, k)} of {k}</Text>
+                <Text fontSize="sm" fontWeight="semibold">{`Transaction ${Math.min(sent + 1, k)} of ${k}`}</Text>
                 <Progress.Root value={sent} max={k} size="sm" colorPalette="yellow" aria-label={`${sent} of ${k} transactions sent`}>
                     <Progress.Track><Progress.Range /></Progress.Track>
                 </Progress.Root>
 
                 {paused && (
-                    <Text fontSize="sm">{sent} of {k} transactions sent. Continue where you left off.</Text>
+                    <Text fontSize="sm">{`${sent} of ${k} transactions sent. Continue where you left off.`}</Text>
                 )}
 
                 <VStack as="ol" align="stretch" gap={1} maxH="64" overflowY="auto" listStyleType="none" fontSize="xs">

@@ -417,9 +417,7 @@ function MultiSendContent() {
 
             {listValid && k > 1 && (
                 <Text fontSize="sm" color="fg.muted">
-                    It&apos;s sent in {k} transactions of up to {MULTISEND_BATCH_SIZE} wallets each, so you&apos;ll
-                    approve {k} times in your wallet. If you stop halfway, the wallets already paid are marked and
-                    won&apos;t be paid twice.
+                    {`It's sent in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets each, so you'll approve ${k} times in your wallet. If you stop halfway, the wallets already paid are marked and won't be paid twice.`}
                 </Text>
             )}
 
