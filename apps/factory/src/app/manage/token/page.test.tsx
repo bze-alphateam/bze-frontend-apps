@@ -65,6 +65,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         getCommunitiesApp: () => ({ href: "https://communities.example" }),
         getDexApp: () => ({ href: "https://dex.example" }),
         getBurnerApp: () => ({ href: "https://burner.example" }),
+        useLiquidityPools: () => ({ pools: [], isLoading: false }),
+        useMarkets: () => ({ markets: [], isLoading: false }),
     };
 });
 
@@ -302,9 +304,9 @@ describe("token workspace", () => {
         it("trading: create a pool or a market for the token", async () => {
             m.query.tab = "trading";
             renderPage();
-            await userEvent.click(screen.getByRole("button", { name: "Create a liquidity pool" }));
+            await userEvent.click(screen.getByRole("button", { name: "Create a TOK pool" }));
             expect(m.navigate.mock.calls[0][0]).toMatch(new RegExp(`^/pool/new\\?base=${ENCODED}&return=`));
-            await userEvent.click(screen.getByRole("button", { name: "Create an order-book market" }));
+            await userEvent.click(screen.getByRole("button", { name: "Create a market" }));
             expect(m.navigate.mock.calls[1][0]).toMatch(new RegExp(`^/market/new\\?base=${ENCODED}&return=`));
         });
     });
