@@ -45,7 +45,7 @@ vi.mock("@/components/rewards/staking-programs-list", () => ({
     ),
 }));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
-vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: () => <div>metadata card</div> }));
+vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: ({ access }: { access: string }) => <div>metadata {access}</div> }));
 vi.mock("@/components/manage/admin-card", () => ({ AdminActions: () => <div>admin actions</div> }));
 vi.mock("@/components/workspace/supply-action-card", () => ({
     SupplyActionCard: ({ mode }: { mode: string }) => <div>supply {mode}</div>,
@@ -246,15 +246,16 @@ describe("token workspace", () => {
         });
 
         it.each([
-            ["bze1owner", ["metadata card", "brand kit admin"]],
-            ["", ["brand kit renounced"]],
-            ["bze1other", ["brand kit not-admin"]],
+            ["bze1owner", ["metadata admin", "brand kit admin"]],
+            ["", ["metadata renounced", "brand kit renounced"]],
+            ["bze1other", ["metadata not-admin", "brand kit not-admin"]],
+            [undefined, ["metadata unknown", "brand kit not-admin", "Couldn't load the admin"]],
         ])("profile for admin %s", (admin, shown) => {
             m.query.tab = "profile";
             m.tokens.mockReturnValue([token(admin)]);
             renderPage();
-            shown.forEach(text => expect(screen.getByText(text)).toBeInTheDocument());
-            if (admin !== "bze1owner") expect(screen.queryByText("metadata card")).not.toBeInTheDocument();
+            shown.forEach(text => expect(screen.getAllByText(text).length).toBeGreaterThan(0));
+            expect(screen.getByRole("region", { name: "Logo" })).toHaveTextContent("Logos come from the Cosmos Chain Registry");
         });
 
         it("rewards: the denom reward card in every state", () => {

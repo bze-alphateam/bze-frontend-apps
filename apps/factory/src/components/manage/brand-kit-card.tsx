@@ -10,13 +10,14 @@ import {
     Grid,
     HStack,
     Input,
+    Link,
     NativeSelect,
     Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
-import { LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
+import { LuArrowUpRight, LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
 import {
     Asset,
     BRANDING_COLOR_KEYS,
@@ -31,6 +32,7 @@ import {
     brandingFont,
     brandingFontsStylesheetUrl,
     getChainName,
+    getCommunitiesApp,
     validateDenomBranding,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
@@ -98,7 +100,8 @@ function PalettePreview({ asset, branding, palette }: { asset: Asset; branding: 
     )
 }
 
-function BrandKitPreview({ asset, branding }: { asset: Asset; branding: DenomBranding }) {
+/** The Light and Dark sample cards; `stacked` keeps them in one column (the side-by-side edit preview). */
+function BrandKitPreview({ asset, branding, stacked = false }: { asset: Asset; branding: DenomBranding; stacked?: boolean }) {
     // Load the curated fonts so the preview renders the real font. preinit dedupes and, unlike a
     // `<link precedence>`, never suspends the page (inside a Suspense boundary) while it downloads.
     preinit(brandingFontsStylesheetUrl(), { as: 'style', precedence: 'default' })
@@ -108,7 +111,7 @@ function BrandKitPreview({ asset, branding }: { asset: Asset; branding: DenomBra
             <Text fontSize="sm" color="fg.muted">
                 Font: <Text as="span" fontWeight="medium" color="fg">{brandingFont(branding.font)?.label ?? `${branding.font} (not supported — shown in the default font)`}</Text>
             </Text>
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={3}>
+            <Grid templateColumns={stacked ? 'minmax(0, 1fr)' : { base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={3}>
                 {BRANDING_PALETTES.map(palette => (
                     <PalettePreview key={palette} asset={asset} branding={branding} palette={palette} />
                 ))}
@@ -191,47 +194,56 @@ function BrandKitForm({
 
     return (
         <VStack align="stretch" gap={4}>
-            <Field.Root invalid={Boolean(errors.font)}>
-                <Field.Label>Font</Field.Label>
-                <NativeSelect.Root size="sm">
-                    <NativeSelect.Field
-                        aria-label="Font"
-                        value={kit.font}
-                        onChange={(e) => setKit(prev => ({ ...prev, font: e.target.value }))}
-                    >
-                        {!brandingFont(kit.font) && <option value={kit.font}>{kit.font || 'Pick a font'}</option>}
-                        {BRANDING_FONTS.map(font => (
-                            <option key={font.slug} value={font.slug}>{font.label}</option>
+            <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={6} alignItems="start">
+                <VStack align="stretch" gap={4} minW="0">
+                    <Field.Root invalid={Boolean(errors.font)}>
+                        <Field.Label>Font</Field.Label>
+                        <NativeSelect.Root size="sm">
+                            <NativeSelect.Field
+                                aria-label="Font"
+                                value={kit.font}
+                                onChange={(e) => setKit(prev => ({ ...prev, font: e.target.value }))}
+                            >
+                                {!brandingFont(kit.font) && <option value={kit.font}>{kit.font || 'Pick a font'}</option>}
+                                {BRANDING_FONTS.map(font => (
+                                    <option key={font.slug} value={font.slug}>{font.label}</option>
+                                ))}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                        <Field.ErrorText>{errors.font}</Field.ErrorText>
+                    </Field.Root>
+
+                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap={4}>
+                        {BRANDING_PALETTES.map(palette => (
+                            <VStack key={palette} align="stretch" gap={3}>
+                                <Text fontSize="sm" fontWeight="semibold">
+                                    {PALETTE_LABELS[palette]} palette
+                                </Text>
+                                {BRANDING_COLOR_KEYS.map(key => {
+                                    const field: BrandingField = `${palette}.${key}`
+                                    return (
+                                        <ColorInput
+                                            key={field}
+                                            label={`${PALETTE_LABELS[palette]} ${COLOR_LABELS[key].toLowerCase()}`}
+                                            value={kit[palette][key]}
+                                            error={errors[field]}
+                                            onChange={(value) => setKit(prev => withBrandingColor(prev, palette, key, value))}
+                                        />
+                                    )
+                                })}
+                            </VStack>
                         ))}
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                </NativeSelect.Root>
-                <Field.ErrorText>{errors.font}</Field.ErrorText>
-            </Field.Root>
+                    </Grid>
+                </VStack>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
-                {BRANDING_PALETTES.map(palette => (
-                    <VStack key={palette} align="stretch" gap={3}>
-                        <Text fontSize="sm" fontWeight="semibold">
-                            {PALETTE_LABELS[palette]} palette
-                        </Text>
-                        {BRANDING_COLOR_KEYS.map(key => {
-                            const field: BrandingField = `${palette}.${key}`
-                            return (
-                                <ColorInput
-                                    key={field}
-                                    label={`${PALETTE_LABELS[palette]} ${COLOR_LABELS[key].toLowerCase()}`}
-                                    value={kit[palette][key]}
-                                    error={errors[field]}
-                                    onChange={(value) => setKit(prev => withBrandingColor(prev, palette, key, value))}
-                                />
-                            )
-                        })}
-                    </VStack>
-                ))}
+                <VStack align="stretch" gap={2} minW="0" data-testid="brand-kit-live-preview">
+                    <Text fontSize="sm" fontWeight="semibold">Live preview</Text>
+                    {isValid
+                        ? <BrandKitPreview asset={asset} branding={kit} stacked />
+                        : <Text fontSize="sm" color="fg.muted">Fix the fields marked in red to see the preview.</Text>}
+                </VStack>
             </Grid>
-
-            {isValid && <BrandKitPreview asset={asset} branding={kit} />}
 
             <InfoBox>
                 Saving always stores the whole kit — the font and all eight colours. It is public
@@ -312,6 +324,8 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
  * was renounced.
  */
 export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKitAccess }) {
+    const ticker = asset.ticker
+    const communitiesHref = `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(asset.denom)}`
     const { branding, isLoading, hasError, refresh } = useDenomBranding(asset.denom)
     const [mode, setMode] = useState<'view' | 'edit' | 'remove'>('view')
 
@@ -322,22 +336,14 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
     }
 
     return (
-        <Card.Root
-            variant="outline"
-            p="5"
-            bgGradient="to-br"
-            gradientFrom="purple.500/8"
-            gradientTo="purple.600/8"
-            borderColor="purple.500/20"
-            data-testid="brand-kit-card"
-        >
+        <Card.Root as="section" aria-label={`How ${ticker} looks on Communities`} variant="outline" p="5" data-testid="brand-kit-card">
             <VStack align="stretch" gap={4}>
                 <HStack justify="space-between" gap={2} flexWrap="wrap">
                     <HStack gap={2}>
                         <Box p={2} borderRadius="lg" bg="purple.500/15" color="purple.600">
                             <LuPalette size={18} />
                         </Box>
-                        <Text fontWeight="semibold">Brand kit</Text>
+                        <Text fontWeight="semibold">{`How ${ticker} looks on Communities`}</Text>
                     </HStack>
                     {isAdmin && mode === 'view' && !isLoading && !hasError && (
                         <HStack gap={2}>
@@ -380,7 +386,7 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                         ) : (
                             <Text fontSize="sm" color="fg.muted">
                                 {isAdmin
-                                    ? 'No brand kit yet. Give apps a font and light/dark colours to show this token in.'
+                                    ? `No brand kit yet. Pick colours and a font so ${ticker}'s Communities page feels like yours.`
                                     : 'This token has no brand kit.'}
                             </Text>
                         )}
@@ -389,14 +395,25 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                                 <LuLock />
                                 <Text>
                                     {branding
-                                        ? 'Frozen — the admin was renounced, so this kit can never change.'
-                                        : 'Frozen — the admin was renounced, so this token will never have a brand kit.'}
+                                        ? 'Frozen — it can never change.'
+                                        : `Frozen — ${ticker} will never have a brand kit.`}
                                 </Text>
                             </HStack>
                         )}
                         {isAdmin && mode === 'remove' && (
                             <RemovePanel asset={asset} onCancel={() => setMode('view')} onRemoved={backToView} />
                         )}
+                        <Link
+                            href={communitiesHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            fontSize="sm"
+                            fontWeight="medium"
+                            color="purple.500"
+                            alignSelf="start"
+                        >
+                            {`See ${ticker}'s Communities page`} <LuArrowUpRight />
+                        </Link>
                     </VStack>
                 )}
             </VStack>
