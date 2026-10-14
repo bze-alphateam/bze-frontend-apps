@@ -23,6 +23,7 @@ import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigation } from '@/hooks/useNavigation'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
+import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import {
     airdropFormHref,
     formatLastPaid,
@@ -142,6 +143,7 @@ export function DenomRewardCard({ asset }: { asset: Asset }) {
                             <LuGift size={18} />
                         </Box>
                         <Text fontWeight="semibold">Denom reward</Text>
+                        <RewardInfoButton denom={asset.denom} />
                     </HStack>
                     {denomReward && (
                         <Badge colorPalette="green" variant="surface" size="sm">Live</Badge>

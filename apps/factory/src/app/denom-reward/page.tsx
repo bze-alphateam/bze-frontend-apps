@@ -17,6 +17,7 @@ import { useNavigation } from '@/hooks/useNavigation'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { InfoBox } from '@/components/ui/info-box'
 import { denomRewardHref } from '@/lib/denom-reward'
+import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 
 const formatDays = (days: number) => `${days.toLocaleString('en-US')} day${days === 1 ? '' : 's'}`
 
@@ -131,7 +132,10 @@ export default function DenomRewardDirectoryPage() {
                             <LuGift size={22} />
                         </Box>
                         <VStack align="start" gap={0}>
-                            <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">Denom rewards</Text>
+                            <HStack gap={1}>
+                                <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">Denom rewards</Text>
+                                <RewardInfoButton withLabel={true} />
+                            </HStack>
                             <Text fontSize="sm" color="fg.muted">
                                 Staking pools where holders of a token earn prizes anyone can fund — with a
                                 daily schedule or a one-off airdrop.
