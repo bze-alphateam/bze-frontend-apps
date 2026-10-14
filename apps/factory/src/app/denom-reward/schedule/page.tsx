@@ -141,8 +141,11 @@ function ScheduleFormContent() {
 
     const back = () => navigate(denomRewardHref(denom))
 
-    const stakingTicker = stakingAsset?.ticker ?? denom
-    const prizeTicker = prizeAsset?.ticker ?? prizeDenom
+    // Until the asset list loads, plain words stand in for the tickers: a raw factory denom is
+    // one long unbreakable word that would push the page wider than a phone.
+    const stakingTicker = stakingAsset?.ticker ?? 'the token'
+    const stakingPossessive = stakingAsset ? `${stakingAsset.ticker}'s` : "the token's"
+    const prizeTicker = prizeAsset?.ticker ?? ''
     const escrowDisplay = costs.escrow && prizeAsset
         ? uAmountToBigNumberAmount(costs.escrow.amount, prizeAsset.decimals)
         : undefined
@@ -210,7 +213,7 @@ function ScheduleFormContent() {
         )
     }
 
-    const holderRewardsLabel = `${stakingTicker}'s holder rewards`
+    const holderRewardsLabel = `${stakingPossessive} holder rewards`
 
     if (doneTx) {
         return (
@@ -222,7 +225,7 @@ function ScheduleFormContent() {
                 links={[
                     { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${doneTx.txHash}` },
                     {
-                        label: `See it on ${stakingTicker}'s Communities page ↗`,
+                        label: `See it on ${stakingPossessive} Communities page ↗`,
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,
                     },
                 ]}
@@ -252,7 +255,7 @@ function ScheduleFormContent() {
             <Text color="fg.muted">
                 Locked now:{' '}
                 <Text as="span" fontWeight="semibold" color="fg" data-testid="escrow-amount">
-                    {escrowText || `— ${prizeTicker}`}
+                    {escrowText || `— ${prizeTicker}`.trim()}
                 </Text>{' '}
                 (daily prize × {isExtend ? 'extra days' : 'days'}), taken from your wallet in full when you sign.
                 It can&apos;t be cancelled or withdrawn.
@@ -321,7 +324,7 @@ function ScheduleFormContent() {
                 </HStack>
             }
             subtitle={isExtend
-                ? `Fund more days of this ${stakingTicker} daily prize.`
+                ? `Fund more days of this ${stakingAsset ? `${stakingAsset.ticker} ` : ''}daily prize.`
                 : `Pay a daily prize to everyone staking ${stakingTicker}.`}
             techTag={VOCABULARY.dailyPrize.tech}
             backHref={returnTo?.href ?? denomRewardHref(denom)}

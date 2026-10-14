@@ -61,8 +61,9 @@ export function PrizeTokenQuestion({
     const { asset: feeAsset } = useAsset(prizeFee?.denom ?? '')
 
     const slot = prizeSlot(prizes, value, maxPrizeDenoms)
-    const stakeTicker = stakingAsset?.ticker ?? denomReward.staking_denom
-    const prizeTicker = prizeAsset?.ticker ?? value
+    // Raw denoms are long unbreakable words: plain words stand in until the asset list loads.
+    const stakeTicker = stakingAsset?.ticker ?? 'the token'
+    const prizeTicker = prizeAsset?.ticker ?? 'this prize token'
 
     const feeText = prizeFee && feeAsset && new BigNumber(prizeFee.amount).gt(0)
         ? ` (${prettyAmount(uAmountToBigNumberAmount(prizeFee.amount, feeAsset.decimals))} ${feeAsset.ticker})`

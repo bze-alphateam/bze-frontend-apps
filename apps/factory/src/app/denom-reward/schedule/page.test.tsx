@@ -8,8 +8,9 @@ import type { Asset } from "@bze/bze-ui-kit";
 // Drive the form off mocked hooks: query params, the DR state, chain params, wallet and the
 // affordability engine. The asset picker becomes a plain button per prize denom; PayPanel
 // has its own coverage and prints its rows here.
-const { STAKING, queryParams, wallet, useDenomRewardMock, navigateMock, txMock, affordMock, openMock } = vi.hoisted(() => ({
+const { STAKING, unloaded, queryParams, wallet, useDenomRewardMock, navigateMock, txMock, affordMock, openMock } = vi.hoisted(() => ({
     STAKING: "factory/bze1owner/utok",
+    unloaded: new Set<string>(),
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1funder" as string | undefined },
     useDenomRewardMock: vi.fn(),
@@ -67,7 +68,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const fee = { denom: "ubze", amount: "25000000000" };
     return {
         ...actual,
-        useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
+        useAsset: (denom: string) => ({ asset: unloaded.has(denom) ? undefined : assets[denom], isLoading: false }),
         useBalance: () => ({ balance: { denom: "", amount: actual.toBigNumber(0) }, isLoading: false }),
         useCanAffordTx: (input: unknown) => affordMock(input),
         useCreationFees: () => ({
@@ -111,6 +112,7 @@ const setParams = (params: Record<string, string>) => {
 
 beforeEach(() => {
     setParams({});
+    unloaded.clear();
     wallet.address = "bze1funder";
     useDenomRewardMock.mockReset().mockReturnValue(drState());
     navigateMock.mockReset();
@@ -344,6 +346,16 @@ describe("Extend a daily prize", { timeout: 20_000 }, () => {
 });
 
 describe("schedule form — guards", () => {
+    it("never prints the raw denom while the asset list is still loading", () => {
+        // A factory denom is one unbreakable word; in the nowrap back button it widened the page past a phone.
+        unloaded.add(STAKING);
+        renderPage();
+
+        expect(screen.getByRole("button", { name: "Back to the token's holder rewards" })).toBeInTheDocument();
+        expect(screen.getByText("Pay a daily prize to everyone staking the token.")).toBeInTheDocument();
+        expect(document.body.textContent).not.toContain(STAKING);
+    });
+
     it("points back to the denom reward page to create it first", () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, schedules: [], prizes: [] }));
         renderPage();
