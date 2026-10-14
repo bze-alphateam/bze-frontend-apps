@@ -19,6 +19,7 @@ const navSubitems: { [key: string]: string } = {
     '/pool/new': '/',
     '/pool/add': '/',
     '/reward/new': '/',
+    '/multisend': '/',
     '/manage/token': '/manage',
     '/denom-reward': '/manage',
     '/denom-reward/schedule': '/manage',

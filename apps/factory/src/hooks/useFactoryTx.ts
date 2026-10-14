@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react'
 import {
     TxKind,
+    TxKindSpec,
     TxOptions,
     canAffordTx,
     prettyAmount,
@@ -41,8 +42,16 @@ const TYPE_URL_KINDS: Record<string, TxKind> = {
  * The gas-estimate kinds of a message list, in order. Unknown type URLs are skipped, so an
  * unmapped message simply gets no pre-flight check (the wallet still simulates at signing).
  */
-export function txKindsOf(msgs: ReadonlyArray<{ typeUrl: string }>): TxKind[] {
-    return msgs.map(msg => TYPE_URL_KINDS[msg.typeUrl]).filter((kind): kind is TxKind => kind !== undefined)
+export function txKindsOf(msgs: ReadonlyArray<{ typeUrl: string; value?: unknown }>): Array<TxKind | TxKindSpec> {
+    return msgs.flatMap((msg): Array<TxKind | TxKindSpec> => {
+        // A multi-send's gas grows with its outputs.
+        if (msg.typeUrl === '/cosmos.bank.v1beta1.MsgMultiSend') {
+            const outputs = (msg.value as { outputs?: unknown[] } | undefined)?.outputs
+            return [{ kind: 'multi-send', count: outputs?.length ?? 1 }]
+        }
+        const kind = TYPE_URL_KINDS[msg.typeUrl]
+        return kind ? [kind] : []
+    })
 }
 
 /**

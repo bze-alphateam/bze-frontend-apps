@@ -58,6 +58,10 @@ describe('estimateGasUsed', () => {
         expect(estimateGasUsed({ kind: 'fill-orders', count: 4 }).toNumber()).toBe(base + perItem! * 3)
     })
 
+    it('a multi-send adds perItem gas for every output after the first', () => {
+        expect(estimateGasUsed({ kind: 'multi-send', count: 3 }).toNumber()).toBe(200_000 + 2 * 35_000)
+    })
+
     it('ignores the count for kinds without perItem and treats bad counts as one', () => {
         expect(estimateGasUsed({ kind: 'send', count: 5 }).toNumber()).toBe(GAS_ESTIMATES.send.base)
         expect(estimateGasUsed({ kind: 'fill-orders', count: 0 }).toNumber()).toBe(GAS_ESTIMATES['fill-orders'].base)
