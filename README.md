@@ -312,8 +312,9 @@ Deploys are **push-based**: after pushing its image, each build job dispatches t
 repo's `deploy` workflow for its target (`deploy <app> <tag>`) and waits for it — that
 workflow runs the blue/green, health-gated release script on the server through an SSH
 gate. Merging to `develop` deploys testnet and merging to `main` deploys mainnet, within
-minutes; a failed release turns both runs red and the previous tag stays live. The `dex`
-job comments the deploy links on the merged PR. Rollback = re-run the deploy workflow
+minutes; a failed release turns both runs red and the previous tag stays live. This repo
+is public, so its logs only say whether a deploy succeeded; the run itself is in the deploy
+repo's Actions, and nothing is commented on PRs. Rollback = re-run the deploy workflow
 with an older tag (or revert on the branch). A manual `workflow_dispatch` of
 `docker-publish` rebuilds and pushes but never deploys. Nothing in this repo touches the
 server.
