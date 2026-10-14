@@ -3,7 +3,6 @@
 import React, { Suspense, useMemo, useState } from 'react'
 import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
 import { LuTriangleAlert } from 'react-icons/lu'
-import { bze } from '@bze/bzejs'
 import {
     amountToUAmount,
     getChainExplorerURL,
@@ -12,14 +11,12 @@ import {
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
-    useCanAffordTx,
-    useCreationFees,
     useMaxSpendable,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { useFeePayment } from '@/hooks/useFeePayment'
+import { AIRDROP_TX_KIND, airdropPayRows, useAirdropGift } from '@/hooks/useAirdropGift'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { Notice } from '@/components/manage/denom-reward-form-parts'
 import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
@@ -29,18 +26,14 @@ import {
     GuidedForm,
     OutcomePanel,
     PayPanel,
-    PayRow,
     Question,
     SuccessPanel,
     useGuidedSteps,
     useReturnTo,
 } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
-import { airdropBlocker, denomRewardHref, prizeSlot, summarizeAirdropCosts } from '@/lib/denom-reward'
+import { denomRewardHref } from '@/lib/denom-reward'
 
-const { distributeDenomRewards } = bze.rewards.MessageComposer.withTypeUrl
-
-const TX_KIND = 'distribute-denom-rewards'
 const STEPS = ['prize', 'amount'] as const
 type Step = typeof STEPS[number]
 
@@ -53,7 +46,6 @@ function AirdropFormContent() {
     const { tx } = useFactoryTx()
     const { asset: stakingAsset } = useAsset(denom)
     const { denomReward, prizes, isLoading, hasError } = useDenomReward(denom)
-    const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
 
     const [prizeDenom, setPrizeDenom] = useState('')
     const [amountInput, setAmountInput] = useState('')
@@ -64,7 +56,7 @@ function AirdropFormContent() {
 
     const { asset: prizeAsset } = useAsset(prizeDenom)
     // The balance shown and the Max button: the whole balance, less the gas when the prize is the gas token.
-    const spendable = useMaxSpendable(prizeDenom, TX_KIND)
+    const spendable = useMaxSpendable(prizeDenom, AIRDROP_TX_KIND)
 
     const amountError = prizeAsset ? validateAmount(amountInput, prizeAsset.decimals) : ''
     const uAmount = useMemo(() => {
@@ -72,22 +64,8 @@ function AirdropFormContent() {
         return amountToUAmount(amountInput, prizeAsset.decimals)
     }, [prizeAsset, amountError, amountInput])
 
-    const maxPrizes = denomRewardLimits.maxPrizeDenomsPerDr
-    const slot = prizeSlot(prizes, prizeDenom, maxPrizes)
-    const isNewPrize = Boolean(prizeDenom) && slot.isNewPrize
-    const costs = summarizeAirdropCosts({ uAmount, prizeDenom, prizeFee: fees.createDenomRewardPrizeFee, isNewPrize })
-    const blocker = denomReward
-        ? airdropBlocker({ stakedAmount: denomReward.staked_amount, prizeDenom, slot, feesKnown: costs.feesKnown })
-        : ''
-
-    const mainFee = costs.feeTotals[0]
-    const extraFees = costs.feeTotals.slice(1)
-    const feePayment = useFeePayment(mainFee, TX_KIND)
-    const afford = useCanAffordTx({
-        spec: costs.escrow ? TX_KIND : undefined,
-        spend: costs.escrow ? [costs.escrow, ...extraFees] : undefined,
-        moduleFee: feePayment.estimate.resolvedFee,
-    })
+    const gift = useAirdropGift({ denom, stakedAmount: denomReward?.staked_amount, prizes, prizeDenom, uAmount })
+    const { slot, isNewPrize, costs, blocker, afford } = gift
 
     const steps = useGuidedSteps<Step>(STEPS, {
         prize: answered.includes('prize') && Boolean(prizeAsset) && !slot.capReached,
@@ -100,9 +78,7 @@ function AirdropFormContent() {
     }
 
     const allAnswered = STEPS.every(k => steps.state[k] === 'done')
-    const feesReady = costs.feesKnown && (!mainFee || feePayment.canPayFee)
-    const canConfirm = allAnswered && Boolean(address) && costs.escrow !== undefined && blocker === '' && feesReady &&
-        !afford.isLoading && afford.canAfford
+    const canConfirm = allAnswered && Boolean(address) && gift.canSign
 
     // Until the asset list loads, plain words stand in for the tickers: a raw factory denom is
     // one long unbreakable word that would push the page wider than a phone.
@@ -131,11 +107,12 @@ function AirdropFormContent() {
     }
 
     const submit = async () => {
-        if (!address || !canConfirm || !costs.escrow) return
+        const msg = address && canConfirm ? gift.message(address) : undefined
+        if (!msg) return
         setIsSubmitting(true)
         try {
             await tx(
-                [distributeDenomRewards({ creator: address, denom, prizeDenom, amount: costs.escrow.amount })],
+                [msg],
                 { onSuccess: (res) => setDoneTx({ txHash: res.txhash, giftLabel: giftText }) },
             )
         } finally {
@@ -193,23 +170,6 @@ function AirdropFormContent() {
         )
     }
 
-    const slotInfo = maxPrizes !== undefined
-        ? `The first time a token becomes a prize on ${stakingTicker} it takes one of ${stakingPossessive} ${maxPrizes} prize slots (${slot.used + 1} of ${maxPrizes} after this), for good. Gifting ${prizeTicker || 'it'} to ${stakingTicker} again is free.`
-        : `The first time a token becomes a prize on ${stakingTicker} it takes one of ${stakingPossessive} prize slots, for good. Gifting ${prizeTicker || 'it'} to ${stakingTicker} again is free.`
-
-    // A new prize with the cap reached gets no fee row: the blocker banner covers it.
-    const feeRows: PayRow[] = !prizeDenom || (isNewPrize && slot.capReached)
-        ? []
-        : isNewPrize
-            ? costs.fees.map(f => ({ label: 'New prize fee', coin: f.coin, info: slotInfo }))
-            : [{ label: 'Prize fee', text: 'None', info: `${stakingTicker} already pays ${prizeTicker}, so only the network fee applies.` }]
-
-    const payRows: PayRow[] = [
-        ...(costs.escrow ? [{ label: 'The gift', coin: costs.escrow }] : []),
-        ...feeRows,
-        ...extraFees.map(c => ({ label: 'Also charged', coin: c })),
-    ]
-
     const aside = (
         <>
             <OutcomePanel>
@@ -226,11 +186,11 @@ function AirdropFormContent() {
             </OutcomePanel>
 
             <PayPanel
-                rows={payRows}
-                moduleFee={mainFee}
-                txKind={TX_KIND}
-                isLoading={isNewPrize && isFeeLoading}
-                feeUnknown={isNewPrize && !slot.capReached && !isFeeLoading && !costs.feesKnown}
+                rows={airdropPayRows(gift, { prizeDenom, stakingTicker, stakingPossessive, prizeTicker })}
+                moduleFee={gift.mainFee}
+                txKind={AIRDROP_TX_KIND}
+                isLoading={isNewPrize && gift.isFeeLoading}
+                feeUnknown={isNewPrize && !slot.capReached && !gift.isFeeLoading && !costs.feesKnown}
             />
 
             <VStack align="stretch" gap={2}>
@@ -287,8 +247,8 @@ function AirdropFormContent() {
                     <PrizeTokenQuestion
                         denomReward={denomReward}
                         prizes={prizes}
-                        maxPrizeDenoms={maxPrizes}
-                        prizeFee={fees.createDenomRewardPrizeFee}
+                        maxPrizeDenoms={gift.maxPrizes}
+                        prizeFee={gift.prizeFee}
                         value={prizeDenom}
                         onSelect={(asset) => setPrizeDenom(asset.denom)}
                     />

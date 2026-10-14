@@ -5,6 +5,8 @@ import {
     airdropFormHref,
     denomRewardHref,
     formatLastPaid,
+    newPrizeSlotInfo,
+    prizeBlocker,
     summarizeAirdropCosts,
     prizeSlot,
     scheduleDaysLeft,
@@ -209,6 +211,35 @@ describe('airdropBlocker', () => {
     it('lets a staked DR through', () => {
         expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'ubze', slot: freeSlot, feesKnown: true })).toBe('')
         expect(airdropBlocker({ stakedAmount: '10', prizeDenom: '', slot: freeSlot, feesKnown: true })).toBe('')
+    })
+})
+
+describe('prizeBlocker', () => {
+    it('ignores stakers: a daily prize may be added before anyone stakes', () => {
+        const slot = { isNewPrize: false, capReached: false, used: 1 }
+        expect(prizeBlocker({ prizeDenom: 'ubze', slot, feesKnown: true })).toBe('')
+    })
+
+    it('refuses the cap and an unknown new prize fee, nothing without a prize', () => {
+        expect(prizeBlocker({ prizeDenom: 'uatom', slot: { isNewPrize: true, capReached: true, used: 2 }, feesKnown: true })).toMatch(/maximum number of prize tokens/)
+        expect(prizeBlocker({ prizeDenom: 'uatom', slot: { isNewPrize: true, capReached: false, used: 1 }, feesKnown: false })).toMatch(/couldn't be read/)
+        expect(prizeBlocker({ prizeDenom: '', slot: { isNewPrize: true, capReached: true, used: 2 }, feesKnown: false })).toBe('')
+    })
+})
+
+describe('newPrizeSlotInfo', () => {
+    const stake = { ticker: 'TOK', possessive: "TOK's" }
+
+    it('names the slot it takes out of the cap', () => {
+        expect(newPrizeSlotInfo(stake, 'ATOM', { isNewPrize: true, capReached: false, used: 1 }, 5)).toBe(
+            "The first time a token becomes a prize on TOK it takes one of TOK's 5 prize slots (2 of 5 after this), for good. Gifting ATOM to TOK again is free.",
+        )
+    })
+
+    it('leaves the numbers out while the cap is unknown', () => {
+        expect(newPrizeSlotInfo(stake, '', { isNewPrize: true, capReached: false, used: 0 })).toBe(
+            "The first time a token becomes a prize on TOK it takes one of TOK's prize slots, for good. Gifting it to TOK again is free.",
+        )
     })
 })
 

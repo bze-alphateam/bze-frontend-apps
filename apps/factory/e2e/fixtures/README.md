@@ -45,8 +45,8 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
 | `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | the Staking programs tab of `/rewards` and the workspace Rewards tab (`rewards.spec.ts` adds a running program) |
-| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards` |
-| `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`), the airdrop form (`denom-reward-airdrop.spec.ts`, which also answers it with nothing staked through `network.use`) and the holder rewards panel (`denom-reward-token.spec.ts`, which also answers a 404 for `testusd` through `network.use`). Recorded 2026-10-14 |
+| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards`; the communities of `/reach` (`reach.spec.ts`, which also adds a zero-staked one through `network.use`) |
+| `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`), the community picked on `/reach`, the airdrop form (`denom-reward-airdrop.spec.ts`, which also answers it with nothing staked through `network.use`) and the holder rewards panel (`denom-reward-token.spec.ts`, which also answers a 404 for `testusd` through `network.use`). Recorded 2026-10-14 |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule and airdrop forms' new-prize check |
 | `lcd/rewards.denom_reward_schedules.noadmin.json` | schedules of the `noadmin` denom reward, limit 500 | its "Running schedules" count; the schedule form's extend mode (`000000000000`, 200 days) |
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |
