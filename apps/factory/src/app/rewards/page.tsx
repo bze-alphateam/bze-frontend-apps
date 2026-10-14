@@ -7,7 +7,9 @@ import { getAllDenomRewards } from '@bze/bze-ui-kit'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { HolderListState, HolderRewardsTab } from '@/components/rewards/holder-rewards-tab'
-import { StakingRewards } from '@/components/manage/staking-rewards'
+import { StakingProgramsList } from '@/components/rewards/staking-programs-list'
+import { useStakingRewards } from '@/hooks/useStakingRewards'
+import { splitStakingRewards } from '@/lib/staking-rewards'
 import { RewardsView, parseRewardsView, rewardsHref } from '@/lib/rewards-directory'
 
 /** Every reward on the chain (they are permissionless), the wallet's own tokens first. */
@@ -16,6 +18,9 @@ function RewardsDirectory() {
     const view = parseRewardsView(getQueryParam)
     const [state, setState] = useState<HolderListState>({ status: 'loading' })
     const [reload, setReload] = useState(0)
+    // Loaded here rather than in the tab, so the tab label can count the running programs.
+    const programs = useStakingRewards()
+    const runningPrograms = splitStakingRewards(programs.rewards).active.length
 
     useEffect(() => {
         let cancelled = false
@@ -65,7 +70,12 @@ function RewardsDirectory() {
                         Holder rewards
                         {state.status === 'ready' && <Badge size="sm" variant="subtle" colorPalette="yellow">{state.list.length}</Badge>}
                     </Tabs.Trigger>
-                    <Tabs.Trigger value="programs" flexShrink={0}>Staking programs</Tabs.Trigger>
+                    <Tabs.Trigger value="programs" flexShrink={0}>
+                        Staking programs
+                        {!programs.isLoading && !programs.hasError && (
+                            <Badge size="sm" variant="subtle" colorPalette="yellow">{`${runningPrograms} running`}</Badge>
+                        )}
+                    </Tabs.Trigger>
                 </Tabs.List>
                 <Tabs.Content value="holder" pt={6}>
                     <HolderRewardsTab
@@ -78,7 +88,12 @@ function RewardsDirectory() {
                     />
                 </Tabs.Content>
                 <Tabs.Content value="programs" pt={6}>
-                    <StakingRewards />
+                    <StakingProgramsList
+                        pinMine={true}
+                        programs={programs}
+                        status={view.status}
+                        onStatus={(status) => show({ status })}
+                    />
                 </Tabs.Content>
             </Tabs.Root>
         </VStack>

@@ -17,6 +17,7 @@ const lcd = (name: string) => JSON.parse(readFileSync(join(__dirname, "fixtures"
 const ALL_DENOM_REWARDS = lcd("rewards.all_denom_rewards.json");
 const PRIZES = lcd("rewards.denom_reward_prizes.noadmin.json");
 const SCHEDULES = lcd("rewards.denom_reward_schedules.noadmin.json");
+const STAKING_REWARDS = lcd("rewards.all_staking_rewards.json");
 
 // The wide-screen table; phones get the stacked cards instead.
 const tableRows = (page: import("@playwright/test").Page) =>
@@ -102,6 +103,41 @@ test("the guide fits a phone screen without sideways scrolling", async ({page}) 
     const dialog = page.getByRole("dialog", {name: "Which reward fits?"});
     await expect(dialog.getByTestId("reward-comparison-stacked")).toBeVisible();
     await expect(dialog.getByRole("table", {name: "Rewards compared"})).toBeHidden();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("Staking programs: running first, finished folded away", async ({page, network}) => {
+    // testnet's one program has paid all its days; add a running one after it in chain order.
+    const [finished] = STAKING_REWARDS.body.list;
+    const running = {...finished, reward_id: "000000000001", payouts: 3, duration: 30};
+    network.use("lcd", {...STAKING_REWARDS, body: {...STAKING_REWARDS.body, list: [finished, running]}});
+    await page.goto("/rewards?tab=programs");
+
+    await expect(page.getByRole("tab", {name: /Staking programs/})).toContainText("1 running");
+    const rows = page.getByTestId("staking-program-row");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first().getByText("#000000000001")).toBeVisible();
+
+    const toggle = page.getByRole("button", {name: "Finished (1)"});
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(1).getByText("#000000000000")).toBeVisible();
+    // 37 staked: the finished program can't be deleted yet, and says why.
+    await expect(rows.nth(1).getByTestId("staking-reward-delete-blocker")).toContainText("still staked");
+
+    await page.getByRole("button", {name: "Running", exact: true}).click();
+    await expect(page).toHaveURL(/status=running/);
+    await expect(page.getByRole("button", {name: "Finished (1)"})).toHaveCount(0);
+    await expect(rows).toHaveCount(1);
+});
+
+test("Staking programs fit a phone screen", async ({page}) => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto("/rewards?tab=programs&status=finished");
+
+    await expect(page.getByTestId("staking-program-row")).toHaveCount(STAKING_REWARDS.body.list.length);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 });

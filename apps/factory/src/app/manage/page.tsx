@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import NextLink from 'next/link'
 import {
     Badge,
     Box,
@@ -9,6 +10,7 @@ import {
     Container,
     HStack,
     IconButton,
+    Link,
     Skeleton,
     Text,
     VStack,
@@ -23,7 +25,7 @@ import {
 } from '@bze/bze-ui-kit'
 import { MyMarkets } from '@/components/manage/my-markets'
 import { MyPools } from '@/components/manage/my-pools'
-import { StakingRewards } from '@/components/manage/staking-rewards'
+import { rewardsHref } from '@/lib/rewards-directory'
 import { InfoBox } from '@/components/ui/info-box'
 import { useMyTokens, type MyToken } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
@@ -221,7 +223,11 @@ export default function ManagePage() {
 
                     <MyPools />
 
-                    <StakingRewards />
+                    <Text fontSize="sm" data-testid="staking-programs-moved">
+                        <Link asChild={true} colorPalette="yellow" fontWeight="medium">
+                            <NextLink href={rewardsHref({ tab: 'programs' })}>Staking programs moved to Rewards →</NextLink>
+                        </Link>
+                    </Text>
                 </VStack>
             </Container>
         </Box>

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import BigNumber from "bignumber.js";
 import {
     DEFAULT_REWARDS_VIEW,
+    PROGRAM_STATUSES,
     HolderRow,
     airdropDisabledReason,
     filterHolderRows,
@@ -25,22 +26,24 @@ const tickers = (rows: HolderRow[]) => rows.map(r => r.ticker);
 const query = (q: string) => { const p = new URLSearchParams(q); return (k: string) => p.get(k); };
 
 describe("URL state", () => {
-    it("defaults to holder rewards, all, most staked", () => {
-        expect(parseRewardsView(query(""))).toEqual({ tab: "holder", filter: "all", sort: "staked" });
-        expect(parseRewardsView(query("tab=x&filter=y&sort=z"))).toEqual(DEFAULT_REWARDS_VIEW);
+    it("defaults to holder rewards, all, most staked, every program", () => {
+        expect(parseRewardsView(query(""))).toEqual({ tab: "holder", filter: "all", sort: "staked", status: "all" });
+        expect(parseRewardsView(query("tab=x&filter=y&sort=z&status=w"))).toEqual(DEFAULT_REWARDS_VIEW);
     });
 
     it("round-trips every view through the link", () => {
         for (const tab of ["holder", "programs"] as const) {
             for (const filter of ["all", "stakers", "paying"] as const) {
                 for (const sort of ["staked", "prizes", "name"] as const) {
-                    const href = rewardsHref({ tab, filter, sort });
-                    expect(href.startsWith("/rewards?")).toBe(true);
-                    expect(parseRewardsView(query(href.split("?")[1]))).toEqual({ tab, filter, sort });
+                    for (const status of PROGRAM_STATUSES) {
+                        const href = rewardsHref({ tab, filter, sort, status });
+                        expect(href.startsWith("/rewards?")).toBe(true);
+                        expect(parseRewardsView(query(href.split("?")[1]))).toEqual({ tab, filter, sort, status });
+                    }
                 }
             }
         }
-        expect(rewardsHref({ filter: "paying" })).toBe("/rewards?tab=holder&filter=paying&sort=staked");
+        expect(rewardsHref({ filter: "paying" })).toBe("/rewards?tab=holder&filter=paying&sort=staked&status=all");
     });
 });
 

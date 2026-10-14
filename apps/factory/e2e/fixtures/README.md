@@ -44,7 +44,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (ULMN/TUSDC), limit 50, reversed | **trimmed** to the latest trade; the price calculation reads it when a token has no pool or ticker price, so whether it is requested depends on timing |
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
-| `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | |
+| `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | the Staking programs tab of `/rewards` and the workspace Rewards tab (`rewards.spec.ts` adds a running program) |
 | `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards` |
 | `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`). Recorded 2026-10-14 |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule form's new-prize check |

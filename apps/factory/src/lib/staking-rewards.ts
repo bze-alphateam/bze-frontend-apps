@@ -32,3 +32,19 @@ export function splitStakingRewards<T extends Pick<RewardProgress, 'payouts' | '
     rewards.forEach(reward => (isStakingRewardFinished(reward) ? finished : active).push(reward))
     return { active, finished }
 }
+
+type PoolSides = { lp_denom: string; base: string; quote: string }
+
+/**
+ * Whether a program concerns `denom`: people stake it, earn it, or stake the LP token of a pool
+ * that trades it (on either side). Drives the workspace's "Staking programs with <TICKER>" and
+ * the directory's "Programs with your tokens".
+ */
+export function programInvolves(
+    program: Pick<StakingRewardSDKType, 'staking_denom' | 'prize_denom'>,
+    denom: string,
+    pools: ReadonlyArray<PoolSides>,
+): boolean {
+    if (program.staking_denom === denom || program.prize_denom === denom) return true
+    return pools.some(p => p.lp_denom === program.staking_denom && (p.base === denom || p.quote === denom))
+}
