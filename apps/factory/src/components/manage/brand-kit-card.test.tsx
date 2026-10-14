@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { Asset, DenomBranding } from "@bze/bze-ui-kit";
@@ -16,6 +16,10 @@ const { useDenomBrandingMock, txMock, refreshMock } = vi.hoisted(() => ({
 vi.mock("@/hooks/useDenomBranding", () => ({ useDenomBranding: () => useDenomBrandingMock() }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1admin" }) }));
+vi.mock("@bze/bze-ui-kit", async (importActual) => ({
+    ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
+    getCommunitiesApp: () => ({ href: "https://communities.example" }),
+}));
 
 import { BrandKitCard, BrandKitAccess } from "./brand-kit-card";
 
@@ -84,15 +88,32 @@ describe("BrandKitCard", () => {
         expect(screen.queryByTestId("brand-kit-frozen")).not.toBeInTheDocument();
     });
 
+    it("links to the token's Communities page with the denom encoded", () => {
+        renderCard("not-admin", { branding: KIT });
+
+        expect(screen.getByRole("region", { name: "How TOK looks on Communities" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /See TOK's Communities page/ }))
+            .toHaveAttribute("href", "https://communities.example/token?denom=factory%2Fbze1admin%2Futok");
+    });
+
+    it("words the empty state for the admin and for everyone else", () => {
+        const { unmount } = renderCard("admin");
+        expect(screen.getByText("No brand kit yet. Pick colours and a font so TOK's Communities page feels like yours.")).toBeInTheDocument();
+        unmount();
+
+        renderCard("not-admin");
+        expect(screen.getByText("This token has no brand kit.")).toBeInTheDocument();
+    });
+
     it("marks the kit of a renounced token as frozen, or its absence as permanent", () => {
         const { unmount } = renderCard("renounced", { branding: KIT });
-        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("this kit can never change");
+        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("Frozen — it can never change.");
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         unmount();
 
         renderCard("renounced");
         expect(screen.getByText("This token has no brand kit.")).toBeInTheDocument();
-        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("will never have a brand kit");
+        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("Frozen — TOK will never have a brand kit.");
     });
 
     it("reports a failed query instead of 'no kit' and offers no edit", async () => {
@@ -146,6 +167,35 @@ describe("BrandKitCard", () => {
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         expect(screen.getByRole("button", { name: "Save brand kit" })).toBeDisabled();
         expect(screen.getByText("Nothing changed yet.")).toBeInTheDocument();
+    });
+
+    it("previews the kit live while editing, and hides the preview while a field is invalid", async () => {
+        renderCard("admin", { branding: KIT });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+        const preview = within(screen.getByTestId("brand-kit-live-preview"));
+        expect(preview.getByTestId("brand-kit-preview-light").querySelector("div")).toHaveStyle({ backgroundColor: "#FFFFFF" });
+
+        const lightBackground = screen.getByRole("textbox", { name: "Light background" });
+        await userEvent.clear(lightBackground);
+        await userEvent.type(lightBackground, "#123");
+        expect(preview.queryByTestId("brand-kit-preview-light")).not.toBeInTheDocument();
+        expect(preview.getByText("Fix the fields marked in red to see the preview.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Save brand kit" })).toBeDisabled();
+
+        await userEvent.type(lightBackground, "456");
+        expect(preview.getByTestId("brand-kit-preview-light").querySelector("div")).toHaveStyle({ backgroundColor: "#123456" });
+    });
+
+    it("counts a case-only colour change as a change", async () => {
+        renderCard("admin", { branding: KIT });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+        const lightPrimary = screen.getByRole("textbox", { name: "Light primary" });
+        await userEvent.clear(lightPrimary);
+        await userEvent.type(lightPrimary, "#aa0000");
+        expect(screen.getByRole("button", { name: "Save brand kit" })).toBeEnabled();
+        expect(screen.queryByText("Nothing changed yet.")).not.toBeInTheDocument();
     });
 
     it("removes the kit with an empty branding after a confirm step", async () => {
