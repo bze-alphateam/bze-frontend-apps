@@ -5,7 +5,7 @@ import { Box, Button, Circle, Container, Field, HStack, Input, Skeleton, Text, T
 import { type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { GuidedForm, PayPanel, Question, TipNote, useGuidedSteps } from '@/components/guided'
-import { SuccessScreen } from '@/components/token-wizard/success-screen'
+import { LaunchNextSteps } from '@/components/launch/launch-next-steps'
 import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { MAX_DESCRIPTION_LENGTH, TOKEN_DECIMALS } from '@/components/token-wizard/validation'
@@ -139,9 +139,10 @@ function TokenNewContent() {
 
     if (created) {
         return (
-            <SuccessScreen
+            <LaunchNextSteps
                 name={form.name}
                 symbol={form.symbol}
+                supply={form.initialSupply}
                 denom={created.denom}
                 txHash={created.txHash}
                 reset={() => {
