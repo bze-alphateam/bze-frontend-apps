@@ -39,6 +39,12 @@ export interface TxOptions {
     fee?: StdFee | null;
     onSuccess?: (res: TxSuccessResponse) => void;
     onFailure?: (err: string) => void;
+    /**
+     * Called once the signed transaction is broadcast, before it is included in a block. A
+     * failure after this point may still have landed on chain (e.g. a confirmation timeout):
+     * callers that must never send twice look the hash up before retrying.
+     */
+    onBroadcast?: (txHash: string) => void;
     memo?: string;
     progressTrackerTimeout?: number;
     /**
@@ -288,6 +294,9 @@ const useTx = (chainName: string) => {
                     : await getFee(msgs, options);
                 setProgressTrack("Signing transaction")
                 const broadcastResult = await (activeClient as any).signAndBroadcast(address, msgs, fee, options?.memo ?? getDefaultTxMemo())
+                if (options?.onBroadcast && broadcastResult?.transactionHash) {
+                    options.onBroadcast(broadcastResult.transactionHash)
+                }
                 setProgressTrack("Waiting for confirmation")
                 const resp = await broadcastResult.wait();
                 const txHash = resp?.txhash || broadcastResult.transactionHash;

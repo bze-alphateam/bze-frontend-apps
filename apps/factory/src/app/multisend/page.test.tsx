@@ -5,14 +5,17 @@ import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { Asset } from "@bze/bze-ui-kit";
 import { exampleCsv, loadMultiSendDraft, saveMultiSendDraft } from "@/lib/multisend";
+import { loadMultiSendRun, markSending, planBatches, saveMultiSendRun, startRun, listFingerprint } from "@/lib/multisend-run";
 
 // The page runs on mocked hooks: query params, wallet, balances, the affordability check and
 // the tx hook. The asset picker becomes a plain button per denom; PayPanel has its own coverage.
-const { queryParams, wallet, balances, afford, navigateMock, txMock } = vi.hoisted(() => ({
+const { queryParams, wallet, balances, afford, affordInputs, lookupMock, navigateMock, txMock } = vi.hoisted(() => ({
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1me" as string | undefined },
     balances: { current: {} as Record<string, string> },
     afford: { canAfford: true, message: "" },
+    affordInputs: [] as unknown[],
+    lookupMock: { getTx: vi.fn(), recentMultiSends: vi.fn() },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
 }));
@@ -24,6 +27,10 @@ vi.mock("@/hooks/useNavigation", () => ({
         getQueryParam: (p: string) => queryParams.current.get(p),
         navigate: navigateMock,
     }),
+}));
+vi.mock("@/lib/multisend-lookup", async (importActual) => ({
+    ...(await importActual<typeof import("@/lib/multisend-lookup")>()),
+    restTxLookup: () => lookupMock,
 }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock }) }));
 vi.mock("@/components/guided/pay-panel", () => ({
@@ -68,7 +75,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             : actual.validateBZEBech32Address(a),
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useBalance: (denom: string) => ({ balance: { denom, amount: new BN(balances.current[denom] ?? "0") }, isLoading: false }),
-        useCanAffordTx: () => ({
+        useCanAffordTx: (input: unknown) => (affordInputs.push(input), {
             canAfford: afford.canAfford,
             message: afford.message,
             isLoading: false,
@@ -109,6 +116,27 @@ async function pasteList(text: string) {
     await userEvent.paste(text);
 }
 
+type TxOpts = { onBroadcast?: (h: string) => void; onSuccess: (r: unknown) => void };
+type MultiSendMsg = { value: { inputs: { coins: { amount: string }[] }[]; outputs: { address: string }[] } };
+const sentOutputs = (call: number) => (txMock.mock.calls[call][0] as MultiSendMsg[])[0].value.outputs.map(o => o.address);
+const progress = () => screen.getByRole("region", { name: "Sending progress" });
+const batchRows = () => within(progress()).getAllByRole("listitem").map(li => li.textContent);
+
+async function longList(n = 250) {
+    renderPage();
+    await pickToken();
+    await userEvent.type(within(question(LIST)).getByLabelText(/Amount each/), "1");
+    await pasteList(wallets(n).join("\n"));
+    await continueIn(LIST);
+}
+
+/** A stored run of the 250-wallet list (1 TOK each) whose first batch is in `status`. */
+async function storeRun(change: (run: ReturnType<typeof startRun>) => ReturnType<typeof startRun>) {
+    const ready = wallets(250).map(address => ({ address, amount: "1000000" }));
+    saveMultiSendDraft({ denom: "utok", mode: "same", sameAmount: "1", text: wallets(250).join("\n") });
+    saveMultiSendRun(change(startRun(await listFingerprint("utok", ready), "utok", planBatches(ready))));
+}
+
 beforeEach(() => {
     localStorage.clear();
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -118,8 +146,14 @@ beforeEach(() => {
     afford.canAfford = true;
     afford.message = "";
     navigateMock.mockReset();
-    txMock.mockReset().mockImplementation(async (_msgs: unknown, opts: { onSuccess: (r: unknown) => void }) => {
-        opts.onSuccess({ txhash: "HASH1" });
+    affordInputs.length = 0;
+    lookupMock.getTx.mockReset().mockResolvedValue(null);
+    lookupMock.recentMultiSends.mockReset().mockResolvedValue([]);
+    txMock.mockReset().mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+        const hash = `HASH${txMock.mock.calls.length}`;
+        opts.onBroadcast?.(hash);
+        opts.onSuccess({ txhash: hash });
+        return true;
     });
 });
 
@@ -215,18 +249,175 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         expect(items[50]).toHaveTextContent("and 3 more");
     });
 
-    it("blocks lists over 100 wallets", async () => {
-        renderPage();
-        await pickToken();
-        await userEvent.type(within(question(LIST)).getByLabelText(/Amount each/), "1");
-        await pasteList(wallets(101).join("\n"));
+    it("sends a long list in transactions of 100, one signature per click, and ends with a report", async () => {
+        await longList();
+        expect(screen.getByText(/It's sent in 3 transactions of up to 100 wallets each, so you'll approve 3 times in your wallet\. If you stop halfway, the wallets already paid are marked and won't be paid twice\./)).toBeInTheDocument();
+        // The network fee covers the three transactions.
+        expect(JSON.parse(screen.getByTestId("tx-kind").textContent!)).toEqual([
+            { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 50 },
+        ]);
 
-        expect(within(question(LIST)).getByText("101 wallets ready")).toBeInTheDocument();
-        expect(within(question(LIST)).getByRole("alert")).toHaveTextContent(
-            "Lists over 100 wallets are coming soon. Split your list for now.",
-        );
-        expect(within(question(LIST)).getByRole("button", { name: "Continue" })).toBeDisabled();
-        expect(sendButton()).toBeDisabled();
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+        expect(txMock).toHaveBeenCalledTimes(1);
+        expect(sentOutputs(0)).toEqual(wallets(250).slice(0, 100));
+        expect((txMock.mock.calls[0][0] as MultiSendMsg[])[0].value.inputs[0].coins[0].amount).toBe("100000000");
+
+        expect(within(progress()).getByText("Transaction 2 of 3")).toBeInTheDocument();
+        expect(batchRows()).toEqual([
+            "100 wallets · 100 TOKSent ✓tx ",
+            "100 wallets · 100 TOKWaiting",
+            "50 wallets · 50 TOKWaiting",
+        ]);
+        expect(within(progress()).getByRole("link", { name: /tx/ })).toHaveAttribute("href", "https://explorer.test/tx/HASH1");
+        expect(loadMultiSendRun()?.batches.map(b => b.status)).toEqual(["sent", "pending", "pending"]);
+        const report = within(progress()).getByRole("link", { name: /Download report \(CSV\)/ });
+        const csv = decodeURIComponent(report.getAttribute("href")!.split(",").slice(1).join(","));
+        expect(csv.split("\n")[1]).toBe(`${wallets(250)[0]},1,TOK,sent,HASH1`);
+        expect(csv.split("\n")[101]).toBe(`${wallets(250)[100]},1,TOK,not sent,`);
+
+        // Never chained: each click signs one transaction.
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        expect(txMock).toHaveBeenCalledTimes(2);
+        expect(sentOutputs(1)).toEqual(wallets(250).slice(100, 200));
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        expect(sentOutputs(2)).toEqual(wallets(250).slice(200));
+
+        expect(screen.getByRole("heading", { name: "Sent to 250 wallets in 3 transactions" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Download report \(CSV\)/ })).toHaveAttribute("download", "multisend-report.csv");
+        await userEvent.click(screen.getByRole("button", { name: "Send another list" }));
+        expect(loadMultiSendRun()).toBeUndefined();
+        expect(loadMultiSendDraft()).toEqual({ denom: "utok", mode: "same", sameAmount: "", text: "" });
+        expect(listInput()).toHaveValue("");
+    });
+
+    it("checks the balance again before every transaction", async () => {
+        await longList();
+        // Before the run: the whole list.
+        expect(affordInputs.at(-1)).toEqual({
+            spec: [{ kind: "multi-send", count: 100 }, { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 50 }],
+            spend: { denom: "utok", amount: "250000000" },
+        });
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        // Then the next batch only.
+        expect(affordInputs.at(-1)).toEqual({ spec: { kind: "multi-send", count: 50 }, spend: { denom: "utok", amount: "50000000" } });
+
+        afford.canAfford = false;
+        afford.message = "Insufficient TOK balance (5 TOK short)";
+        await userEvent.click(screen.getByRole("button", { name: "Stop for now" }));
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        expect(screen.getByRole("button", { name: "Send the next transaction" })).toBeDisabled();
+        expect(within(progress()).getByText("Insufficient TOK balance (5 TOK short)")).toBeInTheDocument();
+    });
+
+    it("a rejection in the wallet puts the batch back to waiting", async () => {
+        txMock.mockImplementation(async () => false);
+        await longList();
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+        expect(batchRows()[0]).toBe("100 wallets · 100 TOKWaiting");
+        expect(loadMultiSendRun()?.batches[0]).toEqual({ id: 1, count: 100, total: "100000000", status: "pending" });
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        expect(sentOutputs(1)).toEqual(wallets(250).slice(0, 100));
+    });
+
+    it("an unclear result is looked up by hash before anything else, and found", async () => {
+        txMock.mockImplementationOnce(async (_m: unknown, opts: TxOpts) => {
+            opts.onBroadcast?.("H1");
+            return false; // e.g. the confirmation timed out
+        });
+        lookupMock.getTx.mockResolvedValue({ txhash: "H1", code: 0, multiSends: [] });
+        await longList();
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+        expect(lookupMock.getTx).toHaveBeenCalledWith("H1");
+        expect(loadMultiSendRun()?.batches[0]).toMatchObject({ status: "sent", txHash: "H1" });
+        expect(txMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("an unclear batch that can't be found is only sent again on an explicit click", async () => {
+        let finishLookup: (v: null) => void = () => {};
+        txMock.mockImplementationOnce(async (_m: unknown, opts: TxOpts) => {
+            opts.onBroadcast?.("H1");
+            return false;
+        });
+        lookupMock.getTx.mockImplementation(() => new Promise(res => { finishLookup = res; }));
+        await longList();
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+        expect(batchRows()[0]).toBe("100 wallets · 100 TOKChecking…");
+
+        // While it is being checked, the next transaction is the second batch, never the first again.
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        expect(sentOutputs(1)).toEqual(wallets(250).slice(100, 200));
+
+        finishLookup(null);
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKNot found"));
+        expect(lookupMock.recentMultiSends).toHaveBeenCalledWith("bze1me");
+        expect(within(progress()).getByText(/We couldn't find this transaction on the chain\. Send it again only if your wallet shows it failed\./)).toBeInTheDocument();
+        expect(txMock).toHaveBeenCalledTimes(2);
+
+        await userEvent.click(screen.getByRole("button", { name: "Send this one again" }));
+        expect(txMock).toHaveBeenCalledTimes(3);
+        expect(sentOutputs(2)).toEqual(wallets(250).slice(0, 100));
+        expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx ");
+    });
+
+    it("a node error leaves the batch unclear with a way to check again", async () => {
+        txMock.mockImplementationOnce(async (_m: unknown, opts: TxOpts) => {
+            opts.onBroadcast?.("H1");
+            return false;
+        });
+        lookupMock.getTx.mockRejectedValueOnce(new Error("502")).mockResolvedValue({ txhash: "H1", code: 0, multiSends: [] });
+        await longList();
+        await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKCouldn't checkCheck again"));
+        expect(screen.queryByRole("button", { name: "Send this one again" })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Check again" }));
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+    });
+
+    it("resumes a stored run where it left off", async () => {
+        await storeRun(run => ({ ...run, batches: run.batches.map(b => b.id === 1 ? { ...b, status: "sent", txHash: "OLD" } : b) }));
+        renderPage();
+        expect(await screen.findByText("1 of 3 transactions sent. Continue where you left off.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Send the next transaction" })).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
+        expect(sentOutputs(0)).toEqual(wallets(250).slice(100, 200));
+    });
+
+    it("a batch left sending when the page closed is checked on load (sender search)", async () => {
+        await storeRun(run => markSending(run, 1, "bze1old"));
+        const ready = wallets(100).map(address => ({ address, coins: [{ denom: "utok", amount: "1000000" }] }));
+        lookupMock.recentMultiSends.mockResolvedValue([{ txhash: "FOUND", code: 0, multiSends: [ready] }]);
+        renderPage();
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+        expect(lookupMock.recentMultiSends).toHaveBeenCalledWith("bze1old");
+        expect(lookupMock.getTx).not.toHaveBeenCalled();
+        expect(loadMultiSendRun()?.batches[0]).toMatchObject({ status: "sent", txHash: "FOUND" });
+    });
+
+    it("an edited list needs a confirmation before a new run", async () => {
+        await storeRun(run => ({ ...run, batches: run.batches.map(b => b.id === 1 ? { ...b, status: "sent", txHash: "OLD" } : b) }));
+        renderPage();
+        await screen.findByText(/1 of 3 transactions sent/);
+
+        await userEvent.click(within(question(LIST)).getByRole("button", { name: /^Change/ }));
+        await pasteList(`\n${A}`);
+        await continueIn(LIST);
+        expect(await screen.findByText(/This list changed since your last run\./)).toBeInTheDocument();
+        expect(screen.getByText(/Start a new run\? Wallets from the old run may be paid again\./)).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Sending progress" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Start sending (3 transactions)" })).toBeDisabled();
+
+        await userEvent.click(screen.getByRole("button", { name: "Start new run" }));
+        await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(loadMultiSendRun()).toBeDefined();
+        await userEvent.click(screen.getByRole("button", { name: "Start new run" }));
+        await userEvent.click(screen.getByRole("button", { name: "Yes, forget the old run" }));
+        expect(loadMultiSendRun()).toBeUndefined();
+        expect(screen.getByRole("button", { name: "Start sending (3 transactions)" })).toBeEnabled();
     });
 
     it("an upload fills the list", async () => {

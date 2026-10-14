@@ -1,4 +1,5 @@
 import {expect, test} from "./support/mock-network";
+import {bzeWallets} from "./support/wallets";
 
 // "Send to a list of wallets" (/multisend, BFE-152) without a wallet, against the testnet fixtures.
 // `?denom=ubze` answers question 1 with the native TBZE.
@@ -41,6 +42,24 @@ test("fits a 390 px phone without horizontal scroll", async ({page}) => {
     await list.getByLabel(/one per line/).fill(`${A}\nosmo108cyg5m3hwnu496xv5mnwkx33lmdvs7e7lptjl`);
     await list.getByText("Show the lines to fix").click();
     await expect(page.getByRole("region", {name: "You will pay"})).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("a long list is planned as transactions of 100 and fits a 390 px phone", async ({page}) => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto("/multisend?denom=ubze");
+
+    const list = page.getByRole("region", {name: "Who gets it, and how much?"});
+    await list.getByLabel(/Amount each/).fill("1");
+    await list.getByLabel(/one per line/).fill(bzeWallets(250).join("\n"));
+    await expect(list.getByText("250 wallets ready")).toBeVisible();
+    await list.getByRole("button", {name: "Continue"}).click();
+
+    await expect(page.getByText(/It's sent in 3 transactions of up to 100 wallets each/)).toBeVisible();
+    await expect(page.getByRole("button", {name: "Start sending (3 transactions)"})).toBeDisabled();
+    await expect(page.getByText("Connect your wallet to send.")).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
