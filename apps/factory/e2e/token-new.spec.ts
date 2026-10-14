@@ -14,8 +14,8 @@ test("shows the three questions, a live preview and the creation fee", async ({p
     await expect(page.getByRole("region", {name: "Describe it"})).toHaveAttribute("data-state", "todo");
     await expect(page.getByRole("region", {name: "How many tokens to create?"})).toHaveAttribute("data-state", "todo");
 
-    await q1.getByPlaceholder("e.g. Honey Coin").fill("Honey Coin");
-    await q1.getByPlaceholder("e.g. HONEY").fill("honey");
+    await q1.getByPlaceholder("e.g. Honey Coin", {exact: true}).fill("Honey Coin");
+    await q1.getByPlaceholder("e.g. HONEY", {exact: true}).fill("honey");
     await expect(q1.getByText("Token ID: factory/<your address>/uhoney")).toBeVisible();
 
     const preview = page.getByRole("region", {name: "Preview"});

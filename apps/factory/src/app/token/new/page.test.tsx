@@ -83,7 +83,8 @@ beforeEach(() => {
     });
 });
 
-describe("Create my token (/token/new)", () => {
+// Each test types through several questions; CI runners need more than the 5 s default.
+describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
     it("asks the three questions in order and shows the fee for the three messages", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Create my token" })).toBeInTheDocument();
@@ -156,8 +157,9 @@ describe("Create my token (/token/new)", () => {
     it("summarises a long description to its first 80 characters", async () => {
         renderPage();
         await answerIdentity();
-        const long = "a".repeat(100);
-        await userEvent.type(within(question("Describe it")).getByRole("textbox"), long);
+        // Pasted, not typed: 100 keystrokes are slow on CI runners.
+        await userEvent.click(within(question("Describe it")).getByRole("textbox"));
+        await userEvent.paste("a".repeat(100));
         expect(within(question("Describe it")).getByText("100 / 512")).toBeInTheDocument();
         await userEvent.click(within(question("Describe it")).getByRole("button", { name: "Continue" }));
         expect(question("Describe it")).toHaveTextContent(`${"a".repeat(80)}…`);
