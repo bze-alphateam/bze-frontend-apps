@@ -39,6 +39,11 @@ vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup() }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@/components/manage/denom-reward-card", () => ({ DenomRewardCard: () => <div>denom reward card</div> }));
+vi.mock("@/components/rewards/staking-programs-list", () => ({
+    StakingProgramsList: ({ involving, newProgramHref }: { involving?: string; newProgramHref?: string }) => (
+        <div data-testid="staking-programs" data-involving={involving} data-new-href={newProgramHref} />
+    ),
+}));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
 vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: () => <div>metadata card</div> }));
 vi.mock("@/components/manage/admin-card", () => ({ AdminActions: () => <div>admin actions</div> }));
@@ -257,6 +262,20 @@ describe("token workspace", () => {
             m.tokens.mockReturnValue([token("bze1other")]);
             renderPage();
             expect(screen.getByText("denom reward card")).toBeInTheDocument();
+        });
+
+        it("rewards: the staking programs with the token, whose New program comes back here", () => {
+            m.query.tab = "rewards";
+            m.tokens.mockReturnValue([token("bze1other")]);
+            renderPage();
+            const section = screen.getByRole("region", { name: "Staking programs with TOK" });
+            expect(within(section).getByText("Programs where people stake TOK or a TOK LP token, or earn TOK.")).toBeInTheDocument();
+            const list = within(section).getByTestId("staking-programs");
+            expect(list).toHaveAttribute("data-involving", DENOM);
+            expect(list).toHaveAttribute(
+                "data-new-href",
+                `/reward/new?staking=${ENCODED}&return=%2Fmanage%2Ftoken%3Fdenom%3D${encodeURIComponent(ENCODED)}%26tab%3Drewards&returnLabel=TOK`,
+            );
         });
 
         it.each([

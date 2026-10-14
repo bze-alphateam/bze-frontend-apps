@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js'
 import type { DenomReward } from '@bze/bze-ui-kit'
 
-// The rewards directory (`/rewards?tab=…&filter=…&sort=…`, BFE-153): its URL state and the
+// The rewards directory (`/rewards?tab=…&filter=…&sort=…&status=…`, BFE-153 / BFE-161): its URL state and the
 // filter and sort of the Holder rewards rows. Pure, so the page stays a thin view over it.
 
 export const REWARDS_PATH = '/rewards'
@@ -9,18 +9,22 @@ export const REWARDS_PATH = '/rewards'
 export const REWARDS_TABS = ['holder', 'programs'] as const
 export const HOLDER_FILTERS = ['all', 'stakers', 'paying'] as const
 export const HOLDER_SORTS = ['staked', 'prizes', 'name'] as const
+export const PROGRAM_STATUSES = ['all', 'running', 'finished'] as const
 
 export type RewardsTab = typeof REWARDS_TABS[number]
 export type HolderFilter = typeof HOLDER_FILTERS[number]
 export type HolderSort = typeof HOLDER_SORTS[number]
+export type ProgramStatus = typeof PROGRAM_STATUSES[number]
 
 export interface RewardsView {
     tab: RewardsTab;
     filter: HolderFilter;
     sort: HolderSort;
+    /** Staking programs tab: which programs to show. */
+    status: ProgramStatus;
 }
 
-export const DEFAULT_REWARDS_VIEW: RewardsView = { tab: 'holder', filter: 'all', sort: 'staked' }
+export const DEFAULT_REWARDS_VIEW: RewardsView = { tab: 'holder', filter: 'all', sort: 'staked', status: 'all' }
 
 const pick = <T extends string>(values: readonly T[], value: string | null | undefined, fallback: T): T =>
     values.find(v => v === value) ?? fallback
@@ -31,13 +35,14 @@ export function parseRewardsView(get: (key: string) => string | null | undefined
         tab: pick(REWARDS_TABS, get('tab'), DEFAULT_REWARDS_VIEW.tab),
         filter: pick(HOLDER_FILTERS, get('filter'), DEFAULT_REWARDS_VIEW.filter),
         sort: pick(HOLDER_SORTS, get('sort'), DEFAULT_REWARDS_VIEW.sort),
+        status: pick(PROGRAM_STATUSES, get('status'), DEFAULT_REWARDS_VIEW.status),
     }
 }
 
 /** View → link; every value is written so a shared link opens exactly this view. */
 export function rewardsHref(view: Partial<RewardsView> = {}): string {
-    const { tab, filter, sort } = { ...DEFAULT_REWARDS_VIEW, ...view }
-    return `${REWARDS_PATH}?tab=${tab}&filter=${filter}&sort=${sort}`
+    const { tab, filter, sort, status } = { ...DEFAULT_REWARDS_VIEW, ...view }
+    return `${REWARDS_PATH}?tab=${tab}&filter=${filter}&sort=${sort}&status=${status}`
 }
 
 /** Per-DR counts from its prize and schedule lists. */

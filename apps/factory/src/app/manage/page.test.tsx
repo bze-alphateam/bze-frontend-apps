@@ -19,7 +19,6 @@ vi.mock("@/hooks/useNavigation", () => ({
 }));
 vi.mock("@/components/manage/my-markets", () => ({ MyMarkets: () => null }));
 vi.mock("@/components/manage/my-pools", () => ({ MyPools: () => null }));
-vi.mock("@/components/manage/staking-rewards", () => ({ StakingRewards: () => null }));
 // The badge legend repeats the words "Mintable" / "Fixed supply" in prose; stub
 // it so those assertions match only the actual TrustBadge on each token row.
 vi.mock("@/components/ui/info-box", () => ({ InfoBox: () => null }));
@@ -67,6 +66,15 @@ beforeEach(() => {
 });
 
 describe("Manage page", () => {
+    it("points to the staking programs on /rewards instead of listing them", () => {
+        useMyTokensMock.mockReturnValue({ tokens: [], isLoading: false });
+        renderPage();
+
+        expect(screen.getByRole("link", { name: "Staking programs moved to Rewards →" }))
+            .toHaveAttribute("href", "/rewards?tab=programs&filter=all&sort=staked&status=all");
+        expect(screen.queryByText("Staking Rewards")).not.toBeInTheDocument();
+    });
+
     it("shows the header and no empty/loaded content while loading", () => {
         useMyTokensMock.mockReturnValue({ tokens: [], isLoading: true });
         renderPage();
