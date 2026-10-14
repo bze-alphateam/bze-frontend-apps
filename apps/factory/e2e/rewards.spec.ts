@@ -138,10 +138,13 @@ test("Staking programs fit a phone screen", async ({page}) => {
     await page.goto("/rewards?tab=programs&status=finished");
 
     await expect(page.getByTestId("staking-program-row")).toHaveCount(STAKING_REWARDS.body.list.length);
-    // Name what sticks out, so a failure says where to look.
-    const sticksOut = await page.evaluate(() => Array.from(document.querySelectorAll("body *"))
-        .filter(el => el.getBoundingClientRect().right > window.innerWidth + 0.5)
-        .map(el => `${el.tagName.toLowerCase()}.${(el.getAttribute("class") ?? "").split(" ").slice(0, 2).join(".")} [${el.getAttribute("data-testid") ?? el.getAttribute("aria-label") ?? (el.textContent ?? "").slice(0, 30)}] right=${Math.round(el.getBoundingClientRect().right)}`));
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, sticksOut.join("\n")).toBeLessThanOrEqual(0);
+    // Right after the rows appear the page can still be settling (it overflowed by 79 px for a
+    // moment in CI), so wait for it; a lasting overflow still fails, naming what sticks out.
+    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    await expect.poll(overflow, {timeout: 5000}).toBeLessThanOrEqual(0).catch(async (e: Error) => {
+        const sticksOut = await page.evaluate(() => Array.from(document.querySelectorAll("body *"))
+            .filter(el => el.getBoundingClientRect().right > window.innerWidth + 0.5)
+            .map(el => `${el.tagName.toLowerCase()} [${el.getAttribute("data-testid") ?? el.getAttribute("aria-label") ?? (el.textContent ?? "").slice(0, 30)}] right=${Math.round(el.getBoundingClientRect().right)}`));
+        throw new Error(`${e.message}\nSticks out past 390 px:\n${sticksOut.join("\n")}`);
+    });
 });
