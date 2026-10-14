@@ -39,10 +39,10 @@ function TokenWorkspaceContent() {
     const tab = parseWorkspaceTab(getQueryParam('tab'))
     const { tokens, isLoading, refreshAdmins } = useMyTokens()
     const { address } = useChain(getChainName())
-    const { supply, isLoading: isSupplyLoading, refresh } = useTokenSupply(denom)
-    const { balance } = useBalance(denom)
-
     const token = tokens.find(t => t.asset.denom === denom)
+    // Only the wallet's own tokens are shown: never query the chain for any other denom in the URL.
+    const { supply, isLoading: isSupplyLoading, refresh } = useTokenSupply(token ? denom : '')
+    const { balance } = useBalance(denom)
 
     if (isLoading) {
         return (

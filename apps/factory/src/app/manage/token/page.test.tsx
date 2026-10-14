@@ -14,6 +14,7 @@ const m = vi.hoisted(() => ({
     refreshAdmins: vi.fn(),
     setup: vi.fn(),
     address: "bze1owner" as string | undefined,
+    supplyDenoms: [] as string[],
 }));
 
 vi.mock("@/hooks/useNavigation", () => ({
@@ -28,7 +29,12 @@ vi.mock("@/hooks/useNavigation", () => ({
 vi.mock("@/hooks/useMyTokens", () => ({
     useMyTokens: () => ({ tokens: m.tokens(), isLoading: false, refreshAdmins: m.refreshAdmins }),
 }));
-vi.mock("@/hooks/useTokenSupply", () => ({ useTokenSupply: () => ({ supply: "4000000", isLoading: false, refresh: vi.fn() }) }));
+vi.mock("@/hooks/useTokenSupply", () => ({
+    useTokenSupply: (denom: string) => {
+        m.supplyDenoms.push(denom);
+        return { supply: "4000000", isLoading: false, refresh: vi.fn() };
+    },
+}));
 vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup() }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
@@ -94,6 +100,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     m.query = { denom: DENOM };
     m.address = "bze1owner";
+    m.supplyDenoms = [];
     m.tokens.mockReturnValue([token("bze1owner")]);
     m.setup.mockReturnValue(setup());
 });
@@ -104,6 +111,13 @@ describe("token workspace", () => {
         renderPage();
         expect(screen.getByText("Token not found")).toBeInTheDocument();
         expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+        // No chain query for a denom that is never shown.
+        expect(m.supplyDenoms.every(d => d === "")).toBe(true);
+    });
+
+    it("reads the live supply of the wallet's own token", () => {
+        renderPage();
+        expect(m.supplyDenoms).toContain(DENOM);
     });
 
     it.each([undefined, "bogus"])("opens the Overview for ?tab=%s", async (tab) => {
