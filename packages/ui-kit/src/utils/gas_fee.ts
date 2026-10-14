@@ -27,6 +27,7 @@ import {FeeCoin} from "../types/fees";
 /** Every kind of message the apps send. One entry per message type, not per form. */
 export type TxKind =
     | 'send'
+    | 'multi-send'
     | 'ibc-transfer'
     | 'create-order'
     | 'fill-orders'
@@ -88,6 +89,7 @@ export interface GasProfile {
  */
 export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'send': {base: 160_000},                                  // measured p90 123k, max 146k
+    'multi-send': {base: 200_000, perItem: 35_000},           // no on-chain sample — bank send of one output measured p90 123k; estimate with headroom, re-measure on bzetestnet-3
     'ibc-transfer': {base: 450_000},                          // measured p90 330k, max 419k
     'create-order': {base: 180_000},                          // measured (testnet) p90 155k, max 162k
     'fill-orders': {base: 220_000, perItem: 60_000},          // measured 2 orders 240k … 15 orders 961k
