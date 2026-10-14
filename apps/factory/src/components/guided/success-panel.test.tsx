@@ -70,4 +70,30 @@ describe("SuccessPanel", () => {
         expect(await navigator.clipboard.readText()).toBe("factory/bze1abc/utok");
         expect(toastSuccess).toHaveBeenCalledWith("Copied", "Denom copied to clipboard.");
     });
+
+    it("shows a skeleton until the code value is known, and a disabled next step stays inert", async () => {
+        const { rerender } = render(
+            <SuccessPanel
+                title="Done!"
+                code={{ label: "LP token" }}
+                next={[{ label: "Reward them", href: "/reward/new", disabled: true }]}
+            />,
+            { wrapper },
+        );
+        expect(screen.getByTestId("code-loading")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Copy LP token" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reward them" })).toBeDisabled();
+
+        rerender(
+            <SuccessPanel
+                title="Done!"
+                code={{ label: "LP token", value: "ulp/abc" }}
+                next={[{ label: "Reward them", href: "/reward/new?staking=ulp%2Fabc" }]}
+            />,
+        );
+        expect(screen.queryByTestId("code-loading")).not.toBeInTheDocument();
+        expect(screen.getByText("ulp/abc")).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Reward them" }));
+        expect(navigateMock).toHaveBeenCalledWith("/reward/new?staking=ulp%2Fabc");
+    });
 });

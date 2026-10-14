@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Box, Button, Code, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Code, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react'
 import { LuArrowUpRight, LuCircleCheck, LuCopy } from 'react-icons/lu'
 import { useToast } from '@bze/bze-ui-kit'
 import { useNavigation } from '@/hooks/useNavigation'
@@ -16,13 +16,15 @@ export interface SuccessNext {
     label: string;
     href: string;
     icon?: React.ReactNode;
+    /** E.g. while a value it needs is still loading. */
+    disabled?: boolean;
 }
 
 interface SuccessPanelProps {
     title: React.ReactNode;
     text?: React.ReactNode;
-    /** A value worth keeping (a denom, an id), with a Copy button. */
-    code?: { label?: string; value: string };
+    /** A value worth keeping (a denom, an id), with a Copy button. No value yet: a skeleton. */
+    code?: { label?: string; value?: string };
     /** External pages (DEX, explorer), opened in a new tab. */
     links?: SuccessLink[];
     /** Suggested next steps inside the app. */
@@ -48,7 +50,7 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
         ?? (returnTo ? { label: `Back to ${returnTo.label}`, href: returnTo.href } : { label: 'Back to the Factory', href: '/' })
 
     const copy = async () => {
-        if (!code) return
+        if (!code?.value) return
         await navigator.clipboard.writeText(code.value)
         toast.success('Copied', `${code.label ?? 'Value'} copied to clipboard.`)
     }
@@ -73,14 +75,18 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
                 {code && (
                     <VStack align="stretch" gap={1}>
                         {code.label && <Text fontSize="xs" color="fg.muted">{code.label}</Text>}
-                        <HStack gap={2} p={2} borderRadius="md" bg="bg.muted">
-                            <Code flex="1" minW={0} bg="transparent" fontSize="xs" wordBreak="break-all" whiteSpace="normal">
-                                {code.value}
-                            </Code>
-                            <IconButton aria-label={`Copy ${code.label ?? 'value'}`} size="xs" variant="ghost" onClick={copy}>
-                                <LuCopy />
-                            </IconButton>
-                        </HStack>
+                        {code.value ? (
+                            <HStack gap={2} p={2} borderRadius="md" bg="bg.muted">
+                                <Code flex="1" minW={0} bg="transparent" fontSize="xs" wordBreak="break-all" whiteSpace="normal">
+                                    {code.value}
+                                </Code>
+                                <IconButton aria-label={`Copy ${code.label ?? 'value'}`} size="xs" variant="ghost" onClick={copy}>
+                                    <LuCopy />
+                                </IconButton>
+                            </HStack>
+                        ) : (
+                            <Skeleton height="8" data-testid="code-loading" />
+                        )}
                     </VStack>
                 )}
 
@@ -101,7 +107,7 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
                         </Text>
                         <HStack gap={3} justify="center" wrap="wrap">
                             {next.map(n => (
-                                <Button key={n.href} variant="outline" colorPalette="yellow" size="sm" onClick={() => navigate(n.href)}>
+                                <Button key={n.href} variant="outline" colorPalette="yellow" size="sm" disabled={n.disabled} onClick={() => navigate(n.href)}>
                                     {n.icon}
                                     {n.label}
                                 </Button>
