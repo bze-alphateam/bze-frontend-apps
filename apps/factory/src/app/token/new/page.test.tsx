@@ -20,6 +20,7 @@ const { wallet, assetDenoms, feeState, canPayFee, navigateMock, txMock } = vi.ho
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: navigateMock }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock }) }));
+vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => ({ items: [], isLoading: false }) }));
 vi.mock("@/hooks/useFeePayment", () => ({
     useFeePayment: () => ({ canPayFee: canPayFee.current, isLoading: false }),
 }));
@@ -36,6 +37,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return {
         ...actual,
         useAssets: () => ({ assets: assetDenoms.current.map(denom => ({ denom })) }),
+        useAsset: () => ({ asset: undefined, isLoading: false }),
         useCreationFees: () => ({ fees: { createDenomFee: feeState.fee }, isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
         getChainExplorerURL: () => "https://explorer.test",
@@ -210,9 +212,21 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
             },
         });
 
-        expect(screen.getByText("Honey Coin (HONEY) is live!")).toBeInTheDocument();
-        expect(screen.getByText("Your token was created, and the initial supply was minted to your address.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Honey Coin is live" })).toBeInTheDocument();
+        expect(screen.getByTestId("launch-minted")).toHaveTextContent("Step 1 done · 1,000,000 HONEY minted to you");
         expect(screen.getByText("factory/bze1me/uhoney")).toBeInTheDocument();
+        expect(savedDraft()).toBeNull();
+    });
+
+    it("starts an empty form from Create another token", async () => {
+        renderPage();
+        await answerAll();
+        await userEvent.click(createButton());
+        await userEvent.click(screen.getByRole("button", { name: "Create another token" }));
+
+        expect(screen.getByRole("heading", { name: "Create my token" })).toBeInTheDocument();
+        expect(question("Name and ticker")).toHaveAttribute("data-state", "active");
+        expect(screen.getByPlaceholderText("e.g. Honey Coin")).toHaveValue("");
         expect(savedDraft()).toBeNull();
     });
 
@@ -221,7 +235,7 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         renderPage();
         await answerAll();
         await userEvent.click(createButton());
-        expect(screen.queryByText(/is live!/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/is live/)).not.toBeInTheDocument();
         expect(question("Name and ticker")).toHaveTextContent("Honey Coin (HONEY)");
         expect(savedDraft()?.form).toMatchObject({ name: "Honey Coin", symbol: "HONEY" });
         expect(createButton()).toBeEnabled();
