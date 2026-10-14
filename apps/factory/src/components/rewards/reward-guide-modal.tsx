@@ -61,9 +61,9 @@ const COMPARISON: { label: string; values: Record<RewardKind, string> }[] = [
 ]
 
 const DEFAULT_HREFS: Record<RewardKind, string> = {
-    holder: '/denom-reward',
+    holder: '/rewards',
     program: '/reward/new',
-    airdrop: '/denom-reward',
+    airdrop: '/rewards',
 }
 
 export interface RewardGuideModalProps {

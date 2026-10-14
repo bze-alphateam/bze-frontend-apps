@@ -376,6 +376,6 @@ describe("schedule form — guards", () => {
 
         expect(screen.getByText("No token selected")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Back to the token/ }));
-        expect(navigateMock).toHaveBeenCalledWith("/denom-reward");
+        expect(navigateMock).toHaveBeenCalledWith("/rewards");
     });
 });
