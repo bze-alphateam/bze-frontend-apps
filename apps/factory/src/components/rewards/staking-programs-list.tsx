@@ -255,7 +255,8 @@ function ProgramRow({
             borderColor="yellow.500/20"
             data-testid="staking-program-row"
         >
-            <VStack align="stretch" gap={3}>
+            {/* A token without metadata shows its full denom (factory/bze1…/name): let it wrap anywhere on phones. */}
+            <VStack align="stretch" gap={3} overflowWrap="anywhere">
                 <HStack justify="space-between" align="center" gap={4} flexWrap="wrap">
                     <HStack gap="3" minW="0">
                         <HStack gap="0" flexShrink={0}>
