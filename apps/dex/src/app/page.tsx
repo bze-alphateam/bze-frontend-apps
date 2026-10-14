@@ -18,7 +18,6 @@ import {
 } from '@chakra-ui/react';
 import {
   LuArrowUpDown,
-  LuSettings,
   LuChevronDown,
   LuChevronUp,
   LuArrowRight,
@@ -26,11 +25,12 @@ import {
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms} from "@bze/bze-ui-kit";
 import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
+import {SLIPPAGE_PRESETS, isSlippagePreset, parseCustomSlippage} from "@/lib/slippage";
+import {AMM_SLIPPAGE_KEY, createLocalSlippageStore} from "@/lib/slippage-store";
+import {useStoredSlippage} from "@/hooks/useStoredSlippage";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
-
-const slippagePresets = [0.5, 1, 2];
 
 // Define the asset type for better type safety
 type AssetWithBalance = {
@@ -236,6 +236,9 @@ const AssetSelector = memo(({
 
 AssetSelector.displayName = 'AssetSelector';
 
+// Composition root for the swap form's slippage persistence (one entry per chain, see ui-kit storage).
+const ammSlippageStore = createLocalSlippageStore(AMM_SLIPPAGE_KEY);
+
 export default function SwapPage() {
   const { denomTicker, getAsset } = useAssets();
   const { getBalanceByDenom } = useBalances();
@@ -305,10 +308,17 @@ export default function SwapPage() {
   // belongs to. The other field, the route and the submit payload are all derived from the
   // quote, so there is no second copy of the amount that could drift out of sync.
   const [input, setInput] = useState<SwapInput>({side: 'from', value: ''});
-  const [showSettings, setShowSettings] = useState(false);
+  // The slippage editor sits inside the summary, so it is visible where the user reads the
+  // minimum output (a panel at the top of the form would open out of view once scrolled).
+  const [showSlippageEditor, setShowSlippageEditor] = useState(false);
   const [showRoutes, setShowRoutes] = useState(false);
-  const [slippage, setSlippage] = useState(0.5);
-  const [customSlippage, setCustomSlippage] = useState('');
+  // Max slippage is remembered on this device (30 days from the last change), so it survives
+  // navigation and reloads.
+  const [slippage, updateSwapSlippage] = useStoredSlippage(ammSlippageStore);
+  // The custom field's text while the user edits it; null shows the stored value (if it is
+  // not a preset) so a remembered custom slippage comes back into the field.
+  const [customSlippageText, setCustomSlippageText] = useState<string | null>(null);
+  const customSlippage = customSlippageText ?? (isSlippagePreset(slippage) ? '' : String(slippage));
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Swap history is keyed by the address it was loaded for, so "loading" and "empty"
   // derive from state instead of being set from an effect.
@@ -430,15 +440,16 @@ export default function SwapPage() {
   };
 
   const handleSlippagePreset = (value: number) => {
-    setSlippage(value);
-    setCustomSlippage('');
+    updateSwapSlippage(value);
+    setCustomSlippageText('');
+    setShowSlippageEditor(false);
   };
 
   const handleCustomSlippage = (value: string) => {
-    setCustomSlippage(value);
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 50) {
-      setSlippage(numValue);
+    setCustomSlippageText(value);
+    const parsed = parseCustomSlippage(value);
+    if (parsed !== null) {
+      updateSwapSlippage(parsed);
     }
   };
 
@@ -598,94 +609,12 @@ export default function SwapPage() {
               borderColor="blue.500/20"
             >
               <VStack gap="1" align="stretch">
-                {/* Header with Settings */}
+                {/* Header */}
                 <HStack justify="space-between" align="center" px="6" pt="6" pb="4">
                   <Text fontSize="lg" fontWeight="semibold">
                     Swap
                   </Text>
-                  <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowSettings(!showSettings)}
-                      colorPalette="gray"
-                  >
-                    <LuSettings />
-                  </Button>
                 </HStack>
-
-                {/* Settings Panel */}
-                <Collapsible.Root open={showSettings}>
-                  <Collapsible.Content>
-                    <Box px="6" pb="4">
-                      <Card.Root
-                        variant="subtle"
-                        p="4"
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/10"
-                        gradientTo="teal.500/10"
-                        borderWidth="1px"
-                        borderColor="blue.500/20"
-                      >
-                        <VStack gap="4" align="stretch">
-                          <Box>
-                            <Text fontSize="sm" fontWeight="semibold" mb="3" color="fg.muted">
-                              Max Slippage: <Text as="span" color="fg.default">{slippage}%</Text>
-                            </Text>
-                            <HStack gap="2" mb="3" flexWrap="wrap">
-                              {slippagePresets.map((preset) => (
-                                  <Button
-                                      key={preset}
-                                      size="sm"
-                                      variant={slippage === preset && !customSlippage ? "solid" : "outline"}
-                                      onClick={() => handleSlippagePreset(preset)}
-                                      colorPalette={slippage === preset && !customSlippage ? "blue" : "gray"}
-                                  >
-                                    {preset}%
-                                  </Button>
-                              ))}
-                            </HStack>
-                            <Input
-                                placeholder="Custom %"
-                                value={customSlippage}
-                                onChange={(e) => handleCustomSlippage(sanitizeNumberInput(e.target.value))}
-                                size="sm"
-                                type="text"
-                                min="0"
-                                max="50"
-                                step="0.1"
-                            />
-                          </Box>
-
-                          {/*TODO: integrate order book in swap AFTER we change tradebin create order message to drop the order if not executed immediately */}
-                          {/*<HStack justify="space-between" align="center" pt="2">*/}
-                          {/*  <Tooltip*/}
-                          {/*      content="The app will try to match order book pairs for best prices"*/}
-                          {/*      showArrow*/}
-                          {/*  >*/}
-                          {/*    <HStack gap="2">*/}
-                          {/*      <LuInfo size={16} />*/}
-                          {/*      <Text fontSize="sm" fontWeight="medium">Use Order Book</Text>*/}
-                          {/*    </HStack>*/}
-                          {/*  </Tooltip>*/}
-                          {/*  <Switch.Root*/}
-                          {/*      checked={useOrderBook}*/}
-                          {/*      onCheckedChange={(details) => {*/}
-                          {/*        console.log('Switch changed:', details);*/}
-                          {/*        setUseOrderBook(details.checked);*/}
-                          {/*      }}*/}
-                          {/*      colorPalette="blue"*/}
-                          {/*  >*/}
-                          {/*    <Switch.Control>*/}
-                          {/*      <Switch.Thumb />*/}
-                          {/*    </Switch.Control>*/}
-                          {/*    <Switch.HiddenInput />*/}
-                          {/*  </Switch.Root>*/}
-                          {/*</HStack>*/}
-                        </VStack>
-                      </Card.Root>
-                    </Box>
-                  </Collapsible.Content>
-                </Collapsible.Root>
 
                 {/* From Asset */}
                 <Box px="6" py="2">
@@ -841,10 +770,30 @@ export default function SwapPage() {
                         borderColor="green.500/20"
                       >
                         <VStack gap="3" align="stretch">
-                          <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                              Minimum Output
-                            </Text>
+                          <HStack justify="space-between" align="flex-start">
+                            <VStack gap="0" align="flex-start">
+                              <Text fontSize="sm" color="fg.muted" fontWeight="medium">
+                                Minimum Output
+                              </Text>
+                              <Text fontSize="xs" color="fg.subtle">
+                                {slippage}% max slippage ·{' '}
+                                <Button
+                                    variant="plain"
+                                    size="xs"
+                                    h="auto"
+                                    minW="0"
+                                    p="0"
+                                    fontSize="xs"
+                                    fontWeight="normal"
+                                    colorPalette="blue"
+                                    color="colorPalette.fg"
+                                    aria-expanded={showSlippageEditor}
+                                    onClick={() => setShowSlippageEditor(!showSlippageEditor)}
+                                >
+                                  {showSlippageEditor ? 'Close' : 'Change'}
+                                </Button>
+                              </Text>
+                            </VStack>
                             <Text fontSize="sm" fontWeight="semibold">
                               {prettyAmount(uAmountToBigNumberAmount(
                                 routeResult.expectedOutput.multipliedBy(
@@ -854,6 +803,64 @@ export default function SwapPage() {
                               ).toFixed(toAsset?.decimals ?? 6))} {toAsset?.ticker || ''}
                             </Text>
                           </HStack>
+                          {showSlippageEditor && (
+                            <Box
+                              role="group"
+                              aria-label="Max slippage"
+                              p="3"
+                              borderRadius="md"
+                              borderWidth="1px"
+                              borderColor="blue.500/25"
+                              bg="bg.panel/60"
+                            >
+                              <VStack gap="2.5" align="stretch">
+                                <HStack justify="space-between">
+                                  <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
+                                    Max slippage
+                                  </Text>
+                                  <Button
+                                      variant="plain"
+                                      size="xs"
+                                      h="auto"
+                                      minW="0"
+                                      p="0"
+                                      fontSize="xs"
+                                      fontWeight="normal"
+                                      colorPalette="gray"
+                                      onClick={() => setShowSlippageEditor(false)}
+                                  >
+                                    Done
+                                  </Button>
+                                </HStack>
+                                <HStack gap="2">
+                                  {SLIPPAGE_PRESETS.map((preset) => (
+                                      <Button
+                                          key={preset}
+                                          size="xs"
+                                          flex="1"
+                                          variant={slippage === preset && !customSlippage ? "solid" : "outline"}
+                                          onClick={() => handleSlippagePreset(preset)}
+                                          colorPalette={slippage === preset && !customSlippage ? "blue" : "gray"}
+                                          aria-pressed={slippage === preset && !customSlippage}
+                                      >
+                                        {preset}%
+                                      </Button>
+                                  ))}
+                                  <Input
+                                      placeholder="Custom %"
+                                      aria-label="Custom slippage percent"
+                                      value={customSlippage}
+                                      onChange={(e) => handleCustomSlippage(sanitizeNumberInput(e.target.value))}
+                                      size="xs"
+                                      type="text"
+                                      inputMode="decimal"
+                                      flex="1.4"
+                                      minW="0"
+                                  />
+                                </HStack>
+                              </VStack>
+                            </Box>
+                          )}
                           <HStack justify="space-between">
                             <Text fontSize="sm" color="fg.muted" fontWeight="medium">
                               Price Impact

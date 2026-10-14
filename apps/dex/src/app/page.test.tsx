@@ -5,7 +5,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
-import { createAmmRouter } from "@bze/bze-ui-kit";
+import { createAmmRouter, setInLocalStorage } from "@bze/bze-ui-kit";
 import { quoteExactInput } from "@/lib/swap-quote";
 
 // The swap page reads its assets, balances and the shared gas engine through ui-kit hooks.
@@ -113,6 +113,7 @@ function spendable(balance: string, reserved: string) {
     };
 }
 
+// No storage mock: the slippage round-trips through jsdom's localStorage exactly as in the app.
 function renderSwap() {
     return render(<SwapPage />, {
         wrapper: ({ children }: { children: ReactNode }) => (
@@ -160,6 +161,7 @@ beforeEach(() => {
     mocks.balances.clear();
     mocks.pools = [];
     mocks.halted = new Set();
+    localStorage.clear();
 });
 
 describe("Swap page MAX button", () => {
@@ -362,5 +364,115 @@ describe("Swap page quoting", () => {
         expect(new BigNumber(msg.value.minOutput.amount).gte(new BigNumber(100000).multipliedBy(0.995).integerValue(BigNumber.ROUND_FLOOR))).toBe(true);
         expect(fromInput().value).toBe("");
         expect(toInput().value).toBe("");
+    });
+});
+
+describe("Swap page slippage", () => {
+    const presetButton = (name: string) => screen.getByRole("button", { name });
+    const customInput = () => screen.getByLabelText("Custom slippage percent") as HTMLInputElement;
+    // The editor lives in the summary, so it needs a quote first; "Change" opens it in place.
+    const openEditor = () => fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    const submittedMinOutput = () => {
+        const [msg] = mocks.tx.mock.calls[0][0] as { value: { minOutput: { amount: string } } }[];
+        return new BigNumber(msg.value.minOutput.amount);
+    };
+
+    it("has no settings panel at the top of the form any more", () => {
+        setupBzeUsdc();
+        renderSwap();
+        expect(screen.queryByRole("button", { name: "Swap settings" })).toBeNull();
+        expect(screen.queryByLabelText("Custom slippage percent")).toBeNull();
+    });
+
+    it("offers 0.1% as a preset in the summary, applies it to the minimum output and closes the editor", async () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        openEditor();
+
+        fireEvent.click(presetButton("0.1%"));
+        expect(screen.getByText(/0\.1% max slippage/)).toBeInTheDocument();
+        expect(screen.queryByLabelText("Custom slippage percent")).toBeNull();
+
+        fireEvent.click(screen.getByRole("button", { name: "Swap" }));
+        await vi.waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+        const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
+        expect(submittedMinOutput().toFixed()).toBe(expected.amountOut.multipliedBy(0.999).toFixed(0));
+    });
+
+    it("remembers a chosen preset after the page is opened again", () => {
+        setupBzeUsdc();
+        const first = renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        openEditor();
+        fireEvent.click(presetButton("2%"));
+        const storedKeys = Object.keys(localStorage);
+        expect(storedKeys).toHaveLength(1);
+        expect(storedKeys[0].endsWith(":amm:slippage")).toBe(true);
+        first.unmount();
+
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        expect(screen.getByText(/2% max slippage/)).toBeInTheDocument();
+        openEditor();
+
+        expect(presetButton("2%")).toHaveAttribute("aria-pressed", "true");
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+        expect(customInput().value).toBe("");
+    });
+
+    it("remembers a custom value and shows it back in the custom field", () => {
+        setupBzeUsdc();
+        const first = renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        openEditor();
+        fireEvent.change(customInput(), { target: { value: "0.3" } });
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+        fireEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(screen.queryByLabelText("Custom slippage percent")).toBeNull();
+        first.unmount();
+
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        expect(screen.getByText(/0\.3% max slippage/)).toBeInTheDocument();
+        openEditor();
+
+        expect(customInput().value).toBe("0.3");
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("keeps the last valid slippage while the custom field holds something unusable", () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        openEditor();
+
+        fireEvent.change(customInput(), { target: { value: "0.3" } });
+        fireEvent.change(customInput(), { target: { value: "99" } });
+
+        expect(customInput().value).toBe("99");
+        expect(screen.getByText(/0\.3% max slippage/)).toBeInTheDocument();
+    });
+
+    it("falls back to the default when the stored value is unusable", () => {
+        setupBzeUsdc();
+        setInLocalStorage("amm:slippage", "999", 0);
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+
+        expect(screen.getByText(/0\.5% max slippage/)).toBeInTheDocument();
+    });
+
+    it("toggles the editor from the summary line", () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+
+        openEditor();
+        expect(screen.getByRole("group", { name: "Max slippage" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("aria-expanded", "true");
+
+        fireEvent.click(screen.getByRole("button", { name: "Close" }));
+        expect(screen.queryByRole("group", { name: "Max slippage" })).toBeNull();
     });
 });
