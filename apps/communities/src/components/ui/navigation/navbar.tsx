@@ -4,11 +4,8 @@ import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Tex
 import {NavbarLinks} from './navbar-links'
 import {useColorModeValue} from "@/components/ui/color-mode";
 import {LuSettings, LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsSidebarContent, TokenLogo, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
+import {Sidebar, WalletSidebarContent, SettingsSidebarContent, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
 import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
-import {GetTokenSection} from "@/components/ui/wallet/get-token-section";
-import {FeeTokenToggle} from "@/components/ui/settings/fee-token-toggle";
-import {useTokenBranding} from "@/contexts/token_branding_context";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {useMemo} from "react";
@@ -21,7 +18,6 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
     const {nativeAsset} = useAssets()
     const {balance} = useBalance(getChainNativeAssetDenom())
     const {status} = useChain(getChainName());
-    const {brand} = useTokenBranding();
     const beezeeLogo = useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg");
 
     const walletButtonText = useMemo(() => {
@@ -39,48 +35,25 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
             <Container py={{ base: '3.5', md: '4' }}>
                 <HStack justify="space-between">
                     <HStack gap="2" align="center">
-                        {brand ? (
-                            // Token page: rebrand the chrome to the token (logo + name) so a
-                            // direct visit feels like the token's own site (Features & Usage §2).
-                            <>
-                                <Box width={{base: "24px", md: "30px"}} height={{base: "24px", md: "30px"}} flexShrink={0}>
-                                    <TokenLogo src={brand.logo} symbol={brand.ticker} circular={true} />
-                                </Box>
-                                <Text
-                                    fontSize={{ base: "sm", md: "md" }}
-                                    fontWeight="extrabold"
-                                    color="#27ae60"
-                                    letterSpacing="tighter"
-                                    opacity="0.9"
-                                    truncate
-                                    maxW={{base: "150px", md: "260px"}}
-                                >
-                                    {brand.name}
-                                </Text>
-                            </>
-                        ) : (
-                            <>
-                                <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
-                                    <Image
-                                        height={{base: "22px", md: "28px"}}
-                                        src={beezeeLogo}
-                                        alt="BZE application logo"
-                                    />
-                                </ClientOnly>
-                                <Text
-                                    fontSize={{ base: "sm", md: "md" }}
-                                    fontWeight="extrabold"
-                                    color="#27ae60"
-                                    letterSpacing="tighter"
-                                    textTransform="uppercase"
-                                    opacity="0.9"
-                                    transition="all 0.3s ease"
-                                    _hover={{ opacity: 1, color: "#2ecc71" }}
-                                >
-                                    {appLabel}
-                                </Text>
-                            </>
-                        )}
+                        <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
+                            <Image
+                                height={{base: "22px", md: "28px"}}
+                                src={beezeeLogo}
+                                alt="BZE application logo"
+                            />
+                        </ClientOnly>
+                        <Text
+                            fontSize={{ base: "sm", md: "md" }}
+                            fontWeight="extrabold"
+                            color="#27ae60"
+                            letterSpacing="tighter"
+                            textTransform="uppercase"
+                            opacity="0.9"
+                            transition="all 0.3s ease"
+                            _hover={{ opacity: 1, color: "#2ecc71" }}
+                        >
+                            {appLabel}
+                        </Text>
                     </HStack>
                     <Spacer hideFrom="md" />
                     <NavbarLinks hideBelow="md" />
@@ -95,10 +68,7 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
                                     </Button>
                                 }
                             >
-                                {/* Token pages only: acquire the page token without leaving the app (BFE-40). */}
-                                {brand && <GetTokenSection denom={brand.denom} accentColor="green" />}
-                                {/* Token pages only: pin the page token's balance first, others behind an expand (BFE-39). */}
-                                <WalletSidebarContent accentColor="green" skipWalletModal featuredDenom={brand?.denom} />
+                                <WalletSidebarContent accentColor="green" skipWalletModal />
                             </Sidebar>
                         </ClientOnly>
                         <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
@@ -110,8 +80,6 @@ export const TopNavBar = ({ appLabel = "COMMUNITIES" }: TopNavBarProps) => {
                                     </Button>
                                 }
                             >
-                                {/* Token pages only: force the page token as the fee token (BFE-40). */}
-                                {brand && <FeeTokenToggle denom={brand.denom} accentColor="green" />}
                                 <SettingsSidebarContent accentColor="green" />
                             </Sidebar>
                         </ClientOnly>

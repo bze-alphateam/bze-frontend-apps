@@ -128,12 +128,21 @@ export const getChainAddressPrefix = () => {
     return process.env.NEXT_PUBLIC_CHAIN_ADDRESS_PREFIX || 'bze'
 }
 
-export const getChainExplorerURL = (chainName: string): string => {
-    if (process.env.NEXT_PUBLIC_EXPLORER_URL) {
-        return `${process.env.NEXT_PUBLIC_EXPLORER_URL}/${chainName}`
-    }
+/**
+ * The path segment the block explorer serves the BZE chain under. This is the
+ * explorer's own slug and is NOT the cosmos-kit chain name: mainnet's chain name
+ * happens to be "beezee" too, but the testnet chain name is "BeeZee Testnet 3"
+ * while the testnet explorer still serves it under "beezee".
+ */
+export const getExplorerChainSlug = (): string => {
+    return process.env.NEXT_PUBLIC_EXPLORER_CHAIN || 'beezee'
+}
 
-    return `https://explorer.chaintools.tech/${chainName}`
+/** Base URL for the chain on the block explorer, e.g. `${url}/tx/${hash}`. */
+export const getChainExplorerURL = (): string => {
+    const baseUrl = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.chaintools.tech'
+
+    return `${baseUrl.replace(/\/+$/, '')}/${getExplorerChainSlug()}`
 }
 
 export const getLockerAddress = (): string => {

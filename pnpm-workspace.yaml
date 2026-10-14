@@ -28,6 +28,7 @@ catalog:
   "@testing-library/react": "^16.1.0"
   "@testing-library/jest-dom": "^6.6.3"
   "@testing-library/user-event": "^14.5.2"
+  "@playwright/test": "^1.64.0"
 
 # Native/postinstall build scripts we trust to run (all deps the apps already shipped).
 allowBuilds:
@@ -41,9 +42,9 @@ allowBuilds:
   utf-8-validate: true
 
 minimumReleaseAgeExclude:
-  - '@bze/bzejs@3.1.0'
   - '@interchain-kit/react@0.10.3'
   - '@interchain-kit/store@0.9.3'
   - '@chain-registry/types@2.0.281'
   - '@chain-registry/utils@2.0.281'
   - chain-registry@2.0.281
+  - '@bze/bzejs@3.2.0'

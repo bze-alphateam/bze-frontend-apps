@@ -3,7 +3,11 @@
 import React from 'react'
 import { Box, Button, Container, HStack, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu'
-import type { WizardStep } from '@/components/token-wizard/token-wizard-context'
+
+export interface WizardStep {
+    key: string;
+    title: string;
+}
 
 interface WizardShellProps {
     title: string;

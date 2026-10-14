@@ -11,6 +11,7 @@ import {
 } from "@bze/bzejs/bze/rewards/store";
 import {AddressRewardsStaking, ExtendedPendingUnlockParticipantSDKType} from "../types/staking";
 import BigNumber from "bignumber.js";
+import {parsePendingUnlockIndex} from "../utils/denom_rewards";
 
 const {fromPartial: QueryAllStakingRewardRequestFromPartial} = bze.rewards.QueryAllStakingRewardsRequest;
 const {fromPartial: QueryGetStakingRewardParticipantRequestFromPartial} = bze.rewards.QueryStakingRewardParticipantRequest;
@@ -98,16 +99,18 @@ async function mapParticipantRewards(participantRewards: StakingRewardParticipan
 async function mapPendingUnlock(pending: PendingUnlockParticipantSDKType[]): Promise<Map<string, ExtendedPendingUnlockParticipantSDKType[]>> {
     const result = new Map<string, ExtendedPendingUnlockParticipantSDKType[]>
     for (let i = 0; i < pending.length; i++) {
-        const splitIndex = pending[i].index.split('/');
-        if (splitIndex.length !== 3) {
+        const parsed = parsePendingUnlockIndex(pending[i].index);
+        if (!parsed) {
             console.error("invalid pending unlock index", pending[i].index);
             continue;
         }
+        // denom reward exits share the store; they are listed by getAddressDenomRewardUnlocks
+        if (parsed.kind !== 'staking-reward') continue;
 
         const item = {
             ...pending[i],
-            rewardId: splitIndex[1],
-            unlockEpoch: new BigNumber(splitIndex[0]),
+            rewardId: parsed.rewardId,
+            unlockEpoch: new BigNumber(parsed.epoch),
         }
 
         const allItems = result.get(item.rewardId) ?? [];

@@ -24,6 +24,8 @@ import {sanitizeNumberInput} from '../../utils/number';
 import {formatDuration} from '../../utils/cross_chain';
 import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {getChainName} from '../../constants/chain';
+import {LEGACY_ASSET_NOTICES} from '../../constants/assets';
+import {LegacyAssetNoticeBox} from '../legacy-asset-notice';
 
 interface DepositFormProps {
     accentColor: string;
@@ -42,7 +44,15 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
     const [amount, setAmount] = useState('');
     const [amountError, setAmountError] = useState('');
 
-    const {assets: bridgeableAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
+    const {assets: bridgeableAssets, blockedAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
+
+    // Assets the chain stopped accepting (e.g. USDC.n) vanish from the picker; when one
+    // has a wind-down notice, show it so users looking for it learn why it's gone.
+    const blockedNotices = useMemo(() => {
+        return blockedAssets
+            .filter(a => LEGACY_ASSET_NOTICES[a.denom] !== undefined)
+            .map(a => ({denom: a.denom, notice: LEGACY_ASSET_NOTICES[a.denom]}));
+    }, [blockedAssets]);
 
     // ─── Asset picker collection (flat list, sorted by ticker) ─────────────
     const assetsCollection = useMemo(() => {
@@ -247,6 +257,11 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
                     </Select.Root>
                 </Box>
             )}
+
+            {/* Wind-down notices for assets whose deposits the chain refuses */}
+            {!selectedAsset && blockedNotices.map(({denom, notice}) => (
+                <LegacyAssetNoticeBox key={denom} notice={notice}/>
+            ))}
 
             {/* Source chain — auto-resolved, read-only */}
             {selectedAsset && (

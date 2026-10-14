@@ -15,7 +15,19 @@ All shared code comes from `@bze/bze-ui-kit`; this app only contains communities
 src/
   app/              # Next.js pages (token directory at /, token pages at /token?denom=…) + api/skip proxy
   components/
-    ui/             # Navbar, color mode, Chakra provider
+    directory/      # Token directory (home): search, filters, sort, pages, brand-coloured cards
+    token-site/     # The token page as a standalone site; kit/ = communities-only design kit (--ts-* vars),
+                    # wallet/ = the token's own wallet drawer (Get/Send/Burn tabs; Get is trade/'s SwapForm) and its settings view (state in hooks/token-site/useTokenWallet)
+                    # trade/ = the Trade section: pool price chart (hooks/token-site/usePoolChart, aggregator candles) + Buy/Sell panel; SwapForm (swaps via hooks/token-site/useTokenSwap) is shared with the wallet's Get tab
+                    #         + "Liquidity pools" (hooks/token-site/useTokenPools): table of T's pools, inline Add/Remove liquidity forms (math in lib/token-site/liquidity)
+                    # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
+                    # earn/ = "Ways to earn T": programs paying T + other tokens' pools paying T (hooks/token-site/useEarnOpportunities, read by token-site.tsx
+                    #         so the header links it only when it renders); its Stake buttons open the StakeDialog on the *other* token
+                    # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab;
+                    #         raffle.tsx = the burn raffle in its slot (hooks/token-site/useTokenRaffle: joins + per-ticket results, toasts once the dialog is closed)
+                    # fee mode (R12/R13): hooks/token-site/useTokenFeeMode (TokenFeeModeProvider in token-site.tsx) pays fees in T when it's eligible unless opted out
+                    #         (communities:feeOptOut:<denom>), resets to BZE on leaving (and marks T as its own, so hooks/useLeftoverTokenFeeReset on the directory resets it after a browser close); low-liquidity mode = wallet/bze-fee.tsx notices + wallet/get-bze-panel.tsx (ui-kit useBuyBze)
+    ui/             # BeeZee navbar (directory only), color mode, Chakra provider
   contexts/
     assets_context.tsx  # Communities AssetsProvider — extends lib's base AssetsContextType
   hooks/
@@ -31,5 +43,5 @@ src/
 ## Domain rules (short version — Confluence is the authority)
 
 - Only `factory/` denoms get pages; the token page URL carries the denom URL-encoded in the `?denom=` query param (never in the path).
-- The token page rebrands the chrome to the token (logo + name) — direct visits should feel like the token's own site.
-- "Get the token" buy flow and the fee-token setting are gated by fee-eligibility: an AMM pool paired with BZE whose BZE reserve exceeds tradebin `min_native_liquidity_for_module_swap`.
+- The token page is a standalone site in the token's on-chain brand kit (`DEFAULT_DENOM_BRANDING` without one): no BeeZee navbar, logo or app links. Its visuals are communities-only components in `components/token-site/` — never restyle ui-kit visual components for it. The directory keeps the shared BeeZee top bar.
+- Fee-eligibility (ui-kit `useFeeTokens().isValidFeeDenom`): an AMM pool paired with BZE whose BZE reserve exceeds tradebin `min_native_liquidity_for_module_swap`, and the token not halted. Eligible tokens pay network fees in themselves on their page (switch in the settings panel); the others show the BZE notices, the wallet's BZE row, "Runs on BeeZee" and Get BZE (Skip only).

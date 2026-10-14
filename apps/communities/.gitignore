@@ -35,6 +35,8 @@ yarn-error.log*
 !.env.dist
 !.env.mainnet.dist
 !.env.testnet.dist
+# e2e build env: fake *.e2e.test hosts, no secrets (BFE-124)
+!.env.e2e
 
 # vercel
 .vercel

@@ -8,6 +8,8 @@ import {isIbcDenom} from "../utils/denom";
 import {DEPOSIT_EXCLUDED_ASSETS} from "../constants/assets";
 import {getChains, getChainName, getAssetLists} from "../constants/chain";
 import {ibcData as registryIbcData} from "chain-registry";
+import {useBlockedIbcInbound} from "./useBlockedIbcInbound";
+import {isIbcInboundBlocked} from "../utils/ibc_inbound";
 
 /**
  * A single asset that can be bridged between BZE and a Cosmos counterparty
@@ -211,6 +213,11 @@ const isBridgeable = (asset: Asset): boolean => {
 export interface UseBridgeableAssetsResult {
     assets: BridgeableAsset[];
     chains: BridgeableChain[];
+    /**
+     * Assets left out only because the chain refuses their deposits right now
+     * (txfeecollector `blocked_ibc_inbound`), so the form can explain why they are gone.
+     */
+    blockedAssets: Asset[];
     isLoading: boolean;
 }
 
@@ -230,21 +237,34 @@ export interface UseBridgeableAssetsResult {
  *      that instead. However, PHMN arriving via Osmosis from Juno is
  *      allowed because BZE has no direct Juno channel — the Osmosis hop
  *      is the only viable path.
+ *   6. The chain does not refuse it: no entry of the txfeecollector
+ *      `blocked_ibc_inbound` param matches its BZE-side channel + base
+ *      denom. While that param is loading or unavailable nothing is
+ *      filtered (fail open). Withdrawals are never affected.
  *
  * Grouped by counterparty chain for convenience, though the deposit form
  * currently uses the flat `assets` list as an asset-first picker.
  */
 export function useBridgeableAssets(): UseBridgeableAssetsResult {
     const {assetsMap, isLoading} = useAssetsContext();
+    const blockedIbcInbound = useBlockedIbcInbound();
 
-    const {assets, chains} = useMemo(() => {
+    const {assets, chains, blockedAssets} = useMemo(() => {
         const allAssets: BridgeableAsset[] = [];
+        const blocked: Asset[] = [];
         const byChain = new Map<string, BridgeableChain>();
 
         for (const asset of assetsMap.values()) {
             if (!isBridgeable(asset)) continue;
             if (isAssetDenied(asset.denom)) continue;
             if (DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
+
+            // The chain answers these deposits with an error ack and the sender
+            // is refunded on the source chain — never offer them.
+            if (isIbcInboundBlocked(asset, blockedIbcInbound)) {
+                blocked.push(asset);
+                continue;
+            }
 
             const cpName = asset.IBCData!.counterparty.chainName;
             if (isChainDenied(cpName)) continue;
@@ -305,8 +325,8 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
             c.assets.sort((a, b) => (a.bzeAsset.ticker || '').localeCompare(b.bzeAsset.ticker || ''));
         }
 
-        return {assets: allAssets, chains: sortedChains};
-    }, [assetsMap]);
+        return {assets: allAssets, chains: sortedChains, blockedAssets: blocked};
+    }, [assetsMap, blockedIbcInbound]);
 
-    return {assets, chains, isLoading};
+    return {assets, chains, blockedAssets, isLoading};
 }

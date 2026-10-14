@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@bze/bze-ui-kit": "workspace:*",
-    "@bze/bzejs": "^3.0.0",
+    "@bze/bzejs": "3.2.0",
     "@chain-registry/utils": "^2.0.281",
     "@chakra-ui/react": "^3.22.0",
     "@emotion/react": "^11.14.0",

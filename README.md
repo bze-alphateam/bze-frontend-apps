@@ -215,7 +215,12 @@ Guidelines for writing app tests:
   not reach the code inside the bundle. Feed it through the real seams instead — wrap it
   in `<SettingsProvider>` + `<AssetsContext.Provider value={…}>` for assets / balances /
   pools, and seed the query layer's localStorage caches with `setInLocalStorage(key, json, ttl)`
-  (`tradebin_params`, `txfeecollector_params`, …) so the param hooks never open a socket.
+  so the param hooks never open a socket. Use the exact key and shape the query reads
+  (`CACHE_KEY` and the cache check in `packages/ui-kit/src/query/*_params.ts`, e.g.
+  `tradebin_params_v2`, and `txfeecollector_params` with `blockedIbcInbound`): a stale key
+  silently falls through to a real request. Call `forbidNetwork()` from
+  `@bze/vitest-preset/no-network` in such a file so any request fails the test with its
+  URL instead of logging errors after the test ends (which can crash the Vitest worker).
   See `dex/src/components/wallet-send-form.test.tsx`.
 - Need setup shared across all apps (a new global matcher, a polyfill)? Add it to the
   preset's `setup.ts` — it runs before every app's tests.

@@ -1,0 +1,26 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/denom_reward_prizes?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward_prizes",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "prize_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "distributed_stake": "1.000000000000000000",
+        "last_distribution_epoch": "231"
+      },
+      {
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "prize_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "distributed_stake": "1.000000000000000000",
+        "last_distribution_epoch": "231"
+      }
+    ]
+  }
+}

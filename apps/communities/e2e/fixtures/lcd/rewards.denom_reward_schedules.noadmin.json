@@ -1,0 +1,39 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/denom_reward_schedules?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin&pagination.count_total=false&pagination.key=&pagination.limit=500&pagination.offset=0&pagination.reverse=false",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward_schedules",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.limit": "500",
+    "pagination.offset": "0",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "schedule_id": "000000000000",
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "prize_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "daily_amount": "10000000",
+        "duration": 200,
+        "payouts": 2
+      },
+      {
+        "schedule_id": "000000000001",
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "prize_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "daily_amount": "10000000",
+        "duration": 365,
+        "payouts": 2
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

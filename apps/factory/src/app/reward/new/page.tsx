@@ -42,6 +42,7 @@ import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { FeeDisclosure } from '@/components/ui/fee-disclosure'
 import { InfoBox } from '@/components/ui/info-box'
+import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
@@ -242,7 +243,7 @@ function RewardNewContent() {
 
     if (created) {
         const stakingUrl = getStakingApp().href
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+        const txUrl = `${getChainExplorerURL()}/tx/${created.txHash}`
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>
@@ -328,9 +329,12 @@ function RewardNewContent() {
                     <LuGift size={22} />
                 </Box>
                 <VStack align="start" gap={0}>
-                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        Create Staking Reward
-                    </Text>
+                    <HStack gap={1}>
+                        <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
+                            Create Staking Reward
+                        </Text>
+                        <RewardInfoButton />
+                    </HStack>
                     <Text fontSize="sm" color="fg.muted">
                         Fund a staking program — your community stakes a token and earns your prize.
                     </Text>

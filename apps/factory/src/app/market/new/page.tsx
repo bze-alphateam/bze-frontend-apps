@@ -1,25 +1,8 @@
 "use client"
 
 import React, { Suspense, useMemo, useState } from 'react'
-import {
-    Box,
-    Button,
-    Card,
-    Container,
-    HStack,
-    Separator,
-    Skeleton,
-    Text,
-    VStack,
-} from '@chakra-ui/react'
-import {
-    LuArrowLeft,
-    LuArrowUpRight,
-    LuChartCandlestick,
-    LuCircleCheck,
-    LuDroplets,
-    LuPlus,
-} from 'react-icons/lu'
+import { Box, Button, Container, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { LuArrowUpRight, LuDroplets } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     createMarketId,
@@ -33,23 +16,35 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
-import { FeeDisclosure } from '@/components/ui/fee-disclosure'
-import { InfoBox } from '@/components/ui/info-box'
+import { haltedPairError } from '@/lib/halted'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
+import {
+    GuidedForm,
+    OutcomePanel,
+    PayPanel,
+    Question,
+    SuccessPanel,
+    useGuidedSteps,
+    useReturnTo,
+    withReturn,
+} from '@/components/guided'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
+const STEPS = ['base', 'quote'] as const
+
+const marketUrl = (marketId: string) => `${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`
 
 function MarketNewContent() {
-    const { getQueryParam, navigate } = useNavigationWithParams()
+    const { getQueryParam } = useNavigationWithParams()
+    const returnTo = useReturnTo()
     const { address } = useChain(getChainName())
     const { marketExists, updateMarkets, isLoading: isMarketsLoading } = useMarkets()
     const { fees, isLoading: isFeeLoading } = useCreationFees()
     const { tx } = useFactoryTx()
 
-    // Chaining links (e.g. the token wizard's success screen) preselect the pair.
+    // Chaining links (e.g. the token success screen) preselect the pair.
     const [baseDenom, setBaseDenom] = useState(() => getQueryParam('base') ?? '')
     const [quoteDenom, setQuoteDenom] = useState(() => getQueryParam('quote') ?? '')
     // Looked up rather than captured from the picker, so query-param preselects
@@ -65,26 +60,42 @@ function MarketNewContent() {
 
     // The pair must not exist in EITHER direction — the chain would reject the
     // reversed pair too, so catch it here as a friendly form error instead.
-    const error = useMemo(() => {
-        if (!baseDenom || !quoteDenom) return ''
+    const pairError = useMemo((): { message: string; existingId?: string } | undefined => {
+        if (!baseDenom || !quoteDenom) return undefined
         if (baseDenom === quoteDenom) {
-            return 'Base and quote must be different assets.'
+            return { message: 'Base and quote must be different assets.' }
         }
-        if (marketExists(createMarketId(baseDenom, quoteDenom)) || marketExists(createMarketId(quoteDenom, baseDenom))) {
-            return 'A market for this pair already exists on the DEX — every pair can have only one order book.'
+        const halted = haltedPairError(baseAsset, quoteAsset)
+        if (halted !== '') return { message: halted }
+        const direct = createMarketId(baseDenom, quoteDenom)
+        const reversed = createMarketId(quoteDenom, baseDenom)
+        const existingId = marketExists(direct) ? direct : marketExists(reversed) ? reversed : undefined
+        if (existingId) {
+            return {
+                message: 'A market for this pair already exists on the DEX — every pair can have only one order book.',
+                existingId,
+            }
         }
-        return ''
-    }, [baseDenom, quoteDenom, marketExists])
+        return undefined
+    }, [baseDenom, quoteDenom, marketExists, baseAsset, quoteAsset])
 
-    const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && error === ''
+    const steps = useGuidedSteps(STEPS, {
+        base: baseDenom !== '',
+        quote: quoteDenom !== '' && pairError === undefined,
+    })
+
+    const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && pairError === undefined
     const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
         !isBalanceLoading && canPayFee && !isMarketsLoading
 
-    const pairLabel = baseAsset && quoteAsset ? `${baseAsset.ticker}/${quoteAsset.ticker}` : ''
+    const baseTicker = baseAsset?.ticker ?? baseDenom
+    const quoteTicker = quoteAsset?.ticker ?? quoteDenom
+    const pairLabel = baseTicker && quoteTicker ? `${baseTicker}/${quoteTicker}` : ''
 
     const submit = async () => {
         if (!address || !canConfirm) return
 
+        // The user's order, not sorted: base is what trades, quote is what it's priced in.
         const msg = createMarket({ creator: address, base: baseDenom, quote: quoteDenom })
 
         setIsSubmitting(true)
@@ -106,153 +117,149 @@ function MarketNewContent() {
         setCreated(undefined)
         setBaseDenom('')
         setQuoteDenom('')
+        steps.close()
     }
 
     if (created) {
-        const dexUrl = getDexApp().href
-        const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(createMarketId(baseDenom, quoteDenom))}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
-
+        const poolHref = `/pool/new?base=${encodeURIComponent(baseDenom)}&quote=${encodeURIComponent(quoteDenom)}`
         return (
-            <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>
-                <VStack gap={3} align="center">
-                    <Box color="green.500">
-                        <LuCircleCheck size={56} />
-                    </Box>
-                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        The {pairLabel} market is live!
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Anyone can now place {baseAsset?.ticker ?? 'base'} orders priced
-                        in {quoteAsset?.ticker ?? 'quote'} on the DEX order book.
-                    </Text>
-                </VStack>
-
-                <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(marketUrl)}>
-                        View market on DEX <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
-                </HStack>
-
-                <VStack align="stretch" gap={3}>
-                    <Text fontSize="sm" color="fg.muted" fontWeight="medium" textAlign="center">
-                        What&apos;s next?
-                    </Text>
-                    {/* A market starts empty — the natural next step is liquidity. */}
-                    <HStack gap={3} justify="center" wrap="wrap">
-                        <Button
-                            variant="outline"
-                            colorPalette="yellow"
-                            size="sm"
-                            onClick={() => navigate(`/pool/new?base=${encodeURIComponent(baseDenom)}&quote=${encodeURIComponent(quoteDenom)}`)}
-                        >
-                            <LuDroplets />
-                            Create a liquidity pool
-                        </Button>
-                        <Button variant="outline" colorPalette="yellow" size="sm" onClick={createAnother}>
-                            <LuPlus />
-                            Create another market
-                        </Button>
-                    </HStack>
-                </VStack>
-
-                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => navigate('/')}>
-                    Back to hub
-                </Button>
-            </VStack>
+            <SuccessPanel
+                title={`The ${pairLabel} market is live!`}
+                text={`Anyone can now place ${baseTicker} orders priced in ${quoteTicker} on the DEX order book.`}
+                links={[
+                    { label: 'View market on DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)) },
+                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${created.txHash}` },
+                ]}
+                // A market starts empty — the natural next step is liquidity.
+                next={[{ label: 'Create a liquidity pool', href: withReturn(poolHref, returnTo), icon: <LuDroplets /> }]}
+                again={{ label: 'Create another market', onClick: createAnother }}
+            />
         )
     }
 
-    return (
-        <VStack align="stretch" gap={6}>
-            <Box>
-                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => navigate('/')}>
-                    <LuArrowLeft />
-                    Creation hub
-                </Button>
-            </Box>
-
-            <HStack gap={3}>
-                <Box p={2.5} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                    <LuChartCandlestick size={22} />
-                </Box>
-                <VStack align="start" gap={0}>
-                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        Create Market
+    const aside = (
+        <>
+            <OutcomePanel>
+                <VStack align="stretch" gap={2}>
+                    <Text>
+                        {pairLabel && isComplete
+                            ? <>A {pairLabel} order book opens on the DEX. Anyone can place buy and sell orders on it; 1 {baseTicker} will cost whatever {quoteTicker} traders agree on.</>
+                            : <>An order book for your pair opens on the DEX. Pick the asset being traded and the one it is priced in.</>}
                     </Text>
-                    <Text fontSize="sm" color="fg.muted">
-                        Open an order-book market on the DEX for any pair of assets.
+                    <Text fontSize="xs" color="fg.muted">
+                        <Text as="span" fontWeight="semibold">How a market works: </Text>
+                        orders trade the base asset, priced in the quote asset
+                        {baseAsset && quoteAsset ? ` ("1 ${baseTicker} costs X ${quoteTicker}")` : ''}.
+                        Creating it is a one-time, permanent action, and every pair can have only one market.
                     </Text>
                 </VStack>
-            </HStack>
+            </OutcomePanel>
 
-            <Card.Root variant="outline" p={{ base: 5, md: 6 }}>
-                <VStack align="stretch" gap={5}>
-                    <AssetPicker
-                        label="Base asset — the one being traded"
-                        value={baseDenom}
-                        excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
-                        onSelect={(asset) => setBaseDenom(asset.denom)}
-                    />
+            <PayPanel
+                rows={[{ label: 'Market creation fee', coin: fee }]}
+                moduleFee={fee}
+                txKind="create-market"
+                isLoading={isFeeLoading}
+                feeUnknown={!fee}
+            />
+
+            <VStack align="stretch" gap={2}>
+                <Button
+                    size="lg"
+                    colorPalette="yellow"
+                    onClick={submit}
+                    disabled={!canConfirm}
+                    loading={isSubmitting}
+                    loadingText="Waiting for signature..."
+                >
+                    Create market
+                </Button>
+                {!address ? (
+                    <Text fontSize="sm" color="fg.muted" textAlign="center">
+                        Connect your wallet to create this market.
+                    </Text>
+                ) : isComplete && !isBalanceLoading && !canPayFee && (
+                    <Text fontSize="sm" color="fg.error" textAlign="center">
+                        Not enough balance to cover the creation fee.
+                    </Text>
+                )}
+            </VStack>
+        </>
+    )
+
+    return (
+        <GuidedForm
+            title="Allow limit orders"
+            subtitle="Open an order book on the DEX so traders can buy and sell at the price they name."
+            techTag="tradebin · order-book market"
+            aside={aside}
+        >
+            <Question
+                number={1}
+                title="What is being traded?"
+                state={steps.state.base}
+                summary={baseTicker}
+                onChange={() => steps.open('base')}
+            >
+                <AssetPicker
+                    label="Base asset — the one being traded"
+                    value={baseDenom}
+                    excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
+                    excludeHalted
+                    onSelect={(asset) => {
+                        setBaseDenom(asset.denom)
+                        steps.close()
+                    }}
+                />
+            </Question>
+
+            <Question
+                number={2}
+                title="What is it priced in?"
+                state={steps.state.quote}
+                summary={quoteTicker}
+                onChange={() => steps.open('quote')}
+            >
+                <VStack align="stretch" gap={3}>
                     <AssetPicker
                         label="Quote asset — the one it's priced in"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
+                        excludeHalted
                         ownFirst={false}
-                        onSelect={(asset) => setQuoteDenom(asset.denom)}
+                        onSelect={(asset) => {
+                            setQuoteDenom(asset.denom)
+                            steps.close()
+                        }}
                     />
-
-                    {error !== '' && (
-                        <Text fontSize="sm" color="fg.error" fontWeight="medium">
-                            {error}
-                        </Text>
+                    {pairError && (
+                        <Box role="alert">
+                            <Text fontSize="sm" color="fg.error" fontWeight="medium">
+                                {pairError.message}
+                            </Text>
+                            {pairError.existingId && (
+                                <Link
+                                    href={marketUrl(pairError.existingId)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    fontSize="sm"
+                                    color="yellow.fg"
+                                >
+                                    View it on the DEX <LuArrowUpRight />
+                                </Link>
+                            )}
+                        </Box>
                     )}
-
-                    <InfoBox title="How a market works">
-                        Orders on the {pairLabel || 'pair'} order book trade the base asset, priced in
-                        the quote asset{quoteAsset ? ` (e.g. "1 ${baseAsset?.ticker ?? 'BASE'} costs X ${quoteAsset.ticker}")` : ''}.
-                        Anyone can place orders once the market exists — creating it is a one-time,
-                        permanent action, and every pair can have only one market.
-                    </InfoBox>
-
-                    <Separator />
-
-                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Market creation fee" txKind="create-market" />
-
-                    <VStack align="stretch" gap={2}>
-                        <Button
-                            size="lg"
-                            colorPalette="yellow"
-                            onClick={submit}
-                            disabled={!canConfirm}
-                            loading={isSubmitting}
-                            loadingText="Waiting for signature..."
-                        >
-                            Create market
-                        </Button>
-                        {!address ? (
-                            <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                Connect your wallet to create this market.
-                            </Text>
-                        ) : isComplete && !isBalanceLoading && !canPayFee && (
-                            <Text fontSize="sm" color="fg.error" textAlign="center">
-                                Not enough balance to cover the creation fee.
-                            </Text>
-                        )}
-                    </VStack>
                 </VStack>
-            </Card.Root>
-        </VStack>
+            </Question>
+        </GuidedForm>
     )
 }
 
 export default function MarketNewPage() {
     return (
         <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="2xl" py={{ base: 6, md: 10 }}>
+            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
                 <Suspense fallback={<Skeleton height="96" />}>
                     <MarketNewContent />
                 </Suspense>

@@ -145,7 +145,8 @@ function RenounceAdminCard({ asset, onChanged }: { asset: Asset; onChanged: () =
                 <InfoBox title="Irreversible — supply becomes provably fixed">
                     BeeZee has no supply cap: renouncing the admin is what fixes the supply
                     forever. Nobody — including you — will ever mint again, and the metadata
-                    is frozen as it is now. This cannot be undone by anyone.
+                    is frozen as it is now. This cannot be undone by anyone. The brand kit is
+                    frozen too: it stays as it is now, or stays absent, for good.
                 </InfoBox>
 
                 <Field.Root>
