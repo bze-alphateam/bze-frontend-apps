@@ -2,7 +2,6 @@
 
 import React from 'react'
 import { Badge, Box, Button, Card, Grid, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
-import BigNumber from 'bignumber.js'
 import { LuCheck, LuCircle, LuCircleDashed, LuCircleHelp, LuFlame, LuLock, LuPlus, LuRefreshCw, LuSend, LuSprout, LuTriangleAlert } from 'react-icons/lu'
 import { prettyAmount, uAmountToBigNumberAmount } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
@@ -11,6 +10,7 @@ import { airdropFormHref } from '@/lib/denom-reward'
 import type { SetupItem } from '@/lib/token-setup'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
+import { shareOfSupply } from '@/lib/supply'
 import { StatBox } from './stat-box'
 import type { WorkspaceTabProps } from './types'
 
@@ -79,12 +79,6 @@ function SetupRow({ item, onGo, onRetry }: { item: SetupItem; onGo: (href: strin
     )
 }
 
-function percentOf(part: BigNumber, whole: BigNumber): string | undefined {
-    if (!whole.gt(0)) return undefined
-    const pct = part.dividedBy(whole).multipliedBy(100)
-    return `${pct.gt(0) && pct.lt(0.01) ? '<0.01' : pct.decimalPlaces(2).toString()}% of supply`
-}
-
 /** The token at a glance: stats, the chain-derived setup checklist, quick actions, the lock callout. */
 export function OverviewTab({ asset, admin, adminState, supply, supplyDisplay, isSupplyLoading, balanceDisplay, goTo }: WorkspaceTabProps) {
     const setup = useTokenSetup(asset.denom, { admin, supply })
@@ -103,7 +97,7 @@ export function OverviewTab({ asset, admin, adminState, supply, supplyDisplay, i
                     minW="0"
                     label="In your wallet"
                     value={`${prettyAmount(balanceDisplay)} ${ticker}`}
-                    hint={percentOf(balanceDisplay, supplyDisplay)}
+                    hint={shareOfSupply(balanceDisplay, supplyDisplay)}
                 />
                 <StatBox
                     minW="0"
