@@ -11,17 +11,23 @@ import {
     LuPlus,
 } from 'react-icons/lu'
 import { getChainExplorerURL, getDexApp, useToast } from '@bze/bze-ui-kit'
-import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useNavigation } from '@/hooks/useNavigation'
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
-export function SuccessScreen() {
-    const { created, form, reset } = useTokenWizard()
+interface SuccessScreenProps {
+    name: string;
+    symbol: string;
+    denom: string;
+    txHash: string;
+    /** Clears the form for another token. */
+    reset: () => void;
+}
+
+export function SuccessScreen({ name, symbol, denom, txHash, reset }: SuccessScreenProps) {
     const { navigate } = useNavigation()
     const { toast } = useToast()
-
-    if (!created) return null
+    const created = { denom, txHash }
 
     const dexUrl = getDexApp().href
     const tokenUrl = `${dexUrl}/assets/details?denom=${encodeURIComponent(created.denom)}`
@@ -40,12 +46,10 @@ export function SuccessScreen() {
                         <LuCircleCheck size={56} />
                     </Box>
                     <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        {form.name.trim()} ({form.symbol}) is live!
+                        {name.trim()} ({symbol}) is live!
                     </Text>
                     <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Your token was created, {form.fixedSupply
-                            ? 'the supply was minted, and the admin was renounced — the supply is fixed forever.'
-                            : 'and the initial supply was minted to your address.'}
+                        Your token was created, and the initial supply was minted to your address.
                     </Text>
                 </VStack>
 

@@ -6,10 +6,10 @@ import type { Metadata } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
 import { amountToUAmount, getChainName } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { type TokenWizardForm, useTokenWizard } from '@/components/token-wizard/token-wizard-context'
-import { TOKEN_DECIMALS } from '@/components/token-wizard/validation'
+import type { TokenForm } from '@/lib/token-draft'
+import { TOKEN_DECIMALS, suggestSubdenom } from '@/components/token-wizard/validation'
 
-const { createDenom, mint, setDenomMetadata, changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
+const { createDenom, mint, setDenomMetadata } = bze.tokenfactory.MessageComposer.withTypeUrl
 
 /**
  * Denom-units layout: the base unit is the full factory denom at exponent 0
@@ -17,10 +17,10 @@ const { createDenom, mint, setDenomMetadata, changeAdmin } = bze.tokenfactory.Me
  * fixed TOKEN_DECIMALS. The subdenom ("u" + lowercased symbol) can never
  * collide with the display denom.
  */
-function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
+function buildMetadata(form: TokenForm, subdenom: string, denom: string): Metadata {
     const displayDenom = form.symbol.toLowerCase()
     const denomUnits = [
-        { denom, exponent: 0, aliases: [form.subdenom] },
+        { denom, exponent: 0, aliases: [subdenom] },
         { denom: displayDenom, exponent: TOKEN_DECIMALS, aliases: [] },
     ]
 
@@ -37,14 +37,13 @@ function buildMetadata(form: TokenWizardForm, denom: string): Metadata {
 }
 
 /**
- * The wizard's tx layer: ONE multi-message transaction, one
- * signature — create denom + mint the initial supply + set bank metadata,
- * plus an atomic admin renounce when the user asked for a fixed supply.
- * On failure the tx hook already toasts the chain error and the wizard state is
- * untouched, so the user can retry without retyping anything.
+ * The creation tx: ONE multi-message transaction, one signature: create denom + mint
+ * the initial supply + set bank metadata. The creator stays admin; locking the supply is
+ * the last step of a launch, done from the token's Control tab.
+ * On failure the tx hook already toasts the chain error and the form is untouched, so
+ * the user can retry without retyping anything.
  */
-export function useCreateTokenTx() {
-    const { form, markCreated } = useTokenWizard()
+export function useCreateTokenTx(form: TokenForm, onCreated: (denom: string, txHash: string) => void) {
     const { address } = useChain(getChainName())
     const { tx } = useFactoryTx()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -52,26 +51,26 @@ export function useCreateTokenTx() {
     const submit = useCallback(async () => {
         if (!address) return
 
-        const denom = `factory/${address}/${form.subdenom}`
+        const subdenom = suggestSubdenom(form.symbol)
+        const denom = `factory/${address}/${subdenom}`
         const msgs = [
-            createDenom({ creator: address, subdenom: form.subdenom }),
+            createDenom({ creator: address, subdenom }),
             mint({
                 creator: address,
                 coins: `${amountToUAmount(form.initialSupply, TOKEN_DECIMALS)}${denom}`,
             }),
-            setDenomMetadata({ creator: address, metadata: buildMetadata(form, denom) }),
-            ...(form.fixedSupply ? [changeAdmin({ creator: address, denom, newAdmin: '' })] : []),
+            setDenomMetadata({ creator: address, metadata: buildMetadata(form, subdenom, denom) }),
         ]
 
         setIsSubmitting(true)
         try {
             await tx(msgs, {
-                onSuccess: (res) => markCreated(denom, res.txhash),
+                onSuccess: (res) => onCreated(denom, res.txhash),
             })
         } finally {
             setIsSubmitting(false)
         }
-    }, [address, form, tx, markCreated])
+    }, [address, form, tx, onCreated])
 
     return { submit, isSubmitting }
 }

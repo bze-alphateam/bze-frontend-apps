@@ -36,7 +36,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/burner.params.json` | burner params | |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
 | `lcd/epochs.epochs.json` | epochs | |
-| `lcd/tokenfactory.params.json` | tokenfactory params | `create_denom_fee`, the "Create Token" card's fee line. Recorded 2026-10-12 |
+| `lcd/tokenfactory.params.json` | tokenfactory params | `create_denom_fee`: the "Create Token" card's fee line and the `/token/new` fee (`token-new.spec.ts`). Recorded 2026-10-12 |
 | `lcd/tradebin.params.json` | tradebin params | market / pool creation fee, fee-token eligibility |
 | `lcd/rewards.params.json` | rewards params | staking reward and denom reward fees and limits. Recorded 2026-10-12 |
 | `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | |
