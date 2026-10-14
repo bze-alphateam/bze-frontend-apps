@@ -24,21 +24,3 @@ export function AdminUnknownNotice({ onRetry }: { onRetry: () => void }) {
         </VStack>
     )
 }
-
-export function RenouncedNotice() {
-    return (
-        <InfoBox title="Supply provably fixed">
-            The admin of this token was renounced — nobody, including you, can mint more
-            tokens or change its metadata. That&apos;s the guarantee holders rely on.
-        </InfoBox>
-    )
-}
-
-export function NotAdminNotice({ admin }: { admin?: string }) {
-    return (
-        <InfoBox title="You are not the admin">
-            You created this token, but its admin is now {admin}. Only the current
-            admin can mint, burn, or update it.
-        </InfoBox>
-    )
-}
