@@ -64,6 +64,7 @@ function RewardsDirectory() {
                 unmountOnExit={true}
                 colorPalette="yellow"
                 variant="line"
+                size={{ base: 'sm', md: 'md' }}
             >
                 <Tabs.List overflowX="auto" flexWrap="nowrap" maxW="full" css={{ scrollbarWidth: 'none' }}>
                     <Tabs.Trigger value="holder" flexShrink={0}>
@@ -73,7 +74,12 @@ function RewardsDirectory() {
                     <Tabs.Trigger value="programs" flexShrink={0}>
                         Staking programs
                         {!programs.isLoading && !programs.hasError && (
-                            <Badge size="sm" variant="subtle" colorPalette="yellow">{`${runningPrograms} running`}</Badge>
+                            // Phones get just the count: both labels must fit 390 px, or the selected
+                            // second tab pushes the whole page sideways.
+                            <Badge size="sm" variant="subtle" colorPalette="yellow">
+                                {runningPrograms}{' '}
+                                <Text as="span" hideBelow="sm">running</Text>
+                            </Badge>
                         )}
                     </Tabs.Trigger>
                 </Tabs.List>
