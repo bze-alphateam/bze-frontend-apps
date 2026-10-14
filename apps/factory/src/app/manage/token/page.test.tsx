@@ -234,7 +234,7 @@ describe("token workspace", () => {
             renderPage();
             expect(screen.getByText("supply mint")).toBeInTheDocument();
             expect(screen.getByText("supply burn")).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: /Burn in Burner dApp/ })).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: /Burn with the Burner app/ })).toBeInTheDocument();
         });
 
         it("supply: no mint or burn when locked", () => {
@@ -242,7 +242,7 @@ describe("token workspace", () => {
             m.tokens.mockReturnValue([token("")]);
             renderPage();
             expect(screen.queryByText("supply mint")).not.toBeInTheDocument();
-            expect(screen.getByText("Nobody — renounced")).toBeInTheDocument();
+            expect(screen.getByTestId("who-can-mint")).toHaveTextContent("Nobody, supply is fixed");
         });
 
         it.each([
