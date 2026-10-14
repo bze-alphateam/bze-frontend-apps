@@ -39,7 +39,7 @@ vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup() }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
-vi.mock("@/components/manage/denom-reward-card", () => ({ DenomRewardCard: () => <div>denom reward card</div> }));
+vi.mock("@/components/rewards/holder-rewards-panel", () => ({ HolderRewardsPanel: () => <div>holder rewards panel</div> }));
 vi.mock("@/components/rewards/staking-programs-list", () => ({
     StakingProgramsList: ({ involving, newProgramHref }: { involving?: string; newProgramHref?: string }) => (
         <div data-testid="staking-programs" data-involving={involving} data-new-href={newProgramHref} />
@@ -264,11 +264,11 @@ describe("token workspace", () => {
             expect(screen.getByRole("region", { name: "Logo" })).toHaveTextContent("Logos come from the Cosmos Chain Registry");
         });
 
-        it("rewards: the denom reward card in every state", () => {
+        it("rewards: the holder rewards panel in every state", () => {
             m.query.tab = "rewards";
             m.tokens.mockReturnValue([token("bze1other")]);
             renderPage();
-            expect(screen.getByText("denom reward card")).toBeInTheDocument();
+            expect(screen.getByText("holder rewards panel")).toBeInTheDocument();
         });
 
         it("rewards: the staking programs with the token, whose New program comes back here", () => {

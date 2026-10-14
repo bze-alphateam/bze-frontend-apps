@@ -4,14 +4,14 @@ import React, { Suspense } from 'react'
 import { Box, Button, Container, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft } from 'react-icons/lu'
 import { TokenLogo, useAsset } from '@bze/bze-ui-kit'
-import { DenomRewardCard } from '@/components/manage/denom-reward-card'
+import { HolderRewardsPanel } from '@/components/rewards/holder-rewards-panel'
 import { Notice } from '@/components/manage/denom-reward-form-parts'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 /**
- * The denom reward of any token, for any wallet: the overview plus create / add schedule /
- * airdrop. Denom rewards are permissionless, so unlike the manage token page this one is not
- * limited to the connected wallet's own tokens.
+ * The holder rewards (denom reward) of any token, for any wallet: the panel with create, daily
+ * prizes and airdrops. Holder rewards are permissionless, so unlike the token workspace this page
+ * is not limited to the connected wallet's own tokens.
  */
 function DenomRewardTokenContent() {
     const { denomParam, navigate } = useNavigationWithParams()
@@ -20,7 +20,7 @@ function DenomRewardTokenContent() {
     const toDirectory = () => navigate('/rewards')
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={toDirectory}>Pick a denom reward from the list.</Notice>
+        return <Notice title="No token selected" onBack={toDirectory}>Pick a holder reward from the list.</Notice>
     }
 
     if (isLoading) {
@@ -35,7 +35,7 @@ function DenomRewardTokenContent() {
     if (!asset) {
         return (
             <Notice title="Token not found" onBack={toDirectory}>
-                This token isn&apos;t in the asset list, so its denom reward can&apos;t be shown here.
+                {`This token isn't in the asset list, so its holder rewards can't be shown here.`}
             </Notice>
         )
     }
@@ -44,7 +44,7 @@ function DenomRewardTokenContent() {
         <VStack align="stretch" gap={6}>
             <Box>
                 <Button variant="ghost" colorPalette="yellow" size="sm" onClick={toDirectory}>
-                    <LuArrowLeft /> Denom rewards
+                    <LuArrowLeft /> Rewards
                 </Button>
             </Box>
 
@@ -59,7 +59,7 @@ function DenomRewardTokenContent() {
                 </VStack>
             </HStack>
 
-            <DenomRewardCard asset={asset} />
+            <HolderRewardsPanel asset={asset} />
         </VStack>
     )
 }
