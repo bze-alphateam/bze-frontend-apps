@@ -9,6 +9,8 @@ export const useNavigation = () => {
     return {
         currentPathName: pathname,
         navigate: router.push,
+        /** Same page, new query (e.g. a tab switch) without a history entry. */
+        replace: router.replace,
     };
 };
 
