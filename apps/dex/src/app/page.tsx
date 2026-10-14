@@ -24,7 +24,8 @@ import {
   LuArrowRight,
 } from 'react-icons/lu';
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, ammRouter, SwapRouteResult, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms} from "@bze/bze-ui-kit";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms} from "@bze/bze-ui-kit";
+import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
@@ -252,13 +253,6 @@ export default function SwapPage() {
   const tradeablePools = useMemo(() => pools.filter(pool => !isPoolHalted(pool)), [pools, isPoolHalted]);
   const tradeableAssets = useMemo(() => liquidAssets.filter(asset => !isDenomHalted(asset.denom)), [liquidAssets, isDenomHalted]);
 
-  // Update AMM router whenever pools change
-  useEffect(() => {
-    if (pools && pools.length > 0) {
-      ammRouter.updatePools(tradeablePools);
-    }
-  }, [pools, tradeablePools]);
-
   // Get assets with balance information for display
   const assetsWithBalanceInfo = useMemo(() => {
     const assetsWithBalance = tradeableAssets.map(asset => {
@@ -307,14 +301,14 @@ export default function SwapPage() {
   // Only the picked denoms are state; the asset objects (with live balances) are derived below.
   const [fromDenom, setFromDenom] = useState<string | null>(null);
   const [toDenom, setToDenom] = useState<string | null>(null);
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
+  // The one amount the user typed (or picked via MAX / presets / flip) and which field it
+  // belongs to. The other field, the route and the submit payload are all derived from the
+  // quote, so there is no second copy of the amount that could drift out of sync.
+  const [input, setInput] = useState<SwapInput>({side: 'from', value: ''});
   const [showSettings, setShowSettings] = useState(false);
   const [showRoutes, setShowRoutes] = useState(false);
   const [slippage, setSlippage] = useState(0.5);
   const [customSlippage, setCustomSlippage] = useState('');
-  const [routeResult, setRouteResult] = useState<SwapRouteResult | null>(null);
-  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Swap history is keyed by the address it was loaded for, so "loading" and "empty"
   // derive from state instead of being set from an effect.
@@ -353,198 +347,41 @@ export default function SwapPage() {
     [assetsWithBalanceInfo, toDenom]
   );
 
-  // Recalculate route when assets change
-  useEffect(() => {
-    // Only recalculate if we have a fromAmount and both assets are selected
-    if (!fromAmount || !fromAsset || !toAsset) {
-      return;
+  // A router over the current pools, rebuilt when they change so quotes follow the chain.
+  const router = useMemo(() => createAmmRouter(tradeablePools), [tradeablePools]);
+
+  // The quote is a pure function of (pools, pair, typed amount) and cheap enough to compute
+  // during render: no timers, so no stale or out-of-order results can reach the form.
+  const quote = useMemo((): SwapQuote | null => {
+    const amount = parseAmountInput(input.value);
+    if (!amount || !fromAsset || !toAsset) {
+      return null;
     }
-
-    // Don't recalculate if same asset (deferred like the calculation itself, so the
-    // effect never sets state synchronously)
-    if (fromAsset.denom === toAsset.denom) {
-      const clear = setTimeout(() => {
-        setRouteResult(null);
-        setToAmount('');
-      }, 0);
-      return () => clearTimeout(clear);
+    const typedAsset = input.side === 'from' ? fromAsset : toAsset;
+    try {
+      return quoteSwap(router, {
+        fromDenom: fromAsset.denom,
+        toDenom: toAsset.denom,
+        side: input.side,
+        amount: amountToBigNumberUAmount(amount, typedAsset.decimals),
+      });
+    } catch (error) {
+      console.error('Error calculating swap route:', error);
+      return null;
     }
+  }, [router, fromAsset, toAsset, input]);
 
-    // Recalculate the route with the current fromAmount
-    const amount = toBigNumber(fromAmount);
-    if (amount.isNaN() || amount.lte(0)) {
-      return;
-    }
+  const routeResult = quote?.route ?? null;
+  const hasAmount = parseAmountInput(input.value) !== null;
+  const fromAmount = input.side === 'from'
+    ? input.value
+    : quote && fromAsset ? uAmountToBigNumberAmount(quote.amountIn, fromAsset.decimals).toFixed(fromAsset.decimals) : '';
+  const toAmount = input.side === 'to'
+    ? input.value
+    : quote && toAsset ? uAmountToBigNumberAmount(quote.amountOut, toAsset.decimals).toFixed(toAsset.decimals) : '';
 
-    const amountInMicro = amountToBigNumberUAmount(amount, fromAsset.decimals);
-
-    setTimeout(() => {
-      setIsCalculatingRoute(true);
-      try {
-        const route = ammRouter.findOptimalRoute(
-          fromAsset.denom,
-          toAsset.denom,
-          amountInMicro,
-          3,
-          true
-        );
-
-        if (route) {
-          setRouteResult(route);
-          const outputAmount = uAmountToBigNumberAmount(route.expectedOutput, toAsset.decimals);
-          setToAmount(outputAmount.toFixed(toAsset.decimals));
-        } else {
-          setRouteResult(null);
-          setToAmount('');
-        }
-      } catch (error) {
-        console.error('Error recalculating route after asset change:', error);
-        setRouteResult(null);
-        setToAmount('');
-      } finally {
-        setIsCalculatingRoute(false);
-      }
-    }, 0);
-  }, [fromAmount, fromAsset, toAsset]);
-
-  // Handle fromAmount changes - calculate toAmount
-  const handleFromAmountChange = (value: string) => {
-    setFromAmount(value);
-
-    // Reset if no valid input
-    if (!fromAsset || !toAsset || !value) {
-      setRouteResult(null);
-      setToAmount('');
-      return;
-    }
-
-    // Don't calculate if same asset
-    if (fromAsset.denom === toAsset.denom) {
-      setRouteResult(null);
-      setToAmount('');
-      return;
-    }
-
-    // Parse and validate amount
-    const amount = toBigNumber(value);
-    if (amount.isNaN() || amount.lte(0)) {
-      setRouteResult(null);
-      setToAmount('');
-      return;
-    }
-
-    // Convert to micro amount and find route
-    const amountInMicro = amountToBigNumberUAmount(amount, fromAsset.decimals);
-    setIsCalculatingRoute(true);
-
-    setTimeout(() => {
-      try {
-        const route = ammRouter.findOptimalRoute(
-          fromAsset.denom,
-          toAsset.denom,
-          amountInMicro,
-          3,
-          true
-        );
-
-        if (route) {
-          setRouteResult(route);
-          const outputAmount = uAmountToBigNumberAmount(route.expectedOutput, toAsset.decimals);
-          setToAmount(outputAmount.toFixed(toAsset.decimals));
-        } else {
-          setRouteResult(null);
-          setToAmount('');
-        }
-      } catch (error) {
-        console.error('Error calculating route:', error);
-        setRouteResult(null);
-        setToAmount('');
-      } finally {
-        setIsCalculatingRoute(false);
-      }
-    }, 0);
-  };
-
-  // Handle toAmount changes - calculate fromAmount (reverse)
-  const handleToAmountChange = (value: string) => {
-    setToAmount(value);
-
-    // Reset if no valid input
-    if (!fromAsset || !toAsset || !value) {
-      setRouteResult(null);
-      return;
-    }
-
-    // Don't calculate if same asset
-    if (fromAsset.denom === toAsset.denom) {
-      setRouteResult(null);
-      return;
-    }
-
-    // Parse and validate amount
-    const desiredOutput = toBigNumber(value);
-    if (desiredOutput.isNaN() || desiredOutput.lte(0)) {
-      setRouteResult(null);
-      return;
-    }
-
-    setIsCalculatingRoute(true);
-
-    // Binary search to find input amount that gives desired output
-    setTimeout(() => {
-      try {
-        const desiredOutputMicro = amountToBigNumberUAmount(desiredOutput, toAsset.decimals);
-        let low = toBigNumber(0);
-        let high = desiredOutputMicro.multipliedBy(10);
-        let iterations = 0;
-        const maxIterations = 30;
-        const tolerance = toBigNumber(0.0001);
-
-        let bestInput = toBigNumber(0);
-        let bestRoute: SwapRouteResult | null = null;
-
-        while (iterations < maxIterations && high.minus(low).dividedBy(high).gt(tolerance)) {
-          const mid = low.plus(high).dividedBy(2);
-          const route = ammRouter.findOptimalRoute(fromAsset.denom, toAsset.denom, mid, 3, true);
-
-          if (route) {
-            const diff = route.expectedOutput.minus(desiredOutputMicro);
-
-            if (diff.abs().dividedBy(desiredOutputMicro).lte(tolerance)) {
-              bestInput = mid;
-              bestRoute = route;
-              break;
-            } else if (diff.lt(0)) {
-              low = mid;
-            } else {
-              high = mid;
-              bestInput = mid;
-              bestRoute = route;
-            }
-          } else {
-            high = mid;
-          }
-
-          iterations++;
-        }
-
-        if (bestRoute) {
-          setRouteResult(bestRoute);
-          const inputAmount = uAmountToBigNumberAmount(bestInput, fromAsset.decimals);
-          setFromAmount(inputAmount.toFixed(fromAsset.decimals));
-        } else {
-          setRouteResult(null);
-          setFromAmount('');
-        }
-      } catch (error) {
-        console.error('Error calculating reverse route:', error);
-        setRouteResult(null);
-        setFromAmount('');
-      } finally {
-        setIsCalculatingRoute(false);
-      }
-    }, 0);
-  };
+  const handleFromAmountChange = (value: string) => setInput({side: 'from', value});
+  const handleToAmountChange = (value: string) => setInput({side: 'to', value});
 
   // Check if user has sufficient balance
   const hasInsufficientBalance = useMemo(() => {
@@ -575,46 +412,21 @@ export default function SwapPage() {
 
   // Determine if swap can be submitted
   const canSubmit = useMemo(() => {
-    // Must have valid amount
-    if (!fromAmount) return false;
-    const amount = parseFloat(fromAmount);
-    if (isNaN(amount) || amount <= 0) return false;
-
-    // Must have selected different assets
-    if (!fromAsset || !toAsset) return false;
-    if (fromAsset.denom === toAsset.denom) return false;
+    // Must have a valid route (which implies a valid amount and two different assets)
+    if (!quote) return false;
 
     // Must have sufficient balance, gas and taker fee included
     if (hasInsufficientBalance || hasFeeShortfall) return false;
 
-    // Must have a valid route
-    if (!routeResult) return false;
-
-    // Must not be calculating
-    if (isCalculatingRoute) return false;
-
     return true;
-  }, [fromAmount, fromAsset, toAsset, hasInsufficientBalance, hasFeeShortfall, routeResult, isCalculatingRoute]);
+  }, [quote, hasInsufficientBalance, hasFeeShortfall]);
 
+  // Flip the pair. The typed amount stays with its asset and keeps being the typed side:
+  // "sell 1000 BZE -> 0.197 USDC" becomes "buy 1000 BZE for ~0.197 USDC", quoted afresh.
   const handleSwapAssets = () => {
-    const tempDenom = fromDenom;
-    const tempAmount = fromAmount;
-
-    // Swap assets
     setFromDenom(toDenom);
-    setToDenom(tempDenom);
-
-    // Swap amounts
-    setFromAmount(toAmount);
-    setToAmount(tempAmount);
-
-    // Recalculate route with swapped values
-    // We need to trigger recalculation after state updates
-    setTimeout(() => {
-      if (toAmount) {
-        handleFromAmountChange(toAmount);
-      }
-    }, 0);
+    setToDenom(fromDenom);
+    setInput({side: input.side === 'from' ? 'to' : 'from', value: input.value});
   };
 
   const handleSlippagePreset = (value: number) => {
@@ -672,26 +484,26 @@ export default function SwapPage() {
       return;
     }
 
-    if (!fromAsset || !toAsset || !routeResult || !fromAmount) {
+    if (!fromAsset || !toAsset || !quote) {
       toast.error('Missing required data for swap');
       return;
     }
 
     try {
-      // 1. Convert fromAmount to micro amount
-      const amountIn = amountToBigNumberUAmount(fromAmount, fromAsset.decimals);
+      // 1. The quote already holds the exact micro input the route was priced with
+      const amountIn = quote.amountIn;
 
       // 2. Calculate minimum output based on slippage tolerance
       // slippage is in percentage (e.g., 2 for 2%)
       const slippageMultiplier = toBigNumber(1).minus(toBigNumber(slippage).dividedBy(100));
-      const minAmountOut = routeResult.expectedOutput.multipliedBy(slippageMultiplier);
+      const minAmountOut = quote.amountOut.multipliedBy(slippageMultiplier);
 
       // 3. Create multiSwap message
       const {multiSwap} = bze.tradebin.MessageComposer.withTypeUrl;
       setIsSubmitting(true)
       const msg = multiSwap({
         creator: address,
-        routes: routeResult.route,
+        routes: quote.route.route,
         input: {
           denom: fromAsset.denom,
           amount: amountIn.toFixed(0),
@@ -706,9 +518,7 @@ export default function SwapPage() {
       await tx([msg], {
         onSuccess: () => {
           // Reset form on success
-          setFromAmount('');
-          setToAmount('');
-          setRouteResult(null);
+          setInput({side: 'from', value: ''});
           // Refresh swap history after 1 second
           addDebounce('refresh-swap-history', 1000, refreshSwapHistory);
         },
@@ -958,6 +768,7 @@ export default function SwapPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleSwapAssets}
+                      aria-label="Switch assets"
                       borderRadius="full"
                       p="2"
                       h="10"
@@ -1086,25 +897,7 @@ export default function SwapPage() {
                       </Card.Root>
                     </Box>
                 )}
-                {fromAmount && isCalculatingRoute && (
-                    <Box px="6" pt="2">
-                      <Card.Root
-                        variant="subtle"
-                        p="4"
-                        borderRadius="lg"
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="blue.600/8"
-                        borderWidth="1px"
-                        borderColor="blue.500/20"
-                      >
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                          Calculating best route...
-                        </Text>
-                      </Card.Root>
-                    </Box>
-                )}
-                {fromAmount && !isCalculatingRoute && !routeResult && (
+                {hasAmount && !routeResult && (
                     <Box px="6" pt="2">
                       <Alert.Root status="warning">
                         <Alert.Indicator />
@@ -1245,13 +1038,11 @@ export default function SwapPage() {
                       h="14"
                       borderRadius="xl"
                   >
-                    {!fromAmount
+                    {!hasAmount
                       ? 'Enter Amount'
-                      : isCalculatingRoute
-                        ? 'Finding Route...'
-                        : !routeResult
-                          ? 'No Route Available'
-                          : 'Swap'}
+                      : !routeResult
+                        ? 'No Route Available'
+                        : 'Swap'}
                   </Button>
                 </Box>
               </VStack>
