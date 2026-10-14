@@ -15,6 +15,7 @@ export function TextField({
     onChange,
     placeholder,
     inputMode = 'decimal',
+    disabled,
 }: {
     label: string;
     helper?: string;
@@ -23,11 +24,12 @@ export function TextField({
     onChange: (value: string) => void;
     placeholder?: string;
     inputMode?: 'decimal' | 'numeric';
+    disabled?: boolean;
 }) {
     const [touched, setTouched] = useState(false)
 
     return (
-        <Field.Root invalid={touched && error !== ''}>
+        <Field.Root invalid={touched && error !== ''} disabled={disabled}>
             <Field.Label>{label}</Field.Label>
             <Input
                 placeholder={placeholder}

@@ -38,7 +38,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/epochs.epochs.json` | epochs | |
 | `lcd/tokenfactory.params.json` | tokenfactory params | `create_denom_fee`: the "Create Token" card's fee line and the `/token/new` fee (`token-new.spec.ts`). Recorded 2026-10-12 |
 | `lcd/tradebin.params.json` | tradebin params | market / pool creation fee (`market-new.spec.ts`, `pool-new.spec.ts`), fee-token eligibility |
-| `lcd/rewards.params.json` | rewards params | staking reward and denom reward fees and limits (the staking program fee of `reward-new.spec.ts`). Recorded 2026-10-12 |
+| `lcd/rewards.params.json` | rewards params | staking reward and denom reward fees and limits (the staking program fee of `reward-new.spec.ts`, the daily prize fee of `denom-reward-schedule.spec.ts`). Recorded 2026-10-12 |
 | `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | the NOAD/TUSDC pool of `pool-add.spec.ts`, which also empties the list with `network.use`; the TUSDC/TBZE LP token of `reward-new.spec.ts` |
 | `lcd/tradebin.all_markets.json` | order-book markets, limit 1000 | |
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (ULMN/TUSDC), limit 50, reversed | **trimmed** to the latest trade; the price calculation reads it when a token has no pool or ticker price, so whether it is requested depends on timing |
@@ -46,8 +46,9 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
 | `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | |
 | `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/denom-reward` |
-| `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count |
-| `lcd/rewards.denom_reward_schedules.noadmin.json` | schedules of the `noadmin` denom reward, limit 500 | its "Running schedules" count |
+| `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`). Recorded 2026-10-14 |
+| `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule form's new-prize check |
+| `lcd/rewards.denom_reward_schedules.noadmin.json` | schedules of the `noadmin` denom reward, limit 500 | its "Running schedules" count; the schedule form's extend mode (`000000000000`, 200 days) |
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |
 | `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms) |
 | `agg/prices.json` | `/api/prices` | BZE/USD price |
