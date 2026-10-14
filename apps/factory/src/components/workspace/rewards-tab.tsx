@@ -2,14 +2,14 @@
 
 import React from 'react'
 import { Text, VStack } from '@chakra-ui/react'
-import { DenomRewardCard } from '@/components/manage/denom-reward-card'
 import { withReturn } from '@/components/guided/return-to'
+import { HolderRewardsPanel } from '@/components/rewards/holder-rewards-panel'
 import { StakingProgramsList } from '@/components/rewards/staking-programs-list'
 import { workspaceHref } from '@/lib/workspace'
 import type { WorkspaceTabProps } from './types'
 
 /**
- * Not admin actions: anyone may create and fund a token's denom reward, and anyone may run or
+ * Not admin actions: anyone may create and fund a token's holder rewards, and anyone may run or
  * extend a staking program with it.
  */
 export function RewardsTab({ asset }: WorkspaceTabProps) {
@@ -17,7 +17,7 @@ export function RewardsTab({ asset }: WorkspaceTabProps) {
 
     return (
         <VStack align="stretch" gap={8}>
-            <DenomRewardCard asset={asset} />
+            <HolderRewardsPanel asset={asset} returnTo={backHere} />
 
             <VStack as="section" aria-label={`Staking programs with ${asset.ticker}`} align="stretch" gap={3}>
                 <VStack align="start" gap={1}>
