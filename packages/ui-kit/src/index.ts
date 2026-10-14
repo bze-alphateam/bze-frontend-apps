@@ -165,7 +165,7 @@ export {
 export { getSettings, setSettings } from './storage/settings';
 
 // === Services ===
-export { ammRouter } from './service/amm_router';
+export { ammRouter, createAmmRouter, AmmRouter } from './service/amm_router';
 export { blockchainEventManager } from './service/blockchain_event_manager';
 export { getChainAssets } from './service/assets_factory';
 export { keplrSuggestChain } from './service/keplr';

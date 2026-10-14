@@ -8,7 +8,7 @@ interface RouteCache {
     timestamp: number;
 }
 
-class AmmRouter {
+export class AmmRouter {
     private static instance: AmmRouter;
     private routeCache = new Map<string, RouteCache>();
     private routeMap: Map<string, Map<string, LiquidityPoolSDKType>> = new Map();
@@ -20,6 +20,17 @@ class AmmRouter {
             AmmRouter.instance = new AmmRouter();
         }
         return AmmRouter.instance;
+    }
+
+    /**
+     * A standalone router over exactly these pools. Unlike the shared `ammRouter` singleton it
+     * holds no global state, so a component can derive one from its pools (e.g. in a `useMemo`)
+     * and quote synchronously during render, with quotes that follow pool updates.
+     */
+    static withPools(pools: LiquidityPoolSDKType[]): AmmRouter {
+        const router = new AmmRouter();
+        router.updatePools(pools);
+        return router;
     }
 
     updatePools(pools: LiquidityPoolSDKType[]): void {
@@ -296,3 +307,7 @@ class AmmRouter {
 }
 
 export const ammRouter = AmmRouter.getInstance();
+
+export function createAmmRouter(pools: LiquidityPoolSDKType[]): AmmRouter {
+    return AmmRouter.withPools(pools);
+}
