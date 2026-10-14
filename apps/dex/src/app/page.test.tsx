@@ -5,7 +5,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
-import { createAmmRouter } from "@bze/bze-ui-kit";
+import { createAmmRouter, DEFAULT_SETTINGS, SettingsProvider, setSettings } from "@bze/bze-ui-kit";
 import { quoteExactInput } from "@/lib/swap-quote";
 
 // The swap page reads its assets, balances and the shared gas engine through ui-kit hooks.
@@ -105,10 +105,14 @@ function spendable(balance: string, reserved: string) {
     };
 }
 
+// The real SettingsProvider is used so the slippage round-trips through jsdom's localStorage
+// exactly as it does in the app.
 function renderSwap() {
     return render(<SwapPage />, {
         wrapper: ({ children }: { children: ReactNode }) => (
-            <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+            <ChakraProvider value={defaultSystem}>
+                <SettingsProvider>{children}</SettingsProvider>
+            </ChakraProvider>
         ),
     });
 }
@@ -147,6 +151,7 @@ beforeEach(() => {
     mocks.tx.mockReset();
     mocks.balances.clear();
     mocks.pools = [];
+    localStorage.clear();
 });
 
 describe("Swap page MAX button", () => {
@@ -300,5 +305,103 @@ describe("Swap page quoting", () => {
         expect(new BigNumber(msg.value.minOutput.amount).gte(new BigNumber(100000).multipliedBy(0.995).integerValue(BigNumber.ROUND_FLOOR))).toBe(true);
         expect(fromInput().value).toBe("");
         expect(toInput().value).toBe("");
+    });
+});
+
+describe("Swap page slippage", () => {
+    const presetButton = (name: string) => screen.getByRole("button", { name });
+    const customInput = () => screen.getByPlaceholderText("Custom %") as HTMLInputElement;
+    // The settings panel is a Collapsible that unhides its content a tick after opening.
+    const openSettings = async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Swap settings" }));
+        await screen.findByRole("button", { name: "0.5%" });
+    };
+    const submittedMinOutput = () => {
+        const [msg] = mocks.tx.mock.calls[0][0] as { value: { minOutput: { amount: string } } }[];
+        return new BigNumber(msg.value.minOutput.amount);
+    };
+
+    it("offers 0.1% as a preset and applies it to the minimum output", async () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        await openSettings();
+
+        fireEvent.click(presetButton("0.1%"));
+        expect(presetButton("0.1%")).toHaveAttribute("aria-pressed", "true");
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+        expect(screen.getByText(/0\.1% max slippage/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Swap" }));
+        await vi.waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+        const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
+        expect(submittedMinOutput().toFixed()).toBe(expected.amountOut.multipliedBy(0.999).toFixed(0));
+    });
+
+    it("remembers a chosen preset after the page is opened again", async () => {
+        setupBzeUsdc();
+        const first = renderSwap();
+        await openSettings();
+        fireEvent.click(presetButton("2%"));
+        first.unmount();
+
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        await openSettings();
+
+        expect(presetButton("2%")).toHaveAttribute("aria-pressed", "true");
+        expect(customInput().value).toBe("");
+        expect(screen.getByText(/2% max slippage/)).toBeInTheDocument();
+    });
+
+    it("remembers a custom value and shows it back in the custom field", async () => {
+        setupBzeUsdc();
+        const first = renderSwap();
+        await openSettings();
+        fireEvent.change(customInput(), { target: { value: "0.3" } });
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+        first.unmount();
+
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        await openSettings();
+
+        expect(customInput().value).toBe("0.3");
+        expect(presetButton("0.5%")).toHaveAttribute("aria-pressed", "false");
+        expect(screen.getByText(/0\.3% max slippage/)).toBeInTheDocument();
+    });
+
+    it("keeps the last valid slippage while the custom field holds something unusable", async () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        await openSettings();
+
+        fireEvent.change(customInput(), { target: { value: "0.3" } });
+        fireEvent.change(customInput(), { target: { value: "99" } });
+
+        expect(customInput().value).toBe("99");
+        expect(screen.getByText(/0\.3% max slippage/)).toBeInTheDocument();
+    });
+
+    it("falls back to the default when the stored value is unusable", () => {
+        setupBzeUsdc();
+        setSettings({ ...DEFAULT_SETTINGS, swapSlippage: 999 });
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+
+        expect(screen.getByText(/0\.5% max slippage/)).toBeInTheDocument();
+    });
+
+    it("opens the settings panel from the summary's Change link", async () => {
+        setupBzeUsdc();
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+        expect(customInput()).not.toBeVisible();
+
+        fireEvent.click(screen.getByRole("button", { name: "Change" }));
+
+        await vi.waitFor(() => expect(customInput()).toBeVisible());
+        expect(screen.getByRole("button", { name: "Swap settings" })).toHaveAttribute("aria-expanded", "true");
     });
 });

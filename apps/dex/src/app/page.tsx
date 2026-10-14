@@ -24,13 +24,12 @@ import {
   LuArrowRight,
 } from 'react-icons/lu';
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx} from "@bze/bze-ui-kit";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useSettings} from "@bze/bze-ui-kit";
 import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
+import {SLIPPAGE_PRESETS, isSlippagePreset, normalizeSlippage, parseCustomSlippage} from "@/lib/slippage";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
-
-const slippagePresets = [0.5, 1, 2];
 
 // Define the asset type for better type safety
 type AssetWithBalance = {
@@ -242,6 +241,7 @@ export default function SwapPage() {
   const { pools, liquidAssets, isLoading } = useLiquidityPools();
   const {toast} = useToast()
   const {tx, progressTrack} = useBZETx()
+  const {settings, updateSwapSlippage} = useSettings()
   const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
   const {address} = useChain(getChainName())
   const {denomUsdValue} = useAssetsValue()
@@ -300,8 +300,12 @@ export default function SwapPage() {
   const [input, setInput] = useState<SwapInput>({side: 'from', value: ''});
   const [showSettings, setShowSettings] = useState(false);
   const [showRoutes, setShowRoutes] = useState(false);
-  const [slippage, setSlippage] = useState(0.5);
-  const [customSlippage, setCustomSlippage] = useState('');
+  // Max slippage lives in the shared settings store, so it survives navigation and reloads.
+  const slippage = normalizeSlippage(settings.swapSlippage);
+  // The custom field's text while the user edits it; null shows the stored value (if it is
+  // not a preset) so a remembered custom slippage comes back into the field.
+  const [customSlippageText, setCustomSlippageText] = useState<string | null>(null);
+  const customSlippage = customSlippageText ?? (isSlippagePreset(slippage) ? '' : String(slippage));
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Swap history is keyed by the address it was loaded for, so "loading" and "empty"
   // derive from state instead of being set from an effect.
@@ -414,15 +418,15 @@ export default function SwapPage() {
   };
 
   const handleSlippagePreset = (value: number) => {
-    setSlippage(value);
-    setCustomSlippage('');
+    updateSwapSlippage(value);
+    setCustomSlippageText('');
   };
 
   const handleCustomSlippage = (value: string) => {
-    setCustomSlippage(value);
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0 && numValue <= 50) {
-      setSlippage(numValue);
+    setCustomSlippageText(value);
+    const parsed = parseCustomSlippage(value);
+    if (parsed !== null) {
+      updateSwapSlippage(parsed);
     }
   };
 
@@ -592,6 +596,8 @@ export default function SwapPage() {
                       size="sm"
                       onClick={() => setShowSettings(!showSettings)}
                       colorPalette="gray"
+                      aria-label="Swap settings"
+                      aria-expanded={showSettings}
                   >
                     <LuSettings />
                   </Button>
@@ -616,13 +622,14 @@ export default function SwapPage() {
                               Max Slippage: <Text as="span" color="fg.default">{slippage}%</Text>
                             </Text>
                             <HStack gap="2" mb="3" flexWrap="wrap">
-                              {slippagePresets.map((preset) => (
+                              {SLIPPAGE_PRESETS.map((preset) => (
                                   <Button
                                       key={preset}
                                       size="sm"
                                       variant={slippage === preset && !customSlippage ? "solid" : "outline"}
                                       onClick={() => handleSlippagePreset(preset)}
                                       colorPalette={slippage === preset && !customSlippage ? "blue" : "gray"}
+                                      aria-pressed={slippage === preset && !customSlippage}
                                   >
                                     {preset}%
                                   </Button>
@@ -825,10 +832,29 @@ export default function SwapPage() {
                         borderColor="green.500/20"
                       >
                         <VStack gap="3" align="stretch">
-                          <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                              Minimum Output
-                            </Text>
+                          <HStack justify="space-between" align="flex-start">
+                            <VStack gap="0" align="flex-start">
+                              <Text fontSize="sm" color="fg.muted" fontWeight="medium">
+                                Minimum Output
+                              </Text>
+                              <Text fontSize="xs" color="fg.subtle">
+                                {slippage}% max slippage ·{' '}
+                                <Button
+                                    variant="plain"
+                                    size="xs"
+                                    h="auto"
+                                    minW="0"
+                                    p="0"
+                                    fontSize="xs"
+                                    fontWeight="normal"
+                                    colorPalette="blue"
+                                    color="colorPalette.fg"
+                                    onClick={() => setShowSettings(true)}
+                                >
+                                  Change
+                                </Button>
+                              </Text>
+                            </VStack>
                             <Text fontSize="sm" fontWeight="semibold">
                               {prettyAmount(uAmountToBigNumberAmount(
                                 routeResult.expectedOutput.multipliedBy(

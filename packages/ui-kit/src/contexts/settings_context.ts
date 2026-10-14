@@ -10,6 +10,7 @@ export interface SettingsContextType {
     saveSettings: (newSettings: AppSettings) => boolean;
     updateEndpoints: (endpoints: BeeZeeEndpoints) => boolean;
     updatePreferredFeeDenom: (preferredFeeDenom?: string) => boolean;
+    updateSwapSlippage: (swapSlippage?: number) => boolean;
     resetToDefaults: () => boolean;
     getEndpoints: () => BeeZeeEndpoints;
     defaultSettings: AppSettings;

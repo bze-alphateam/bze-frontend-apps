@@ -40,6 +40,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         return true;
     }, []);
 
+    const updateSwapSlippage = useCallback((swapSlippage?: number): boolean => {
+        setSettingsState(prev => {
+            const newSettings = { ...prev, swapSlippage };
+            setSettings(newSettings);
+            return newSettings;
+        });
+        return true;
+    }, []);
+
     const resetToDefaults = useCallback((): boolean => {
         setSettings(DEFAULT_SETTINGS);
         setSettingsState(DEFAULT_SETTINGS);
@@ -64,10 +73,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         saveSettings,
         updateEndpoints,
         updatePreferredFeeDenom,
+        updateSwapSlippage,
         resetToDefaults,
         getEndpoints,
         defaultSettings,
-    }), [settings, isLoaded, feeDenom, saveSettings, updateEndpoints, updatePreferredFeeDenom, resetToDefaults, getEndpoints, defaultSettings]);
+    }), [settings, isLoaded, feeDenom, saveSettings, updateEndpoints, updatePreferredFeeDenom, updateSwapSlippage, resetToDefaults, getEndpoints, defaultSettings]);
 
     return (
         <SettingsContext.Provider value={value}>

@@ -14,6 +14,7 @@ export interface BeeZeeEndpoints {
 export interface AppSettings {
     endpoints: BeeZeeEndpoints
     preferredFeeDenom?: string // User's preferred token for paying fees
+    swapSlippage?: number // Max slippage (percent) for DEX swaps; unset means the app default
 }
 
 // Validation results for both endpoints
