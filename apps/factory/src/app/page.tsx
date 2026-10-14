@@ -157,6 +157,7 @@ function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) 
             opacity={isLive ? 1 : 0.65}
             transition="all 0.2s"
             onClick={onClick}
+            data-testid={`creation-card-${card.key}`}
             _hover={isLive ? {
                 gradientFrom: "yellow.500/15",
                 gradientTo: "yellow.600/15",
