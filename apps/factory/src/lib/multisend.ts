@@ -11,7 +11,7 @@ import { validateAmount } from '@/components/token-wizard/validation'
 /** "Same for everyone" (one amount, a list of addresses) or "Amount per wallet" (`address, amount`). */
 export type RecipientMode = 'same' | 'perWallet'
 
-/** Wallets one MsgMultiSend carries. Larger lists are blocked until they can be split. */
+/** Wallets one MsgMultiSend carries. Longer lists are sent as several transactions (see multisend-run). */
 export const MULTISEND_BATCH_SIZE = 100
 
 /** Wallet lines a list can hold; the rest is left out. */

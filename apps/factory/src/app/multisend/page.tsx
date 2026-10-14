@@ -1,6 +1,6 @@
 "use client"
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Box,
     Button,
@@ -23,6 +23,7 @@ import {
     TxKindSpec,
     getChainExplorerURL,
     getChainName,
+    getSettings,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -55,6 +56,28 @@ import {
     parseRecipients,
     saveMultiSendDraft,
 } from '@/lib/multisend'
+import {
+    MultiSendRun,
+    canSendBatch,
+    clearMultiSendRun,
+    isRunDone,
+    listFingerprint,
+    loadMultiSendRun,
+    markBroadcast,
+    markPending,
+    markSending,
+    markSent,
+    markUnknown,
+    nextBatch,
+    planBatches,
+    reportCsv,
+    resumeState,
+    saveMultiSendRun,
+    settleInterrupted,
+    startRun,
+} from '@/lib/multisend-run'
+import { checkBatchOnChain, restTxLookup } from '@/lib/multisend-lookup'
+import { RunProgress } from '@/components/multisend/run-progress'
 
 const { multiSend } = cosmos.bank.v1beta1.MessageComposer.withTypeUrl
 
@@ -89,11 +112,24 @@ function MultiSendContent() {
     const [mode, setMode] = useState<RecipientMode>(draft?.mode ?? 'same')
     const [sameAmount, setSameAmount] = useState(draft?.sameAmount ?? '')
     const [text, setText] = useState(draft?.text ?? '')
-    const [answered, setAnswered] = useState<Step[]>(() => (denom ? ['token'] : []))
+    // A run stored by an earlier visit: a batch still `sending` was interrupted, so its outcome is unclear.
+    const [run, setRun] = useState<MultiSendRun | undefined>(() => {
+        const stored = loadMultiSendRun()
+        return stored ? settleInterrupted(stored) : undefined
+    })
+    const runRef = useRef(run)
+    const [answered, setAnswered] = useState<Step[]>(() => (denom ? (run ? ['token', 'list'] : ['token']) : []))
     const [sameTouched, setSameTouched] = useState(false)
     const [fileError, setFileError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [sent, setSent] = useState<{ txHash: string; count: number; totalLabel: string } | undefined>(undefined)
+    const [paused, setPaused] = useState(run !== undefined)
+    const [confirmNewRun, setConfirmNewRun] = useState(false)
+    const [sendingId, setSendingId] = useState<number | undefined>(undefined)
+    const [checkErrors, setCheckErrors] = useState<number[]>([])
+    const [fingerprint, setFingerprint] = useState<{ key: string; value: string } | undefined>(undefined)
+    const inFlight = useRef(new Set<number>())
+    const lookup = useMemo(() => restTxLookup(getSettings().endpoints.restEndpoint), [])
     const fileInput = useRef<HTMLInputElement>(null)
 
     const { asset } = useAsset(denom)
@@ -111,19 +147,51 @@ function MultiSendContent() {
         [text, mode, decimals, sameAmount],
     )
     const count = parsed.ready.length
-    const tooMany = count > MULTISEND_BATCH_SIZE
     const total = new BigNumber(parsed.total)
-    const listValid = Boolean(asset) && count > 0 && !tooMany && sameError === '' && total.gt(0)
+    const listValid = Boolean(asset) && count > 0 && sameError === '' && total.gt(0)
+    const batches = useMemo(() => planBatches(parsed.ready), [parsed.ready])
+    const k = batches.length
+    const batchesRef = useRef(batches)
+    useEffect(() => {
+        batchesRef.current = batches
+    }, [batches])
+
+    // The run belongs to one exact list: its fingerprint is computed (async) for the list on screen.
+    const listKey = useMemo(() => JSON.stringify([denom, parsed.ready]), [denom, parsed.ready])
+    useEffect(() => {
+        let live = true
+        listFingerprint(denom, parsed.ready).then(value => {
+            if (live) setFingerprint({ key: listKey, value })
+        })
+        return () => {
+            live = false
+        }
+    }, [listKey, denom, parsed.ready])
+    const currentFingerprint = fingerprint?.key === listKey ? fingerprint.value : undefined
+    const resume = listValid ? resumeState(run, currentFingerprint) : run ? 'checking' : 'none'
+    const activeRun = resume === 'same' ? run : undefined
+    const next = activeRun ? nextBatch(activeRun) : undefined
+
+    const commit = useCallback((nextRun: MultiSendRun | undefined) => {
+        runRef.current = nextRun
+        setRun(nextRun)
+        if (nextRun) saveMultiSendRun(nextRun)
+        else clearMultiSendRun()
+    }, [])
 
     const steps = useGuidedSteps(STEPS, {
         token: answered.includes('token') && Boolean(asset),
         list: answered.includes('list') && listValid,
     })
 
-    const spec: TxKindSpec | undefined = count > 0 ? { kind: 'multi-send', count } : undefined
+    // The network fee of the whole list: one estimate per transaction.
+    const spec: TxKindSpec | TxKindSpec[] | undefined = k === 0
+        ? undefined
+        : k === 1 ? { kind: 'multi-send', count } : batches.map(b => ({ kind: 'multi-send' as const, count: b.outputs.length }))
+    // Before a run: the whole list. During a run: the balance is checked again before every transaction.
     const afford = useCanAffordTx({
-        spec: listValid ? spec : undefined,
-        spend: listValid ? { denom, amount: parsed.total } : undefined,
+        spec: !listValid ? undefined : next ? { kind: 'multi-send', count: next.count } : spec,
+        spend: !listValid ? undefined : { denom, amount: next ? next.total : parsed.total },
     })
 
     const answer = (key: Step) => {
@@ -133,6 +201,7 @@ function MultiSendContent() {
 
     const isComplete = STEPS.every(k => steps.state[k] === 'done')
     const canSend = isComplete && Boolean(address) && listValid && !afford.isLoading && afford.canAfford
+        && resume === 'none' && (k === 1 || currentFingerprint !== undefined)
 
     const toDisplay = (uAmount: BigNumber | string) => prettyAmount(uAmountToBigNumberAmount(uAmount, decimals))
     const totalLabel = `${toDisplay(total)} ${ticker}`
@@ -157,6 +226,10 @@ function MultiSendContent() {
 
     const submit = async () => {
         if (!address || !canSend) return
+        if (k > 1) {
+            await startSending()
+            return
+        }
         const msg = multiSend(multiSendValue(address, denom, parsed.ready))
         const result = { count, totalLabel }
 
@@ -173,11 +246,105 @@ function MultiSendContent() {
         }
     }
 
+    /** Signs one batch. Its status is saved before the wallet opens, so a closed page can't hide it. */
+    const sendBatch = async (id: number) => {
+        const current = runRef.current
+        const planned = batchesRef.current.find(b => b.id === id)
+        const state = current?.batches.find(b => b.id === id)
+        if (!address || !current || !planned || !state || !canSendBatch(state)) return
+
+        setSendingId(id)
+        setCheckErrors(prev => prev.filter(e => e !== id))
+        commit(markSending(current, id, address))
+        let broadcast = false
+        try {
+            await tx([multiSend(multiSendValue(address, current.denom, planned.outputs))], {
+                onBroadcast: (hash) => {
+                    broadcast = true
+                    if (runRef.current) commit(markBroadcast(runRef.current, id, hash))
+                },
+                onSuccess: (res) => {
+                    if (runRef.current) commit(markSent(runRef.current, id, res.txhash))
+                },
+            })
+        } finally {
+            const after = runRef.current
+            if (after?.batches.find(b => b.id === id)?.status === 'sending') {
+                // Never broadcast (rejected in the wallet): nobody was paid. Broadcast but not
+                // confirmed: unclear until the chain check (which also catches a failed result).
+                commit(broadcast ? markUnknown(after, id) : markPending(after, id))
+            }
+            setSendingId(undefined)
+        }
+    }
+
+    const startSending = async () => {
+        if (!currentFingerprint) return
+        setPaused(false)
+        commit(startRun(currentFingerprint, denom, batches))
+        await sendBatch(1)
+    }
+
+    const sendNext = async () => {
+        const target = runRef.current ? nextBatch(runRef.current) : undefined
+        if (target) await sendBatch(target.id)
+    }
+
+    // Unclear batches are looked up on the chain (by hash, else among the sender's recent
+    // multi-sends) before anything else may happen to them.
+    const verify = useCallback(async (id: number) => {
+        const current = runRef.current
+        const state = current?.batches.find(b => b.id === id)
+        const planned = batchesRef.current.find(b => b.id === id)
+        if (!current || !state || !planned) return
+        const check = await checkBatchOnChain(lookup, {
+            txHash: state.txHash,
+            sender: state.sender ?? address,
+            denom: current.denom,
+            outputs: planned.outputs,
+        })
+        const latest = runRef.current
+        if (!latest || latest.fingerprint !== current.fingerprint) return
+        if (check.result === 'sent') commit(markSent(latest, id, check.txHash))
+        else if (check.result === 'failed') commit(markPending(latest, id))
+        else if (check.result === 'not-found') commit(markUnknown(latest, id, true))
+        else setCheckErrors(prev => (prev.includes(id) ? prev : [...prev, id]))
+    }, [lookup, address, commit])
+
+    const toCheck = activeRun
+        ? activeRun.batches.filter(b => b.status === 'unknown' && !b.notFound && !checkErrors.includes(b.id)).map(b => b.id).join(',')
+        : ''
+    useEffect(() => {
+        for (const id of toCheck.split(',').filter(Boolean).map(Number)) {
+            if (inFlight.current.has(id)) continue
+            inFlight.current.add(id)
+            void verify(id).finally(() => inFlight.current.delete(id))
+        }
+    }, [toCheck, verify])
+
+    const checkAgain = (id: number) => setCheckErrors(prev => prev.filter(e => e !== id))
+
+    const startNewRun = () => {
+        commit(undefined)
+        setConfirmNewRun(false)
+        setCheckErrors([])
+        setPaused(false)
+    }
+
+    const reportHref = useMemo(() => {
+        if (!activeRun || !activeRun.batches.some(b => b.status === 'sent')) return undefined
+        return `data:text/csv;charset=utf-8,${encodeURIComponent(reportCsv(activeRun, batches, decimals, ticker))}`
+    }, [activeRun, batches, decimals, ticker])
+
     const sendAnother = () => {
         setSent(undefined)
+        commit(undefined)
+        clearMultiSendDraft()
         setText('')
         setSameAmount('')
         setSameTouched(false)
+        setPaused(false)
+        setCheckErrors([])
         setAnswered(denom ? ['token'] : [])
         steps.close()
     }
@@ -190,6 +357,23 @@ function MultiSendContent() {
                 links={[{ label: 'View transaction', href: `${getChainExplorerURL()}/tx/${sent.txHash}` }]}
                 again={{ label: 'Send another list', onClick: sendAnother }}
             />
+        )
+    }
+
+    if (activeRun && isRunDone(activeRun)) {
+        return (
+            <VStack align="stretch" gap={4}>
+                <SuccessPanel
+                    title={`Sent to ${count} wallets in ${activeRun.batches.length} transactions`}
+                    text={`${totalLabel} is now in their wallets.`}
+                    again={{ label: 'Send another list', onClick: sendAnother }}
+                />
+                {reportHref && (
+                    <Button asChild variant="outline" colorPalette="yellow" alignSelf="center">
+                        <a href={reportHref} download="multisend-report.csv"><LuDownload /> Download report (CSV)</a>
+                    </Button>
+                )}
+            </VStack>
         )
     }
 
@@ -217,7 +401,7 @@ function MultiSendContent() {
                     { label: 'Factory fee', text: 'None' },
                 ]}
                 txKind={spec}
-                footer={asset && address ? (
+                footer={asset && address && !activeRun ? (
                     <HStack justify="space-between" gap={3}>
                         <Text color="fg.muted">Left in your wallet</Text>
                         <Text fontWeight="semibold" color={left.lt(0) ? 'fg.error' : undefined}>
@@ -231,25 +415,67 @@ function MultiSendContent() {
                 Tokens sent to a wrong address can&apos;t be recovered.
             </WarningNote>
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canSend}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Send to {count} wallets
-                </Button>
-                {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to send.
-                    </Text>
-                ) : listValid && !afford.isLoading && !afford.canAfford && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center">{afford.message}</Text>
-                )}
-            </VStack>
+            {listValid && k > 1 && (
+                <Text fontSize="sm" color="fg.muted">
+                    {`It's sent in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets each, so you'll approve ${k} times in your wallet. If you stop halfway, the wallets already paid are marked and won't be paid twice.`}
+                </Text>
+            )}
+
+            {resume === 'changed' && (
+                <VStack align="stretch" gap={2}>
+                    <WarningNote lead="This list changed since your last run.">
+                        Start a new run? Wallets from the old run may be paid again.
+                    </WarningNote>
+                    {confirmNewRun ? (
+                        <HStack gap={2} wrap="wrap">
+                            <Button size="sm" colorPalette="red" onClick={startNewRun}>Yes, forget the old run</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmNewRun(false)}>Cancel</Button>
+                        </HStack>
+                    ) : (
+                        <Button size="sm" variant="outline" colorPalette="yellow" alignSelf="start" onClick={() => setConfirmNewRun(true)}>
+                            Start new run
+                        </Button>
+                    )}
+                </VStack>
+            )}
+
+            {activeRun ? (
+                <RunProgress
+                    run={activeRun}
+                    decimals={decimals}
+                    ticker={ticker}
+                    paused={paused}
+                    checkErrors={checkErrors}
+                    sendingId={sendingId}
+                    blocker={!address ? 'Connect your wallet to send.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
+                    reportHref={reportHref}
+                    onSendNext={sendNext}
+                    onStop={() => setPaused(true)}
+                    onContinue={() => setPaused(false)}
+                    onCheckAgain={checkAgain}
+                    onSendAgain={sendBatch}
+                />
+            ) : (
+                <VStack align="stretch" gap={2}>
+                    <Button
+                        size="lg"
+                        colorPalette="yellow"
+                        onClick={submit}
+                        disabled={!canSend}
+                        loading={isSubmitting || sendingId !== undefined}
+                        loadingText="Waiting for signature..."
+                    >
+                        {k > 1 ? `Start sending (${k} transactions)` : `Send to ${count} wallets`}
+                    </Button>
+                    {!address ? (
+                        <Text fontSize="sm" color="fg.muted" textAlign="center">
+                            Connect your wallet to send.
+                        </Text>
+                    ) : listValid && !afford.isLoading && !afford.canAfford && (
+                        <Text fontSize="sm" color="fg.error" textAlign="center">{afford.message}</Text>
+                    )}
+                </VStack>
+            )}
 
             <TipNote lead="Want to reach people who are already active?">
                 Gifting the stakers of a token goes only to wallets that hold and stake it.{' '}
@@ -403,11 +629,6 @@ function MultiSendContent() {
                                         )}
                                     </VStack>
                                 </Box>
-                            )}
-                            {tooMany && (
-                                <Text fontSize="sm" color="fg.error" role="alert">
-                                    Lists over {MULTISEND_BATCH_SIZE} wallets are coming soon. Split your list for now.
-                                </Text>
                             )}
                         </VStack>
                     )}
