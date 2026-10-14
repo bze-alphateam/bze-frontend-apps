@@ -2,8 +2,6 @@
 
 import React, { Suspense, useMemo, useState } from 'react'
 import { Box, Button, Container, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
-import BigNumber from 'bignumber.js'
-import { bze } from '@bze/bzejs'
 import {
     TokenLogo,
     amountToUAmount,
@@ -14,13 +12,11 @@ import {
     uAmountToBigNumberAmount,
     useAsset,
     useBalance,
-    useCanAffordTx,
-    useCreationFees,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { useFeePayment } from '@/hooks/useFeePayment'
+import { schedulePayRows, useScheduleGift } from '@/hooks/useScheduleGift'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { Notice, TextField } from '@/components/manage/denom-reward-form-parts'
 import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
@@ -30,7 +26,6 @@ import {
     GuidedForm,
     OutcomePanel,
     PayPanel,
-    PayRow,
     Question,
     SuccessPanel,
     useGuidedSteps,
@@ -40,24 +35,14 @@ import { VOCABULARY } from '@/lib/vocabulary'
 import {
     MAX_SCHEDULE_DAYS,
     MIN_SCHEDULE_DAYS,
-    prizeSlot,
     scheduleDaysLeft,
-    summarizeScheduleCosts,
     denomRewardHref,
     validateScheduleDays,
 } from '@/lib/denom-reward'
 
-const { createDenomRewardSchedule, updateDenomRewardSchedule } = bze.rewards.MessageComposer.withTypeUrl
-
 const ADD_STEPS = ['prize', 'daily', 'days'] as const
 const EXTEND_STEPS = ['more'] as const
 type Step = typeof ADD_STEPS[number] | typeof EXTEND_STEPS[number]
-
-// The names the guided form gives the fees summarizeScheduleCosts returns.
-const FEE_LABELS: Record<string, string> = {
-    'Schedule fee': 'Daily prize fee',
-    'New prize token fee': 'New prize fee',
-}
 
 const fmtDays = (n: number) => n.toLocaleString('en-US')
 
@@ -72,7 +57,6 @@ function ScheduleFormContent() {
     const { tx } = useFactoryTx()
     const { asset: stakingAsset } = useAsset(denom)
     const { denomReward, schedules, prizes, isLoading, hasError } = useDenomReward(denom)
-    const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
 
     const schedule = isExtend ? schedules.find(s => s.schedule_id === scheduleId) : undefined
 
@@ -98,28 +82,15 @@ function ScheduleFormContent() {
         return amountToUAmount(dailyInput, prizeAsset.decimals)
     }, [schedule, prizeAsset, dailyError, dailyInput])
 
-    const slot = prizeSlot(prizes, prizeDenom, denomRewardLimits.maxPrizeDenomsPerDr)
-    const costs = summarizeScheduleCosts({
+    const gift = useScheduleGift({
+        denom,
+        prizes,
+        prizeDenom,
         dailyUAmount,
         days: daysError === '' ? Number(daysInput.trim()) : undefined,
-        prizeDenom,
-        mode: isExtend ? 'extend' : 'create',
-        scheduleFee: fees.addDenomRewardScheduleFee,
-        prizeFee: fees.createDenomRewardPrizeFee,
-        isNewPrize: Boolean(prizeDenom) && slot.isNewPrize,
+        scheduleId: schedule?.schedule_id,
     })
-
-    // The fees normally share one denom (BZE) and are resolved against the fee token as one
-    // total. A second fee denom (only if governance sets one) is charged natively.
-    const txKind = isExtend ? 'update-denom-reward-schedule' : 'create-denom-reward-schedule'
-    const mainFee = costs.feeTotals[0]
-    const extraFees = costs.feeTotals.slice(1)
-    const feePayment = useFeePayment(mainFee, txKind)
-    const afford = useCanAffordTx({
-        spec: costs.escrow ? txKind : undefined,
-        spend: costs.escrow ? [costs.escrow, ...extraFees] : undefined,
-        moduleFee: feePayment.estimate.resolvedFee,
-    })
+    const { slot, costs, afford } = gift
 
     const steps = useGuidedSteps<Step>(isExtend ? EXTEND_STEPS : ADD_STEPS, {
         prize: answered.includes('prize') && Boolean(prizeAsset) && !slot.capReached,
@@ -135,9 +106,7 @@ function ScheduleFormContent() {
 
     const allAnswered = (isExtend ? EXTEND_STEPS : ADD_STEPS).every(k => steps.state[k] === 'done')
     const isComplete = allAnswered && Boolean(prizeDenom) && dailyError === '' && daysError === '' && costs.escrow !== undefined
-    const feesReady = isExtend || (costs.feesKnown && (!mainFee || feePayment.canPayFee))
-    const canConfirm = isComplete && Boolean(address) && !slot.capReached && feesReady &&
-        !afford.isLoading && afford.canAfford
+    const canConfirm = isComplete && Boolean(address) && gift.canSign
 
     const back = () => navigate(denomRewardHref(denom))
 
@@ -155,17 +124,9 @@ function ScheduleFormContent() {
         : ''
 
     const submit = async () => {
-        if (!address || !canConfirm || dailyUAmount === undefined) return
+        const msg = address && canConfirm ? gift.message(address) : undefined
+        if (!address || !msg) return
         const days = daysInput.trim()
-        const msg = schedule
-            ? updateDenomRewardSchedule({ creator: address, denom, scheduleId: schedule.schedule_id, duration: days })
-            : createDenomRewardSchedule({
-                creator: address,
-                denom,
-                prizeDenom,
-                dailyAmount: new BigNumber(dailyUAmount).toFixed(0),
-                duration: days,
-            })
 
         setIsSubmitting(true)
         try {
@@ -236,20 +197,6 @@ function ScheduleFormContent() {
         )
     }
 
-    const feeRows: PayRow[] = costs.fees.map(f => ({ label: FEE_LABELS[f.label] ?? f.label, coin: f.coin }))
-    // Several charged fees: show their per-denom totals too, the amounts the wallet is charged.
-    const chargedCount = costs.fees.filter(f => new BigNumber(f.coin.amount).gt(0)).length
-    const totalRows: PayRow[] = chargedCount > 1
-        ? costs.feeTotals.map((c, i) => ({ label: i === 0 ? 'Fees total' : 'Also charged', coin: c }))
-        : extraFees.map(c => ({ label: 'Also charged', coin: c }))
-
-    const payRows: PayRow[] = [
-        ...(costs.escrow ? [{ label: 'Locked for prizes', coin: costs.escrow }] : []),
-        ...(isExtend
-            ? [{ label: 'Fee', text: 'None', info: 'None — extending only locks the extra days. Anyone can extend any schedule.' }]
-            : [...feeRows, ...totalRows]),
-    ]
-
     const escrowLine = (
         <Box fontSize="sm">
             <Text color="fg.muted">
@@ -286,11 +233,11 @@ function ScheduleFormContent() {
             </OutcomePanel>
 
             <PayPanel
-                rows={payRows}
-                moduleFee={isExtend ? undefined : mainFee}
-                txKind={txKind}
-                isLoading={!isExtend && isFeeLoading}
-                feeUnknown={!isExtend && !isFeeLoading && !costs.feesKnown}
+                rows={schedulePayRows(gift)}
+                moduleFee={isExtend ? undefined : gift.mainFee}
+                txKind={gift.txKind}
+                isLoading={!isExtend && gift.isFeeLoading}
+                feeUnknown={gift.feeUnknown}
             />
 
             <VStack align="stretch" gap={2}>
@@ -387,8 +334,8 @@ function ScheduleFormContent() {
                             <PrizeTokenQuestion
                                 denomReward={denomReward}
                                 prizes={prizes}
-                                maxPrizeDenoms={denomRewardLimits.maxPrizeDenomsPerDr}
-                                prizeFee={fees.createDenomRewardPrizeFee}
+                                maxPrizeDenoms={gift.maxPrizes}
+                                prizeFee={gift.prizeFee}
                                 value={pickedPrize}
                                 onSelect={(asset) => setPickedPrize(asset.denom)}
                             />

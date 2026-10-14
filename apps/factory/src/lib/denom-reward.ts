@@ -195,6 +195,14 @@ export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: Ai
     if (!new BigNumber(stakedAmount || 0).gt(0)) {
         return 'Nobody is staking this token yet, so there is no one to pay. The chain refuses an airdrop into a denom reward without stakers — nothing would leave your wallet.'
     }
+    return prizeBlocker({ prizeDenom, slot, feesKnown })
+}
+
+/**
+ * Why the chain would refuse this prize token on a holder reward, or '': the cap is reached, or the
+ * new prize fee is unknown. The part of `airdropBlocker` that a daily prize shares.
+ */
+export function prizeBlocker({ prizeDenom, slot, feesKnown }: Omit<AirdropGuardInput, 'stakedAmount'>): string {
     if (!prizeDenom) return ''
     if (slot.capReached) {
         return 'This denom reward already uses the maximum number of prize tokens. Pick a prize token it already pays.'
@@ -203,6 +211,14 @@ export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: Ai
         return "The new prize token fee couldn't be read from the chain. Try again later."
     }
     return ''
+}
+
+/** The info text of a "New prize fee" row: the slot the prize takes on `stake`, for good. */
+export function newPrizeSlotInfo(stake: { ticker: string; possessive: string }, prizeTicker: string, slot: PrizeSlot, max?: number): string {
+    const slots = max !== undefined
+        ? `one of ${stake.possessive} ${max} prize slots (${slot.used + 1} of ${max} after this)`
+        : `one of ${stake.possessive} prize slots`
+    return `The first time a token becomes a prize on ${stake.ticker} it takes ${slots}, for good. Gifting ${prizeTicker || 'it'} to ${stake.ticker} again is free.`
 }
 
 /**
