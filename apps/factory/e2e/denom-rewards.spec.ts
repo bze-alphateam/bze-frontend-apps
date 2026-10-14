@@ -37,3 +37,26 @@ test("shows the empty state when the chain has no denom reward", async ({page, n
     await expect(page.getByTestId("denom-reward-empty")).toHaveText(/No token has a denom reward yet/);
     await expect(page.getByTestId("denom-reward-row")).toHaveCount(0);
 });
+
+test("opens the Which reward fits? guide from the header", async ({page}) => {
+    await page.goto("/denom-reward");
+
+    await page.getByRole("button", {name: "Which reward fits?"}).click();
+    const dialog = page.getByRole("dialog", {name: "Which reward fits?"});
+    await expect(dialog.getByText("Most creators start here")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+});
+
+test("the guide fits a phone screen without sideways scrolling", async ({page}) => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto("/denom-reward");
+
+    await page.getByRole("button", {name: "Which reward fits?"}).click();
+    const dialog = page.getByRole("dialog", {name: "Which reward fits?"});
+    await expect(dialog.getByTestId("reward-comparison-stacked")).toBeVisible();
+    await expect(dialog.getByRole("table", {name: "Rewards compared"})).toBeHidden();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+});

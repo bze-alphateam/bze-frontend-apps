@@ -32,6 +32,7 @@ import {
     useCreationFees,
 } from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
+import {RewardInfoButton} from "@/components/rewards/reward-info-button";
 
 interface CreationCard {
     key: string;
@@ -44,6 +45,8 @@ interface CreationCard {
     href?: string;
     /** External link (opens in a new tab), e.g. the Burner. */
     externalHref?: string;
+    /** Shows the "Which reward fits?" ⓘ next to the title. */
+    rewardInfo?: boolean;
 }
 
 // Cards flip live per milestone: give them an `href` when the flow ships.
@@ -86,6 +89,7 @@ const CREATION_CARDS: CreationCard[] = [
         icon: LuGift,
         feeKey: 'createStakingRewardFee',
         href: '/reward/new',
+        rewardInfo: true,
     },
     {
         key: 'denom-reward',
@@ -94,6 +98,7 @@ const CREATION_CARDS: CreationCard[] = [
         icon: LuUsers,
         feeKey: 'createDenomRewardFee',
         href: '/denom-reward',
+        rewardInfo: true,
     },
     {
         key: 'burn',
@@ -152,6 +157,7 @@ function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) 
             opacity={isLive ? 1 : 0.65}
             transition="all 0.2s"
             onClick={onClick}
+            data-testid={`creation-card-${card.key}`}
             _hover={isLive ? {
                 gradientFrom: "yellow.500/15",
                 gradientTo: "yellow.600/15",
@@ -180,9 +186,12 @@ function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) 
                         </Badge>
                     )}
                 </HStack>
-                <Text fontWeight="bold" fontSize="lg">
-                    {card.title}
-                </Text>
+                <HStack gap={1}>
+                    <Text fontWeight="bold" fontSize="lg">
+                        {card.title}
+                    </Text>
+                    {card.rewardInfo && <RewardInfoButton />}
+                </HStack>
                 <Text fontSize="sm" color="fg.muted">
                     {card.description}
                 </Text>
