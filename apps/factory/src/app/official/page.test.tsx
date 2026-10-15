@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { loadOfficialProgress, saveOfficialProgress } from "@/lib/registry-entry";
@@ -91,22 +91,20 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         expect(screen.getByRole("region", { name: "Registry status" })).toHaveTextContent(text);
     });
 
-    it("the suggested file name follows the metadata when it loads after the page", async () => {
+    it("the suggested file name follows the metadata when it loads after the file was chosen", async () => {
         m.metadata = undefined;
+        URL.createObjectURL = vi.fn(() => "blob:logo");
+        URL.revokeObjectURL = vi.fn();
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30"/></svg>';
         const { rerender } = renderPage();
-        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("honey.svg");
+        fireEvent.change(screen.getByTestId("logo-file"), { target: { files: [new File([svg], "nectar.svg")] } });
+        await waitFor(() => expect(screen.getByTestId("logo-check-name")).toHaveTextContent("Name it honey.svg"));
+        expect(screen.getByTestId("logo-check-name")).toHaveAttribute("data-result", "warn");
 
         m.metadata = { ...METADATA, display: "nectar" };
         rerender(<OfficialPage />);
-        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("nectar.svg");
-
-        // A name the user typed stays put.
-        const box = within(step("Prepare your logo")).getByRole("textbox");
-        await userEvent.clear(box);
-        await userEvent.type(box, "mine.svg");
-        m.metadata = { ...METADATA, display: "pollen" };
-        rerender(<OfficialPage />);
-        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("mine.svg");
+        expect(screen.getByTestId("logo-check-name")).toHaveTextContent("File name nectar.svg");
+        expect(screen.getByTestId("logo-check-name")).toHaveAttribute("data-result", "ok");
     });
 
     it("walks the steps, generates the entry from the answers and stores the progress", async () => {
@@ -114,9 +112,13 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
         renderPage();
 
-        // 1: PNG follows into the suggested name.
-        await userEvent.click(within(step("Prepare your logo")).getByRole("radio", { name: "PNG" }));
-        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("honey.png");
+        // 1: a square PNG passes the checker; the entry uses its format and the suggested name.
+        const png = new Uint8Array(64);
+        png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 2, 0, 0, 0, 2, 0]);
+        URL.createObjectURL = vi.fn(() => "blob:logo");
+        URL.revokeObjectURL = vi.fn();
+        fireEvent.change(screen.getByTestId("logo-file"), { target: { files: [new File([png], "Honey.png")] } });
+        await waitFor(() => expect(screen.getByTestId("logo-check-square")).toHaveTextContent("Square, 512 × 512"));
         await userEvent.click(within(step("Prepare your logo")).getByRole("button", { name: "Mark as done" }));
         expect(step("Prepare your logo")).toHaveTextContent("honey.png");
 
