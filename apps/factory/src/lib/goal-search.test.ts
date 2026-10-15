@@ -25,6 +25,9 @@ describe("searchGoals", () => {
         ["burn", "burn"],
         ["change admin", "handOver"],
         ["increase supply", "mintMore"],
+        ["raffle", "raffle"],
+        ["lottery", "raffle"],
+        ["lucky draw", "raffle"],
     ])("%s → %s first", (query, first) => {
         expect(ids(query)[0]).toBe(first);
     });

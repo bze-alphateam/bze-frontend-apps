@@ -22,6 +22,7 @@ const navSubitems: { [key: string]: string } = {
     '/multisend': '/',
     '/reach': '/',
     '/playbooks': '/',
+    '/raffle/new': '/',
     '/manage/token': '/manage',
     '/rewards': '/manage',
     '/denom-reward/schedule': '/manage',

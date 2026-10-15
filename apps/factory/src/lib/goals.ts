@@ -2,6 +2,7 @@ import { type CreationFees, getBurnerApp } from '@bze/bze-ui-kit'
 import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
 import { officialHref } from '@/lib/registry-entry'
 import { reachHref } from '@/lib/reach'
+import { raffleHref } from '@/lib/raffle-new'
 import { rewardsHref } from '@/lib/rewards-directory'
 import { workspaceHref } from '@/lib/workspace'
 
@@ -25,7 +26,7 @@ export const GOAL_GROUPS: GoalGroup[] = [
 
 export type GoalId =
     | 'createToken' | 'pool' | 'addLiquidity' | 'market'
-    | 'stakable' | 'giftStakers' | 'reach' | 'multisend' | 'campaign' | 'dailyPrize'
+    | 'stakable' | 'giftStakers' | 'reach' | 'multisend' | 'campaign' | 'dailyPrize' | 'raffle'
     | 'registry' | 'brandKit' | 'lock'
 
 /** Tools that are not goals on the home cards; only the search finds them. */
@@ -46,6 +47,8 @@ export interface Goal {
     needsToken?: 'mine' | 'any';
     /** The token choice also offers LP tokens. */
     includeLP?: boolean;
+    /** The token choice hides governance-halted tokens. */
+    excludeHalted?: boolean;
     /** Where the goal starts; called with the chosen token for `needsToken` goals. Without it the goal is "Coming soon". */
     href?: (denom?: string) => string;
     /** `href` is another app (the burner), opened in a new tab. */
@@ -110,6 +113,12 @@ export const GOALS: Goal[] = [
         description: 'Keeps people staking longer than a one-off gift.',
         techTag: 'Holder rewards · daily prize', feeKey: 'addDenomRewardScheduleFee', needsToken: 'any', includeLP: true,
         href: (denom = '') => scheduleFormHref(denom), synonyms: ['daily', 'every day', 'drip', 'ongoing', 'schedule', 'prize', 'top up'],
+    },
+    {
+        id: 'raffle', group: 'community', title: 'Run a burning raffle',
+        description: "People buy tickets to win from a pot you fund. What's left at the end is burned.",
+        techTag: 'Burning raffle · no fee', needsToken: 'any', excludeHalted: true,
+        href: (denom) => raffleHref(denom), synonyms: ['raffle', 'lottery', 'lucky draw', 'draw', 'prize', 'game', 'tickets', 'burn', 'giveaway', 'contest', 'win'],
     },
     {
         id: 'registry', group: 'official', title: 'Get my logo in every wallet',

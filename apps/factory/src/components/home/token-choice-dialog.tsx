@@ -20,6 +20,8 @@ export function TokenChoiceDialog({ goal, onClose, onPick }: TokenChoiceDialogPr
     const { tokens, isLoading } = useMyTokens()
     const { navigate } = useNavigation()
     const anyToken = goal?.needsToken === 'any'
+    const excludeHalted = goal?.excludeHalted ?? false
+    const shown = excludeHalted ? tokens.filter(({ asset }) => !asset.halted) : tokens
 
     return (
         <Dialog.Root open={Boolean(goal)} onOpenChange={(e) => { if (!e.open) onClose() }} placement="center">
@@ -38,10 +40,10 @@ export function TokenChoiceDialog({ goal, onClose, onPick }: TokenChoiceDialogPr
                             <VStack align="stretch" gap={4}>
                                 {isLoading ? (
                                     <Skeleton height="12" borderRadius="lg" />
-                                ) : tokens.length > 0 ? (
+                                ) : shown.length > 0 ? (
                                     <VStack align="stretch" gap={2} role="group" aria-label="Your tokens">
                                         <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Your tokens</Text>
-                                        {tokens.map(({ asset }) => (
+                                        {shown.map(({ asset }) => (
                                             <Button
                                                 key={asset.denom}
                                                 variant="outline"
@@ -68,8 +70,9 @@ export function TokenChoiceDialog({ goal, onClose, onPick }: TokenChoiceDialogPr
                                 {anyToken && (
                                     <Box>
                                         <AssetPicker
-                                            label={tokens.length > 0 ? 'Or any token' : 'Any token'}
+                                            label={shown.length > 0 ? 'Or any token' : 'Any token'}
                                             includeLP={goal?.includeLP ?? false}
+                                            excludeHalted={excludeHalted}
                                             onSelect={(asset) => onPick(asset.denom)}
                                         />
                                     </Box>

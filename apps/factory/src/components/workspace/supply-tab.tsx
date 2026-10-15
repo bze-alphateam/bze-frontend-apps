@@ -3,10 +3,11 @@
 import React from 'react'
 import { Box, Button, Card, Grid, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
 import { LuArrowUpRight, LuFlame, LuRefreshCw } from 'react-icons/lu'
-import { getBurnerApp, prettyAmount, truncateAddress } from '@bze/bze-ui-kit'
+import { getBurnerApp, isLpDenom, prettyAmount, truncateAddress } from '@bze/bze-ui-kit'
 import { InfoBox } from '@/components/ui/info-box'
 import { shareOfSupply } from '@/lib/supply'
 import type { AdminState } from '@/lib/workspace'
+import { RaffleCard } from './raffle-card'
 import { StatBox } from './stat-box'
 import { SupplyActionCard } from './supply-action-card'
 import type { WorkspaceTabProps } from './types'
@@ -42,7 +43,7 @@ function StateNotice({ state, admin, ticker, onRetry }: { state: AdminState; adm
 }
 
 /** Supply facts, mint more and burn for the admin, and the Burner app for everyone. */
-export function SupplyTab({ asset, admin, adminState, supplyDisplay, isSupplyLoading, balanceDisplay, refreshSupply, refreshAdmins }: WorkspaceTabProps) {
+export function SupplyTab({ asset, admin, adminState, supplyDisplay, isSupplyLoading, balanceDisplay, refreshSupply, refreshAdmins, goTo }: WorkspaceTabProps) {
     const ticker = asset.ticker
     const burnerHref = `${getBurnerApp().href}/coin?coin=${encodeURIComponent(asset.denom)}`
 
@@ -90,6 +91,9 @@ export function SupplyTab({ asset, admin, adminState, supplyDisplay, isSupplyLoa
                     </Text>
                 </VStack>
             </Card.Root>
+
+            {/* Halted tokens are worthless and LP shares can't be raffled. */}
+            {!asset.halted && !isLpDenom(asset.denom) && <RaffleCard asset={asset} goTo={goTo} />}
         </VStack>
     )
 }

@@ -69,6 +69,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         getBurnerApp: () => ({ href: "https://burner.example" }),
         useLiquidityPools: () => ({ pools: [], isLoading: false }),
         useMarkets: () => ({ markets: [], isLoading: false }),
+        // The Supply tab's burning raffle card (BFE-208): no raffle running.
+        useEpochs: () => ({ hourEpochInfo: { current_epoch: 1n } }),
+        getRafflesOrThrow: async () => [],
     };
 });
 

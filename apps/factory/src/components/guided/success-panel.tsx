@@ -10,6 +10,8 @@ import { completedReturnHref, useReturnTo } from './return-to'
 export interface SuccessLink {
     label: string;
     href: string;
+    /** Another app or site, opened in a new tab (only read on `primary`; `links` always are). */
+    external?: boolean;
 }
 
 export interface SuccessNext {
@@ -123,7 +125,7 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
                     </VStack>
                 )}
 
-                <Button colorPalette="yellow" size="lg" onClick={() => navigate(main.href)}>
+                <Button colorPalette="yellow" size="lg" onClick={() => (main.external ? openExternal(main.href) : navigate(main.href))}>
                     {main.label}
                 </Button>
             </VStack>
