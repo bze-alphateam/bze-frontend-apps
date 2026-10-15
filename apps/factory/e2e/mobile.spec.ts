@@ -25,8 +25,10 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/playbooks?id=launch", ready: heading("Launch a community token")},
     {path: "/manage", ready: heading("Your tokens")},
     {path: `/manage/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},
-    {path: "/rewards", ready: (page) => page.getByText("NoAdminToken").first()},
-    {path: "/rewards?tab=programs", ready: (page) => page.getByTestId("staking-program-row").first()},
+    // Phones get cards, not the (hidden) table.
+    {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
+    // testnet's one staking program has finished, and finished programs are folded away by default.
+    {path: "/rewards?tab=programs&status=finished", ready: (page) => page.getByTestId("staking-program-row").first()},
     {path: `/denom-reward/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("holder-schedule-card").first()},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Give a little every day/)},
     {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Gift NOAD stakers, once/)},
@@ -38,7 +40,8 @@ for (const route of ROUTES) {
         await page.goto(route.path);
         await expect(route.ready(page)).toBeVisible();
 
-        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-        expect(overflow, "horizontal page scroll").toBeLessThanOrEqual(0);
+        // The page can still be settling right after its content appears; a lasting overflow fails.
+        const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        await expect.poll(overflow, {message: "horizontal page scroll", timeout: 5000}).toBeLessThanOrEqual(0);
     });
 }
