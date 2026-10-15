@@ -15,6 +15,7 @@ import { LuArrowRight, LuArrowUpRight } from 'react-icons/lu'
 import { TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
 import { GoalCard } from '@/components/home/goal-card'
 import { GoalSearch } from '@/components/home/goal-search'
+import { PlaybooksSection } from '@/components/home/playbooks-section'
 import { TokenChoiceDialog } from '@/components/home/token-choice-dialog'
 import { SetupProgress } from '@/components/manage/setup-progress'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
@@ -68,11 +69,6 @@ function YourTokensStrip() {
             </Grid>
         </VStack>
     )
-}
-
-/** Playbooks for newcomers (BFE-169) fill this slot. */
-function PlaybooksSlot() {
-    return null
 }
 
 function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => void }) {
@@ -167,7 +163,7 @@ export default function FactoryHomePage() {
                         })}
                     </Grid>
 
-                    <PlaybooksSlot />
+                    <PlaybooksSection />
 
                     <VStack as="section" aria-label="All tools" align="stretch" gap={2}>
                         <Text fontSize="sm" fontWeight="semibold" color="fg.muted">All tools</Text>

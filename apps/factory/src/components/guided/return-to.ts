@@ -48,6 +48,17 @@ export function useReturnTo(): ReturnTo | undefined {
     return useMemo(() => parseReturn(path, label), [path, label])
 }
 
+/**
+ * The way back after a form succeeded: a playbook's return path names its step (`step=`), and
+ * `completed=1` tells the playbook that step is done. A back link (the form not submitted)
+ * never adds it. Other return paths are left as they are.
+ */
+export function completedReturnHref(href: string): string {
+    const query = href.split('?')[1] ?? ''
+    if (!new URLSearchParams(query).has('step')) return href
+    return `${href}&completed=1`
+}
+
 /** `href` with the return params appended (unchanged when there is nowhere to return to). */
 export function withReturn(href: string, returnTo?: ReturnTo): string {
     if (!returnTo) return href

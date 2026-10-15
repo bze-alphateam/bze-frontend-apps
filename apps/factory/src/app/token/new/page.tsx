@@ -4,7 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react'
 import { Box, Button, Circle, Container, Field, HStack, Input, Skeleton, Text, Textarea, VStack } from '@chakra-ui/react'
 import { type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { GuidedForm, PayPanel, Question, TipNote, useGuidedSteps } from '@/components/guided'
+import { GuidedForm, PayPanel, Question, TipNote, useGuidedSteps, useReturnTo } from '@/components/guided'
 import { LaunchNextSteps } from '@/components/launch/launch-next-steps'
 import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
@@ -81,6 +81,7 @@ function TokenPreview({ form, ticker, supplyText, tokenId }: {
 function TokenNewContent() {
     const { address } = useChain(getChainName())
     const { fees, isLoading: isFeeLoading } = useCreationFees()
+    const returnTo = useReturnTo()
 
     // The page renders on the client only (search params under a Suspense boundary),
     // so the browser draft can seed the first render.
@@ -145,6 +146,7 @@ function TokenNewContent() {
                 supply={form.initialSupply}
                 denom={created.denom}
                 txHash={created.txHash}
+                returnTo={returnTo}
                 reset={() => {
                     setCreated(undefined)
                     startOver()

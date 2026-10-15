@@ -39,9 +39,9 @@ const HONEY = { denom: DENOM, ticker: "HONEY", name: "Honey Coin", decimals: 6 }
 const item = (key: string, state: string, extra: object = {}) => ({ key, state, detail: "", href: `/${key}`, ...extra });
 
 const reset = vi.fn();
-const renderScreen = () => render(
+const renderScreen = (returnTo?: { href: string; label: string }) => render(
     <ChakraProvider value={defaultSystem}>
-        <LaunchNextSteps denom={DENOM} txHash="HASH1" name="Honey Coin " symbol="HONEY" supply="1000000" reset={reset} />
+        <LaunchNextSteps denom={DENOM} txHash="HASH1" name="Honey Coin " symbol="HONEY" supply="1000000" reset={reset} returnTo={returnTo} />
     </ChakraProvider>,
 );
 
@@ -165,5 +165,12 @@ describe("LaunchNextSteps", () => {
         expect(writeText).toHaveBeenCalledWith(DENOM);
         await userEvent.click(screen.getByRole("button", { name: "Create another token" }));
         expect(reset).toHaveBeenCalledOnce();
+    });
+
+    it("opened from a playbook: Back to the playbook, with the new token and its first step done", async () => {
+        renderScreen({ href: "/playbooks?id=launch", label: "the playbook" });
+        expect(screen.queryByRole("button", { name: "Go to HONEY's page" })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Back to the playbook" }));
+        expect(m.navigate).toHaveBeenCalledWith(`/playbooks?id=launch&denom=${ENC}&step=createToken&completed=1`);
     });
 });

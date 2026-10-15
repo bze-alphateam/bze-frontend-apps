@@ -13,9 +13,10 @@ import {
     useCreationFees,
     useToast,
 } from '@bze/bze-ui-kit'
-import { withReturn } from '@/components/guided/return-to'
+import { type ReturnTo, withReturn } from '@/components/guided/return-to'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useTokenSetup } from '@/hooks/useTokenSetup'
+import { PLAYBOOKS_PATH, createdReturnHref } from '@/lib/playbooks'
 import { workspaceHref } from '@/lib/workspace'
 
 interface LaunchNextStepsProps {
@@ -28,6 +29,8 @@ interface LaunchNextStepsProps {
     supply: string;
     /** Clears the create form for another token. */
     reset: () => void;
+    /** Where /token/new was opened from (a playbook): the main button goes back there. */
+    returnTo?: ReturnTo;
 }
 
 interface NextStep {
@@ -104,7 +107,7 @@ function StepCard({ number, step, onGo }: { number: number; step: NextStep; onGo
  * Shown by /token/new after the token is created (BFE-162): what to do next, each step read
  * from the chain by useTokenSetup, so done steps tick off. Locking the supply is the last step.
  */
-export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset }: LaunchNextStepsProps) {
+export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, returnTo }: LaunchNextStepsProps) {
     const { navigate } = useNavigation()
     const { toast } = useToast()
     const { asset } = useAsset(denom)
@@ -115,6 +118,10 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset }: 
     const ticker = asset?.ticker || symbol
     const overview = workspaceHref(denom)
     const back = { href: overview, label: ticker }
+    // A playbook gets the new token and its first step done; other return paths stay as they are.
+    const mainHref = !returnTo
+        ? overview
+        : returnTo.href.startsWith(`${PLAYBOOKS_PATH}?`) ? createdReturnHref(returnTo.href, denom) : returnTo.href
     const isReading = !asset || setup.isLoading
     const doneOf = (key: string) => {
         if (isReading) return undefined
@@ -246,8 +253,8 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset }: 
                     </Box>
 
                     <VStack align="stretch" gap={2}>
-                        <Button size="lg" colorPalette="yellow" onClick={() => navigate(overview)}>
-                            {`Go to ${ticker}'s page`}
+                        <Button size="lg" colorPalette="yellow" onClick={() => navigate(mainHref)}>
+                            {returnTo ? `Back to ${returnTo.label}` : `Go to ${ticker}'s page`}
                         </Button>
                         <Button variant="ghost" colorPalette="yellow" onClick={reset}>
                             Create another token

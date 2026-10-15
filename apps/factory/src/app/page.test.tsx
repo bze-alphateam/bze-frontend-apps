@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { MyToken } from "@/lib/my-tokens";
 import { GOALS, GOAL_GROUPS } from "@/lib/goals";
+import { savePlaybookProgress } from "@/lib/playbooks";
 
 // The goal-first home on mocked hooks: creation fees, the user's tokens, their setup progress and
 // navigation. The any-token picker is stubbed with one button.
@@ -12,13 +13,14 @@ const m = vi.hoisted(() => ({
     navigate: vi.fn(),
     tokens: [] as unknown[],
     tokensLoading: false,
-    setup: { items: [{ key: "created", state: "done" }, { key: "pool", state: "todo" }], doneCount: 1, totalCount: 2, isLoading: false },
+    setup: { items: [{ key: "created", state: "done" }, { key: "pool", state: "todo" }], pools: [], doneCount: 1, totalCount: 2, isLoading: false },
     fees: {} as Record<string, unknown>,
 }));
 
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: m.navigate }) }));
 vi.mock("@/hooks/useMyTokens", () => ({ useMyTokens: () => ({ tokens: m.tokens, isLoading: m.tokensLoading }) }));
 vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup }));
+vi.mock("@/hooks/useStakingRewards", () => ({ useStakingRewards: () => ({ rewards: [], isLoading: false, hasError: false, refresh: vi.fn() }) }));
 vi.mock("@/components/ui/asset-picker", () => ({
     AssetPicker: ({ label, includeLP, onSelect }: { label: string; includeLP?: boolean; onSelect: (a: { denom: string }) => void }) => (
         <button onClick={() => onSelect({ denom: "factory/bze1other/umilk" })}>{`${label}${includeLP ? " (with LP)" : ""}`}</button>
@@ -49,6 +51,7 @@ const goal = (id: string) => screen.getByTestId(`goal-${id}`);
 const searchBox = () => screen.getByRole("combobox", { name: "What do you want to do?" });
 
 beforeEach(() => {
+    localStorage.clear();
     m.navigate.mockReset();
     m.tokens = [];
     m.tokensLoading = false;
@@ -260,5 +263,24 @@ describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
         renderPage();
         await userEvent.click(within(screen.getByRole("region", { name: "Grow the community" })).getByRole("button", { name: "Which reward fits?" }));
         expect(await screen.findByRole("dialog", { name: "Which reward fits?" })).toBeInTheDocument();
+    });
+
+    it("playbooks: three cards with their step chain, progress only once started", async () => {
+        savePlaybookProgress("launch", { denom: "factory/bze1owner/uhoney", manualDone: [] });
+        savePlaybookProgress("noticed", { manualDone: ["reach"] });
+        renderPage();
+        const section = screen.getByRole("region", { name: "New here? Follow a playbook" });
+        expect(section).toHaveTextContent("Proven recipes, step by step. Leave any time, your progress stays.");
+
+        const card = (id: string) => within(section).getByTestId(`playbook-${id}`);
+        expect(card("launch")).toHaveTextContent("Create → Pool → Stakable → Logo → Lock");
+        expect(card("launch")).toHaveTextContent("5 steps · about 20 min + registry review");
+        // Token chosen: create is done by the token, the pool is todo in the mocked checklist.
+        expect(within(card("launch")).getByTestId("playbook-progress")).toHaveTextContent("1 of 5");
+        expect(within(card("noticed")).getByTestId("playbook-progress")).toHaveTextContent("1 of 2");
+        expect(within(card("lps")).queryByTestId("playbook-progress")).not.toBeInTheDocument();
+
+        await userEvent.click(card("lps"));
+        expect(m.navigate).toHaveBeenCalledWith("/playbooks?id=lps");
     });
 });
