@@ -19,9 +19,10 @@ interface LogoStepProps {
     onReady: (ready: LogoReady) => void;
 }
 
-interface Checked {
+interface Chosen {
     fileName: string;
-    result: LogoCheckResult;
+    size: number;
+    bytes: Uint8Array;
     /** Object URL of the logo for the preview, shown only through <img> so an SVG's scripts never run. */
     previewUrl?: string;
 }
@@ -64,9 +65,12 @@ function Preview({ url }: { url: string }) {
  */
 export function LogoStep({ display, initial, onReady }: LogoStepProps) {
     const inputRef = useRef<HTMLInputElement>(null)
-    const [checked, setChecked] = useState<Checked>()
+    const [chosen, setChosen] = useState<Chosen>()
     const [dragging, setDragging] = useState(false)
-    const previewUrl = checked?.previewUrl
+    const previewUrl = chosen?.previewUrl
+    // Checked on every render: the display unit behind the suggested name can arrive after the
+    // file was chosen (the metadata loads on its own).
+    const result: LogoCheckResult | undefined = chosen && checkLogo(chosen.bytes, chosen.fileName, display, chosen.size)
 
     useEffect(() => () => {
         if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -74,22 +78,23 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
 
     const check = async (file: File) => {
         const bytes = await readBytes(file)
-        const result = checkLogo(bytes, file.name, display, file.size)
-        const canPreview = result.format !== undefined && file.size <= MAX_READ_BYTES
-        const type = result.format === 'svg' ? 'image/svg+xml' : 'image/png'
-        setChecked({
+        const { format } = checkLogo(bytes, file.name, display, file.size)
+        const canPreview = format !== undefined && file.size <= MAX_READ_BYTES
+        const type = format === 'svg' ? 'image/svg+xml' : 'image/png'
+        setChosen({
             fileName: file.name,
-            result,
+            size: file.size,
+            bytes,
             previewUrl: canPreview ? URL.createObjectURL(new Blob([bytes as BlobPart], { type })) : undefined,
         })
     }
 
     const reset = () => {
-        setChecked(undefined)
+        setChosen(undefined)
         if (inputRef.current) inputRef.current.value = ''
     }
 
-    const passes = checked !== undefined && logoPasses(checked.result)
+    const passes = result !== undefined && logoPasses(result)
 
     return (
         <VStack align="stretch" gap={4}>
@@ -113,7 +118,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                 }}
             />
 
-            {!checked ? (
+            {!chosen || !result ? (
                 <VStack
                     gap={2}
                     p={6}
@@ -146,12 +151,12 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                     <HStack gap={4} align="start" flexWrap="wrap">
                         {previewUrl && <Preview url={previewUrl} />}
                         <VStack align="start" gap={0} minW={0}>
-                            <Text fontSize="sm" fontWeight="medium" wordBreak="break-all">{checked.fileName}</Text>
+                            <Text fontSize="sm" fontWeight="medium" wordBreak="break-all">{chosen.fileName}</Text>
                             <Text fontSize="xs" color="fg.muted">Checked in your browser, nothing is uploaded.</Text>
                         </VStack>
                     </HStack>
                     <List.Root gap={1} aria-label="Logo checks">
-                        {checked.result.checks.map(c => <CheckRow key={c.key} check={c} />)}
+                        {result.checks.map(c => <CheckRow key={c.key} check={c} />)}
                     </List.Root>
                     <HStack gap={2} flexWrap="wrap">
                         <Button
@@ -159,7 +164,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                             size="sm"
                             disabled={!passes}
                             onClick={() => {
-                                if (checked.result.format) onReady({ format: checked.result.format, fileName: checked.result.suggestedFileName })
+                                if (result.format) onReady({ format: result.format, fileName: result.suggestedFileName })
                             }}
                         >
                             Mark as done
@@ -169,7 +174,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                 </VStack>
             )}
 
-            {!checked && (
+            {!chosen && (
                 <Text fontSize="xs" color="fg.muted">Checked in your browser, nothing is uploaded.</Text>
             )}
         </VStack>

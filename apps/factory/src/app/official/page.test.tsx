@@ -91,6 +91,22 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         expect(screen.getByRole("region", { name: "Registry status" })).toHaveTextContent(text);
     });
 
+    it("the suggested file name follows the metadata when it loads after the file was chosen", async () => {
+        m.metadata = undefined;
+        URL.createObjectURL = vi.fn(() => "blob:logo");
+        URL.revokeObjectURL = vi.fn();
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30"/></svg>';
+        const { rerender } = renderPage();
+        fireEvent.change(screen.getByTestId("logo-file"), { target: { files: [new File([svg], "nectar.svg")] } });
+        await waitFor(() => expect(screen.getByTestId("logo-check-name")).toHaveTextContent("Name it honey.svg"));
+        expect(screen.getByTestId("logo-check-name")).toHaveAttribute("data-result", "warn");
+
+        m.metadata = { ...METADATA, display: "nectar" };
+        rerender(<OfficialPage />);
+        expect(screen.getByTestId("logo-check-name")).toHaveTextContent("File name nectar.svg");
+        expect(screen.getByTestId("logo-check-name")).toHaveAttribute("data-result", "ok");
+    });
+
     it("walks the steps, generates the entry from the answers and stores the progress", async () => {
         const writeText = vi.fn(async () => {});
         Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
