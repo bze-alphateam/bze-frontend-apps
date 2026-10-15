@@ -32,6 +32,12 @@ vi.mock("@/components/staking/validators-list", () => ({
 vi.mock("@/components/staking/my-validators", () => ({
     MyValidators: () => <div data-testid="my-validators" />,
 }));
+vi.mock("@/components/staking/delegate-modal", () => ({
+    DelegateModal: () => null,
+}));
+vi.mock("@/components/staking/stake-link-handler", () => ({
+    StakeLinkHandler: () => null,
+}));
 vi.mock("@/components/staking/unbonding-delegations", () => ({
     UnbondingDelegations: () => <div data-testid="unbonding" />,
 }));

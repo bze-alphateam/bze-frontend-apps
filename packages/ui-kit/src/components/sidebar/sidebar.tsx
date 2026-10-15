@@ -8,17 +8,29 @@ import { useState } from 'react'
 interface SidebarProps extends PropsWithChildren {
     trigger: React.ReactNode
     ariaLabel: string
+    // Optional controlled mode: pass isOpen to open the sidebar from outside (e.g. a deep link).
+    // onOpenChange fires on every open/close in both modes.
+    isOpen?: boolean
+    onOpenChange?: (open: boolean) => void
 }
 
-export const Sidebar = ({ children, trigger, ariaLabel }: SidebarProps) => {
-    const [isOpen, setIsOpen] = useState(false)
+export const Sidebar = ({ children, trigger, ariaLabel, isOpen: controlledOpen, onOpenChange }: SidebarProps) => {
+    const [internalOpen, setInternalOpen] = useState(false)
+    const isOpen = controlledOpen ?? internalOpen
+
+    const setOpen = (open: boolean) => {
+        if (controlledOpen === undefined) {
+            setInternalOpen(open)
+        }
+        onOpenChange?.(open)
+    }
 
     const handleTriggerClick = () => {
-        setIsOpen(true)
+        setOpen(true)
     }
 
     const handleClose = () => {
-        setIsOpen(false)
+        setOpen(false)
     }
 
     return (

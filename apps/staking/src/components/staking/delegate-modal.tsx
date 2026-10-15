@@ -27,6 +27,8 @@ import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {CopyStakeLinkButton} from './copy-stake-link-button';
 
 interface DelegateModalProps {
     isOpen: boolean;
@@ -52,6 +54,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const maxSpendable = useMaxSpendable(getChainNativeAssetDenom(), 'delegate');
     const spendableHuman = maxSpendable.displayAmount;
     const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
+    const earnsNoRewards = !!validator
+        && (validator.jailed || bondStatusFromJSON(validator.status) !== BondStatus.BOND_STATUS_BONDED);
 
     const handleDelegate = async () => {
         if (!address || !validator) {
@@ -124,12 +128,29 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                         </Dialog.Header>
                         <Dialog.Body>
                             <VStack gap="4" align="stretch">
+                                {validator && (
+                                    <HStack justify="end" mt="-3">
+                                        <CopyStakeLinkButton operatorAddress={validator.operator_address} variant="text" />
+                                    </HStack>
+                                )}
                                 <Box bg="purple.500/5" p="3" borderRadius="md" borderWidth="1px" borderColor="purple.500/15">
                                     <HStack justify="space-between" fontSize="sm">
                                         <Text color="fg.muted">Commission</Text>
                                         <Text fontWeight="semibold">{commission}%</Text>
                                     </HStack>
                                 </Box>
+
+                                {earnsNoRewards && (
+                                    <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
+                                        <HStack gap="2" align="start">
+                                            <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
+                                            <Text fontSize="xs" color="fg.muted">
+                                                {validator?.jailed ? 'This validator is jailed. ' : 'This validator is outside the active set. '}
+                                                It does not earn rewards while jailed or outside the active set, so your stake earns nothing until it is back.
+                                            </Text>
+                                        </HStack>
+                                    </Box>
+                                )}
 
                                 <VStack align="stretch" gap="2">
                                     <HStack justify="space-between">
