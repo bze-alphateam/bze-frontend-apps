@@ -46,6 +46,7 @@ const token = (ticker: string): MyToken => ({
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
 const renderPage = () => render(<HomePage />, { wrapper });
 const goal = (id: string) => screen.getByTestId(`goal-${id}`);
+const searchBox = () => screen.getByRole("combobox", { name: "What do you want to do?" });
 
 beforeEach(() => {
     m.navigate.mockReset();
@@ -135,17 +136,102 @@ describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
         expect(m.navigate).toHaveBeenLastCalledWith("/manage");
     });
 
-    it("the search box filters the goal cards", async () => {
+    it("the cards always show every goal, whatever is typed", async () => {
         renderPage();
-        await userEvent.type(screen.getByRole("textbox", { name: "What do you want to do?" }), "pool");
-        expect(goal("pool")).toBeInTheDocument();
-        expect(goal("addLiquidity")).toBeInTheDocument();
-        expect(screen.queryByTestId("goal-createToken")).not.toBeInTheDocument();
-        expect(screen.queryByRole("region", { name: "Make it official" })).not.toBeInTheDocument();
+        await userEvent.type(searchBox(), "pool");
+        expect(goal("createToken")).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Make it official" })).toBeInTheDocument();
+    });
 
-        await userEvent.clear(screen.getByRole("textbox", { name: "What do you want to do?" }));
-        await userEvent.type(screen.getByRole("textbox", { name: "What do you want to do?" }), "qwerty");
-        expect(screen.getByText(/Nothing matches yet/)).toBeInTheDocument();
+    it("search: a combobox whose panel lists goals in everyday words, with a synonyms hint", async () => {
+        renderPage();
+        const box = searchBox();
+        expect(box).toHaveAttribute("aria-expanded", "false");
+        await userEvent.type(box, "airdrop");
+        expect(box).toHaveAttribute("aria-expanded", "true");
+        const listbox = screen.getByRole("listbox", { name: "Search results" });
+        expect(box).toHaveAttribute("aria-controls", listbox.id);
+        const options = within(listbox).getAllByRole("option");
+        expect(options.slice(0, 3).map(o => o.textContent)).toEqual([
+            expect.stringContaining("Gift my stakers, once"),
+            expect.stringContaining("Reach another community"),
+            expect.stringContaining("Send to a list of wallets"),
+        ]);
+        expect(box).toHaveAttribute("aria-activedescendant", options[0].id);
+        expect(options[0]).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByTestId("goal-search-panel")).toHaveTextContent("Also finds: giveaway, gift, drop, bonus, reward stakers…");
+    });
+
+    it("search: ↑/↓ move the active row, Enter opens it", async () => {
+        renderPage();
+        const box = searchBox();
+        await userEvent.type(box, "airdrop");
+        await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+        const options = screen.getAllByRole("option");
+        expect(box).toHaveAttribute("aria-activedescendant", options[2].id);
+        await userEvent.keyboard("{ArrowUp}");
+        expect(box).toHaveAttribute("aria-activedescendant", options[1].id);
+        await userEvent.keyboard("{ArrowDown}{Enter}");
+        expect(m.navigate).toHaveBeenCalledWith("/multisend");
+        expect(box).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("search: Enter on a needsToken goal opens Which token?", async () => {
+        renderPage();
+        await userEvent.type(searchBox(), "giveaway{Enter}");
+        expect(await screen.findByRole("dialog", { name: "Which token?" })).toHaveTextContent("Gift my stakers, once");
+        expect(m.navigate).not.toHaveBeenCalled();
+    });
+
+    it("search: your tokens open their workspace, and tools are found too", async () => {
+        m.tokens = [token("HONEY"), token("JAM")];
+        renderPage();
+        const box = searchBox();
+        await userEvent.type(box, "jam");
+        const group = screen.getByRole("group", { name: "Your tokens" });
+        await userEvent.click(within(group).getByRole("option", { name: /Open JAM/ }));
+        expect(m.navigate).toHaveBeenCalledWith(`/manage/token?denom=${encodeURIComponent("factory/bze1owner/ujam")}&tab=overview`);
+
+        const open = vi.spyOn(window, "open").mockReturnValue(null);
+        await userEvent.clear(box);
+        await userEvent.type(box, "burn{Enter}");
+        expect(open).toHaveBeenCalledWith("https://burner.example", "_blank", "noopener,noreferrer");
+    });
+
+    it("search: Esc closes the panel, a second Esc clears the box", async () => {
+        renderPage();
+        const box = searchBox();
+        await userEvent.type(box, "logo");
+        await userEvent.keyboard("{Escape}");
+        expect(box).toHaveAttribute("aria-expanded", "false");
+        expect(box).toHaveValue("logo");
+        await userEvent.keyboard("{Escape}");
+        expect(box).toHaveValue("");
+    });
+
+    it("search: no match says so and offers All tools", async () => {
+        renderPage();
+        await userEvent.type(searchBox(), "qwerty");
+        const panel = screen.getByTestId("goal-search-panel");
+        expect(panel).toHaveTextContent(`Nothing matches "qwerty". Try other words, or browse all tools below.`);
+        await userEvent.click(within(panel).getByRole("button", { name: "My creations" }));
+        expect(m.navigate).toHaveBeenCalledWith("/manage");
+    });
+
+    it("/ focuses the search from anywhere, but not while typing in another input", async () => {
+        renderPage();
+        await userEvent.keyboard("/");
+        expect(searchBox()).toHaveFocus();
+        expect(searchBox()).toHaveValue("");
+
+        searchBox().blur();
+        const other = document.createElement("input");
+        document.body.appendChild(other);
+        other.focus();
+        await userEvent.keyboard("/");
+        expect(other).toHaveFocus();
+        expect(other).toHaveValue("/");
+        other.remove();
     });
 
     it("the chips open their goals", async () => {

@@ -1,6 +1,6 @@
 import {expect, test} from "./support/mock-network";
 
-// Smoke spec for the goal-first home (BFE-167) and /manage (BFE-165) without a wallet, against
+// Smoke spec for the goal-first home (BFE-167), its search (BFE-168) and /manage (BFE-165) without a wallet, against
 // the testnet fixtures in e2e/fixtures/.
 
 test("the home starts from goals, with their live fees and the All tools row", async ({page}) => {
@@ -23,11 +23,39 @@ test("the home starts from goals, with their live fees and the All tools row", a
     await expect(tools.getByRole("button", {name: "My creations"})).toBeVisible();
     // No wallet: no Your tokens strip.
     await expect(page.getByRole("region", {name: "Your tokens"})).toHaveCount(0);
+});
 
-    await page.getByRole("textbox", {name: "What do you want to do?"}).fill("pool");
-    await expect(page.getByTestId("goal-pool")).toBeVisible();
-    await expect(page.getByTestId("goal-addLiquidity")).toBeVisible();
-    await expect(page.getByTestId("goal-createToken")).toHaveCount(0);
+test("the search finds goals in everyday words: / focuses it, Enter opens the active row", async ({page}) => {
+    await page.goto("/");
+    await expect(page.getByTestId("goal-createToken")).toBeVisible();
+
+    await page.keyboard.press("/");
+    const box = page.getByRole("combobox", {name: "What do you want to do?"});
+    await expect(box).toBeFocused();
+    await page.keyboard.type("airdrop");
+
+    const options = page.getByRole("listbox", {name: "Search results"}).getByRole("option");
+    await expect(options.nth(0)).toContainText("Gift my stakers, once");
+    await expect(options.nth(1)).toContainText("Reach another community");
+    await expect(options.nth(2)).toContainText("Send to a list of wallets");
+
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/multisend$/);
+});
+
+test("the search panel is full width on a 390 px phone", async ({page}) => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto("/");
+    await page.getByRole("combobox", {name: "What do you want to do?"}).fill("logo");
+    const panel = page.getByTestId("goal-search-panel");
+    await expect(panel).toContainText("Get my logo in every wallet");
+
+    const box = await panel.boundingBox();
+    expect(box?.width).toBeGreaterThan(300);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test("the home fits a 390 px phone", async ({page}) => {

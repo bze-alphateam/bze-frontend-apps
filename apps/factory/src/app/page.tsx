@@ -8,21 +8,19 @@ import {
     Container,
     Grid,
     HStack,
-    Input,
-    InputGroup,
-    Kbd,
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowRight, LuArrowUpRight, LuSearch } from 'react-icons/lu'
+import { LuArrowRight, LuArrowUpRight } from 'react-icons/lu'
 import { TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
 import { GoalCard } from '@/components/home/goal-card'
+import { GoalSearch } from '@/components/home/goal-search'
 import { TokenChoiceDialog } from '@/components/home/token-choice-dialog'
 import { SetupProgress } from '@/components/manage/setup-progress'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { useMyTokens } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
-import { ALL_TOOLS, GOALS, GOAL_CHIPS, GOAL_GROUPS, type Goal, type ToolLink, filterGoals, goalById } from '@/lib/goals'
+import { ALL_TOOLS, GOALS, GOAL_CHIPS, GOAL_GROUPS, type Goal, type ToolLink, goalById } from '@/lib/goals'
 import { workspaceHref } from '@/lib/workspace'
 
 /** The home strip shows this many of the user's tokens; the rest are on /manage. */
@@ -90,17 +88,26 @@ function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => vo
     return <Button size="xs" variant="outline" fontFamily="mono" onClick={onClick}>{tool.label}</Button>
 }
 
+function ToolChips({ onGoal }: { onGoal: (goal: Goal) => void }) {
+    return (
+        <HStack gap={2} flexWrap="wrap">
+            {ALL_TOOLS.map(tool => <ToolChip key={tool.label} tool={tool} onGoal={onGoal} />)}
+        </HStack>
+    )
+}
+
 export default function FactoryHomePage() {
     const { fees } = useCreationFees()
     const { tokens, isLoading: isTokensLoading } = useMyTokens()
     const { navigate } = useNavigation()
-    const [query, setQuery] = useState('')
     const [choosing, setChoosing] = useState<Goal>()
-
-    const matching = filterGoals(GOALS, query)
 
     const openGoal = (goal: Goal) => {
         if (!goal.href) return
+        if (goal.external) {
+            window.open(goal.href(), '_blank', 'noopener,noreferrer')
+            return
+        }
         if (!goal.needsToken) {
             navigate(goal.href())
             return
@@ -124,21 +131,12 @@ export default function FactoryHomePage() {
                         <Text color="fg.muted" maxW="2xl">
                             Create a token, get it traded, grow its community and make it official. Say it in your own words.
                         </Text>
-                        <InputGroup
-                            maxW="xl"
-                            w="full"
-                            startElement={<LuSearch />}
-                            endElement={<Kbd size="sm">/</Kbd>}
-                        >
-                            <Input
-                                aria-label="What do you want to do?"
-                                placeholder={'Try "airdrop", "make it stakable", "add a logo"…'}
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                bg="bg.panel"
-                                size="lg"
-                            />
-                        </InputGroup>
+                        <GoalSearch
+                            tokens={tokens.map(t => t.asset)}
+                            onGoal={openGoal}
+                            onToken={(denom) => navigate(workspaceHref(denom))}
+                            tools={<ToolChips onGoal={openGoal} />}
+                        />
                         <HStack gap={2} flexWrap="wrap" justify="center">
                             {GOAL_CHIPS.map(chip => (
                                 <Button key={chip.goal} size="xs" variant="subtle" colorPalette="yellow" borderRadius="full" onClick={() => openGoal(goalById(chip.goal))}>
@@ -152,8 +150,7 @@ export default function FactoryHomePage() {
 
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} alignItems="start">
                         {GOAL_GROUPS.map(group => {
-                            const goals = matching.filter(g => g.group === group.id)
-                            if (goals.length === 0) return null
+                            const goals = GOALS.filter(g => g.group === group.id)
                             return (
                                 <Card.Root key={group.id} as="section" aria-label={group.title} variant="outline" p={4} data-testid={`goal-group-${group.id}`}>
                                     <VStack align="stretch" gap={3}>
@@ -169,19 +166,12 @@ export default function FactoryHomePage() {
                             )
                         })}
                     </Grid>
-                    {matching.length === 0 && (
-                        <Text textAlign="center" color="fg.muted" fontSize="sm">
-                            Nothing matches yet. Try other words, or pick from All tools below.
-                        </Text>
-                    )}
 
                     <PlaybooksSlot />
 
                     <VStack as="section" aria-label="All tools" align="stretch" gap={2}>
                         <Text fontSize="sm" fontWeight="semibold" color="fg.muted">All tools</Text>
-                        <HStack gap={2} flexWrap="wrap">
-                            {ALL_TOOLS.map(tool => <ToolChip key={tool.label} tool={tool} onGoal={openGoal} />)}
-                        </HStack>
+                        <ToolChips onGoal={openGoal} />
                     </VStack>
                 </VStack>
             </Container>
