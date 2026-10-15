@@ -2,7 +2,6 @@
 
 import {useEffect, useRef} from 'react';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
-import {isValidOperatorAddress} from '@/lib/stake-link';
 
 export interface UseStakeLinkOptions {
     // The `stake` query parameter, or null when absent.
@@ -21,9 +20,9 @@ export interface UseStakeLinkOptions {
     notify: (title: string) => void;
 }
 
-// Handles `?stake=<operator>` deep links: finds the validator, highlights it and opens the
-// delegate form, asking the user to connect a wallet first when needed. Router-free so it can
-// be tested with plain callbacks.
+// Handles `?stake=<operator>` deep links: looks the value up in the loaded validators (no other
+// validation needed), highlights the match and opens the delegate form, asking the user to connect
+// a wallet first when needed. Router-free so it can be tested with plain callbacks.
 export function useStakeLink({
     stakeParam,
     validators,
@@ -46,12 +45,6 @@ export function useStakeLink({
             return;
         }
         if (handledParam.current === stakeParam) {
-            return;
-        }
-        if (!isValidOperatorAddress(stakeParam)) {
-            handledParam.current = stakeParam;
-            notify('That stake link is not valid');
-            clearParam();
             return;
         }
         if (!validators || isConnecting) {

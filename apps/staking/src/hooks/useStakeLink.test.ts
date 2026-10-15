@@ -93,10 +93,10 @@ describe("useStakeLink", () => {
         expect(options.clearParam).toHaveBeenCalled();
     });
 
-    it("ignores an invalid value with a toast, without waiting for the data", () => {
-        const { options } = setup({ stakeParam: "not-an-address", validators: undefined });
+    it("treats a malformed value like any unknown validator", () => {
+        const { options } = setup({ stakeParam: "not-an-address" });
 
-        expect(options.notify).toHaveBeenCalledWith("That stake link is not valid");
+        expect(options.notify).toHaveBeenCalledWith("Validator not found on this network");
         expect(options.openDelegate).not.toHaveBeenCalled();
         expect(options.clearParam).toHaveBeenCalled();
     });
