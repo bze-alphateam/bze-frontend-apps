@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { loadOfficialProgress, saveOfficialProgress } from "@/lib/registry-entry";
@@ -96,9 +96,13 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
         renderPage();
 
-        // 1: PNG follows into the suggested name.
-        await userEvent.click(within(step("Prepare your logo")).getByRole("radio", { name: "PNG" }));
-        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("honey.png");
+        // 1: a square PNG passes the checker; the entry uses its format and the suggested name.
+        const png = new Uint8Array(64);
+        png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 2, 0, 0, 0, 2, 0]);
+        URL.createObjectURL = vi.fn(() => "blob:logo");
+        URL.revokeObjectURL = vi.fn();
+        fireEvent.change(screen.getByTestId("logo-file"), { target: { files: [new File([png], "Honey.png")] } });
+        await waitFor(() => expect(screen.getByTestId("logo-check-square")).toHaveTextContent("Square, 512 × 512"));
         await userEvent.click(within(step("Prepare your logo")).getByRole("button", { name: "Mark as done" }));
         expect(step("Prepare your logo")).toHaveTextContent("honey.png");
 
