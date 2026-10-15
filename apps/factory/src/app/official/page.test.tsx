@@ -91,6 +91,24 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         expect(screen.getByRole("region", { name: "Registry status" })).toHaveTextContent(text);
     });
 
+    it("the suggested file name follows the metadata when it loads after the page", async () => {
+        m.metadata = undefined;
+        const { rerender } = renderPage();
+        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("honey.svg");
+
+        m.metadata = { ...METADATA, display: "nectar" };
+        rerender(<OfficialPage />);
+        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("nectar.svg");
+
+        // A name the user typed stays put.
+        const box = within(step("Prepare your logo")).getByRole("textbox");
+        await userEvent.clear(box);
+        await userEvent.type(box, "mine.svg");
+        m.metadata = { ...METADATA, display: "pollen" };
+        rerender(<OfficialPage />);
+        expect(within(step("Prepare your logo")).getByRole("textbox")).toHaveValue("mine.svg");
+    });
+
     it("walks the steps, generates the entry from the answers and stores the progress", async () => {
         const writeText = vi.fn(async () => {});
         Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

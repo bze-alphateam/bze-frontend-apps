@@ -28,15 +28,11 @@ const FORMATS: { value: LogoFormat; label: string; hint: string }[] = [
  */
 export function LogoStep({ display, initial, onReady }: LogoStepProps) {
     const [format, setFormat] = useState<LogoFormat>(initial?.format ?? 'svg')
-    const [fileName, setFileName] = useState(initial?.fileName ?? suggestLogoFileName(display, initial?.format ?? 'svg'))
-    const [edited, setEdited] = useState(Boolean(initial?.fileName))
+    // Only a name the user typed is state; until then the suggestion follows the format and the
+    // display unit, which can arrive after the first render (the metadata loads on its own).
+    const [typed, setTyped] = useState(initial?.fileName)
+    const fileName = typed ?? suggestLogoFileName(display, format)
     const valid = isValidLogoFileName(fileName, format)
-
-    const pick = (next: LogoFormat) => {
-        setFormat(next)
-        // Follow the format until the user typed their own name.
-        if (!edited) setFileName(suggestLogoFileName(display, next))
-    }
 
     return (
         <VStack align="stretch" gap={4}>
@@ -59,7 +55,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                                 role="radio"
                                 aria-checked={selected}
                                 aria-label={f.label}
-                                onClick={() => pick(f.value)}
+                                onClick={() => setFormat(f.value)}
                                 textAlign="start"
                                 px={3}
                                 py={2}
@@ -81,10 +77,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                 <Field.Label>File name</Field.Label>
                 <Input
                     value={fileName}
-                    onChange={(e) => {
-                        setEdited(true)
-                        setFileName(e.target.value)
-                    }}
+                    onChange={(e) => setTyped(e.target.value)}
                 />
                 <Field.ErrorText>{`Lower case letters, digits, dots, dashes or underscores, ending in .${format}`}</Field.ErrorText>
             </Field.Root>
