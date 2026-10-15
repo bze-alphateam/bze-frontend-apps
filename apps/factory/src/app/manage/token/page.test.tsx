@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
     setup: vi.fn(),
     address: "bze1owner" as string | undefined,
     supplyDenoms: [] as string[],
+    registry: "not-listed",
 }));
 
 vi.mock("@/hooks/useNavigation", () => ({
@@ -36,6 +37,7 @@ vi.mock("@/hooks/useTokenSupply", () => ({
     },
 }));
 vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup() }));
+vi.mock("@/hooks/useRegistryListing", () => ({ useRegistryListing: () => ({ status: m.registry, retry: vi.fn() }) }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
@@ -112,6 +114,7 @@ beforeEach(() => {
     m.query = { denom: DENOM };
     m.address = "bze1owner";
     m.supplyDenoms = [];
+    m.registry = "not-listed";
     m.tokens.mockReturnValue([token("bze1owner")]);
     m.setup.mockReturnValue(setup());
 });
@@ -262,6 +265,23 @@ describe("token workspace", () => {
             renderPage();
             shown.forEach(text => expect(screen.getAllByText(text).length).toBeGreaterThan(0));
             expect(screen.getByRole("region", { name: "Logo" })).toHaveTextContent("Logos come from the Cosmos Chain Registry");
+        });
+
+        it("profile: the logo section leads to the registry guide, or says it's listed", async () => {
+            m.query.tab = "profile";
+            renderPage();
+            const logo = screen.getByRole("region", { name: "Logo" });
+            await userEvent.click(within(logo).getByRole("button", { name: "Get TOK's logo into every wallet" }));
+            expect(m.navigate).toHaveBeenCalledWith(`/official?denom=${ENCODED}`);
+        });
+
+        it("profile: listed in the registry", () => {
+            m.query.tab = "profile";
+            m.registry = "listed";
+            renderPage();
+            const logo = screen.getByRole("region", { name: "Logo" });
+            expect(within(logo).getByText("Listed in the registry ✓")).toBeInTheDocument();
+            expect(within(logo).queryByRole("button")).not.toBeInTheDocument();
         });
 
         it("rewards: the holder rewards panel in every state", () => {

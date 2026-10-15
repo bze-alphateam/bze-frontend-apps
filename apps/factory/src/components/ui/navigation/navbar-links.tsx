@@ -27,6 +27,7 @@ const navSubitems: { [key: string]: string } = {
     '/denom-reward/schedule': '/manage',
     '/denom-reward/airdrop': '/manage',
     '/denom-reward/token': '/manage',
+    '/official': '/manage',
 }
 
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {

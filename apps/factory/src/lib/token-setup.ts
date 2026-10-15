@@ -1,4 +1,5 @@
 import { withReturn } from '@/components/guided/return-to'
+import { officialHref } from '@/lib/registry-entry'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
 
@@ -39,6 +40,8 @@ export interface TokenSetupFacts {
     pools: { id: string; label: string }[];
     denomReward: 'none' | 'error' | { runningSchedules: number };
     hasMarket: boolean;
+    /** Cosmos Chain Registry listing; 'off' on testnet, where the item is left out. */
+    registry: 'off' | 'listed' | 'not-listed' | 'error';
 }
 
 interface SetupItemDefinition {
@@ -46,6 +49,8 @@ interface SetupItemDefinition {
     optional?: boolean;
     /** The item needs the admin, so a locked token can never get it. */
     needsAdmin?: boolean;
+    /** The item doesn't apply to this token at all and is left out. */
+    skip?: (facts: TokenSetupFacts) => boolean;
     build: (facts: TokenSetupFacts) => Omit<SetupItem, 'key' | 'optional'>;
 }
 
@@ -156,6 +161,26 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
         },
     },
     {
+        key: 'registry',
+        skip: f => f.registry === 'off',
+        build: f => {
+            const href = officialHref(f.denom)
+            const title = 'Logo in every wallet · Cosmos Chain Registry'
+            if (f.registry === 'error') {
+                return { title, detail: "Couldn't reach the registry.", state: 'unknown', href }
+            }
+            return f.registry === 'listed'
+                ? { title, detail: 'Listed', state: 'done', href }
+                : {
+                    title,
+                    detail: `Without it, most wallets show ${f.ticker} as a long factory/… code with no logo.`,
+                    state: 'todo',
+                    href,
+                    action: { label: 'Get it listed', href },
+                }
+        },
+    },
+    {
         key: 'market',
         optional: true,
         build: f => {
@@ -181,7 +206,7 @@ export interface TokenSetup {
 }
 
 export function computeTokenSetup(facts: TokenSetupFacts, definitions: SetupItemDefinition[] = SETUP_ITEMS): TokenSetup {
-    const items = definitions.map((def): SetupItem => {
+    const items = definitions.filter(def => !def.skip?.(facts)).map((def): SetupItem => {
         const item: SetupItem = { key: def.key, optional: Boolean(def.optional), ...def.build(facts) }
         if (def.needsAdmin && facts.isLocked && item.state === 'todo') {
             return { ...item, state: 'impossible', detail: LOCKED_DETAIL, action: undefined }
