@@ -1,0 +1,15 @@
+{
+  "source": "https://testnet.getbze.com/bze/burner/raffles",
+  "recorded": "2026-10-15",
+  "method": "GET",
+  "path": "/bze/burner/raffles",
+  "query": {},
+  "status": 200,
+  "body": {
+    "list": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}
