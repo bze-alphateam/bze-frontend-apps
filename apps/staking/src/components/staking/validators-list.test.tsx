@@ -18,9 +18,6 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     };
 });
 
-vi.mock("./delegate-modal", () => ({
-    DelegateModal: () => null,
-}));
 
 import { ValidatorsList } from "./validators-list";
 
@@ -41,7 +38,7 @@ const VALIDATORS = [
 
 function renderList(validators: ValidatorSDKType[] = VALIDATORS) {
     return render(
-        <ValidatorsList validators={validators} onActionComplete={vi.fn()} logos={{}} />,
+        <ValidatorsList validators={validators} onStake={vi.fn()} logos={{}} />,
         {
             wrapper: ({ children }: { children: ReactNode }) => (
                 <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>

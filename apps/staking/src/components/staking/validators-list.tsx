@@ -10,43 +10,27 @@ import {
 } from '@bze/bze-ui-kit';
 import BigNumber from 'bignumber.js';
 import {filterValidators, formatCommissionRate} from '@/lib/validator-list';
+import {validatorRowId} from '@/lib/stake-link';
 import {useState} from 'react';
-import {DelegateModal} from './delegate-modal';
 import {ValidatorAvatar} from './validator-avatar';
+import {CopyStakeLinkButton} from './copy-stake-link-button';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 
 interface ValidatorsListProps {
     validators: ValidatorSDKType[];
-    onActionComplete: () => void;
+    // Opens the delegate form; the page owns it so stake links can open it too.
+    onStake: (validator: ValidatorSDKType) => void;
     logos: Record<string, string>;
+    // Operator address of a row to highlight (a followed stake link).
+    highlightedOperator?: string | null;
 }
 
-export function ValidatorsList({validators, onActionComplete, logos}: ValidatorsListProps) {
+export function ValidatorsList({validators, onStake, logos, highlightedOperator}: ValidatorsListProps) {
     const {nativeAsset} = useAssets();
     const decimals = nativeAsset?.decimals ?? 6;
     const [search, setSearch] = useState('');
-    const [delegateValidator, setDelegateValidator] = useState<ValidatorSDKType | null>(null);
-    const [isDelegateOpen, setIsDelegateOpen] = useState(false);
-    // Bumped on each open so the modal remounts with fresh local state (replaces the
-    // former reset-on-close effect inside the modal).
-    const [modalNonce, setModalNonce] = useState(0);
 
     const filtered = filterValidators(validators, search);
-
-    const openDelegateModal = (validator: ValidatorSDKType) => {
-        setDelegateValidator(validator);
-        setIsDelegateOpen(true);
-        setModalNonce(n => n + 1);
-    };
-
-    const closeDelegateModal = () => {
-        setIsDelegateOpen(false);
-    };
-
-    const handleDelegateComplete = () => {
-        setIsDelegateOpen(false);
-        onActionComplete();
-    };
 
     return (
         <Container maxW="7xl" py="2">
@@ -76,12 +60,16 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
                     {filtered.map((validator, idx) => {
                         const votingPower = uAmountToBigNumberAmount(new BigNumber(validator.tokens), decimals);
                         const commission = formatCommissionRate(validator.commission?.commission_rates?.rate);
+                        const isHighlighted = validator.operator_address === highlightedOperator;
 
                         return (
                             <Box
                                 key={validator.operator_address}
-                                bg="bg.panel"
+                                id={validatorRowId(validator.operator_address)}
+                                data-highlighted={isHighlighted || undefined}
+                                bg={isHighlighted ? 'purple.500/10' : 'bg.panel'}
                                 borderWidth="1px"
+                                borderColor={isHighlighted ? 'purple.500' : undefined}
                                 borderRadius="lg"
                                 p="4"
                                 transition="all 0.2s"
@@ -123,15 +111,17 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
                                     </VStack>
                                     </HStack>
 
-                                    <Button
-                                        size="xs"
-                                        colorPalette="purple"
-                                        variant="subtle"
-                                        onClick={() => openDelegateModal(validator)}
-                                        flexShrink={0}
-                                    >
-                                        <LuArrowUpRight /> Stake
-                                    </Button>
+                                    <HStack gap="1" flexShrink={0}>
+                                        <CopyStakeLinkButton operatorAddress={validator.operator_address} />
+                                        <Button
+                                            size="xs"
+                                            colorPalette="purple"
+                                            variant="subtle"
+                                            onClick={() => onStake(validator)}
+                                        >
+                                            <LuArrowUpRight /> Stake
+                                        </Button>
+                                    </HStack>
                                 </HStack>
                             </Box>
                         );
@@ -144,14 +134,6 @@ export function ValidatorsList({validators, onActionComplete, logos}: Validators
                     </Box>
                 )}
             </VStack>
-
-            <DelegateModal
-                key={`delegate-${modalNonce}`}
-                isOpen={isDelegateOpen}
-                onClose={closeDelegateModal}
-                validator={delegateValidator}
-                onSuccess={handleDelegateComplete}
-            />
         </Container>
     );
 }
