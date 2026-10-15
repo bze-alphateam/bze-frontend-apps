@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
     tx: vi.fn(),
     balance: "2000000",
     max: "1.5",
+    raffles: vi.fn(),
 }));
 
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1owner" }) }));
@@ -19,6 +20,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return {
         ...actual,
         getBurnerApp: () => ({ href: "https://burner.example" }),
+        getRafflesOrThrow: () => m.raffles(),
+        useEpochs: () => ({ hourEpochInfo: { current_epoch: 100n } }),
         useMaxSpendable: () => ({
             amount: new BigNumber(m.max).multipliedBy(1_000_000),
             inputValue: m.max,
@@ -61,6 +64,7 @@ beforeEach(() => {
     m.tx.mockResolvedValue(true);
     m.balance = "2000000";
     m.max = "1.5";
+    m.raffles.mockReset().mockResolvedValue([]);
 });
 
 describe("SupplyTab facts", () => {
@@ -177,5 +181,54 @@ describe("Burn", () => {
         expect(msgs[0].value).toMatchObject({ creator: "bze1owner", coins: `250000${DENOM}` });
         expect(p.refreshSupply).toHaveBeenCalledTimes(1);
         expect(input).toHaveValue("");
+    });
+});
+
+describe("SupplyTab burning raffle card", () => {
+    const RAFFLE = { denom: DENOM, pot: "1250000000", ticket_price: "10000000", chances: 10000n, ratio: "0.250000000000000000", end_at: 151n };
+    const raffleCard = () => within(screen.getByTestId("raffle-card"));
+
+    it("shows the running raffle to everyone, with a Burner link", async () => {
+        m.raffles.mockResolvedValue([{ ...RAFFLE, denom: "uother" }, RAFFLE]);
+        renderTab(props({ adminState: "not-admin", admin: "bze1someone" }));
+
+        expect(await raffleCard().findByText("1,250 TOK")).toBeInTheDocument();
+        expect(raffleCard().getByText("10 TOK")).toBeInTheDocument();
+        expect(raffleCard().getByText("1 in 100")).toBeInTheDocument();
+        expect(raffleCard().getByText("25 % of the pot")).toBeInTheDocument();
+        expect(raffleCard().getByText("2d 3h")).toBeInTheDocument();
+        expect(raffleCard().getByRole("link", { name: /See it in the Burner/ }))
+            .toHaveAttribute("href", "https://burner.example/coin?coin=factory%2Fbze1owner%2Futok");
+    });
+
+    it("offers to start one when none is running, coming back to the Supply tab", async () => {
+        const p = props();
+        renderTab(p);
+
+        await userEvent.click(await raffleCard().findByRole("button", { name: "Start a burning raffle" }));
+        const href = (p.goTo as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const params = new URLSearchParams(href.split("?")[1]);
+        expect(href.startsWith("/raffle/new?")).toBe(true);
+        expect(params.get("denom")).toBe(DENOM);
+        expect(params.get("return")).toBe(`/manage/token?denom=${encodeURIComponent(DENOM)}&tab=supply`);
+        expect(params.get("returnLabel")).toBe("TOK");
+    });
+
+    it("says the lookup failed instead of 'none running', and retries", async () => {
+        m.raffles.mockRejectedValueOnce(new Error("node down"));
+        renderTab(props());
+
+        expect(await raffleCard().findByText("Couldn't load the raffle for TOK.")).toBeInTheDocument();
+        expect(raffleCard().queryByRole("button", { name: "Start a burning raffle" })).not.toBeInTheDocument();
+        await userEvent.click(raffleCard().getByRole("button", { name: "Retry" }));
+        expect(await raffleCard().findByRole("button", { name: "Start a burning raffle" })).toBeInTheDocument();
+    });
+
+    it("has no card for halted or LP tokens", () => {
+        const { unmount } = renderTab(props({ asset: { ...asset, halted: true } }));
+        expect(screen.queryByTestId("raffle-card")).not.toBeInTheDocument();
+        unmount();
+        renderTab(props({ asset: { ...asset, denom: "ulp_1_2", ticker: "LP" } }));
+        expect(screen.queryByTestId("raffle-card")).not.toBeInTheDocument();
     });
 });

@@ -22,8 +22,10 @@ vi.mock("@/hooks/useMyTokens", () => ({ useMyTokens: () => ({ tokens: m.tokens, 
 vi.mock("@/hooks/useTokenSetup", () => ({ useTokenSetup: () => m.setup }));
 vi.mock("@/hooks/useStakingRewards", () => ({ useStakingRewards: () => ({ rewards: [], isLoading: false, hasError: false, refresh: vi.fn() }) }));
 vi.mock("@/components/ui/asset-picker", () => ({
-    AssetPicker: ({ label, includeLP, onSelect }: { label: string; includeLP?: boolean; onSelect: (a: { denom: string }) => void }) => (
-        <button onClick={() => onSelect({ denom: "factory/bze1other/umilk" })}>{`${label}${includeLP ? " (with LP)" : ""}`}</button>
+    AssetPicker: ({ label, includeLP, excludeHalted, onSelect }: { label: string; includeLP?: boolean; excludeHalted?: boolean; onSelect: (a: { denom: string }) => void }) => (
+        <button onClick={() => onSelect({ denom: "factory/bze1other/umilk" })}>
+            {`${label}${includeLP ? " (with LP)" : ""}${excludeHalted ? " (no halted)" : ""}`}
+        </button>
     ),
 }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
@@ -102,6 +104,20 @@ describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
         await userEvent.click(goal("registry"));
         await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Or any token" }));
         expect(m.navigate).toHaveBeenLastCalledWith(`/official?denom=${encodeURIComponent("factory/bze1other/umilk")}`);
+    });
+
+    it("Run a burning raffle: any token but no halted ones, your halted tokens hidden too", async () => {
+        const halted = token("DEAD");
+        m.tokens = [token("HONEY"), { ...halted, asset: { ...halted.asset, halted: true } }];
+        renderPage();
+
+        expect(goal("raffle")).toHaveTextContent("Run a burning raffle");
+        await userEvent.click(goal("raffle"));
+        const dialog = await screen.findByRole("dialog", { name: "Which token?" });
+        const mine = within(within(dialog).getByRole("group", { name: "Your tokens" }));
+        expect(mine.queryByRole("button", { name: /DEAD/ })).not.toBeInTheDocument();
+        await userEvent.click(within(dialog).getByRole("button", { name: "Or any token (no halted)" }));
+        expect(m.navigate).toHaveBeenLastCalledWith(`/raffle/new?denom=${encodeURIComponent("factory/bze1other/umilk")}`);
     });
 
     it("mine with exactly one token skips the dialog", async () => {

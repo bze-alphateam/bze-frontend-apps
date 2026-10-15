@@ -22,6 +22,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Run a campaign with an end date/)},
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},
+    {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
     {path: "/playbooks?id=launch", ready: heading("Launch a community token")},
     {path: "/manage", ready: heading("Your tokens")},
     {path: `/manage/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},

@@ -43,6 +43,7 @@ export type TxKind =
     | 'withdraw-delegator-reward'
     | 'fund-burner'
     | 'join-raffle'
+    | 'start-raffle'
     | 'create-denom'
     | 'mint'
     | 'burn-tokens'
@@ -105,6 +106,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'withdraw-delegator-reward': {base: 200_000, perItem: 120_000}, // measured max 179k per message
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
+    'start-raffle': {base: 200_000},                          // no on-chain sample — denom/raffle lookups + pot capture + two writes; re-measure on bzetestnet-3
     'create-denom': {base: 300_000},                          // no on-chain sample — estimate with headroom
     'mint': {base: 200_000},                                  // no on-chain sample — estimate with headroom
     'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom

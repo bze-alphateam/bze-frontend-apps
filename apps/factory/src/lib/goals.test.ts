@@ -9,7 +9,7 @@ describe("goal catalogue", () => {
         const groups = GOAL_GROUPS.map(g => g.id);
         expect(GOALS.every(g => groups.includes(g.group))).toBe(true);
         expect(GOALS.filter(g => g.group === "community").map(g => g.id))
-            .toEqual(["stakable", "giftStakers", "reach", "multisend", "campaign", "dailyPrize"]);
+            .toEqual(["stakable", "giftStakers", "reach", "multisend", "campaign", "dailyPrize", "raffle"]);
     });
 
     it.each([
@@ -24,8 +24,16 @@ describe("goal catalogue", () => {
         ["lock", DENOM, `/manage/token?denom=${ENC}&tab=control&lock=1`],
         ["multisend", undefined, "/multisend"],
         ["campaign", undefined, "/reward/new"],
+        ["raffle", undefined, "/raffle/new"],
+        ["raffle", DENOM, `/raffle/new?denom=${ENC}`],
     ] as const)("%s(%s) → %s", (id, denom, href) => {
         expect(goalById(id).href?.(denom)).toBe(href);
+    });
+
+    it("the burning raffle takes any token but hides halted ones", () => {
+        const raffle = goalById("raffle");
+        expect(raffle).toMatchObject({ title: "Run a burning raffle", techTag: "Burning raffle · no fee", needsToken: "any", excludeHalted: true });
+        expect(raffle.includeLP).toBeFalsy();
     });
 
     it("chips and tools point at catalogue goals", () => {

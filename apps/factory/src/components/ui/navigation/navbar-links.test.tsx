@@ -10,7 +10,7 @@ vi.mock("@bze/bze-ui-kit", () => ({ getEcosystemApps: () => [] }));
 
 import { NavbarLinks } from "./navbar-links";
 
-const CREATE = ["/", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/multisend", "/reach", "/playbooks"];
+const CREATE = ["/", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/multisend", "/reach", "/playbooks", "/raffle/new"];
 const MANAGE = ["/manage", "/manage/token", "/rewards", "/denom-reward/token", "/denom-reward/schedule", "/denom-reward/airdrop", "/official"];
 
 const active = () => screen.getAllByRole("link").filter(l => l.getAttribute("aria-current") === "page").map(l => l.textContent);

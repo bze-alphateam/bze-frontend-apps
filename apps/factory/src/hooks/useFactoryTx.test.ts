@@ -13,4 +13,8 @@ describe("txKindsOf", () => {
             { typeUrl: "/unknown.Msg" },
         ])).toEqual(["mint"]);
     });
+
+    it("covers the burning raffle start (BFE-208)", () => {
+        expect(txKindsOf([{ typeUrl: "/bze.burner.MsgStartRaffle" }])).toEqual(["start-raffle"]);
+    });
 });

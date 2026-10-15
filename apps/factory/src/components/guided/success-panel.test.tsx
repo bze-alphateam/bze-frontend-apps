@@ -51,6 +51,15 @@ describe("SuccessPanel", () => {
         expect(navigateMock).toHaveBeenLastCalledWith("/playbooks?id=noticed&step=reach&completed=1");
     });
 
+    it("an external primary opens in a new tab instead of navigating", async () => {
+        const open = vi.spyOn(window, "open").mockReturnValue(null);
+        render(<SuccessPanel title="Done!" primary={{ label: "See it in the Burner ↗", href: "https://burner/coin?coin=x", external: true }} />, { wrapper });
+        await userEvent.click(screen.getByRole("button", { name: "See it in the Burner ↗" }));
+        expect(open).toHaveBeenCalledWith("https://burner/coin?coin=x", "_blank", "noopener,noreferrer");
+        expect(navigateMock).not.toHaveBeenCalled();
+        open.mockRestore();
+    });
+
     it("opens links in a new tab, navigates next steps, and runs Do another", async () => {
         const open = vi.spyOn(window, "open").mockReturnValue(null);
         const again = vi.fn();
