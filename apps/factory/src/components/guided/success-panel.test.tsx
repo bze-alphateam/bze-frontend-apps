@@ -38,6 +38,19 @@ describe("SuccessPanel", () => {
         expect(screen.queryByRole("button", { name: "Back to the Factory" })).not.toBeInTheDocument();
     });
 
+    it("tells a playbook its step is done: completed=1 on the way back, only for a playbook step", async () => {
+        params.current = new URLSearchParams({ return: "/playbooks?id=noticed&step=reach", returnLabel: "the playbook" });
+        const { unmount } = render(<SuccessPanel title="Done!" />, { wrapper });
+        await userEvent.click(screen.getByRole("button", { name: "Back to the playbook" }));
+        expect(navigateMock).toHaveBeenCalledWith("/playbooks?id=noticed&step=reach&completed=1");
+        unmount();
+
+        // A page's own primary back to the return path gets it too.
+        render(<SuccessPanel title="Done!" primary={{ label: "Back to the playbook", href: "/playbooks?id=noticed&step=reach" }} />, { wrapper });
+        await userEvent.click(screen.getByRole("button", { name: "Back to the playbook" }));
+        expect(navigateMock).toHaveBeenLastCalledWith("/playbooks?id=noticed&step=reach&completed=1");
+    });
+
     it("opens links in a new tab, navigates next steps, and runs Do another", async () => {
         const open = vi.spyOn(window, "open").mockReturnValue(null);
         const again = vi.fn();

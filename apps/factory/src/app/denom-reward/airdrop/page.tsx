@@ -143,9 +143,8 @@ function AirdropFormContent() {
 
     if (!denomReward) {
         return (
-            <Notice title="No denom reward yet" onBack={back}>
-                {stakingAsset?.ticker ?? 'This token'} has no denom reward. Create it from the token&apos;s
-                denom reward page first.
+            <Notice title="No holder rewards yet" onBack={back}>
+                {`${stakingAsset?.ticker ?? 'This token'} has no holder rewards. Make it stakable first.`}
             </Notice>
         )
     }

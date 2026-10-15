@@ -112,6 +112,12 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         expect(within(preview).getByTestId("preview-name")).toHaveTextContent("Honey Coin");
         expect(within(preview).getByText("HONEY · Mintable")).toBeInTheDocument();
         expect(within(preview).getByText("HC")).toBeInTheDocument();
+        expect(within(preview).getByTestId("preview-decimals")).toHaveTextContent("6");
+
+        const writeText = vi.fn(async () => {});
+        Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+        await userEvent.click(within(preview).getByRole("button", { name: "Copy token ID" }));
+        expect(writeText).toHaveBeenCalledWith("factory/bze1me/uhoney");
     });
 
     it("uses the address placeholder in the token ID without a wallet", async () => {
@@ -120,6 +126,8 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         await userEvent.type(screen.getByPlaceholderText("e.g. HONEY"), "hny");
         expect(screen.getByText("Token ID: factory/<your address>/uhny")).toBeInTheDocument();
         expect(screen.getByText("Connect your wallet to create this token.")).toBeInTheDocument();
+        // Not the real ID yet: nothing to copy.
+        expect(within(screen.getByRole("region", { name: "Preview" })).queryByRole("button", { name: "Copy token ID" })).not.toBeInTheDocument();
     });
 
     it("shows field errors only after blur", async () => {

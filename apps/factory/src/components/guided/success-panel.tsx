@@ -5,7 +5,7 @@ import { Box, Button, Code, HStack, IconButton, Skeleton, Text, VStack } from '@
 import { LuArrowUpRight, LuCircleCheck, LuCopy } from 'react-icons/lu'
 import { useToast } from '@bze/bze-ui-kit'
 import { useNavigation } from '@/hooks/useNavigation'
-import { useReturnTo } from './return-to'
+import { completedReturnHref, useReturnTo } from './return-to'
 
 export interface SuccessLink {
     label: string;
@@ -46,8 +46,10 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
     const { toast } = useToast()
     const returnTo = useReturnTo()
 
-    const main = primary
+    const chosen = primary
         ?? (returnTo ? { label: `Back to ${returnTo.label}`, href: returnTo.href } : { label: 'Back to the Factory', href: '/' })
+    // Going back to where the form was opened from, after it succeeded.
+    const main = returnTo && chosen.href === returnTo.href ? { ...chosen, href: completedReturnHref(chosen.href) } : chosen
 
     const copy = async () => {
         if (!code?.value) return

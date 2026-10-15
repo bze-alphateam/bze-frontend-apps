@@ -118,7 +118,7 @@ describe("rewards directory", () => {
         expect(bze.getByText("1,500 BZE")).toBeInTheDocument();
         expect(bze.getByText("7 days")).toBeInTheDocument();
         await waitFor(() => expect(bze.getByText("3")).toBeInTheDocument());
-        expect(bze.getByText("Yes")).toBeInTheDocument();
+        expect(bze.getByText("2 daily prizes")).toBeInTheDocument();
 
         const tok = within(rows[1]);
         expect(tok.getByText("0 TOK")).toBeInTheDocument();

@@ -1,4 +1,4 @@
-import type { CreationFees } from '@bze/bze-ui-kit'
+import { type CreationFees, getBurnerApp } from '@bze/bze-ui-kit'
 import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
 import { officialHref } from '@/lib/registry-entry'
 import { reachHref } from '@/lib/reach'
@@ -28,9 +28,13 @@ export type GoalId =
     | 'stakable' | 'giftStakers' | 'reach' | 'multisend' | 'campaign' | 'dailyPrize'
     | 'registry' | 'brandKit' | 'lock'
 
+/** Tools that are not goals on the home cards; only the search finds them. */
+export type ToolId = 'burn' | 'mintMore' | 'handOver'
+
 export interface Goal {
-    id: GoalId;
-    group: GoalGroupId;
+    id: GoalId | ToolId;
+    /** 'tool': a search-only entry, never a home card. */
+    group: GoalGroupId | 'tool';
     title: string;
     description: string;
     /** The technical name, in small grey text. */
@@ -44,7 +48,9 @@ export interface Goal {
     includeLP?: boolean;
     /** Where the goal starts; called with the chosen token for `needsToken` goals. Without it the goal is "Coming soon". */
     href?: (denom?: string) => string;
-    /** Everyday words that find the goal; filled by the search ticket. */
+    /** `href` is another app (the burner), opened in a new tab. */
+    external?: boolean;
+    /** Everyday words that find the goal (lower case), for the home search. */
     synonyms: string[];
 }
 
@@ -54,74 +60,98 @@ export const GOALS: Goal[] = [
     {
         id: 'createToken', group: 'start', title: 'Create my token',
         description: 'Name, ticker and supply. Minted to you in one step.',
-        techTag: 'Token factory', feeKey: 'createDenomFee', href: () => '/token/new', synonyms: [],
+        techTag: 'Token factory', feeKey: 'createDenomFee', href: () => '/token/new', synonyms: ['create', 'new token', 'coin', 'launch', 'mint', 'issue', 'make a token', 'meme', 'memecoin'],
     },
     {
         id: 'pool', group: 'traded', title: 'Let people buy and sell it',
         description: 'Pair it with BZE. You set the starting price.',
         techTag: 'Liquidity pool', feeKey: 'createMarketFee',
-        href: (denom) => (denom ? `/pool/new?base=${enc(denom)}` : '/pool/new'), synonyms: [],
+        href: (denom) => (denom ? `/pool/new?base=${enc(denom)}` : '/pool/new'), synonyms: ['pool', 'liquidity', 'lp', 'list', 'listing', 'list my token', 'buy', 'sell', 'trade', 'swap', 'price', 'exchange', 'amm'],
     },
     {
         id: 'addLiquidity', group: 'traded', title: 'Make trading smoother',
         description: 'Add more to a pool so big trades move the price less.',
-        techTag: 'Add liquidity', href: () => '/pool/add', synonyms: [],
+        techTag: 'Add liquidity', href: () => '/pool/add', synonyms: ['add liquidity', 'deposit', 'provide', 'deepen', 'slippage', 'smoother'],
     },
     {
         id: 'market', group: 'traded', title: 'Allow limit orders',
         description: 'Traders can name their price on the DEX.',
-        techTag: 'Order-book market', feeKey: 'createMarketFee', href: () => '/market/new', synonyms: [],
+        techTag: 'Order-book market', feeKey: 'createMarketFee', href: () => '/market/new', synonyms: ['market', 'order book', 'orderbook', 'limit order', 'limit', 'order'],
     },
     {
         id: 'stakable', group: 'community', title: 'Make my token stakable', badge: 'Start here',
         description: 'Holders stake it and share daily prizes you fund.',
         techTag: 'Holder rewards', feeKey: 'createDenomRewardFee', needsToken: 'any', includeLP: true,
-        href: (denom = '') => denomRewardHref(denom), synonyms: [],
+        href: (denom = '') => denomRewardHref(denom), synonyms: ['stake', 'stakable', 'staking', 'yield', 'apr', 'apy', 'earn', 'hold', 'holders', 'rewards', 'passive', 'farm'],
     },
     {
         id: 'giftStakers', group: 'community', title: 'Gift my stakers, once',
         description: 'Split an amount between everyone staking today.',
         techTag: 'Holder rewards · airdrop', needsToken: 'any', includeLP: true,
-        href: (denom = '') => airdropFormHref(denom), synonyms: [],
+        href: (denom = '') => airdropFormHref(denom), synonyms: ['airdrop', 'giveaway', 'gift', 'drop', 'bonus', 'reward stakers', 'thank', 'distribute'],
     },
     {
         id: 'reach', group: 'community', title: 'Reach another community',
         description: 'Put your token in the wallets of people staking theirs.',
-        techTag: 'Airdrop or daily prize, on their token', href: () => reachHref(), synonyms: [],
+        techTag: 'Airdrop or daily prize, on their token', href: () => reachHref(), synonyms: ['airdrop', 'other community', 'another token', 'marketing', 'promote', 'grow', 'partner', 'cross-community', 'get noticed'],
     },
     {
         id: 'multisend', group: 'community', title: 'Send to a list of wallets',
         description: 'Contest winners, a snapshot, your early supporters: paste or upload a list.',
-        techTag: 'Multi-send · no fee', href: () => '/multisend', synonyms: [],
+        techTag: 'Multi-send · no fee', href: () => '/multisend', synonyms: ['airdrop', 'bulk send', 'multi send', 'multisend', 'send to many', 'list of wallets', 'addresses', 'csv', 'spreadsheet', 'snapshot', 'winners', 'contest', 'bounty', 'distribute'],
     },
     {
         id: 'campaign', group: 'community', title: 'Run a campaign with an end date',
         description: 'e.g. stake HONEY/BZE LP for 30 days, earn HONEY.',
-        techTag: 'Staking program', feeKey: 'createStakingRewardFee', href: () => '/reward/new', synonyms: [],
+        techTag: 'Staking program', feeKey: 'createStakingRewardFee', href: () => '/reward/new', synonyms: ['campaign', 'farm', 'farming', 'lp rewards', 'promotion', 'season', 'end date', 'lock', 'incentive'],
     },
     {
         id: 'dailyPrize', group: 'community', title: 'Give a little every day',
         description: 'Keeps people staking longer than a one-off gift.',
         techTag: 'Holder rewards · daily prize', feeKey: 'addDenomRewardScheduleFee', needsToken: 'any', includeLP: true,
-        href: (denom = '') => scheduleFormHref(denom), synonyms: [],
+        href: (denom = '') => scheduleFormHref(denom), synonyms: ['daily', 'every day', 'drip', 'ongoing', 'schedule', 'prize', 'top up'],
     },
     {
         id: 'registry', group: 'official', title: 'Get my logo in every wallet',
         description: 'List the token in the Cosmos Chain Registry. We walk you through it.',
         techTag: 'Chain registry · free', needsToken: 'any',
-        href: (denom = '') => officialHref(denom), synonyms: [],
+        href: (denom = '') => officialHref(denom), synonyms: ['logo', 'icon', 'image', 'picture', 'registry', 'keplr', 'leap', 'wallet', 'verified', 'official', 'chain registry', 'github'],
     },
     {
         id: 'brandKit', group: 'official', title: 'Give it a look',
         description: 'Colours and a font for its Communities page.',
         techTag: 'Brand kit', needsToken: 'mine',
-        href: (denom = '') => workspaceHref(denom, 'profile'), synonyms: [],
+        href: (denom = '') => workspaceHref(denom, 'profile'), synonyms: ['brand', 'colours', 'colors', 'font', 'theme', 'look', 'style', 'design'],
     },
     {
         id: 'lock', group: 'official', title: 'Prove the supply is fixed',
         description: 'Lock it forever. Do it last.',
         techTag: 'Renounce admin', needsToken: 'mine',
-        href: (denom = '') => `${workspaceHref(denom, 'control')}&lock=1`, synonyms: [],
+        href: (denom = '') => `${workspaceHref(denom, 'control')}&lock=1`, synonyms: ['lock', 'renounce', 'fixed supply', 'admin', 'freeze', 'trust', 'rug', 'safe', 'ownership'],
+    },
+]
+
+/** What the search finds besides the goals: tools people ask for by name. */
+export const SEARCH_TOOLS: Goal[] = [
+    {
+        id: 'burn', group: 'tool', title: 'Burn tokens',
+        description: 'Destroy some of the supply, in the Burner app.',
+        techTag: 'Burner', external: true, href: () => getBurnerApp().href,
+        synonyms: ['burn', 'destroy', 'reduce supply'],
+    },
+    {
+        id: 'mintMore', group: 'tool', title: 'Mint more',
+        description: 'Add to the supply of a token you control.',
+        techTag: 'Token factory · mint', needsToken: 'mine',
+        href: (denom) => (denom ? workspaceHref(denom, 'supply') : '/manage'),
+        synonyms: ['mint more', 'increase supply', 'inflation'],
+    },
+    {
+        id: 'handOver', group: 'tool', title: 'Hand over control',
+        description: 'Give the token to a team wallet or a DAO.',
+        techTag: 'Change admin', needsToken: 'mine',
+        href: (denom = '') => workspaceHref(denom, 'control'),
+        synonyms: ['transfer admin', 'change admin', 'dao', 'team wallet'],
     },
 ]
 
@@ -156,13 +186,3 @@ export const ALL_TOOLS: ToolLink[] = [
     { label: 'Burn', external: 'burner' },
     { label: 'My creations', href: '/manage' },
 ]
-
-/**
- * The home search box until the synonym search lands: title, description and tech tag,
- * case-insensitive. The tech tag is in so the technical names find their goal ("pool").
- */
-export function filterGoals(goals: Goal[], query: string): Goal[] {
-    const q = query.trim().toLowerCase()
-    if (!q) return goals
-    return goals.filter(g => [g.title, g.description, g.techTag].some(text => text.toLowerCase().includes(q)))
-}

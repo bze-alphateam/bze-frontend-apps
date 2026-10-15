@@ -13,7 +13,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://factory.getbze.com
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Factory | BeeZee Blockchain",
-  description: "The BeeZee creation workshop. Create tokens, DEX markets, liquidity pools, and staking rewards on the BeeZee blockchain — all in guided flows.",
+  description: "The BeeZee creation workshop. Create tokens, DEX markets, liquidity pools, and rewards on the BeeZee blockchain — all in guided flows.",
   icons: {
     icon: "/images/logo_320px.png",
   },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     siteName: "BeeZee Factory",
     url: "/",
     title: "Factory | BeeZee Blockchain",
-    description: "Create tokens, DEX markets, liquidity pools, and staking rewards on the BeeZee blockchain.",
+    description: "Create tokens, DEX markets, liquidity pools, and rewards on the BeeZee blockchain.",
     images: [
       {
         url: "/images/og-image.png",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Factory | BeeZee Blockchain",
-    description: "Create tokens, DEX markets, liquidity pools, and staking rewards on the BeeZee blockchain.",
+    description: "Create tokens, DEX markets, liquidity pools, and rewards on the BeeZee blockchain.",
     images: ["/images/og-image.png"],
   },
 };

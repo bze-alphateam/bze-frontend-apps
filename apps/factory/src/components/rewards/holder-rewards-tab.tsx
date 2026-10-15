@@ -82,6 +82,9 @@ function useDenomRewardCounts(denoms: ReadonlyArray<string>): CountsMap {
 const countCell = (counts: DenomRewardCounts | null | undefined, render: (c: DenomRewardCounts) => React.ReactNode) =>
     counts === undefined ? <Skeleton height="4" width="6" display="inline-block" /> : counts === null ? '—' : render(counts)
 
+/** How many daily prizes are running, as the directory showed them before the redesign. */
+const payingText = (c: DenomRewardCounts) => (c.schedules > 0 ? `${c.schedules} daily prize${c.schedules === 1 ? '' : 's'}` : 'No')
+
 const stop = (e: React.MouseEvent) => e.stopPropagation()
 
 function RowActions({ dr, size = 'xs' }: { dr: DenomReward; size?: 'xs' | 'sm' }) {
@@ -150,7 +153,7 @@ function HolderTable({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string
                             <Table.Cell><TokenName denom={r.dr.staking_denom} ticker={r.ticker} name={r.name} logo={r.logo} /></Table.Cell>
                             <Table.Cell textAlign="end">{`${prettyAmount(r.stakedDisplay)} ${r.ticker}`}</Table.Cell>
                             <Table.Cell textAlign="end">{countCell(r.counts, c => c.prizes)}</Table.Cell>
-                            <Table.Cell textAlign="end">{countCell(r.counts, c => (c.schedules > 0 ? 'Yes' : 'No'))}</Table.Cell>
+                            <Table.Cell textAlign="end">{countCell(r.counts, payingText)}</Table.Cell>
                             <Table.Cell textAlign="end">{formatDays(r.dr.lock)}</Table.Cell>
                             <Table.Cell><RowActions dr={r.dr} /></Table.Cell>
                         </Table.Row>
@@ -183,7 +186,7 @@ function HolderCards({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string
                         <HStack gap={5} wrap="wrap">
                             <Stat label="Staked" value={`${prettyAmount(r.stakedDisplay)} ${r.ticker}`} />
                             <Stat label="Prize tokens" value={countCell(r.counts, c => c.prizes)} />
-                            <Stat label="Paying" value={countCell(r.counts, c => (c.schedules > 0 ? 'Yes' : 'No'))} />
+                            <Stat label="Paying" value={countCell(r.counts, payingText)} />
                             <Stat label="Unstaking wait" value={formatDays(r.dr.lock)} />
                         </HStack>
                         <RowActions dr={r.dr} size="sm" />

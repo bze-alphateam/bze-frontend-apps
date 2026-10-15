@@ -70,7 +70,7 @@ function TokenWorkspaceContent() {
                     </VStack>
                     <Button colorPalette="yellow" variant="outline" onClick={() => navigate('/manage')}>
                         <LuArrowLeft />
-                        Back to My Tokens
+                        Back to Your tokens
                     </Button>
                 </VStack>
             </Card.Root>

@@ -193,7 +193,7 @@ export interface AirdropGuardInput {
  */
 export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: AirdropGuardInput): string {
     if (!new BigNumber(stakedAmount || 0).gt(0)) {
-        return 'Nobody is staking this token yet, so there is no one to pay. The chain refuses an airdrop into a denom reward without stakers — nothing would leave your wallet.'
+        return 'Nobody is staking this token yet, so there is no one to pay. The chain refuses an airdrop to stakers when nobody stakes — nothing would leave your wallet.'
     }
     return prizeBlocker({ prizeDenom, slot, feesKnown })
 }
@@ -205,7 +205,7 @@ export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: Ai
 export function prizeBlocker({ prizeDenom, slot, feesKnown }: Omit<AirdropGuardInput, 'stakedAmount'>): string {
     if (!prizeDenom) return ''
     if (slot.capReached) {
-        return 'This denom reward already uses the maximum number of prize tokens. Pick a prize token it already pays.'
+        return 'These holder rewards already pay the maximum number of prize tokens. Pick a prize token they already pay.'
     }
     if (slot.isNewPrize && !feesKnown) {
         return "The new prize token fee couldn't be read from the chain. Try again later."

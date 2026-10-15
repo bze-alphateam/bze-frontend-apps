@@ -163,10 +163,10 @@ describe("token workspace", () => {
     });
 
     it.each([
-        ["bze1owner", "You are admin", "Mintable"],
+        ["bze1owner", "You control this token", "Mintable"],
         ["bze1newadmin000000000000000000000", "Control was handed to", "Mintable"],
         ["", "Locked forever", "Fixed supply"],
-        [undefined, "Couldn't load the admin", "Admin unknown"],
+        [undefined, "Couldn't check who controls it", "Control unknown"],
     ])("shows the status line for admin %s", (admin, status, badge) => {
         m.tokens.mockReturnValue([token(admin)]);
         renderPage();
@@ -258,7 +258,7 @@ describe("token workspace", () => {
             ["bze1owner", ["metadata admin", "brand kit admin"]],
             ["", ["metadata renounced", "brand kit renounced"]],
             ["bze1other", ["metadata not-admin", "brand kit not-admin"]],
-            [undefined, ["metadata unknown", "brand kit not-admin", "Couldn't load the admin"]],
+            [undefined, ["metadata unknown", "brand kit not-admin", "Couldn't check who controls this token"]],
         ])("profile for admin %s", (admin, shown) => {
             m.query.tab = "profile";
             m.tokens.mockReturnValue([token(admin)]);

@@ -137,7 +137,7 @@ function ScheduleFormContent() {
     }
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s denom reward.</Notice>
+        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s holder rewards.</Notice>
     }
 
     if (isLoading) {
@@ -151,7 +151,7 @@ function ScheduleFormContent() {
 
     if (hasError) {
         return (
-            <Notice title="Couldn't load the denom reward" onBack={back}>
+            <Notice title="Couldn't load the holder rewards" onBack={back}>
                 The chain query failed — the node may be down, or not run chain v8.2.0 yet. Try again later.
             </Notice>
         )
@@ -159,9 +159,8 @@ function ScheduleFormContent() {
 
     if (!denomReward) {
         return (
-            <Notice title="No denom reward yet" onBack={back}>
-                {stakingAsset?.ticker ?? 'This token'} has no denom reward. Create it from the token&apos;s
-                denom reward page first, then add a schedule.
+            <Notice title="No holder rewards yet" onBack={back}>
+                {`${stakingAsset?.ticker ?? 'This token'} has no holder rewards. Make it stakable first, then start a daily prize.`}
             </Notice>
         )
     }

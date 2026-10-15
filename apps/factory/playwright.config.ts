@@ -19,7 +19,14 @@ export default defineConfig({
         screenshot: "only-on-failure",
     },
     projects: [
-        {name: "chromium", use: {...devices["Desktop Chrome"]}},
+        {name: "chromium", use: {...devices["Desktop Chrome"]}, testIgnore: /mobile\.spec\.ts/},
+        // Phone pass (BFE-170): every route at 390 × 844. CI installs Chromium only, so the
+        // iPhone profile (viewport, touch, mobile UA) runs in Chromium rather than WebKit.
+        {
+            name: "mobile",
+            use: {...devices["iPhone 13"], defaultBrowserType: "chromium", viewport: {width: 390, height: 844}},
+            testMatch: /mobile\.spec\.ts/,
+        },
     ],
     webServer: {
         command: `next start -p ${PORT}`,

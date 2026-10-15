@@ -43,7 +43,7 @@ function TrustBadge({ admin }: { admin: string | undefined }) {
     if (admin === undefined) {
         return (
             <Badge colorPalette="gray" variant="surface" size="sm">
-                <LuCircleHelp size={12} /> Admin unknown
+                <LuCircleHelp size={12} /> Control unknown
             </Badge>
         )
     }
@@ -138,9 +138,9 @@ function BadgesNote() {
             </Collapsible.Trigger>
             <Collapsible.Content>
                 <Box mt={2} p={3} borderRadius="lg" bg="blue.500/10" borderWidth="1px" borderColor="blue.500/25" fontSize="sm" color="fg.muted">
-                    <b>Mintable</b>{': the token still has an admin (you) who can mint more, burn, and update metadata. '}
-                    <b>Fixed supply</b>{': the admin was renounced, so nobody can ever change the supply or metadata again. '}
-                    <b>Admin unknown</b>{": the chain couldn't be asked right now. Open a token to mint, burn, edit its profile, hand over control, or lock it for good."}
+                    <b>Mintable</b>{': you still control the token, so you can mint more, burn, and update metadata. '}
+                    <b>Fixed supply</b>{': the supply was locked, so nobody can ever change the supply or metadata again. '}
+                    <b>Control unknown</b>{": the chain couldn't be asked right now. Open a token to mint, burn, edit its profile, hand over control, or lock it for good."}
                 </Box>
             </Collapsible.Content>
         </Collapsible.Root>

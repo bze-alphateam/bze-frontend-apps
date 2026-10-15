@@ -297,7 +297,7 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
         <VStack align="stretch" gap={3} data-testid="brand-kit-remove-panel">
             <InfoBox title="Remove the brand kit?">
                 Apps that support brand kits go back to their default look for {asset.ticker}. You
-                can set a new kit at any time while you are the admin.
+                can set a new kit at any time while you control the token.
             </InfoBox>
             <HStack gap={2}>
                 <Button variant="ghost" colorPalette="purple" onClick={onCancel} flex="1">

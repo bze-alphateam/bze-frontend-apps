@@ -9,7 +9,7 @@ test("without a wallet the workspace shows the not-found state", async ({page}) 
     await page.goto(`/manage/token?denom=${DENOM}&tab=supply`);
 
     await expect(page.getByText("Token not found")).toBeVisible();
-    await expect(page.getByRole("button", {name: "Back to My Tokens"})).toBeVisible();
+    await expect(page.getByRole("button", {name: "Back to Your tokens"})).toBeVisible();
     await expect(page.getByRole("tablist")).toHaveCount(0);
 });
 

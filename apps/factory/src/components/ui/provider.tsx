@@ -26,7 +26,7 @@ const walletConnect = new WCWallet(
         projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
         metadata: {
             name: "BeeZee Factory",
-            description: "Create tokens, markets, liquidity pools and staking rewards on the BeeZee blockchain",
+            description: "Create tokens, markets, liquidity pools and rewards on the BeeZee blockchain",
             url: "https://factory.getbze.com",
             icons: [
                 "https://factory.getbze.com/images/logo_320px.png",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ALL_TOOLS, GOALS, GOAL_CHIPS, GOAL_GROUPS, filterGoals, goalById } from "./goals";
+import { ALL_TOOLS, GOALS, GOAL_CHIPS, GOAL_GROUPS, SEARCH_TOOLS, goalById } from "./goals";
 
 const DENOM = "factory/bze1owner/uhoney";
 const ENC = encodeURIComponent(DENOM);
@@ -10,7 +10,6 @@ describe("goal catalogue", () => {
         expect(GOALS.every(g => groups.includes(g.group))).toBe(true);
         expect(GOALS.filter(g => g.group === "community").map(g => g.id))
             .toEqual(["stakable", "giftStakers", "reach", "multisend", "campaign", "dailyPrize"]);
-        expect(GOALS.every(g => g.synonyms.length === 0)).toBe(true);
     });
 
     it.each([
@@ -39,11 +38,20 @@ describe("goal catalogue", () => {
     });
 });
 
-describe("filterGoals", () => {
-    it("matches title, description and tech tag, ignoring case", () => {
-        expect(filterGoals(GOALS, "POOL").map(g => g.id)).toEqual(["pool", "addLiquidity"]);
-        expect(filterGoals(GOALS, "airdrop").map(g => g.id)).toEqual(["giftStakers", "reach"]);
-        expect(filterGoals(GOALS, "  ")).toBe(GOALS);
-        expect(filterGoals(GOALS, "zzz")).toEqual([]);
+describe("search entries", () => {
+    it("every goal and tool has lower-case synonyms", () => {
+        for (const g of [...GOALS, ...SEARCH_TOOLS]) {
+            expect(g.synonyms.length).toBeGreaterThan(0);
+            expect(g.synonyms.every(s => s === s.toLowerCase())).toBe(true);
+        }
+    });
+
+    it("tools are search-only and point at the workspace", () => {
+        const tool = (id: string) => SEARCH_TOOLS.find(t => t.id === id);
+        expect(SEARCH_TOOLS.every(t => t.group === "tool")).toBe(true);
+        expect(tool("burn")?.external).toBe(true);
+        expect(tool("mintMore")?.href?.()).toBe("/manage");
+        expect(tool("mintMore")?.href?.(DENOM)).toBe(`/manage/token?denom=${ENC}&tab=supply`);
+        expect(tool("handOver")?.href?.(DENOM)).toBe(`/manage/token?denom=${ENC}&tab=control`);
     });
 });

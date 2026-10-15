@@ -222,7 +222,7 @@ describe("Hand over control", () => {
     it.each([
         ["", "Recipient address is required."],
         ["bze1nope", undefined],
-        [OWNER, "That is your own address — it is already the admin."],
+        [OWNER, "That is your own address — it already controls the token."],
     ])("rejects %j", async (value, message) => {
         renderTab(props());
         const input = card().getByPlaceholderText("bze1…");

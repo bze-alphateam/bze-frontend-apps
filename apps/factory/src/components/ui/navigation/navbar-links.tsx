@@ -21,9 +21,9 @@ const navSubitems: { [key: string]: string } = {
     '/reward/new': '/',
     '/multisend': '/',
     '/reach': '/',
+    '/playbooks': '/',
     '/manage/token': '/manage',
     '/rewards': '/manage',
-    '/denom-reward': '/manage',
     '/denom-reward/schedule': '/manage',
     '/denom-reward/airdrop': '/manage',
     '/denom-reward/token': '/manage',
@@ -52,6 +52,7 @@ export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
                             as={NextLink}
                             href={item.href}
                             fontWeight="medium"
+                            aria-current={isActive ? 'page' : undefined}
                             color={isActive ? 'colorPalette.fg' : 'fg.muted'}
                             textDecoration="none"
                             transition="color 0.2s"

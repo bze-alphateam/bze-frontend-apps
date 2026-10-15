@@ -57,7 +57,7 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
         if (!trimmed) return 'Recipient address is required.'
         const result = validateBZEBech32Address(trimmed)
         if (!result.isValid) return result.message
-        if (trimmed === address) return 'That is your own address — it is already the admin.'
+        if (trimmed === address) return 'That is your own address — it already controls the token.'
         return ''
     }, [recipient, address])
 
@@ -80,7 +80,7 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
                 <CardTitle icon={<LuKeyRound size={18} />} color="orange.500">Hand over control</CardTitle>
 
                 <Field.Root invalid={touched && error !== ''}>
-                    <Field.Label>New admin address</Field.Label>
+                    <Field.Label>Hand control to (address)</Field.Label>
                     <Input
                         placeholder="bze1…"
                         fontFamily="mono"
@@ -97,7 +97,7 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
                 </Text>
 
                 <InfoBox title="You lose all control">
-                    {`From the moment this is signed, only the new admin can mint, edit what wallets show, set the brand kit or hand control on. Triple-check the address: sending it to the wrong one can't be fixed by anyone but that address's owner.`}
+                    {`From the moment this is signed, only the new address can mint, edit what wallets show, set the brand kit or hand control on. Triple-check the address: sending it to the wrong one can't be fixed by anyone but that address's owner.`}
                 </InfoBox>
 
                 <Box>
