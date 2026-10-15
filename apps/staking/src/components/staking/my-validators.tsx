@@ -26,6 +26,7 @@ interface MyValidatorsProps {
     allValidators: ValidatorSDKType[];
     onActionComplete: () => void;
     logos: Record<string, string>;
+    unbondingDays?: string;
 }
 
 type ModalType = 'delegate' | 'undelegate' | 'redelegate' | 'claim' | null;
@@ -34,7 +35,7 @@ function isValidatorActive(validator: ValidatorSDKType): boolean {
     return bondStatusFromJSON(validator.status) === BondStatus.BOND_STATUS_BONDED;
 }
 
-export function MyValidators({myValidators, allValidators, onActionComplete, logos}: MyValidatorsProps) {
+export function MyValidators({myValidators, allValidators, onActionComplete, logos, unbondingDays}: MyValidatorsProps) {
     const {nativeAsset} = useAssets();
     const {price: bzePrice} = useAssetPrice(nativeAsset?.denom ?? '');
     const decimals = nativeAsset?.decimals ?? 6;
@@ -248,6 +249,7 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                 validator={selectedValidator?.validator ?? null}
                 delegatedAmount={new BigNumber(selectedValidator?.delegation?.balance?.amount ?? '0')}
                 onSuccess={handleActionComplete}
+                unbondingDays={unbondingDays}
             />
             <RedelegateModal
                 key={`redelegate-${modalNonce}`}

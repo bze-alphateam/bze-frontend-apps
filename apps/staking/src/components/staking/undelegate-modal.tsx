@@ -27,9 +27,11 @@ interface UndelegateModalProps {
     validator: ValidatorSDKType | null;
     delegatedAmount: BigNumber;
     onSuccess: () => void;
+    // Unbonding period in days, read from the chain's staking params.
+    unbondingDays?: string;
 }
 
-export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, onSuccess}: UndelegateModalProps) {
+export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, onSuccess, unbondingDays}: UndelegateModalProps) {
     const {nativeAsset} = useAssets();
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
@@ -105,7 +107,13 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                                     <HStack gap="2">
                                         <Box color="orange.500"><LuTriangleAlert size={16} /></Box>
                                         <Text fontSize="xs" color="fg.muted">
-                                            Undelegated tokens will be locked for the unbonding period before becoming available.
+                                            {unbondingDays ? (
+                                                <>
+                                                    Undelegated tokens are locked for <Text as="span" fontWeight="bold">{unbondingDays} days</Text> (the unbonding period) and earn no rewards during that time.
+                                                </>
+                                            ) : (
+                                                'Undelegated tokens will be locked for the unbonding period before becoming available.'
+                                            )}
                                         </Text>
                                     </HStack>
                                 </Box>

@@ -73,6 +73,7 @@ export function StakingOverview({stakingData, isLoading}: OverviewProps) {
             subValue: userStaked
                 ? (userStakedUsd && userStakedUsd.gt(0) ? `~${formatUsdAmount(userStakedUsd)}` : '')
                 : 'Time to unstake tokens',
+            note: userStaked ? `Unbonding period: ${stakingData.unlockDuration} days` : undefined,
             color: 'green',
         },
         {
@@ -169,6 +170,11 @@ export function StakingOverview({stakingData, isLoading}: OverviewProps) {
                                 {card.subValue && (
                                     <Text fontSize="xs" color="fg.muted">
                                         {card.subValue}
+                                    </Text>
+                                )}
+                                {'note' in card && card.note && (
+                                    <Text fontSize="xs" color="fg.muted">
+                                        {card.note}
                                     </Text>
                                 )}
                             </VStack>

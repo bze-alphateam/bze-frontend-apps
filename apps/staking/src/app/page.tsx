@@ -79,6 +79,7 @@ export default function StakingPage() {
                     allValidators={fullData.allValidators}
                     onActionComplete={handleRefresh}
                     logos={logos}
+                    unbondingDays={fullData.stakingData?.unlockDuration}
                 />
             )}
 
