@@ -261,7 +261,7 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, prizes: [] }));
         renderPage();
 
-        expect(screen.getByText("No denom reward yet")).toBeInTheDocument();
+        expect(screen.getByText("No holder rewards yet")).toBeInTheDocument();
     });
 
     it("on success says what was sent, links the tx and the Communities page, and ends on the holder rewards", async () => {

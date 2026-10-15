@@ -360,14 +360,14 @@ describe("schedule form — guards", () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, schedules: [], prizes: [] }));
         renderPage();
 
-        expect(screen.getByText("No denom reward yet")).toBeInTheDocument();
+        expect(screen.getByText("No holder rewards yet")).toBeInTheDocument();
     });
 
     it("explains a failed chain query", () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, hasError: true }));
         renderPage();
 
-        expect(screen.getByText("Couldn't load the denom reward")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load the holder rewards")).toBeInTheDocument();
     });
 
     it("asks for a token without ?denom=", async () => {

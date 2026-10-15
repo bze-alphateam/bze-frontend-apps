@@ -9,11 +9,11 @@ import type { AdminState } from '@/lib/workspace'
 function statusLine(state: AdminState, admin?: string): string {
     switch (state) {
         case 'admin':
-            return 'You are admin'
+            return 'You control this token'
         case 'renounced':
             return 'Locked forever'
         case 'unknown':
-            return "Couldn't load the admin"
+            return "Couldn't check who controls it"
         default:
             return `Control was handed to ${truncateAddress(admin ?? '')}`
     }
@@ -63,7 +63,7 @@ export function WorkspaceHeader({ asset, admin, adminState, onBack }: {
                         <Text color="fg.muted">{asset.ticker}</Text>
                         {adminState === 'unknown' ? (
                             <Badge colorPalette="gray" variant="surface" size="sm">
-                                <LuCircleHelp size={12} /> Admin unknown
+                                <LuCircleHelp size={12} /> Control unknown
                             </Badge>
                         ) : adminState === 'renounced' ? (
                             <Badge colorPalette="green" variant="surface" size="sm">

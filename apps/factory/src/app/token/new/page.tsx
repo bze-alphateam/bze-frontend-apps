@@ -1,8 +1,9 @@
 "use client"
 
 import React, { Suspense, useCallback, useEffect, useState } from 'react'
-import { Box, Button, Circle, Container, Field, HStack, Input, Skeleton, Text, Textarea, VStack } from '@chakra-ui/react'
-import { type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees } from '@bze/bze-ui-kit'
+import { Box, Button, Circle, Container, Field, HStack, IconButton, Input, Skeleton, Text, Textarea, VStack } from '@chakra-ui/react'
+import { LuCopy } from 'react-icons/lu'
+import { type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees, useToast } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { GuidedForm, PayPanel, Question, TipNote, useGuidedSteps, useReturnTo } from '@/components/guided'
 import { LaunchNextSteps } from '@/components/launch/launch-next-steps'
@@ -46,6 +47,14 @@ function TokenPreview({ form, ticker, supplyText, tokenId }: {
     supplyText: string;
     tokenId: string;
 }) {
+    const { toast } = useToast()
+    // The address and the subdenom are both in: the ID is the one the chain will create.
+    const tokenIdKnown = !tokenId.includes('<')
+    const copyTokenId = async () => {
+        await navigator.clipboard.writeText(tokenId)
+        toast.success('Copied', 'Token ID copied to clipboard.')
+    }
+
     return (
         <Box as="section" aria-label="Preview" p={4} borderRadius="xl" borderWidth="1px" borderColor="border" bg="bg.panel">
             <VStack align="stretch" gap={3}>
@@ -72,7 +81,18 @@ function TokenPreview({ form, ticker, supplyText, tokenId }: {
                         {supplyText} {ticker}
                     </Text>
                 </HStack>
-                <Text fontSize="xs" color="fg.muted" fontFamily="mono" wordBreak="break-all">{tokenId}</Text>
+                <HStack justify="space-between" gap={3}>
+                    <Text fontSize="sm" color="fg.muted">Decimals</Text>
+                    <Text fontSize="sm" fontWeight="semibold" data-testid="preview-decimals">{TOKEN_DECIMALS}</Text>
+                </HStack>
+                <HStack gap={1} align="start">
+                    <Text flex="1" minW={0} fontSize="xs" color="fg.muted" fontFamily="mono" wordBreak="break-all">{tokenId}</Text>
+                    {tokenIdKnown && (
+                        <IconButton aria-label="Copy token ID" size="2xs" variant="ghost" onClick={() => void copyTokenId()}>
+                            <LuCopy />
+                        </IconButton>
+                    )}
+                </HStack>
             </VStack>
         </Box>
     )

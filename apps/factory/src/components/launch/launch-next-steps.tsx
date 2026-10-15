@@ -122,6 +122,7 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
     const mainHref = !returnTo
         ? overview
         : returnTo.href.startsWith(`${PLAYBOOKS_PATH}?`) ? createdReturnHref(returnTo.href, denom) : returnTo.href
+    const marketHref = withReturn(`/market/new?base=${encodeURIComponent(denom)}`, back)
     const isReading = !asset || setup.isLoading
     const doneOf = (key: string) => {
         if (isReading) return undefined
@@ -136,7 +137,7 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
         {
             key: 'look',
             title: 'Give it a look',
-            why: `Pick colours and a font. ${ticker}'s page on Communities uses them. Only the admin can set them.`,
+            why: `Pick colours and a font. ${ticker}'s page on Communities uses them. Only whoever controls the token can set them.`,
             hint: 'About 2 min',
             action: { label: 'Set brand kit', href: workspaceHref(denom, 'profile') },
             done: doneOf('brandKit'),
@@ -256,9 +257,17 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
                         <Button size="lg" colorPalette="yellow" onClick={() => navigate(mainHref)}>
                             {returnTo ? `Back to ${returnTo.label}` : `Go to ${ticker}'s page`}
                         </Button>
-                        <Button variant="ghost" colorPalette="yellow" onClick={reset}>
-                            Create another token
+                        <Button variant="outline" colorPalette="yellow" onClick={() => navigate(marketHref)}>
+                            Allow limit orders too
                         </Button>
+                        <HStack gap={2} justify="center" flexWrap="wrap">
+                            <Button variant="ghost" colorPalette="yellow" onClick={reset}>
+                                Create another token
+                            </Button>
+                            <Button variant="ghost" colorPalette="yellow" onClick={() => navigate('/')}>
+                                Back to the Factory
+                            </Button>
+                        </HStack>
                     </VStack>
                 </VStack>
             </Grid>

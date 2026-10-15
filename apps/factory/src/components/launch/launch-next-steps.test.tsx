@@ -120,6 +120,10 @@ describe("LaunchNextSteps", () => {
 
         await userEvent.click(screen.getByRole("button", { name: "Go to HONEY's page" }));
         expect(m.navigate).toHaveBeenLastCalledWith(WORKSPACE);
+        await userEvent.click(screen.getByRole("button", { name: "Allow limit orders too" }));
+        expect(m.navigate).toHaveBeenLastCalledWith(`/market/new?base=${ENC}&${RETURN}`);
+        await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
+        expect(m.navigate).toHaveBeenLastCalledWith("/");
         expect(screen.getByRole("link", { name: /View on the DEX/ })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${ENC}`);
         expect(screen.getByRole("link", { name: /View transaction/ })).toHaveAttribute("href", "https://explorer.test/tx/HASH1");
     });

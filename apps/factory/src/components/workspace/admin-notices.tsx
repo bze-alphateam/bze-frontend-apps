@@ -10,10 +10,10 @@ import { InfoBox } from '@/components/ui/info-box'
 export function AdminUnknownNotice({ onRetry }: { onRetry: () => void }) {
     return (
         <VStack align="stretch" gap={3}>
-            <InfoBox title="Couldn't load the admin">
-                The chain query for this token&apos;s admin failed, so the admin status
-                is unknown. Mint, burn and the other admin actions stay hidden until it
-                loads — this says nothing about whether the supply is fixed.
+            <InfoBox title="Couldn't check who controls this token">
+                The chain query for who controls this token failed. Mint, burn and the
+                other actions that need control stay hidden until it loads — this says
+                nothing about whether the supply is fixed.
             </InfoBox>
             <Box>
                 <Button size="sm" variant="outline" colorPalette="yellow" onClick={onRetry}>

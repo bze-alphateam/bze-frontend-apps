@@ -129,7 +129,7 @@ describe("Your tokens (/manage)", () => {
         m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", undefined)], isLoading: false });
         renderPage();
 
-        expect(screen.getByText("Admin unknown")).toBeInTheDocument();
+        expect(screen.getByText("Control unknown")).toBeInTheDocument();
         expect(screen.queryByText("Fixed supply")).not.toBeInTheDocument();
         expect(screen.queryByText("Mintable")).not.toBeInTheDocument();
     });
