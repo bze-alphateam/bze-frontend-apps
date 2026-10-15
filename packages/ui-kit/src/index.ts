@@ -180,7 +180,7 @@ export { getAddressBalances, getLockedBalances } from './query/bank';
 export { getBurnerParams, getBurnerParamsWithClient, getAllBurnedCoins, getNextBurning } from './query/burner';
 export { getBlockDetailsByHeight, getBlockTimeByHeight, getBlockResults } from './query/block';
 export { getHardcodedLockAddress, getBurnerModuleAddress, getRaffleModuleAddress, getModuleAddress } from './query/module';
-export { getRaffles, getRaffleWinners, checkAddressWonRaffle } from './query/raffle';
+export { getRaffles, getRafflesOrThrow, getRaffleWinners, checkAddressWonRaffle } from './query/raffle';
 export { getAllSupply, getAllSupplyMetadata } from './query/supply';
 export {
     getEpochsInfo, getCurrentEpoch, getHourEpochInfo, getWeekEpochInfo,
