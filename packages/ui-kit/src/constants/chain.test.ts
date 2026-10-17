@@ -4,6 +4,8 @@ import {
     getExplorerAccountURL,
     getExplorerBaseURL,
     getExplorerBlockURL,
+    getExplorerProposalURL,
+    getExplorerProposalsURL,
     getExplorerTxURL,
     getExplorerValidatorURL,
 } from './chain'
@@ -23,6 +25,8 @@ describe('explorer links (BZE Scan)', () => {
         expect(getExplorerAccountURL('bze1xyz')).toBe('https://explorer.getbze.com/accounts/bze1xyz')
         expect(getExplorerValidatorURL('bzevaloper1xyz')).toBe('https://explorer.getbze.com/validators/bzevaloper1xyz')
         expect(getExplorerBlockURL(123)).toBe('https://explorer.getbze.com/blocks/123')
+        expect(getExplorerProposalsURL()).toBe('https://explorer.getbze.com/proposals')
+        expect(getExplorerProposalURL(48)).toBe('https://explorer.getbze.com/proposals/48')
     })
 
     it('uses the configured base URL', () => {
@@ -31,6 +35,7 @@ describe('explorer links (BZE Scan)', () => {
         expect(getExplorerAccountURL('bze1xyz')).toBe('https://testnet-explorer.getbze.com/accounts/bze1xyz')
         expect(getExplorerValidatorURL('bzevaloper1xyz')).toBe('https://testnet-explorer.getbze.com/validators/bzevaloper1xyz')
         expect(getExplorerBlockURL('456')).toBe('https://testnet-explorer.getbze.com/blocks/456')
+        expect(getExplorerProposalURL('3')).toBe('https://testnet-explorer.getbze.com/proposals/3')
     })
 
     it('trims trailing slashes on the configured base URL', () => {
