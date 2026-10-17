@@ -10,9 +10,18 @@ interface NavbarLinksProps extends StackProps {
 // Define your navigation items with their routes
 const navItems = [
     { name: 'Dashboard', href: '/' },
+    { name: 'Governance', href: '/governance' },
 ]
 
 const navSubitems: { [key: string]: string } = {}
+
+// An item is active on its own path and, except for the root, on every path below it
+// (Governance stays active on /governance/<id>).
+const isItemActive = (href: string, pathname: string | null) => {
+    if (!pathname) return false
+    if (pathname === href || href === navSubitems[pathname]) return true
+    return href !== '/' && pathname.startsWith(`${href}/`)
+}
 
 export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
     const {navigate, currentPathName} = useNavigation()
@@ -27,7 +36,7 @@ export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
         <>
             <Stack direction={{ base: 'column', md: 'row' }} gap={{ base: '6', md: '8' }} {...props}>
                 {navItems.map((item) => {
-                    const isActive = currentPathName === item.href || item.href === navSubitems[currentPathName]
+                    const isActive = isItemActive(item.href, currentPathName)
 
                     return (
                         <Link
@@ -35,6 +44,7 @@ export const NavbarLinks = ({ onLinkClick, ...props }: NavbarLinksProps) => {
                             key={item.name}
                             as={NextLink}
                             href={item.href}
+                            aria-current={isActive ? 'page' : undefined}
                             fontWeight="medium"
                             color={isActive ? 'colorPalette.fg' : 'fg.muted'}
                             textDecoration="none"

@@ -32,6 +32,10 @@ export type {
     NativeStakingData, UserNativeStakingData, UserNativeStakingRewards,
     NativeUnbondingSummary, AddressRewardsStaking, ExtendedPendingUnlockParticipantSDKType
 } from './types/staking';
+export type {
+    GovProposalStatus, GovVoteOption, GovCoin, GovProposalMessage, GovTally, GovProposal,
+    GovWeightedVoteOption, GovVote, GovParams, GovProposalsPage
+} from './types/gov';
 export type { AddressValidationResult } from './types/validation';
 export type { BurnHistoryItem, NextBurn } from './types/burn';
 export type { BlockResults } from './types/block';
@@ -135,7 +139,7 @@ export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
     getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL,
-    getExplorerValidatorURL, getExplorerBlockURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
+    getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
     getForeignFeeSlippage
 } from './constants/chain';
 export {
@@ -212,6 +216,9 @@ export {
     getAnnualProvisions, getDistributionParams, getStakingParams, getStakingPool,
     getValidators, getDelegatorValidators, getDelegatorDelegations, getValidatorDelegatorRewards
 } from './query/staking';
+export {
+    getGovParams, getOpenProposals, getFinishedProposals, getProposal, getProposalTally, getProposalVote
+} from './query/gov';
 export {
     getAllTickers, getMarketOrdersHistory, getAddressHistory,
     getTradingViewIntervals, getAddressSwapHistory
