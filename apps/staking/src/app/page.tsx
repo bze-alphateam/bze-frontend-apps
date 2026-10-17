@@ -32,7 +32,9 @@ export default function StakingPage() {
     // Bumped on each open so the modal remounts with fresh local state.
     const [modalNonce, setModalNonce] = useState(0);
     const [isConnectOpen, setIsConnectOpen] = useState(false);
-    const [connectFor, setConnectFor] = useState<ValidatorSDKType | null>(null);
+    // The delegate form set aside while its "Connect Wallet" button has the wallet sidebar open:
+    // it comes back once the wallet connects or the sidebar closes.
+    const [resumeDelegate, setResumeDelegate] = useState(false);
     const [highlighted, setHighlighted] = useState<string | null>(null);
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -43,7 +45,6 @@ export default function StakingPage() {
     }, [reload]);
 
     const openDelegate = useCallback((validator: ValidatorSDKType) => {
-        setIsConnectOpen(false);
         setDelegateValidator(validator);
         setIsDelegateOpen(true);
         setModalNonce(n => n + 1);
@@ -54,17 +55,27 @@ export default function StakingPage() {
         handleRefresh();
     }, [handleRefresh]);
 
-    const openConnectPrompt = useCallback((validator: ValidatorSDKType) => {
-        setConnectFor(validator);
+    const connectFromForm = useCallback(() => {
+        setIsDelegateOpen(false);
+        setResumeDelegate(true);
         setIsConnectOpen(true);
     }, []);
 
     const handleConnectOpenChange = useCallback((open: boolean) => {
         setIsConnectOpen(open);
-        if (!open) {
-            setConnectFor(null);
+        if (!open && resumeDelegate) {
+            setResumeDelegate(false);
+            setIsDelegateOpen(true);
         }
-    }, []);
+    }, [resumeDelegate]);
+
+    // Connecting unmounts the sidebar without a close event, so the form comes back here (state
+    // adjusted during render, React's pattern for reacting to a changed value).
+    if (isConnected && resumeDelegate) {
+        setResumeDelegate(false);
+        setIsConnectOpen(false);
+        setIsDelegateOpen(true);
+    }
 
     const highlight = useCallback((operatorAddress: string) => {
         setHighlighted(operatorAddress);
@@ -95,11 +106,8 @@ export default function StakingPage() {
             <Suspense fallback={null}>
                 <StakeLinkHandler
                     validators={fullData?.allValidators}
-                    isConnected={isConnected}
                     isConnecting={status === WalletState.Connecting}
-                    isConnectPromptOpen={isConnectOpen}
                     openDelegate={openDelegate}
-                    openConnectPrompt={openConnectPrompt}
                     highlight={highlight}
                     notify={notify}
                 />
@@ -126,11 +134,6 @@ export default function StakingPage() {
                                     </Button>
                                 }
                             >
-                                {connectFor && (
-                                    <Text fontSize="sm" color="fg.muted" mb="4">
-                                        Connect a wallet to stake with {connectFor.description?.moniker || 'this validator'}
-                                    </Text>
-                                )}
                                 <WalletSidebarContent accentColor="purple" skipWalletModal />
                             </Sidebar>
                         )}
@@ -184,6 +187,7 @@ export default function StakingPage() {
                 onClose={() => setIsDelegateOpen(false)}
                 validator={delegateValidator}
                 onSuccess={handleDelegateComplete}
+                onConnectWallet={connectFromForm}
             />
         </Box>
     );
