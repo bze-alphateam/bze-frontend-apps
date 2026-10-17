@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useRef} from 'react';
 import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
 import {
@@ -50,6 +50,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const amountInputRef = useRef<HTMLInputElement>(null);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);
@@ -121,12 +123,22 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
         setAmount(maxSpendable.inputValue);
     };
 
+    // On open the dialog focuses its first tabbable element, which is the copy-link icon in the
+    // title. When the form opens from a stake link (no click before it), the browser treats
+    // that focus as keyboard focus and draws the focus ring around the icon. Focus the amount
+    // field instead, or the dialog itself while the field is disabled (no wallet).
+    const initialFocusEl = () => (isConnected ? amountInputRef.current : null) ?? contentRef.current;
+
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
+        <Dialog.Root
+            open={isOpen}
+            onOpenChange={(e) => !isSubmitting && !e.open && onClose()}
+            initialFocusEl={initialFocusEl}
+        >
             <Portal>
                 <Dialog.Backdrop />
                 <Dialog.Positioner>
-                    <Dialog.Content maxW="md" p="6">
+                    <Dialog.Content ref={contentRef} maxW="md" p="6">
                         <Dialog.Header pb="4">
                             <HStack gap="1">
                                 <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
@@ -162,6 +174,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                                         </Text>
                                     </HStack>
                                     <Input
+                                        ref={amountInputRef}
                                         placeholder="0.00"
                                         value={amount}
                                         onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
