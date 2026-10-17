@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
@@ -97,5 +97,36 @@ describe("DelegateModal", () => {
         expect(onConnectWallet).toHaveBeenCalledTimes(1);
         expect(onClose).not.toHaveBeenCalled();
         expect(connect).not.toHaveBeenCalled();
+    });
+});
+
+// The dialog used to focus its first tabbable element, the copy-link icon in the title, and a
+// form opened from a stake link (no click before it) then showed the focus ring around it.
+describe("DelegateModal initial focus", () => {
+    // jsdom has no layout, so the dialog's focus logic would see every element as hidden and
+    // never pick the icon. Give elements a box, as a browser does.
+    let rects: { mockRestore: () => void };
+    beforeEach(() => {
+        rects = vi
+            .spyOn(HTMLElement.prototype, "getClientRects")
+            .mockReturnValue([new DOMRect(0, 0, 10, 10)] as unknown as DOMRectList);
+    });
+    afterEach(() => rects.mockRestore());
+
+    it("focuses the amount field, not the copy-link icon", async () => {
+        renderModal(validator({}));
+
+        const amount = await screen.findByPlaceholderText("0.00");
+        await waitFor(() => expect(amount).toHaveFocus());
+        expect(screen.getByRole("button", { name: /Copy stake link/ })).not.toHaveFocus();
+    });
+
+    it("without a wallet, focuses the dialog itself, not the copy-link icon", async () => {
+        chainMock.current = { address: undefined, status: WalletState.Disconnected, connect: vi.fn() };
+        renderModal(validator({}));
+
+        const dialog = await screen.findByRole("dialog");
+        await waitFor(() => expect(dialog).toHaveFocus());
+        expect(screen.getByRole("button", { name: /Copy stake link/ })).not.toHaveFocus();
     });
 });
