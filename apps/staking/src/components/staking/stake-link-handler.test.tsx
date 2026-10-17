@@ -22,11 +22,8 @@ function renderHandler(openDelegate = vi.fn()) {
     render(
         <StakeLinkHandler
             validators={VALIDATORS}
-            isConnected
             isConnecting={false}
-            isConnectPromptOpen={false}
             openDelegate={openDelegate}
-            openConnectPrompt={vi.fn()}
             highlight={vi.fn()}
             notify={vi.fn()}
         />,

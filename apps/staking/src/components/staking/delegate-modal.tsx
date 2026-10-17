@@ -124,15 +124,13 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                 <Dialog.Positioner>
                     <Dialog.Content maxW="md" p="6">
                         <Dialog.Header pb="4">
-                            <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
+                            <HStack gap="1">
+                                <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
+                                {validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
+                            </HStack>
                         </Dialog.Header>
                         <Dialog.Body>
                             <VStack gap="4" align="stretch">
-                                {validator && (
-                                    <HStack justify="end" mt="-3">
-                                        <CopyStakeLinkButton operatorAddress={validator.operator_address} variant="text" />
-                                    </HStack>
-                                )}
                                 <Box bg="purple.500/5" p="3" borderRadius="md" borderWidth="1px" borderColor="purple.500/15">
                                     <HStack justify="space-between" fontSize="sm">
                                         <Text color="fg.muted">Commission</Text>

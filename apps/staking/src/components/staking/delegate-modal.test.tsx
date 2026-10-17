@@ -71,9 +71,10 @@ describe("DelegateModal", () => {
         expect(screen.queryByText(WARNING)).not.toBeInTheDocument();
     });
 
-    it("offers the copy stake link action", async () => {
+    it("offers the copy stake link as an icon only", async () => {
         renderModal(validator({}));
 
         expect(await screen.findByRole("button", { name: /Copy stake link/ })).toBeInTheDocument();
+        expect(screen.queryByText(/Copy stake link/)).not.toBeInTheDocument();
     });
 });

@@ -1,17 +1,17 @@
 'use client';
 
-import {Button, IconButton} from '@chakra-ui/react';
+import {IconButton} from '@chakra-ui/react';
 import {LuLink} from 'react-icons/lu';
 import {useToast} from '@bze/bze-ui-kit';
 import {buildStakeLink} from '@/lib/stake-link';
 
 interface CopyStakeLinkButtonProps {
     operatorAddress: string;
-    // "icon" for validator rows, "text" inside the delegate form.
-    variant?: 'icon' | 'text';
 }
 
-export function CopyStakeLinkButton({operatorAddress, variant = 'icon'}: CopyStakeLinkButtonProps) {
+// A small, muted icon: copying a stake link is a side feature, so it stays out of the way in
+// the validator rows and next to the delegate form's title.
+export function CopyStakeLinkButton({operatorAddress}: CopyStakeLinkButtonProps) {
     const {toast} = useToast();
 
     const copy = async () => {
@@ -23,18 +23,12 @@ export function CopyStakeLinkButton({operatorAddress, variant = 'icon'}: CopySta
         }
     };
 
-    if (variant === 'text') {
-        return (
-            <Button size="xs" variant="ghost" onClick={copy}>
-                <LuLink /> Copy stake link
-            </Button>
-        );
-    }
-
     return (
         <IconButton
-            size="xs"
+            size="2xs"
             variant="ghost"
+            color="fg.subtle"
+            _hover={{color: 'fg.muted'}}
             aria-label="Copy stake link"
             title="Copy stake link"
             onClick={copy}

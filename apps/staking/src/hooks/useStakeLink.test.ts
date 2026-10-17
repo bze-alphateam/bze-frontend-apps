@@ -14,11 +14,8 @@ function setup(overrides: Partial<UseStakeLinkOptions> = {}) {
     const options: UseStakeLinkOptions = {
         stakeParam: ALICE,
         validators: VALIDATORS,
-        isConnected: true,
         isConnecting: false,
-        isConnectPromptOpen: false,
         openDelegate: vi.fn(),
-        openConnectPrompt: vi.fn(),
         highlight: vi.fn(),
         clearParam: vi.fn(),
         notify: vi.fn(),
@@ -29,37 +26,12 @@ function setup(overrides: Partial<UseStakeLinkOptions> = {}) {
 }
 
 describe("useStakeLink", () => {
-    it("opens the delegate form for the linked validator when a wallet is connected", () => {
+    it("highlights the linked validator and opens the delegate form", () => {
         const { options } = setup();
 
         expect(options.highlight).toHaveBeenCalledWith(ALICE);
         expect(options.openDelegate).toHaveBeenCalledWith(VALIDATORS[0]);
-        expect(options.openConnectPrompt).not.toHaveBeenCalled();
         expect(options.clearParam).toHaveBeenCalledTimes(1);
-    });
-
-    it("asks to connect first, then opens the form once the wallet connects", () => {
-        const { options, rerender } = setup({ isConnected: false });
-
-        expect(options.openConnectPrompt).toHaveBeenCalledWith(VALIDATORS[0]);
-        expect(options.openDelegate).not.toHaveBeenCalled();
-
-        rerender({ isConnectPromptOpen: true });
-        rerender({ isConnectPromptOpen: true, isConnected: true });
-
-        expect(options.openDelegate).toHaveBeenCalledTimes(1);
-        expect(options.openDelegate).toHaveBeenCalledWith(VALIDATORS[0]);
-    });
-
-    it("drops the pending stake when the connect prompt is closed without connecting", () => {
-        const { options, rerender } = setup({ isConnected: false });
-
-        rerender({ isConnectPromptOpen: true });
-        rerender({ isConnectPromptOpen: false });
-        rerender({ isConnectPromptOpen: false, isConnected: true });
-
-        expect(options.openDelegate).not.toHaveBeenCalled();
-        expect(options.highlight).toHaveBeenCalledWith(ALICE);
     });
 
     it("waits for the validators to load", () => {
@@ -74,14 +46,15 @@ describe("useStakeLink", () => {
     });
 
     it("waits while the wallet is still auto-connecting", () => {
-        const { options, rerender } = setup({ isConnected: false, isConnecting: true });
+        const { options, rerender } = setup({ isConnecting: true });
 
-        expect(options.openConnectPrompt).not.toHaveBeenCalled();
+        expect(options.openDelegate).not.toHaveBeenCalled();
+        expect(options.clearParam).not.toHaveBeenCalled();
 
-        rerender({ isConnecting: false, isConnected: true });
+        rerender({ isConnecting: false });
 
+        expect(options.openDelegate).toHaveBeenCalledTimes(1);
         expect(options.openDelegate).toHaveBeenCalledWith(VALIDATORS[0]);
-        expect(options.openConnectPrompt).not.toHaveBeenCalled();
     });
 
     it("tells the user when the validator is not on this network", () => {
