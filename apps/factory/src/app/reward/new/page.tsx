@@ -27,7 +27,7 @@ import {
 import { bze } from '@bze/bzejs'
 import {
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getStakingApp,
     prettyAmount,
@@ -242,7 +242,7 @@ function RewardNewContent() {
 
     if (created) {
         const stakingUrl = getStakingApp().href
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+        const txUrl = getExplorerTxURL(created.txHash)
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>

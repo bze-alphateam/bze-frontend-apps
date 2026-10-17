@@ -4,7 +4,7 @@ import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
 import {createCosmosQueryClient} from "@interchainjs/cosmos";
-import {getChainExplorerURL, getChainName, getForeignFeeSlippage, getGasMultiplier, getGasPrice, getNonNativeGasMultiplier} from "../constants/chain";
+import {getChainName, getExplorerTxURL, getForeignFeeSlippage, getGasMultiplier, getGasPrice, getNonNativeGasMultiplier} from "../constants/chain";
 import {getTxFeeCollectorParams} from "../query/txfeecollector_params";
 import {useToast} from "./useToast";
 import {prettyError} from "../utils/user_errors";
@@ -287,7 +287,13 @@ const useTx = (chainName: string) => {
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(`${getChainExplorerURL(chainName ?? defaultChainName)}/tx/${txHash}`)}, 'View in Explorer');
+                    // BZE Scan only knows BZE transactions: a tx signed on another
+                    // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
+                    if (chainName === defaultChainName) {
+                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View in Explorer');
+                    } else {
+                        toast.success(TxStatus.Successful);
+                    }
 
                     if (options?.onSuccess) {
                         options.onSuccess(resp as TxSuccessResponse)

@@ -23,7 +23,7 @@ import {
 import { bze } from '@bze/bzejs'
 import {
     createMarketId,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getDexApp,
     useAsset,
@@ -111,7 +111,7 @@ function MarketNewContent() {
     if (created) {
         const dexUrl = getDexApp().href
         const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(createMarketId(baseDenom, quoteDenom))}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${created.txHash}`
+        const txUrl = getExplorerTxURL(created.txHash)
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>

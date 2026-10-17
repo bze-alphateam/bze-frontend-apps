@@ -134,7 +134,8 @@ export {
 export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
-    getChainAddressPrefix, getChainExplorerURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
+    getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL,
+    getExplorerValidatorURL, getExplorerBlockURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
     getForeignFeeSlippage
 } from './constants/chain';
 export {
