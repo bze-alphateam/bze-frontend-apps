@@ -91,7 +91,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useCreationFees: () => ({ fees: { createMarketFee: feeState.fee }, isLoading: feeState.isLoading }),
         getLiquidityPool: getLiquidityPoolMock,
         getDexApp: () => ({ href: "https://dex.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });

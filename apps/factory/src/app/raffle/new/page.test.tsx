@@ -68,7 +68,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useEpochs: () => ({ hourEpochInfo: { current_epoch: 100n, current_epoch_start_time: "2026-10-15T10:00:00Z" } }),
         getRafflesOrThrow: () => m.raffles(),
         getBurnerApp: () => ({ href: "https://burner.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
     };
 });

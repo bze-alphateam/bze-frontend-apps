@@ -8,7 +8,7 @@ import { bze } from '@bze/bzejs'
 import {
     LP_ASSETS_DECIMALS,
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getDexApp,
     prettyAmount,
@@ -268,7 +268,7 @@ function PoolAddContent() {
                 text="Your deposit joined the pool reserves and LP tokens for your share were sent to your wallet."
                 links={[
                     { label: 'View pool on DEX', href: poolUrl },
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${added.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(added.txHash) },
                 ]}
                 next={[{
                     label: 'Reward liquidity providers',

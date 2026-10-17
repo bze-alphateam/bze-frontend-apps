@@ -138,8 +138,7 @@ The library reads these `NEXT_PUBLIC_*` env vars at build time (inlined by Next.
 | `NEXT_PUBLIC_CHAIN_ADDRESS_PREFIX` | `bze` | Bech32 address prefix |
 | `NEXT_PUBLIC_CHAIN_NATIVE_ASSET_DENOM` | `ubze` | Native staking/fee denom |
 | `NEXT_PUBLIC_USDC_IBC_DENOM` | _(empty)_ | Denom of the USD price anchor on BZE (pinned to $1). Apps price BZE from the BZE/anchor **market**, so that market must exist (with trades) before the anchor is switched |
-| `NEXT_PUBLIC_EXPLORER_URL` | `https://explorer.chaintools.tech` | Block explorer base URL |
-| `NEXT_PUBLIC_EXPLORER_CHAIN` | `beezee` | Path segment the explorer serves the chain under (its own slug, not the chain name) |
+| `NEXT_PUBLIC_EXPLORER_URL` | `https://explorer.getbze.com` | BZE Scan base URL (no chain slug); links are built with `getExplorerTxURL` / `getExplorerAccountURL` / `getExplorerValidatorURL` / `getExplorerBlockURL` |
 | `NEXT_PUBLIC_WALLET_CHAINS_NAMES` | _(auto)_ | Comma-separated chain names for wallet connection |
 | `NEXT_PUBLIC_LOCKER_ADDRESS` | `bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4` | Locker module address |
 | `NEXT_PUBLIC_APP_NAME` | `BZE` | Display name and default transaction memo |

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Box, Button, HStack, Link, Progress, Text, VStack } from '@chakra-ui/react'
 import { LuArrowUpRight, LuDownload } from 'react-icons/lu'
-import { getChainExplorerURL } from '@bze/bze-ui-kit'
+import { getExplorerTxURL } from '@bze/bze-ui-kit'
 import { WarningNote } from '@/components/guided'
 import { MultiSendRun, RunBatch, batchLabel, nextBatch, sentCount } from '@/lib/multisend-run'
 
@@ -34,7 +34,7 @@ function BatchStatus({ batch, checkError, onCheckAgain }: { batch: RunBatch; che
                 <Text>Sent ✓</Text>
                 {batch.txHash && (
                     <Link
-                        href={`${getChainExplorerURL()}/tx/${batch.txHash}`}
+                        href={getExplorerTxURL(batch.txHash)}
                         target="_blank"
                         rel="noopener noreferrer"
                         colorPalette="yellow"

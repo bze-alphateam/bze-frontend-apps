@@ -6,7 +6,7 @@ import { LuArrowUpRight, LuDroplets } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     createMarketId,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getDexApp,
     useAsset,
@@ -128,7 +128,7 @@ function MarketNewContent() {
                 text={`Anyone can now place ${baseTicker} orders priced in ${quoteTicker} on the DEX order book.`}
                 links={[
                     { label: 'View market on DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)) },
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${created.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(created.txHash) },
                 ]}
                 // A market starts empty — the natural next step is liquidity.
                 next={[{ label: 'Create a liquidity pool', href: withReturn(poolHref, returnTo), icon: <LuDroplets /> }]}

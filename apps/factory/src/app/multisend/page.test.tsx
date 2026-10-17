@@ -81,7 +81,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             isLoading: false,
             gasFee: { denom: "ubze", amount: new BN(5000) },
         }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });
@@ -268,7 +268,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
             "100 wallets · 100 TOKWaiting",
             "50 wallets · 50 TOKWaiting",
         ]);
-        expect(within(progress()).getByRole("link", { name: /tx/ })).toHaveAttribute("href", "https://explorer.test/tx/HASH1");
+        expect(within(progress()).getByRole("link", { name: /tx/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
         expect(loadMultiSendRun()?.batches.map(b => b.status)).toEqual(["sent", "pending", "pending"]);
         const report = within(progress()).getByRole("link", { name: /Download report \(CSV\)/ });
         const csv = decodeURIComponent(report.getAttribute("href")!.split(",").slice(1).join(","));

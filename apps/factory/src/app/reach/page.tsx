@@ -5,7 +5,7 @@ import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } 
 import { LuRefreshCw, LuSprout, LuTriangleAlert } from 'react-icons/lu'
 import {
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getCommunitiesApp,
     prettyAmount,
@@ -188,7 +188,7 @@ function ReachContent() {
             <SuccessPanel
                 title={`Your gift is on its way to ${doneTx.ticker} stakers`}
                 links={[
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${doneTx.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
                     {
                         label: `See it on ${doneTx.ticker}'s Communities page ↗`,
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(doneTx.denom)}`,
