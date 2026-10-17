@@ -21,7 +21,7 @@ import { LuDownload, LuUpload } from 'react-icons/lu'
 import { cosmos } from '@bze/bzejs'
 import {
     TxKindSpec,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getSettings,
     prettyAmount,
@@ -354,7 +354,7 @@ function MultiSendContent() {
             <SuccessPanel
                 title={`Sent to ${sent.count} wallets`}
                 text={`${sent.totalLabel} is now in their wallets.`}
-                links={[{ label: 'View transaction', href: `${getChainExplorerURL()}/tx/${sent.txHash}` }]}
+                links={[{ label: 'View transaction', href: getExplorerTxURL(sent.txHash) }]}
                 again={{ label: 'Send another list', onClick: sendAnother }}
             />
         )

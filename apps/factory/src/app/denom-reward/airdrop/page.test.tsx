@@ -84,7 +84,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             denomRewardLimits: { maxPrizeDenomsPerDr: 2 },
             isLoading: false,
         }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         getCommunitiesApp: () => ({ href: "https://communities.test" }),
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
@@ -272,7 +272,7 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
 
         expect(screen.getByText("12.5 BZE sent to TOK stakers")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(open).toHaveBeenCalledWith("https://explorer.test/tx/HASH1", "_blank", "noopener,noreferrer");
+        expect(open).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
         await userEvent.click(screen.getByRole("button", { name: /See it on TOK's Communities page/ }));
         expect(open).toHaveBeenLastCalledWith(`https://communities.test/token?denom=${encodeURIComponent(STAKING)}`, "_blank", "noopener,noreferrer");
         open.mockRestore();

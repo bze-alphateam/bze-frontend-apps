@@ -21,7 +21,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAsset: (denom: string) => ({ asset: m.assets[denom], isLoading: false }),
         useCreationFees: () => ({ fees: m.fees, isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: m.toast } }),
     };
 });
@@ -125,7 +125,7 @@ describe("LaunchNextSteps", () => {
         await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
         expect(m.navigate).toHaveBeenLastCalledWith("/");
         expect(screen.getByRole("link", { name: /View on the DEX/ })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${ENC}`);
-        expect(screen.getByRole("link", { name: /View transaction/ })).toHaveAttribute("href", "https://explorer.test/tx/HASH1");
+        expect(screen.getByRole("link", { name: /View transaction/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
     });
 
     it("shows the pool and holder rewards fees from the creation fees", () => {

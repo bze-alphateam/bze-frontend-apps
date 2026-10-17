@@ -5,7 +5,7 @@ import { Box, Button, Card, Circle, Code, Grid, HStack, IconButton, Link, Skelet
 import { LuArrowUpRight, LuCheck, LuCopy } from 'react-icons/lu'
 import {
     FeeCoin,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getDexApp,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -175,7 +175,7 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
     ]
 
     const dexUrl = `${getDexApp().href}/assets/details?denom=${encodeURIComponent(denom)}`
-    const txUrl = `${getChainExplorerURL()}/tx/${txHash}`
+    const txUrl = getExplorerTxURL(txHash)
 
     const copyDenom = async () => {
         await navigator.clipboard.writeText(denom)

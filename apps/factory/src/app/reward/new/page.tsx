@@ -6,7 +6,7 @@ import BigNumber from 'bignumber.js'
 import { bze } from '@bze/bzejs'
 import {
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getStakingApp,
     prettyAmount,
@@ -202,7 +202,7 @@ function RewardNewContent() {
                 code={created.rewardId ? { label: 'Your program id', value: created.rewardId } : undefined}
                 links={[
                     { label: 'View on Staking app', href: getStakingApp().href },
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${created.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(created.txHash) },
                 ]}
                 again={{ label: 'Start another program', onClick: startAnother }}
             />

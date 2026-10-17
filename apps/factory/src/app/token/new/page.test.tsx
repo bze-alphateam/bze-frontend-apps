@@ -40,7 +40,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAsset: () => ({ asset: undefined, isLoading: false }),
         useCreationFees: () => ({ fees: { createDenomFee: feeState.fee }, isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });

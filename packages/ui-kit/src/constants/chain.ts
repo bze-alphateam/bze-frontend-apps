@@ -129,21 +129,26 @@ export const getChainAddressPrefix = () => {
 }
 
 /**
- * The path segment the block explorer serves the BZE chain under. This is the
- * explorer's own slug and is NOT the cosmos-kit chain name: mainnet's chain name
- * happens to be "beezee" too, but the testnet chain name is "BeeZee Testnet 3"
- * while the testnet explorer still serves it under "beezee".
+ * Base URL of BZE Scan, the BZE block explorer (no chain slug, no trailing
+ * slash). Build a page link with the getExplorer*URL helpers below.
  */
-export const getExplorerChainSlug = (): string => {
-    return process.env.NEXT_PUBLIC_EXPLORER_CHAIN || 'beezee'
+export const getExplorerBaseURL = (): string => {
+    const baseUrl = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.getbze.com'
+
+    return baseUrl.replace(/\/+$/, '')
 }
 
-/** Base URL for the chain on the block explorer, e.g. `${url}/tx/${hash}`. */
-export const getChainExplorerURL = (): string => {
-    const baseUrl = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.chaintools.tech'
+/** Explorer page of a BZE transaction. */
+export const getExplorerTxURL = (hash: string): string => `${getExplorerBaseURL()}/txs/${hash}`
 
-    return `${baseUrl.replace(/\/+$/, '')}/${getExplorerChainSlug()}`
-}
+/** Explorer page of a BZE account. */
+export const getExplorerAccountURL = (address: string): string => `${getExplorerBaseURL()}/accounts/${address}`
+
+/** Explorer page of a validator, by its operator address. */
+export const getExplorerValidatorURL = (valoper: string): string => `${getExplorerBaseURL()}/validators/${valoper}`
+
+/** Explorer page of a block. */
+export const getExplorerBlockURL = (height: number | string | bigint): string => `${getExplorerBaseURL()}/blocks/${height}`
 
 export const getLockerAddress = (): string => {
     return process.env.NEXT_PUBLIC_LOCKER_ADDRESS || 'bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4'

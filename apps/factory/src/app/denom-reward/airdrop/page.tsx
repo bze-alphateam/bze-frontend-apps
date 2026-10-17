@@ -5,7 +5,7 @@ import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } 
 import { LuTriangleAlert } from 'react-icons/lu'
 import {
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getCommunitiesApp,
     prettyAmount,
@@ -155,7 +155,7 @@ function AirdropFormContent() {
                 title={`${doneTx.giftLabel} sent to ${stakingTicker} stakers`}
                 text={`Everyone staking ${stakingTicker} got a share, split by stake.`}
                 links={[
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${doneTx.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
                     {
                         label: `See it on ${stakingPossessive} Communities page ↗`,
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,

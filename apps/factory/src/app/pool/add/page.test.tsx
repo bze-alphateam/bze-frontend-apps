@@ -92,7 +92,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             };
         },
         getDexApp: () => ({ href: "https://dex.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });
@@ -268,7 +268,7 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
         await userEvent.click(screen.getByRole("button", { name: /View pool on DEX/ }));
         expect(openMock).toHaveBeenCalledWith("https://dex.test/pools/details?id=utok_ubze", "_blank", "noopener,noreferrer");
         await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(openMock).toHaveBeenCalledWith("https://explorer.test/tx/HASH1", "_blank", "noopener,noreferrer");
+        expect(openMock).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
         openMock.mockRestore();
         await userEvent.click(screen.getByRole("button", { name: /Reward liquidity providers/ }));
         expect(navigateMock).toHaveBeenCalledWith(

@@ -99,7 +99,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             denomRewardLimits: { maxPrizeDenomsPerDr: 2 },
             isLoading: false,
         }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         getCommunitiesApp: () => ({ href: "https://communities.test" }),
         useToast: () => ({ toast: { success: vi.fn() } }),
     };

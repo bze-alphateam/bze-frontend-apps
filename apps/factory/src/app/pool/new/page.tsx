@@ -8,7 +8,7 @@ import { bze } from '@bze/bzejs'
 import {
     amountToUAmount,
     createPoolId,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getDexApp,
     getLiquidityPool,
@@ -324,7 +324,7 @@ function PoolNewContent() {
                 code={{ label: 'Your LP token', value: created.lpDenom }}
                 links={[
                     { label: 'View pool on DEX', href: poolUrl },
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${created.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(created.txHash) },
                 ]}
                 next={[{ label: 'Reward liquidity providers', href: rewardHref, icon: <LuGift />, disabled: !created.lpDenom }]}
                 again={{ label: 'Create another pool', onClick: createAnother }}

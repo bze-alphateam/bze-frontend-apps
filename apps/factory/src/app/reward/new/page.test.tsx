@@ -64,7 +64,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useBalance: (denom: string) => ({ balance: { denom, amount: new BN(balances.current[denom] ?? "0") }, isLoading: false }),
         useCreationFees: () => ({ fees: { createStakingRewardFee: feeState.fee }, isLoading: false }),
         getStakingApp: () => ({ href: "https://staking.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });
@@ -253,7 +253,7 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         await userEvent.click(screen.getByRole("button", { name: /View on Staking app/ }));
         expect(open).toHaveBeenCalledWith("https://staking.test", "_blank", "noopener,noreferrer");
         await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(open).toHaveBeenLastCalledWith("https://explorer.test/tx/HASH1", "_blank", "noopener,noreferrer");
+        expect(open).toHaveBeenLastCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
 
         await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
         expect(navigateMock).toHaveBeenCalledWith("/");

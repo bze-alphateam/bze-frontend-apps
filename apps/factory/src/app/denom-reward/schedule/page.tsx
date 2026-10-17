@@ -5,7 +5,7 @@ import { Box, Button, Container, HStack, Skeleton, Text, VStack } from '@chakra-
 import {
     TokenLogo,
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getCommunitiesApp,
     prettyAmount,
@@ -183,7 +183,7 @@ function ScheduleFormContent() {
                     ? `${doneTx.escrowLabel} was locked for ${doneTx.days} more days of prizes for everyone staking ${stakingTicker}.`
                     : `${doneTx.escrowLabel} was locked. Everyone staking ${stakingTicker} now shares ${dailyText} a day.`}
                 links={[
-                    { label: 'View transaction', href: `${getChainExplorerURL()}/tx/${doneTx.txHash}` },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
                     {
                         label: `See it on ${stakingPossessive} Communities page ↗`,
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,

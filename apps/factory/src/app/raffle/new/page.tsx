@@ -7,7 +7,7 @@ import { LuArrowUpRight, LuRefreshCw } from 'react-icons/lu'
 import {
     formatTimeRemainingFromEpochs,
     getBurnerApp,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     isLpDenom,
     useAsset,
@@ -223,7 +223,7 @@ function RaffleFormContent() {
             <SuccessPanel
                 title={`The ${done.ticker} raffle is live`}
                 text={done.endsAt ? `It ends around ${done.endsAt}. Whatever is left in the pot then is burned.` : undefined}
-                links={[{ label: 'View transaction', href: `${getChainExplorerURL()}/tx/${done.txHash}` }]}
+                links={[{ label: 'View transaction', href: getExplorerTxURL(done.txHash) }]}
                 next={returnTo ? [{ label: `Back to ${returnTo.label}`, href: completedReturnHref(returnTo.href) }] : []}
                 again={{ label: 'Start another', onClick: startAnother }}
                 primary={{ label: 'See it in the Burner ↗', href: burnerHref(done.denom), external: true }}

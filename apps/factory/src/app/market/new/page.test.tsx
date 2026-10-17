@@ -61,7 +61,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         }),
         useCreationFees: () => ({ fees: { createMarketFee: feeState.fee }, isLoading: feeState.isLoading }),
         getDexApp: () => ({ href: "https://dex.test" }),
-        getChainExplorerURL: () => "https://explorer.test",
+        getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
     };
 });
@@ -195,7 +195,7 @@ describe("Allow limit orders (/market/new)", () => {
         await userEvent.click(screen.getByRole("button", { name: /View market on DEX/ }));
         expect(open).toHaveBeenCalledWith(`https://dex.test/exchange/market?id=${encodeURIComponent("utok/ubze")}`, "_blank", "noopener,noreferrer");
         await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(open).toHaveBeenCalledWith("https://explorer.test/tx/HASH1", "_blank", "noopener,noreferrer");
+        expect(open).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
         open.mockRestore();
 
         await userEvent.click(screen.getByRole("button", { name: "Create a liquidity pool" }));
