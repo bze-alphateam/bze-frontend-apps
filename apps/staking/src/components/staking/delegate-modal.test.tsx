@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
@@ -23,8 +24,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
     };
 });
+const { chainMock } = vi.hoisted(() => ({ chainMock: { current: {} as Record<string, unknown> } }));
 vi.mock("@interchain-kit/react", () => ({
-    useChain: () => ({ address: "bze1me", status: WalletState.Connected, connect: vi.fn() }),
+    useChain: () => chainMock.current,
 }));
 
 import { DelegateModal } from "./delegate-modal";
@@ -40,8 +42,12 @@ function validator(overrides: Record<string, unknown>): ValidatorSDKType {
     } as unknown as ValidatorSDKType;
 }
 
-function renderModal(v: ValidatorSDKType) {
-    return render(<DelegateModal isOpen onClose={vi.fn()} validator={v} onSuccess={vi.fn()} />, {
+beforeEach(() => {
+    chainMock.current = { address: "bze1me", status: WalletState.Connected, connect: vi.fn() };
+});
+
+function renderModal(v: ValidatorSDKType, props: Partial<Parameters<typeof DelegateModal>[0]> = {}) {
+    return render(<DelegateModal isOpen onClose={vi.fn()} validator={v} onSuccess={vi.fn()} {...props} />, {
         wrapper: ({ children }: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
         ),
@@ -76,5 +82,20 @@ describe("DelegateModal", () => {
 
         expect(await screen.findByRole("button", { name: /Copy stake link/ })).toBeInTheDocument();
         expect(screen.queryByText(/Copy stake link/)).not.toBeInTheDocument();
+    });
+
+    it("without a wallet, hands Connect Wallet to the page instead of closing", async () => {
+        const connect = vi.fn();
+        chainMock.current = { address: undefined, status: WalletState.Disconnected, connect };
+        const onClose = vi.fn();
+        const onConnectWallet = vi.fn();
+        const user = userEvent.setup();
+        renderModal(validator({}), { onClose, onConnectWallet });
+
+        await user.click(await screen.findByRole("button", { name: /Connect Wallet/ }));
+
+        expect(onConnectWallet).toHaveBeenCalledTimes(1);
+        expect(onClose).not.toHaveBeenCalled();
+        expect(connect).not.toHaveBeenCalled();
     });
 });

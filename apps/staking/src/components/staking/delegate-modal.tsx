@@ -35,9 +35,13 @@ interface DelegateModalProps {
     onClose: () => void;
     validator: ValidatorSDKType | null;
     onSuccess: () => void;
+    // Opens the page's wallet sidebar for a user without a wallet. The page sets the form aside
+    // while the sidebar is up and brings it back afterwards. Without it, the button closes the
+    // form and opens the wallet modal.
+    onConnectWallet?: () => void;
 }
 
-export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateModalProps) {
+export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectWallet}: DelegateModalProps) {
     const {nativeAsset} = useAssets();
     const {balance} = useBalance(getChainNativeAssetDenom());
     const {address, status, connect} = useChain(getChainName());
@@ -206,7 +210,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                     <Button
                                         colorPalette="purple"
                                         w="full"
-                                        onClick={() => { onClose(); connect(); }}
+                                        onClick={onConnectWallet ?? (() => { onClose(); connect(); })}
                                     >
                                         <LuWallet /> Connect Wallet
                                     </Button>

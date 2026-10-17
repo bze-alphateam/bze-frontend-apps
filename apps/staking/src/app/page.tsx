@@ -31,6 +31,10 @@ export default function StakingPage() {
     const [isDelegateOpen, setIsDelegateOpen] = useState(false);
     // Bumped on each open so the modal remounts with fresh local state.
     const [modalNonce, setModalNonce] = useState(0);
+    const [isConnectOpen, setIsConnectOpen] = useState(false);
+    // The delegate form set aside while its "Connect Wallet" button has the wallet sidebar open:
+    // it comes back once the wallet connects or the sidebar closes.
+    const [resumeDelegate, setResumeDelegate] = useState(false);
     const [highlighted, setHighlighted] = useState<string | null>(null);
     const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -50,6 +54,28 @@ export default function StakingPage() {
         setIsDelegateOpen(false);
         handleRefresh();
     }, [handleRefresh]);
+
+    const connectFromForm = useCallback(() => {
+        setIsDelegateOpen(false);
+        setResumeDelegate(true);
+        setIsConnectOpen(true);
+    }, []);
+
+    const handleConnectOpenChange = useCallback((open: boolean) => {
+        setIsConnectOpen(open);
+        if (!open && resumeDelegate) {
+            setResumeDelegate(false);
+            setIsDelegateOpen(true);
+        }
+    }, [resumeDelegate]);
+
+    // Connecting unmounts the sidebar without a close event, so the form comes back here (state
+    // adjusted during render, React's pattern for reacting to a changed value).
+    if (isConnected && resumeDelegate) {
+        setResumeDelegate(false);
+        setIsConnectOpen(false);
+        setIsDelegateOpen(true);
+    }
 
     const highlight = useCallback((operatorAddress: string) => {
         setHighlighted(operatorAddress);
@@ -100,6 +126,8 @@ export default function StakingPage() {
                         {!isConnected && (
                             <Sidebar
                                 ariaLabel="Connect Wallet"
+                                isOpen={isConnectOpen}
+                                onOpenChange={handleConnectOpenChange}
                                 trigger={
                                     <Button size="sm" colorPalette="purple">
                                         <LuWallet /> Connect Wallet to Stake
@@ -159,6 +187,7 @@ export default function StakingPage() {
                 onClose={() => setIsDelegateOpen(false)}
                 validator={delegateValidator}
                 onSuccess={handleDelegateComplete}
+                onConnectWallet={connectFromForm}
             />
         </Box>
     );
