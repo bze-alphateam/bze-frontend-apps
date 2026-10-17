@@ -27,7 +27,7 @@ import { bze } from '@bze/bzejs'
 import {
     LP_ASSETS_DECIMALS,
     amountToUAmount,
-    getChainExplorerURL,
+    getExplorerTxURL,
     getChainName,
     getDexApp,
     prettyAmount,
@@ -235,7 +235,7 @@ function PoolAddContent() {
     if (added && pool) {
         const dexUrl = getDexApp().href
         const poolUrl = `${dexUrl}/pools/details?id=${encodeURIComponent(pool.id)}`
-        const txUrl = `${getChainExplorerURL(getChainName())}/tx/${added.txHash}`
+        const txUrl = getExplorerTxURL(added.txHash)
 
         return (
             <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>

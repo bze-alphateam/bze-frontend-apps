@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react'
 import {LuChevronDown, LuChevronUp, LuCopy, LuExternalLink, LuX} from 'react-icons/lu'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
-import {getChainExplorerURL, getChainName} from "../../constants/chain";
+import {getChainName, getExplorerAccountURL} from "../../constants/chain";
 import {WalletState} from "@interchain-kit/core";
 import {stringTruncateFromCenter} from "../../utils/strings";
 import {useBalances} from "../../hooks/useBalances";
@@ -780,7 +780,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                             justify="center"
                             mt="2"
                             cursor="pointer"
-                            onClick={() => openExternalLink(`${getChainExplorerURL(getChainName())}/account/${address}`)}
+                            onClick={() => openExternalLink(getExplorerAccountURL(address))}
                             _hover={{ opacity: 0.8 }}
                         >
                             <LuExternalLink size="10" />
