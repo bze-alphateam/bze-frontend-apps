@@ -1,32 +1,16 @@
 'use client';
 
 import {Box, Button, Container, HStack, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
-import {LuCircleAlert, LuLandmark, LuWallet} from 'react-icons/lu';
+import {LuCircleAlert, LuLandmark} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
-import {getChainName, Sidebar, WalletSidebarContent} from '@bze/bze-ui-kit';
+import {getChainName} from '@bze/bze-ui-kit';
 import {useGovernance} from '@/hooks/useGovernance';
 import {useNow} from '@/hooks/useNow';
 import {RulesStrip} from '@/components/governance/rules-strip';
 import {OpenProposalCard} from '@/components/governance/open-proposal-card';
 import {FinishedProposals} from '@/components/governance/finished-proposals';
-
-function ConnectWallet() {
-    return (
-        <Sidebar
-            ariaLabel="Connect Wallet"
-            trigger={
-                <Button colorPalette="purple" size={{base: 'lg', md: 'sm'}} w="full">
-                    <LuWallet />
-                    <Box as="span" hideBelow="md">Connect Wallet</Box>
-                    <Box as="span" hideFrom="md">Connect Wallet to vote</Box>
-                </Button>
-            }
-        >
-            <WalletSidebarContent accentColor="purple" skipWalletModal />
-        </Sidebar>
-    );
-}
+import {ConnectWallet} from '@/components/governance/connect-wallet';
 
 /** The voting power card, wallet-free variant: a visitor is asked to connect. */
 function VotingPowerCard({isConnected, isLoading}: {isConnected: boolean; isLoading: boolean}) {
@@ -47,7 +31,7 @@ function VotingPowerCard({isConnected, isLoading}: {isConnected: boolean; isLoad
         >
             <VStack align="stretch" gap="2.5">
                 <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect your wallet to see your voting power and vote.</Text>
-                <ConnectWallet />
+                <ConnectWallet phoneLabel="Connect Wallet to vote" />
             </VStack>
         </Box>
     );

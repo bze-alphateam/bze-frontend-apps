@@ -12,10 +12,10 @@ All shared code comes from `@bze/bze-ui-kit`; this app only contains staking-spe
 
 ```
 src/
-  app/              # Next.js pages (staking dashboard, /governance) + app/api routes
+  app/              # Next.js pages (staking dashboard, /governance, /governance/[id]) + app/api routes
   components/
     staking/        # Staking-specific UI
-    governance/     # Governance list UI (tally bar, proposal cards, finished list, rules)
+    governance/     # Governance UI: list (tally bar, cards, finished list, rules), markdown, proposal/ (page panels)
     ui/             # Small local UI pieces
   contexts/
     assets_context.tsx  # Staking AssetsProvider — extends lib's base AssetsContextType
@@ -25,8 +25,9 @@ src/
     useNavigation.tsx          # Staking route helpers
     useBlockchainListener.tsx  # WebSocket event subscriptions
     useGovernance.ts           # Gov params, open proposals + live tallies (60 s poll while visible), finished pages
+    useProposal.ts             # One proposal + params + bonded tokens; live tally polled only while voting
   lib/
-    governance/     # Pure gov helpers: tally shares + passing checks, kind/title, UTC dates and durations
+    governance/     # Pure gov helpers: tally + checks, kind/title, dates, describe/ (Scan's message describers), details (deposit, final checks, timeline), safeUrl
 ```
 
-Governance reads x/gov v1 through ui-kit's `query/gov.ts`, which returns the chain's REST JSON as is (`types/gov.ts`: string ids, RFC 3339 times, enum names). Deposit-period proposals are never shown. BZE Scan links use ui-kit's `getExplorerProposal*URL` (`NEXT_PUBLIC_EXPLORER_URL`).
+Governance reads x/gov v1 through ui-kit's `query/gov.ts`, which returns the chain's REST JSON as is (`types/gov.ts`: string ids, RFC 3339 times, enum names). Deposit-period proposals are never shown. BZE Scan links use ui-kit's `getExplorerProposal*URL` (`NEXT_PUBLIC_EXPLORER_URL`). A proposal's summary is untrusted: it only goes through `components/governance/markdown.tsx` (no raw HTML, `safeUrl`, images as links). `lib/governance/describe/` and `markdown.tsx` are ports of BZE Scan's `ui/src/render/proposals` and markdown component; keep them in step. Test fixtures are real mainnet proposals (`lib/governance/fixtures/`).
