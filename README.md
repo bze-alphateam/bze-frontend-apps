@@ -258,9 +258,9 @@ Guidelines for writing app tests:
 ### One image per app per network
 
 `NEXT_PUBLIC_*` env vars are inlined at **build time**, so testnet and mainnet are
-**different builds**. CI (`.github/workflows/docker-publish.yml`) builds every app on
-every push, publishes self-contained Node images (Next.js standalone) to GHCR and then
-deploys them:
+**different builds**. On every push CI (`.github/workflows/docker-publish.yml`) builds
+the apps that changed, publishes self-contained Node images (Next.js standalone) to GHCR
+and then deploys them:
 
 | push to | flavor | build env (in the private deploy repo) | image tag | deployed to |
 |---|---|---|---|---|
@@ -268,9 +268,23 @@ deploys them:
 | `develop` | testnet | `testnet-<app>.getbze.com/build.env` | `testnet-<sha8>` | `testnet-<app>.getbze.com` |
 
 Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
-`factory`, `communities`). All five are built on every push — even single-app changes —
-so any commit on a deploy branch has a complete image set that can be released or rolled
-back for every app.
+`factory`, `communities`).
+
+**Only changed apps are built and deployed.** The first job
+(`.github/scripts/changed-apps.sh`) compares the pushed commit with the commit each
+target is actually running (the tag of its last successful deploy, so a failed deploy or
+a skipped run is caught up on the next push) and picks:
+
+- the apps turbo counts as affected since then: a change under `apps/<app>/` hits that
+  app, a change under `packages/ui-kit` hits all of them, and a `pnpm-lock.yaml` change
+  hits only the apps whose resolved dependencies changed;
+- **every** app when anything else that goes into an image changed (`docker/`,
+  `.dockerignore`, the root `package.json`, `pnpm-workspace.yaml`, `.npmrc`, the
+  workflow or the script itself, any new root file), or when the lookup fails.
+  `README.md`, `.gitignore` and the rest of `.github/` never trigger a build.
+
+The run's summary lists the decision for each app. An app that did not change gets no
+image for that commit, so rollback tags come from the target's own release history.
 
 ### Env files
 
@@ -280,7 +294,9 @@ back for every app.
   as a BuildKit secret, mounted as `apps/<app>/.env` for the build step only — it never
   enters the build context, an image layer or a log. Everything in it is public by
   definition (it ends up in the client bundle); **no secrets, ever**. Changing a value
-  = PR in the deploy repo + a new image (push, or re-run `docker-publish`).
+  = PR in the deploy repo + a new image: run `docker-publish` by hand on the deploy
+  branch with `apps` set to the app(s) and `deploy` ticked (a push here would skip an
+  app whose code did not change).
 - `SKIP_API_KEY` is the one runtime-only variable (server-side Skip proxy auth). It is
   **never baked into an image**: production injects it into the container environment.
 - `.env.dist` (committed, per app) is the local-dev template (copy to `.env`) and what
@@ -315,9 +331,10 @@ gate. Merging to `develop` deploys testnet and merging to `main` deploys mainnet
 minutes; a failed release turns both runs red and the previous tag stays live. This repo
 is public, so its logs only say whether a deploy succeeded; the run itself is in the deploy
 repo's Actions, and nothing is commented on PRs. Rollback = re-run the deploy workflow
-with an older tag (or revert on the branch). A manual `workflow_dispatch` of
-`docker-publish` rebuilds and pushes but never deploys. Nothing in this repo touches the
-server.
+with an older tag from the target's release history (or revert on the branch). A manual
+`workflow_dispatch` of `docker-publish` builds the apps in its `apps` input (`all` or a
+list such as `dex,staking`) and deploys them only when `deploy` is ticked, and only from
+`main` or `develop`. Nothing in this repo touches the server.
 
 ---
 
@@ -390,7 +407,8 @@ to that app's `package.json` and reinstall.
    - `.github/workflows/ci.yml` — two `for app in dex burner staking factory communities` loops
      (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
      with no env; miss the second and its files are never linted.
-   - `.github/workflows/docker-publish.yml` — the app/pkg build matrix.
+   - `.github/workflows/docker-publish.yml` — the `APPS` list (`<app dir>:<package name>`) in
+     the `changes` job.
    - the private ops repo — deploy dir with `build.env`, port pair, vhost, gate allowlist entry
      (see *Deploy* above).
 
