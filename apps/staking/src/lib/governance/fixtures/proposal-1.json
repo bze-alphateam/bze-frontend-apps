@@ -1,0 +1,59 @@
+{
+  "id": "1",
+  "messages": [
+    {
+      "@type": "/cosmos.gov.v1.MsgExecLegacyContent",
+      "content": {
+        "@type": "/cosmos.params.v1beta1.ParameterChangeProposal",
+        "title": "Inflation Parameter Change - Let the Rewards begin",
+        "description": "The swap grace period is over, it's time to enable inflation so that onchain rewards begin.  This proposal is a signal to start our rewards and that most users have gone through the swap.\n  The following parameter changes in this proposal are:\n  Inflation Min:  5%\n Inflation Max 15%\n Goal Bonded: 25%\n Inflation Change Rate: 2.\n This values are temporary until we stop supporting the old chain and decide how many coins we will burn from the current 400M supply.\n  Vote Yes to pass these changes. \n No to reject the changes",
+        "changes": [
+          {
+            "subspace": "mint",
+            "key": "InflationMax",
+            "value": "\"0.150000000000000000\""
+          },
+          {
+            "subspace": "mint",
+            "key": "InflationMin",
+            "value": "\"0.050000000000000000\""
+          },
+          {
+            "subspace": "mint",
+            "key": "GoalBonded",
+            "value": "\"0.200000000000000000\""
+          },
+          {
+            "subspace": "mint",
+            "key": "InflationRateChange",
+            "value": "\"0.100000000000000000\""
+          }
+        ]
+      },
+      "authority": "bze10d07y265gmmuvt4z0w9aw880jnsr700j8xlwyy"
+    }
+  ],
+  "status": "PROPOSAL_STATUS_PASSED",
+  "final_tally_result": {
+    "yes_count": "54772697352822",
+    "abstain_count": "0",
+    "no_count": "0",
+    "no_with_veto_count": "0"
+  },
+  "submit_time": "2022-07-03T09:56:36.227743950Z",
+  "deposit_end_time": "2022-07-05T09:56:36.227743950Z",
+  "total_deposit": [
+    {
+      "denom": "ubze",
+      "amount": "100000000000"
+    }
+  ],
+  "voting_start_time": "2022-07-03T09:56:36.227743950Z",
+  "voting_end_time": "2022-07-08T09:56:36.227743950Z",
+  "metadata": "",
+  "title": "Inflation Parameter Change - Let the Rewards begin",
+  "summary": "The swap grace period is over, it's time to enable inflation so that onchain rewards begin.  This proposal is a signal to start our rewards and that most users have gone through the swap.\n  The following parameter changes in this proposal are:\n  Inflation Min:  5%\n Inflation Max 15%\n Goal Bonded: 25%\n Inflation Change Rate: 2.\n This values are temporary until we stop supporting the old chain and decide how many coins we will burn from the current 400M supply.\n  Vote Yes to pass these changes. \n No to reject the changes",
+  "proposer": "",
+  "expedited": false,
+  "failed_reason": ""
+}
