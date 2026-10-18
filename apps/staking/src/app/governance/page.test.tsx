@@ -312,7 +312,7 @@ describe("Governance page", () => {
         useGovernanceMock.mockReturnValue(governance());
         const { unmount } = renderPage();
         expect(screen.getByTestId("governance-rules")).toHaveTextContent(
-            "A vote lasts 5 days. A proposal passes when at least 33.4% of staked BZE votes, more than 50% of Yes / No / Veto votes are Yes, and less than 33.4% of all votes are No with veto."
+            "Voting lasts 5 days. To pass, at least 33.4% of staked BZE must vote, Yes must win more than 50% of the votes that aren't Abstain, and No with veto must stay at or below 33.4% of all votes."
         );
         unmount();
 
@@ -321,7 +321,7 @@ describe("Governance page", () => {
         }));
         renderPage();
         expect(screen.getByTestId("governance-rules")).toHaveTextContent(
-            "A vote lasts 2 hours. A proposal passes when at least 40% of staked BZE votes, more than 60% of Yes / No / Veto votes are Yes, and less than 25% of all votes are No with veto."
+            "Voting lasts 2 hours. To pass, at least 40% of staked BZE must vote, Yes must win more than 60% of the votes that aren't Abstain, and No with veto must stay at or below 25% of all votes."
         );
         // The open card's quorum follows the params too.
         expect(screen.getByRole("article")).toHaveTextContent("quorum 40%");
