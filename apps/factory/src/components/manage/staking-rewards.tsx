@@ -15,9 +15,10 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuGift, LuPlus } from 'react-icons/lu'
+import { LuGift, LuPlus } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     TokenLogo,
     getChainName,
     getStakingApp,
@@ -34,7 +35,6 @@ import { useStakingRewards } from '@/hooks/useStakingRewards'
 
 const { updateStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same chain limit as creation: total duration can never exceed 36,500 days.
 const MAX_DURATION_DAYS = 36500
@@ -216,9 +216,7 @@ function RewardRow({
                             <LuPlus />
                             Extend
                         </Button>
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => openExternal(stakingUrl)}>
-                            View on Staking app <LuArrowUpRight />
-                        </Button>
+                        <AppLink app="staking" href={stakingUrl}>Staking</AppLink>
                     </HStack>
                 </HStack>
 

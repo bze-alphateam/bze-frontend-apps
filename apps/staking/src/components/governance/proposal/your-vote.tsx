@@ -3,7 +3,7 @@
 import NextLink from 'next/link';
 import {Box, Button, HStack, Link, SimpleGrid, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
 import {LuCheck, LuInfo} from 'react-icons/lu';
-import {getExplorerProposalURL, type GovProposal} from '@bze/bze-ui-kit';
+import {AppLink, getExplorerProposalURL, type GovProposal} from '@bze/bze-ui-kit';
 import type {ProposalVoter} from '@/hooks/useVoter';
 import {isOpen, wholeBze} from '@/lib/governance/details';
 import {formatDateTimeUtc, formatDateUtc} from '@/lib/governance/format';
@@ -128,11 +128,11 @@ export function YourVote({proposal, isConnected, voter, voterLoading, onVote}: Y
                         <Text fontSize="sm" fontWeight="semibold">{`Voting ended on ${formatDateUtc(proposal.voting_end_time)}.`}</Text>
                     )}
                     <Text fontSize="13px" color="fg.muted">
-                        {"The chain clears individual votes once a proposal is decided, so this app can't show how you voted. BZE Scan keeps every vote."}
+                        {"The chain clears individual votes once a proposal is decided, so this app can't show how you voted. The Explorer keeps every vote."}
                     </Text>
-                    <Link href={getExplorerProposalURL(proposal.id)} target="_blank" rel="noopener noreferrer" fontSize="13px" fontWeight="semibold" color="purple.fg">
-                        See all votes on BZE Scan ↗
-                    </Link>
+                    <Box fontSize="13px">
+                        <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                    </Box>
                 </>
             )}
             {open && !isConnected && (

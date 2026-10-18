@@ -1,15 +1,17 @@
-import type { IconType } from 'react-icons';
-import { LuGlobe, LuCoins, LuChartColumn, LuFlame, LuFactory, LuUsers } from 'react-icons/lu';
+import type { AppKey } from './app-identity';
+import { getExplorerBaseURL } from './chain';
 
-export const ECOSYSTEM_MENU_LABEL = 'Other';
+export const ECOSYSTEM_MENU_LABEL = 'Apps';
 
 export interface EcosystemApp {
     name: string;
     href: string;
     disabled: boolean;
-    icon: IconType;
-    /** Unique key used for env var overrides and exclusions (e.g. 'website', 'staking', 'dex') */
-    key: string;
+    /**
+     * Unique key used for env var overrides and exclusions (e.g. 'website', 'staking', 'dex').
+     * It also picks the app's icon and accent (AppIcon, AppLink, AppIconButton).
+     */
+    key: AppKey;
 }
 
 /**
@@ -18,13 +20,15 @@ export interface EcosystemApp {
  * - Label overrides: NEXT_PUBLIC_ECOSYSTEM_LABEL_{KEY} (e.g. NEXT_PUBLIC_ECOSYSTEM_LABEL_DEX=TestDEX)
  * - Exclusions: NEXT_PUBLIC_ECOSYSTEM_EXCLUDED=website,factory (comma-separated keys)
  */
-const DEFAULT_APPS: Array<{ key: string; name: string; href: string; disabled: boolean; icon: IconType }> = [
-    { key: 'website',  name: 'Website',  href: 'https://getbze.com',          disabled: false, icon: LuGlobe },
-    { key: 'staking',  name: 'Staking',  href: 'https://staking.getbze.com',  disabled: false, icon: LuCoins },
-    { key: 'dex',      name: 'DEX',      href: 'https://dex.getbze.com',      disabled: false, icon: LuChartColumn },
-    { key: 'burner',      name: 'Burner',      href: 'https://burner.getbze.com',      disabled: false, icon: LuFlame },
-    { key: 'factory',     name: 'Factory',     href: 'https://factory.getbze.com',     disabled: false, icon: LuFactory },
-    { key: 'communities', name: 'Communities', href: 'https://communities.getbze.com', disabled: false, icon: LuUsers },
+const DEFAULT_APPS: Array<{ key: AppKey; name: string; href: () => string; disabled: boolean }> = [
+    { key: 'website',     name: 'Website',     href: () => 'https://getbze.com',            disabled: false },
+    { key: 'dex',         name: 'DEX',         href: () => 'https://dex.getbze.com',        disabled: false },
+    { key: 'staking',     name: 'Staking',     href: () => 'https://staking.getbze.com',    disabled: false },
+    { key: 'burner',      name: 'Burner',      href: () => 'https://burner.getbze.com',     disabled: false },
+    { key: 'factory',     name: 'Factory',     href: () => 'https://factory.getbze.com',    disabled: false },
+    { key: 'communities', name: 'Communities', href: () => 'https://communities.getbze.com', disabled: false },
+    // Follows NEXT_PUBLIC_EXPLORER_URL, so testnet builds point at the testnet explorer.
+    { key: 'explorer',    name: 'Explorer',    href: getExplorerBaseURL,                    disabled: false },
 ];
 
 /**
@@ -51,6 +55,7 @@ const LINK_OVERRIDES: Record<string, string | undefined> = {
     burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_BURNER,
     factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_FACTORY,
     communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_COMMUNITIES,
+    explorer:    process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER,
 };
 
 const LABEL_OVERRIDES: Record<string, string | undefined> = {
@@ -60,6 +65,20 @@ const LABEL_OVERRIDES: Record<string, string | undefined> = {
     burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_BURNER,
     factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_FACTORY,
     communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_COMMUNITIES,
+    explorer:    process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_EXPLORER,
+};
+
+/** Applies the env var overrides to one default entry. */
+const resolveApp = (app: typeof DEFAULT_APPS[number]): EcosystemApp => {
+    const linkOverride = LINK_OVERRIDES[app.key];
+    const labelOverride = LABEL_OVERRIDES[app.key];
+
+    return {
+        key: app.key,
+        name: labelOverride || app.name,
+        href: linkOverride || app.href(),
+        disabled: linkOverride ? false : app.disabled,
+    };
 };
 
 /**
@@ -75,18 +94,7 @@ export const getEcosystemApps = (): EcosystemApp[] => {
 
     return DEFAULT_APPS
         .filter(app => !excluded.has(app.key))
-        .map(app => {
-            const linkOverride = LINK_OVERRIDES[app.key];
-            const labelOverride = LABEL_OVERRIDES[app.key];
-
-            return {
-                key: app.key,
-                name: labelOverride || app.name,
-                href: linkOverride || app.href,
-                disabled: linkOverride ? false : app.disabled,
-                icon: app.icon,
-            };
-        });
+        .map(resolveApp);
 };
 
 /**
@@ -96,18 +104,7 @@ export const getEcosystemApps = (): EcosystemApp[] => {
  */
 export const getEcosystemApp = (key: string): EcosystemApp | undefined => {
     const app = DEFAULT_APPS.find(a => a.key === key);
-    if (!app) return undefined;
-
-    const linkOverride = LINK_OVERRIDES[app.key];
-    const labelOverride = LABEL_OVERRIDES[app.key];
-
-    return {
-        key: app.key,
-        name: labelOverride || app.name,
-        href: linkOverride || app.href,
-        disabled: linkOverride ? false : app.disabled,
-        icon: app.icon,
-    };
+    return app ? resolveApp(app) : undefined;
 };
 
 export const getWebsiteApp      = (): EcosystemApp => getEcosystemApp('website')!;
@@ -116,3 +113,4 @@ export const getDexApp          = (): EcosystemApp => getEcosystemApp('dex')!;
 export const getBurnerApp       = (): EcosystemApp => getEcosystemApp('burner')!;
 export const getFactoryApp      = (): EcosystemApp => getEcosystemApp('factory')!;
 export const getCommunitiesApp  = (): EcosystemApp => getEcosystemApp('communities')!;
+export const getExplorerApp     = (): EcosystemApp => getEcosystemApp('explorer')!;

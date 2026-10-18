@@ -175,9 +175,20 @@ The library reads these `NEXT_PUBLIC_*` env vars at build time (inlined by Next.
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `NEXT_PUBLIC_ECOSYSTEM_EXCLUDED` | _(empty)_ | Comma-separated keys to hide (e.g. `staking,factory`). Valid: `website`, `staking`, `dex`, `burner`, `factory` |
+| `NEXT_PUBLIC_ECOSYSTEM_EXCLUDED` | _(empty)_ | Comma-separated keys to hide (e.g. `staking,factory`). Valid: `website`, `dex`, `staking`, `burner`, `factory`, `communities`, `explorer` |
 | `NEXT_PUBLIC_ECOSYSTEM_LINK_{KEY}` | _(per app)_ | Override URL for an app (e.g. `NEXT_PUBLIC_ECOSYSTEM_LINK_WEBSITE`) |
 | `NEXT_PUBLIC_ECOSYSTEM_LABEL_{KEY}` | _(per app)_ | Override display label (e.g. `NEXT_PUBLIC_ECOSYSTEM_LABEL_DEX`) |
+
+The Explorer entry links `NEXT_PUBLIC_EXPLORER_URL` unless `NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER` overrides it.
+
+### Links to other BZE apps
+
+The navbar's **Apps** menu is `AppsMenu` (the entries come from `getEcosystemApps()`). Wherever a screen links another BZE app, use one of these two, never a plain, outlined or filled button, so every app looks and reads the same and the link never competes with the page's own actions:
+
+- `AppLink({ app, href, children })` — ghost (no border, no fill): the app's icon, the app's name in its accent, an external-link mark, new tab. Used everywhere: in sentences, link rows, cards, success screens and dialogs.
+- `AppIconButton({ app, href, 'aria-label' })` — the same, icon only, for rows with no room for a label (tx lists, hashes).
+
+Wording: the label is the app's name only ("Explorer", "DEX", "Staking", "Burner", "Communities"), also for a transaction on the Explorer; the surrounding heading or text says what the link is for. Toasts are not screens: the tx toast keeps its "View on Explorer" action. The icons (`AppIcon`) are copied from the branding repo `bze-alphateam/Official-BZEdge-Graphics` (`beezee/apps/<app>/icon/svg/`) into `src/components/app-identity/icon-data.ts`; the accents are `appIdentity` in `src/constants/app-identity.ts`.
 
 ### AtomOne validator (dex-only)
 

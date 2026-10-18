@@ -13,6 +13,8 @@ import {
 import {LuChevronRight, LuCopy, LuExternalLink, LuX} from 'react-icons/lu';
 import type {CrossChainTxRecord, SkipTransferEvent} from '../../types/cross_chain';
 import {openExternalLink} from '../../utils/functions';
+import {getChainId, getExplorerTxURL} from '../../constants/chain';
+import {AppIconButton, AppLink} from '../app-identity/app-button';
 import {txStateLabel, txStateColor, isPendingState} from '../../utils/tx_state';
 
 interface TxDetailsModalProps {
@@ -132,6 +134,8 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
     const hasHops = allHops.length > 0;
     const isPending = isPendingState(tx.state);
     const [detailsOpen, setDetailsOpen] = useState(isPending);
+    // A tx broadcast on BZE opens in the BZE Explorer; Skip's link is for other chains.
+    const broadcastOnBze = !!tx.txHash && tx.broadcastChainId === getChainId();
 
     return (
         <VStack gap="4" align="stretch">
@@ -207,7 +211,9 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
                                     <Text fontSize="xs" color="fg.muted">Broadcast tx</Text>
                                     <HStack gap="1">
                                         <CopyableHash hash={tx.txHash}/>
-                                        {tx.explorerLink && (
+                                        {broadcastOnBze ? (
+                                            <AppIconButton app="explorer" href={getExplorerTxURL(tx.txHash)} aria-label="View on Explorer" size="xs"/>
+                                        ) : tx.explorerLink && (
                                             <Button size="xs" variant="ghost" minW="auto" px="0.5"
                                                     onClick={() => openExternalLink(tx.explorerLink!)}>
                                                 <LuExternalLink size="10"/>
@@ -259,11 +265,14 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
             )}
 
             <VStack gap="2" w="full">
-                {tx.explorerLink && (
+                {broadcastOnBze ? (
+                    <AppLink app="explorer" href={getExplorerTxURL(tx.txHash!)}>Explorer</AppLink>
+                ) : tx.explorerLink && (
+                    // Broadcast on another chain: Skip's link goes to that chain's own explorer.
                     <Button size="sm" variant="outline" w="full"
                             onClick={() => openExternalLink(tx.explorerLink!)}>
                         <HStack gap="1">
-                            <Text>View on Explorer</Text>
+                            <Text>View on chain explorer</Text>
                             <LuExternalLink size="12"/>
                         </HStack>
                     </Button>
