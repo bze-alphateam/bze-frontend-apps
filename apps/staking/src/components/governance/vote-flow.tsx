@@ -11,6 +11,7 @@ import {
     type GovParams, type GovProposal, type GovVote,
 } from '@bze/bze-ui-kit';
 import {useIsPhone} from '@/hooks/useIsPhone';
+import {invalidateOpenProposalsSummary} from '@/hooks/useOpenProposalsSummary';
 import {proposalTitle} from '@/lib/governance/proposal';
 import {formatDateTimeUtc} from '@/lib/governance/format';
 import {wholeBze, type DenomResolver} from '@/lib/governance/details';
@@ -105,6 +106,8 @@ export function VoteFlow({proposal, params, power, currentVote, initialChoice, r
         if (sent) {
             const until = proposal.voting_end_time ? ` You can change it until ${formatDateTimeUtc(proposal.voting_end_time)}.` : '';
             toast.success('Vote recorded', `You voted ${chosen.label} on #${proposal.id}.${until}`);
+            // The nav badge and the dashboard banner follow at once.
+            invalidateOpenProposalsSummary();
             onVoted();
             onClose();
             return;
