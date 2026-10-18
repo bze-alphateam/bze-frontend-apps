@@ -8,10 +8,13 @@ import proposal48 from "@/lib/governance/fixtures/proposal-48.json";
 
 // The vote flow with useSDKTx, the toast, the fee estimate and the wallet
 // mocked; the message composer and the governance lib stay real.
-const { txMock, toastSuccess } = vi.hoisted(() => ({ txMock: vi.fn(), toastSuccess: vi.fn() }));
+const { txMock, toastSuccess, invalidateMock } = vi.hoisted(() => ({ txMock: vi.fn(), toastSuccess: vi.fn(), invalidateMock: vi.fn() }));
 
 vi.mock("@interchain-kit/react", () => ({
     useChain: () => ({ address: "bze1me" }),
+}));
+vi.mock("@/hooks/useOpenProposalsSummary", () => ({
+    invalidateOpenProposalsSummary: invalidateMock,
 }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
@@ -41,6 +44,7 @@ const dialog = () => screen.getByRole("dialog");
 beforeEach(() => {
     txMock.mockReset();
     toastSuccess.mockReset();
+    invalidateMock.mockReset();
 });
 
 afterEach(() => {
@@ -81,6 +85,8 @@ describe("VoteFlow", () => {
         expect(toastSuccess).toHaveBeenCalledWith("Vote recorded", "You voted No on #48. You can change it until Oct 20, 2026, 10:13 UTC.");
         expect(onVoted).toHaveBeenCalledTimes(1);
         expect(onClose).toHaveBeenCalledTimes(1);
+        // The nav badge and the dashboard banner re-read the summary.
+        expect(invalidateMock).toHaveBeenCalledTimes(1);
     });
 
     it("marks the current vote and says what the new one replaces", async () => {
@@ -109,6 +115,7 @@ describe("VoteFlow", () => {
         expect(alert).toHaveTextContent("Your vote wasn't sent. insufficient fees");
         expect(onClose).not.toHaveBeenCalled();
         expect(onVoted).not.toHaveBeenCalled();
+        expect(invalidateMock).not.toHaveBeenCalled();
 
         txMock.mockImplementation(async (_msgs, opts) => { opts.onFailure("Request rejected"); return false; });
         await userEvent.click(screen.getByRole("button", { name: "Try again" }));

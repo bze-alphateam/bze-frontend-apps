@@ -7,6 +7,7 @@ import {getChainName, Sidebar, WalletSidebarContent, useValidatorLogos} from '@b
 import {WalletState} from '@interchain-kit/core';
 import {useNativeStakingData} from '@/hooks/useNativeStakingData';
 import {StakingOverview} from '@/components/staking/overview';
+import {GovernanceCallout} from '@/components/governance/governance-callout';
 import {MyValidators} from '@/components/staking/my-validators';
 import {UnbondingDelegations} from '@/components/staking/unbonding-delegations';
 import {ValidatorsList} from '@/components/staking/validators-list';
@@ -42,6 +43,7 @@ export default function StakingPage() {
             <StakingOverview
                 stakingData={fullData?.stakingData}
                 isLoading={isLoading}
+                callout={<GovernanceCallout />}
             />
 
             {/* Action Bar */}

@@ -10,14 +10,17 @@ import {
     formatUsdAmount,
 } from '@bze/bze-ui-kit';
 import BigNumber from 'bignumber.js';
+import type {ReactNode} from 'react';
 import type {NativeStakingData} from '@bze/bze-ui-kit';
 
 interface OverviewProps {
     stakingData?: NativeStakingData;
     isLoading: boolean;
+    /** Rendered between the header and the stat cards (the governance banner). */
+    callout?: ReactNode;
 }
 
-export function StakingOverview({stakingData, isLoading}: OverviewProps) {
+export function StakingOverview({stakingData, isLoading, callout}: OverviewProps) {
     const {nativeAsset} = useAssets();
     const {price: bzePrice} = useAssetPrice(nativeAsset?.denom ?? '');
     const decimals = nativeAsset?.decimals ?? 6;
@@ -141,6 +144,8 @@ export function StakingOverview({stakingData, isLoading}: OverviewProps) {
                         </Text>
                     </VStack>
                 </HStack>
+
+                {callout}
 
                 <Grid templateColumns={{base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)'}} gap="4">
                     {visibleCards.map((card, idx) => (
