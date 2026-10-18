@@ -82,7 +82,7 @@ export function ProposalTimeline({proposal, tally, params, now, resolve}: Propos
                 <Text as="dd" m="0" textAlign="right" data-testid="deposit">{deposit}</Text>
             </Grid>
             <Box hideFrom="md" fontSize="13px">
-                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>View on Explorer</AppLink>
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
             </Box>
         </Stack>
     );

@@ -12,7 +12,7 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import { LuArrowRight } from 'react-icons/lu'
-import { AppButton, TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
+import { AppLink, TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
 import { GoalCard } from '@/components/home/goal-card'
 import { GoalSearch } from '@/components/home/goal-search'
 import { PlaybooksSection } from '@/components/home/playbooks-section'
@@ -73,7 +73,7 @@ function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => vo
     const { navigate } = useNavigation()
     if ('external' in tool) {
         return (
-            <AppButton app="burner" href={getBurnerApp().href} size="sm">{tool.label}</AppButton>
+            <AppLink app="burner" href={getBurnerApp().href}>{tool.label}</AppLink>
         )
     }
     const onClick = 'goal' in tool ? () => onGoal(goalById(tool.goal)) : () => navigate(tool.href)

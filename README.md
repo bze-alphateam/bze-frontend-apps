@@ -159,7 +159,7 @@ Only `packages/ui-kit` has a suite so far — test files live next to the code t
 | `src/utils/validation.test.ts` | endpoint URL validation — **offline paths only** (empty / malformed / wrong protocol); nothing that opens sockets |
 | `src/utils/strings.test.ts` | center truncation, leading-zero stripping |
 | `src/constants/ecosystem.test.ts` | ecosystem nav list — `NEXT_PUBLIC_ECOSYSTEM_LINK_*` / `_LABEL_*` overrides, `_EXCLUDED` filtering, `getEcosystemApp()` ignoring exclusions, the menu order and the Explorer entry following `NEXT_PUBLIC_EXPLORER_URL` |
-| `src/components/app-identity/app-identity.test.tsx` | jsdom: `AppIcon` small/full cut by size and unique gradient ids, `AppButton` / `AppIconButton` / `AppLink` (accent, new tab, `data-app`), `AppsMenu` (label, icons, coming soon, exclusions) |
+| `src/components/app-identity/app-identity.test.tsx` | jsdom: `AppIcon` small/full cut by size and unique gradient ids, `AppLink` / `AppIconButton` (ghost, accent, external mark, new tab, `data-app`, AA contrast per accent), `AppsMenu` (label, icons, coming soon, exclusions) |
 | `src/components/sidebar/tx-details-modal.test.tsx` | jsdom: a bridge tx broadcast on BZE links the BZE Explorer, one on another chain keeps Skip's link |
 
 Conventions:

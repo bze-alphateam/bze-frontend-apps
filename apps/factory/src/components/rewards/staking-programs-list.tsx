@@ -18,7 +18,7 @@ import BigNumber from 'bignumber.js'
 import { LuChevronDown, LuChevronRight, LuGift, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
-    AppButton,
+    AppLink,
     TokenLogo,
     getChainName,
     getStakingApp,
@@ -303,7 +303,7 @@ function ProgramRow({
                                 Delete
                             </Button>
                         )}
-                        <AppButton app="staking" href={getStakingApp().href} size="sm">View on Staking</AppButton>
+                        <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
                     </HStack>
                 </HStack>
 

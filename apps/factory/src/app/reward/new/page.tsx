@@ -201,8 +201,8 @@ function RewardNewContent() {
                 text={`${created.escrowLabel} was locked for prizes. Anyone staking ${stakeTicker || 'the staking token'} now shares the daily prize.`}
                 code={created.rewardId ? { label: 'Your program id', value: created.rewardId } : undefined}
                 links={[
-                    { label: 'View on Staking', href: getStakingApp().href, app: 'staking' },
-                    { label: 'View transaction', href: getExplorerTxURL(created.txHash), app: 'explorer' },
+                    { label: 'Staking', href: getStakingApp().href, app: 'staking' },
+                    { label: 'Explorer', href: getExplorerTxURL(created.txHash), app: 'explorer' },
                 ]}
                 again={{ label: 'Start another program', onClick: startAnother }}
             />

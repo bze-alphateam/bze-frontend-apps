@@ -266,7 +266,7 @@ describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
             "Create token", "Create pool", "Add liquidity", "Create market", "Holder rewards", "Airdrop",
             "Multi-send", "Staking program", "Brand kit", "Chain registry", "My creations",
         ]);
-        const burn = within(tools).getByRole("link", { name: "Burn on Burner" });
+        const burn = within(tools).getByRole("link", { name: "Burner" });
         expect(burn).toHaveAttribute("href", "https://burner.example");
         expect(burn).toHaveAttribute("target", "_blank");
         expect(burn).toHaveAttribute("data-app", "burner");

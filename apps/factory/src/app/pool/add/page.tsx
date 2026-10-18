@@ -267,8 +267,8 @@ function PoolAddContent() {
                 title={`Liquidity added to ${pairLabel}!`}
                 text="Your deposit joined the pool reserves and LP tokens for your share were sent to your wallet."
                 links={[
-                    { label: 'View on DEX', href: poolUrl, app: 'dex' },
-                    { label: 'View transaction', href: getExplorerTxURL(added.txHash), app: 'explorer' },
+                    { label: 'DEX', href: poolUrl, app: 'dex' },
+                    { label: 'Explorer', href: getExplorerTxURL(added.txHash), app: 'explorer' },
                 ]}
                 next={[{
                     label: 'Reward liquidity providers',

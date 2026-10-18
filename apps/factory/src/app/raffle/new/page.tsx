@@ -222,8 +222,8 @@ function RaffleFormContent() {
                 title={`The ${done.ticker} raffle is live`}
                 text={done.endsAt ? `It ends around ${done.endsAt}. Whatever is left in the pot then is burned.` : undefined}
                 links={[
-                    { label: 'View on Burner', href: burnerHref(done.denom), app: 'burner' },
-                    { label: 'View transaction', href: getExplorerTxURL(done.txHash), app: 'explorer' },
+                    { label: 'Burner', href: burnerHref(done.denom), app: 'burner' },
+                    { label: 'Explorer', href: getExplorerTxURL(done.txHash), app: 'explorer' },
                 ]}
                 again={{ label: 'Start another', onClick: startAnother }}
             />
@@ -330,7 +330,7 @@ function RaffleFormContent() {
                         <VStack align="start" gap={1} role="alert" data-testid="raffle-running">
                             <Text fontSize="sm" color="fg.error">{runningText}</Text>
                             <Box fontSize="sm">
-                                <AppLink app="burner" href={burnerHref(denom)}>View on Burner</AppLink>
+                                <AppLink app="burner" href={burnerHref(denom)}>Burner</AppLink>
                             </Box>
                         </VStack>
                     ) : asset && raffle.status === 'loading' ? (

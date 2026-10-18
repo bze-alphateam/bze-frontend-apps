@@ -124,10 +124,10 @@ describe("LaunchNextSteps", () => {
         expect(m.navigate).toHaveBeenLastCalledWith(`/market/new?base=${ENC}&${RETURN}`);
         await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
         expect(m.navigate).toHaveBeenLastCalledWith("/");
-        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${ENC}`);
-        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("data-app", "dex");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "DEX" })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${ENC}`);
+        expect(screen.getByRole("link", { name: "DEX" })).toHaveAttribute("data-app", "dex");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
     });
 
     it("shows the pool and holder rewards fees from the creation fees", () => {

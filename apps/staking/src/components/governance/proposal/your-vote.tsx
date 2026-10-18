@@ -131,7 +131,7 @@ export function YourVote({proposal, isConnected, voter, voterLoading, onVote}: Y
                         {"The chain clears individual votes once a proposal is decided, so this app can't show how you voted. The Explorer keeps every vote."}
                     </Text>
                     <Box fontSize="13px">
-                        <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>See all votes on Explorer</AppLink>
+                        <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
                     </Box>
                 </>
             )}

@@ -270,10 +270,10 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
         await userEvent.click(submitButton());
 
         expect(screen.getByText("12.5 BZE sent to TOK stakers")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
-        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute("data-app", "communities");
-        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute("href", `https://communities.test/token?denom=${encodeURIComponent(STAKING)}`);
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("href", `https://communities.test/token?denom=${encodeURIComponent(STAKING)}`);
 
         await userEvent.click(screen.getByRole("button", { name: "Back to TOK's holder rewards" }));
         expect(navigateMock).toHaveBeenCalledWith(HOLDER_REWARDS);

@@ -354,7 +354,7 @@ function MultiSendContent() {
             <SuccessPanel
                 title={`Sent to ${sent.count} wallets`}
                 text={`${sent.totalLabel} is now in their wallets.`}
-                links={[{ label: 'View transaction', href: getExplorerTxURL(sent.txHash), app: 'explorer' }]}
+                links={[{ label: 'Explorer', href: getExplorerTxURL(sent.txHash), app: 'explorer' }]}
                 again={{ label: 'Send another list', onClick: sendAnother }}
             />
         )

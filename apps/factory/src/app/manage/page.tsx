@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react'
 import { LuChevronDown, LuCircleHelp, LuCoins, LuCopy, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
 import {
-    AppButton,
+    AppLink,
     TokenLogo,
     getBurnerApp,
     prettyAmount,
@@ -101,7 +101,7 @@ function TokenCard({ token }: { token: MyToken }) {
                         </HStack>
                     </VStack>
                     <HStack gap={2}>
-                        <AppButton app="burner" href={burnerUrl} size="sm">Burn on Burner</AppButton>
+                        <AppLink app="burner" href={burnerUrl}>Burner</AppLink>
                         <Button size="sm" colorPalette="yellow" onClick={() => navigate(workspaceHref(asset.denom))}>
                             Open
                         </Button>

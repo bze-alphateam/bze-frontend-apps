@@ -9,7 +9,7 @@ import {
     TokenLogo,
     createMarketId,
     getChainName,
-    AppButton,
+    AppLink,
     getDexApp,
     useAsset,
     useLiquidityPools,
@@ -79,7 +79,7 @@ function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
                 <Button size="xs" variant="outline" colorPalette="yellow" onClick={() => navigate(`/pool/add?pool=${encodeURIComponent(pool.id)}`)}>
                     <LuPlus /> Add liquidity
                 </Button>
-                <AppButton app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`} size="sm">View on DEX</AppButton>
+                <AppLink app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`}>DEX</AppLink>
             </HStack>
         </Row>
     )
@@ -98,7 +98,7 @@ function MarketRow({ market }: { market: Market }) {
                     <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate maxW="full">{marketId}</Text>
                 </VStack>
             </HStack>
-            <AppButton app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`} size="sm">View on DEX</AppButton>
+            <AppLink app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`}>DEX</AppLink>
         </Row>
     )
 }

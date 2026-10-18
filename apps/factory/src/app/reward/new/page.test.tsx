@@ -249,10 +249,10 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         expect(screen.getByText(/10 TOK was locked for prizes/)).toBeInTheDocument();
         expect(screen.getByText("0000000000000007")).toBeInTheDocument();
 
-        expect(screen.getByRole("link", { name: "View on Staking" })).toHaveAttribute("href", "https://staking.test");
-        expect(screen.getByRole("link", { name: "View on Staking" })).toHaveAttribute("data-app", "staking");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "Staking" })).toHaveAttribute("href", "https://staking.test");
+        expect(screen.getByRole("link", { name: "Staking" })).toHaveAttribute("data-app", "staking");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
 
         await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
         expect(navigateMock).toHaveBeenCalledWith("/");

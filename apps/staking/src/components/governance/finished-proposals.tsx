@@ -89,7 +89,7 @@ function FinishedRow({proposal}: {proposal: ListedProposal}) {
 export function FinishedProposals({proposals, hasOlder, isLoadingOlder, olderError, onLoadOlder}: FinishedProposalsProps) {
     const scanLink = (
         <Box fontSize="sm">
-            <AppLink app="explorer" href={getExplorerProposalsURL()}>Full history on Explorer</AppLink>
+            <AppLink app="explorer" href={getExplorerProposalsURL()}>Explorer</AppLink>
         </Box>
     );
 

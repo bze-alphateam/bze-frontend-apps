@@ -6,7 +6,8 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 
 import type { EcosystemApp } from '../../constants/ecosystem';
 import { ECOSYSTEM_MENU_LABEL } from '../../constants/ecosystem';
-import { AppButton, AppIconButton, AppLink } from './app-button';
+import { appIdentity, type BrandedAppKey } from '../../constants/app-identity';
+import { AppIconButton, AppLink } from './app-button';
 import { AppIcon } from './app-icon';
 import { AppsMenu } from './apps-menu';
 import { APP_ICON_DATA } from './icon-data';
@@ -62,30 +63,6 @@ describe('AppIcon', () => {
     });
 });
 
-describe('AppButton', () => {
-    it('is an outlined link to the app, in a new tab, with the icon and the label', () => {
-        render(<AppButton app="explorer" href="https://explorer.getbze.com/txs/ABC">View transaction</AppButton>, { wrapper });
-        const link = screen.getByRole('link', { name: 'View transaction' });
-        expect(link.getAttribute('href')).toBe('https://explorer.getbze.com/txs/ABC');
-        expect(link.getAttribute('target')).toBe('_blank');
-        expect(link.getAttribute('rel')).toBe('noopener noreferrer');
-        expect(link.getAttribute('data-app')).toBe('explorer');
-        expect(link.getAttribute('data-testid')).toBe('app-button');
-        const icon = within(link).getByTestId('app-icon');
-        expect(icon.getAttribute('data-app')).toBe('explorer');
-        expect(icon.getAttribute('data-cut')).toBe('small');
-    });
-
-    it('outlines in the app accent (ink on light, light end on dark) and never fills', () => {
-        render(<AppButton app="staking" href="https://staking.getbze.com">Stake on Staking</AppButton>, { wrapper });
-        const link = screen.getByRole('link', { name: 'Stake on Staking' });
-        const rules = rulesOf(link);
-        expect(rules).toMatch(/border-color:\s*#8E44AD/i);
-        expect(rules).toMatch(/color:\s*#B57EDC/i);
-        expect(rules).not.toMatch(/background(-color)?:\s*#/i);
-    });
-});
-
 /** The CSS rules Chakra emitted for the element's atomic class. */
 function rulesOf(el: HTMLElement): string {
     const cls = [...el.classList].find(c => c.startsWith('css-'));
@@ -95,28 +72,62 @@ function rulesOf(el: HTMLElement): string {
 }
 
 describe('AppIconButton', () => {
-    it('names itself with its aria-label and carries the app', () => {
+    it('names itself with its aria-label, carries the app and has no border', () => {
         render(<AppIconButton app="explorer" href="https://explorer.getbze.com/accounts/bze1x" aria-label="View on Explorer" />, { wrapper });
         const link = screen.getByRole('link', { name: 'View on Explorer' });
         expect(link.getAttribute('data-app')).toBe('explorer');
         expect(link.getAttribute('target')).toBe('_blank');
         expect(link.getAttribute('rel')).toBe('noopener noreferrer');
         expect(within(link).getByTestId('app-icon')).toBeTruthy();
+        expect(rulesOf(link)).not.toMatch(/border-color:\s*#/i);
     });
 });
 
 describe('AppLink', () => {
-    it('puts the 16 px small cut in front of the text and opens in a new tab', () => {
-        render(<p>Burn it on <AppLink app="burner" href="https://burner.getbze.com">Burner</AppLink>.</p>, { wrapper });
-        const link = screen.getByRole('link', { name: 'Burner' });
-        expect(link.getAttribute('data-app')).toBe('burner');
+    it('is the app icon, the app name and an external mark, opening in a new tab', () => {
+        render(<AppLink app="explorer" href="https://explorer.getbze.com/txs/ABC">Explorer</AppLink>, { wrapper });
+        const link = screen.getByRole('link', { name: 'Explorer' });
+        expect(link.getAttribute('href')).toBe('https://explorer.getbze.com/txs/ABC');
         expect(link.getAttribute('target')).toBe('_blank');
         expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(link.getAttribute('data-testid')).toBe('app-link');
+        expect(link.getAttribute('data-app')).toBe('explorer');
         const icon = within(link).getByTestId('app-icon');
+        expect(icon.getAttribute('data-app')).toBe('explorer');
         expect(icon.getAttribute('data-cut')).toBe('small');
-        expect(within(link).getByTestId('app-icon').querySelector('svg')?.getAttribute('width')).toBe('16');
+        expect(icon.querySelector('svg')?.getAttribute('width')).toBe('16');
+        // The external-link mark is the last child, after the name.
+        expect(link.lastElementChild?.tagName.toLowerCase()).toBe('svg');
+        expect(link.lastElementChild?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('is ghost: the app accent on the text, no border and no fill', () => {
+        render(<AppLink app="staking" href="https://staking.getbze.com">Staking</AppLink>, { wrapper });
+        const rules = rulesOf(screen.getByRole('link', { name: 'Staking' }));
+        expect(rules).toMatch(/color:\s*#8E44AD/i);
+        expect(rules).toMatch(/color:\s*#B57EDC/i);
+        expect(rules).not.toMatch(/border(-color|-width)?:/i);
+        expect(rules).not.toMatch(/background(-color)?:\s*#/i);
+    });
+
+    it.each(Object.keys(appIdentity) as BrandedAppKey[])('keeps the %s accent readable as plain text (WCAG AA)', (app) => {
+        const { light, dark } = appIdentity[app].accent;
+        expect(contrast(light, '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(dark, '#111111')).toBeGreaterThanOrEqual(4.5);
     });
 });
+
+/** WCAG 2 contrast ratio of two #RRGGBB colours. */
+function contrast(a: string, b: string): number {
+    const lum = (hex: string) => {
+        const [r, g, bl] = [1, 3, 5]
+            .map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+            .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+    };
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+}
 
 const APPS: EcosystemApp[] = [
     { key: 'website', name: 'Website', href: 'https://getbze.com', disabled: false },

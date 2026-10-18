@@ -1666,9 +1666,7 @@ const PoolDetailsPageContent = () => {
                                     </HighlightText>
                                 </Skeleton>
                                 <Box fontSize="xs">
-                                    <AppLink app="burner" href={`${getBurnerApp().href}/coin?coin=${pool?.lp_denom || ''}`}>
-                                        View on Burner
-                                    </AppLink>
+                                    <AppLink app="burner" href={`${getBurnerApp().href}/coin?coin=${pool?.lp_denom || ''}`}>Burner</AppLink>
                                 </Box>
                             </VStack>
                             <VStack align="center" gap="2" p={{ base: "3", md: "4" }} bgGradient="to-br" gradientFrom="blue.500/5" gradientTo="blue.600/5" rounded="lg" borderWidth="1px" borderColor="blue.500/15">

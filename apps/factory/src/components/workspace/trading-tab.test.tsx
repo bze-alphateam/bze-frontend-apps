@@ -122,7 +122,7 @@ describe("TradingTab pools", () => {
 
     it("opens the pool on the DEX", () => {
         renderTab(props());
-        const link = within(screen.getByTestId("trading-pool-1")).getByRole("link", { name: "View on DEX" });
+        const link = within(screen.getByTestId("trading-pool-1")).getByRole("link", { name: "DEX" });
         expect(link).toHaveAttribute("href", "https://dex.example/pools/details?id=1");
         expect(link).toHaveAttribute("target", "_blank");
         expect(link).toHaveAttribute("data-app", "dex");
@@ -174,7 +174,7 @@ describe("TradingTab markets", () => {
 
     it("opens the market on the DEX", () => {
         renderTab(props());
-        const link = within(screen.getByTestId(`trading-market-${id1}`)).getByRole("link", { name: "View on DEX" });
+        const link = within(screen.getByTestId(`trading-market-${id1}`)).getByRole("link", { name: "DEX" });
         expect(link).toHaveAttribute("href", `https://dex.example/exchange/market?id=${encodeURIComponent(id1)}`);
         expect(link).toHaveAttribute("data-app", "dex");
     });
@@ -197,7 +197,7 @@ describe("TradingTab halted token", () => {
         expect(screen.queryByRole("button", { name: "Create another pool" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Add liquidity" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create a market" })).not.toBeInTheDocument();
-        expect(screen.getAllByRole("link", { name: "View on DEX" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("link", { name: "DEX" }).length).toBeGreaterThan(0);
     });
 
     it("empty pools: no create button either", () => {

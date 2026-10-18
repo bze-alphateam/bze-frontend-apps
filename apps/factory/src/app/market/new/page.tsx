@@ -128,8 +128,8 @@ function MarketNewContent() {
                 title={`The ${pairLabel} market is live!`}
                 text={`Anyone can now place ${baseTicker} orders priced in ${quoteTicker} on the DEX order book.`}
                 links={[
-                    { label: 'View on DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)), app: 'dex' },
-                    { label: 'View transaction', href: getExplorerTxURL(created.txHash), app: 'explorer' },
+                    { label: 'DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)), app: 'dex' },
+                    { label: 'Explorer', href: getExplorerTxURL(created.txHash), app: 'explorer' },
                 ]}
                 // A market starts empty — the natural next step is liquidity.
                 next={[{ label: 'Create a liquidity pool', href: withReturn(poolHref, returnTo), icon: <LuDroplets /> }]}
@@ -240,7 +240,7 @@ function MarketNewContent() {
                             </Text>
                             {pairError.existingId && (
                                 <Box fontSize="sm">
-                                    <AppLink app="dex" href={marketUrl(pairError.existingId)}>View on DEX</AppLink>
+                                    <AppLink app="dex" href={marketUrl(pairError.existingId)}>DEX</AppLink>
                                 </Box>
                             )}
                         </Box>

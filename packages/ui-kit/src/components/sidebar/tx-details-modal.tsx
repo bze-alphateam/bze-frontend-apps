@@ -14,7 +14,7 @@ import {LuChevronRight, LuCopy, LuExternalLink, LuX} from 'react-icons/lu';
 import type {CrossChainTxRecord, SkipTransferEvent} from '../../types/cross_chain';
 import {openExternalLink} from '../../utils/functions';
 import {getChainId, getExplorerTxURL} from '../../constants/chain';
-import {AppButton, AppIconButton} from '../app-identity/app-button';
+import {AppIconButton, AppLink} from '../app-identity/app-button';
 import {txStateLabel, txStateColor, isPendingState} from '../../utils/tx_state';
 
 interface TxDetailsModalProps {
@@ -266,9 +266,7 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
 
             <VStack gap="2" w="full">
                 {broadcastOnBze ? (
-                    <AppButton app="explorer" href={getExplorerTxURL(tx.txHash!)} size="sm" fullWidth>
-                        View transaction
-                    </AppButton>
+                    <AppLink app="explorer" href={getExplorerTxURL(tx.txHash!)}>Explorer</AppLink>
                 ) : tx.explorerLink && (
                     // Broadcast on another chain: Skip's link goes to that chain's own explorer.
                     <Button size="sm" variant="outline" w="full"
