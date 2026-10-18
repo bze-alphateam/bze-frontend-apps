@@ -25,15 +25,9 @@ import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 
-// The actual payload delivered to onSuccess — the result of broadcastResult.wait(),
-// which is a TxResponse from @interchainjs/cosmos containing the inclusion details.
-export interface TxSuccessResponse {
-    height: number;
-    txhash: string;
-    code: number;
-    rawLog?: string;
-    [key: string]: unknown;
-}
+import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
+
+export type {TxSuccessResponse};
 
 export interface TxOptions {
     fee?: StdFee | null;
@@ -306,7 +300,7 @@ const useTx = (chainName: string) => {
                     toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
 
                     if (options?.onSuccess) {
-                        options.onSuccess(resp as TxSuccessResponse)
+                        options.onSuccess(toTxSuccessResponse(resp))
                     }
                 } else {
                     setProgressTrack("Transaction failed")

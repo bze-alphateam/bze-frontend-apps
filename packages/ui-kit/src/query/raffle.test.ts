@@ -9,7 +9,7 @@ vi.mock('./client', () => ({
 
 import { getRaffles, getRafflesOrThrow } from './raffle'
 
-const RAFFLE = { denom: 'factory/bze1creator/utoken', pot: '100000', end_at: 10n }
+const RAFFLE = { denom: 'factory/bze1creator/utoken', pot: '100000', end_at: BigInt(10) }
 
 describe('raffle queries', () => {
     beforeEach(() => {
