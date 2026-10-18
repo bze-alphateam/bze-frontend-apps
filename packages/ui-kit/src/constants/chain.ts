@@ -150,6 +150,12 @@ export const getExplorerValidatorURL = (valoper: string): string => `${getExplor
 /** Explorer page of a block. */
 export const getExplorerBlockURL = (height: number | string | bigint): string => `${getExplorerBaseURL()}/blocks/${height}`
 
+/** Explorer list of governance proposals. */
+export const getExplorerProposalsURL = (): string => `${getExplorerBaseURL()}/proposals`
+
+/** Explorer page of a governance proposal. */
+export const getExplorerProposalURL = (id: number | string | bigint): string => `${getExplorerBaseURL()}/proposals/${id}`
+
 export const getLockerAddress = (): string => {
     return process.env.NEXT_PUBLIC_LOCKER_ADDRESS || 'bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4'
 }

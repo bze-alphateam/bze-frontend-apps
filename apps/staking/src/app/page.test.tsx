@@ -24,7 +24,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 });
 
 vi.mock("@/components/staking/overview", () => ({
-    StakingOverview: () => <div data-testid="overview" />,
+    StakingOverview: ({ callout }: { callout?: ReactNode }) => <div data-testid="overview">{callout}</div>,
+}));
+vi.mock("@/components/governance/governance-callout", () => ({
+    GovernanceCallout: () => <div data-testid="governance-callout" />,
 }));
 vi.mock("@/components/staking/validators-list", () => ({
     ValidatorsList: () => <div data-testid="validators-list" />,
@@ -90,7 +93,8 @@ describe("Staking page", () => {
 
         expect(screen.getByTestId("overview")).toBeInTheDocument();
         expect(screen.getByTestId("validators-list")).toBeInTheDocument();
-        expect(screen.getByTestId("my-validators")).toBeInTheDocument();
+        expect(screen.getByTestId("my-validators")).toBeInTheDocument();        // The governance banner goes into the overview, between its header and stat cards.
+        expect(screen.getByTestId("overview")).toContainElement(screen.getByTestId("governance-callout"));
     });
 
     it("hides the list and my-validators sections when there is no data for them", () => {
