@@ -16,8 +16,9 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowUpRight, LuChevronDown, LuCircleHelp, LuCoins, LuCopy, LuFlame, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
+import { LuChevronDown, LuCircleHelp, LuCoins, LuCopy, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
 import {
+    AppButton,
     TokenLogo,
     getBurnerApp,
     prettyAmount,
@@ -34,7 +35,6 @@ import { useNavigation } from '@/hooks/useNavigation'
 /** Setup progress runs a few chain queries per token, so only this many cards show at a time. */
 const TOKENS_PAGE_SIZE = 10
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same trust semantics as the dex assets page: an active admin can mint more,
 // only a renounced admin makes the supply provably fixed. A failed lookup
@@ -101,9 +101,7 @@ function TokenCard({ token }: { token: MyToken }) {
                         </HStack>
                     </VStack>
                     <HStack gap={2}>
-                        <Button size="sm" variant="ghost" colorPalette="red" onClick={() => openExternal(burnerUrl)}>
-                            <LuFlame /> Burn <LuArrowUpRight />
-                        </Button>
+                        <AppButton app="burner" href={burnerUrl} size="sm">Burn on Burner</AppButton>
                         <Button size="sm" colorPalette="yellow" onClick={() => navigate(workspaceHref(asset.denom))}>
                             Open
                         </Button>

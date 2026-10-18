@@ -188,10 +188,11 @@ function ReachContent() {
             <SuccessPanel
                 title={`Your gift is on its way to ${doneTx.ticker} stakers`}
                 links={[
-                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash), app: 'explorer' },
                     {
-                        label: `See it on ${doneTx.ticker}'s Communities page ↗`,
+                        label: 'View on Communities',
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(doneTx.denom)}`,
+                        app: 'communities',
                     },
                 ]}
                 again={{ label: 'Reach another community', onClick: reset }}

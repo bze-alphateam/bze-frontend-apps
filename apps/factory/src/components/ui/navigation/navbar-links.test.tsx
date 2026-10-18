@@ -6,7 +6,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const m = vi.hoisted(() => ({ path: "/" }));
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: vi.fn(), currentPathName: m.path }) }));
-vi.mock("@bze/bze-ui-kit", () => ({ getEcosystemApps: () => [] }));
+vi.mock("@bze/bze-ui-kit", () => ({ AppsMenu: () => null }));
 
 import { NavbarLinks } from "./navbar-links";
 

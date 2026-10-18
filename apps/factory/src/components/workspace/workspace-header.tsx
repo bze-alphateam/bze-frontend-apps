@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { Badge, Box, Button, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowLeft, LuArrowUpRight, LuCircleHelp, LuCopy, LuLock, LuTriangleAlert } from 'react-icons/lu'
-import { Asset, TokenLogo, getCommunitiesApp, getDexApp, truncateAddress, useToast } from '@bze/bze-ui-kit'
+import { LuArrowLeft, LuCircleHelp, LuCopy, LuLock, LuTriangleAlert } from 'react-icons/lu'
+import { AppLink, Asset, TokenLogo, getCommunitiesApp, getDexApp, truncateAddress, useToast } from '@bze/bze-ui-kit'
 import type { AdminState } from '@/lib/workspace'
 
 function statusLine(state: AdminState, admin?: string): string {
@@ -17,16 +17,6 @@ function statusLine(state: AdminState, admin?: string): string {
         default:
             return `Control was handed to ${truncateAddress(admin ?? '')}`
     }
-}
-
-function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
-    return (
-        <Button asChild size="xs" variant="ghost" colorPalette="yellow">
-            <a href={href} target="_blank" rel="noopener noreferrer">
-                {children} <LuArrowUpRight />
-            </a>
-        </Button>
-    )
 }
 
 /** Shown above every tab: back link, identity, trust badge, plain admin status, denom, outside links. */
@@ -86,9 +76,9 @@ export function WorkspaceHeader({ asset, admin, adminState, onBack }: {
                             <LuCopy />
                         </IconButton>
                     </HStack>
-                    <HStack gap={1} flexWrap="wrap" ml={-2}>
-                        <ExternalLink href={`${getCommunitiesApp().href}/token?denom=${encoded}`}>Communities page</ExternalLink>
-                        <ExternalLink href={`${getDexApp().href}/assets/details?denom=${encoded}`}>DEX</ExternalLink>
+                    <HStack gap={4} flexWrap="wrap" fontSize="sm">
+                        <AppLink app="communities" href={`${getCommunitiesApp().href}/token?denom=${encoded}`}>Communities</AppLink>
+                        <AppLink app="dex" href={`${getDexApp().href}/assets/details?denom=${encoded}`}>DEX</AppLink>
                     </HStack>
                 </VStack>
             </HStack>

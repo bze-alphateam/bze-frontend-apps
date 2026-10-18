@@ -5,6 +5,7 @@ import {
     getCommunitiesApp,
     getDexApp,
     getEcosystemApp,
+    getExplorerApp,
     getEcosystemApps,
     getFactoryApp,
     getStakingApp,
@@ -27,7 +28,7 @@ describe('getEcosystemApp', () => {
     })
 
     it('returns a valid app for every known key', () => {
-        const keys = ['website', 'staking', 'dex', 'burner', 'factory', 'communities']
+        const keys = ['website', 'staking', 'dex', 'burner', 'factory', 'communities', 'explorer']
         for (const key of keys) {
             const app = getEcosystemApp(key)
             expect(app, `expected app for key "${key}"`).toBeDefined()
@@ -136,6 +137,73 @@ describe('getEcosystemApp env var overrides', () => {
 describe('getEcosystemApps exclusions', () => {
     it('returns all apps when no exclusions are set', () => {
         const apps = getEcosystemApps()
-        expect(apps.length).toBe(6)
+        expect(apps.length).toBe(7)
+    })
+
+    it('drops the keys listed in NEXT_PUBLIC_ECOSYSTEM_EXCLUDED, explorer included', () => {
+        process.env.NEXT_PUBLIC_ECOSYSTEM_EXCLUDED = 'explorer, dex'
+        try {
+            const keys = getEcosystemApps().map(a => a.key)
+            expect(keys).not.toContain('explorer')
+            expect(keys).not.toContain('dex')
+            expect(keys).toHaveLength(5)
+        } finally {
+            delete process.env.NEXT_PUBLIC_ECOSYSTEM_EXCLUDED
+        }
+    })
+})
+
+describe('Apps menu order', () => {
+    it('lists Website, DEX, Staking, Burner, Factory, Communities, Explorer', () => {
+        expect(getEcosystemApps().map(a => a.name)).toEqual(
+            ['Website', 'DEX', 'Staking', 'Burner', 'Factory', 'Communities', 'Explorer'],
+        )
+    })
+})
+
+describe('Explorer entry', () => {
+    it('defaults to the mainnet explorer', () => {
+        const app = getExplorerApp()
+        expect(app.key).toBe('explorer')
+        expect(app.name).toBe('Explorer')
+        expect(app.href).toBe('https://explorer.getbze.com')
+    })
+
+    it('follows NEXT_PUBLIC_EXPLORER_URL, so testnet builds link the testnet explorer', () => {
+        process.env.NEXT_PUBLIC_EXPLORER_URL = 'https://testnet-explorer.getbze.com/'
+        try {
+            expect(getExplorerApp().href).toBe('https://testnet-explorer.getbze.com')
+            expect(getEcosystemApps().find(a => a.key === 'explorer')?.href).toBe('https://testnet-explorer.getbze.com')
+        } finally {
+            delete process.env.NEXT_PUBLIC_EXPLORER_URL
+        }
+    })
+
+    describe('env overrides', () => {
+        beforeEach(() => {
+            vi.resetModules()
+        })
+
+        it('applies NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER over the explorer URL', async () => {
+            process.env.NEXT_PUBLIC_EXPLORER_URL = 'https://testnet-explorer.getbze.com'
+            process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER = 'https://scan.example.org'
+            try {
+                const { getExplorerApp: fresh } = await import('./ecosystem')
+                expect(fresh().href).toBe('https://scan.example.org')
+            } finally {
+                delete process.env.NEXT_PUBLIC_EXPLORER_URL
+                delete process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER
+            }
+        })
+
+        it('applies NEXT_PUBLIC_ECOSYSTEM_LABEL_EXPLORER', async () => {
+            process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_EXPLORER = 'Scan'
+            try {
+                const { getExplorerApp: fresh } = await import('./ecosystem')
+                expect(fresh().name).toBe('Scan')
+            } finally {
+                delete process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_EXPLORER
+            }
+        })
     })
 })

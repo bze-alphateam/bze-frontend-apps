@@ -1,10 +1,11 @@
 "use client"
 
 import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Checkbox, Container, HStack, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Checkbox, Container, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuRefreshCw } from 'react-icons/lu'
+import { LuRefreshCw } from 'react-icons/lu'
 import {
+    AppLink,
     formatTimeRemainingFromEpochs,
     getBurnerApp,
     getExplorerTxURL,
@@ -29,10 +30,8 @@ import {
     SuccessPanel,
     WarningNote,
     useGuidedSteps,
-    useReturnTo,
 } from '@/components/guided'
 import type { PayRow } from '@/components/guided'
-import { completedReturnHref } from '@/components/guided/return-to'
 import {
     POT_TREND_TEXT,
     buildStartRaffleMsg,
@@ -89,7 +88,6 @@ function Presets({ values, current, label, onPick }: { values: number[]; current
 
 function RaffleFormContent() {
     const { getQueryParam } = useNavigationWithParams()
-    const returnTo = useReturnTo()
     const { address } = useChain(getChainName())
     const { tx } = useFactoryTx()
     const { hourEpochInfo } = useEpochs()
@@ -223,10 +221,11 @@ function RaffleFormContent() {
             <SuccessPanel
                 title={`The ${done.ticker} raffle is live`}
                 text={done.endsAt ? `It ends around ${done.endsAt}. Whatever is left in the pot then is burned.` : undefined}
-                links={[{ label: 'View transaction', href: getExplorerTxURL(done.txHash) }]}
-                next={returnTo ? [{ label: `Back to ${returnTo.label}`, href: completedReturnHref(returnTo.href) }] : []}
+                links={[
+                    { label: 'View on Burner', href: burnerHref(done.denom), app: 'burner' },
+                    { label: 'View transaction', href: getExplorerTxURL(done.txHash), app: 'explorer' },
+                ]}
                 again={{ label: 'Start another', onClick: startAnother }}
-                primary={{ label: 'See it in the Burner ↗', href: burnerHref(done.denom), external: true }}
             />
         )
     }
@@ -330,9 +329,9 @@ function RaffleFormContent() {
                     ) : asset && isRunning ? (
                         <VStack align="start" gap={1} role="alert" data-testid="raffle-running">
                             <Text fontSize="sm" color="fg.error">{runningText}</Text>
-                            <Link href={burnerHref(denom)} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">
-                                See it in the Burner <LuArrowUpRight />
-                            </Link>
+                            <Box fontSize="sm">
+                                <AppLink app="burner" href={burnerHref(denom)}>View on Burner</AppLink>
+                            </Box>
                         </VStack>
                     ) : asset && raffle.status === 'loading' ? (
                         <Skeleton height="4" width="56" data-testid="raffle-checking" />

@@ -11,7 +11,10 @@ const { params, navigateMock, toastSuccess } = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => params.current }));
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: navigateMock }) }));
-vi.mock("@bze/bze-ui-kit", () => ({ useToast: () => ({ toast: { success: toastSuccess } }) }));
+vi.mock("@bze/bze-ui-kit", async (importActual) => ({
+    ...await importActual<typeof import("@bze/bze-ui-kit")>(),
+    useToast: () => ({ toast: { success: toastSuccess } }),
+}));
 
 import { SuccessPanel } from "./success-panel";
 
@@ -82,6 +85,26 @@ describe("SuccessPanel", () => {
         await userEvent.click(screen.getByRole("button", { name: "Create another market" }));
         expect(again).toHaveBeenCalledOnce();
         open.mockRestore();
+    });
+
+    it("shows a BZE app's link as that app's outlined button, opening in a new tab", () => {
+        render(
+            <SuccessPanel
+                title="Done!"
+                links={[
+                    { label: "View on DEX", href: "https://dex/pools/details?id=1", app: "dex" },
+                    { label: "View transaction", href: "https://explorer/txs/1", app: "explorer" },
+                ]}
+            />,
+            { wrapper },
+        );
+        const dex = screen.getByRole("link", { name: "View on DEX" });
+        expect(dex).toHaveAttribute("href", "https://dex/pools/details?id=1");
+        expect(dex).toHaveAttribute("data-app", "dex");
+        expect(dex).toHaveAttribute("target", "_blank");
+        expect(dex).toHaveAttribute("rel", "noopener noreferrer");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.queryByRole("button", { name: /View/ })).not.toBeInTheDocument();
     });
 
     it("copies the code value and confirms with a toast", async () => {

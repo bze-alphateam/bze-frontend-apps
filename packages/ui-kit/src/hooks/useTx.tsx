@@ -303,7 +303,7 @@ const useTx = (chainName: string) => {
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View in Explorer');
+                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
 
                     if (options?.onSuccess) {
                         options.onSuccess(resp as TxSuccessResponse)

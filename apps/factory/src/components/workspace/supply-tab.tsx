@@ -1,9 +1,9 @@
 "use client"
 
 import React from 'react'
-import { Box, Button, Card, Grid, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowUpRight, LuFlame, LuRefreshCw } from 'react-icons/lu'
-import { getBurnerApp, isLpDenom, prettyAmount, truncateAddress } from '@bze/bze-ui-kit'
+import { Box, Button, Card, Grid, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { LuRefreshCw } from 'react-icons/lu'
+import { AppButton, getBurnerApp, isLpDenom, prettyAmount, truncateAddress } from '@bze/bze-ui-kit'
 import { InfoBox } from '@/components/ui/info-box'
 import { shareOfSupply } from '@/lib/supply'
 import type { AdminState } from '@/lib/workspace'
@@ -77,15 +77,7 @@ export function SupplyTab({ asset, admin, adminState, supplyDisplay, isSupplyLoa
 
             <Card.Root variant="outline" p="4">
                 <VStack align="start" gap={2}>
-                    <Link
-                        href={burnerHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        fontWeight="semibold"
-                        color="red.500"
-                    >
-                        <LuFlame /> Burn with the Burner app <LuArrowUpRight />
-                    </Link>
+                    <AppButton app="burner" href={burnerHref} size="sm">Burn on Burner</AppButton>
                     <Text fontSize="sm" color="fg.muted">
                         {`Anyone can burn ${ticker} they hold in the Burner app, and see the burn history there.`}
                     </Text>

@@ -155,10 +155,11 @@ function AirdropFormContent() {
                 title={`${doneTx.giftLabel} sent to ${stakingTicker} stakers`}
                 text={`Everyone staking ${stakingTicker} got a share, split by stake.`}
                 links={[
-                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash), app: 'explorer' },
                     {
-                        label: `See it on ${stakingPossessive} Communities page ↗`,
+                        label: 'View on Communities',
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,
+                        app: 'communities',
                     },
                 ]}
                 again={{ label: 'Airdrop again', onClick: reset }}

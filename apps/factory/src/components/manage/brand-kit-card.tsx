@@ -10,15 +10,15 @@ import {
     Grid,
     HStack,
     Input,
-    Link,
     NativeSelect,
     Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
-import { LuArrowUpRight, LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
+import { LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
 import {
+    AppLink,
     Asset,
     BRANDING_COLOR_KEYS,
     BRANDING_FONTS,
@@ -403,17 +403,9 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                         {isAdmin && mode === 'remove' && (
                             <RemovePanel asset={asset} onCancel={() => setMode('view')} onRemoved={backToView} />
                         )}
-                        <Link
-                            href={communitiesHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            fontSize="sm"
-                            fontWeight="medium"
-                            color="purple.500"
-                            alignSelf="start"
-                        >
-                            {`See ${ticker}'s Communities page`} <LuArrowUpRight />
-                        </Link>
+                        <Box fontSize="sm" alignSelf="start">
+                            <AppLink app="communities" href={communitiesHref}>View on Communities</AppLink>
+                        </Box>
                     </VStack>
                 )}
             </VStack>

@@ -238,7 +238,6 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
     });
 
     it("shows the program id and links on success, and starts another from scratch", async () => {
-        const open = vi.spyOn(window, "open").mockImplementation(() => null);
         renderPage();
         await answerStake();
         await answerPrize("2", "5");
@@ -250,10 +249,10 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         expect(screen.getByText(/10 TOK was locked for prizes/)).toBeInTheDocument();
         expect(screen.getByText("0000000000000007")).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: /View on Staking app/ }));
-        expect(open).toHaveBeenCalledWith("https://staking.test", "_blank", "noopener,noreferrer");
-        await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(open).toHaveBeenLastCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
+        expect(screen.getByRole("link", { name: "View on Staking" })).toHaveAttribute("href", "https://staking.test");
+        expect(screen.getByRole("link", { name: "View on Staking" })).toHaveAttribute("data-app", "staking");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
 
         await userEvent.click(screen.getByRole("button", { name: "Back to the Factory" }));
         expect(navigateMock).toHaveBeenCalledWith("/");
@@ -265,6 +264,5 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         await answerPrize("1", "1");
         await continueIn(PRIZE);
         expect(within(question(RULES)).getByLabelText(/Lock period/)).toHaveValue("0");
-        open.mockRestore();
     });
 });

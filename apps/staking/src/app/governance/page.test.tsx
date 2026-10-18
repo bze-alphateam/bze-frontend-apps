@@ -288,8 +288,9 @@ describe("Governance page", () => {
         expect(rejected).toHaveTextContent("Community pool spend");
         expect(rejected).toHaveTextContent("No votes");
 
-        expect(screen.getAllByRole("link", { name: /Full history on BZE Scan/ })[0])
+        expect(screen.getAllByRole("link", { name: "Full history on Explorer" })[0])
             .toHaveAttribute("href", "https://explorer.getbze.com/proposals");
+        expect(screen.getAllByRole("link", { name: "Full history on Explorer" })[0]).toHaveAttribute("data-app", "explorer");
     });
 
     it("loads older proposals while there are more", async () => {

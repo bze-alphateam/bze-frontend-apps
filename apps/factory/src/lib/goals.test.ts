@@ -41,7 +41,7 @@ describe("goal catalogue", () => {
         expect(GOAL_CHIPS.every(c => ids.includes(c.goal))).toBe(true);
         expect(ALL_TOOLS.map(t => t.label)).toEqual([
             "Create token", "Create pool", "Add liquidity", "Create market", "Holder rewards", "Airdrop",
-            "Multi-send", "Staking program", "Brand kit", "Chain registry", "Burn", "My creations",
+            "Multi-send", "Staking program", "Brand kit", "Chain registry", "Burn on Burner", "My creations",
         ]);
     });
 });

@@ -157,12 +157,14 @@ describe("token workspace", () => {
 
     it("links the header to the Communities page and the DEX with the denom encoded", () => {
         renderPage();
-        expect(screen.getByRole("link", { name: "Communities page" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute(
             "href", `https://communities.example/token?denom=${ENCODED}`,
         );
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
         expect(screen.getByRole("link", { name: "DEX" })).toHaveAttribute(
             "href", `https://dex.example/assets/details?denom=${ENCODED}`,
         );
+        expect(screen.getByRole("link", { name: "DEX" })).toHaveAttribute("data-app", "dex");
     });
 
     it.each([
@@ -246,7 +248,7 @@ describe("token workspace", () => {
             renderPage();
             expect(screen.getByText("supply mint")).toBeInTheDocument();
             expect(screen.getByText("supply burn")).toBeInTheDocument();
-            expect(screen.getByRole("link", { name: /Burn with the Burner app/ })).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: "Burn on Burner" })).toHaveAttribute("data-app", "burner");
         });
 
         it("supply: no mint or burn when locked", () => {

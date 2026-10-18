@@ -151,15 +151,17 @@ describe("Proposal page", () => {
         expect(screen.getByText("#48")).toBeInTheDocument();
         expect(screen.getByText("Voting")).toBeInTheDocument();
         expect(screen.getByText("Voting ends in 2 days 22 hours · Oct 20, 2026, 10:13 UTC")).toBeInTheDocument();
-        expect(screen.getAllByRole("link", { name: /View on BZE Scan/ })[0])
+        expect(screen.getAllByRole("link", { name: "View on Explorer" })[0])
             .toHaveAttribute("href", "https://explorer.getbze.com/proposals/48");
+        expect(screen.getAllByRole("link", { name: "View on Explorer" })[0]).toHaveAttribute("data-app", "explorer");
 
         const action = screen.getByTestId("action");
         expect(action).toHaveTextContent(
             "Upgrades the BeeZee software to v8.2.0 at block 25,263,600. Validators switch to the new version at that block"
         );
-        expect(within(action).getByRole("link", { name: /Upgrade countdown on BZE Scan/ }))
+        expect(within(action).getByRole("link", { name: "Upgrade countdown on Explorer" }))
             .toHaveAttribute("href", "https://explorer.getbze.com/proposals/48");
+        expect(within(action).getByRole("link", { name: "Upgrade countdown on Explorer" })).toHaveAttribute("data-app", "explorer");
 
         const vote = screen.getByRole("region", { name: "Your vote" });
         expect(vote).toHaveTextContent("Connect a wallet to vote. Your voting power is the BZE you have staked.");
@@ -296,9 +298,10 @@ describe("Proposal page", () => {
 
         const vote = screen.getByRole("region", { name: "Your vote" });
         expect(vote).toHaveTextContent("Voting ended on Dec 13, 2025.");
-        expect(vote).toHaveTextContent("BZE Scan keeps every vote.");
-        expect(within(vote).getByRole("link", { name: /See all votes on BZE Scan/ }))
+        expect(vote).toHaveTextContent("The Explorer keeps every vote.");
+        expect(within(vote).getByRole("link", { name: "See all votes on Explorer" }))
             .toHaveAttribute("href", "https://explorer.getbze.com/proposals/45");
+        expect(within(vote).getByRole("link", { name: "See all votes on Explorer" })).toHaveAttribute("data-app", "explorer");
         expect(within(vote).queryByRole("button")).not.toBeInTheDocument();
 
         const tallyPanel = screen.getByRole("region", { name: "Final tally" });

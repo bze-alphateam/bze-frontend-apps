@@ -323,8 +323,8 @@ function PoolNewContent() {
                 text="Swaps can start right away. Your first deposit is the pool's permanent floor."
                 code={{ label: 'Your LP token', value: created.lpDenom }}
                 links={[
-                    { label: 'View pool on DEX', href: poolUrl },
-                    { label: 'View transaction', href: getExplorerTxURL(created.txHash) },
+                    { label: 'View on DEX', href: poolUrl, app: 'dex' },
+                    { label: 'View transaction', href: getExplorerTxURL(created.txHash), app: 'explorer' },
                 ]}
                 next={[{ label: 'Reward liquidity providers', href: rewardHref, icon: <LuGift />, disabled: !created.lpDenom }]}
                 again={{ label: 'Create another pool', onClick: createAnother }}

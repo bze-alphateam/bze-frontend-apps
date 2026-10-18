@@ -3,7 +3,7 @@
 import {useState} from 'react';
 import {Box, Grid, HStack, IconButton, Link, Stack, Text} from '@chakra-ui/react';
 import {LuCheck, LuCopy} from 'react-icons/lu';
-import {getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovParams, type GovProposal, type GovTally} from '@bze/bze-ui-kit';
+import {AppLink, getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovParams, type GovProposal, type GovTally} from '@bze/bze-ui-kit';
 import {coinsText, depositFate, timeline, type DenomResolver, type TimelineState} from '@/lib/governance/details';
 
 // Timeline, proposer and deposit.
@@ -81,9 +81,9 @@ export function ProposalTimeline({proposal, tally, params, now, resolve}: Propos
                 <Text as="dt" color="fg.muted">Deposit</Text>
                 <Text as="dd" m="0" textAlign="right" data-testid="deposit">{deposit}</Text>
             </Grid>
-            <Link hideFrom="md" href={getExplorerProposalURL(proposal.id)} target="_blank" rel="noopener noreferrer" fontSize="13px" fontWeight="semibold" color="purple.fg">
-                View on BZE Scan ↗
-            </Link>
+            <Box hideFrom="md" fontSize="13px">
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>View on Explorer</AppLink>
+            </Box>
         </Stack>
     );
 }
