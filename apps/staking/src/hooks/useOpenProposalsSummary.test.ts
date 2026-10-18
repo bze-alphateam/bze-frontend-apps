@@ -17,6 +17,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
     ...q,
 }));
+vi.mock("@/query/proposals", () => ({ loadOpenProposals: () => q.getOpenProposals() }));
 
 type Module = typeof import("./useOpenProposalsSummary");
 let mod: Module;

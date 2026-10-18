@@ -4,8 +4,9 @@ import {useCallback, useEffect, useSyncExternalStore} from "react";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {
-    getChainName, getDelegatorDelegations, getOpenProposals, getProposalVote, getValidators,
+    getChainName, getDelegatorDelegations, getProposalVote, getValidators,
 } from "@bze/bze-ui-kit";
+import {loadOpenProposals} from "@/query/proposals";
 import {proposalTitle} from "@/lib/governance/proposal";
 import {votingPower} from "@/lib/governance/voter";
 import type {OpenProposalsSummary, SummaryProposal} from "@/lib/governance/summary";
@@ -39,7 +40,7 @@ const byEndAsc = (a: SummaryProposal, b: SummaryProposal) =>
     new Date(a.votingEndTime).getTime() - new Date(b.votingEndTime).getTime();
 
 async function fetchSummary(address: string): Promise<OpenProposalsSummary> {
-    const open = (await getOpenProposals()).filter((p) => p.status === "PROPOSAL_STATUS_VOTING_PERIOD");
+    const open = (await loadOpenProposals()).filter((p) => p.status === "PROPOSAL_STATUS_VOTING_PERIOD");
     const proposals: SummaryProposal[] = open.map((p) => ({
         id: p.id,
         title: proposalTitle(p),

@@ -3,7 +3,8 @@
 import NextLink from 'next/link';
 import {Badge, Box, Button, Grid, HStack, Link, Text, VStack} from '@chakra-ui/react';
 import {LuExternalLink} from 'react-icons/lu';
-import {getExplorerProposalsURL, type GovProposal} from '@bze/bze-ui-kit';
+import {getExplorerProposalsURL} from '@bze/bze-ui-kit';
+import type {ListedProposal} from '@/lib/governance/scan';
 import {kindLabel, proposalKind, proposalTitle, statusInfo} from '@/lib/governance/proposal';
 import {yesShare} from '@/lib/governance/tally';
 import {formatDateUtc, formatPct} from '@/lib/governance/format';
@@ -21,14 +22,14 @@ const rowAreas = {
 };
 
 interface FinishedProposalsProps {
-    proposals: GovProposal[];
+    proposals: ListedProposal[];
     hasOlder: boolean;
     isLoadingOlder: boolean;
     olderError: boolean;
     onLoadOlder: () => void;
 }
 
-function FinalTally({proposal}: {proposal: GovProposal}) {
+function FinalTally({proposal}: {proposal: ListedProposal}) {
     const yes = yesShare(proposal.final_tally_result);
     if (yes == null) {
         return <Text fontSize="xs" color="fg.muted">No votes</Text>;
@@ -45,7 +46,7 @@ function FinalTally({proposal}: {proposal: GovProposal}) {
     );
 }
 
-function FinishedRow({proposal}: {proposal: GovProposal}) {
+function FinishedRow({proposal}: {proposal: ListedProposal}) {
     const status = statusInfo(proposal.status);
 
     return (
@@ -107,7 +108,14 @@ export function FinishedProposals({proposals, hasOlder, isLoadingOlder, olderErr
                 <Box hideBelow="md">{scanLink}</Box>
             </HStack>
 
-            {proposals.length === 0 ? (
+            {proposals.length === 0 && olderError ? (
+                <VStack bg="bg.panel" borderWidth="1px" borderRadius="lg" p="6" gap="2">
+                    <Text fontSize="sm" color="red.fg">Couldn&apos;t load finished proposals.</Text>
+                    <Button variant="outline" size={{base: 'lg', md: 'sm'}} w={{base: 'full', md: 'auto'}} loading={isLoadingOlder} onClick={onLoadOlder}>
+                        Try again
+                    </Button>
+                </VStack>
+            ) : proposals.length === 0 ? (
                 <Box bg="bg.panel" borderWidth="1px" borderStyle="dashed" borderRadius="lg" p="6" textAlign="center">
                     <Text fontSize="sm" color="fg.muted">No finished proposals yet.</Text>
                 </Box>
