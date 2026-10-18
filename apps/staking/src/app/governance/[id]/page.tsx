@@ -1,28 +1,34 @@
 'use client';
 
-import {useCallback} from 'react';
+import {useCallback, useMemo, useState} from 'react';
 import NextLink from 'next/link';
 import {useParams} from 'next/navigation';
 import {Badge, Box, Button, Container, Flex, HStack, Link, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
 import {LuArrowLeft, LuCircleAlert, LuClock} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
-import {getChainName, getExplorerProposalURL, useAssets, type GovProposal} from '@bze/bze-ui-kit';
+import BigNumber from 'bignumber.js';
+import {getChainName, getExplorerProposalURL, useAssets, useValidatorLogos, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
 import {useProposal} from '@/hooks/useProposal';
 import {useNow} from '@/hooks/useNow';
+import {useVoter} from '@/hooks/useVoter';
 import {kindLabel, proposalKind, proposalSummary, proposalTitle, statusInfo} from '@/lib/governance/proposal';
 import {endsIn, formatDateTimeUtc} from '@/lib/governance/format';
 import {isOpen, type DenomResolver} from '@/lib/governance/details';
+import type {TallyOption} from '@/lib/governance/tally';
 import {WhatItDoes} from '@/components/governance/proposal/what-it-does';
 import {ProposalDescription} from '@/components/governance/proposal/proposal-description';
 import {ProposalTally} from '@/components/governance/proposal/proposal-tally';
 import {ProposalTimeline} from '@/components/governance/proposal/proposal-timeline';
 import {YourVote} from '@/components/governance/proposal/your-vote';
+import {ValidatorVotes} from '@/components/governance/proposal/validator-votes';
+import {VoteFlow} from '@/components/governance/vote-flow';
 
-// One proposal: what it does, its description, the tally, the timeline and the
-// vote panel. Desktop has a content column and a side column; on a phone the
-// columns dissolve (`display: contents`) and `order` puts the vote first, then
-// what it does, the description, the tally and the timeline.
+// One proposal: what it does, its description, the tally, the timeline, the
+// vote panel and (connected, open) the wallet's validators' votes. Desktop has
+// a content column and a side column; on a phone the columns dissolve
+// (`display: contents`) and `order` puts the vote first, then the validators'
+// votes, what it does, the description, the tally and the timeline.
 
 const BADGE_PALETTE = {purple: 'purple', green: 'green', red: 'red', gray: 'gray'} as const;
 
@@ -106,15 +112,25 @@ function Header({proposal, now}: {proposal: GovProposal; now: Date}) {
 export default function ProposalPage() {
     const params = useParams<{id: string}>();
     const id = params?.id ?? '';
-    const {status} = useChain(getChainName());
+    const {address, status} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
-    const {data, isLoading, notFound, error, reload} = useProposal(id);
+    const {data, isLoading, notFound, error, reload, refreshTally} = useProposal(id);
     const now = useNow();
     const {getAsset} = useAssets();
     const resolve: DenomResolver = useCallback((denom: string) => {
         const asset = getAsset(denom);
         return asset ? {ticker: asset.ticker, decimals: asset.decimals} : undefined;
     }, [getAsset]);
+
+    const openId = data && isOpen(data.proposal) ? data.proposal.id : null;
+    const voterIds = useMemo(() => (openId ? [openId] : []), [openId]);
+    const {voterFor, isLoading: voterLoading, refresh: refreshVote} = useVoter(isConnected ? address : undefined, voterIds);
+    const voter = openId ? voterFor(openId) : undefined;
+    const delegated = useMemo(() => voter?.validators.map((v) => v.validator) ?? [], [voter]);
+    const {logos} = useValidatorLogos(delegated);
+    // The flow keeps the power and vote it opened with, so it stays put if the proposal reloads under it.
+    const [flow, setFlow] = useState<{choice?: TallyOption; power: BigNumber; vote: GovVote | null} | null>(null);
+    const openFlow = (choice?: TallyOption) => voter && setFlow({choice, power: voter.power.power, vote: voter.vote});
 
     const showLoading = isLoading && !data;
 
@@ -143,25 +159,52 @@ export default function ProposalPage() {
                         <Header proposal={data.proposal} now={now} />
                         <Flex direction={{base: 'column', md: 'row'}} gap={{base: '4', md: '6'}} align={{md: 'flex-start'}}>
                             <Flex display={{base: 'contents', md: 'flex'}} direction="column" gap="5" flex="999 1 560px" minW="0">
-                                <Box order={{base: 2, md: 0}}>
+                                <Box order={{base: 3, md: 0}}>
                                     <WhatItDoes proposal={data.proposal} resolve={resolve} />
                                 </Box>
-                                <Box order={{base: 3, md: 0}}>
+                                <Box order={{base: 4, md: 0}}>
                                     <ProposalDescription summary={proposalSummary(data.proposal)} />
                                 </Box>
                             </Flex>
                             <Flex as="aside" display={{base: 'contents', md: 'flex'}} direction="column" gap="5" flex="1 1 360px" maxW={{md: '400px'}} minW="0">
                                 <Box order={{base: 1, md: 0}}>
-                                    <YourVote proposal={data.proposal} isConnected={isConnected} />
-                                </Box>
-                                <Box order={{base: 4, md: 0}}>
-                                    <ProposalTally proposal={data.proposal} tally={data.tally} params={data.params} bondedTokens={data.bondedTokens} />
+                                    <YourVote
+                                        proposal={data.proposal}
+                                        isConnected={isConnected}
+                                        voter={voter}
+                                        voterLoading={voterLoading}
+                                        onVote={openFlow}
+                                    />
                                 </Box>
                                 <Box order={{base: 5, md: 0}}>
+                                    <ProposalTally proposal={data.proposal} tally={data.tally} params={data.params} bondedTokens={data.bondedTokens} />
+                                </Box>
+                                {isConnected && voter && voter.validators.length > 0 && (
+                                    <Box order={{base: 2, md: 0}}>
+                                        <ValidatorVotes voter={voter} logos={logos} />
+                                    </Box>
+                                )}
+                                <Box order={{base: 6, md: 0}}>
                                     <ProposalTimeline proposal={data.proposal} tally={data.tally} params={data.params} now={now} resolve={resolve} />
                                 </Box>
                             </Flex>
                         </Flex>
+                        {flow && (
+                            <VoteFlow
+                                proposal={data.proposal}
+                                params={data.params}
+                                power={flow.power}
+                                currentVote={flow.vote}
+                                initialChoice={flow.choice}
+                                resolve={resolve}
+                                onClose={() => setFlow(null)}
+                                onVoted={() => {
+                                    refreshVote(data.proposal.id);
+                                    refreshTally();
+                                }}
+                                onEnded={reload}
+                            />
+                        )}
                     </>
                 )}
             </VStack>

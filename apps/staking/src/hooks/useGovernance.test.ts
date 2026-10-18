@@ -128,4 +128,16 @@ describe("useGovernance", () => {
         expect(q.getProposalTally).toHaveBeenCalledTimes(2);
         visibility.mockRestore();
     });
+
+    it("re-reads the open tallies on demand, after a vote", async () => {
+        const { result } = renderHook(() => useGovernance());
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(q.getProposalTally).toHaveBeenCalledTimes(1);
+
+        q.getProposalTally.mockResolvedValue(tally("42"));
+        await act(() => result.current.refreshTallies());
+
+        expect(q.getProposalTally).toHaveBeenCalledTimes(2);
+        expect(result.current.data?.open[0].tally).toEqual(tally("42"));
+    });
 });

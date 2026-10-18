@@ -72,18 +72,22 @@ export function useProposal(id: string) {
     const voting = !!data && isVoting(data.proposal);
     const proposalId = data?.proposal.id;
 
-    // Re-read the live tally while voting; a failed poll keeps the last one.
+    /** Re-read the live tally (the poll, and after a vote); a failed read keeps the last one. */
+    const refreshTally = useCallback(async () => {
+        if (!proposalId) return;
+        const current = loadId.current;
+        const tally = await getProposalTally(proposalId).catch(() => null);
+        if (!tally || current !== loadId.current) return;
+        setData((prev) => prev && prev.proposal.id === proposalId && isVoting(prev.proposal) ? {...prev, tally} : prev);
+    }, [proposalId]);
+
     useEffect(() => {
-        if (!voting || !proposalId) return;
-        const timer = setInterval(async () => {
-            if (document.visibilityState !== "visible") return;
-            const current = loadId.current;
-            const tally = await getProposalTally(proposalId).catch(() => null);
-            if (!tally || current !== loadId.current) return;
-            setData((prev) => prev && prev.proposal.id === proposalId ? {...prev, tally} : prev);
+        if (!voting) return;
+        const timer = setInterval(() => {
+            if (document.visibilityState === "visible") refreshTally();
         }, GOVERNANCE_POLL_MS);
         return () => clearInterval(timer);
-    }, [voting, proposalId]);
+    }, [voting, refreshTally]);
 
-    return {data, isLoading, notFound, error, reload: load};
+    return {data, isLoading, notFound, error, reload: load, refreshTally};
 }

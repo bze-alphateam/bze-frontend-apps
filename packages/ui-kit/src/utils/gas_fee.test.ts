@@ -52,6 +52,10 @@ describe('estimateGasUsed', () => {
         expect(estimateGasUsed({ kind: 'send' }).toNumber()).toBe(GAS_ESTIMATES.send.base)
     })
 
+    it('estimates a governance vote', () => {
+        expect(estimateGasUsed('vote').toNumber()).toBe(120_000)
+    })
+
     it('adds perItem gas for every item after the first', () => {
         const { base, perItem } = GAS_ESTIMATES['fill-orders']
         expect(estimateGasUsed({ kind: 'fill-orders', count: 1 }).toNumber()).toBe(base)

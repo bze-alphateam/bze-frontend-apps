@@ -10,8 +10,8 @@ import {isListed} from "@/lib/governance/proposal";
 // The public governance data the list page shows: the gov params, the open
 // proposals with their live tallies, the bonded tokens (for turnout) and the
 // finished proposals page by page. Wallet-specific data (voting power, the
-// user's vote) is layered on top by the hooks that need it, keyed by the open
-// proposals' ids, so this hook stays wallet-free.
+// user's vote) is layered on top by useVoter, keyed by the open proposals'
+// ids, so this hook stays wallet-free.
 
 /** The chain is kept light: tallies are re-read at most once a minute, only while the tab is visible. */
 export const GOVERNANCE_POLL_MS = 60_000;
@@ -136,6 +136,8 @@ export function useGovernance() {
         isLoading,
         error,
         reload: load,
+        /** Re-read the open proposals' tallies (after a vote). */
+        refreshTallies: pollTallies,
         loadOlder,
         hasOlder: nextKey !== null,
         isLoadingOlder,
