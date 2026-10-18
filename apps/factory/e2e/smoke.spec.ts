@@ -84,3 +84,15 @@ test("/manage fits a 390 px phone", async ({page}) => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("the navbar's Apps menu lists the other BZE apps with their icons, Explorer on the testnet explorer", async ({page}) => {
+    await page.goto("/");
+    await page.getByRole("button", {name: "Apps"}).click();
+
+    const menu = page.getByRole("menu");
+    await expect(menu.getByRole("menuitem")).toHaveText(["Website", "DEX", "Staking", "Burner", "Communities", "Explorer"]);
+    await expect(menu.getByTestId("app-icon")).toHaveCount(6);
+    const explorer = menu.getByRole("menuitem", {name: "Explorer"});
+    await expect(explorer).toHaveAttribute("href", "https://testnet-explorer.getbze.com");
+    await expect(explorer).toHaveAttribute("target", "_blank");
+});

@@ -14,7 +14,7 @@ vi.mock("@/hooks/useOpenProposalsSummary", () => ({
     useOpenProposalsSummary: () => summaryMock(),
 }));
 vi.mock("@bze/bze-ui-kit", () => ({
-    getEcosystemApps: () => [],
+    AppsMenu: () => null,
 }));
 
 import { NavbarLinks } from "./navbar-links";
