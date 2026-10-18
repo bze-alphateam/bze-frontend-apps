@@ -18,11 +18,11 @@ export function RulesStrip({params}: {params: GovParams}) {
     const strong = (value: string) => <Text as="strong" color="fg">{value}</Text>;
     const rules = (
         <>
-            {period ? `A vote lasts ${period}. ` : ''}
-            {'A proposal passes when at least '}{strong(fractionPct(params.quorum))}
-            {' of staked BZE votes, more than '}{strong(fractionPct(params.threshold))}
-            {' of Yes / No / Veto votes are Yes, and less than '}{strong(fractionPct(params.veto_threshold))}
-            {' of all votes are No with veto.'}
+            {period ? `Voting lasts ${period}. ` : ''}
+            {'To pass, at least '}{strong(fractionPct(params.quorum))}
+            {' of staked BZE must vote, Yes must win more than '}{strong(fractionPct(params.threshold))}
+            {" of the votes that aren't Abstain, and No with veto must stay at or below "}{strong(fractionPct(params.veto_threshold))}
+            {' of all votes.'}
         </>
     );
 
