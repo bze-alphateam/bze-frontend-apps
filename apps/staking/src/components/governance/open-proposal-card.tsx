@@ -1,13 +1,16 @@
 'use client';
 
 import NextLink from 'next/link';
-import {Badge, Box, Button, HStack, Link, Stack, Text, VStack} from '@chakra-ui/react';
-import {LuClock} from 'react-icons/lu';
+import {Badge, Box, Button, HStack, Link, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
+import {LuCheck, LuClock} from 'react-icons/lu';
 import type {GovParams} from '@bze/bze-ui-kit';
 import type {OpenProposal} from '@/hooks/useGovernance';
+import type {ProposalVoter} from '@/hooks/useVoter';
 import {kindLabel, proposalKind, proposalTitle} from '@/lib/governance/proposal';
 import {quorumStatus} from '@/lib/governance/tally';
 import {endsIn, formatDateTimeUtc, formatPct} from '@/lib/governance/format';
+import {wholeBze} from '@/lib/governance/details';
+import {singleChoice, validatorsSentence, voteSummary} from '@/lib/governance/voter';
 import {TallyBar, TallyLegend} from './tally-bar';
 
 interface OpenProposalCardProps {
@@ -16,6 +19,9 @@ interface OpenProposalCardProps {
     bondedTokens: string;
     now: Date;
     isConnected: boolean;
+    voter?: ProposalVoter;
+    voterLoading?: boolean;
+    onVote?: () => void;
 }
 
 /** Turnout against the quorum: `Turnout 74.3% · quorum 33.4% reached`. */
@@ -34,7 +40,80 @@ function Turnout({item, params, bondedTokens}: Pick<OpenProposalCardProps, 'item
     );
 }
 
-export function OpenProposalCard({item, params, bondedTokens, now, isConnected}: OpenProposalCardProps) {
+function ViewProposal({href}: {href: string}) {
+    return (
+        <Button asChild variant="outline" size={{base: 'lg', md: 'md'}}>
+            <NextLink href={href}>View proposal</NextLink>
+        </Button>
+    );
+}
+
+/**
+ * The card's "Your vote" block: a visitor is asked to connect; a wallet sees
+ * its vote (Change vote), or that it hasn't voted with what its validators did
+ * meanwhile (Vote), or that it has no stake.
+ */
+function CardVote({href, isConnected, voter, voterLoading, onVote}: Pick<OpenProposalCardProps, 'isConnected' | 'voter' | 'voterLoading' | 'onVote'> & {href: string}) {
+    if (!isConnected) {
+        return (
+            <>
+                <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect a wallet with staked BZE to vote.</Text>
+                <ViewProposal href={href} />
+            </>
+        );
+    }
+    if (!voter) {
+        return voterLoading
+            ? <VStack align="stretch" gap="2" aria-busy="true" aria-label="Loading your vote"><Skeleton h="16px" w="60%" /><Skeleton h="40px" /></VStack>
+            : <ViewProposal href={href} />;
+    }
+
+    const noStake = !voter.power.power.gt(0);
+    if (voter.vote) {
+        const single = singleChoice(voter.vote);
+        const voted = single ? single.label : `You split your vote: ${voteSummary(voter.vote)}`;
+        return (
+            <Stack direction={{base: 'row', md: 'column'}} align={{base: 'center', md: 'stretch'}} justify="space-between" gap="2.5">
+                <VStack align="start" gap="1.5" minW="0">
+                    <HStack hideBelow="md" gap="1.5" fontSize="md" fontWeight="bold" color={single?.key === 'yes' ? 'green.fg' : 'fg'}>
+                        <LuCheck size={16} />
+                        <Text as="span">{voted}</Text>
+                    </HStack>
+                    <Text hideFrom="md" fontSize="sm" fontWeight="semibold">{single ? `You voted ${single.label}` : voted}</Text>
+                    <Text hideBelow="md" fontSize="13px" color="fg.muted">
+                        {noStake
+                            ? 'It only counts once you have BZE staked. You can change it until voting ends.'
+                            : `Counts for your ${wholeBze(voter.power.power)} BZE. You can change it until voting ends.`}
+                    </Text>
+                </VStack>
+                <Button variant="outline" size="md" flexShrink={0} onClick={onVote}>Change vote</Button>
+            </Stack>
+        );
+    }
+    if (noStake) {
+        return (
+            <>
+                <Text hideBelow="md" fontSize="md" fontWeight="bold">0 voting power</Text>
+                <Text fontSize="13px" color="fg.muted">You can vote, but it only counts once you have BZE staked.</Text>
+                <ViewProposal href={href} />
+            </>
+        );
+    }
+
+    const meanwhile = validatorsSentence(voter.validators);
+    return (
+        <>
+            <Text hideBelow="md" fontSize="md" fontWeight="bold">{"You haven't voted yet"}</Text>
+            {meanwhile && <Text hideBelow="md" fontSize="13px" color="fg.muted">{`Meanwhile: ${meanwhile}`}</Text>}
+            <Text hideFrom="md" fontSize="13px" color="fg.muted">
+                <Text as="strong" color="fg">{"You haven't voted yet."}</Text>{meanwhile ? ` ${meanwhile}` : ''}
+            </Text>
+            <Button colorPalette="purple" size={{base: 'lg', md: 'md'}} onClick={onVote}>Vote</Button>
+        </>
+    );
+}
+
+export function OpenProposalCard({item, params, bondedTokens, now, isConnected, voter, voterLoading, onVote}: OpenProposalCardProps) {
     const {proposal} = item;
     const href = `/governance/${proposal.id}`;
     const end = proposal.voting_end_time;
@@ -85,7 +164,6 @@ export function OpenProposalCard({item, params, bondedTokens, now, isConnected}:
                     </VStack>
                 </VStack>
 
-                {/* Your vote: the wallet-free variants. Voting power and the vote itself come with the vote flow. */}
                 <VStack
                     align="stretch"
                     justify="center"
@@ -96,14 +174,10 @@ export function OpenProposalCard({item, params, bondedTokens, now, isConnected}:
                     borderTopWidth={{base: '1px', md: '0'}}
                     pl={{base: '0', md: '7'}}
                     pt={{base: '3', md: '0'}}
+                    data-testid="card-vote"
                 >
                     <Text hideBelow="md" fontSize="xs" fontWeight="medium" color="fg.muted">Your vote</Text>
-                    {!isConnected && (
-                        <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect a wallet with staked BZE to vote.</Text>
-                    )}
-                    <Button asChild variant="outline" size={{base: 'lg', md: 'md'}}>
-                        <NextLink href={href}>View proposal</NextLink>
-                    </Button>
+                    <CardVote href={href} isConnected={isConnected} voter={voter} voterLoading={voterLoading} onVote={onVote} />
                 </VStack>
             </Stack>
         </Box>

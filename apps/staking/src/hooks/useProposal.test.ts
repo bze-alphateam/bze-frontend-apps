@@ -134,4 +134,16 @@ describe("useProposal", () => {
         await act(() => vi.advanceTimersByTimeAsync(GOVERNANCE_POLL_MS * 3));
         expect(q.getProposalTally).not.toHaveBeenCalled();
     });
+
+    it("re-reads an open proposal's tally on demand, after a vote", async () => {
+        const { result } = renderHook(() => useProposal("48"));
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(q.getProposalTally).toHaveBeenCalledTimes(1);
+
+        q.getProposalTally.mockResolvedValue(tally("42"));
+        await act(() => result.current.refreshTally());
+
+        expect(q.getProposalTally).toHaveBeenCalledTimes(2);
+        expect(result.current.data?.tally).toEqual(tally("42"));
+    });
 });

@@ -1,24 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
+import BigNumber from "bignumber.js";
 import type { GovParams, GovProposal, GovTally } from "@bze/bze-ui-kit";
+import type { ProposalVoter } from "@/hooks/useVoter";
 import proposal45 from "@/lib/governance/fixtures/proposal-45.json";
 import proposal48 from "@/lib/governance/fixtures/proposal-48.json";
+import { ME, SPLIT, YES, voterOf } from "@/lib/governance/fixtures/voter";
 
-// The page renders off useProposal, the route id and the wallet status; all
-// are mocked, as are the wallet sidebar and the assets context (they need
-// their providers). The ui-kit helpers and the governance lib stay real.
-const { useProposalMock, useChainMock, paramsMock } = vi.hoisted(() => ({
+// The page renders off useProposal, useVoter, the route id and the wallet
+// status; all are mocked, as are the wallet sidebar, the assets context, the
+// logos and the tx hook (they need their providers or the network). The ui-kit
+// helpers and the governance lib stay real.
+const { useProposalMock, useVoterMock, useChainMock, paramsMock, txMock } = vi.hoisted(() => ({
     useProposalMock: vi.fn(),
+    useVoterMock: vi.fn(),
     useChainMock: vi.fn(),
     paramsMock: vi.fn(),
+    txMock: vi.fn(),
 }));
 
 vi.mock("@/hooks/useProposal", () => ({
     useProposal: (id: string) => useProposalMock(id),
+}));
+vi.mock("@/hooks/useVoter", () => ({
+    useVoter: (address: string | undefined, ids: string[]) => useVoterMock(address, ids),
 }));
 vi.mock("@/hooks/useNow", () => ({
     useNow: () => new Date("2026-10-17T12:00:00Z"),
@@ -36,6 +45,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         Sidebar: ({ trigger }: { trigger: ReactNode }) => <>{trigger}</>,
         WalletSidebarContent: () => null,
         useAssets: () => ({ getAsset: () => undefined }),
+        useValidatorLogos: () => ({ logos: {} }),
+        useSDKTx: () => ({ tx: txMock, progressTrack: "" }),
+        useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
+        useGasFeeEstimate: () => ({ displayAmount: new BigNumber("0.0045"), ticker: "BZE", isLoading: false }),
     };
 });
 
@@ -71,8 +84,15 @@ function state(overrides: Record<string, unknown> = {}, data: Record<string, unk
         notFound: false,
         error: undefined,
         reload: vi.fn(),
+        refreshTally: vi.fn(),
         ...overrides,
     };
+}
+
+function connect(voter?: ProposalVoter, refresh = vi.fn()) {
+    useChainMock.mockReturnValue({ status: WalletState.Connected, address: ME });
+    useVoterMock.mockReturnValue({ voterFor: () => voter, power: voter?.power, isLoading: false, failed: false, refresh });
+    return refresh;
 }
 
 function renderPage(id = "48") {
@@ -87,7 +107,10 @@ function renderPage(id = "48") {
 beforeEach(() => {
     useProposalMock.mockReset();
     useChainMock.mockReset();
+    useVoterMock.mockReset();
+    txMock.mockReset();
     useChainMock.mockReturnValue({ status: WalletState.Disconnected });
+    useVoterMock.mockReturnValue({ voterFor: () => undefined, power: undefined, isLoading: false, failed: false, refresh: vi.fn() });
 });
 
 describe("Proposal page", () => {
@@ -160,13 +183,95 @@ describe("Proposal page", () => {
             .toHaveAttribute("href", "https://explorer.getbze.com/accounts/bze1dte8cgjyxnsg4zmrlhfv4h4hnxv5vy8khzfx4f");
     });
 
-    it("leaves a connected wallet's slot for the vote flow", () => {
-        useChainMock.mockReturnValue({ status: WalletState.Connected });
+    it("asks the voter for nothing without a wallet", () => {
         useProposalMock.mockReturnValue(state());
         renderPage();
 
-        expect(screen.getByTestId("vote-slot")).toBeInTheDocument();
-        expect(screen.queryByText("Connect a wallet to vote. Your voting power is the BZE you have staked.")).not.toBeInTheDocument();
+        expect(useVoterMock).toHaveBeenCalledWith(undefined, ["48"]);
+        expect(screen.queryByRole("region", { name: "Your validators' votes" })).not.toBeInTheDocument();
+    });
+
+    it("shows a connected wallet that hasn't voted its power, the options and its validators' votes", () => {
+        connect(voterOf());
+        useProposalMock.mockReturnValue(state());
+        renderPage();
+
+        expect(useVoterMock).toHaveBeenCalledWith(ME, ["48"]);
+        const panel = screen.getByRole("region", { name: "Your vote" });
+        expect(panel).toHaveTextContent("Voting power 25,400 BZE");
+        expect(panel).toHaveTextContent("You haven't voted yet. Pick an option:");
+        expect(within(panel).getAllByRole("button").map((b) => b.textContent)).toEqual(["Yes", "No", "No with veto", "Abstain"]);
+
+        const validators = screen.getByRole("region", { name: "Your validators' votes" });
+        const rows = within(validators).getAllByRole("listitem");
+        expect(rows[0]).toHaveTextContent("Hive Node15,000 BZE of yoursYes");
+        expect(rows[1]).toHaveTextContent("Comb Staking10,400 BZE of yoursNot voted");
+        expect(validators).toHaveTextContent("Your own vote replaces them for all 25,400 BZE.");
+    });
+
+    it("shows a connected wallet's vote with Change vote, its validators' votes replaced", () => {
+        connect(voterOf({ vote: YES }));
+        useProposalMock.mockReturnValue(state());
+        renderPage();
+
+        const panel = screen.getByRole("region", { name: "Your vote" });
+        expect(panel).toHaveTextContent("You voted Yes");
+        expect(panel).toHaveTextContent("You can change it until Oct 20, 2026, 10:13 UTC; your last vote is the one that counts.");
+        expect(within(panel).getByRole("button", { name: "Change vote" })).toBeInTheDocument();
+        expect(within(panel).queryByRole("button", { name: "No with veto" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Your validators' votes" })).toHaveTextContent("Your vote replaces these for your stake.");
+    });
+
+    it("shows a split vote made elsewhere", () => {
+        connect(voterOf({ vote: SPLIT }));
+        useProposalMock.mockReturnValue(state());
+        renderPage();
+
+        const panel = screen.getByRole("region", { name: "Your vote" });
+        expect(panel).toHaveTextContent("You split your vote: Yes 60%, No 40%");
+        expect(panel).toHaveTextContent("Voting here replaces it with one choice");
+    });
+
+    it("lets a wallet without stake vote, saying it only counts once staked", () => {
+        connect(voterOf({ validators: [] }));
+        useProposalMock.mockReturnValue(state());
+        renderPage();
+
+        const panel = screen.getByRole("region", { name: "Your vote" });
+        expect(panel).toHaveTextContent("Voting power 0 BZE");
+        expect(panel).toHaveTextContent(
+            "You have no BZE staked, so your vote has 0 voting power. Votes are counted with the BZE you have staked when voting ends: stake before Oct 20, 2026, 10:13 UTC and your vote counts."
+        );
+        expect(within(panel).getByRole("link", { name: "Stake BZE" })).toHaveAttribute("href", "/");
+        expect(within(panel).getByRole("button", { name: "Yes" })).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Your validators' votes" })).not.toBeInTheDocument();
+    });
+
+    it("says stake with inactive validators doesn't count", () => {
+        connect(voterOf({ inactive: "820000000" }));
+        useProposalMock.mockReturnValue(state());
+        renderPage();
+
+        expect(screen.getByRole("region", { name: "Your vote" })).toHaveTextContent("820 BZE with inactive validators doesn't count.");
+    });
+
+    it("opens the flow on the picked option and, after the vote, re-reads the vote and the tally", async () => {
+        const refresh = connect(voterOf());
+        const refreshTally = vi.fn();
+        useProposalMock.mockReturnValue(state({ refreshTally }));
+        txMock.mockResolvedValue(true);
+        renderPage();
+
+        await userEvent.click(within(screen.getByRole("region", { name: "Your vote" })).getByRole("button", { name: "No with veto" }));
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveTextContent("You're votingNo with veto");
+        expect(within(dialog).getByTestId("veto-warning")).toBeInTheDocument();
+
+        await act(() => userEvent.click(within(dialog).getByRole("button", { name: "Sign and vote" })));
+        expect(txMock.mock.calls[0][0][0].value.option).toBe(4);
+        expect(refresh).toHaveBeenCalledWith("48");
+        expect(refreshTally).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("says when the live tally didn't load", () => {
@@ -178,8 +283,12 @@ describe("Proposal page", () => {
     });
 
     it("renders a finished community pool spend (#45)", () => {
+        connect(voterOf());
         useProposalMock.mockReturnValue(state({}, { proposal: PASSED, tally: PASSED.final_tally_result }));
         renderPage("45");
+
+        expect(useVoterMock).toHaveBeenCalledWith(ME, []);
+        expect(screen.queryByRole("region", { name: "Your validators' votes" })).not.toBeInTheDocument();
 
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Fund Liquidity Pools");
         expect(screen.getByText("Voting ended Dec 13, 2025, 10:21 UTC")).toBeInTheDocument();

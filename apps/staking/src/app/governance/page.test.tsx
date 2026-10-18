@@ -1,21 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
+import BigNumber from "bignumber.js";
 import type { GovParams, GovProposal, GovTally } from "@bze/bze-ui-kit";
+import type { ProposalVoter } from "@/hooks/useVoter";
+import { ME, SPLIT, YES, voterOf } from "@/lib/governance/fixtures/voter";
 
-// The page renders off useGovernance and the wallet status; both are mocked,
-// as is the wallet sidebar (it needs the wallet providers). The ui-kit helpers
-// and the governance lib stay real.
-const { useGovernanceMock, useChainMock } = vi.hoisted(() => ({
+// The page renders off useGovernance, useVoter and the wallet status; all are
+// mocked, as are the wallet sidebar and the tx hook (they need their providers).
+// The ui-kit helpers and the governance lib stay real.
+const { useGovernanceMock, useVoterMock, useChainMock, txMock } = vi.hoisted(() => ({
     useGovernanceMock: vi.fn(),
+    useVoterMock: vi.fn(),
     useChainMock: vi.fn(),
+    txMock: vi.fn(),
 }));
 
 vi.mock("@/hooks/useGovernance", () => ({
     useGovernance: () => useGovernanceMock(),
+}));
+vi.mock("@/hooks/useVoter", () => ({
+    useVoter: (address: string | undefined, ids: string[]) => useVoterMock(address, ids),
 }));
 vi.mock("@/hooks/useNow", () => ({
     useNow: () => new Date("2026-10-17T12:00:00Z"),
@@ -29,6 +37,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ...actual,
         Sidebar: ({ trigger }: { trigger: ReactNode }) => <>{trigger}</>,
         WalletSidebarContent: () => null,
+        useSDKTx: () => ({ tx: txMock, progressTrack: "" }),
+        useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
+        useGasFeeEstimate: () => ({ displayAmount: new BigNumber("0.0045"), ticker: "BZE", isLoading: false }),
     };
 });
 
@@ -92,6 +103,7 @@ function governance(overrides: Record<string, unknown> = {}, data: Record<string
         isLoading: false,
         error: undefined,
         reload: vi.fn(),
+        refreshTallies: vi.fn(),
         loadOlder: vi.fn(),
         hasOlder: false,
         isLoadingOlder: false,
@@ -108,10 +120,19 @@ function renderPage() {
     });
 }
 
+function connect(voter?: ProposalVoter, refresh = vi.fn()) {
+    useChainMock.mockReturnValue({ status: WalletState.Connected, address: ME });
+    useVoterMock.mockReturnValue({ voterFor: () => voter, power: voter?.power, isLoading: false, failed: false, refresh });
+    return refresh;
+}
+
 beforeEach(() => {
     useGovernanceMock.mockReset();
     useChainMock.mockReset();
+    useVoterMock.mockReset();
+    txMock.mockReset();
     useChainMock.mockReturnValue({ status: WalletState.Disconnected });
+    useVoterMock.mockReturnValue({ voterFor: () => undefined, power: undefined, isLoading: false, failed: false, refresh: vi.fn() });
 });
 
 describe("Governance page", () => {
@@ -168,12 +189,88 @@ describe("Governance page", () => {
     });
 
     it("does not ask a connected wallet to connect", () => {
-        useChainMock.mockReturnValue({ status: WalletState.Connected });
+        connect(voterOf());
         useGovernanceMock.mockReturnValue(governance());
         renderPage();
 
+        expect(useVoterMock).toHaveBeenCalledWith(ME, ["48"]);
         expect(screen.queryByText("Connect a wallet with staked BZE to vote.")).not.toBeInTheDocument();
         expect(screen.queryByText("Connect your wallet to see your voting power and vote.")).not.toBeInTheDocument();
+    });
+
+    it("shows the wallet's voting power", () => {
+        connect(voterOf({ inactive: "820000000" }));
+        useGovernanceMock.mockReturnValue(governance());
+        renderPage();
+
+        const card = screen.getByTestId("voting-power");
+        expect(card).toHaveTextContent("Your voting power25,400 BZEStaked with 2 validators");
+        expect(card).toHaveTextContent("820 BZE with inactive validators doesn't count.");
+        expect(within(card).queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("tells a wallet that hasn't voted what its validators did", () => {
+        connect(voterOf());
+        useGovernanceMock.mockReturnValue(governance());
+        renderPage();
+
+        const vote = screen.getByTestId("card-vote");
+        expect(vote).toHaveTextContent("You haven't voted yet");
+        expect(vote).toHaveTextContent("Meanwhile: Hive Node voted Yes, Comb Staking hasn't voted.");
+        expect(within(vote).getByRole("button", { name: "Vote" })).toBeInTheDocument();
+    });
+
+    it("shows a wallet's vote with Change vote", () => {
+        connect(voterOf({ vote: YES }));
+        useGovernanceMock.mockReturnValue(governance());
+        renderPage();
+
+        const vote = screen.getByTestId("card-vote");
+        expect(vote).toHaveTextContent("Counts for your 25,400 BZE. You can change it until voting ends.");
+        expect(vote).toHaveTextContent("You voted Yes");
+        expect(within(vote).getByRole("button", { name: "Change vote" })).toBeInTheDocument();
+    });
+
+    it("shows a split vote made elsewhere", () => {
+        connect(voterOf({ vote: SPLIT }));
+        useGovernanceMock.mockReturnValue(governance());
+        renderPage();
+
+        expect(screen.getByTestId("card-vote")).toHaveTextContent("You split your vote: Yes 60%, No 40%");
+    });
+
+    it("tells a wallet without stake its vote only counts once staked", () => {
+        connect(voterOf({ validators: [] }));
+        useGovernanceMock.mockReturnValue(governance());
+        renderPage();
+
+        const power = screen.getByTestId("voting-power");
+        expect(power).toHaveTextContent("0 BZEYou have no BZE staked.");
+        expect(within(power).getByRole("link", { name: "Stake BZE to get voting power →" })).toHaveAttribute("href", "/");
+        const vote = screen.getByTestId("card-vote");
+        expect(vote).toHaveTextContent("0 voting power");
+        expect(vote).toHaveTextContent("You can vote, but it only counts once you have BZE staked.");
+        expect(within(vote).getByRole("link", { name: "View proposal" })).toHaveAttribute("href", "/governance/48");
+    });
+
+    it("votes from a card, then re-reads the vote and the tallies", async () => {
+        const refresh = connect(voterOf());
+        const refreshTallies = vi.fn();
+        useGovernanceMock.mockReturnValue(governance({ refreshTallies }));
+        txMock.mockResolvedValue(true);
+        renderPage();
+
+        await userEvent.click(within(screen.getByTestId("card-vote")).getByRole("button", { name: "Vote" }));
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveTextContent("#48 · Upgrade network to v8.2.0");
+        await userEvent.click(within(dialog).getByRole("radio", { name: /^Yes/ }));
+        await userEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
+        await act(() => userEvent.click(within(dialog).getByRole("button", { name: "Sign and vote" })));
+
+        expect(txMock.mock.calls[0][0][0].value).toMatchObject({ proposalId: BigInt(48), voter: ME, option: 1 });
+        expect(refresh).toHaveBeenCalledWith("48");
+        expect(refreshTallies).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     it("lists the finished proposals with result, end date and Yes share", () => {

@@ -52,7 +52,8 @@ export type TxKind =
     | 'update-staking-reward'
     | 'join-staking'
     | 'exit-staking'
-    | 'claim-staking-reward';
+    | 'claim-staking-reward'
+    | 'vote';
 
 /**
  * Gas profile of a message kind: `base` is the gas one message uses; `perItem`, when set,
@@ -105,6 +106,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'join-staking': {base: 200_000},                          // measured p90 162k
     'exit-staking': {base: 1_200_000},                        // measured median 142k but up to 1.14M
     'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
+    'vote': {base: 120_000},                                  // measured mainnet p100 94k over the last 30 MsgVote txs, 2026-10-17
 };
 
 /** A message kind with an optional item count (orders, hops, validators, reward ids, …). */

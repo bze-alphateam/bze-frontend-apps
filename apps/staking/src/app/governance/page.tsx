@@ -1,38 +1,70 @@
 'use client';
 
-import {Box, Button, Container, HStack, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
+import {useMemo, useState} from 'react';
+import NextLink from 'next/link';
+import {Box, Button, Container, HStack, Link, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
 import {LuCircleAlert, LuLandmark} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
-import {getChainName} from '@bze/bze-ui-kit';
+import BigNumber from 'bignumber.js';
+import {getChainName, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
 import {useGovernance} from '@/hooks/useGovernance';
 import {useNow} from '@/hooks/useNow';
+import {useVoter} from '@/hooks/useVoter';
+import type {VotingPower} from '@/lib/governance/voter';
+import {wholeBze} from '@/lib/governance/details';
 import {RulesStrip} from '@/components/governance/rules-strip';
 import {OpenProposalCard} from '@/components/governance/open-proposal-card';
 import {FinishedProposals} from '@/components/governance/finished-proposals';
 import {ConnectWallet} from '@/components/governance/connect-wallet';
+import {VoteFlow} from '@/components/governance/vote-flow';
 
-/** The voting power card, wallet-free variant: a visitor is asked to connect. */
-function VotingPowerCard({isConnected, isLoading}: {isConnected: boolean; isLoading: boolean}) {
-    if (isConnected) return null;
-    if (isLoading) {
-        return <Skeleton hideBelow="md" flex="1 1 300px" maxW="360px" h="76px" borderRadius="lg" />;
+/** The voting power card: a visitor is asked to connect; a wallet sees its power. */
+function VotingPowerCard({isConnected, isLoading, power, failed}: {isConnected: boolean; isLoading: boolean; power?: VotingPower; failed?: boolean}) {
+    if (isLoading || (isConnected && !power && !failed)) {
+        return <Skeleton hideBelow={isConnected ? undefined : 'md'} flex="1 1 300px" maxW={{md: '360px'}} h="76px" borderRadius="lg" />;
     }
+
+    const count = power?.validators.length ?? 0;
+    const noStake = !!power && !power.power.gt(0);
 
     return (
         <Box
             flex="1 1 300px"
             maxW={{md: '360px'}}
-            bg={{md: 'bg.panel'}}
-            borderWidth={{base: '0', md: '1px'}}
+            bg={{base: isConnected ? 'bg.panel' : undefined, md: 'bg.panel'}}
+            borderWidth={{base: isConnected ? '1px' : '0', md: '1px'}}
             borderRadius="lg"
-            px={{base: '0', md: '4.5'}}
-            py={{base: '0', md: '3.5'}}
+            px={{base: isConnected ? '4' : '0', md: '4.5'}}
+            py={{base: isConnected ? '3' : '0', md: '3.5'}}
+            data-testid="voting-power"
         >
-            <VStack align="stretch" gap="2.5">
-                <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect your wallet to see your voting power and vote.</Text>
-                <ConnectWallet phoneLabel="Connect Wallet to vote" />
-            </VStack>
+            {isConnected && !power && (
+                <Text fontSize="sm" color="fg.muted">{"Your voting power didn't load. Reload the page to try again."}</Text>
+            )}
+            {power && (
+                <VStack align="start" gap="0.5">
+                    <Text fontSize="xs" fontWeight="medium" color="fg.muted">Your voting power</Text>
+                    <Text fontSize="xl" fontWeight="bold">{`${wholeBze(power.power)} BZE`}</Text>
+                    <Text fontSize="xs" color="fg.muted">
+                        {noStake ? 'You have no BZE staked.' : `Staked with ${count} ${count === 1 ? 'validator' : 'validators'}`}
+                    </Text>
+                    {power.inactive.gt(0) && (
+                        <Text fontSize="xs" color="fg.muted">{`${wholeBze(power.inactive)} BZE with inactive validators doesn't count.`}</Text>
+                    )}
+                    {noStake && (
+                        <Link asChild mt="1" fontSize="sm" fontWeight="semibold" color="purple.fg">
+                            <NextLink href="/">Stake BZE to get voting power →</NextLink>
+                        </Link>
+                    )}
+                </VStack>
+            )}
+            {!isConnected && (
+                <VStack align="stretch" gap="2.5">
+                    <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect your wallet to see your voting power and vote.</Text>
+                    <ConnectWallet phoneLabel="Connect Wallet to vote" />
+                </VStack>
+            )}
         </Box>
     );
 }
@@ -99,10 +131,15 @@ function NoneOpen() {
 }
 
 export default function GovernancePage() {
-    const {status} = useChain(getChainName());
+    const {address, status} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
-    const {data, isLoading, error, reload, loadOlder, hasOlder, isLoadingOlder, olderError} = useGovernance();
+    const {data, isLoading, error, reload, refreshTallies, loadOlder, hasOlder, isLoadingOlder, olderError} = useGovernance();
     const now = useNow();
+    const openIdsKey = data?.open.map((o) => o.proposal.id).join(',') ?? '';
+    const openIds = useMemo(() => (openIdsKey ? openIdsKey.split(',') : []), [openIdsKey]);
+    const voter = useVoter(isConnected ? address : undefined, openIds);
+    // The flow keeps what it opened with, so it stays put if the list reloads under it.
+    const [flow, setFlow] = useState<{proposal: GovProposal; power: BigNumber; vote: GovVote | null} | null>(null);
 
     const showLoading = isLoading && !data;
     const showError = !showLoading && !!error;
@@ -120,7 +157,9 @@ export default function GovernancePage() {
                             <Text as="span" hideBelow="md">{" If you don't vote, your validator's vote counts for the BZE you staked with them."}</Text>
                         </Text>
                     </VStack>
-                    {!showError && <VotingPowerCard isConnected={isConnected} isLoading={showLoading} />}
+                    {!showError && (
+                        <VotingPowerCard isConnected={isConnected} isLoading={showLoading || (isConnected && voter.isLoading)} power={voter.power} failed={voter.failed} />
+                    )}
                 </Stack>
 
                 {showData && <RulesStrip params={data.params} />}
@@ -136,16 +175,22 @@ export default function GovernancePage() {
                                 <Text as="span">Open for voting</Text>
                                 <Text as="span" color="fg.muted" fontWeight="medium">{data.open.length}</Text>
                             </HStack>
-                            {data.open.length === 0 ? <NoneOpen /> : data.open.map((item) => (
-                                <OpenProposalCard
-                                    key={item.proposal.id}
-                                    item={item}
-                                    params={data.params}
-                                    bondedTokens={data.bondedTokens}
-                                    now={now}
-                                    isConnected={isConnected}
-                                />
-                            ))}
+                            {data.open.length === 0 ? <NoneOpen /> : data.open.map((item) => {
+                                const forProposal = voter.voterFor(item.proposal.id);
+                                return (
+                                    <OpenProposalCard
+                                        key={item.proposal.id}
+                                        item={item}
+                                        params={data.params}
+                                        bondedTokens={data.bondedTokens}
+                                        now={now}
+                                        isConnected={isConnected}
+                                        voter={forProposal}
+                                        voterLoading={voter.isLoading}
+                                        onVote={() => forProposal && setFlow({proposal: item.proposal, power: forProposal.power.power, vote: forProposal.vote})}
+                                    />
+                                );
+                            })}
                         </VStack>
 
                         <FinishedProposals
@@ -158,6 +203,20 @@ export default function GovernancePage() {
                     </>
                 )}
             </VStack>
+            {flow && data && (
+                <VoteFlow
+                    proposal={flow.proposal}
+                    params={data.params}
+                    power={flow.power}
+                    currentVote={flow.vote}
+                    onClose={() => setFlow(null)}
+                    onVoted={() => {
+                        voter.refresh(flow.proposal.id);
+                        refreshTallies();
+                    }}
+                    onEnded={reload}
+                />
+            )}
         </Container>
     );
 }

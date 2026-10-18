@@ -54,7 +54,7 @@ export {
     amountToBigNumberUAmount, amountToUAmount, prettyAmount,
     priceToUPrice, priceToBigNumberUPrice, uPriceToPrice, uPriceToBigNumberPrice
 } from './utils/amount';
-export { truncateAddress, validateBech32Address, validateBZEBech32Address } from './utils/address';
+export { truncateAddress, validateBech32Address, validateBZEBech32Address, valoperToAccountAddress } from './utils/address';
 export {
     CHART_4H, CHART_1D, CHART_7D, CHART_30D, CHART_1Y,
     getNoOfIntervalsNeeded, getChartIntervalsLimit, getChartMinutes
