@@ -2,8 +2,7 @@
 
 import NextLink from 'next/link';
 import {Badge, Box, Button, Grid, HStack, Link, Text, VStack} from '@chakra-ui/react';
-import {LuExternalLink} from 'react-icons/lu';
-import {getExplorerProposalsURL} from '@bze/bze-ui-kit';
+import {AppLink, getExplorerProposalsURL} from '@bze/bze-ui-kit';
 import type {ListedProposal} from '@/lib/governance/scan';
 import {kindLabel, proposalKind, proposalTitle, statusInfo} from '@/lib/governance/proposal';
 import {yesShare} from '@/lib/governance/tally';
@@ -89,16 +88,9 @@ function FinishedRow({proposal}: {proposal: ListedProposal}) {
 
 export function FinishedProposals({proposals, hasOlder, isLoadingOlder, olderError, onLoadOlder}: FinishedProposalsProps) {
     const scanLink = (
-        <Link
-            href={getExplorerProposalsURL()}
-            target="_blank"
-            rel="noopener noreferrer"
-            fontSize="sm"
-            fontWeight="semibold"
-            color="purple.fg"
-        >
-            Full history on BZE Scan <LuExternalLink />
-        </Link>
+        <Box fontSize="sm">
+            <AppLink app="explorer" href={getExplorerProposalsURL()}>Explorer</AppLink>
+        </Box>
     );
 
     return (

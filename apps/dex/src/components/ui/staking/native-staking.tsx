@@ -4,21 +4,19 @@ import {
     Card,
     Heading,
     HStack,
-    Skeleton, Stack,
+    Skeleton,
     Text,
     VStack,
     SimpleGrid
 } from "@chakra-ui/react";
 import {LuClock, LuCoins, LuGift, LuInfinity, LuLock, LuLockOpen, LuShield, LuTrendingUp} from "react-icons/lu";
 import React, {useMemo, useState} from "react";
-import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, openExternalLink, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo} from "@bze/bze-ui-kit";
+import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo, AppLink, getStakingApp} from "@bze/bze-ui-kit";
 import {cosmos} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
 import {
     RewardStakingAlert,
-    TYPE_REWARDS,
-    TYPE_STAKING,
-    TYPE_UNLOCK
+    TYPE_REWARDS
 } from "@/components/ui/staking/rewards-staking-alerts";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
 
@@ -406,27 +404,7 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                                 <VStack gap="4">
                                     <Text color="gray.600">{'Secure the BeeZee network and earn rewards by staking your BZE coins.'}</Text>
 
-                                    <Stack direction={{ base: 'column', sm: 'row' }} width="full" gap="3">
-                                        <RewardsStakingButton
-                                            buttonType={TYPE_STAKING}
-                                            variant='outline'
-                                            onClick={() => openExternalLink('https://staking.getbze.com')}
-                                        >
-                                            <HStack gap="2">
-                                                <Text>Stake</Text>
-                                            </HStack>
-                                        </RewardsStakingButton>
-
-                                        <RewardsStakingButton
-                                            buttonType={TYPE_UNLOCK}
-                                            disabled={!hasUserStake}
-                                            onClick={() => openExternalLink('https://staking.getbze.com')}
-                                        >
-                                            <HStack gap="2">
-                                                <Text>Unstake</Text>
-                                            </HStack>
-                                        </RewardsStakingButton>
-
+                                    <VStack width="full" gap="2">
                                         <RewardsStakingButton
                                             buttonType={TYPE_REWARDS}
                                             disabled={!hasRewards}
@@ -436,7 +414,8 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                                                 <Text>Claim</Text>
                                             </HStack>
                                         </RewardsStakingButton>
-                                    </Stack>
+                                        <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
+                                    </VStack>
                                 </VStack>
                             )}
 

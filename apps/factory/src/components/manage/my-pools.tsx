@@ -12,8 +12,9 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuCopy, LuDroplets, LuPlus } from 'react-icons/lu'
+import { LuCopy, LuDroplets, LuPlus } from 'react-icons/lu'
 import {
+    AppLink,
     TokenLogo,
     getChainName,
     getDexApp,
@@ -25,7 +26,6 @@ import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { useChain } from '@interchain-kit/react'
 import { useNavigation } from '@/hooks/useNavigation'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
     const { asset: baseAsset } = useAsset(pool.base)
@@ -96,9 +96,7 @@ function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
                         <LuPlus />
                         Add liquidity
                     </Button>
-                    <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => openExternal(poolUrl)}>
-                        View on DEX <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="dex" href={poolUrl}>DEX</AppLink>
                 </HStack>
             </HStack>
         </Card.Root>

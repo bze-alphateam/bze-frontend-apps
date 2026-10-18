@@ -17,7 +17,6 @@ import {
 import BigNumber from 'bignumber.js'
 import {
     LuArrowLeft,
-    LuArrowUpRight,
     LuCircleCheck,
     LuDroplets,
     LuGift,
@@ -25,6 +24,7 @@ import {
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     LP_ASSETS_DECIMALS,
     amountToUAmount,
     getExplorerTxURL,
@@ -46,7 +46,6 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { addLiquidity } = bze.tradebin.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 const SLIPPAGE_PRESETS = ['0.5', '1', '3']
 const DEFAULT_SLIPPAGE_PCT = '1'
@@ -253,12 +252,8 @@ function PoolAddContent() {
                 </VStack>
 
                 <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(poolUrl)}>
-                        View pool on DEX <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="dex" href={poolUrl}>DEX</AppLink>
+                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                 </HStack>
 
                 <VStack align="stretch" gap={3}>

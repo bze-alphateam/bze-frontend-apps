@@ -3,18 +3,16 @@
 import React from 'react'
 import { Box, Button, Code, Container, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
 import {
-    LuArrowUpRight,
     LuChartCandlestick,
     LuCircleCheck,
     LuCopy,
     LuDroplets,
     LuPlus,
 } from 'react-icons/lu'
-import { getExplorerTxURL, getDexApp, useToast } from '@bze/bze-ui-kit'
+import { AppLink, getExplorerTxURL, getDexApp, useToast } from '@bze/bze-ui-kit'
 import { useTokenWizard } from '@/components/token-wizard/token-wizard-context'
 import { useNavigation } from '@/hooks/useNavigation'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 export function SuccessScreen() {
     const { created, form, reset } = useTokenWizard()
@@ -74,12 +72,8 @@ export function SuccessScreen() {
                 </Box>
 
                 <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(tokenUrl)}>
-                        View token on DEX <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="dex" href={tokenUrl}>DEX</AppLink>
+                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                 </HStack>
 
                 <VStack align="stretch" gap={3}>

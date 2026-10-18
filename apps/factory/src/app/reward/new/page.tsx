@@ -17,7 +17,6 @@ import {
 import BigNumber from 'bignumber.js'
 import {
     LuArrowLeft,
-    LuArrowUpRight,
     LuCircleCheck,
     LuCopy,
     LuGift,
@@ -26,6 +25,7 @@ import {
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     amountToUAmount,
     getExplorerTxURL,
     getChainName,
@@ -48,7 +48,6 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { createStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Chain limits verified in x/rewards: duration 1–36,500 days, lock 0–3,650 days.
 const MIN_DURATION_DAYS = 1
@@ -287,12 +286,8 @@ function RewardNewContent() {
                 )}
 
                 <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(stakingUrl)}>
-                        View on Staking app <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="staking" href={stakingUrl}>Staking</AppLink>
+                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                 </HStack>
 
                 <VStack align="stretch" gap={3}>

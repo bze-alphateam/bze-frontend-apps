@@ -14,7 +14,6 @@ import {
 } from '@chakra-ui/react'
 import {
     LuArrowLeft,
-    LuArrowUpRight,
     LuChartCandlestick,
     LuCircleCheck,
     LuDroplets,
@@ -22,6 +21,7 @@ import {
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     createMarketId,
     getExplorerTxURL,
     getChainName,
@@ -40,7 +40,6 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function MarketNewContent() {
     const { getQueryParam, navigate } = useNavigationWithParams()
@@ -129,12 +128,8 @@ function MarketNewContent() {
                 </VStack>
 
                 <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(marketUrl)}>
-                        View market on DEX <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="dex" href={marketUrl}>DEX</AppLink>
+                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                 </HStack>
 
                 <VStack align="stretch" gap={3}>

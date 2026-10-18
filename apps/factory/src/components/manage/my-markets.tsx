@@ -10,8 +10,9 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowUpRight, LuChartCandlestick, LuPlus } from 'react-icons/lu'
+import { LuChartCandlestick, LuPlus } from 'react-icons/lu'
 import {
+    AppLink,
     Market,
     TokenLogo,
     createMarketId,
@@ -23,7 +24,6 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useNavigation } from '@/hooks/useNavigation'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function MarketRow({ market }: { market: Market }) {
     const { asset: baseAsset } = useAsset(market.base)
@@ -60,9 +60,7 @@ function MarketRow({ market }: { market: Market }) {
                     </VStack>
                 </HStack>
 
-                <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => openExternal(marketUrl)}>
-                    View on DEX <LuArrowUpRight />
-                </Button>
+                <AppLink app="dex" href={marketUrl}>DEX</AppLink>
             </HStack>
         </Card.Root>
     )

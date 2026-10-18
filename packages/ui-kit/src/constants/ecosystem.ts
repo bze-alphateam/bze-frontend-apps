@@ -9,7 +9,7 @@ export interface EcosystemApp {
     disabled: boolean;
     /**
      * Unique key used for env var overrides and exclusions (e.g. 'website', 'staking', 'dex').
-     * It also picks the app's icon and accent (AppIcon, AppButton, AppLink).
+     * It also picks the app's icon and accent (AppIcon, AppLink, AppIconButton).
      */
     key: AppKey;
 }

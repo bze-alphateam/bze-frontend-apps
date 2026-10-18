@@ -17,7 +17,6 @@ import {
 import BigNumber from 'bignumber.js'
 import {
     LuArrowLeft,
-    LuArrowUpRight,
     LuCircleCheck,
     LuCopy,
     LuDroplets,
@@ -26,6 +25,7 @@ import {
 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     amountToUAmount,
     createPoolId,
     getExplorerTxURL,
@@ -57,7 +57,6 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 
 const { createLiquidityPool } = bze.tradebin.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Chain range is 0.001–0.05; the UI speaks percent (0.1%–5%).
 const MIN_SWAP_FEE_PCT = 0.1
@@ -326,12 +325,8 @@ function PoolNewContent() {
                 </Box>
 
                 <HStack gap={3} justify="center" wrap="wrap">
-                    <Button colorPalette="yellow" onClick={() => openExternal(poolUrl)}>
-                        View pool on DEX <LuArrowUpRight />
-                    </Button>
-                    <Button variant="outline" colorPalette="yellow" onClick={() => openExternal(txUrl)}>
-                        View transaction <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="dex" href={poolUrl}>DEX</AppLink>
+                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                 </HStack>
 
                 <VStack align="stretch" gap={3}>

@@ -3,7 +3,7 @@
 import {useState} from 'react';
 import {Box, Button, Grid, HStack, Link, Stack, Text} from '@chakra-ui/react';
 import {LuChevronDown, LuChevronUp, LuCoins, LuFileText, LuRefreshCw, LuSlidersHorizontal, LuCable, LuNewspaper, LuPuzzle} from 'react-icons/lu';
-import {getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovProposal} from '@bze/bze-ui-kit';
+import {AppLink, getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovProposal} from '@bze/bze-ui-kit';
 import {describeProposal, humanise, type Action, type Entry} from '@/lib/governance/describe';
 import {coinsText, isOpen, type DenomResolver} from '@/lib/governance/details';
 
@@ -85,9 +85,9 @@ function ActionText({action, proposal, resolve}: {action: Action; proposal: GovP
                         {'. Validators switch to the new version at that block; your stake and balances stay as they are.'}
                     </Text>
                     {isOpen(proposal) && (
-                        <Link href={getExplorerProposalURL(proposal.id)} target="_blank" rel="noopener noreferrer" fontSize="13px" fontWeight="semibold" color="purple.fg">
-                            Upgrade countdown on BZE Scan ↗
-                        </Link>
+                        <Box fontSize="13px">
+                            <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                        </Box>
                     )}
                 </>
             );

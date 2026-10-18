@@ -13,8 +13,9 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowUpRight, LuCircleHelp, LuCoins, LuCopy, LuFlame, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
+import { LuCircleHelp, LuCoins, LuCopy, LuLock, LuPlus, LuTriangleAlert } from 'react-icons/lu'
 import {
+    AppLink,
     TokenLogo,
     getBurnerApp,
     prettyAmount,
@@ -28,7 +29,6 @@ import { InfoBox } from '@/components/ui/info-box'
 import { useMyTokens, type MyToken } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same trust semantics as the dex assets page: an active admin can mint more,
 // only a renounced admin makes the supply provably fixed. A failed lookup
@@ -110,14 +110,7 @@ function TokenRow({ token }: { token: MyToken }) {
                         </Text>
                     </VStack>
                     <TrustBadge admin={admin} />
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        colorPalette="red"
-                        onClick={() => openExternal(burnerUrl)}
-                    >
-                        <LuFlame /> Burn <LuArrowUpRight />
-                    </Button>
+                    <AppLink app="burner" href={burnerUrl}>Burner</AppLink>
                     <Button
                         size="sm"
                         variant="outline"

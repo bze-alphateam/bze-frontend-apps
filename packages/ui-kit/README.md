@@ -183,13 +183,12 @@ The Explorer entry links `NEXT_PUBLIC_EXPLORER_URL` unless `NEXT_PUBLIC_ECOSYSTE
 
 ### Links to other BZE apps
 
-The navbar's **Apps** menu is `AppsMenu` (the entries come from `getEcosystemApps()`). Wherever an app mentions or links another BZE app, use one of these, never a plain or filled button, so every app looks and reads the same:
+The navbar's **Apps** menu is `AppsMenu` (the entries come from `getEcosystemApps()`). Wherever a screen links another BZE app, use one of these two, never a plain, outlined or filled button, so every app looks and reads the same and the link never competes with the page's own actions:
 
-- `AppButton({ app, href, children, size? })` — an action that opens another app: outlined in the app's accent, its icon in front, new tab.
-- `AppIconButton({ app, href, 'aria-label' })` — the same without a label, for rows with no room.
-- `AppLink({ app, href, children })` — an app named inside a sentence or a link list.
+- `AppLink({ app, href, children })` — ghost (no border, no fill): the app's icon, the app's name in its accent, an external-link mark, new tab. Used everywhere: in sentences, link rows, cards, success screens and dialogs.
+- `AppIconButton({ app, href, 'aria-label' })` — the same, icon only, for rows with no room for a label (tx lists, hashes).
 
-Wording: "View on <App>" for a destination page, "<Verb> on <App>" for an action ("Trade on DEX", "Burn on Burner"), "View transaction" for a tx on the Explorer. The icons (`AppIcon`) are copied from the branding repo `bze-alphateam/Official-BZEdge-Graphics` (`beezee/apps/<app>/icon/svg/`) into `src/components/app-identity/icon-data.ts`; the accents are `appIdentity` in `src/constants/app-identity.ts`.
+Wording: the label is the app's name only ("Explorer", "DEX", "Staking", "Burner", "Communities"), also for a transaction on the Explorer; the surrounding heading or text says what the link is for. Toasts are not screens: the tx toast keeps its "View on Explorer" action. The icons (`AppIcon`) are copied from the branding repo `bze-alphateam/Official-BZEdge-Graphics` (`beezee/apps/<app>/icon/svg/`) into `src/components/app-identity/icon-data.ts`; the accents are `appIdentity` in `src/constants/app-identity.ts`.
 
 ### AtomOne validator (dex-only)
 

@@ -31,7 +31,7 @@ const record = (over: Partial<CrossChainTxRecord>): CrossChainTxRecord => ({
 describe('TxDetailsModal explorer link', () => {
     it('opens a tx broadcast on BZE in the BZE Explorer', () => {
         render(<TxDetailsModal tx={record({ broadcastChainId: 'beezee-1', explorerLink: 'https://mintscan.example/tx/ABC123' })} onClose={() => {}} accentColor="blue" />, { wrapper });
-        const link = screen.getByRole('link', { name: 'View transaction' });
+        const link = screen.getByRole('link', { name: 'Explorer' });
         expect(link.getAttribute('data-app')).toBe('explorer');
         expect(link.getAttribute('href')).toBe('https://explorer.getbze.com/txs/ABC123');
         expect(screen.queryByRole('button', { name: /chain explorer/ })).toBeNull();

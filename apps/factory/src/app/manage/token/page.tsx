@@ -17,9 +17,10 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowLeft, LuArrowUpRight, LuCircleHelp, LuCopy, LuFlame, LuLock, LuPlus, LuRefreshCw, LuSearchX, LuTriangleAlert } from 'react-icons/lu'
+import { LuArrowLeft, LuCircleHelp, LuCopy, LuFlame, LuLock, LuPlus, LuRefreshCw, LuSearchX, LuTriangleAlert } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     Asset,
     TokenLogo,
     amountToUAmount,
@@ -43,7 +44,6 @@ import { useTokenSupply } from '@/hooks/useTokenSupply'
 
 const { mint, burn } = bze.tokenfactory.MessageComposer.withTypeUrl
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function StatBox({ label, value }: { label: string; value: React.ReactNode }) {
     return (
@@ -302,14 +302,7 @@ function TokenManageContent() {
             </HStack>
 
             <HStack gap={2} flexWrap="wrap">
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    colorPalette="red"
-                    onClick={() => openExternal(`${getBurnerApp().href}/coin?coin=${encodeURIComponent(asset.denom)}`)}
-                >
-                    <LuFlame /> Burn in Burner dApp <LuArrowUpRight />
-                </Button>
+                <AppLink app="burner" href={`${getBurnerApp().href}/coin?coin=${encodeURIComponent(asset.denom)}`}>Burner</AppLink>
             </HStack>
 
             {isAdmin ? (
