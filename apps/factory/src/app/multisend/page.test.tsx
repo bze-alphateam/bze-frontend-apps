@@ -198,7 +198,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         }]);
 
         expect(screen.getByRole("heading", { name: "Sent to 2 wallets" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
         await userEvent.click(screen.getByRole("button", { name: "Send another list" }));
         expect(question(LIST)).toHaveAttribute("data-state", "active");
         expect(listInput()).toHaveValue("");

@@ -248,7 +248,7 @@ describe("token workspace", () => {
             renderPage();
             expect(screen.getByText("supply mint")).toBeInTheDocument();
             expect(screen.getByText("supply burn")).toBeInTheDocument();
-            expect(screen.getByRole("link", { name: "Burn on Burner" })).toHaveAttribute("data-app", "burner");
+            expect(screen.getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
         });
 
         it("supply: no mint or burn when locked", () => {

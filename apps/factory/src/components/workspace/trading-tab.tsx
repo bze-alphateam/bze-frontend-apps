@@ -10,7 +10,7 @@ import {
     TokenLogo,
     createMarketId,
     getChainName,
-    AppButton,
+    AppLink,
     getDexApp,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -109,7 +109,7 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
                     >
                         <LuSprout /> Reward liquidity providers
                     </Button>
-                    <AppButton app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`} size="sm">View on DEX</AppButton>
+                    <AppLink app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`}>DEX</AppLink>
                 </HStack>
             </Stack>
         </Card.Root>
@@ -137,7 +137,7 @@ function MarketCard({ market, address }: Pick<RowProps, 'address'> & { market: M
                     </VStack>
                 </HStack>
                 <Box flexShrink={0}>
-                    <AppButton app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`} size="sm">View on DEX</AppButton>
+                    <AppLink app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`}>DEX</AppLink>
                 </Box>
             </Stack>
         </Card.Root>

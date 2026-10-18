@@ -60,7 +60,7 @@ export function RaffleCard({ asset, goTo }: RaffleCardProps) {
                             />
                         </Grid>
                         <Box fontSize="sm" alignSelf="start">
-                            <AppLink app="burner" href={burnerHref}>View on Burner</AppLink>
+                            <AppLink app="burner" href={burnerHref}>Burner</AppLink>
                         </Box>
                     </VStack>
                 ) : (

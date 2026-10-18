@@ -86,7 +86,7 @@ function ActionText({action, proposal, resolve}: {action: Action; proposal: GovP
                     </Text>
                     {isOpen(proposal) && (
                         <Box fontSize="13px">
-                            <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Upgrade countdown on Explorer</AppLink>
+                            <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
                         </Box>
                     )}
                 </>

@@ -176,8 +176,8 @@ describe("/raffle/new", () => {
 
         const running = await screen.findByTestId("raffle-running");
         expect(running).toHaveTextContent("A raffle for TOK is already running. It ends in 2d 0h.");
-        expect(within(running).getByRole("link", { name: "View on Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
-        expect(within(running).getByRole("link", { name: "View on Burner" })).toHaveAttribute("data-app", "burner");
+        expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+        expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
         expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeDisabled();
     });
 
@@ -255,9 +255,9 @@ describe("/raffle/new", () => {
 
             expect(await screen.findByRole("heading", { name: "The TOK raffle is live" })).toBeInTheDocument();
             expect(screen.getByRole("button", { name: "Back to the Factory" })).toBeInTheDocument();
-            expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
-            expect(screen.getByRole("link", { name: "View on Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
-            expect(screen.getByRole("link", { name: "View on Burner" })).toHaveAttribute("data-app", "burner");
+            expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
+            expect(screen.getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+            expect(screen.getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
 
             await userEvent.click(screen.getByRole("button", { name: "Start another" }));
             expect(question(Q.token)).toHaveAttribute("data-state", "active");

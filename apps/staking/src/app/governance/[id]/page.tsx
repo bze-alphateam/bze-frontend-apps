@@ -103,7 +103,7 @@ function Header({proposal, now}: {proposal: GovProposal; now: Date}) {
                 )}
             </VStack>
             <Box hideBelow="md" fontSize="13px">
-                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>View on Explorer</AppLink>
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
             </Box>
         </Stack>
     );

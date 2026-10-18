@@ -3,7 +3,7 @@
 import React from 'react'
 import { Box, Button, Code, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react'
 import { LuArrowUpRight, LuCircleCheck, LuCopy } from 'react-icons/lu'
-import { AppButton, useToast, type AppKey } from '@bze/bze-ui-kit'
+import { AppLink, useToast, type AppKey } from '@bze/bze-ui-kit'
 import { useNavigation } from '@/hooks/useNavigation'
 import { completedReturnHref, useReturnTo } from './return-to'
 
@@ -12,7 +12,7 @@ export interface SuccessLink {
     href: string;
     /** Another app or site, opened in a new tab (only read on `primary`; `links` always are). */
     external?: boolean;
-    /** The BZE app a link opens: shown as that app's AppButton (only read on `links`). */
+    /** The BZE app a link opens: shown as that app's AppLink, labelled with the app's name (only read on `links`). */
     app?: AppKey;
 }
 
@@ -99,7 +99,7 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
                 {links.length > 0 && (
                     <HStack gap={3} justify="center" wrap="wrap">
                         {links.map(l => l.app ? (
-                            <AppButton key={l.href} app={l.app} href={l.href}>{l.label}</AppButton>
+                            <AppLink key={l.href} app={l.app} href={l.href}>{l.label}</AppLink>
                         ) : (
                             <Button key={l.href} variant="outline" colorPalette="yellow" onClick={() => openExternal(l.href)}>
                                 {l.label} <LuArrowUpRight />

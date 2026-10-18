@@ -4,14 +4,14 @@ import {
     Card,
     Heading,
     HStack,
-    Skeleton, Stack,
+    Skeleton,
     Text,
     VStack,
     SimpleGrid
 } from "@chakra-ui/react";
 import {LuClock, LuCoins, LuGift, LuInfinity, LuLock, LuLockOpen, LuShield, LuTrendingUp} from "react-icons/lu";
 import React, {useMemo, useState} from "react";
-import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo, AppButton, getStakingApp} from "@bze/bze-ui-kit";
+import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo, AppLink, getStakingApp} from "@bze/bze-ui-kit";
 import {cosmos} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
 import {
@@ -404,17 +404,7 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                                 <VStack gap="4">
                                     <Text color="gray.600">{'Secure the BeeZee network and earn rewards by staking your BZE coins.'}</Text>
 
-                                    <Stack direction={{ base: 'column', sm: 'row' }} width="full" gap="3">
-                                        <AppButton app="staking" href={getStakingApp().href}>
-                                            Stake on Staking
-                                        </AppButton>
-
-                                        {hasUserStake && (
-                                            <AppButton app="staking" href={getStakingApp().href}>
-                                                Unstake on Staking
-                                            </AppButton>
-                                        )}
-
+                                    <VStack width="full" gap="2">
                                         <RewardsStakingButton
                                             buttonType={TYPE_REWARDS}
                                             disabled={!hasRewards}
@@ -424,7 +414,8 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                                                 <Text>Claim</Text>
                                             </HStack>
                                         </RewardsStakingButton>
-                                    </Stack>
+                                        <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
+                                    </VStack>
                                 </VStack>
                             )}
 

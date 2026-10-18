@@ -404,7 +404,7 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                             <RemovePanel asset={asset} onCancel={() => setMode('view')} onRemoved={backToView} />
                         )}
                         <Box fontSize="sm" alignSelf="start">
-                            <AppLink app="communities" href={communitiesHref}>View on Communities</AppLink>
+                            <AppLink app="communities" href={communitiesHref}>Communities</AppLink>
                         </Box>
                     </VStack>
                 )}

@@ -170,7 +170,7 @@ describe("Communities token directory page", () => {
 
         expect(tickers()).toEqual(["TKN020", "TKN021", "TKN022", "TKN023", "TKN024"]);
         expect(nav.get()).toBe("q=tkn02");
-    });
+    }, 15_000); // five keystrokes, each re-rendering a 25-card grid: slow on CI runners
 
     it("shows the empty-search state and Clear search restores the list", async () => {
         const user = userEvent.setup();

@@ -199,7 +199,7 @@ describe("Reach another community", { timeout: 20_000 }, () => {
         expect(msgs[0].value).toEqual({ creator: "bze1me", denom: AAA, prizeDenom: "ubze", amount: "200000000" });
 
         expect(screen.getByText("Your gift is on its way to AAA stakers")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute("data-app", "communities");
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
         await userEvent.click(screen.getByRole("button", { name: "Reach another community" }));
         expect(screen.getByRole("heading", { name: "Reach another community" })).toBeInTheDocument();
     });

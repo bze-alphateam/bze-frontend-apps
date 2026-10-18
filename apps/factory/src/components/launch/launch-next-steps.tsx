@@ -229,8 +229,8 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
                                 </HStack>
                             </VStack>
                             <VStack align="start" gap={1} fontSize="sm">
-                                <AppLink app="dex" href={dexUrl}>View on DEX</AppLink>
-                                <AppLink app="explorer" href={txUrl}>View transaction</AppLink>
+                                <AppLink app="dex" href={dexUrl}>DEX</AppLink>
+                                <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
                             </VStack>
                             <Text fontSize="xs" color="fg.muted" data-testid="launch-logo-note">
                                 {"Why a logo isn't here: logos come from the Cosmos Chain Registry, not from the Factory. "}

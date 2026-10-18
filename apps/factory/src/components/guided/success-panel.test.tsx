@@ -92,18 +92,18 @@ describe("SuccessPanel", () => {
             <SuccessPanel
                 title="Done!"
                 links={[
-                    { label: "View on DEX", href: "https://dex/pools/details?id=1", app: "dex" },
-                    { label: "View transaction", href: "https://explorer/txs/1", app: "explorer" },
+                    { label: "DEX", href: "https://dex/pools/details?id=1", app: "dex" },
+                    { label: "Explorer", href: "https://explorer/txs/1", app: "explorer" },
                 ]}
             />,
             { wrapper },
         );
-        const dex = screen.getByRole("link", { name: "View on DEX" });
+        const dex = screen.getByRole("link", { name: "DEX" });
         expect(dex).toHaveAttribute("href", "https://dex/pools/details?id=1");
         expect(dex).toHaveAttribute("data-app", "dex");
         expect(dex).toHaveAttribute("target", "_blank");
         expect(dex).toHaveAttribute("rel", "noopener noreferrer");
-        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
         expect(screen.queryByRole("button", { name: /View/ })).not.toBeInTheDocument();
     });
 

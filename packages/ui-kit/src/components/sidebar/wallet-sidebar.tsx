@@ -777,9 +777,7 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                             </Box>
                         </HStack>
                         <HStack justify="center" mt="2" fontSize="xs">
-                            <AppLink app="explorer" href={getExplorerAccountURL(address)}>
-                                View on Explorer
-                            </AppLink>
+                            <AppLink app="explorer" href={getExplorerAccountURL(address)}>Explorer</AppLink>
                         </HStack>
                     </Box>
                 }

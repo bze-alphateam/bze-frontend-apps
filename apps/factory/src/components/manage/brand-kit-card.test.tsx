@@ -92,9 +92,9 @@ describe("BrandKitCard", () => {
         renderCard("not-admin", { branding: KIT });
 
         expect(screen.getByRole("region", { name: "How TOK looks on Communities" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "View on Communities" }))
+        expect(screen.getByRole("link", { name: "Communities" }))
             .toHaveAttribute("href", "https://communities.example/token?denom=factory%2Fbze1admin%2Futok");
-        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute("data-app", "communities");
+        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
     });
 
     it("words the empty state for the admin and for everyone else", () => {
