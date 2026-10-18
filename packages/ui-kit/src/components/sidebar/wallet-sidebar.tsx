@@ -17,9 +17,10 @@ import {
     Textarea,
     VStack,
 } from '@chakra-ui/react'
-import {LuChevronDown, LuChevronUp, LuCopy, LuExternalLink, LuX} from 'react-icons/lu'
+import {LuChevronDown, LuChevronUp, LuCopy, LuX} from 'react-icons/lu'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {getChainName, getExplorerAccountURL} from "../../constants/chain";
+import {AppLink} from "../app-identity/app-button";
 import {WalletState} from "@interchain-kit/core";
 import {stringTruncateFromCenter} from "../../utils/strings";
 import {useBalances} from "../../hooks/useBalances";
@@ -37,7 +38,6 @@ import {useSDKTx} from "../../hooks/useTx";
 import {useMaxSpendable} from "../../hooks/useMaxSpendable";
 import {useCanAffordTx} from "../../hooks/useCanAffordTx";
 import {cosmos} from "@bze/bzejs";
-import {openExternalLink} from "../../utils/functions";
 import {shortNumberFormat} from "../../utils/formatter";
 import {HighlightText} from "../highlight";
 import {BridgeForm} from './bridge-form';
@@ -776,17 +776,10 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                                 )}
                             </Box>
                         </HStack>
-                        <HStack
-                            justify="center"
-                            mt="2"
-                            cursor="pointer"
-                            onClick={() => openExternalLink(getExplorerAccountURL(address))}
-                            _hover={{ opacity: 0.8 }}
-                        >
-                            <LuExternalLink size="10" />
-                            <Text fontSize="2xs" color="fg.subtle" ml="1">
+                        <HStack justify="center" mt="2" fontSize="xs">
+                            <AppLink app="explorer" href={getExplorerAccountURL(address)}>
                                 View on Explorer
-                            </Text>
+                            </AppLink>
                         </HStack>
                     </Box>
                 }
