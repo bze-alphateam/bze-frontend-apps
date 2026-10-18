@@ -1,0 +1,18 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/denom_reward?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-10-14",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "denom_reward": {
+      "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+      "lock": 7,
+      "min_stake": "0",
+      "staked_amount": "25000000"
+    }
+  }
+}

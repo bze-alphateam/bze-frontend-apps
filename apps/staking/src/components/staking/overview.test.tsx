@@ -1,49 +1,78 @@
 import { describe, it, expect, vi } from "vitest";
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import BigNumber from "bignumber.js";
 import type { NativeStakingData } from "@bze/bze-ui-kit";
 
-// The overview with the asset hooks mocked: where the callout slot sits.
-vi.mock("@bze/bze-ui-kit", async (importActual) => ({
-    ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
-    useAssets: () => ({ nativeAsset: { denom: "ubze", decimals: 6, ticker: "BZE" } }),
-    useAssetPrice: () => ({ price: undefined }),
-}));
+vi.mock("@bze/bze-ui-kit", async (importActual) => {
+    const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
+    return {
+        ...actual,
+        useAssets: () => ({ nativeAsset: { denom: "ubze", ticker: "BZE", decimals: 6 } }),
+        useAssetPrice: () => ({ price: undefined }),
+    };
+});
 
 import { StakingOverview } from "./overview";
 
-const balance = (amount: string) => ({ denom: "ubze", amount });
-const DATA = {
-    averageApr: "10",
-    unlockDuration: "14",
-    totalStaked: balance("1000000000000"),
-    minAmount: balance("1"),
-    averageDailyDistribution: balance("1000000000"),
-} as unknown as NativeStakingData;
+function coin(amount: string) {
+    return { amount: new BigNumber(amount), denom: "ubze" };
+}
 
-const renderOverview = (callout?: React.ReactNode, isLoading = false) =>
-    render(<ChakraProvider value={defaultSystem}><StakingOverview stakingData={DATA} isLoading={isLoading} callout={callout} /></ChakraProvider>);
+function stakingData(connected: boolean): NativeStakingData {
+    return {
+        averageApr: "10",
+        unlockDuration: "14",
+        totalStaked: coin("100000000"),
+        minAmount: coin("0"),
+        averageDailyDistribution: coin("1000000"),
+        currentStaking: connected
+            ? {
+                staked: coin("5000000"),
+                unbonding: { total: coin("0") },
+                pendingRewards: { total: coin("1000") },
+            }
+            : undefined,
+    } as unknown as NativeStakingData;
+}
+
+function renderOverview(data: NativeStakingData, { callout, isLoading = false }: { callout?: ReactNode; isLoading?: boolean } = {}) {
+    return render(<StakingOverview stakingData={data} isLoading={isLoading} callout={callout} />, {
+        wrapper: ({ children }: { children: ReactNode }) => (
+            <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+        ),
+    });
+}
 
 const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
 describe("StakingOverview", () => {
+    it("shows the unbonding length on the Your Stake card when connected with a stake", () => {
+        renderOverview(stakingData(true));
+
+        expect(screen.getByText("Your Stake")).toBeInTheDocument();
+        expect(screen.getByText("Unbonding period: 14 days")).toBeInTheDocument();
+        expect(screen.queryByText("Unbonding Period")).not.toBeInTheDocument();
+    });
+
+    it("keeps the Unbonding Period card when not connected", () => {
+        renderOverview(stakingData(false));
+
+        expect(screen.getByText("Unbonding Period")).toBeInTheDocument();
+        expect(screen.getByText("14 days")).toBeInTheDocument();
+    });
+
     it("renders the callout under the header and above the stat cards", () => {
-        renderOverview(<div data-testid="callout" />);
+        renderOverview(stakingData(false), { callout: <div data-testid="callout" /> });
 
         const callout = screen.getByTestId("callout");
         expect(follows(screen.getByText("BZE Staking"), callout)).toBe(true);
         expect(follows(callout, screen.getByText("Staking APR"))).toBe(true);
     });
 
-    it("renders as before without a callout", () => {
-        renderOverview();
-
-        expect(screen.getByText("BZE Staking")).toBeInTheDocument();
-        expect(screen.getByText("Staking APR")).toBeInTheDocument();
-    });
-
     it("leaves the callout out of the loading skeleton", () => {
-        renderOverview(<div data-testid="callout" />, true);
+        renderOverview(stakingData(false), { callout: <div data-testid="callout" />, isLoading: true });
 
         expect(screen.queryByTestId("callout")).not.toBeInTheDocument();
     });

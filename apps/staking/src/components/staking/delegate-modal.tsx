@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useMemo} from 'react';
+import {useState, useMemo, useRef} from 'react';
 import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
 import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
 import {
@@ -27,15 +27,21 @@ import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {CopyStakeLinkButton} from './copy-stake-link-button';
 
 interface DelegateModalProps {
     isOpen: boolean;
     onClose: () => void;
     validator: ValidatorSDKType | null;
     onSuccess: () => void;
+    // Opens the page's wallet sidebar for a user without a wallet. The page sets the form aside
+    // while the sidebar is up and brings it back afterwards. Without it, the button closes the
+    // form and opens the wallet modal.
+    onConnectWallet?: () => void;
 }
 
-export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateModalProps) {
+export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectWallet}: DelegateModalProps) {
     const {nativeAsset} = useAssets();
     const {balance} = useBalance(getChainNativeAssetDenom());
     const {address, status, connect} = useChain(getChainName());
@@ -44,6 +50,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const amountInputRef = useRef<HTMLInputElement>(null);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);
@@ -52,6 +60,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const maxSpendable = useMaxSpendable(getChainNativeAssetDenom(), 'delegate');
     const spendableHuman = maxSpendable.displayAmount;
     const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
+    const earnsNoRewards = !!validator
+        && (validator.jailed || bondStatusFromJSON(validator.status) !== BondStatus.BOND_STATUS_BONDED);
 
     const handleDelegate = async () => {
         if (!address || !validator) {
@@ -113,14 +123,27 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
         setAmount(maxSpendable.inputValue);
     };
 
+    // On open the dialog focuses its first tabbable element, which is the copy-link icon in the
+    // title. When the form opens from a stake link (no click before it), the browser treats
+    // that focus as keyboard focus and draws the focus ring around the icon. Focus the amount
+    // field instead, or the dialog itself while the field is disabled (no wallet).
+    const initialFocusEl = () => (isConnected ? amountInputRef.current : null) ?? contentRef.current;
+
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
+        <Dialog.Root
+            open={isOpen}
+            onOpenChange={(e) => !isSubmitting && !e.open && onClose()}
+            initialFocusEl={initialFocusEl}
+        >
             <Portal>
                 <Dialog.Backdrop />
                 <Dialog.Positioner>
-                    <Dialog.Content maxW="md" p="6">
+                    <Dialog.Content ref={contentRef} maxW="md" p="6">
                         <Dialog.Header pb="4">
-                            <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
+                            <HStack gap="1">
+                                <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
+                                {validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
+                            </HStack>
                         </Dialog.Header>
                         <Dialog.Body>
                             <VStack gap="4" align="stretch">
@@ -131,6 +154,18 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                     </HStack>
                                 </Box>
 
+                                {earnsNoRewards && (
+                                    <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
+                                        <HStack gap="2" align="start">
+                                            <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
+                                            <Text fontSize="xs" color="fg.muted">
+                                                {validator?.jailed ? 'This validator is jailed. ' : 'This validator is outside the active set. '}
+                                                It does not earn rewards while jailed or outside the active set, so your stake earns nothing until it is back.
+                                            </Text>
+                                        </HStack>
+                                    </Box>
+                                )}
+
                                 <VStack align="stretch" gap="2">
                                     <HStack justify="space-between">
                                         <Text fontSize="sm" fontWeight="medium">Amount</Text>
@@ -139,6 +174,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                         </Text>
                                     </HStack>
                                     <Input
+                                        ref={amountInputRef}
                                         placeholder="0.00"
                                         value={amount}
                                         onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
@@ -187,7 +223,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
                                     <Button
                                         colorPalette="purple"
                                         w="full"
-                                        onClick={() => { onClose(); connect(); }}
+                                        onClick={onConnectWallet ?? (() => { onClose(); connect(); })}
                                     >
                                         <LuWallet /> Connect Wallet
                                     </Button>

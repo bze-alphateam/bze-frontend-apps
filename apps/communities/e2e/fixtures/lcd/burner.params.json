@@ -1,0 +1,13 @@
+{
+  "source": "https://testnet.getbze.com/bze/burner/params",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/burner/params",
+  "query": {},
+  "status": 200,
+  "body": {
+    "params": {
+      "periodic_burning_weeks": "1"
+    }
+  }
+}

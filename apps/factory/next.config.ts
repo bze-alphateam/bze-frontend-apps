@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
         optimizePackageImports: ["@chakra-ui/react", "@bze/bze-ui-kit"]
     },
     transpilePackages: ["@bze/bze-ui-kit"],
+    // The holder rewards directory moved to /rewards (BFE-153). Exact path only: the token page,
+    // schedule and airdrop forms keep their /denom-reward/* routes. The query string is kept.
+    async redirects() {
+        return [{ source: "/denom-reward", destination: "/rewards", permanent: false }];
+    },
     turbopack: {
         resolveAlias: {
             ...Object.fromEntries(UNUSED_DEPS.map((dep) => [dep, './stubs/empty.js'])),

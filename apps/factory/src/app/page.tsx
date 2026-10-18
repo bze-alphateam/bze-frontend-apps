@@ -1,218 +1,186 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
-    Badge,
     Box,
+    Button,
+    Card,
     Container,
     Grid,
     HStack,
     Text,
     VStack,
 } from '@chakra-ui/react'
-import type { IconType } from 'react-icons'
-import {
-    LuArrowUpRight,
-    LuChartCandlestick,
-    LuCoins,
-    LuDroplets,
-    LuFlame,
-    LuGift,
-    LuPlus,
-    LuWrench,
-} from 'react-icons/lu'
-import {
-    CreationFees,
-    FeeCoin,
-    getBurnerApp,
-    prettyAmount,
-    uAmountToBigNumberAmount,
-    useAsset,
-    useCreationFees,
-} from "@bze/bze-ui-kit";
-import {useNavigation} from "@/hooks/useNavigation";
+import { LuArrowRight, LuArrowUpRight } from 'react-icons/lu'
+import { TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
+import { GoalCard } from '@/components/home/goal-card'
+import { GoalSearch } from '@/components/home/goal-search'
+import { PlaybooksSection } from '@/components/home/playbooks-section'
+import { TokenChoiceDialog } from '@/components/home/token-choice-dialog'
+import { SetupProgress } from '@/components/manage/setup-progress'
+import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { useMyTokens } from '@/hooks/useMyTokens'
+import { useNavigation } from '@/hooks/useNavigation'
+import { ALL_TOOLS, GOALS, GOAL_CHIPS, GOAL_GROUPS, type Goal, type ToolLink, goalById } from '@/lib/goals'
+import { workspaceHref } from '@/lib/workspace'
 
-interface CreationCard {
-    key: string;
-    title: string;
-    description: string;
-    icon: IconType;
-    /** Which creation fee (from chain params) this flow charges, if any. */
-    feeKey?: keyof CreationFees;
-    /** Internal route — flips the card live once its milestone ships. */
-    href?: string;
-    /** External link (opens in a new tab), e.g. the Burner. */
-    externalHref?: string;
-}
+/** The home strip shows this many of the user's tokens; the rest are on /manage. */
+const STRIP_SIZE = 4
 
-// Cards flip live per milestone: give them an `href` when the flow ships.
-const CREATION_CARDS: CreationCard[] = [
-    {
-        key: 'token',
-        title: 'Create Token',
-        description: 'Launch your own token on BeeZee — supply, metadata, and admin strategy in one guided flow.',
-        icon: LuCoins,
-        feeKey: 'createDenomFee',
-        href: '/token/new',
-    },
-    {
-        key: 'market',
-        title: 'Create Market',
-        description: 'Open an order-book market on the DEX for any pair of assets.',
-        icon: LuChartCandlestick,
-        feeKey: 'createMarketFee',
-        href: '/market/new',
-    },
-    {
-        key: 'pool',
-        title: 'Create Liquidity Pool',
-        description: 'Seed an AMM pool, set its swap fee, and decide where the fees go.',
-        icon: LuDroplets,
-        feeKey: 'createMarketFee',
-        href: '/pool/new',
-    },
-    {
-        key: 'add-liquidity',
-        title: 'Add Liquidity',
-        description: 'Provide liquidity to an existing pool and receive LP tokens.',
-        icon: LuPlus,
-        href: '/pool/add',
-    },
-    {
-        key: 'reward',
-        title: 'Create Staking Reward',
-        description: 'Fund a staking program — your community stakes a token and earns your prize.',
-        icon: LuGift,
-        feeKey: 'createStakingRewardFee',
-        href: '/reward/new',
-    },
-    {
-        key: 'burn',
-        title: 'Burn Tokens',
-        description: 'Permanently burn coins or LP tokens in the Burner dApp.',
-        icon: LuFlame,
-        externalHref: getBurnerApp().href,
-    },
-    {
-        key: 'manage',
-        title: 'Manage My Creations',
-        description: 'Everything you created, in one place — supply, admin status, and lifecycle actions.',
-        icon: LuWrench,
-        href: '/manage',
-    },
-]
+const openBurner = () => window.open(getBurnerApp().href, '_blank', 'noopener,noreferrer')
 
-// Live creation fee (chain params) shown on the card — "fees disclosed upfront".
-function CardFeeLine({ fee }: { fee?: FeeCoin }) {
-    const { asset } = useAsset(fee?.denom ?? '')
-    if (!fee || !asset) return null
+function YourTokensStrip() {
+    const { tokens } = useMyTokens()
+    const { navigate } = useNavigation()
+    if (tokens.length === 0) return null
 
     return (
-        <Text fontSize="xs" color="fg.muted" fontWeight="medium">
-            Creation fee: {prettyAmount(uAmountToBigNumberAmount(fee.amount, asset.decimals))} {asset.ticker}
-        </Text>
+        <VStack as="section" aria-label="Your tokens" align="stretch" gap={3}>
+            <HStack justify="space-between" gap={2}>
+                <Text as="h2" fontSize="lg" fontWeight="bold">Your tokens</Text>
+                <Button size="sm" variant="ghost" colorPalette="yellow" onClick={() => navigate('/manage')}>
+                    All my tokens <LuArrowRight />
+                </Button>
+            </HStack>
+            <Grid templateColumns={{ base: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }} gap={3}>
+                {tokens.slice(0, STRIP_SIZE).map(({ asset, admin }) => (
+                    <Box
+                        key={asset.denom}
+                        as="button"
+                        textAlign="start"
+                        p={3}
+                        borderRadius="lg"
+                        borderWidth="1px"
+                        borderColor="yellow.500/20"
+                        bg="bg.panel"
+                        _hover={{ borderColor: 'yellow.500/50' }}
+                        onClick={() => navigate(workspaceHref(asset.denom))}
+                        data-testid="strip-token"
+                    >
+                        <HStack gap={2} minW={0}>
+                            <TokenLogo src={asset.logo} symbol={asset.ticker} size="8" circular={true} />
+                            <VStack align="start" gap={0} minW={0}>
+                                <Text fontWeight="semibold" fontSize="sm" truncate maxW="full">{asset.ticker}</Text>
+                                <SetupProgress denom={asset.denom} admin={admin} compact />
+                            </VStack>
+                        </HStack>
+                    </Box>
+                ))}
+            </Grid>
+        </VStack>
     )
 }
 
-function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) {
-    const {navigate} = useNavigation()
-    const Icon = card.icon
-    const isLive = Boolean(card.href || card.externalHref)
+function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => void }) {
+    const { navigate } = useNavigation()
+    if ('external' in tool) {
+        return (
+            <Button size="xs" variant="outline" onClick={openBurner}>
+                {tool.label} <LuArrowUpRight />
+            </Button>
+        )
+    }
+    const onClick = 'goal' in tool ? () => onGoal(goalById(tool.goal)) : () => navigate(tool.href)
+    return <Button size="xs" variant="outline" fontFamily="mono" onClick={onClick}>{tool.label}</Button>
+}
 
-    const onClick = () => {
-        if (card.externalHref) {
-            window.open(card.externalHref, '_blank', 'noopener,noreferrer')
+function ToolChips({ onGoal }: { onGoal: (goal: Goal) => void }) {
+    return (
+        <HStack gap={2} flexWrap="wrap">
+            {ALL_TOOLS.map(tool => <ToolChip key={tool.label} tool={tool} onGoal={onGoal} />)}
+        </HStack>
+    )
+}
+
+export default function FactoryHomePage() {
+    const { fees } = useCreationFees()
+    const { tokens, isLoading: isTokensLoading } = useMyTokens()
+    const { navigate } = useNavigation()
+    const [choosing, setChoosing] = useState<Goal>()
+
+    const openGoal = (goal: Goal) => {
+        if (!goal.href) return
+        if (goal.external) {
+            window.open(goal.href(), '_blank', 'noopener,noreferrer')
             return
         }
-        if (card.href) {
-            navigate(card.href)
+        if (!goal.needsToken) {
+            navigate(goal.href())
+            return
         }
+        // Only one token of your own: nothing to choose.
+        if (goal.needsToken === 'mine' && !isTokensLoading && tokens.length === 1) {
+            navigate(goal.href(tokens[0].asset.denom))
+            return
+        }
+        setChoosing(goal)
     }
 
     return (
-        <Box
-            p={6}
-            bgGradient="to-br"
-            gradientFrom="yellow.500/8"
-            gradientTo="yellow.600/8"
-            borderWidth="1px"
-            borderColor="yellow.500/20"
-            borderRadius="xl"
-            shadow="sm"
-            cursor={isLive ? 'pointer' : 'not-allowed'}
-            opacity={isLive ? 1 : 0.65}
-            transition="all 0.2s"
-            onClick={onClick}
-            _hover={isLive ? {
-                gradientFrom: "yellow.500/15",
-                gradientTo: "yellow.600/15",
-                borderColor: "yellow.500/35",
-                transform: "translateY(-2px)",
-                shadow: "md",
-            } : {}}
-        >
-            <VStack align="start" gap={3}>
-                <HStack justify="space-between" w="full">
-                    <Box
-                        p={2.5}
-                        borderRadius="lg"
-                        bg="yellow.500/15"
-                        color="yellow.600"
-                    >
-                        <Icon size={22} />
-                    </Box>
-                    {card.externalHref ? (
-                        <Badge colorPalette="yellow" size="sm" variant="surface">
-                            Burner <LuArrowUpRight size={12} />
-                        </Badge>
-                    ) : !isLive && (
-                        <Badge colorPalette="gray" size="sm" variant="surface">
-                            Coming soon
-                        </Badge>
-                    )}
-                </HStack>
-                <Text fontWeight="bold" fontSize="lg">
-                    {card.title}
-                </Text>
-                <Text fontSize="sm" color="fg.muted">
-                    {card.description}
-                </Text>
-                <CardFeeLine fee={fee} />
-            </VStack>
-        </Box>
-    )
-}
-
-export default function FactoryHubPage() {
-    const { fees } = useCreationFees()
-
-    return (
         <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" py={12}>
+            <Container maxW="6xl" py={{ base: 8, md: 12 }}>
                 <VStack align="stretch" gap={8}>
-                    {/* Page Header */}
-                    <VStack gap={3} align="center" mb={4}>
-                        <Text fontSize="3xl" fontWeight="bold" letterSpacing="tight">
-                            What do you want to create?
+                    <VStack gap={3} align="center" textAlign="center">
+                        <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" letterSpacing="tight">
+                            What do you want to do?
                         </Text>
-                        <Text fontSize="md" color="fg.muted" textAlign="center" maxW="2xl">
-                            The BeeZee creation workshop — tokens, markets, liquidity pools, and staking
-                            rewards, each in a short guided flow with fees disclosed upfront.
+                        <Text color="fg.muted" maxW="2xl">
+                            Create a token, get it traded, grow its community and make it official. Say it in your own words.
                         </Text>
+                        <GoalSearch
+                            tokens={tokens.map(t => t.asset)}
+                            onGoal={openGoal}
+                            onToken={(denom) => navigate(workspaceHref(denom))}
+                            tools={<ToolChips onGoal={openGoal} />}
+                        />
+                        <HStack gap={2} flexWrap="wrap" justify="center">
+                            {GOAL_CHIPS.map(chip => (
+                                <Button key={chip.goal} size="xs" variant="subtle" colorPalette="yellow" borderRadius="full" onClick={() => openGoal(goalById(chip.goal))}>
+                                    {chip.label}
+                                </Button>
+                            ))}
+                        </HStack>
                     </VStack>
 
-                    {/* Creation Cards */}
-                    <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
-                        {CREATION_CARDS.map(card => (
-                            <CreationCardItem
-                                key={card.key}
-                                card={card}
-                                fee={card.feeKey ? fees[card.feeKey] : undefined}
-                            />
-                        ))}
+                    <YourTokensStrip />
+
+                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} alignItems="start">
+                        {GOAL_GROUPS.map(group => {
+                            const goals = GOALS.filter(g => g.group === group.id)
+                            return (
+                                <Card.Root key={group.id} as="section" aria-label={group.title} variant="outline" p={4} data-testid={`goal-group-${group.id}`}>
+                                    <VStack align="stretch" gap={3}>
+                                        <HStack justify="space-between" gap={2}>
+                                            <Text as="h2" fontSize="lg" fontWeight="bold">{`${group.number} · ${group.title}`}</Text>
+                                            {group.id === 'community' && <RewardInfoButton withLabel />}
+                                        </HStack>
+                                        {goals.map(goal => (
+                                            <GoalCard key={goal.id} goal={goal} fee={goal.feeKey ? fees[goal.feeKey] : undefined} onOpen={openGoal} />
+                                        ))}
+                                    </VStack>
+                                </Card.Root>
+                            )
+                        })}
                     </Grid>
+
+                    <PlaybooksSection />
+
+                    <VStack as="section" aria-label="All tools" align="stretch" gap={2}>
+                        <Text fontSize="sm" fontWeight="semibold" color="fg.muted">All tools</Text>
+                        <ToolChips onGoal={openGoal} />
+                    </VStack>
                 </VStack>
             </Container>
+
+            <TokenChoiceDialog
+                goal={choosing}
+                onClose={() => setChoosing(undefined)}
+                onPick={(denom) => {
+                    const href = choosing?.href?.(denom)
+                    setChoosing(undefined)
+                    if (href) navigate(href)
+                }}
+            />
         </Box>
     )
 }

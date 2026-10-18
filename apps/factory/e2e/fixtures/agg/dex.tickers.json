@@ -1,0 +1,53 @@
+{
+  "source": "https://getbze.com/api/dex/tickers",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/api/dex/tickers",
+  "query": {},
+  "status": 200,
+  "body": [
+    {
+      "base": "ibc/12C0B8B561AFCFDA3C73DEE0F7F84AA2B860D48493C27E8E81A5D14724FAB08B",
+      "quote": "ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4",
+      "market_id": "ibc/12C0B8B561AFCFDA3C73DEE0F7F84AA2B860D48493C27E8E81A5D14724FAB08B/ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4",
+      "last_price": 0,
+      "base_volume": 0,
+      "quote_volume": 0,
+      "bid": 0,
+      "ask": 6,
+      "high": 0,
+      "low": 0,
+      "open_price": 0,
+      "change": 0
+    },
+    {
+      "base": "factory/bze1f0qgels0eu96ev6a67znu70q7rquy9eragn8nw/ucorey",
+      "quote": "factory/bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk/uvdl",
+      "market_id": "factory/bze1f0qgels0eu96ev6a67znu70q7rquy9eragn8nw/ucorey/factory/bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk/uvdl",
+      "last_price": 0,
+      "base_volume": 0,
+      "quote_volume": 0,
+      "bid": 0,
+      "ask": 0,
+      "high": 0,
+      "low": 0,
+      "open_price": 0,
+      "change": 0
+    },
+    {
+      "base": "factory/bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk/uvdl",
+      "quote": "ubze",
+      "market_id": "factory/bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk/uvdl/ubze",
+      "last_price": 0,
+      "base_volume": 0,
+      "quote_volume": 0,
+      "bid": 0.69,
+      "ask": 0.78,
+      "high": 0,
+      "low": 0,
+      "open_price": 0,
+      "change": 0
+    }
+  ],
+  "trimmed": "first 3 mainnet tickers kept (the testnet apps read the mainnet aggregator)"
+}

@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react'
 import {
     TxKind,
+    TxKindSpec,
     TxOptions,
     canAffordTx,
     prettyAmount,
@@ -23,20 +24,35 @@ const TYPE_URL_KINDS: Record<string, TxKind> = {
     '/bze.tokenfactory.MsgBurn': 'burn-tokens',
     '/bze.tokenfactory.MsgSetDenomMetadata': 'set-denom-metadata',
     '/bze.tokenfactory.MsgChangeAdmin': 'change-admin',
+    '/bze.tokenfactory.MsgSetDenomBranding': 'set-denom-branding',
     '/bze.tradebin.MsgCreateMarket': 'create-market',
     '/bze.tradebin.MsgCreateLiquidityPool': 'create-pool',
     '/bze.tradebin.MsgAddLiquidity': 'add-liquidity',
     '/bze.rewards.MsgCreateStakingReward': 'create-staking-reward',
     '/bze.rewards.MsgCreateTradingReward': 'create-trading-reward',
     '/bze.rewards.MsgUpdateStakingReward': 'update-staking-reward',
+    '/bze.rewards.MsgDeleteStakingReward': 'delete-staking-reward',
+    '/bze.rewards.MsgCreateDenomReward': 'create-denom-reward',
+    '/bze.rewards.MsgCreateDenomRewardSchedule': 'create-denom-reward-schedule',
+    '/bze.rewards.MsgUpdateDenomRewardSchedule': 'update-denom-reward-schedule',
+    '/bze.rewards.MsgDistributeDenomRewards': 'distribute-denom-rewards',
+    '/bze.burner.MsgStartRaffle': 'start-raffle',
 }
 
 /**
  * The gas-estimate kinds of a message list, in order. Unknown type URLs are skipped, so an
  * unmapped message simply gets no pre-flight check (the wallet still simulates at signing).
  */
-export function txKindsOf(msgs: ReadonlyArray<{ typeUrl: string }>): TxKind[] {
-    return msgs.map(msg => TYPE_URL_KINDS[msg.typeUrl]).filter((kind): kind is TxKind => kind !== undefined)
+export function txKindsOf(msgs: ReadonlyArray<{ typeUrl: string; value?: unknown }>): Array<TxKind | TxKindSpec> {
+    return msgs.flatMap((msg): Array<TxKind | TxKindSpec> => {
+        // A multi-send's gas grows with its outputs.
+        if (msg.typeUrl === '/cosmos.bank.v1beta1.MsgMultiSend') {
+            const outputs = (msg.value as { outputs?: unknown[] } | undefined)?.outputs
+            return [{ kind: 'multi-send', count: outputs?.length ?? 1 }]
+        }
+        const kind = TYPE_URL_KINDS[msg.typeUrl]
+        return kind ? [kind] : []
+    })
 }
 
 /**

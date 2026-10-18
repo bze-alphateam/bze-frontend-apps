@@ -1,0 +1,27 @@
+{
+  "source": "https://testnet.getbze.com/bze/tokenfactory/denom_branding?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/tokenfactory/denom_branding",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "branding": {
+      "font": "jetbrains-mono",
+      "light": {
+        "background": "#FFFFFF",
+        "text": "#111827",
+        "primary": "#be1981",
+        "secondary": "#6B7280"
+      },
+      "dark": {
+        "background": "#111827",
+        "text": "#F9FAFB",
+        "primary": "#e67fc0",
+        "secondary": "#e2d0d7"
+      }
+    }
+  }
+}

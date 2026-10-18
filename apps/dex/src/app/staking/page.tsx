@@ -17,7 +17,9 @@ import {useNativeStakingData} from "@/hooks/useNativeStakingData";
 import {NativeStakingCard} from "@/components/ui/staking/native-staking";
 import {RewardsStakingBox} from "@/components/ui/staking/rewards-staking";
 import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
-import {useAssets, prettyAmount, uAmountToBigNumberAmount, shortNumberFormat, calculateRewardsStakingPendingRewards, useAssetsValue} from "@bze/bze-ui-kit";
+import {useAssets, prettyAmount, uAmountToBigNumberAmount, shortNumberFormat, calculateRewardsStakingPendingRewards, useAssetsValue, useDenomRewardsData, claimableCoins, getChainName} from "@bze/bze-ui-kit";
+import {useChain} from "@interchain-kit/react";
+import {DenomRewardsSection} from "@/components/ui/staking/denom-rewards-section";
 import BigNumber from "bignumber.js";
 import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
@@ -31,18 +33,10 @@ const StakingPage = () => {
     const [selectedStaking, setSelectedStaking] = useState<StakingRewardSDKType | undefined>();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // summary
-    const [summaryLoading, setSummaryLoading] = useState(true);
-    const [stakedUsdValue, setStakedUsdValue] = useState<BigNumber>(new BigNumber(0));
-    //the total amount of BZE pending rewards (from any kind of staking - native or staking reward)
-    const [pendingBzeRedwards, setPendingBzeRewards] = useState<BigNumber>(new BigNumber(0));
-    // the total value of the pending rewards in USDC (BZE + other rewards)
-    const [pendingUsdRewards, setPendingUsdRewards] = useState<BigNumber>(new BigNumber(0));
-    // the number of other unique assets in pending rewards
-    const [pendingOtherRewards, setPendingOtherRewards] = useState<number>(0);
-
     const {stakingData, isLoading, reload} = useNativeStakingData()
     const {rewards: stakingRewards, isLoading: isLoadingStakingRewards, addressData, reload: reloadRewardsStaking} = useRewardsStakingData()
+    const {address} = useChain(getChainName())
+    const {items: denomRewards, isLoading: isLoadingDenomRewards, hasError: denomRewardsError, reload: reloadDenomRewards} = useDenomRewardsData(address)
     const {isVerifiedAsset, denomTicker, nativeAsset, denomDecimals} = useAssets()
     const {totalUsdValue} = useAssetsValue()
 
@@ -54,10 +48,11 @@ const StakingPage = () => {
             totalCount += 1
         }
 
+        totalCount += denomRewards.filter(dr => dr.position).length
         if (!addressData) return totalCount;
 
         return totalCount + addressData.active.size
-    }, [stakingData, addressData])
+    }, [stakingData, addressData, denomRewards])
     const filteredOpportunities = useMemo(() => {
         return stakingRewards.filter(
             sr =>
@@ -88,8 +83,9 @@ const StakingPage = () => {
         })
     }, [stakingRewards, searchTerm, addressData, isVerifiedAsset, denomTicker]);
 
-    const loadSummary = useCallback(() => {
-        if (!stakingData || !stakingRewards || !nativeAsset) return;
+    // summary, derived from the loaded data
+    const summary = useMemo(() => {
+        if (!stakingData || !stakingRewards || !nativeAsset) return undefined;
 
         const totalStaked: PrettyBalance[] = []
         const bzeAmount = uAmountToBigNumberAmount(stakingData.totalStaked.amount, nativeAsset.decimals ?? 6)
@@ -140,6 +136,25 @@ const StakingPage = () => {
             )
         })
 
+        // denom rewards: the pool totals, and my pending as the chain reports it
+        denomRewards.forEach(({denomReward, position}) => {
+            totalStaked.push({
+                amount: uAmountToBigNumberAmount(denomReward.staked_amount || 0, denomDecimals(denomReward.staking_denom)),
+                denom: denomReward.staking_denom
+            })
+            claimableCoins(position).forEach(coin => {
+                const amount = uAmountToBigNumberAmount(coin.amount, denomDecimals(coin.denom))
+                if (coin.denom === nativeAsset.denom) {
+                    pendingBzeAmount = pendingBzeAmount.plus(amount)
+                    return
+                }
+
+                pendingRewardsAssetsCount += 1;
+                const existing = totalPending.get(coin.denom)
+                totalPending.set(coin.denom, {amount: existing ? existing.amount.plus(amount) : amount, denom: coin.denom})
+            })
+        })
+
         if (pendingBzeAmount.gt(0)) {
             totalPending.set(
                 nativeAsset.denom,
@@ -150,13 +165,22 @@ const StakingPage = () => {
             )
         }
 
-        setPendingOtherRewards(pendingRewardsAssetsCount)
-        setPendingBzeRewards(pendingBzeAmount)
-        setStakedUsdValue(totalUsdValue(totalStaked))
-        setPendingUsdRewards(totalUsdValue(Array.from(totalPending.values())))
+        return {
+            stakedUsdValue: totalUsdValue(totalStaked),
+            //the total amount of BZE pending rewards (native staking, staking rewards, denom rewards)
+            pendingBzeRewards: pendingBzeAmount,
+            // the total value of the pending rewards in USDC (BZE + other rewards)
+            pendingUsdRewards: totalUsdValue(Array.from(totalPending.values())),
+            // the number of other pending reward entries
+            pendingOtherRewards: pendingRewardsAssetsCount,
+        }
+    }, [stakingData, stakingRewards, nativeAsset, denomDecimals, totalUsdValue, addressData, denomRewards])
+    const summaryLoading = !summary;
+    const stakedUsdValue = summary?.stakedUsdValue ?? new BigNumber(0);
+    const pendingBzeRedwards = summary?.pendingBzeRewards ?? new BigNumber(0);
+    const pendingUsdRewards = summary?.pendingUsdRewards ?? new BigNumber(0);
+    const pendingOtherRewards = summary?.pendingOtherRewards ?? 0;
 
-        setSummaryLoading(false)
-    }, [stakingData, stakingRewards, nativeAsset, denomDecimals, totalUsdValue, addressData])
     const openModal = useCallback((staking: StakingRewardSDKType) => {
         setSelectedStaking(staking);
         setIsModalOpen(true);
@@ -168,22 +192,19 @@ const StakingPage = () => {
     const onModalAction = useCallback(() => {
         reloadRewardsStaking()
         closeModal()
-        loadSummary()
-    }, [reloadRewardsStaking, closeModal, loadSummary]);
+    }, [reloadRewardsStaking, closeModal]);
 
-    useEffect(() => {
-        loadSummary()
-    }, [loadSummary])
     useEffect(() => {
         const reloadInterval = setInterval(() => {
             reload()
             reloadRewardsStaking()
+            reloadDenomRewards()
         }, STAKING_DATA_RELOAD_INTERVAL)
 
         return () => {
             clearInterval(reloadInterval)
         }
-    }, [reload, reloadRewardsStaking])
+    }, [reload, reloadRewardsStaking, reloadDenomRewards])
 
     return (
         <Box minH="100vh" bg="bg.subtle">
@@ -348,6 +369,15 @@ const StakingPage = () => {
                         />
                     ))}
                 </VStack>
+
+                <DenomRewardsSection
+                    items={denomRewards}
+                    isLoading={isLoadingDenomRewards}
+                    hasError={denomRewardsError}
+                    hasWallet={Boolean(address)}
+                    searchTerm={searchTerm}
+                    onReload={reloadDenomRewards}
+                />
 
                 {/* Action Modal */}
                 {isModalOpen && (

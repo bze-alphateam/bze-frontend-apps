@@ -1,0 +1,22 @@
+{
+  "source": "https://testnet.getbze.com/bze/burner/all_burned_coins?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=0&pagination.reverse=true",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/burner/all_burned_coins",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "0",
+    "pagination.reverse": "true"
+  },
+  "status": 200,
+  "body": {
+    "burnedCoins": [],
+    "pagination": {
+      "next_key": null,
+      "total": "25"
+    }
+  },
+  "trimmed": "burnedCoins emptied: the smoke spec needs an empty burn history"
+}

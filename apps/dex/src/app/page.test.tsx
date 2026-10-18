@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     tx: vi.fn(),
     liquidAssets: [] as unknown[],
     pools: [] as unknown[],
+    halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
 }));
 
@@ -49,6 +50,13 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             isLoading: false,
         }),
         useLiquidityPools: () => ({ pools: mocks.pools, liquidAssets: mocks.liquidAssets, isLoading: false }),
+        useHaltedDenoms: () => ({
+            haltedDenoms: mocks.halted,
+            isDenomHalted: (denom: string) => mocks.halted.has(denom),
+            isPoolHalted: (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote),
+            isMarketHalted: () => false,
+            isLoading: false,
+        }),
         useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
         useBZETx: () => ({ tx: mocks.tx, progressTrack: "" }),
         useAssetsValue: () => ({ denomUsdValue: () => new BigNumber(0) }),
@@ -117,19 +125,23 @@ function renderSwap() {
 const fromInput = () => screen.getAllByPlaceholderText("0.0")[0] as HTMLInputElement;
 const toInput = () => screen.getAllByPlaceholderText("0.0")[1] as HTMLInputElement;
 
-/** 5,000,000 BZE against 1,000 USDC: ~0.0002 USDC per BZE, 0.3 % fee. */
-function bzeUsdcPool(reserveBase = "5000000000000", reserveQuote = "1000000000"): LiquidityPoolSDKType {
+function pool(id: string, base: string, quote: string, reserveBase: string, reserveQuote: string): LiquidityPoolSDKType {
     return {
-        id: "1",
-        base: "ubze",
-        quote: "uusdc",
-        lp_denom: "ulp1",
+        id,
+        base,
+        quote,
+        lp_denom: `ulp${id}`,
         creator: "bze1creator",
         fee: "0.003",
         reserve_base: reserveBase,
         reserve_quote: reserveQuote,
         stable: false,
     };
+}
+
+/** 5,000,000 BZE against 1,000 USDC: ~0.0002 USDC per BZE, 0.3 % fee. */
+function bzeUsdcPool(reserveBase = "5000000000000", reserveQuote = "1000000000"): LiquidityPoolSDKType {
+    return pool("1", "ubze", "uusdc", reserveBase, reserveQuote);
 }
 
 /** Both assets funded, BZE first ("from") and USDC second ("to"), one pool between them. */
@@ -148,6 +160,7 @@ beforeEach(() => {
     mocks.tx.mockReset();
     mocks.balances.clear();
     mocks.pools = [];
+    mocks.halted = new Set();
     localStorage.clear();
 });
 
@@ -199,6 +212,55 @@ describe("Swap page MAX button", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "100%" }));
         expect(fromInput().value).toBe("9.9955");
+    });
+});
+
+describe("Swap page with a governance-halted denom", () => {
+    const HALTED = "factory/bze1creator/uhalt";
+
+    // ATOM reaches BZE only through the halted denom: ATOM -> HALTED -> BZE.
+    beforeEach(() => {
+        mocks.useMaxSpendable.mockImplementation(() => spendable("10", "0"));
+        mocks.liquidAssets = [makeAsset("AAA", HALTED), makeAsset("ATOM", "uatom"), makeAsset("BZE", "ubze")];
+        mocks.pools = [
+            pool("1", "uatom", HALTED, "1000000000", "1000000000"),
+            pool("2", HALTED, "ubze", "1000000000", "1000000000"),
+        ];
+        mocks.balances.set("uatom", new BigNumber(10).shiftedBy(6));
+        mocks.balances.set("ubze", new BigNumber(10).shiftedBy(6));
+    });
+
+    it("never offers the halted denom, even when it would sort first", () => {
+        // AAA (halted) holds the only balance, so without the halt it would be the default "from".
+        mocks.balances.clear();
+        mocks.balances.set(HALTED, new BigNumber(10).shiftedBy(6));
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        expect(screen.queryByText("AAA")).toBeNull();
+        expect(screen.getAllByText("ATOM").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("BZE").length).toBeGreaterThan(0);
+    });
+
+    it("never routes through a halted pool", () => {
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        // ATOM is "from" and BZE "to"; the only path crosses the halted denom, so there is no route.
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+
+        expect(toInput().value).toBe("");
+        expect(screen.getByText("No Route Found")).toBeInTheDocument();
+    });
+
+    it("changes nothing when nothing is halted", () => {
+        renderSwap();
+
+        expect(screen.getAllByText("AAA").length).toBeGreaterThan(0);
+        // AAA sorts first and becomes "from"; its pool with ATOM gives a route.
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+        expect(toInput().value).not.toBe("");
+        expect(screen.getByRole("button", { name: "Swap" })).toBeEnabled();
     });
 });
 

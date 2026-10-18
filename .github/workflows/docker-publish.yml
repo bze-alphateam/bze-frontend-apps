@@ -1,6 +1,7 @@
 name: docker-publish
 
-# Build the production image of every app, push it to GHCR, then deploy it:
+# Build the production image of every CHANGED app, push it to GHCR, then
+# deploy it:
 #   push to main    -> mainnet flavor, tag = commit short-SHA (8 chars),
 #                      deployed to <app>.getbze.com
 #   push to develop -> testnet flavor, tag = testnet-<short-SHA>,
@@ -11,27 +12,47 @@ name: docker-publish
 # (bze-alphateam/bze-deploy/<deploy dir>/build.env). Each job checks that dir
 # out with the DEPLOY_REPO_TOKEN org secret and hands the file to `docker
 # build` as a BuildKit secret — it never enters the build context, an image
-# layer or the log. (This workflow runs on push only, so fork PRs never see
-# the token. Do not add a pull_request trigger.)
+# layer or the log. (This workflow runs on push and by hand only, so fork PRs
+# never see the token. Do not add a pull_request trigger.)
 #
-# After a successful push — on push events only; a workflow_dispatch build
-# never deploys — each job dispatches the deploy repo's `deploy` workflow for
-# its target and waits for it: a failed release on the server = red job here.
+# Which apps: the `changes` job (.github/scripts/changed-apps.sh) compares
+# HEAD with the commit each app's target is actually running — the tag of its
+# last successful deploy — not with the previous push, so a failed deploy, a
+# queued run GitHub dropped or a force push never leaves an app behind. An app
+# is built when turbo counts it as affected since then (a packages/ui-kit
+# change affects all of them), and every app is built when anything else that
+# goes into an image changed (Dockerfile, root package.json, pnpm-workspace,
+# a new root file...) or when the lookup fails. An unchanged app gets no image
+# for this commit; that is fine, a rollback picks a tag from the target's own
+# release history.
 #
-# All five apps are built on every push, even when only one changed. That is
-# deliberate: every head commit gets a complete image set, so any commit on a
-# deploy branch can be released or rolled back for every app. Actions minutes
-# are free on a public repo; robustness wins.
+# After a successful push each job dispatches the deploy repo's `deploy`
+# workflow for its target and waits for it: a failed release on the server =
+# red job here. A manual run builds the apps picked in its `apps` input
+# (default all) and deploys them only when `deploy` is ticked — e.g. after a
+# build.env change in the deploy repo, which no push here would pick up.
 on:
   push:
     branches: [main, develop]
-  workflow_dispatch:   # rebuild + push only, no deploy
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "Apps to build: all, or a comma-separated list of app dirs (dex,staking)"
+        required: true
+        default: all
+        type: string
+      deploy:
+        description: "Also deploy them (to testnet from develop, mainnet from main)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   packages: write
-  pull-requests: write   # comment the deploy info on the merged PR
 
+# Runs on one branch never overlap, so the `changes` job reads the live tags
+# only after the previous run's deploys have finished.
 concurrency:
   group: docker-publish-${{ github.ref }}
   cancel-in-progress: false
@@ -40,18 +61,55 @@ env:
   DEPLOY_REPO: bze-alphateam/bze-deploy
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      # full history: the live commits are compared with HEAD
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # main = mainnet, develop = testnet; any other branch would release a
+      # mainnet-flavored image of unreviewed code
+      - name: Refuse a manual deploy from another branch
+        if: inputs.deploy && github.ref_name != 'main' && github.ref_name != 'develop'
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          echo "::error::deploy is only allowed from main or develop, not $REF"
+          exit 1
+
+      - name: Pick the apps to build
+        id: pick
+        env:
+          # app dir under apps/ : package.json name (turbo --filter target)
+          APPS: >-
+            dex:bze-dapp-v2
+            burner:bze-burner
+            staking:bze-staking
+            factory:bze-factory
+            communities:bze-communities
+          FLAVOR: ${{ github.ref_name == 'develop' && 'testnet' || 'mainnet' }}
+          ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apps || '' }}
+          GH_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
+        run: .github/scripts/changed-apps.sh
+
   build-push:
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # app dir under apps/ -> package.json name (turbo --filter target)
-          - { app: dex,         pkg: bze-dapp-v2 }
-          - { app: burner,      pkg: bze-burner }
-          - { app: staking,     pkg: bze-staking }
-          - { app: factory,     pkg: bze-factory }
-          - { app: communities, pkg: bze-communities }
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -124,7 +182,8 @@ jobs:
       # created after this dispatch (minus a minute of clock skew). Waiting on
       # it makes a failed release on the server a red job here.
       - name: Deploy (dispatch the deploy repo's workflow and wait for it)
-        if: github.event_name == 'push'
+        # a manual run deploys only from the two deploy branches
+        if: github.event_name == 'push' || (inputs.deploy && (github.ref_name == 'main' || github.ref_name == 'develop'))
         id: deploy
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
@@ -136,7 +195,7 @@ jobs:
           TITLE="deploy $APP $TAG"
           SINCE=$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)
           export TITLE SINCE
-          gh workflow run deploy.yml -R "$DEPLOY_REPO" -f app="$APP" -f tag="$TAG" -f source="$SOURCE"
+          gh workflow run deploy.yml -R "$DEPLOY_REPO" -f app="$APP" -f tag="$TAG" -f source="$SOURCE" >/dev/null
           run_id=""
           for _ in $(seq 1 20); do
             sleep 5
@@ -146,41 +205,15 @@ jobs:
             [ -n "$run_id" ] && break
           done
           if [ -z "$run_id" ]; then
-            echo "::error::dispatched '$TITLE' but no matching run appeared in $DEPLOY_REPO within 100s"
+            echo "::error::dispatched '$TITLE' but no matching run appeared in the deploy repo within 100s"
             exit 1
           fi
-          url="https://github.com/$DEPLOY_REPO/actions/runs/$run_id"
-          echo "run_url=$url" >> "$GITHUB_OUTPUT"
-          echo "Deploy run: $url"
-          if gh run watch "$run_id" -R "$DEPLOY_REPO" --interval 10 --exit-status; then
-            echo "✅ deploy \`$APP\` \`$TAG\`: $url" >> "$GITHUB_STEP_SUMMARY"
+          # This repo is public: its logs and summary must not carry the deploy repo's
+          # run URL or step output, so the run is watched silently.
+          if gh run watch "$run_id" -R "$DEPLOY_REPO" --interval 10 --exit-status >/dev/null 2>&1; then
+            echo "✅ deploy \`$APP\` \`$TAG\` succeeded" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "❌ deploy \`$APP\` \`$TAG\` FAILED: $url" >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::deploy of $APP $TAG failed — see $url (the previous tag stays live)"
+            echo "❌ deploy \`$APP\` \`$TAG\` FAILED" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::deploy of $APP $TAG failed, see the deploy repo's Actions (the previous tag stays live)"
             exit 1
-          fi
-
-      # dex only, so a merged PR gets ONE comment, not five. Runs whether the
-      # dex deploy passed or failed, never when the build/push itself failed.
-      - name: Comment deploy info on the merged PR
-        if: github.event_name == 'push' && github.ref_name == 'main' && matrix.app == 'dex' && !cancelled() && steps.deploy.outcome != 'skipped'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.vars.outputs.tag }}
-          DEPLOY_URL: ${{ steps.deploy.outputs.run_url }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
-        run: |
-          pr=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" --jq '.[0].number')
-          if [ -n "$pr" ] && [ "$pr" != "null" ]; then
-            body="📦 Published \`ghcr.io/${{ github.repository_owner }}/bze-dapp-<app>:${TAG}\` for all five apps.
-
-          🚀 Deploys are push-based: each build job dispatched a \`deploy <app> ${TAG}\` run in the deploy repo and waited for it (a red deploy run = red build job). All runs: https://github.com/${DEPLOY_REPO}/actions/workflows/deploy.yml — dex: ${DEPLOY_URL:-not found} (${DEPLOY_OUTCOME}).
-
-          Rollback / manual deploy: re-run that workflow with an older tag, or on the server from the app's deploy dir:
-          \`\`\`bash
-          ./release.sh ${TAG}
-          \`\`\`"
-            gh pr comment "$pr" -R "${{ github.repository }}" --body "$body"
-          else
-            echo "no PR associated with ${{ github.sha }}, skipping comment"
           fi

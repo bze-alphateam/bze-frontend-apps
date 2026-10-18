@@ -1,0 +1,15 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/denom_reward?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fvidulum",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum"
+  },
+  "status": 404,
+  "body": {
+    "code": 5,
+    "message": "not found",
+    "details": []
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "source": "https://getbze.com/api/dex/intervals?market_id=factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd&minutes=240&limit=180&format=tv",
+  "recorded": "2026-10-12",
+  "method": "GET",
+  "path": "/api/dex/intervals",
+  "query": {
+    "market_id": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+    "minutes": "240",
+    "limit": "180",
+    "format": "tv"
+  },
+  "status": 400,
+  "body": {
+    "message": "Unknown error! Please report this issue to the administrators at alphateam@getbze.com"
+  }
+}

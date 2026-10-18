@@ -1,0 +1,187 @@
+{
+  "source": "https://testnet.getbze.com/cosmos/bank/v1beta1/denoms_metadata?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=200&pagination.reverse=false",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/cosmos/bank/v1beta1/denoms_metadata",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "200",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "metadatas": [
+      {
+        "description": "no admin test token yes yes",
+        "denom_units": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "NOAD",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "display": "NOAD",
+        "name": "NoAdminToken",
+        "symbol": "NOAD",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "Testnet USDollar stable coin",
+        "denom_units": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "TUSDC",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "display": "TUSDC",
+        "name": "USDollar",
+        "symbol": "TUSDC",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "token for factory",
+        "denom_units": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uxfct",
+            "exponent": 0,
+            "aliases": [
+              "uxfct"
+            ]
+          },
+          {
+            "denom": "xfct",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uxfct",
+        "display": "xfct",
+        "name": "XFactor",
+        "symbol": "XFCT",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "Vidulum app token",
+        "denom_units": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "VDL",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "display": "VDL",
+        "name": "Vidulum",
+        "symbol": "VDL",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "IBC token from transfer/channel-0/ulmn",
+        "denom_units": [
+          {
+            "denom": "ulmn",
+            "exponent": 0,
+            "aliases": []
+          }
+        ],
+        "base": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+        "display": "transfer/channel-0/ulmn",
+        "name": "transfer/channel-0/ulmn IBC token",
+        "symbol": "ULMN",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "",
+        "denom_units": [
+          {
+            "denom": "ulp/5A5BDA370AB071543FC6FFCD0F1EA65A92F591CBEA0A29B7E5AB85B7253DB1CE",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "lp/5A5BDA370AB071543FC6FFCD0F1EA65A92F591CBEA0A29B7E5AB85B7253DB1CE",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "ulp/5A5BDA370AB071543FC6FFCD0F1EA65A92F591CBEA0A29B7E5AB85B7253DB1CE",
+        "display": "lp/5A5BDA370AB071543FC6FFCD0F1EA65A92F591CBEA0A29B7E5AB85B7253DB1CE",
+        "name": "",
+        "symbol": "",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "",
+        "denom_units": [
+          {
+            "denom": "ulp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "lp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "ulp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze",
+        "display": "lp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze",
+        "name": "",
+        "symbol": "",
+        "uri": "",
+        "uri_hash": ""
+      },
+      {
+        "description": "",
+        "denom_units": [
+          {
+            "denom": "ulp_ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7_ubze",
+            "exponent": 0,
+            "aliases": []
+          },
+          {
+            "denom": "lp_ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7_ubze",
+            "exponent": 6,
+            "aliases": []
+          }
+        ],
+        "base": "ulp_ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7_ubze",
+        "display": "lp_ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7_ubze",
+        "name": "",
+        "symbol": "",
+        "uri": "",
+        "uri_hash": ""
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

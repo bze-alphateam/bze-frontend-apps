@@ -30,6 +30,10 @@ import {
     HighlightText,
     TokenLogo,
     useToast,
+    useBlockedIbcInbound,
+    getLegacyAssetNotice,
+    LegacyAssetNoticeBox,
+    HaltedBadge, HaltedNotice,
 } from "@bze/bze-ui-kit";
 import {useNavigationWithParams, assetPagePath} from "@/hooks/useNavigation";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
@@ -112,6 +116,7 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
                                     {asset.type.toUpperCase()}
                                 </Badge>
                                 {asset.verified && (<VerifiedBadge/>)}
+                                {asset.halted && (<HaltedBadge/>)}
                             </HStack>
                             <Text color="fg.muted" fontSize="sm">
                                 {asset.ticker}
@@ -155,6 +160,9 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
 const AssetDetailsPageContent = () => {
     const {toAssetsPage, denomParam} = useNavigationWithParams()
     const {asset, isLoading} = useAsset(denomParam ?? '')
+    // Wind-down notice (e.g. USDC.n) — only while the chain refuses the asset's deposits.
+    const blockedIbcInbound = useBlockedIbcInbound()
+    const legacyNotice = useMemo(() => getLegacyAssetNotice(asset, blockedIbcInbound), [asset, blockedIbcInbound])
 
     const notFound = !isLoading && (!asset || asset.denom === '')
 
@@ -206,6 +214,8 @@ const AssetDetailsPageContent = () => {
                     {!isLoading && asset && asset.denom !== '' && (
                         <>
                             <AssetHeader asset={asset} />
+                            {legacyNotice && <LegacyAssetNoticeBox notice={legacyNotice} />}
+                            {asset.halted && <HaltedNotice tickers={[asset.ticker]} />}
                             <Box
                                 bgGradient="to-br"
                                 gradientFrom="blue.500/5"

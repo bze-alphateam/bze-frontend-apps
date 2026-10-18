@@ -1,0 +1,15 @@
+{
+  "source": "https://testnet.getbze.com/bze/tokenfactory/denom_authority?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fuxfct",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/tokenfactory/denom_authority",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uxfct"
+  },
+  "status": 200,
+  "body": {
+    "denomAuthority": {
+      "admin": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+    }
+  }
+}

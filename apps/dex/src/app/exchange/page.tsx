@@ -16,7 +16,7 @@ import {
 import { LuSearch, LuTrendingUp, LuTrendingDown, LuArrowRight } from 'react-icons/lu'
 import {useCallback, useMemo, useState} from 'react'
 import NextLink from "next/link";
-import {useAsset, useAssets, createMarketId, useAssetPrice, prettyAmount, formatUsdAmount, HighlightText, MarketData, useAssetsValue, useMarkets, LPTokenLogo} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, createMarketId, useAssetPrice, prettyAmount, formatUsdAmount, HighlightText, MarketData, useAssetsValue, useMarkets, LPTokenLogo, HaltedBadge, useHaltedDenoms} from "@bze/bze-ui-kit";
 import {MarketSDKType} from "@bze/bzejs/bze/tradebin/store";
 import BigNumber from "bignumber.js";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
@@ -48,6 +48,8 @@ const MarketRow = ({ market, marketData, onClick }: MarketRowProps) => {
     const isVerifiedMarket = useMemo(() => {
         return !!baseAsset?.verified && !!quoteAsset?.verified;
     }, [baseAsset, quoteAsset])
+
+    const isHaltedMarket = !!baseAsset?.halted || !!quoteAsset?.halted
 
     const isPositive = useMemo(() => {
         if (!marketData) return false;
@@ -98,6 +100,7 @@ const MarketRow = ({ market, marketData, onClick }: MarketRowProps) => {
                                 {baseAsset?.ticker}/{quoteAsset?.ticker}
                             </Text>
                             {isVerifiedMarket && (<VerifiedBadge />)}
+                            {isHaltedMarket && (<HaltedBadge />)}
                         </HStack>
                         <Text fontSize="xs" color="fg.muted" fontWeight="medium">
                             {baseAsset?.name} / {quoteAsset?.name}
@@ -167,6 +170,7 @@ const MarketRow = ({ market, marketData, onClick }: MarketRowProps) => {
                                 {baseAsset?.ticker}/{quoteAsset?.ticker}
                             </Text>
                             {isVerifiedMarket && (<VerifiedBadge />)}
+                            {isHaltedMarket && (<HaltedBadge />)}
                         </HStack>
                     </VStack>
                 </HStack>
@@ -246,16 +250,22 @@ export default function ExchangePage() {
     const {isVerifiedAsset, denomTicker} = useAssets()
     const {compareValues, isLoading: isLoadingAssetsValue} = useAssetsValue()
     const {toMarketPage} = useNavigation()
+    const {isMarketHalted} = useHaltedDenoms()
 
     const sortedMarkets = useMemo(() => {
         if (!markets) return [];
 
+        // Halted markets stay listed (owners must reach their resting orders to cancel them), after the active ones.
+        const haltedLast = (a: MarketSDKType, b: MarketSDKType) => Number(isMarketHalted(a)) - Number(isMarketHalted(b))
         if (isLoadingAssetsValue) {
-            return [...markets]
+            return [...markets].sort(haltedLast)
         }
 
         return markets
             .sort((a, b) => {
+                const halted = haltedLast(a, b)
+                if (halted !== 0) return halted;
+
                 const aData = getMarketData(createMarketId(a.base, a.quote))
                 const bData = getMarketData(createMarketId(b.base, b.quote))
                 if (!aData && bData) return 1;
@@ -281,7 +291,7 @@ export default function ExchangePage() {
 
                 return compareValues(aVolume, bVolume) * (-1)
             })
-    }, [markets, isVerifiedAsset, getMarketData, compareValues, isLoadingAssetsValue])
+    }, [markets, isVerifiedAsset, getMarketData, compareValues, isLoadingAssetsValue, isMarketHalted])
 
     const filteredMarkets = useMemo(() => {
         if (!sortedMarkets) return [];

@@ -3,12 +3,21 @@ import {getRestClient} from "./client";
 import {getBlockResults} from "./block";
 import {mapEventAttributes} from "../utils/events";
 
+/**
+ * Every running raffle; throws when the query fails. Use it where "none running" and "couldn't
+ * load" must not look the same (e.g. before starting a raffle, one per coin).
+ */
+export async function getRafflesOrThrow(): Promise<RaffleSDKType[]> {
+    const client = await getRestClient();
+    const response = await client.bze.burner.raffles();
+
+    return response.list;
+}
+
+/** Every running raffle; `[]` when the query fails. */
 export async function getRaffles(): Promise<RaffleSDKType[]> {
     try {
-        const client = await getRestClient();
-        const response = await client.bze.burner.raffles();
-
-        return response.list;
+        return await getRafflesOrThrow();
     } catch (e) {
         console.error(e);
 

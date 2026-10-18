@@ -27,6 +27,7 @@ import {FeeCoin} from "../types/fees";
 /** Every kind of message the apps send. One entry per message type, not per form. */
 export type TxKind =
     | 'send'
+    | 'multi-send'
     | 'ibc-transfer'
     | 'create-order'
     | 'fill-orders'
@@ -42,17 +43,27 @@ export type TxKind =
     | 'withdraw-delegator-reward'
     | 'fund-burner'
     | 'join-raffle'
+    | 'start-raffle'
     | 'create-denom'
     | 'mint'
     | 'burn-tokens'
     | 'set-denom-metadata'
     | 'change-admin'
+    | 'set-denom-branding'
     | 'create-staking-reward'
     | 'create-trading-reward'
     | 'update-staking-reward'
+    | 'delete-staking-reward'
     | 'join-staking'
     | 'exit-staking'
     | 'claim-staking-reward'
+    | 'create-denom-reward'
+    | 'create-denom-reward-schedule'
+    | 'update-denom-reward-schedule'
+    | 'distribute-denom-rewards'
+    | 'join-denom-reward'
+    | 'claim-denom-rewards'
+    | 'exit-denom-reward'
     | 'vote';
 
 /**
@@ -80,6 +91,7 @@ export interface GasProfile {
  */
 export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'send': {base: 160_000},                                  // measured p90 123k, max 146k
+    'multi-send': {base: 200_000, perItem: 35_000},           // no on-chain sample — bank send of one output measured p90 123k; estimate with headroom, re-measure on bzetestnet-3
     'ibc-transfer': {base: 450_000},                          // measured p90 330k, max 419k
     'create-order': {base: 180_000},                          // measured (testnet) p90 155k, max 162k
     'fill-orders': {base: 220_000, perItem: 60_000},          // measured 2 orders 240k … 15 orders 961k
@@ -95,17 +107,31 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'withdraw-delegator-reward': {base: 200_000, perItem: 120_000}, // measured max 179k per message
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
+    'start-raffle': {base: 200_000},                          // no on-chain sample — denom/raffle lookups + pot capture + two writes; re-measure on bzetestnet-3
     'create-denom': {base: 300_000},                          // no on-chain sample — estimate with headroom
     'mint': {base: 200_000},                                  // no on-chain sample — estimate with headroom
     'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom
     'set-denom-metadata': {base: 200_000},                    // no on-chain sample — estimate with headroom
     'change-admin': {base: 150_000},                          // no on-chain sample — estimate with headroom
+    'set-denom-branding': {base: 200_000},                    // no on-chain sample (chain v8.2.0) — admin check + one small record write + event; re-measure on bzetestnet-3
     'create-staking-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
     'create-trading-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
     'update-staking-reward': {base: 160_000},                 // measured max 137k
+    'delete-staking-reward': {base: 200_000},                 // no on-chain sample (chain v8.2.0) — one record removal + event; re-measure on bzetestnet-3
     'join-staking': {base: 200_000},                          // measured p90 162k
     'exit-staking': {base: 1_200_000},                        // measured median 142k but up to 1.14M
     'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
+    // Denom Rewards (chain v8.2.0): no on-chain sample yet — estimates with headroom, sized from the
+    // staking-reward equivalents above. Re-measure on bzetestnet-3 once it runs v8.2.0.
+    'create-denom-reward': {base: 300_000},                   // no on-chain sample — fee capture-and-swap, like create-staking-reward
+    'create-denom-reward-schedule': {base: 350_000},          // no on-chain sample — escrow + schedule fee + (new prize) prize fee captures
+    'update-denom-reward-schedule': {base: 180_000},          // no on-chain sample — escrow only, like update-staking-reward (137k)
+    'distribute-denom-rewards': {base: 300_000, perItem: 60_000}, // no on-chain sample — per prize coin; a new prize denom adds a fee capture
+    'join-denom-reward': {base: 250_000},                     // no on-chain sample — settles every prize accumulator of the DR
+    'claim-denom-rewards': {base: 250_000},                   // no on-chain sample — settles every prize accumulator of the DR
+    // The keeper consumes the extra_gas_for_denom_exit param (default 1,000,000) on every exit, on
+    // top of the message's own ~200k — the same scheme as exit-staking / extra_gas_for_exit_stake.
+    'exit-denom-reward': {base: 1_200_000},                   // no on-chain sample — 200k base + 1M extra_gas_for_denom_exit
     'vote': {base: 120_000},                                  // measured mainnet p100 94k over the last 30 MsgVote txs, 2026-10-17
 };
 

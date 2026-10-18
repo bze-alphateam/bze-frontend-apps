@@ -35,6 +35,8 @@ interface PoolPickerProps {
     onSelect: (pool: LiquidityPoolSDKType) => void;
     /** Shown above the current selection, e.g. "Pool". */
     label: string;
+    /** Hide pools holding a governance-halted denom (the chain refuses new liquidity). Default false. */
+    excludeHalted?: boolean;
 }
 
 function PairLogos({ option }: { option: PoolOption }) {
@@ -58,7 +60,7 @@ function PairLogos({ option }: { option: PoolOption }) {
     )
 }
 
-export function PoolPicker({ value, onSelect, label }: PoolPickerProps) {
+export function PoolPicker({ value, onSelect, label, excludeHalted = false }: PoolPickerProps) {
     const { pools, isLoading } = useLiquidityPools()
     const { getAsset } = useAssets()
 
@@ -66,19 +68,20 @@ export function PoolPicker({ value, onSelect, label }: PoolPickerProps) {
     const [isOpen, setIsOpen] = useState(false)
 
     const options = useMemo((): PoolOption[] => {
-        return pools.map(pool => {
+        return pools.flatMap(pool => {
             const baseAsset = getAsset(pool.base)
             const quoteAsset = getAsset(pool.quote)
-            return {
+            if (excludeHalted && (baseAsset?.halted || quoteAsset?.halted)) return []
+            return [{
                 pool,
                 baseAsset,
                 quoteAsset,
                 pairLabel: `${baseAsset?.ticker ?? pool.base}/${quoteAsset?.ticker ?? pool.quote}`,
                 // The chain stores the fee as a decimal (e.g. "0.002" = 0.2%).
                 feeLabel: `${new BigNumber(pool.fee).multipliedBy(100).toString()}% swap fee`,
-            }
+            }]
         })
-    }, [pools, getAsset])
+    }, [pools, getAsset, excludeHalted])
 
     const filteredOptions = useMemo(() => {
         if (!searchTerm) {

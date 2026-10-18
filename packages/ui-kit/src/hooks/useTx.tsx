@@ -1,5 +1,7 @@
 import {EncodeObject, StdFee} from "@bze/bzejs/types";
 import {TxBody, SignerInfo} from "@bze/bzejs/cosmos/tx/v1beta1/tx";
+import {SimulateRequest} from "@bze/bzejs/cosmos/tx/v1beta1/service";
+import {getSimulate} from "@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func";
 import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
@@ -13,7 +15,7 @@ import {useSigningClient} from "./useSigningClient";
 import {openExternalLink, sleep} from "../utils/functions";
 import BigNumber from "bignumber.js";
 import {getDefaultTxMemo} from "../constants/placeholders";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useState} from "react";
 import {useLiquidityPools} from "./useLiquidityPools";
 import {useSettings} from "./useSettings";
 import {useFeeTokens} from "./useFeeTokens";
@@ -21,6 +23,7 @@ import {calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {resolveGasPrice} from "../utils/gas_fee";
+import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 
 // The actual payload delivered to onSuccess — the result of broadcastResult.wait(),
 // which is a TxResponse from @interchainjs/cosmos containing the inclusion details.
@@ -36,6 +39,12 @@ export interface TxOptions {
     fee?: StdFee | null;
     onSuccess?: (res: TxSuccessResponse) => void;
     onFailure?: (err: string) => void;
+    /**
+     * Called once the signed transaction is broadcast, before it is included in a block. A
+     * failure after this point may still have landed on chain (e.g. a confirmation timeout):
+     * callers that must never send twice look the hash up before retrying.
+     */
+    onBroadcast?: (txHash: string) => void;
     memo?: string;
     progressTrackerTimeout?: number;
     /**
@@ -150,8 +159,6 @@ const useTx = (chainName: string) => {
     const {feeDenom} = useSettings()
     const {isValidFeeDenom} = useFeeTokens()
 
-    const defaultChainName = useMemo(() => getChainName(), []);
-
     const canUseClient = useCallback(async () => {
         if (!isSigningClientReady) {
             //TODO: this is a hack to make sure the signing client is ready. Remove this when we have a better way to
@@ -187,7 +194,13 @@ const useTx = (chainName: string) => {
         // BZE ante handler checks sequence even in simulation — use the real sequence
         const sequence = await signer.getSequence(address);
         const signerInfo = SignerInfo.fromPartial({modeInfo: {single: {mode: 1}}, sequence});
-        const {gasInfo} = await signer.simulateByTxBody(txBody, [signerInfo]);
+        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why). The signer's
+        // own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
+        const simulationDenom = feeDenom !== nativeDenom && isValidFeeDenom(feeDenom) && getDenomsPool(feeDenom, nativeDenom)
+            ? feeDenom
+            : nativeDenom;
+        const txBytes = buildSimulationTxBytes(txBody, [signerInfo], simulationFeeCoins(simulationDenom, nativeDenom));
+        const {gasInfo} = await getSimulate(signer.config.queryClient, SimulateRequest.fromPartial({txBytes}));
         const gasEstimated = Number(gasInfo?.gasUsed ?? BigInt(0));
         if (gasEstimated === 0) {
             throw new Error("Gas simulation returned 0");
@@ -281,19 +294,16 @@ const useTx = (chainName: string) => {
                     : await getFee(msgs, options);
                 setProgressTrack("Signing transaction")
                 const broadcastResult = await (activeClient as any).signAndBroadcast(address, msgs, fee, options?.memo ?? getDefaultTxMemo())
+                if (options?.onBroadcast && broadcastResult?.transactionHash) {
+                    options.onBroadcast(broadcastResult.transactionHash)
+                }
                 setProgressTrack("Waiting for confirmation")
                 const resp = await broadcastResult.wait();
                 const txHash = resp?.txhash || broadcastResult.transactionHash;
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    // BZE Scan only knows BZE transactions: a tx signed on another
-                    // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
-                    if (chainName === defaultChainName) {
-                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View in Explorer');
-                    } else {
-                        toast.success(TxStatus.Successful);
-                    }
+                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View in Explorer');
 
                     if (options?.onSuccess) {
                         options.onSuccess(resp as TxSuccessResponse)
@@ -330,7 +340,7 @@ const useTx = (chainName: string) => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)
         return success;
-    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient]);
+    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, buildDirectSigningClient]);
 
     return {
         tx,

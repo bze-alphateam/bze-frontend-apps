@@ -2,8 +2,16 @@ import {describe, it, expect} from "vitest";
 import type {Asset} from "@bze/bze-ui-kit";
 
 import {
+    DEFAULT_DIRECTORY_STATE,
+    type DirectoryFacts,
+    type DirectoryState,
     PAGE_SIZE,
     clampPage,
+    directoryQueryString,
+    filterSortTokens,
+    paginationItems,
+    parseDirectoryQuery,
+    showingLine,
     filterAndSortFactoryTokens,
     getTotalPages,
     pageSlice,
@@ -117,5 +125,119 @@ describe("tokenPagePath", () => {
         const path = tokenPagePath("factory/bze1owner/uaaa");
         expect(path.split("?")[0]).toBe("/token");
         expect(path).not.toContain("factory/bze1owner");
+    });
+});
+
+describe("parseDirectoryQuery / directoryQueryString", () => {
+    const parse = (search: string) => parseDirectoryQuery(new URLSearchParams(search));
+
+    it("reads the defaults from an empty query and writes them as an empty string", () => {
+        expect(parse("")).toEqual(DEFAULT_DIRECTORY_STATE);
+        expect(directoryQueryString(DEFAULT_DIRECTORY_STATE)).toBe("");
+    });
+
+    it("round-trips every non-default value", () => {
+        const state: DirectoryState = {q: "page token", filter: "rewards", sort: "cap", page: 3};
+        expect(parse(directoryQueryString(state))).toEqual(state);
+    });
+
+    it("omits default values one by one", () => {
+        expect(directoryQueryString({...DEFAULT_DIRECTORY_STATE, sort: "vol"})).toBe("sort=vol");
+        expect(directoryQueryString({...DEFAULT_DIRECTORY_STATE, filter: "tradable"})).toBe("filter=tradable");
+        expect(directoryQueryString({...DEFAULT_DIRECTORY_STATE, page: 2})).toBe("page=2");
+        expect(directoryQueryString({...DEFAULT_DIRECTORY_STATE, q: "   "})).toBe("");
+    });
+
+    it("falls back to the defaults for unknown filter and sort values", () => {
+        expect(parse("filter=nope&sort=price")).toEqual(DEFAULT_DIRECTORY_STATE);
+    });
+
+    it("clamps a non-numeric, zero or negative page to 1", () => {
+        expect(parse("page=abc").page).toBe(1);
+        expect(parse("page=0").page).toBe(1);
+        expect(parse("page=-2").page).toBe(1);
+        expect(parse("page=2.5").page).toBe(1);
+        expect(parse("page=4").page).toBe(4);
+    });
+});
+
+describe("filterSortTokens", () => {
+    const token = (ticker: string, extra: Partial<Asset> = {}) =>
+        makeAsset({denom: `factory/bze1owner/u${ticker.toLowerCase()}`, ticker, name: `${ticker} Coin`, ...extra});
+
+    const AAA = token("AAA", {verified: true});
+    const BBB = token("BBB", {name: "Page Project"});
+    const CCC = token("CCC");
+    const DDD = token("DDD");
+    const ALL = [DDD, CCC, BBB, AAA];
+
+    const facts: DirectoryFacts = {
+        holdersPool: new Set([BBB.denom]),
+        rewardPrograms: new Set([CCC.denom]),
+        tradable: new Set([AAA.denom, CCC.denom]),
+        marketCap: new Map([[AAA.denom, 50], [BBB.denom, 900], [CCC.denom, 50]]),
+        volume: new Map([[DDD.denom, 10], [BBB.denom, 0]]),
+    };
+    const run = (patch: Partial<DirectoryState>) =>
+        filterSortTokens(ALL, {...DEFAULT_DIRECTORY_STATE, ...patch}, facts).map((a) => a.ticker);
+
+    it("sorts by ticker by default", () => {
+        expect(run({})).toEqual(["AAA", "BBB", "CCC", "DDD"]);
+    });
+
+    it("searches name, ticker and full denom, trimmed and case-insensitive", () => {
+        expect(run({q: "  page "})).toEqual(["BBB"]);
+        expect(run({q: "ccc"})).toEqual(["CCC"]);
+        expect(run({q: "FACTORY/BZE1OWNER/UDDD"})).toEqual(["DDD"]);
+        expect(run({q: "nothing"})).toEqual([]);
+    });
+
+    it("filters verified, rewards (DR or active SR) and tradable tokens", () => {
+        expect(run({filter: "verified"})).toEqual(["AAA"]);
+        expect(run({filter: "rewards"})).toEqual(["BBB", "CCC"]);
+        expect(run({filter: "tradable"})).toEqual(["AAA", "CCC"]);
+    });
+
+    it("sorts by market cap descending, ties by ticker, unpriced last", () => {
+        expect(run({sort: "cap"})).toEqual(["BBB", "AAA", "CCC", "DDD"]);
+    });
+
+    it("sorts by 24h volume descending, zero volume last by ticker", () => {
+        expect(run({sort: "vol"})).toEqual(["DDD", "AAA", "BBB", "CCC"]);
+    });
+
+    it("combines search, filter and sort", () => {
+        expect(run({q: "coin", filter: "rewards", sort: "cap"})).toEqual(["CCC"]);
+    });
+
+    it("does not mutate the input", () => {
+        const snapshot = [...ALL];
+        run({sort: "cap"});
+        expect(ALL).toEqual(snapshot);
+    });
+});
+
+describe("showingLine", () => {
+    it("names the range of the page and the total", () => {
+        expect(showingLine(53, 1)).toBe("Showing 1–20 of 53 tokens");
+        expect(showingLine(53, 3)).toBe("Showing 41–53 of 53 tokens");
+        expect(showingLine(1, 1)).toBe("Showing 1–1 of 1 token");
+        expect(showingLine(0, 1)).toBe("0 tokens");
+    });
+});
+
+describe("paginationItems", () => {
+    it("lists every page when there are at most 7", () => {
+        expect(paginationItems(1, 1)).toEqual([1]);
+        expect(paginationItems(4, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    });
+
+    it("keeps the first, last and neighbouring pages with gaps in between", () => {
+        expect(paginationItems(6, 12)).toEqual([1, "gap", 5, 6, 7, "gap", 12]);
+    });
+
+    it("widens the row near either edge", () => {
+        expect(paginationItems(1, 12)).toEqual([1, 2, 3, 4, "gap", 12]);
+        expect(paginationItems(12, 12)).toEqual([1, "gap", 9, 10, 11, 12]);
     });
 });
