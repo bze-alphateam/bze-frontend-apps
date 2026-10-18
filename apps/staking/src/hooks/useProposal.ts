@@ -2,12 +2,14 @@
 
 import {useCallback, useEffect, useRef, useState} from "react";
 import {
-    getGovParams, getProposal, getProposalTally, getStakingPool,
+    getGovParams, getProposalTally, getStakingPool,
     type GovParams, type GovProposal, type GovTally,
 } from "@bze/bze-ui-kit";
+import {loadProposal} from "@/query/proposals";
 import {GOVERNANCE_POLL_MS} from "./useGovernance";
 
-// One proposal for its page: the proposal, the gov params, the bonded tokens
+// One proposal for its page (from BZE Scan, else the chain; see
+// query/proposals): the proposal, the gov params, the bonded tokens
 // (for turnout) and its tally — live (re-read every minute while the tab is
 // visible) during voting, the final one after. Deposit-period proposals are
 // reported as not found, so the page never reveals them.
@@ -42,7 +44,7 @@ export function useProposal(id: string) {
                 setNotFound(true);
                 return;
             }
-            const [proposal, params, pool] = await Promise.all([getProposal(id), getGovParams(), getStakingPool()]);
+            const [proposal, params, pool] = await Promise.all([loadProposal(id), getGovParams(), getStakingPool()]);
             if (current !== loadId.current) return;
             if (!proposal || proposal.status === "PROPOSAL_STATUS_DEPOSIT_PERIOD") {
                 setData(undefined);
@@ -50,7 +52,7 @@ export function useProposal(id: string) {
                 return;
             }
             const tally = isVoting(proposal)
-                ? await getProposalTally(proposal.id).catch(() => null)
+                ? await getProposalTally(proposal.id).catch(() => proposal.final_tally_result ?? null)
                 : (proposal.final_tally_result ?? null);
             if (current !== loadId.current) return;
             setData({proposal, params, bondedTokens: pool?.bonded_tokens ?? "0", tally});

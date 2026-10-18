@@ -12,7 +12,7 @@ All shared code comes from `@bze/bze-ui-kit`; this app only contains staking-spe
 
 ```
 src/
-  app/              # Next.js pages (staking dashboard, /governance, /governance/[id]) + app/api routes
+  app/              # Next.js pages (staking dashboard, /governance, /governance/[id]) + app/api routes (skip proxy, scan proxy)
   components/
     staking/        # Staking-specific UI
     governance/     # Governance UI: list (tally bar, cards, finished list, rules), markdown, vote-flow (dialog / phone sheet), proposal/ (page panels)
@@ -30,9 +30,12 @@ src/
     useIsPhone.ts              # Below `md`, for markup that differs by width (dialog vs bottom sheet)
     useOpenProposalsSummary.ts # Open proposals + the wallet's own votes and power for the nav badge / dashboard banner; module-wide store, one load per 60 s shared by all consumers, invalidated by the vote flow
   lib/
-    governance/     # Pure gov helpers: tally + checks, kind/title, dates, describe/ (Scan's message describers), details (deposit, final checks, timeline), voter (power, votes, vote choices), summary (badge count, banner copy), safeUrl
+    scan-proxy.ts   # Server side of /api/scan: forwards Scan's proposal list + pages, keeps decided ones forever
+    governance/     # Pure gov helpers: scan (Scan's proposal API mapped onto the chain's shapes), tally + checks, kind/title, dates, describe/ (Scan's message describers), details (deposit, final checks, timeline), voter (power, votes, vote choices), summary (badge count, banner copy), safeUrl
+  query/
+    proposals.ts    # Proposal list + pages: BZE Scan first, the chain as fallback; decided proposals kept for the session
 ```
 
-Governance reads x/gov v1 through ui-kit's `query/gov.ts`, which returns the chain's REST JSON as is (`types/gov.ts`: string ids, RFC 3339 times, enum names). Deposit-period proposals are never shown. BZE Scan links use ui-kit's `getExplorerProposal*URL` (`NEXT_PUBLIC_EXPLORER_URL`). A proposal's summary is untrusted: it only goes through `components/governance/markdown.tsx` (no raw HTML, `safeUrl`, images as links). `lib/governance/describe/` and `markdown.tsx` are ports of BZE Scan's `ui/src/render/proposals` and markdown component; keep them in step. Test fixtures are real mainnet proposals (`lib/governance/fixtures/`).
+Proposals (the open and finished lists, a proposal page) come from BZE Scan's API through the app's own `/api/scan` route (Scan sends no CORS headers for this app): the chain's `proposal_status` filter scans a node's whole proposal archive and took 15 s on mainnet. A decided proposal never changes, so the route keeps it in memory for good and marks it immutable; anything open is always read fresh. When Scan is down, the open proposals and a proposal page fall back to the chain's REST, so voting never depends on Scan; the finished list shows a retry. Everything else (params, tallies, votes, delegations) reads x/gov v1 through ui-kit's `query/gov.ts`, which returns the chain's REST JSON as is (`types/gov.ts`: string ids, RFC 3339 times, enum names). Deposit-period proposals are never shown. BZE Scan links use ui-kit's `getExplorerProposal*URL` (`NEXT_PUBLIC_EXPLORER_URL`). A proposal's summary is untrusted: it only goes through `components/governance/markdown.tsx` (no raw HTML, `safeUrl`, images as links). `lib/governance/describe/` and `markdown.tsx` are ports of BZE Scan's `ui/src/render/proposals` and markdown component; keep them in step. Test fixtures are real mainnet proposals (`lib/governance/fixtures/`).
 
 Voting: `useVoter` layers the wallet's data on top of the wallet-free `useGovernance` / `useProposal`; a validator votes from its own account (`valoperToAccountAddress` in ui-kit). `vote-flow.tsx` sends one gov v1 `MsgVote` through `useSDKTx` (amino by default) and, on success, the page re-reads the vote and the tally, and `invalidateOpenProposalsSummary()` refreshes the nav badge and the dashboard banner (`governance-callout.tsx`, rendered in `StakingOverview`'s `callout` slot).
