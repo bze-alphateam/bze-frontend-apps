@@ -37,13 +37,15 @@ function stakingData(connected: boolean): NativeStakingData {
     } as unknown as NativeStakingData;
 }
 
-function renderOverview(data: NativeStakingData) {
-    return render(<StakingOverview stakingData={data} isLoading={false} />, {
+function renderOverview(data: NativeStakingData, { callout, isLoading = false }: { callout?: ReactNode; isLoading?: boolean } = {}) {
+    return render(<StakingOverview stakingData={data} isLoading={isLoading} callout={callout} />, {
         wrapper: ({ children }: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
         ),
     });
 }
+
+const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
 describe("StakingOverview", () => {
     it("shows the unbonding length on the Your Stake card when connected with a stake", () => {
@@ -59,5 +61,19 @@ describe("StakingOverview", () => {
 
         expect(screen.getByText("Unbonding Period")).toBeInTheDocument();
         expect(screen.getByText("14 days")).toBeInTheDocument();
+    });
+
+    it("renders the callout under the header and above the stat cards", () => {
+        renderOverview(stakingData(false), { callout: <div data-testid="callout" /> });
+
+        const callout = screen.getByTestId("callout");
+        expect(follows(screen.getByText("BZE Staking"), callout)).toBe(true);
+        expect(follows(callout, screen.getByText("Staking APR"))).toBe(true);
+    });
+
+    it("leaves the callout out of the loading skeleton", () => {
+        renderOverview(stakingData(false), { callout: <div data-testid="callout" />, isLoading: true });
+
+        expect(screen.queryByTestId("callout")).not.toBeInTheDocument();
     });
 });

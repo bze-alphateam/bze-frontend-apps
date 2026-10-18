@@ -63,7 +63,8 @@ export type TxKind =
     | 'distribute-denom-rewards'
     | 'join-denom-reward'
     | 'claim-denom-rewards'
-    | 'exit-denom-reward';
+    | 'exit-denom-reward'
+    | 'vote';
 
 /**
  * Gas profile of a message kind: `base` is the gas one message uses; `perItem`, when set,
@@ -131,6 +132,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     // The keeper consumes the extra_gas_for_denom_exit param (default 1,000,000) on every exit, on
     // top of the message's own ~200k — the same scheme as exit-staking / extra_gas_for_exit_stake.
     'exit-denom-reward': {base: 1_200_000},                   // no on-chain sample — 200k base + 1M extra_gas_for_denom_exit
+    'vote': {base: 120_000},                                  // measured mainnet p100 94k over the last 30 MsgVote txs, 2026-10-17
 };
 
 /** A message kind with an optional item count (orders, hops, validators, reward ids, …). */
