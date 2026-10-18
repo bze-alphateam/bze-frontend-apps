@@ -192,6 +192,6 @@ export const ALL_TOOLS: ToolLink[] = [
     { label: 'Staking program', goal: 'campaign' },
     { label: 'Brand kit', goal: 'brandKit' },
     { label: 'Chain registry', goal: 'registry' },
-    { label: 'Burn', external: 'burner' },
+    { label: 'Burn on Burner', external: 'burner' },
     { label: 'My creations', href: '/manage' },
 ]

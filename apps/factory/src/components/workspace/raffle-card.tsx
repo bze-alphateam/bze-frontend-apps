@@ -1,9 +1,9 @@
 "use client"
 
 import React from 'react'
-import { Box, Button, Card, Grid, HStack, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowUpRight, LuRefreshCw, LuTicket } from 'react-icons/lu'
-import { type Asset, formatTimeRemainingFromEpochs, getBurnerApp, useEpochs } from '@bze/bze-ui-kit'
+import { Box, Button, Card, Grid, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { LuRefreshCw, LuTicket } from 'react-icons/lu'
+import { AppLink, type Asset, formatTimeRemainingFromEpochs, getBurnerApp, useEpochs } from '@bze/bze-ui-kit'
 import { useTokenRaffle } from '@/hooks/useTokenRaffle'
 import { burnerCoinHref, displayAmount, oneInFromChances, percentFromRatio, raffleHref } from '@/lib/raffle-new'
 import { workspaceHref } from '@/lib/workspace'
@@ -59,9 +59,9 @@ export function RaffleCard({ asset, goTo }: RaffleCardProps) {
                                     : <Skeleton height="4" width="16" />}
                             />
                         </Grid>
-                        <Link href={burnerHref} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg" alignSelf="start">
-                            See it in the Burner <LuArrowUpRight />
-                        </Link>
+                        <Box fontSize="sm" alignSelf="start">
+                            <AppLink app="burner" href={burnerHref}>View on Burner</AppLink>
+                        </Box>
                     </VStack>
                 ) : (
                     <VStack align="start" gap={3}>

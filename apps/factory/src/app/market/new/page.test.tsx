@@ -137,7 +137,8 @@ describe("Allow limit orders (/market/new)", () => {
 
         expect(question("What is it priced in?")).toHaveAttribute("data-state", "active");
         expect(screen.getByRole("alert")).toHaveTextContent(/already exists on the DEX — every pair can have only one order book/);
-        const link = screen.getByRole("link", { name: /View it on the DEX/ });
+        const link = screen.getByRole("link", { name: "View on DEX" });
+        expect(link).toHaveAttribute("data-app", "dex");
         expect(link).toHaveAttribute("href", `https://dex.test/exchange/market?id=${encodeURIComponent(existingId)}`);
         expect(link).toHaveAttribute("target", "_blank");
         expect(createButton()).toBeDisabled();
@@ -191,12 +192,10 @@ describe("Allow limit orders (/market/new)", () => {
         expect(updateMarketsMock).toHaveBeenCalledOnce();
 
         expect(screen.getByRole("heading", { name: "The TOK/BZE market is live!" })).toBeInTheDocument();
-        const open = vi.spyOn(window, "open").mockReturnValue(null);
-        await userEvent.click(screen.getByRole("button", { name: /View market on DEX/ }));
-        expect(open).toHaveBeenCalledWith(`https://dex.test/exchange/market?id=${encodeURIComponent("utok/ubze")}`, "_blank", "noopener,noreferrer");
-        await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(open).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
-        open.mockRestore();
+        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("href", `https://dex.test/exchange/market?id=${encodeURIComponent("utok/ubze")}`);
+        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("data-app", "dex");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
 
         await userEvent.click(screen.getByRole("button", { name: "Create a liquidity pool" }));
         expect(navigateMock).toHaveBeenCalledWith("/pool/new?base=utok&quote=ubze");

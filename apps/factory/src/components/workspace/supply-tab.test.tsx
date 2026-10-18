@@ -77,7 +77,8 @@ describe("SupplyTab facts", () => {
 
     it("links every state to the Burner app", () => {
         renderTab(props({ adminState: "renounced", admin: "" }));
-        const link = screen.getByRole("link", { name: /Burn with the Burner app/ });
+        const link = screen.getByRole("link", { name: "Burn on Burner" });
+        expect(link).toHaveAttribute("data-app", "burner");
         expect(link).toHaveAttribute("href", "https://burner.example/coin?coin=factory%2Fbze1owner%2Futok");
         expect(screen.getByText(/Anyone can burn TOK they hold in the Burner app/)).toBeInTheDocument();
     });
@@ -197,7 +198,8 @@ describe("SupplyTab burning raffle card", () => {
         expect(raffleCard().getByText("1 in 100")).toBeInTheDocument();
         expect(raffleCard().getByText("25 % of the pot")).toBeInTheDocument();
         expect(raffleCard().getByText("2d 3h")).toBeInTheDocument();
-        expect(raffleCard().getByRole("link", { name: /See it in the Burner/ }))
+        expect(raffleCard().getByRole("link", { name: "View on Burner" })).toHaveAttribute("data-app", "burner");
+        expect(raffleCard().getByRole("link", { name: "View on Burner" }))
             .toHaveAttribute("href", "https://burner.example/coin?coin=factory%2Fbze1owner%2Futok");
     });
 

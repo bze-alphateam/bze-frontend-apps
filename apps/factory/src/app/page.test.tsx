@@ -259,16 +259,17 @@ describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
         expect(m.navigate).toHaveBeenCalledWith("/pool/new");
     });
 
-    it("All tools: technical names, Burn opens a new tab", async () => {
-        const open = vi.spyOn(window, "open").mockReturnValue(null);
+    it("All tools: technical names, Burn opens the Burner in a new tab", async () => {
         renderPage();
         const tools = screen.getByRole("region", { name: "All tools" });
         expect(within(tools).getAllByRole("button").map(b => b.textContent)).toEqual([
             "Create token", "Create pool", "Add liquidity", "Create market", "Holder rewards", "Airdrop",
-            "Multi-send", "Staking program", "Brand kit", "Chain registry", "Burn ", "My creations",
+            "Multi-send", "Staking program", "Brand kit", "Chain registry", "My creations",
         ]);
-        await userEvent.click(within(tools).getByRole("button", { name: /Burn/ }));
-        expect(open).toHaveBeenCalledWith("https://burner.example", "_blank", "noopener,noreferrer");
+        const burn = within(tools).getByRole("link", { name: "Burn on Burner" });
+        expect(burn).toHaveAttribute("href", "https://burner.example");
+        expect(burn).toHaveAttribute("target", "_blank");
+        expect(burn).toHaveAttribute("data-app", "burner");
         await userEvent.click(within(tools).getByRole("button", { name: "My creations" }));
         expect(m.navigate).toHaveBeenCalledWith("/manage");
         await userEvent.click(within(tools).getByRole("button", { name: "Airdrop" }));

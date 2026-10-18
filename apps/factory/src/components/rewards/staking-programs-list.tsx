@@ -15,9 +15,10 @@ import {
     VStack,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuChevronDown, LuChevronRight, LuGift, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu'
+import { LuChevronDown, LuChevronRight, LuGift, LuPlus, LuRefreshCw, LuTrash2 } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppButton,
     TokenLogo,
     getChainName,
     getStakingApp,
@@ -40,8 +41,6 @@ import { ProgramStatus } from '@/lib/rewards-directory'
 import { programInvolves, splitStakingRewards, stakingRewardDeletion } from '@/lib/staking-rewards'
 
 const { updateStakingReward, deleteStakingReward } = bze.rewards.MessageComposer.withTypeUrl
-
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 // Same chain limit as creation: total duration can never exceed 36,500 days.
 const MAX_DURATION_DAYS = 36500
@@ -304,9 +303,7 @@ function ProgramRow({
                                 Delete
                             </Button>
                         )}
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => openExternal(getStakingApp().href)}>
-                            View on Staking app <LuArrowUpRight />
-                        </Button>
+                        <AppButton app="staking" href={getStakingApp().href} size="sm">View on Staking</AppButton>
                     </HStack>
                 </HStack>
 

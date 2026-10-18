@@ -120,12 +120,12 @@ describe("TradingTab pools", () => {
         expect(p.goTo).toHaveBeenNthCalledWith(3, `/pool/new?base=${ENC}&${RETURN}`);
     });
 
-    it("opens the pool on the DEX", async () => {
-        const open = vi.spyOn(window, "open").mockReturnValue(null);
+    it("opens the pool on the DEX", () => {
         renderTab(props());
-        await userEvent.click(within(screen.getByTestId("trading-pool-1")).getByRole("button", { name: /View on DEX/ }));
-        expect(open).toHaveBeenCalledWith("https://dex.example/pools/details?id=1", "_blank", "noopener,noreferrer");
-        open.mockRestore();
+        const link = within(screen.getByTestId("trading-pool-1")).getByRole("link", { name: "View on DEX" });
+        expect(link).toHaveAttribute("href", "https://dex.example/pools/details?id=1");
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("data-app", "dex");
     });
 
     it("hides Add liquidity when the other side is halted", () => {
@@ -172,12 +172,11 @@ describe("TradingTab markets", () => {
         expect(within(screen.getByTestId(`trading-market-${id2}`)).getByText("You created it")).toBeInTheDocument();
     });
 
-    it("opens the market on the DEX", async () => {
-        const open = vi.spyOn(window, "open").mockReturnValue(null);
+    it("opens the market on the DEX", () => {
         renderTab(props());
-        await userEvent.click(within(screen.getByTestId(`trading-market-${id1}`)).getByRole("button", { name: /View on DEX/ }));
-        expect(open).toHaveBeenCalledWith(`https://dex.example/exchange/market?id=${encodeURIComponent(id1)}`, "_blank", "noopener,noreferrer");
-        open.mockRestore();
+        const link = within(screen.getByTestId(`trading-market-${id1}`)).getByRole("link", { name: "View on DEX" });
+        expect(link).toHaveAttribute("href", `https://dex.example/exchange/market?id=${encodeURIComponent(id1)}`);
+        expect(link).toHaveAttribute("data-app", "dex");
     });
 
     it("empty: optional order book, with a create button", async () => {
@@ -198,7 +197,7 @@ describe("TradingTab halted token", () => {
         expect(screen.queryByRole("button", { name: "Create another pool" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Add liquidity" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create a market" })).not.toBeInTheDocument();
-        expect(screen.getAllByRole("button", { name: /View on DEX/ }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("link", { name: "View on DEX" }).length).toBeGreaterThan(0);
     });
 
     it("empty pools: no create button either", () => {

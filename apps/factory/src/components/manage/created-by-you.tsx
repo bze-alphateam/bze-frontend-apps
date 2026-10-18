@@ -3,12 +3,13 @@
 import React, { useMemo } from 'react'
 import { Box, Button, Card, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuCopy, LuPlus } from 'react-icons/lu'
+import { LuCopy, LuPlus } from 'react-icons/lu'
 import {
     Market,
     TokenLogo,
     createMarketId,
     getChainName,
+    AppButton,
     getDexApp,
     useAsset,
     useLiquidityPools,
@@ -19,7 +20,6 @@ import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { useChain } from '@interchain-kit/react'
 import { useNavigation } from '@/hooks/useNavigation'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function usePair(base: string, quote: string) {
     const { asset: baseAsset } = useAsset(base)
@@ -79,14 +79,7 @@ function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
                 <Button size="xs" variant="outline" colorPalette="yellow" onClick={() => navigate(`/pool/add?pool=${encodeURIComponent(pool.id)}`)}>
                     <LuPlus /> Add liquidity
                 </Button>
-                <Button
-                    size="xs"
-                    variant="ghost"
-                    colorPalette="yellow"
-                    onClick={() => openExternal(`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`)}
-                >
-                    View on DEX <LuArrowUpRight />
-                </Button>
+                <AppButton app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`} size="sm">View on DEX</AppButton>
             </HStack>
         </Row>
     )
@@ -105,14 +98,7 @@ function MarketRow({ market }: { market: Market }) {
                     <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate maxW="full">{marketId}</Text>
                 </VStack>
             </HStack>
-            <Button
-                size="xs"
-                variant="ghost"
-                colorPalette="yellow"
-                onClick={() => openExternal(`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`)}
-            >
-                View on DEX <LuArrowUpRight />
-            </Button>
+            <AppButton app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`} size="sm">View on DEX</AppButton>
         </Row>
     )
 }

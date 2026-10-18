@@ -11,8 +11,8 @@ import {
     Text,
     VStack,
 } from '@chakra-ui/react'
-import { LuArrowRight, LuArrowUpRight } from 'react-icons/lu'
-import { TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
+import { LuArrowRight } from 'react-icons/lu'
+import { AppButton, TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
 import { GoalCard } from '@/components/home/goal-card'
 import { GoalSearch } from '@/components/home/goal-search'
 import { PlaybooksSection } from '@/components/home/playbooks-section'
@@ -26,8 +26,6 @@ import { workspaceHref } from '@/lib/workspace'
 
 /** The home strip shows this many of the user's tokens; the rest are on /manage. */
 const STRIP_SIZE = 4
-
-const openBurner = () => window.open(getBurnerApp().href, '_blank', 'noopener,noreferrer')
 
 function YourTokensStrip() {
     const { tokens } = useMyTokens()
@@ -75,9 +73,7 @@ function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => vo
     const { navigate } = useNavigation()
     if ('external' in tool) {
         return (
-            <Button size="xs" variant="outline" onClick={openBurner}>
-                {tool.label} <LuArrowUpRight />
-            </Button>
+            <AppButton app="burner" href={getBurnerApp().href} size="sm">{tool.label}</AppButton>
         )
     }
     const onClick = 'goal' in tool ? () => onGoal(goalById(tool.goal)) : () => navigate(tool.href)

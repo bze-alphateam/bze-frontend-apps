@@ -1,10 +1,11 @@
 "use client"
 
 import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowUpRight, LuDroplets } from 'react-icons/lu'
+import { Box, Button, Container, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { LuDroplets } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    AppLink,
     createMarketId,
     getExplorerTxURL,
     getChainName,
@@ -127,8 +128,8 @@ function MarketNewContent() {
                 title={`The ${pairLabel} market is live!`}
                 text={`Anyone can now place ${baseTicker} orders priced in ${quoteTicker} on the DEX order book.`}
                 links={[
-                    { label: 'View market on DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)) },
-                    { label: 'View transaction', href: getExplorerTxURL(created.txHash) },
+                    { label: 'View on DEX', href: marketUrl(createMarketId(baseDenom, quoteDenom)), app: 'dex' },
+                    { label: 'View transaction', href: getExplorerTxURL(created.txHash), app: 'explorer' },
                 ]}
                 // A market starts empty — the natural next step is liquidity.
                 next={[{ label: 'Create a liquidity pool', href: withReturn(poolHref, returnTo), icon: <LuDroplets /> }]}
@@ -238,15 +239,9 @@ function MarketNewContent() {
                                 {pairError.message}
                             </Text>
                             {pairError.existingId && (
-                                <Link
-                                    href={marketUrl(pairError.existingId)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    fontSize="sm"
-                                    color="yellow.fg"
-                                >
-                                    View it on the DEX <LuArrowUpRight />
-                                </Link>
+                                <Box fontSize="sm">
+                                    <AppLink app="dex" href={marketUrl(pairError.existingId)}>View on DEX</AppLink>
+                                </Box>
                             )}
                         </Box>
                     )}

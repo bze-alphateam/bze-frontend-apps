@@ -262,11 +262,11 @@ describe("Give a little every day — add", { timeout: 20_000 }, () => {
         await userEvent.click(startButton());
 
         expect(screen.getByText("Daily prize started")).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(openMock).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
-        await userEvent.click(screen.getByRole("button", { name: /See it on TOK's Communities page/ }));
-        expect(openMock).toHaveBeenCalledWith(
-            `https://communities.test/token?denom=${encodeURIComponent(STAKING)}`, "_blank", "noopener,noreferrer",
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute("data-app", "communities");
+        expect(screen.getByRole("link", { name: "View on Communities" })).toHaveAttribute(
+            "href", `https://communities.test/token?denom=${encodeURIComponent(STAKING)}`,
         );
 
         await userEvent.click(screen.getByRole("button", { name: "Back to TOK's holder rewards" }));

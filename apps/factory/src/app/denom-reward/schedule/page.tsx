@@ -183,10 +183,11 @@ function ScheduleFormContent() {
                     ? `${doneTx.escrowLabel} was locked for ${doneTx.days} more days of prizes for everyone staking ${stakingTicker}.`
                     : `${doneTx.escrowLabel} was locked. Everyone staking ${stakingTicker} now shares ${dailyText} a day.`}
                 links={[
-                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash) },
+                    { label: 'View transaction', href: getExplorerTxURL(doneTx.txHash), app: 'explorer' },
                     {
-                        label: `See it on ${stakingPossessive} Communities page ↗`,
+                        label: 'View on Communities',
                         href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,
+                        app: 'communities',
                     },
                 ]}
                 primary={returnTo

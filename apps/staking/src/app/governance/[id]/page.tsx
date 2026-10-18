@@ -8,7 +8,7 @@ import {LuArrowLeft, LuCircleAlert, LuClock} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
-import {getChainName, getExplorerProposalURL, useAssets, useValidatorLogos, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
+import {AppLink, getChainName, getExplorerProposalURL, useAssets, useValidatorLogos, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
 import {useProposal} from '@/hooks/useProposal';
 import {useNow} from '@/hooks/useNow';
 import {useVoter} from '@/hooks/useVoter';
@@ -102,9 +102,9 @@ function Header({proposal, now}: {proposal: GovProposal; now: Date}) {
                     </Box>
                 )}
             </VStack>
-            <Link hideBelow="md" href={getExplorerProposalURL(proposal.id)} target="_blank" rel="noopener noreferrer" fontSize="13px" fontWeight="semibold" color="purple.fg">
-                View on BZE Scan ↗
-            </Link>
+            <Box hideBelow="md" fontSize="13px">
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>View on Explorer</AppLink>
+            </Box>
         </Stack>
     );
 }

@@ -263,13 +263,10 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
         await continueIn(AMOUNTS);
         await continueIn(PROTECTION);
         await userEvent.click(addButton());
-
-        const openMock = vi.spyOn(window, "open").mockReturnValue(null);
-        await userEvent.click(screen.getByRole("button", { name: /View pool on DEX/ }));
-        expect(openMock).toHaveBeenCalledWith("https://dex.test/pools/details?id=utok_ubze", "_blank", "noopener,noreferrer");
-        await userEvent.click(screen.getByRole("button", { name: /View transaction/ }));
-        expect(openMock).toHaveBeenCalledWith("https://explorer.test/txs/HASH1", "_blank", "noopener,noreferrer");
-        openMock.mockRestore();
+        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("href", "https://dex.test/pools/details?id=utok_ubze");
+        expect(screen.getByRole("link", { name: "View on DEX" })).toHaveAttribute("data-app", "dex");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
         await userEvent.click(screen.getByRole("button", { name: /Reward liquidity providers/ }));
         expect(navigateMock).toHaveBeenCalledWith(
             `/reward/new?staking=ulp%2Ftokbze&${new URLSearchParams({ return: "/manage/token?denom=utok", returnLabel: "TOK" })}`,

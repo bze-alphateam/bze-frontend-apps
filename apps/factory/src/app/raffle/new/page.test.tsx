@@ -176,7 +176,8 @@ describe("/raffle/new", () => {
 
         const running = await screen.findByTestId("raffle-running");
         expect(running).toHaveTextContent("A raffle for TOK is already running. It ends in 2d 0h.");
-        expect(within(running).getByRole("link", { name: /See it in the Burner/ })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+        expect(within(running).getByRole("link", { name: "View on Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+        expect(within(running).getByRole("link", { name: "View on Burner" })).toHaveAttribute("data-app", "burner");
         expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeDisabled();
     });
 
@@ -244,8 +245,7 @@ describe("/raffle/new", () => {
             return true;
         });
 
-        it("says the raffle is live and opens the Burner; Start another resets the form", async () => {
-            const open = vi.spyOn(window, "open").mockImplementation(() => null);
+        it("says the raffle is live and links the Burner; Start another resets the form", async () => {
             succeed();
             renderPage();
             await pickToken();
@@ -254,13 +254,13 @@ describe("/raffle/new", () => {
             await userEvent.click(startButton());
 
             expect(await screen.findByRole("heading", { name: "The TOK raffle is live" })).toBeInTheDocument();
-            expect(screen.queryByRole("button", { name: /Back to/ })).not.toBeInTheDocument();
-            await userEvent.click(screen.getByRole("button", { name: "See it in the Burner ↗" }));
-            expect(open).toHaveBeenCalledWith("https://burner.test/coin?coin=utok", "_blank", "noopener,noreferrer");
+            expect(screen.getByRole("button", { name: "Back to the Factory" })).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
+            expect(screen.getByRole("link", { name: "View on Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+            expect(screen.getByRole("link", { name: "View on Burner" })).toHaveAttribute("data-app", "burner");
 
             await userEvent.click(screen.getByRole("button", { name: "Start another" }));
             expect(question(Q.token)).toHaveAttribute("data-state", "active");
-            open.mockRestore();
         });
 
         it("offers Back to TOK when opened from the workspace", async () => {

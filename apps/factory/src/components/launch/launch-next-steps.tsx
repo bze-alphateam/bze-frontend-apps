@@ -2,8 +2,9 @@
 
 import React from 'react'
 import { Box, Button, Card, Circle, Code, Grid, HStack, IconButton, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowUpRight, LuCheck, LuCopy } from 'react-icons/lu'
+import { LuCheck, LuCopy } from 'react-icons/lu'
 import {
+    AppLink,
     FeeCoin,
     getExplorerTxURL,
     getDexApp,
@@ -227,13 +228,9 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
                                     </IconButton>
                                 </HStack>
                             </VStack>
-                            <VStack align="start" gap={1}>
-                                <Link href={dexUrl} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">
-                                    View on the DEX <LuArrowUpRight />
-                                </Link>
-                                <Link href={txUrl} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">
-                                    View transaction <LuArrowUpRight />
-                                </Link>
+                            <VStack align="start" gap={1} fontSize="sm">
+                                <AppLink app="dex" href={dexUrl}>View on DEX</AppLink>
+                                <AppLink app="explorer" href={txUrl}>View transaction</AppLink>
                             </VStack>
                             <Text fontSize="xs" color="fg.muted" data-testid="launch-logo-note">
                                 {"Why a logo isn't here: logos come from the Cosmos Chain Registry, not from the Factory. "}

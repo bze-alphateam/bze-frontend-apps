@@ -3,13 +3,14 @@
 import React, { useMemo } from 'react'
 import { Badge, Box, Button, Card, HStack, IconButton, Skeleton, Stack, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuArrowUpRight, LuChartCandlestick, LuCopy, LuDroplets, LuPlus, LuSprout } from 'react-icons/lu'
+import { LuChartCandlestick, LuCopy, LuDroplets, LuPlus, LuSprout } from 'react-icons/lu'
 import {
     HaltedNotice,
     Market,
     TokenLogo,
     createMarketId,
     getChainName,
+    AppButton,
     getDexApp,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -25,7 +26,6 @@ import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
 import type { WorkspaceTabProps } from './types'
 
-const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
 
 function PairLogos({ base, quote }: { base?: { logo: string; ticker: string }; quote?: { logo: string; ticker: string } }) {
     return (
@@ -109,14 +109,7 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
                     >
                         <LuSprout /> Reward liquidity providers
                     </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        colorPalette="yellow"
-                        onClick={() => openExternal(`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`)}
-                    >
-                        View on DEX <LuArrowUpRight />
-                    </Button>
+                    <AppButton app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`} size="sm">View on DEX</AppButton>
                 </HStack>
             </Stack>
         </Card.Root>
@@ -144,14 +137,7 @@ function MarketCard({ market, address }: Pick<RowProps, 'address'> & { market: M
                     </VStack>
                 </HStack>
                 <Box flexShrink={0}>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        colorPalette="yellow"
-                        onClick={() => openExternal(`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`)}
-                    >
-                        View on DEX <LuArrowUpRight />
-                    </Button>
+                    <AppButton app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`} size="sm">View on DEX</AppButton>
                 </Box>
             </Stack>
         </Card.Root>

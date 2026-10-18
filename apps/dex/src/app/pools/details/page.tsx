@@ -42,7 +42,7 @@ import {
     useLiquidityPool,
     TokenLogo, LPTokenLogo,
     Tooltip,
-    getBurnerApp,
+    getBurnerApp, AppLink,
     HaltedBadge, HaltedNotice, useHaltedDenoms,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
@@ -1665,25 +1665,11 @@ const PoolDetailsPageContent = () => {
                                         }
                                     </HighlightText>
                                 </Skeleton>
-                                <Link
-                                    href={`${getBurnerApp().href}/coin?coin=${pool?.lp_denom || ''}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    fontSize="xs"
-                                    color="fg.muted"
-                                    display="flex"
-                                    alignItems="center"
-                                    gap="1"
-                                    textDecoration="none"
-                                    transition="color 0.2s"
-                                    _hover={{
-                                        color: 'colorPalette.fg',
-                                        textDecoration: 'none',
-                                    }}
-                                >
-                                    <LuExternalLink size={12} />
-                                    <Text>See in Burner App</Text>
-                                </Link>
+                                <Box fontSize="xs">
+                                    <AppLink app="burner" href={`${getBurnerApp().href}/coin?coin=${pool?.lp_denom || ''}`}>
+                                        View on Burner
+                                    </AppLink>
+                                </Box>
                             </VStack>
                             <VStack align="center" gap="2" p={{ base: "3", md: "4" }} bgGradient="to-br" gradientFrom="blue.500/5" gradientTo="blue.600/5" rounded="lg" borderWidth="1px" borderColor="blue.500/15">
                                 <Text fontSize="sm" color="fg.muted" textAlign="center">Locked in Boost Rewards</Text>

@@ -198,7 +198,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         }]);
 
         expect(screen.getByRole("heading", { name: "Sent to 2 wallets" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /View transaction/ })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "View transaction" })).toHaveAttribute("data-app", "explorer");
         await userEvent.click(screen.getByRole("button", { name: "Send another list" }));
         expect(question(LIST)).toHaveAttribute("data-state", "active");
         expect(listInput()).toHaveValue("");
@@ -264,11 +264,13 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
 
         expect(within(progress()).getByText("Transaction 2 of 3")).toBeInTheDocument();
         expect(batchRows()).toEqual([
-            "100 wallets · 100 TOKSent ✓tx ",
+            "100 wallets · 100 TOKSent ✓",
             "100 wallets · 100 TOKWaiting",
             "50 wallets · 50 TOKWaiting",
         ]);
-        expect(within(progress()).getByRole("link", { name: /tx/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        const txLink = within(progress()).getByRole("link", { name: "View transaction" });
+        expect(txLink).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+        expect(txLink).toHaveAttribute("data-app", "explorer");
         expect(loadMultiSendRun()?.batches.map(b => b.status)).toEqual(["sent", "pending", "pending"]);
         const report = within(progress()).getByRole("link", { name: /Download report \(CSV\)/ });
         const csv = decodeURIComponent(report.getAttribute("href")!.split(",").slice(1).join(","));
@@ -329,7 +331,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         await longList();
         await userEvent.click(screen.getByRole("button", { name: "Start sending (3 transactions)" }));
 
-        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓"));
         expect(lookupMock.getTx).toHaveBeenCalledWith("H1");
         expect(loadMultiSendRun()?.batches[0]).toMatchObject({ status: "sent", txHash: "H1" });
         expect(txMock).toHaveBeenCalledTimes(1);
@@ -359,7 +361,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         await userEvent.click(screen.getByRole("button", { name: "Send this one again" }));
         expect(txMock).toHaveBeenCalledTimes(3);
         expect(sentOutputs(2)).toEqual(wallets(250).slice(0, 100));
-        expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx ");
+        expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓");
     });
 
     it("a node error leaves the batch unclear with a way to check again", async () => {
@@ -373,7 +375,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKCouldn't checkCheck again"));
         expect(screen.queryByRole("button", { name: "Send this one again" })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Check again" }));
-        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓"));
     });
 
     it("resumes a stored run where it left off", async () => {
@@ -392,7 +394,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         const ready = wallets(100).map(address => ({ address, coins: [{ denom: "utok", amount: "1000000" }] }));
         lookupMock.recentMultiSends.mockResolvedValue([{ txhash: "FOUND", code: 0, multiSends: [ready] }]);
         renderPage();
-        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓tx "));
+        await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓"));
         expect(lookupMock.recentMultiSends).toHaveBeenCalledWith("bze1old");
         expect(lookupMock.getTx).not.toHaveBeenCalled();
         expect(loadMultiSendRun()?.batches[0]).toMatchObject({ status: "sent", txHash: "FOUND" });
