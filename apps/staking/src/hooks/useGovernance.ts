@@ -1,15 +1,16 @@
 "use client";
 
 import {useCallback, useEffect, useRef, useState} from "react";
-import {
-    getFinishedProposals, getGovParams, getOpenProposals, getProposalTally, getStakingPool,
-    type GovParams, type GovProposal, type GovTally,
-} from "@bze/bze-ui-kit";
+import {getGovParams, getProposalTally, getStakingPool, type GovParams, type GovTally} from "@bze/bze-ui-kit";
 import {isListed} from "@/lib/governance/proposal";
+import type {ListedProposal} from "@/lib/governance/scan";
+import {loadFinishedProposals, loadOpenProposals, type FinishedPage} from "@/query/proposals";
 
 // The public governance data the list page shows: the gov params, the open
 // proposals with their live tallies, the bonded tokens (for turnout) and the
-// finished proposals page by page. Wallet-specific data (voting power, the
+// finished proposals page by page. The proposals come from BZE Scan; when it is
+// down the open ones still load from the chain and the finished list offers a
+// retry. Wallet-specific data (voting power, the
 // user's vote) is layered on top by useVoter, keyed by the open proposals'
 // ids, so this hook stays wallet-free.
 
@@ -17,8 +18,8 @@ import {isListed} from "@/lib/governance/proposal";
 export const GOVERNANCE_POLL_MS = 60_000;
 
 export interface OpenProposal {
-    proposal: GovProposal;
-    /** The live tally; null when the node didn't answer for this proposal. */
+    proposal: ListedProposal;
+    /** The live tally; Scan's last one when the node didn't answer, null without either. */
     tally: GovTally | null;
 }
 
@@ -27,22 +28,29 @@ export interface GovernanceData {
     open: OpenProposal[];
     /** Bonded tokens in ubze; "0" when the staking pool didn't answer. */
     bondedTokens: string;
-    finished: GovProposal[];
+    finished: ListedProposal[];
 }
 
-const loadTallies = (proposals: GovProposal[]): Promise<OpenProposal[]> =>
+const loadTallies = (proposals: ListedProposal[]): Promise<OpenProposal[]> =>
     Promise.all(proposals.map(async (proposal) => ({
         proposal,
-        tally: await getProposalTally(proposal.id).catch(() => null),
+        tally: await getProposalTally(proposal.id).catch(() => proposal.final_tally_result ?? null),
     })));
 
-const byIdDesc = (a: GovProposal, b: GovProposal) => Number(b.id) - Number(a.id);
+const byIdDesc = (a: ListedProposal, b: ListedProposal) => Number(b.id) - Number(a.id);
+
+/** The first finished page; null when Scan is down, so the list can offer a retry. */
+const firstFinishedPage = (): Promise<FinishedPage | null> =>
+    loadFinishedProposals().catch((e) => {
+        console.error("failed to load finished proposals", e);
+        return null;
+    });
 
 export function useGovernance() {
     const [data, setData] = useState<GovernanceData | undefined>();
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<unknown>();
-    const [nextKey, setNextKey] = useState<Uint8Array | null>(null);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isLoadingOlder, setIsLoadingOlder] = useState(false);
     const [olderError, setOlderError] = useState(false);
     // Ignore answers from a load that a newer one replaced.
@@ -55,9 +63,9 @@ export function useGovernance() {
         try {
             const [params, openProposals, pool, finishedPage] = await Promise.all([
                 getGovParams(),
-                getOpenProposals(),
+                loadOpenProposals(),
                 getStakingPool(),
-                getFinishedProposals(),
+                firstFinishedPage(),
             ]);
             const open = await loadTallies(
                 openProposals.filter((p) => p.status === "PROPOSAL_STATUS_VOTING_PERIOD").sort(byIdDesc)
@@ -67,10 +75,10 @@ export function useGovernance() {
                 params,
                 open,
                 bondedTokens: pool?.bonded_tokens ?? "0",
-                finished: finishedPage.proposals.filter((p) => isListed(p.status)),
+                finished: (finishedPage?.proposals ?? []).filter((p) => isListed(p.status)),
             });
-            setNextKey(finishedPage.nextKey);
-            setOlderError(false);
+            setNextCursor(finishedPage?.nextCursor ?? null);
+            setOlderError(!finishedPage);
         } catch (e) {
             if (id !== loadId.current) return;
             console.error("failed to load governance data", e);
@@ -80,24 +88,25 @@ export function useGovernance() {
         }
     }, []);
 
+    // The older page, or the first one again after it failed.
     const loadOlder = useCallback(async () => {
-        if (!nextKey || isLoadingOlder) return;
+        if ((!nextCursor && !olderError) || isLoadingOlder) return;
         setIsLoadingOlder(true);
         setOlderError(false);
         try {
-            const page = await getFinishedProposals(nextKey);
+            const page = await loadFinishedProposals(nextCursor);
             setData((current) => current && {
                 ...current,
                 finished: [...current.finished, ...page.proposals.filter((p) => isListed(p.status))],
             });
-            setNextKey(page.nextKey);
+            setNextCursor(page.nextCursor);
         } catch (e) {
             console.error("failed to load older proposals", e);
             setOlderError(true);
         } finally {
             setIsLoadingOlder(false);
         }
-    }, [nextKey, isLoadingOlder]);
+    }, [nextCursor, olderError, isLoadingOlder]);
 
     // Re-read the open proposals' tallies; a failed poll keeps the last ones.
     const openRef = useRef<OpenProposal[]>([]);
@@ -139,7 +148,7 @@ export function useGovernance() {
         /** Re-read the open proposals' tallies (after a vote). */
         refreshTallies: pollTallies,
         loadOlder,
-        hasOlder: nextKey !== null,
+        hasOlder: nextCursor !== null,
         isLoadingOlder,
         olderError,
     };

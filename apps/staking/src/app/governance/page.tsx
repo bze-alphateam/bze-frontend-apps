@@ -143,7 +143,7 @@ export default function GovernancePage() {
 
     const showLoading = isLoading && !data;
     const showError = !showLoading && !!error;
-    const isEmpty = !!data && data.open.length === 0 && data.finished.length === 0 && !hasOlder;
+    const isEmpty = !!data && data.open.length === 0 && data.finished.length === 0 && !hasOlder && !olderError;
     const showData = !showLoading && !showError && !!data && !isEmpty;
 
     return (
