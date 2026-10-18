@@ -1,0 +1,62 @@
+{
+    "items": [
+        {
+            "id": 48,
+            "title": "Upgrade network to v8.2.0",
+            "kind": "software_upgrade",
+            "status": "voting_period",
+            "expedited": false,
+            "submit_time": "2026-10-15T10:13:59.778116Z",
+            "deposit_end_time": "2026-10-17T10:13:59.778116Z",
+            "voting_start_time": "2026-10-15T10:13:59.778116Z",
+            "voting_end_time": "2026-10-20T10:13:59.778116Z",
+            "tally": {
+                "yes": "113887856042076",
+                "no": "0",
+                "abstain": "0",
+                "no_with_veto": "0"
+            },
+            "turnout_pct": "68.07751",
+            "tally_source": "sync"
+        },
+        {
+            "id": 47,
+            "title": "Upgrade network to v8.1.1",
+            "kind": "software_upgrade",
+            "status": "passed",
+            "expedited": false,
+            "submit_time": "2026-07-16T10:28:03.533454Z",
+            "deposit_end_time": "2026-07-18T10:28:03.533454Z",
+            "voting_start_time": "2026-07-16T10:28:03.533454Z",
+            "voting_end_time": "2026-07-21T10:28:03.533454Z",
+            "tally": {
+                "yes": "106584798486204",
+                "no": "0",
+                "abstain": "0",
+                "no_with_veto": "0"
+            },
+            "turnout_pct": null,
+            "tally_source": null
+        },
+        {
+            "id": 46,
+            "title": "Upgrade network to v8.1.0",
+            "kind": "software_upgrade",
+            "status": "passed",
+            "expedited": false,
+            "submit_time": "2026-04-22T12:58:45.039535Z",
+            "deposit_end_time": "2026-04-24T12:58:45.039535Z",
+            "voting_start_time": "2026-04-22T12:59:39.167291Z",
+            "voting_end_time": "2026-04-27T12:59:39.167291Z",
+            "tally": {
+                "yes": "104767203291302",
+                "no": "0",
+                "abstain": "0",
+                "no_with_veto": "0"
+            },
+            "turnout_pct": null,
+            "tally_source": null
+        }
+    ],
+    "next_cursor": "NDY"
+}

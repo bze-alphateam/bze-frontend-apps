@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-// The hook against mocked ui-kit queries: what it loads, what it hides as not
-// found, and that only an open proposal's tally is polled.
-const q = vi.hoisted(() => ({
+// The hook against mocked chain and proposal queries: what it loads, what it
+// hides as not found, and that only an open proposal's tally is polled.
+const { getProposal, ...chain } = vi.hoisted(() => ({
     getGovParams: vi.fn(),
     getProposal: vi.fn(),
     getProposalTally: vi.fn(),
     getStakingPool: vi.fn(),
 }));
+const q = { ...chain, getProposal };
 
-vi.mock("@bze/bze-ui-kit", () => q);
+vi.mock("@bze/bze-ui-kit", () => chain);
+vi.mock("@/query/proposals", () => ({ loadProposal: getProposal }));
 
 import { GOVERNANCE_POLL_MS } from "./useGovernance";
 import { useProposal } from "./useProposal";
@@ -54,7 +56,17 @@ describe("useProposal", () => {
         expect(q.getProposalTally).not.toHaveBeenCalled();
     });
 
+    it("falls back to Scan's last tally when the node's fails", async () => {
+        q.getProposal.mockResolvedValue(proposal("PROPOSAL_STATUS_VOTING_PERIOD", tally("7")));
+        q.getProposalTally.mockRejectedValue(new Error("502"));
+        const { result } = renderHook(() => useProposal("48"));
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.data?.tally).toEqual(tally("7"));
+    });
+
     it("keeps an open proposal whose tally failed, without a tally", async () => {
+        q.getProposal.mockResolvedValue(proposal("PROPOSAL_STATUS_VOTING_PERIOD", null as never));
         q.getProposalTally.mockRejectedValue(new Error("502"));
         const { result } = renderHook(() => useProposal("48"));
         await waitFor(() => expect(result.current.isLoading).toBe(false));

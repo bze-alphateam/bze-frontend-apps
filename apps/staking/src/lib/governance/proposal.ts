@@ -51,8 +51,9 @@ const effectiveType = (m: GovProposalMessage): string =>
 const kindOfType = (typeUrl: string): ProposalKind =>
     KIND_OF[typeUrl] ?? (typeUrl.endsWith(".MsgUpdateParams") ? "parameter_change" : "other");
 
-/** The kind of the first message that has one; `text` without messages. */
-export function proposalKind(p: Pick<GovProposal, "messages">): ProposalKind {
+/** The kind BZE Scan gave it, else the kind of the first message that has one; `text` without messages. */
+export function proposalKind(p: Pick<GovProposal, "messages"> & {kind?: ProposalKind}): ProposalKind {
+    if (p.kind) return p.kind;
     const messages = p.messages ?? [];
     if (messages.length === 0) return "text";
     for (const m of messages) {
