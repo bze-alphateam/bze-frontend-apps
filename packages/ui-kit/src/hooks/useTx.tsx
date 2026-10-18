@@ -290,7 +290,7 @@ const useTx = (chainName: string) => {
                     // BZE Scan only knows BZE transactions: a tx signed on another
                     // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
                     if (chainName === defaultChainName) {
-                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View in Explorer');
+                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
                     } else {
                         toast.success(TxStatus.Successful);
                     }

@@ -152,8 +152,10 @@ export {
 export { TOKEN_LOGO_PLACEHOLDER, BZE_CIRCLE_LOGO, DEFAULT_TX_MEMO } from './constants/placeholders';
 export { SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS, VALIDATION_ERRORS, getAppName } from './constants/settings';
 export { EXCLUDED_MARKETS } from './constants/market';
-export { ECOSYSTEM_MENU_LABEL, getEcosystemApps, getEcosystemApp, getWebsiteApp, getStakingApp, getDexApp, getBurnerApp, getFactoryApp, getCommunitiesApp } from './constants/ecosystem';
+export { ECOSYSTEM_MENU_LABEL, getEcosystemApps, getEcosystemApp, getWebsiteApp, getStakingApp, getDexApp, getBurnerApp, getFactoryApp, getCommunitiesApp, getExplorerApp } from './constants/ecosystem';
 export type { EcosystemApp } from './constants/ecosystem';
+export { appIdentity, appAccentColor } from './constants/app-identity';
+export type { AppKey, BrandedAppKey, AppAccent, AppIdentity } from './constants/app-identity';
 export { MAINNET_CHAIN_INFO_FALLBACK, TESTNET_CHAIN_INFO_FALLBACK } from './constants/keplr';
 export { BZE_TESTNET_2_SUGGEST_CHAIN, BZE_TESTNET_NETWORK } from './constants/testnet';
 export {
@@ -298,5 +300,11 @@ export { WalletSidebarContent, WalletSendForm } from './components/sidebar/walle
 export type { WalletSendFormProps } from './components/sidebar/wallet-sidebar';
 export { SettingsToggle } from './components/settings-toggle';
 export { TestnetBanner } from './components/testnet-banner';
+export { AppIcon } from './components/app-identity/app-icon';
+export type { AppIconProps } from './components/app-identity/app-icon';
+export { AppButton, AppIconButton, AppLink } from './components/app-identity/app-button';
+export type { AppButtonProps, AppIconButtonProps, AppLinkProps } from './components/app-identity/app-button';
+export { AppsMenu } from './components/app-identity/apps-menu';
+export type { AppsMenuProps } from './components/app-identity/apps-menu';
 export { BridgeForm } from './components/sidebar/bridge-form';
 export { BuyForm } from './components/sidebar/buy-form';
