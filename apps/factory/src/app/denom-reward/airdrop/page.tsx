@@ -1,9 +1,10 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuTriangleAlert } from 'react-icons/lu'
+import React, { useMemo, useState } from 'react'
+import { Box, Button, Field, HStack, Input, Text, VStack, chakra } from '@chakra-ui/react'
 import {
+    GradientText,
+    Shimmer,
     amountToUAmount,
     getExplorerTxURL,
     getChainName,
@@ -23,10 +24,16 @@ import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
+    BlockerNote,
+    ContinueRow,
+    FormFrame,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     useGuidedSteps,
     useReturnTo,
@@ -126,10 +133,12 @@ function AirdropFormContent() {
 
     if (isLoading) {
         return (
-            <VStack align="stretch" gap={4}>
-                <Skeleton height="10" width="64" />
-                <Skeleton height="64" />
-            </VStack>
+            <FormFrame>
+                <VStack align="stretch" gap="16px">
+                    <Shimmer h="40px" w="256px" />
+                    <Shimmer h="256px" borderRadius="hg.lg" />
+                </VStack>
+            </FormFrame>
         )
     }
 
@@ -175,7 +184,7 @@ function AirdropFormContent() {
             <OutcomePanel>
                 {giftText ? (
                     <Text data-testid="airdrop-outcome">
-                        <Text as="span" fontWeight="semibold">{giftText}</Text> leaves your wallet now and is split
+                        <Text as="span" fontWeight="600">{giftText}</Text> leaves your wallet now and is split
                         between everyone staking {stakingTicker}, based on how much each one stakes. It can&apos;t be
                         taken back, and it doesn&apos;t start a daily prize. You don&apos;t need to own {stakingTicker} or
                         ask its creator.
@@ -193,35 +202,23 @@ function AirdropFormContent() {
                 feeUnknown={isNewPrize && !slot.capReached && !gift.isFeeLoading && !costs.feesKnown}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Airdrop now
-                </Button>
+            <SubmitBlock label="Airdrop now" onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to airdrop.
-                    </Text>
+                    <SubmitNote>Connect your wallet to airdrop.</SubmitNote>
                 ) : costs.escrow && !afford.isLoading && !afford.canAfford && afford.message && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center" role="alert">{afford.message}</Text>
+                    <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center" role="alert">{afford.message}</Text>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
             title={
-                <HStack as="span" gap={1} display="inline-flex" align="center">
-                    {`Gift ${stakingTicker} stakers, once`}
-                    <RewardInfoButton denom={denom} />
-                </HStack>
+                <>
+                    {`Gift ${stakingTicker} stakers, `}<GradientText>once</GradientText>
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton denom={denom} /></chakra.span>
+                </>
             }
             subtitle={`Split an amount between everyone staking ${stakingTicker} right now.`}
             techTag={VOCABULARY.airdropToStakers.tech}
@@ -230,10 +227,9 @@ function AirdropFormContent() {
             aside={aside}
         >
             {blocker !== '' && (
-                <HStack gap={2} p={3} borderRadius="lg" bg="red.500/10" color="red.600" align="start" role="alert" data-testid="airdrop-blocker">
-                    <Box mt="0.5" flexShrink={0}><LuTriangleAlert size={16} /></Box>
-                    <Text fontSize="sm">{blocker}</Text>
-                </HStack>
+                <Box data-testid="airdrop-blocker">
+                    <BlockerNote>{blocker}</BlockerNote>
+                </Box>
             )}
 
             <Question
@@ -243,7 +239,7 @@ function AirdropFormContent() {
                 summary={prizeTicker}
                 onChange={() => steps.open('prize')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <PrizeTokenQuestion
                         denomReward={denomReward}
                         prizes={prizes}
@@ -252,15 +248,7 @@ function AirdropFormContent() {
                         value={prizeDenom}
                         onSelect={(asset) => setPrizeDenom(asset.denom)}
                     />
-                    <Button
-                        alignSelf="start"
-                        colorPalette="yellow"
-                        size="sm"
-                        disabled={!prizeAsset || slot.capReached}
-                        onClick={() => answer('prize')}
-                    >
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!prizeAsset || slot.capReached} onContinue={() => answer('prize')} />
                 </VStack>
             </Question>
 
@@ -271,17 +259,16 @@ function AirdropFormContent() {
                 summary={giftText}
                 onChange={() => steps.open('amount')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     {prizeAsset && (
                         <Field.Root invalid={amountTouched && amountInput.trim() !== '' && amountError !== ''}>
-                            <HStack justify="space-between" w="full" gap={2} flexWrap="wrap">
+                            <HStack justify="space-between" w="full" gap="8px" flexWrap="wrap">
                                 <Field.Label>{`Amount (${prizeTicker})`}</Field.Label>
-                                <HStack gap={1}>
-                                    <Text fontSize="xs" color="fg.muted" data-testid="airdrop-balance">{balanceText}</Text>
+                                <HStack gap="4px">
+                                    <Text fontSize="12px" color="hg.text.faint" data-testid="airdrop-balance">{balanceText}</Text>
                                     <Button
                                         size="2xs"
-                                        variant="ghost"
-                                        colorPalette="yellow"
+                                        variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}
                                         onClick={() => { setAmountInput(spendable.inputValue); setAmountTouched(true) }}
                                         disabled={!spendable.amount.gt(0)}
                                     >
@@ -300,19 +287,11 @@ function AirdropFormContent() {
                         </Field.Root>
                     )}
                     {onePercentText && (
-                        <Text fontSize="sm" color="fg.muted" data-testid="airdrop-example">
+                        <Text fontSize="13px" lineHeight="1.5" color="hg.text.faint" data-testid="airdrop-example">
                             {`Split by stake: someone with 1% of the staked ${stakingTicker} gets ${onePercentText}.`}
                         </Text>
                     )}
-                    <Button
-                        alignSelf="start"
-                        colorPalette="yellow"
-                        size="sm"
-                        disabled={amountError !== '' || costs.escrow === undefined}
-                        onClick={() => answer('amount')}
-                    >
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={amountError !== '' || costs.escrow === undefined} onContinue={() => answer('amount')} />
                 </VStack>
             </Question>
         </GuidedForm>
@@ -321,12 +300,8 @@ function AirdropFormContent() {
 
 export default function DenomRewardAirdropPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <AirdropFormContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <AirdropFormContent />
+        </FormPage>
     )
 }

@@ -1,10 +1,11 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React, { useMemo, useState } from 'react'
+import { Box, Field, Input, Text, VStack, chakra } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { bze } from '@bze/bzejs'
 import {
+    GradientText,
     amountToUAmount,
     getExplorerTxURL,
     getChainName,
@@ -23,10 +24,15 @@ import { validateAmount } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import {
+    ContinueRow,
+    Hint,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     TipNote,
     useGuidedSteps,
@@ -226,7 +232,7 @@ function RewardNewContent() {
             <OutcomePanel>
                 {escrowText && stakeTicker ? (
                     <Text>
-                        <Text as="span" fontWeight="semibold">{escrowText}</Text> leaves your wallet now and is paid
+                        <Text as="span" fontWeight="600">{escrowText}</Text> leaves your wallet now and is paid
                         out as {prizeAmountText} {prizeTicker} a day for {duration.trim()} days to everyone
                         staking {stakeTicker}. It can&apos;t be withdrawn. Anyone can add more days later.
                     </Text>
@@ -248,37 +254,23 @@ function RewardNewContent() {
                 feeUnknown={!fee}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Start the program
-                </Button>
+            <SubmitBlock label="Start the program" onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to create this reward.
-                    </Text>
+                    <SubmitNote>Connect your wallet to create this reward.</SubmitNote>
                 ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center">
-                        Not enough balance to cover the creation fee on top of the escrowed prize.
-                    </Text>
+                    <SubmitNote tone="error">Not enough balance to cover the creation fee on top of the escrowed prize.</SubmitNote>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
             title={
-                <HStack as="span" gap={1} display="inline-flex" align="center">
-                    Run a campaign with an end date
-                    <RewardInfoButton />
-                </HStack>
+                <>
+                    Run a campaign with an <GradientText>end date</GradientText>
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton /></chakra.span>
+                </>
             }
             subtitle="People stake one token for a set number of days and earn a daily prize you fund upfront."
             techTag={VOCABULARY.stakingProgram.tech}
@@ -291,19 +283,17 @@ function RewardNewContent() {
                 summary={stakeTicker}
                 onChange={() => steps.open('stake')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <AssetPicker
                         label="Token people stake"
                         value={stakingDenom}
                         includeLP={true}
                         onSelect={(asset) => setStakingDenom(asset.denom)}
                     />
-                    <Text fontSize="sm" color="fg.muted">
+                    <Hint>
                         Often an LP token, to reward people who add liquidity.
-                    </Text>
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!stakingAsset} onClick={() => answer('stake')}>
-                        Continue
-                    </Button>
+                    </Hint>
+                    <ContinueRow disabled={!stakingAsset} onContinue={() => answer('stake')} />
                 </VStack>
             </Question>
 
@@ -314,7 +304,7 @@ function RewardNewContent() {
                 summary={prizeSummary}
                 onChange={() => steps.open('prize')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <AssetPicker
                         label="Prize (paid from your wallet)"
                         value={prizeDenom}
@@ -339,13 +329,13 @@ function RewardNewContent() {
                                 placeholder="e.g. 30"
                             />
                             {escrowText && (
-                                <Box fontSize="sm">
+                                <Box fontSize="14px">
                                     <Text color="fg.muted">
-                                        Locked upfront: <Text as="span" fontWeight="semibold" color="fg">{escrowText}</Text>
+                                        Locked upfront: <Text as="span" fontWeight="600" color="fg">{escrowText}</Text>
                                         {' '}(prize × days), paid to stakers day by day.
                                     </Text>
                                     {address && !hasEnoughForEscrow && (
-                                        <Text color="fg.error" fontWeight="medium" role="alert">
+                                        <Text color="hg.danger.text" fontWeight="600" role="alert">
                                             Not enough {prizeTicker} — you have {prizeBalanceText}.
                                         </Text>
                                     )}
@@ -356,9 +346,7 @@ function RewardNewContent() {
                     <TipNote lead="Anyone can top up more days later.">
                         Every day the prize is split among stakers in proportion to their stake.
                     </TipNote>
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!prizeValid} onClick={() => answer('prize')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!prizeValid} onContinue={() => answer('prize')} />
                 </VStack>
             </Question>
 
@@ -369,7 +357,7 @@ function RewardNewContent() {
                 summary={rulesSummary}
                 onChange={() => steps.open('rules')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <FieldWithError
                         label="Lock period (days)"
                         helper={`0–${MAX_LOCK_DAYS.toLocaleString()} days. 0 = they can leave any time.`}
@@ -385,15 +373,7 @@ function RewardNewContent() {
                         onChange={setMinStake}
                         placeholder="0"
                     />
-                    <Button
-                        alignSelf="start"
-                        colorPalette="yellow"
-                        size="sm"
-                        disabled={lockError !== '' || minStakeError !== ''}
-                        onClick={() => answer('rules')}
-                    >
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={lockError !== '' || minStakeError !== ''} onContinue={() => answer('rules')} />
                 </VStack>
             </Question>
         </GuidedForm>
@@ -402,12 +382,8 @@ function RewardNewContent() {
 
 export default function RewardNewPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <RewardNewContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <RewardNewContent />
+        </FormPage>
     )
 }

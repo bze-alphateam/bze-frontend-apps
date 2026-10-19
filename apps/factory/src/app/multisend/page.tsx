@@ -1,16 +1,14 @@
 "use client"
 
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+    Badge,
     Box,
     Button,
-    Container,
     Field,
-    Group,
     HStack,
     Input,
     Link,
-    Skeleton,
     Text,
     Textarea,
     VStack,
@@ -20,8 +18,10 @@ import BigNumber from 'bignumber.js'
 import { LuDownload, LuUpload } from 'react-icons/lu'
 import { cosmos } from '@bze/bzejs'
 import {
+    GradientText,
     TxKindSpec,
     getExplorerTxURL,
+    hgVariant,
     getChainName,
     getSettings,
     prettyAmount,
@@ -36,6 +36,11 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
+    ContinueRow,
+    Segmented,
+    SubmitBlock,
+    SubmitNote,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
@@ -78,6 +83,7 @@ import {
 } from '@/lib/multisend-run'
 import { checkBatchOnChain, restTxLookup } from '@/lib/multisend-lookup'
 import { RunProgress } from '@/components/multisend/run-progress'
+import { softButton } from '@/components/ui/soft-button'
 
 const { multiSend } = cosmos.bank.v1beta1.MessageComposer.withTypeUrl
 
@@ -92,11 +98,11 @@ const PLACEHOLDERS: Record<RecipientMode, string> = {
     perWallet: 'bze1…, 100\nbze1…, 250\nbze1…, 50',
 }
 
-function Counter({ color, children }: { color: string; children: React.ReactNode }) {
+function Counter({ tone, children }: { tone: 'success' | 'warning' | 'danger'; children: React.ReactNode }) {
     return (
-        <Text fontSize="sm" fontWeight="medium" color={color} px={2} py={0.5} borderRadius="md" bg={`${color.split('.')[0]}.500/10`}>
+        <Badge variant={hgVariant(tone)} size="md" borderRadius="hg.pill" fontSize="12px" fontWeight="600" data-tone={tone}>
             {children}
-        </Text>
+        </Badge>
     )
 }
 
@@ -362,18 +368,16 @@ function MultiSendContent() {
 
     if (activeRun && isRunDone(activeRun)) {
         return (
-            <VStack align="stretch" gap={4}>
-                <SuccessPanel
-                    title={`Sent to ${count} wallets in ${activeRun.batches.length} transactions`}
-                    text={`${totalLabel} is now in their wallets.`}
-                    again={{ label: 'Send another list', onClick: sendAnother }}
-                />
-                {reportHref && (
-                    <Button asChild variant="outline" colorPalette="yellow" alignSelf="center">
+            <SuccessPanel
+                title={`Sent to ${count} wallets in ${activeRun.batches.length} transactions`}
+                text={`${totalLabel} is now in their wallets.`}
+                again={{ label: 'Send another list', onClick: sendAnother }}
+                after={reportHref && (
+                    <Button asChild {...softButton} alignSelf="center">
                         <a href={reportHref} download="multisend-report.csv"><LuDownload /> Download report (CSV)</a>
                     </Button>
                 )}
-            </VStack>
+            />
         )
     }
 
@@ -387,7 +391,7 @@ function MultiSendContent() {
             <OutcomePanel techTag={VOCABULARY.multiSend.tech}>
                 {listValid ? (
                     <Text>
-                        <Text as="span" fontWeight="semibold">{totalLabel}</Text> goes to {count} wallets, each
+                        <Text as="span" fontWeight="600">{totalLabel}</Text> goes to {count} wallets, each
                         getting {mode === 'same' ? `${prettyAmount(new BigNumber(sameAmount.trim()))} ${ticker}` : 'the amount on its line'}.
                     </Text>
                 ) : (
@@ -402,9 +406,9 @@ function MultiSendContent() {
                 ]}
                 txKind={spec}
                 footer={asset && address && !activeRun ? (
-                    <HStack justify="space-between" gap={3}>
+                    <HStack justify="space-between" gap="12px">
                         <Text color="fg.muted">Left in your wallet</Text>
-                        <Text fontWeight="semibold" color={left.lt(0) ? 'fg.error' : undefined}>
+                        <Text fontWeight="600" color={left.lt(0) ? 'hg.danger.text' : undefined}>
                             {toDisplay(left)} {ticker}
                         </Text>
                     </HStack>
@@ -416,27 +420,27 @@ function MultiSendContent() {
             </WarningNote>
 
             {listValid && k > 1 && (
-                <Text fontSize="sm" color="fg.muted">
+                <Text fontSize="13px" lineHeight="1.5" color="hg.text.faint">
                     {`It's sent in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets each, so you'll approve ${k} times in your wallet. If you stop halfway, the wallets already paid are marked and won't be paid twice.`}
                 </Text>
             )}
 
             {resume === 'changed' && (
-                <VStack align="stretch" gap={2}>
-                    <WarningNote lead="This list changed since your last run.">
-                        Start a new run? Wallets from the old run may be paid again.
-                    </WarningNote>
-                    {confirmNewRun ? (
-                        <HStack gap={2} wrap="wrap">
-                            <Button size="sm" colorPalette="red" onClick={startNewRun}>Yes, forget the old run</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setConfirmNewRun(false)}>Cancel</Button>
+                <WarningNote
+                    lead="This list changed since your last run."
+                    action={confirmNewRun ? (
+                        <HStack gap="8px" wrap="wrap">
+                            <Button variant={hgVariant('danger')} size="sm" onClick={startNewRun}>Yes, forget the old run</Button>
+                            <Button size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => setConfirmNewRun(false)}>Cancel</Button>
                         </HStack>
                     ) : (
-                        <Button size="sm" variant="outline" colorPalette="yellow" alignSelf="start" onClick={() => setConfirmNewRun(true)}>
+                        <Button {...softButton} size="sm" onClick={() => setConfirmNewRun(true)}>
                             Start new run
                         </Button>
                     )}
-                </VStack>
+                >
+                    Start a new run? Wallets from the old run may be paid again.
+                </WarningNote>
             )}
 
             {activeRun ? (
@@ -456,42 +460,40 @@ function MultiSendContent() {
                     onSendAgain={sendBatch}
                 />
             ) : (
-                <VStack align="stretch" gap={2}>
-                    <Button
-                        size="lg"
-                        colorPalette="yellow"
-                        onClick={submit}
-                        disabled={!canSend}
-                        loading={isSubmitting || sendingId !== undefined}
-                        loadingText="Waiting for signature..."
-                    >
-                        {k > 1 ? `Start sending (${k} transactions)` : `Send to ${count} wallets`}
-                    </Button>
+                <SubmitBlock
+                    label={k > 1 ? `Start sending (${k} transactions)` : `Send to ${count} wallets`}
+                    onClick={submit}
+                    disabled={!canSend}
+                    loading={isSubmitting || sendingId !== undefined}
+                >
                     {!address ? (
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                            Connect your wallet to send.
-                        </Text>
+                        <SubmitNote>Connect your wallet to send.</SubmitNote>
                     ) : listValid && !afford.isLoading && !afford.canAfford && (
-                        <Text fontSize="sm" color="fg.error" textAlign="center">{afford.message}</Text>
+                        <SubmitNote tone="error">{afford.message}</SubmitNote>
                     )}
-                </VStack>
+                </SubmitBlock>
             )}
 
             <TipNote lead="Want to reach people who are already active?">
                 Gifting the stakers of a token goes only to wallets that hold and stake it.{' '}
-                <Link asChild colorPalette="yellow" color="colorPalette.fg">
+                <Link asChild color="hg.link" fontWeight="600" _hover={{ color: 'hg.link.hover' }}>
                     <NextLink href="/rewards">Gift the stakers</NextLink>
                 </Link>
             </TipNote>
         </>
     )
 
+    // One gradient word per title: the last word of the goal ("Send to a list of wallets").
+    const titleWords = VOCABULARY.multiSend.name.split(' ')
+    const titleLead = titleWords.slice(0, -1).join(' ')
+    const titleLast = titleWords[titleWords.length - 1]
+
     const problemsShown = parsed.problems.slice(0, SHOWN_PROBLEMS)
     const hiddenProblems = parsed.problems.length - problemsShown.length
 
     return (
         <GuidedForm
-            title={VOCABULARY.multiSend.name}
+            title={<>{titleLead} <GradientText>{titleLast}</GradientText></>}
             subtitle="Paste addresses, or upload a file from a contest, a snapshot or a spreadsheet. Everyone on the list gets the token straight in their wallet."
             techTag={VOCABULARY.multiSend.tech}
             status="List saved in this browser"
@@ -504,7 +506,7 @@ function MultiSendContent() {
                 summary={asset ? `${ticker} · you have ${toDisplay(balance.amount)}` : ''}
                 onChange={() => steps.open('token')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <AssetPicker
                         label="Token to send"
                         value={denom}
@@ -513,11 +515,9 @@ function MultiSendContent() {
                         onSelect={(a) => setDenom(a.denom)}
                     />
                     {asset && address && (
-                        <Text fontSize="sm" color="fg.muted">You have {balanceText}.</Text>
+                        <Text fontSize="14px" color="fg.muted">You have {balanceText}.</Text>
                     )}
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!asset} onClick={() => answer('token')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!asset} onContinue={() => answer('token')} />
                 </VStack>
             </Question>
 
@@ -528,21 +528,13 @@ function MultiSendContent() {
                 summary={listValid ? `${count} wallets · ${totalLabel}` : ''}
                 onChange={() => steps.open('list')}
             >
-                <VStack align="stretch" gap={4}>
-                    <Group attached alignSelf="start">
-                        {([['same', 'Same for everyone'], ['perWallet', 'Amount per wallet']] as const).map(([m, label]) => (
-                            <Button
-                                key={m}
-                                size="sm"
-                                colorPalette="yellow"
-                                variant={mode === m ? 'solid' : 'outline'}
-                                aria-pressed={mode === m}
-                                onClick={() => setMode(m)}
-                            >
-                                {label}
-                            </Button>
-                        ))}
-                    </Group>
+                <VStack align="stretch" gap="16px">
+                    <Segmented
+                        label="How much each wallet gets"
+                        value={mode}
+                        onChange={setMode}
+                        options={[{ value: 'same', label: 'Same for everyone' }, { value: 'perWallet', label: 'Amount per wallet' }]}
+                    />
 
                     {mode === 'same' && (
                         <Field.Root invalid={sameTouched && sameError !== ''}>
@@ -562,7 +554,7 @@ function MultiSendContent() {
                         <Field.Label>{mode === 'same' ? 'Wallets, one per line' : 'Wallets and amounts, one per line'}</Field.Label>
                         <Textarea
                             fontFamily="mono"
-                            fontSize="xs"
+                            fontSize="12px"
                             rows={8}
                             placeholder={PLACEHOLDERS[mode]}
                             value={text}
@@ -573,7 +565,7 @@ function MultiSendContent() {
                         </Field.HelperText>
                     </Field.Root>
 
-                    <HStack gap={2} wrap="wrap">
+                    <HStack gap="8px" wrap="wrap">
                         <input
                             ref={fileInput}
                             type="file"
@@ -585,10 +577,10 @@ function MultiSendContent() {
                                 e.target.value = ''
                             }}
                         />
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => fileInput.current?.click()}>
+                        <Button size="sm" {...softButton} onClick={() => fileInput.current?.click()}>
                             <LuUpload /> Upload CSV or TXT
                         </Button>
-                        <Button asChild size="sm" variant="ghost" colorPalette="yellow">
+                        <Button asChild size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}>
                             <a
                                 href={`data:text/csv;charset=utf-8,${encodeURIComponent(exampleCsv(mode))}`}
                                 download={mode === 'same' ? 'wallets-example.csv' : 'wallets-amounts-example.csv'}
@@ -597,35 +589,35 @@ function MultiSendContent() {
                             </a>
                         </Button>
                     </HStack>
-                    {fileError && <Text fontSize="sm" color="fg.error" role="alert">{fileError}</Text>}
+                    {fileError && <Text fontSize="14px" color="hg.danger.text" role="alert">{fileError}</Text>}
 
                     {text.trim() !== '' && (
-                        <VStack align="stretch" gap={2}>
-                            <HStack gap={2} wrap="wrap">
-                                <Counter color="green.600">{count} wallets ready</Counter>
+                        <VStack align="stretch" gap="8px">
+                            <HStack gap="6px" wrap="wrap">
+                                <Counter tone="success">{count} wallets ready</Counter>
                                 {parsed.duplicates > 0 && (
-                                    <Counter color="orange.600">{parsed.duplicates} duplicates, merged into one</Counter>
+                                    <Counter tone="warning">{parsed.duplicates} duplicates, merged into one</Counter>
                                 )}
                                 {parsed.problems.length > 0 && (
-                                    <Counter color="red.600">{parsed.problems.length} lines to fix, left out</Counter>
+                                    <Counter tone="danger">{parsed.problems.length} lines to fix, left out</Counter>
                                 )}
                             </HStack>
                             {parsed.notes.length > 0 && (
-                                <Text fontSize="xs" color="fg.muted">
+                                <Text fontSize="12px" color="hg.text.faint">
                                     {parsed.notes.length} {parsed.notes.length === 1 ? 'line has' : 'lines have'} an amount that is ignored: everyone gets the same.
                                 </Text>
                             )}
                             {parsed.problems.length > 0 && (
-                                <Box as="details" fontSize="sm">
-                                    <Box as="summary" cursor="pointer" color="fg.muted">Show the lines to fix</Box>
-                                    <VStack as="ul" align="stretch" gap={1} mt={2} listStyleType="none">
+                                <Box as="details" fontSize="14px">
+                                    <Box as="summary" cursor="pointer" color="hg.link" fontWeight="600">Show the lines to fix</Box>
+                                    <VStack as="ul" align="stretch" gap="4px" mt="8px" listStyleType="none">
                                         {problemsShown.map(p => (
-                                            <Text as="li" key={`${p.line}-${p.text}`} fontSize="xs" wordBreak="break-all">
-                                                Line {p.line}: <Text as="span" fontFamily="mono">{p.text}</Text> {p.reason}
+                                            <Text as="li" key={`${p.line}-${p.text}`} fontSize="13px" color="hg.text.secondary" wordBreak="break-all">
+                                                Line {p.line}: <Text as="span" fontFamily="mono" color="fg">{p.text}</Text> <Text as="span" color="hg.danger.text">{p.reason}</Text>
                                             </Text>
                                         ))}
                                         {hiddenProblems > 0 && (
-                                            <Text as="li" fontSize="xs" color="fg.muted">and {hiddenProblems} more</Text>
+                                            <Text as="li" fontSize="13px" color="hg.text.faint">and {hiddenProblems} more</Text>
                                         )}
                                     </VStack>
                                 </Box>
@@ -633,9 +625,7 @@ function MultiSendContent() {
                         </VStack>
                     )}
 
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!listValid} onClick={() => answer('list')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!listValid} onContinue={() => answer('list')} />
                 </VStack>
             </Question>
         </GuidedForm>
@@ -644,12 +634,8 @@ function MultiSendContent() {
 
 export default function MultiSendPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <MultiSendContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <MultiSendContent />
+        </FormPage>
     )
 }

@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Box, Button, Card, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft, LuSearchX } from 'react-icons/lu'
-import { prettyAmount, uAmountToBigNumberAmount, useAsset } from '@bze/bze-ui-kit'
+import { IconTile, prettyAmount, uAmountToBigNumberAmount, useAsset } from '@bze/bze-ui-kit'
+import { FormFrame } from '@/components/guided/guided-form'
+import { softButton } from '@/components/ui/soft-button'
 
 /** Shared building blocks of the denom reward forms (schedule, airdrop). */
 
@@ -44,22 +46,19 @@ export function TextField({
     )
 }
 
+/** A dead end of a denom reward page (no token, not found, query failed), in the form's content band. */
 export function Notice({ title, children, onBack }: { title: string; children: React.ReactNode; onBack: () => void }) {
     return (
-        <Card.Root variant="outline" p="10">
-            <VStack gap={4}>
-                <Box p={3} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                    <LuSearchX size={28} />
-                </Box>
-                <VStack gap={1}>
-                    <Text fontWeight="semibold">{title}</Text>
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">{children}</Text>
-                </VStack>
-                <Button colorPalette="yellow" variant="outline" onClick={onBack}>
+        <FormFrame narrow>
+            <VStack as="section" align="start" gap="10px" p="24px" borderRadius="hg.lg" borderWidth="1px" borderColor="hg.hairline" bg="hg.card">
+                <IconTile icon={<LuSearchX />} />
+                <Text as="h1" fontSize="17px" fontWeight="700">{title}</Text>
+                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">{children}</Text>
+                <Button {...softButton} size="sm" onClick={onBack}>
                     <LuArrowLeft /> Back to the token
                 </Button>
             </VStack>
-        </Card.Root>
+        </FormFrame>
     )
 }
 
@@ -67,8 +66,8 @@ export function FeeLine({ label, denom, amount }: { label: string; denom: string
     const { asset } = useAsset(denom)
     return (
         <HStack justify="space-between">
-            <Text fontSize="sm" color="fg.muted">{label}</Text>
-            <Text fontSize="sm" fontWeight="medium">
+            <Text fontSize="14px" color="fg.muted">{label}</Text>
+            <Text fontSize="14px" fontWeight="600">
                 {prettyAmount(uAmountToBigNumberAmount(amount, asset?.decimals ?? 0))} {asset?.ticker ?? denom}
             </Text>
         </HStack>

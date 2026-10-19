@@ -1,12 +1,14 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React, { useMemo, useState } from 'react'
+import { Box, Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuGift, LuPlus } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    GradientText,
     LP_ASSETS_DECIMALS,
+    hgVariant,
     amountToUAmount,
     getExplorerTxURL,
     getChainName,
@@ -26,10 +28,15 @@ import { PoolPicker } from '@/components/pool-form/pool-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import {
+    AnswerChip,
+    ContinueRow,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     useGuidedSteps,
     useReturnTo,
@@ -42,6 +49,7 @@ import {
     oppositeDeposit,
     shareAfterDeposit as computeShareAfterDeposit,
 } from '@/lib/pool-add'
+import { softButton } from '@/components/ui/soft-button'
 
 const { addLiquidity } = bze.tradebin.MessageComposer.withTypeUrl
 
@@ -86,7 +94,7 @@ function DepositField({
     return (
         <Field.Root invalid={touched && error !== ''}>
             <Field.Label>{label} ({asset.ticker})</Field.Label>
-            <HStack gap={2} w="full">
+            <HStack gap="8px" w="full">
                 <Input
                     placeholder="e.g. 1000"
                     inputMode="decimal"
@@ -96,8 +104,7 @@ function DepositField({
                 />
                 <Button
                     size="sm"
-                    variant="outline"
-                    colorPalette="yellow"
+                    {...softButton}
                     flexShrink={0}
                     aria-label={`Max ${asset.ticker}`}
                     disabled={max.isLoading}
@@ -116,9 +123,9 @@ function DepositField({
 
 function FactRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
-        <HStack justify="space-between" align="start" gap={3}>
-            <Text fontSize="sm" color="fg.muted">{label}</Text>
-            <Text fontSize="sm" fontWeight="medium" textAlign="right" minW={0} wordBreak="break-word">{value}</Text>
+        <HStack justify="space-between" align="start" gap="12px">
+            <Text fontSize="14px" color="fg.muted">{label}</Text>
+            <Text fontSize="14px" fontWeight="600" textAlign="right" minW={0} wordBreak="break-word">{value}</Text>
         </HStack>
     )
 }
@@ -289,10 +296,10 @@ function PoolAddContent() {
             <OutcomePanel>
                 {expectedLpTokens.gt(0) ? (
                     <Text>
-                        You receive about <Text as="span" fontWeight="semibold">
+                        You receive about <Text as="span" fontWeight="600">
                             {prettyAmount(uAmountToBigNumberAmount(expectedLpTokens, LP_ASSETS_DECIMALS))}
                         </Text> LP tokens (at least {prettyAmount(uAmountToBigNumberAmount(minLpTokens, LP_ASSETS_DECIMALS))} after {slippage}% price protection).
-                        {shareAfterDeposit && <> Your share of the pool becomes <Text as="span" fontWeight="semibold">{shareAfterDeposit.toFixed(2)}%</Text>.</>}
+                        {shareAfterDeposit && <> Your share of the pool becomes <Text as="span" fontWeight="600">{shareAfterDeposit.toFixed(2)}%</Text>.</>}
                     </Text>
                 ) : (
                     <Text color="fg.muted">
@@ -303,29 +310,17 @@ function PoolAddContent() {
 
             <PayPanel rows={[{ label: 'Factory fee', text: 'None' }]} txKind={TX_KIND} />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Add liquidity
-                </Button>
+            <SubmitBlock label="Add liquidity" onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address && (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to add liquidity.
-                    </Text>
+                    <SubmitNote>Connect your wallet to add liquidity.</SubmitNote>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
-            title="Make trading smoother"
+            title={<>Make trading <GradientText>smoother</GradientText></>}
             subtitle="Add to a pool so big trades move the price less. You get LP tokens you can withdraw later on the DEX."
             techTag="tradebin · add liquidity"
             aside={aside}
@@ -337,13 +332,13 @@ function PoolAddContent() {
                 summary={pairLabel}
                 onChange={() => steps.open('pool')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     {noPools ? (
-                        <VStack align="start" gap={3}>
-                            <Text fontSize="sm">No pools yet — create the first one.</Text>
+                        <VStack align="start" gap="12px">
+                            <Text fontSize="14px">No pools yet — create the first one.</Text>
                             <Button
+                                variant={hgVariant('primary')}
                                 size="sm"
-                                colorPalette="yellow"
                                 onClick={() => navigate(withReturn('/pool/new', returnTo))}
                             >
                                 <LuPlus />
@@ -362,14 +357,16 @@ function PoolAddContent() {
 
                     {pool && baseAsset && quoteAsset && !isHalted && (
                         <Box
-                            p={4}
+                            px="14px"
+                            py="12px"
+                            bg="hg.inset"
                             borderWidth="1px"
-                            borderColor="border.muted"
-                            borderRadius="lg"
+                            borderColor="hg.hairline"
+                            borderRadius="hg.md"
                             role="group"
                             aria-label="Pool facts"
                         >
-                            <VStack align="stretch" gap={1}>
+                            <VStack align="stretch" gap="8px">
                                 <FactRow
                                     label="Pool reserves"
                                     value={<>
@@ -387,9 +384,7 @@ function PoolAddContent() {
                     )}
 
                     {!noPools && (
-                        <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!isPoolValid} onClick={() => answer('pool')}>
-                            Continue
-                        </Button>
+                        <ContinueRow disabled={!isPoolValid} onContinue={() => answer('pool')} />
                     )}
                 </VStack>
             </Question>
@@ -403,8 +398,8 @@ function PoolAddContent() {
                         summary={depositSummary}
                         onChange={() => steps.open('amounts')}
                     >
-                        <VStack align="stretch" gap={4}>
-                            <Text fontSize="sm" color="fg.muted">
+                        <VStack align="stretch" gap="16px">
+                            <Text fontSize="14px" color="fg.muted">
                                 Deposits follow the pool ratio: fill either side and the other is computed
                                 from the current reserves.
                             </Text>
@@ -414,15 +409,7 @@ function PoolAddContent() {
                                     <DepositField label="Second token" denom={pool.quote} amount={quoteAmount} onChange={onQuoteChange} />
                                 </>
                             )}
-                            <Button
-                                alignSelf="start"
-                                colorPalette="yellow"
-                                size="sm"
-                                disabled={!amountsValid || !expectedLpTokens.gt(0)}
-                                onClick={() => answer('amounts')}
-                            >
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={!amountsValid || !expectedLpTokens.gt(0)} onContinue={() => answer('amounts')} />
                         </VStack>
                     </Question>
 
@@ -433,27 +420,18 @@ function PoolAddContent() {
                         summary={`${slippage}%`}
                         onChange={() => steps.open('protection')}
                     >
-                        <VStack align="stretch" gap={4}>
-                            <HStack gap={2} flexWrap="wrap">
+                        <VStack align="stretch" gap="16px">
+                            <HStack gap="6px" flexWrap="wrap">
                                 {SLIPPAGE_PRESETS.map(preset => (
-                                    <Button
-                                        key={preset}
-                                        size="xs"
-                                        borderRadius="full"
-                                        variant={slippage === preset ? 'solid' : 'outline'}
-                                        colorPalette="yellow"
-                                        onClick={() => setSlippage(preset)}
-                                    >
+                                    <AnswerChip key={preset} selected={slippage === preset} onClick={() => setSlippage(preset)}>
                                         {preset}%
-                                    </Button>
+                                    </AnswerChip>
                                 ))}
                             </HStack>
-                            <Text fontSize="sm" color="fg.muted">
+                            <Text fontSize="14px" color="fg.muted">
                                 If the price moves more than this before your deposit lands, it is cancelled and nothing is spent.
                             </Text>
-                            <Button alignSelf="start" colorPalette="yellow" size="sm" onClick={() => answer('protection')}>
-                                Continue
-                            </Button>
+                            <ContinueRow onContinue={() => answer('protection')} />
                         </VStack>
                     </Question>
                 </>
@@ -464,12 +442,8 @@ function PoolAddContent() {
 
 export default function PoolAddPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <PoolAddContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <PoolAddContent />
+        </FormPage>
     )
 }

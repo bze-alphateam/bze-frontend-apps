@@ -1,8 +1,10 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React, { useMemo, useState } from 'react'
+import { Box, HStack, Text, VStack, chakra } from '@chakra-ui/react'
 import {
+    GradientText,
+    Shimmer,
     TokenLogo,
     amountToUAmount,
     getExplorerTxURL,
@@ -23,10 +25,16 @@ import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
+    BlockerNote,
+    ContinueRow,
+    FormFrame,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     useGuidedSteps,
     useReturnTo,
@@ -142,10 +150,12 @@ function ScheduleFormContent() {
 
     if (isLoading) {
         return (
-            <VStack align="stretch" gap={4}>
-                <Skeleton height="10" width="64" />
-                <Skeleton height="64" />
-            </VStack>
+            <FormFrame>
+                <VStack align="stretch" gap="16px">
+                    <Shimmer h="40px" w="256px" />
+                    <Shimmer h="256px" borderRadius="hg.lg" />
+                </VStack>
+            </FormFrame>
         )
     }
 
@@ -198,10 +208,10 @@ function ScheduleFormContent() {
     }
 
     const escrowLine = (
-        <Box fontSize="sm">
+        <Box fontSize="14px">
             <Text color="fg.muted">
                 Locked now:{' '}
-                <Text as="span" fontWeight="semibold" color="fg" data-testid="escrow-amount">
+                <Text as="span" fontWeight="600" color="fg" data-testid="escrow-amount">
                     {escrowText || `— ${prizeTicker}`.trim()}
                 </Text>{' '}
                 (daily prize × {isExtend ? 'extra days' : 'days'}), taken from your wallet in full when you sign.
@@ -219,7 +229,7 @@ function ScheduleFormContent() {
             <OutcomePanel>
                 {escrowText && dailyText ? (
                     <Text>
-                        <Text as="span" fontWeight="semibold">{escrowText}</Text> leaves your wallet now and is paid
+                        <Text as="span" fontWeight="600">{escrowText}</Text> leaves your wallet now and is paid
                         as {dailyText} a day{isExtend ? ` for ${daysInput.trim()} more days` : ''} to everyone
                         staking {stakingTicker}, split by stake. It can&apos;t be cancelled or withdrawn.
                     </Text>
@@ -240,35 +250,23 @@ function ScheduleFormContent() {
                 feeUnknown={gift.feeUnknown}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    {isExtend ? 'Extend' : 'Start the daily prize'}
-                </Button>
+            <SubmitBlock label={<>{isExtend ? 'Extend' : 'Start the daily prize'}</>} onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to fund this schedule.
-                    </Text>
+                    <SubmitNote>Connect your wallet to fund this schedule.</SubmitNote>
                 ) : costs.escrow && !afford.isLoading && !afford.canAfford && afford.message && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center" role="alert">{afford.message}</Text>
+                    <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center" role="alert">{afford.message}</Text>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
             title={
-                <HStack as="span" gap={1} display="inline-flex" align="center">
-                    {isExtend ? 'Extend a daily prize' : 'Give a little every day'}
-                    <RewardInfoButton />
-                </HStack>
+                <>
+                    {isExtend ? <>Extend a <GradientText>daily prize</GradientText></> : <>Give a little <GradientText>every day</GradientText></>}
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton /></chakra.span>
+                </>
             }
             subtitle={isExtend
                 ? `Fund more days of this ${stakingAsset ? `${stakingAsset.ticker} ` : ''}daily prize.`
@@ -280,11 +278,11 @@ function ScheduleFormContent() {
         >
             {schedule ? (
                 <>
-                    <HStack gap={3} p={3} borderWidth="1px" borderColor="border.muted" borderRadius="lg" bg="bg.panel">
-                        <TokenLogo src={prizeAsset?.logo} symbol={prizeTicker} size="6" circular={true} />
-                        <VStack align="start" gap={0}>
-                            <Text fontSize="sm" fontWeight="semibold">{dailyText} / day</Text>
-                            <Text fontSize="xs" color="fg.muted">
+                    <HStack gap="12px" px="14px" py="14px" borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.lg" bg="hg.card">
+                        <TokenLogo src={prizeAsset?.logo} symbol={prizeTicker} size="9" circular={true} />
+                        <VStack align="start" gap="2px">
+                            <Text fontSize="14px" fontWeight="600">{dailyText} / day</Text>
+                            <Text fontSize="12px" color="hg.text.faint">
                                 Runs {fmtDays(schedule.duration)} days, {fmtDays(schedule.payouts)} paid,{' '}
                                 {fmtDays(scheduleDaysLeft(schedule))} left
                             </Text>
@@ -298,11 +296,11 @@ function ScheduleFormContent() {
                         summary={`${daysInput.trim()} more days`}
                         onChange={() => steps.open('more')}
                     >
-                        <VStack align="stretch" gap={4}>
+                        <VStack align="stretch" gap="16px">
                             {extendRoom === 0 && (
-                                <Text fontSize="sm" color="fg.error" role="alert">
+                                <BlockerNote>
                                     This schedule already runs the maximum of {fmtDays(MAX_SCHEDULE_DAYS)} days.
-                                </Text>
+                                </BlockerNote>
                             )}
                             <TextField
                                 label="Extra days"
@@ -315,9 +313,7 @@ function ScheduleFormContent() {
                                 disabled={extendRoom === 0}
                             />
                             {escrowLine}
-                            <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={daysError !== ''} onClick={() => answer('more')}>
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={daysError !== ''} onContinue={() => answer('more')} />
                         </VStack>
                     </Question>
                 </>
@@ -330,7 +326,7 @@ function ScheduleFormContent() {
                         summary={prizeTicker}
                         onChange={() => steps.open('prize')}
                     >
-                        <VStack align="stretch" gap={4}>
+                        <VStack align="stretch" gap="16px">
                             <PrizeTokenQuestion
                                 denomReward={denomReward}
                                 prizes={prizes}
@@ -339,15 +335,7 @@ function ScheduleFormContent() {
                                 value={pickedPrize}
                                 onSelect={(asset) => setPickedPrize(asset.denom)}
                             />
-                            <Button
-                                alignSelf="start"
-                                colorPalette="yellow"
-                                size="sm"
-                                disabled={!prizeAsset || slot.capReached}
-                                onClick={() => answer('prize')}
-                            >
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={!prizeAsset || slot.capReached} onContinue={() => answer('prize')} />
                         </VStack>
                     </Question>
 
@@ -358,7 +346,7 @@ function ScheduleFormContent() {
                         summary={dailyText ? `${dailyText} a day` : ''}
                         onChange={() => steps.open('daily')}
                     >
-                        <VStack align="stretch" gap={4}>
+                        <VStack align="stretch" gap="16px">
                             {prizeAsset && (
                                 <TextField
                                     label={`Prize per day (${prizeTicker})`}
@@ -369,15 +357,7 @@ function ScheduleFormContent() {
                                     placeholder="e.g. 1000"
                                 />
                             )}
-                            <Button
-                                alignSelf="start"
-                                colorPalette="yellow"
-                                size="sm"
-                                disabled={dailyError !== '' || dailyUAmount === undefined}
-                                onClick={() => answer('daily')}
-                            >
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={dailyError !== '' || dailyUAmount === undefined} onContinue={() => answer('daily')} />
                         </VStack>
                     </Question>
 
@@ -388,7 +368,7 @@ function ScheduleFormContent() {
                         summary={`${daysInput.trim()} payout days`}
                         onChange={() => steps.open('days')}
                     >
-                        <VStack align="stretch" gap={4}>
+                        <VStack align="stretch" gap="16px">
                             <TextField
                                 label="Payout days"
                                 helper={daysHelper}
@@ -399,9 +379,7 @@ function ScheduleFormContent() {
                                 inputMode="numeric"
                             />
                             {escrowLine}
-                            <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={daysError !== ''} onClick={() => answer('days')}>
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={daysError !== ''} onContinue={() => answer('days')} />
                         </VStack>
                     </Question>
                 </>
@@ -412,12 +390,8 @@ function ScheduleFormContent() {
 
 export default function DenomRewardSchedulePage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <ScheduleFormContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <ScheduleFormContent />
+        </FormPage>
     )
 }

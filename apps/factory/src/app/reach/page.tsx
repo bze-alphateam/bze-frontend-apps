@@ -1,9 +1,11 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuRefreshCw, LuSprout, LuTriangleAlert } from 'react-icons/lu'
+import React, { useMemo, useState } from 'react'
+import { Box, Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { LuRefreshCw, LuSprout } from 'react-icons/lu'
 import {
+    GradientText,
+    Shimmer,
     amountToUAmount,
     getExplorerTxURL,
     getChainName,
@@ -27,16 +29,22 @@ import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
 import { InfoBox } from '@/components/ui/info-box'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
+    BlockerNote,
+    ContinueRow,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     TipNote,
     useGuidedSteps,
 } from '@/components/guided'
 import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, denomRewardHref, prizeBlocker, validateScheduleDays } from '@/lib/denom-reward'
 import { communityOptions } from '@/lib/reach'
+import { softButton } from '@/components/ui/soft-button'
 
 const STEPS = ['community', 'gift', 'mode'] as const
 type Step = typeof STEPS[number]
@@ -53,16 +61,19 @@ function ModeCard({ selected, title, text, onClick, children }: {
 }) {
     return (
         <Box
-            p={4}
-            borderRadius="lg"
+            px="14px"
+            py="12px"
+            borderRadius="hg.md"
             borderWidth="1px"
-            borderColor={selected ? 'yellow.500' : 'border.muted'}
-            bg={selected ? 'yellow.500/10' : 'bg.panel'}
+            borderColor={selected ? 'app.border' : 'hg.hairline'}
+            bg={selected ? 'app.subtle' : 'hg.inset'}
+            transition="border-color 0.15s"
+            _hover={selected ? undefined : { borderColor: 'app.border' }}
         >
-            <VStack align="stretch" gap={3}>
-                <Box as="button" role="radio" aria-checked={selected} onClick={onClick} textAlign="start" cursor="pointer">
-                    <Text fontWeight="semibold">{title}</Text>
-                    <Text fontSize="sm" color="fg.muted">{text}</Text>
+            <VStack align="stretch" gap="12px">
+                <Box as="button" role="radio" aria-checked={selected} onClick={onClick} textAlign="start" cursor="pointer" focusVisibleRing="outside" borderRadius="hg.sm">
+                    <Text fontWeight="600" color={selected ? 'hg.link' : 'fg'}>{title}</Text>
+                    <Text fontSize="14px" lineHeight="1.5" color="fg.muted">{text}</Text>
                 </Box>
                 {children}
             </VStack>
@@ -210,13 +221,13 @@ function ReachContent() {
             >
                 {mode === 'once' && amountText ? (
                     <Text data-testid="reach-outcome">
-                        <Text as="span" fontWeight="semibold">{amountText}</Text> leaves your wallet now and is split
+                        <Text as="span" fontWeight="600">{amountText}</Text> leaves your wallet now and is split
                         between everyone staking {communityTicker}, based on how much each one stakes. It can&apos;t be
                         taken back. You don&apos;t need to own {communityTicker} or ask its creator.
                     </Text>
                 ) : mode === 'daily' && totalText ? (
                     <Text data-testid="reach-outcome">
-                        <Text as="span" fontWeight="semibold">{totalText}</Text> leaves your wallet now and is paid as{' '}
+                        <Text as="span" fontWeight="600">{totalText}</Text> leaves your wallet now and is paid as{' '}
                         {amountText} a day for {days} payout days to everyone staking {communityTicker}. It can&apos;t
                         be cancelled.
                     </Text>
@@ -226,14 +237,18 @@ function ReachContent() {
             </OutcomePanel>
 
             {giftNeedsHolderRewards && giftAsset && (
-                <VStack align="stretch" gap={2} data-testid="reach-stakable-tip">
-                    <TipNote lead="Tip:">
+                <Box data-testid="reach-stakable-tip">
+                    <TipNote
+                        lead="Tip:"
+                        action={(
+                            <Button {...softButton} size="sm" onClick={() => navigate(denomRewardHref(giftDenom))}>
+                                <LuSprout /> {`Make ${giftTicker} stakable`}
+                            </Button>
+                        )}
+                    >
                         {`Make ${giftTicker} stakable before you do this, so the people who receive it have a reason to keep it.`}
                     </TipNote>
-                    <Button alignSelf="start" size="sm" variant="outline" colorPalette="yellow" onClick={() => navigate(denomRewardHref(giftDenom))}>
-                        <LuSprout /> {`Make ${giftTicker} stakable`}
-                    </Button>
-                </VStack>
+                </Box>
             )}
 
             <PayPanel
@@ -246,25 +261,13 @@ function ReachContent() {
                     : daily.feeUnknown}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    {mode === 'once' ? 'Send the gift' : 'Start the daily gift'}
-                </Button>
+            <SubmitBlock label={<>{mode === 'once' ? 'Send the gift' : 'Start the daily gift'}</>} onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to send the gift.
-                    </Text>
+                    <SubmitNote>Connect your wallet to send the gift.</SubmitNote>
                 ) : active.costs.escrow && !active.afford.isLoading && !active.afford.canAfford && active.afford.message && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center" role="alert">{active.afford.message}</Text>
+                    <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center" role="alert">{active.afford.message}</Text>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
@@ -272,15 +275,14 @@ function ReachContent() {
 
     return (
         <GuidedForm
-            title="Reach another community"
+            title={<>Reach another <GradientText>community</GradientText></>}
             subtitle="Gift your token to the people who stake another token. They see it in their wallet, and your token shows up as a prize on that token's Communities page."
             aside={aside}
         >
             {blocker !== '' && (
-                <HStack gap={2} p={3} borderRadius="lg" bg="red.500/10" color="red.600" align="start" role="alert" data-testid="reach-blocker">
-                    <Box mt="0.5" flexShrink={0}><LuTriangleAlert size={16} /></Box>
-                    <Text fontSize="sm">{blocker}</Text>
-                </HStack>
+                <Box data-testid="reach-blocker">
+                    <BlockerNote>{blocker}</BlockerNote>
+                </Box>
             )}
 
             <Question
@@ -290,36 +292,34 @@ function ReachContent() {
                 summary={communitySummary}
                 onChange={() => steps.open('community')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     {all.isLoading ? (
-                        <VStack align="stretch" gap={2} data-testid="reach-loading">
-                            <Skeleton height="14" />
-                            <Skeleton height="14" />
+                        <VStack align="stretch" gap="8px" data-testid="reach-loading">
+                            <Shimmer h="56px" borderRadius="hg.md" />
+                            <Shimmer h="56px" borderRadius="hg.md" />
                         </VStack>
                     ) : all.hasError ? (
-                        <VStack align="stretch" gap={3}>
+                        <VStack align="stretch" gap="12px">
                             <InfoBox title="Couldn't load the communities">
                                 The chain query failed. The node may be down, or not run chain v8.2.0 yet.
                             </InfoBox>
-                            <Button alignSelf="start" size="sm" variant="outline" colorPalette="yellow" onClick={all.retry}>
+                            <Button alignSelf="start" {...softButton} size="sm" onClick={all.retry}>
                                 <LuRefreshCw /> Retry
                             </Button>
                         </VStack>
                     ) : options.length === 0 ? (
-                        <VStack align="stretch" gap={3} data-testid="reach-empty">
-                            <Text fontSize="sm" color="fg.muted">
+                        <VStack align="stretch" gap="12px" data-testid="reach-empty">
+                            <Text fontSize="14px" color="fg.muted">
                                 No token has stakers yet, so there is nobody to reach this way. Try Send to a list of wallets.
                             </Text>
-                            <Button alignSelf="start" size="sm" variant="outline" colorPalette="yellow" onClick={() => navigate('/multisend')}>
+                            <Button alignSelf="start" {...softButton} size="sm" onClick={() => navigate('/multisend')}>
                                 Send to a list of wallets
                             </Button>
                         </VStack>
                     ) : (
                         <>
                             <CommunityPicker options={options} value={community} onSelect={setCommunity} />
-                            <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!picked} onClick={() => answer('community')}>
-                                Continue
-                            </Button>
+                            <ContinueRow disabled={!picked} onContinue={() => answer('community')} />
                         </>
                     )}
                 </VStack>
@@ -332,7 +332,7 @@ function ReachContent() {
                 summary={amountText ? `${amountText}${mode === 'daily' ? ' a day' : ''}` : ''}
                 onChange={() => steps.open('gift')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <PrizeTokenQuestion
                         denomReward={{ staking_denom: community }}
                         prizes={prizes}
@@ -344,15 +344,14 @@ function ReachContent() {
                     />
                     {giftAsset && (
                         <Field.Root invalid={amountTouched && amountInput.trim() !== '' && amountError !== ''}>
-                            <HStack justify="space-between" w="full" gap={2} flexWrap="wrap">
+                            <HStack justify="space-between" w="full" gap="8px" flexWrap="wrap">
                                 <Field.Label>{`${mode === 'once' ? 'Amount' : 'Per day'} (${giftTicker})`}</Field.Label>
-                                <HStack gap={1}>
-                                    <Text fontSize="xs" color="fg.muted">{balanceText}</Text>
+                                <HStack gap="4px">
+                                    <Text fontSize="12px" color="hg.text.faint">{balanceText}</Text>
                                     {mode === 'once' && (
                                         <Button
                                             size="2xs"
-                                            variant="ghost"
-                                            colorPalette="yellow"
+                                            variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}
                                             onClick={() => { setAmountInput(spendable.inputValue); setAmountTouched(true) }}
                                             disabled={!spendable.amount.gt(0)}
                                         >
@@ -372,19 +371,11 @@ function ReachContent() {
                         </Field.Root>
                     )}
                     {onePercentText && (
-                        <Text fontSize="sm" color="fg.muted" data-testid="reach-example">
+                        <Text fontSize="13px" lineHeight="1.5" color="hg.text.faint" data-testid="reach-example">
                             {`Split by stake: someone with 1% of the staked ${communityTicker} gets ${onePercentText}${mode === 'daily' ? ' a day' : ''}.`}
                         </Text>
                     )}
-                    <Button
-                        alignSelf="start"
-                        colorPalette="yellow"
-                        size="sm"
-                        disabled={!giftAsset || slot.capReached || uAmount === undefined}
-                        onClick={() => answer('gift')}
-                    >
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!giftAsset || slot.capReached || uAmount === undefined} onContinue={() => answer('gift')} />
                 </VStack>
             </Question>
 
@@ -395,7 +386,7 @@ function ReachContent() {
                 summary={mode === 'once' ? 'All at once' : `Every day for ${daysInput.trim()} days`}
                 onChange={() => steps.open('mode')}
             >
-                <VStack align="stretch" gap={3} role="radiogroup" aria-label="How to send it">
+                <VStack align="stretch" gap="12px" role="radiogroup" aria-label="How to send it">
                     <ModeCard
                         selected={mode === 'once'}
                         title="All at once, now"
@@ -419,15 +410,7 @@ function ReachContent() {
                             </Field.Root>
                         )}
                     </ModeCard>
-                    <Button
-                        alignSelf="start"
-                        colorPalette="yellow"
-                        size="sm"
-                        disabled={mode === 'daily' && daysError !== ''}
-                        onClick={() => answer('mode')}
-                    >
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={mode === 'daily' && daysError !== ''} onContinue={() => answer('mode')} />
                 </VStack>
             </Question>
         </GuidedForm>
@@ -436,12 +419,8 @@ function ReachContent() {
 
 export default function ReachPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <ReachContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <ReachContent />
+        </FormPage>
     )
 }

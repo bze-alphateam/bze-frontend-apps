@@ -1,11 +1,16 @@
 "use client"
 
 import React from 'react'
-import { Box, Button, Card, Circle, Code, Grid, HStack, IconButton, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, chakra, Circle, Code, Flex, Grid, HStack, IconButton, Link, Text, VStack } from '@chakra-ui/react'
 import { LuCheck, LuCopy } from 'react-icons/lu'
 import {
     AppLink,
     FeeCoin,
+    GradientText,
+    HeroGlow,
+    PageContainer,
+    Shimmer,
+    hgVariant,
     getExplorerTxURL,
     getDexApp,
     prettyAmount,
@@ -15,6 +20,8 @@ import {
     useToast,
 } from '@bze/bze-ui-kit'
 import { type ReturnTo, withReturn } from '@/components/guided/return-to'
+import { FormFrame } from '@/components/guided/guided-form'
+import { softButton } from '@/components/ui/soft-button'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useTokenSetup } from '@/hooks/useTokenSetup'
 import { PLAYBOOKS_PATH, createdReturnHref } from '@/lib/playbooks'
@@ -59,48 +66,60 @@ function useFeeHint(label: string, fee?: FeeCoin): string | undefined {
 
 function StepCard({ number, step, onGo }: { number: number; step: NextStep; onGo: (href: string) => void }) {
     const isDone = step.done === true
+    const state = step.done === undefined ? 'loading' : isDone ? 'done' : 'todo'
+
+    if (isDone) {
+        return (
+            <Flex
+                align="center"
+                gap="12px"
+                px="18px"
+                py="12px"
+                borderRadius="hg.lg"
+                bg="hg.inset"
+                borderWidth="1px"
+                borderColor="hg.divider"
+                data-testid={`launch-step-${step.key}`}
+                data-state={state}
+            >
+                <Circle size="28px" flexShrink={0} bg="hg.success/16" borderWidth="1px" borderColor="hg.success/45" color="hg.success.text">
+                    <LuCheck size={13} strokeWidth={3} aria-label="Done" />
+                </Circle>
+                <Text fontSize="14px" fontWeight="700">{step.title}</Text>
+            </Flex>
+        )
+    }
 
     return (
-        <Card.Root
-            variant="outline"
-            p={isDone ? 3 : 4}
-            bg={isDone ? 'bg.subtle' : 'bg.panel'}
+        <Box
+            p="18px"
+            borderRadius="hg.lg"
+            bg="hg.card"
+            borderWidth="1px"
+            borderColor="hg.hairline"
             data-testid={`launch-step-${step.key}`}
-            data-state={step.done === undefined ? 'loading' : isDone ? 'done' : 'todo'}
+            data-state={state}
         >
-            <HStack gap={3} align="start" justify="space-between" flexWrap="wrap">
-                <HStack gap={3} align="start" flex="1" minW="56">
+            <Flex gap="14px" align="start" justify="space-between" wrap="wrap">
+                <Flex gap="12px" align="start" flex="1 1 300px" minW={0}>
                     {step.done === undefined ? (
-                        <Skeleton boxSize="7" borderRadius="full" flexShrink={0} />
+                        <Shimmer boxSize="28px" borderRadius="full" flexShrink={0} />
                     ) : (
-                        <Circle
-                            size="7"
-                            flexShrink={0}
-                            fontSize="sm"
-                            fontWeight="bold"
-                            bg={isDone ? 'green.500/15' : 'yellow.500/15'}
-                            color={isDone ? 'green.600' : 'yellow.fg'}
-                        >
-                            {isDone ? <LuCheck size={14} aria-label="Done" /> : number}
+                        <Circle size="28px" flexShrink={0} bgImage="app" color="hg.buttonText" fontSize="13px" fontWeight="800">
+                            {number}
                         </Circle>
                     )}
-                    <VStack align="start" gap={1} minW={0}>
-                        <Text fontWeight="semibold">{step.title}</Text>
-                        {!isDone && (
-                            <>
-                                <Text fontSize="sm" color="fg.muted">{step.why}</Text>
-                                {step.hint && <Text fontSize="xs" color="fg.muted" fontWeight="medium">{step.hint}</Text>}
-                            </>
-                        )}
+                    <VStack align="start" gap="4px" minW={0}>
+                        <Text fontSize="16px" fontWeight="700">{step.title}</Text>
+                        <Text fontSize="14px" lineHeight="1.55" color="fg.muted">{step.why}</Text>
+                        {step.hint && <Text fontSize="12px" fontWeight="600" color="hg.text.secondary">{step.hint}</Text>}
                     </VStack>
-                </HStack>
-                {!isDone && (
-                    <Button size="sm" colorPalette="yellow" variant="outline" onClick={() => onGo(step.action.href)}>
-                        {step.action.label}
-                    </Button>
-                )}
-            </HStack>
-        </Card.Root>
+                </Flex>
+                <Button {...softButton} size="sm" onClick={() => onGo(step.action.href)}>
+                    {step.action.label}
+                </Button>
+            </Flex>
+        </Box>
     )
 }
 
@@ -184,60 +203,84 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
     }
 
     return (
-        <VStack align="stretch" gap={6}>
-            <VStack align="start" gap={2}>
-                <HStack gap={2} color="green.600" fontSize="sm" fontWeight="medium">
-                    <LuCheck size={16} />
-                    <Text data-testid="launch-minted">{`Step 1 done · ${prettyAmount(supply)} ${ticker} minted to you`}</Text>
-                </HStack>
-                <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" letterSpacing="tight" wordBreak="break-word">
-                    {`${tokenName} is live`}
-                </Text>
-                <Text color="fg.muted" maxW="2xl">
-                    {`Right now only you hold ${ticker} and nobody can buy it. These steps change that. Do them now or later: they stay on ${ticker}'s page until they are done.`}
-                </Text>
-            </VStack>
+        <>
+            <Box position="relative" overflow="hidden" borderBottomWidth="1px" borderColor="hg.divider">
+                <HeroGlow strength="inner" />
+                <PageContainer position="relative" pt={{ base: '24px', md: '36px' }} pb={{ base: '22px', md: '32px' }}>
+                    <VStack align="start" gap="10px">
+                        <HStack gap="8px" color="hg.success.text" fontSize="14px" fontWeight="600">
+                            <LuCheck size={16} aria-hidden />
+                            <Text data-testid="launch-minted">{`Step 1 done · ${prettyAmount(supply)} ${ticker} minted to you`}</Text>
+                        </HStack>
+                        <chakra.h1 m="0" textStyle="pageTitle" fontSize={{ base: '26px', md: '36px' }} wordBreak="break-word">
+                            {`${tokenName} is `}<GradientText>live</GradientText>
+                        </chakra.h1>
+                        <Text fontSize={{ base: '14px', md: '16px' }} lineHeight="1.6" color="fg.muted" maxW="680px">
+                            {`Right now only you hold ${ticker} and nobody can buy it. These steps change that. Do them now or later: they stay on ${ticker}'s page until they are done.`}
+                        </Text>
+                    </VStack>
+                </PageContainer>
+            </Box>
 
-            <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 320px' }} gap={6} alignItems="start">
-                <VStack as="ol" align="stretch" gap={3} aria-label="Next steps" listStyleType="none" m={0} p={0}>
-                    {steps.map((step, i) => (
-                        <Box as="li" key={step.key}>
-                            <StepCard number={i + 2} step={step} onGo={navigate} />
-                        </Box>
-                    ))}
-                </VStack>
+            <FormFrame>
+                <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 340px' }} gap="24px" alignItems="start">
+                    <VStack as="ol" align="stretch" gap="12px" aria-label="Next steps" listStyleType="none" m={0} p={0}>
+                        {steps.map((step, i) => (
+                            <Box as="li" key={step.key}>
+                                <StepCard number={i + 2} step={step} onGo={navigate} />
+                            </Box>
+                        ))}
+                    </VStack>
 
-                <VStack align="stretch" gap={4}>
-                    <Box as="section" aria-label="Your token" p={4} borderRadius="xl" borderWidth="1px" borderColor="border" bg="bg.panel">
-                        <VStack align="stretch" gap={3}>
-                            <HStack gap={3} minW={0}>
-                                <Circle size="10" bg="yellow.500/20" color="yellow.fg" fontWeight="bold" fontSize="sm" flexShrink={0}>
+                    <VStack align="stretch" gap="14px">
+                        <VStack
+                            as="section"
+                            aria-label="Your token"
+                            align="stretch"
+                            gap="12px"
+                            p="18px"
+                            borderRadius="hg.lg"
+                            borderWidth="1px"
+                            borderColor="hg.hairline"
+                            bg="hg.card"
+                        >
+                            <HStack gap="12px" minW={0}>
+                                <Circle
+                                    size="40px"
+                                    bg="app.subtle"
+                                    boxShadow="0 0 0 2px {colors.app.border}"
+                                    color="hg.link"
+                                    fontWeight="800"
+                                    fontSize="13px"
+                                    flexShrink={0}
+                                >
                                     {initials(tokenName, ticker)}
                                 </Circle>
-                                <VStack align="start" gap={0} minW={0}>
-                                    <Text fontWeight="semibold" wordBreak="break-word">{tokenName}</Text>
-                                    <Text fontSize="xs" color="fg.muted">{`${ticker} · Mintable`}</Text>
+                                <VStack align="start" gap="2px" minW={0}>
+                                    <Text fontWeight="700" wordBreak="break-word">{tokenName}</Text>
+                                    <Text fontSize="12px" color="hg.text.faint">{`${ticker} · Mintable`}</Text>
                                 </VStack>
                             </HStack>
-                            <VStack align="stretch" gap={1}>
-                                <Text fontSize="xs" color="fg.muted" fontWeight="medium">Token ID (denom)</Text>
-                                <HStack gap={2}>
-                                    <Code fontSize="xs" p={2} borderRadius="md" wordBreak="break-all" flex="1">{denom}</Code>
-                                    <IconButton aria-label="Copy token ID" size="sm" variant="ghost" colorPalette="yellow" onClick={copyDenom}>
+                            <VStack align="stretch" gap="4px">
+                                <Text fontSize="12px" color="hg.text.faint" fontWeight="600">Token ID (denom)</Text>
+                                <HStack gap="8px" px="10px" py="8px" borderRadius="10px" bg="hg.inset">
+                                    <Code fontSize="12px" bg="transparent" color="hg.text.secondary" wordBreak="break-all" flex="1">{denom}</Code>
+                                    <IconButton aria-label="Copy token ID" size="xs" variant="ghost" color="hg.link" onClick={copyDenom}>
                                         <LuCopy />
                                     </IconButton>
                                 </HStack>
                             </VStack>
-                            <VStack align="start" gap={1} fontSize="sm">
+                            <HStack gap="4px" wrap="wrap" ms="-6px" fontSize="14px">
                                 <AppLink app="dex" href={dexUrl}>DEX</AppLink>
                                 <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
-                            </VStack>
-                            <Text fontSize="xs" color="fg.muted" data-testid="launch-logo-note">
+                            </HStack>
+                            <Text fontSize="12px" lineHeight="1.45" color="hg.text.faint" data-testid="launch-logo-note">
                                 {"Why a logo isn't here: logos come from the Cosmos Chain Registry, not from the Factory. "}
                                 {registry && (
                                     <Link
                                         href={registry.href}
-                                        color="yellow.fg"
+                                        color="hg.link"
+                                        _hover={{ color: 'hg.link.hover' }}
                                         onClick={(e) => {
                                             e.preventDefault()
                                             navigate(registry.href)
@@ -248,26 +291,26 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
                                 )}
                             </Text>
                         </VStack>
-                    </Box>
 
-                    <VStack align="stretch" gap={2}>
-                        <Button size="lg" colorPalette="yellow" onClick={() => navigate(mainHref)}>
-                            {returnTo ? `Back to ${returnTo.label}` : `Go to ${ticker}'s page`}
-                        </Button>
-                        <Button variant="outline" colorPalette="yellow" onClick={() => navigate(marketHref)}>
-                            Allow limit orders too
-                        </Button>
-                        <HStack gap={2} justify="center" flexWrap="wrap">
-                            <Button variant="ghost" colorPalette="yellow" onClick={reset}>
-                                Create another token
+                        <VStack align="stretch" gap="10px">
+                            <Button variant={hgVariant('primary')} size="xl" onClick={() => navigate(mainHref)}>
+                                {returnTo ? `Back to ${returnTo.label}` : `Go to ${ticker}'s page`}
                             </Button>
-                            <Button variant="ghost" colorPalette="yellow" onClick={() => navigate('/')}>
-                                Back to the Factory
+                            <Button {...softButton} size="lg" onClick={() => navigate(marketHref)}>
+                                Allow limit orders too
                             </Button>
-                        </HStack>
+                            <HStack gap="8px" justify="center" flexWrap="wrap">
+                                <Button variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={reset}>
+                                    Create another token
+                                </Button>
+                                <Button variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => navigate('/')}>
+                                    Back to the Factory
+                                </Button>
+                            </HStack>
+                        </VStack>
                     </VStack>
-                </VStack>
-            </Grid>
-        </VStack>
+                </Grid>
+            </FormFrame>
+        </>
     )
 }

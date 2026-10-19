@@ -1,11 +1,12 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React, { useMemo, useState } from 'react'
+import { Box, Text, VStack } from '@chakra-ui/react'
 import { LuDroplets } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     AppLink,
+    GradientText,
     createMarketId,
     getExplorerTxURL,
     getChainName,
@@ -21,10 +22,14 @@ import { haltedPairError } from '@/lib/halted'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import {
+    BlockerNote,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     useGuidedSteps,
     useReturnTo,
@@ -141,14 +146,14 @@ function MarketNewContent() {
     const aside = (
         <>
             <OutcomePanel>
-                <VStack align="stretch" gap={2}>
+                <VStack align="stretch" gap="8px">
                     <Text>
                         {pairLabel && isComplete
                             ? <>A {pairLabel} order book opens on the DEX. Anyone can place buy and sell orders on it; 1 {baseTicker} will cost whatever {quoteTicker} traders agree on.</>
                             : <>An order book for your pair opens on the DEX. Pick the asset being traded and the one it is priced in.</>}
                     </Text>
-                    <Text fontSize="xs" color="fg.muted">
-                        <Text as="span" fontWeight="semibold">How a market works: </Text>
+                    <Text fontSize="12px" lineHeight="1.45" color="hg.text.faint">
+                        <Text as="span" fontWeight="600" color="hg.text.secondary">How a market works: </Text>
                         orders trade the base asset, priced in the quote asset
                         {baseAsset && quoteAsset ? ` ("1 ${baseTicker} costs X ${quoteTicker}")` : ''}.
                         Creating it is a one-time, permanent action, and every pair can have only one market.
@@ -164,33 +169,19 @@ function MarketNewContent() {
                 feeUnknown={!fee}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Create market
-                </Button>
+            <SubmitBlock label="Create market" onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to create this market.
-                    </Text>
+                    <SubmitNote>Connect your wallet to create this market.</SubmitNote>
                 ) : isComplete && !isBalanceLoading && !canPayFee && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center">
-                        Not enough balance to cover the creation fee.
-                    </Text>
+                    <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
-            title="Allow limit orders"
+            title={<>Allow <GradientText>limit orders</GradientText></>}
             subtitle="Open an order book on the DEX so traders can buy and sell at the price they name."
             techTag="tradebin · order-book market"
             aside={aside}
@@ -221,7 +212,7 @@ function MarketNewContent() {
                 summary={quoteTicker}
                 onChange={() => steps.open('quote')}
             >
-                <VStack align="stretch" gap={3}>
+                <VStack align="stretch" gap="12px">
                     <AssetPicker
                         label="Quote asset — the one it's priced in"
                         value={quoteDenom}
@@ -234,16 +225,13 @@ function MarketNewContent() {
                         }}
                     />
                     {pairError && (
-                        <Box role="alert">
-                            <Text fontSize="sm" color="fg.error" fontWeight="medium">
-                                {pairError.message}
-                            </Text>
-                            {pairError.existingId && (
-                                <Box fontSize="sm">
-                                    <AppLink app="dex" href={marketUrl(pairError.existingId)}>DEX</AppLink>
-                                </Box>
+                        <BlockerNote
+                            action={pairError.existingId && (
+                                <Box ms="-6px"><AppLink app="dex" href={marketUrl(pairError.existingId)}>DEX</AppLink></Box>
                             )}
-                        </Box>
+                        >
+                            {pairError.message}
+                        </BlockerNote>
                     )}
                 </VStack>
             </Question>
@@ -253,12 +241,8 @@ function MarketNewContent() {
 
 export default function MarketNewPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <MarketNewContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <MarketNewContent />
+        </FormPage>
     )
 }
