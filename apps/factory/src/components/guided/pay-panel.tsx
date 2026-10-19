@@ -177,7 +177,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                     </Button>
                 }
             >
-                <SettingsSidebarContent accentColor="yellow" />
+                <SettingsSidebarContent />
             </Sidebar>
 
             {moduleFee && (

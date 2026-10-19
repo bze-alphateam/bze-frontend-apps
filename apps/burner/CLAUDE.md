@@ -29,7 +29,7 @@ src/
 
 ### What comes from @bze/bze-ui-kit
 
-Everything else: `useAssets`, `useBalances`, `useLiquidityPools`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useAssetPrice`, `useAssetsValue`, all utils, all types, all constants, all query clients (including burner, raffle, block, module queries), all services, sidebar components (`accentColor="orange"`), toaster, HighlightText.
+Everything else: `useAssets`, `useBalances`, `useLiquidityPools`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useAssetPrice`, `useAssetsValue`, all utils, all types, all constants, all query clients (including burner, raffle, block, module queries), all services, sidebar components (coloured by the Hive Glow system), toaster, HighlightText.
 
 ### Extended context pattern
 

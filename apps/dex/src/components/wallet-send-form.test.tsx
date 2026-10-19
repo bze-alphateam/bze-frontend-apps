@@ -112,7 +112,7 @@ const EXPECTED_MAX_BZE = new BigNumber(10).minus(SEND_GAS_BZE).toFixed();
 
 function renderForm(selectedTicker: string) {
     return render(
-        <WalletSendForm balances={balances} onClose={vi.fn()} selectedTicker={selectedTicker} accentColor="blue" />,
+        <WalletSendForm balances={balances} onClose={vi.fn()} selectedTicker={selectedTicker} />,
         {
             wrapper: ({ children }: { children: ReactNode }) => (
                 <ChakraProvider value={defaultSystem}>

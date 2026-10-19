@@ -136,7 +136,7 @@ export default function StakingPage() {
                                     </Button>
                                 }
                             >
-                                <WalletSidebarContent accentColor="purple" skipWalletModal />
+                                <WalletSidebarContent skipWalletModal />
                             </Sidebar>
                         )}
                     </HStack>

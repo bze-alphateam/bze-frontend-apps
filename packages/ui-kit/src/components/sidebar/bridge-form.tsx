@@ -1,17 +1,19 @@
 'use client'
 
 import {useState} from 'react';
-import {Button, HStack, Text, VStack} from '@chakra-ui/react';
-import {LuX, LuExternalLink} from 'react-icons/lu';
+import {Button, VStack} from '@chakra-ui/react';
+import {LuExternalLink} from 'react-icons/lu';
 import type {TransferDirection} from '../../types/cross_chain';
 import {DepositForm} from './deposit-form';
 import {WithdrawForm} from './withdraw-form';
 import {openExternalLink} from '../../utils/functions';
+import {SegmentedTabs} from '../hive-glow/status';
+import {hgVariant} from '../../theme/variants';
+import {DrawerViewHeader} from './drawer-kit';
 
 const SKIP_GO_URL = 'https://go.skip.build/?dest_chain=beezee-1&dest_asset=ubze';
 
 interface BridgeFormProps {
-    accentColor: string;
     onClose?: () => void;
 }
 
@@ -20,60 +22,34 @@ interface BridgeFormProps {
  * deposit or withdraw sub-form. Each sub-form is self-contained: its own
  * hooks, pickers, balance logic, wallet connect, and execute button.
  */
-export const BridgeForm = ({accentColor, onClose}: BridgeFormProps) => {
+export const BridgeForm = ({onClose}: BridgeFormProps) => {
     const [direction, setDirection] = useState<TransferDirection>('deposit');
 
     return (
-        <VStack gap="4" align="stretch">
-            {/* Header */}
-            <HStack justify="space-between" align="center">
-                <Text fontSize="sm" fontWeight="medium">
-                    Deposit / Withdraw
-                </Text>
-                {onClose && (
-                    <Button size="xs" variant="ghost" onClick={onClose}>
-                        <LuX size="14"/>
-                    </Button>
-                )}
-            </HStack>
+        <VStack gap="14px" align="stretch">
+            <DrawerViewHeader title="Deposit / Withdraw" onClose={onClose}/>
 
-            {/* Direction Toggle */}
-            <HStack gap="1" w="full">
-                <Button
-                    flex="1"
-                    size="sm"
-                    variant={direction === 'deposit' ? 'solid' : 'ghost'}
-                    colorPalette={accentColor}
-                    onClick={() => setDirection('deposit')}
-                >
-                    Deposit
-                </Button>
-                <Button
-                    flex="1"
-                    size="sm"
-                    variant={direction === 'withdraw' ? 'solid' : 'ghost'}
-                    colorPalette={accentColor}
-                    onClick={() => setDirection('withdraw')}
-                >
-                    Withdraw
-                </Button>
-            </HStack>
+            <SegmentedTabs<TransferDirection>
+                aria-label="Direction"
+                value={direction}
+                onChange={setDirection}
+                options={[{value: 'deposit', label: 'Deposit'}, {value: 'withdraw', label: 'Withdraw'}]}
+            />
 
             {/* Sub-form — each direction is self-contained */}
-            {direction === 'deposit' && <DepositForm accentColor={accentColor}/>}
-            {direction === 'withdraw' && <WithdrawForm accentColor={accentColor}/>}
+            {direction === 'deposit' && <DepositForm/>}
+            {direction === 'withdraw' && <WithdrawForm/>}
 
             {/* External Skip.go bridge — for routes outside our IBC counterparties */}
             <Button
-                size="sm"
-                variant="outline"
-                colorPalette={accentColor}
+                size="md"
+                variant={hgVariant('secondary')}
+                color="hg.link"
+                borderColor="app.border"
                 onClick={() => openExternalLink(SKIP_GO_URL)}
             >
-                <HStack gap="1.5">
-                    <Text fontSize="sm">Use Skip.go</Text>
-                    <LuExternalLink size="12"/>
-                </HStack>
+                Use Skip.go
+                <LuExternalLink size="12"/>
             </Button>
         </VStack>
     );
