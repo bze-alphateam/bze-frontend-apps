@@ -349,3 +349,7 @@ export { AppsMenu } from './components/app-identity/apps-menu';
 export type { AppsMenuProps } from './components/app-identity/apps-menu';
 export { BridgeForm } from './components/sidebar/bridge-form';
 export { BuyForm } from './components/sidebar/buy-form';
+
+// === Hive Glow theme ===
+export * from './theme';
+export * from './components/hive-glow';
