@@ -36,8 +36,9 @@ const VOLUME_COLOR = withAlpha(HIVE_GLOW_APPS.dex.gradient[0], 0.3);
 
 export const LightweightChart = (props: ChartProps) => {
     const {priceData} = props;
-    const [chartText, setChartText] = useState<string>('Loading chart...');
-    const [chartLoaded, setChartLoaded] = useState<boolean>(false);
+    // Set only from the timeout below, if drawing the chart failed. An empty series shows
+    // "No data available", derived in render.
+    const [chartError, setChartError] = useState<string>();
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +133,7 @@ export const LightweightChart = (props: ChartProps) => {
     useEffect(
         () => {
             const errorTimeout = setTimeout(() => {
-                setChartText("Error loading chart");
+                setChartError("Error loading chart");
             }, 10000);
 
             if (!chartContainerRef.current) {
@@ -140,7 +141,6 @@ export const LightweightChart = (props: ChartProps) => {
                 return;
             }
 
-            // An empty series shows "No data available" (derived in render, no state to set).
             if (!priceData || priceData.length === 0) {
                 clearTimeout(errorTimeout);
                 return;
@@ -256,8 +256,6 @@ export const LightweightChart = (props: ChartProps) => {
                 });
             }
 
-            setChartText("");
-            setChartLoaded(true);
             clearTimeout(errorTimeout);
 
             window.addEventListener('resize', handleResize);
@@ -282,7 +280,7 @@ export const LightweightChart = (props: ChartProps) => {
                 position: 'relative',
             }}
         >
-            {(!chartLoaded || priceData.length === 0) && (
+            {(chartError || !priceData || priceData.length === 0) && (
                 <Box
                     position="absolute"
                     top="50%"
@@ -291,7 +289,7 @@ export const LightweightChart = (props: ChartProps) => {
                 >
                     <VStack>
                         <Box as="span" color="hg.text.faint"><LuChartBar size={32} /></Box>
-                        <Text color="fg.muted" fontSize="sm">{!priceData || priceData.length === 0 ? "No data available" : chartText}</Text>
+                        <Text color="fg.muted" fontSize="sm">{chartError ?? "No data available"}</Text>
                     </VStack>
                 </Box>
             )}
