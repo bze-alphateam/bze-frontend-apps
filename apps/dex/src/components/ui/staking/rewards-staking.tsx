@@ -3,7 +3,7 @@ import {
     StakingRewardSDKType
 } from "@bze/bzejs/bze/rewards/store";
 import {Badge, SimpleGrid, Skeleton} from "@chakra-ui/react";
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useMemo, useState} from "react";
 import {useAsset, useLiquidityPools, calculateRewardsStakingApr, calculateRewardsStakingPendingRewards, shortNumberFormat, isLpDenom, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, useAssetPrice, removeLeadingZeros, TokenLogo, LPTokenLogo, hgVariant} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
@@ -33,21 +33,23 @@ export const RewardsStakingBox = ({stakingReward, onClick, userStake, userUnlock
     const {uAmountUsdValue: prizeAssetValue, hasPrice: prizeAssetHasPrice} = useAssetPrice(stakingReward?.prize_denom ?? "")
 
     // Check if staking asset is LP token and fetch base/quote assets
-    const isStakingLp = useMemo(() => isLpDenom(stakingReward?.staking_denom ?? ''), [stakingReward?.staking_denom])
-    const isPrizeLp = useMemo(() => isLpDenom(stakingReward?.prize_denom ?? ''), [stakingReward?.prize_denom])
+    const stakingDenom = stakingReward?.staking_denom ?? ''
+    const prizeDenom = stakingReward?.prize_denom ?? ''
+    const isStakingLp = useMemo(() => isLpDenom(stakingDenom), [stakingDenom])
+    const isPrizeLp = useMemo(() => isLpDenom(prizeDenom), [prizeDenom])
     const {getPoolByLpDenom} = useLiquidityPools()
 
     const stakingLpDenoms = useMemo(() => {
-        if (!isStakingLp || !stakingReward?.staking_denom) return { base: '', quote: '' }
-        const pool = getPoolByLpDenom(stakingReward.staking_denom)
+        if (!isStakingLp || !stakingDenom) return { base: '', quote: '' }
+        const pool = getPoolByLpDenom(stakingDenom)
         return pool ? { base: pool.base, quote: pool.quote } : { base: '', quote: '' }
-    }, [isStakingLp, stakingReward?.staking_denom, getPoolByLpDenom])
+    }, [isStakingLp, stakingDenom, getPoolByLpDenom])
 
     const prizeLpDenoms = useMemo(() => {
-        if (!isPrizeLp || !stakingReward?.prize_denom) return { base: '', quote: '' }
-        const pool = getPoolByLpDenom(stakingReward.prize_denom)
+        if (!isPrizeLp || !prizeDenom) return { base: '', quote: '' }
+        const pool = getPoolByLpDenom(prizeDenom)
         return pool ? { base: pool.base, quote: pool.quote } : { base: '', quote: '' }
-    }, [isPrizeLp, stakingReward?.prize_denom, getPoolByLpDenom])
+    }, [isPrizeLp, prizeDenom, getPoolByLpDenom])
 
     const {asset: stakingBaseAsset} = useAsset(stakingLpDenoms.base)
     const {asset: stakingQuoteAsset} = useAsset(stakingLpDenoms.quote)
@@ -189,11 +191,10 @@ export const RewardsStakingBox = ({stakingReward, onClick, userStake, userUnlock
         return `${shortNumberFormat(userShare)} ${prizeAsset?.ticker}`
     }, [userStake, stakingReward, userStakePercentage, prizeAsset])
 
-    useEffect(() => {
-        if (stakingReward && !stakingAssetIsLoading && !prizeAssetIsLoading) {
-            setIsLoading(false)
-        }
-    }, [stakingReward, stakingAssetIsLoading, prizeAssetIsLoading])
+    // Stays loaded once both assets have loaded (state-during-render; no setState in an effect).
+    if (isLoading && stakingReward && !stakingAssetIsLoading && !prizeAssetIsLoading) {
+        setIsLoading(false)
+    }
 
     const stakingTile = isStakingLp && stakingBaseAsset && stakingQuoteAsset ? (
         <LPTokenLogo
