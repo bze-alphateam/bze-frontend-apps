@@ -3,6 +3,7 @@ import {join} from "node:path";
 
 import type {Page} from "@playwright/test";
 
+import {startInLightMode} from "./support/color-mode";
 import {expect, test, type Fixture} from "./support/mock-network";
 
 // Directory search, filters, sort, pages and URL state (BFE-126), against the testnet fixtures.
@@ -50,6 +51,7 @@ test("a filter + sort URL loads pre-applied", async ({page}) => {
 });
 
 test("the cards show the brand strip and reward badges", async ({page}) => {
+    await startInLightMode(page);
     await page.goto("/?filter=rewards");
 
     await expect(cards(page)).toHaveText([/NoAdminToken/]);

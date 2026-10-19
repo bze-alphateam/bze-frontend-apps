@@ -1,5 +1,5 @@
 import type {Metadata, Viewport} from "next";
-import {Inter} from "next/font/google"
+import {Inter, JetBrains_Mono} from "next/font/google"
 
 import {Providers} from "./providers";
 import {UnderConstruction} from "@/components/under-construction/under-construction";
@@ -8,6 +8,14 @@ import {isCommunitiesEnabled} from "@/lib/app-gate";
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+  variable: "--font-mono",
 })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communities.getbze.com";
@@ -60,7 +68,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({children}: { children: React.ReactNode }) {
     return (
-      <html className={inter.className} suppressHydrationWarning>
+      <html className={`${inter.className} ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
           <body>
             {APP_ENABLED ? <Providers>{children}</Providers> : <UnderConstruction/>}
           </body>

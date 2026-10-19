@@ -1,6 +1,7 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 
+import {startInLightMode} from "./support/color-mode";
 import {expect, type Fixture, test} from "./support/mock-network";
 
 // The token site shell (BFE-125), against the testnet fixtures. NOAD (NoAdminToken) has a brand
@@ -33,6 +34,7 @@ test("the branded token renders its name, hero and key numbers", async ({page}) 
 });
 
 test("the kit's primary colour and font are applied", async ({page}) => {
+    await startInLightMode(page);
     await page.goto(tokenPage(NOAD));
 
     const get = page.getByRole("button", {name: "Get NOAD"}).first();
@@ -51,6 +53,7 @@ test.describe("in dark mode", () => {
 });
 
 test("the header's wallet button opens the token's wallet drawer with a connect prompt", async ({page}) => {
+    await startInLightMode(page);
     await page.goto(tokenPage(NOAD));
 
     // No wallet extension in e2e, so the drawer asks to connect one.
@@ -88,6 +91,7 @@ test("Get on a token in no pool says it is not tradable yet", async ({page}) => 
 });
 
 test("the wallet drawer's settings switch the page to the kit's dark palette, no wallet needed", async ({page}) => {
+    await startInLightMode(page);
     await page.goto(tokenPage(NOAD));
     const site = page.getByTestId("token-site");
     await expect(page.getByRole("heading", {level: 1, name: "NoAdminToken"})).toBeVisible();

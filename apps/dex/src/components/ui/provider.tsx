@@ -1,6 +1,6 @@
 "use client"
 
-import { ChakraProvider, createSystem, defaultConfig } from "@chakra-ui/react"
+import { ChakraProvider } from "@chakra-ui/react"
 import {
   ColorModeProvider,
   type ColorModeProviderProps,
@@ -11,7 +11,7 @@ import { keplrWallet } from "@interchain-kit/keplr-extension";
 import { leapWallet } from "@interchain-kit/leap-extension";
 import { WCWallet } from "@interchain-kit/core";
 
-import {getAssetLists, getWalletChainsNames, EvmProvider, createEvmConfig} from "@bze/bze-ui-kit";
+import {getAssetLists, getWalletChainsNames, EvmProvider, createEvmConfig, createHiveGlowSystem} from "@bze/bze-ui-kit";
 
 const evmConfig = createEvmConfig({
     projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
@@ -35,27 +35,7 @@ const walletConnect = new WCWallet(
     }
 );
 
-const system = createSystem(defaultConfig, {
-  globalCss: {
-    body: {
-      colorPalette: 'blue',
-    },
-  },
-  theme: {
-    tokens: {
-      fonts: {
-        body: { value: 'var(--font-inter)' },
-      },
-    },
-    semanticTokens: {
-      radii: {
-        l1: { value: '0.375rem' },
-        l2: { value: '0.5rem' },
-        l3: { value: '0.75rem' },
-      },
-    },
-  },
-})
+const system = createHiveGlowSystem('dex')
 
 export function Provider({ children, ...props }: ColorModeProviderProps & { children: React.ReactNode }) {
     return (
