@@ -373,7 +373,7 @@ export const WithdrawForm = () => {
                     <Text fontSize="14px" color="fg.muted" textAlign="center">
                         Connect your wallet on {destDisplayName} to receive funds
                     </Text>
-                    <Button size=\"lg\" w=\"full\" variant={hgVariant('primary')} onClick={handleConnectDest}>
+                    <Button size="lg" w="full" variant={hgVariant('primary')} onClick={handleConnectDest}>
                         Connect to {destDisplayName}
                     </Button>
                 </VStack>

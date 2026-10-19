@@ -361,7 +361,7 @@ export const DepositForm = () => {
                     <Text fontSize="14px" color="fg.muted" textAlign="center">
                         Connect your wallet on {sourceDisplayName} to continue
                     </Text>
-                    <Button size=\"lg\" w=\"full\" variant={hgVariant('primary')} onClick={handleConnectSource}>
+                    <Button size="lg" w="full" variant={hgVariant('primary')} onClick={handleConnectSource}>
                         Connect to {sourceDisplayName}
                     </Button>
                 </VStack>
