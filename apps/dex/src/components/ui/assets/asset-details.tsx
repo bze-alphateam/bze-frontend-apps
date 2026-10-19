@@ -2,19 +2,8 @@
 
 import React, {useEffect, useMemo, useState} from 'react'
 
+import {Box, chakra, Flex, Grid, Skeleton} from '@chakra-ui/react'
 import {
-    Box,
-    Text,
-    Flex,
-    Grid,
-    HStack,
-    VStack,
-    Separator,
-    Skeleton,
-} from '@chakra-ui/react'
-import {
-    LuArrowUpRight,
-    LuArrowDownRight,
     LuInfo,
     LuDroplets,
     LuArrowLeftRight,
@@ -37,13 +26,15 @@ import {
     useAssetMarkets,
     useMarket,
     LPTokenLogo,
+    Notice,
 } from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
+import {PriceChange} from "@/components/ui/assets/price-change";
 
 const MAX_MARKETS_PER_ASSET = 5;
 
-function AssetItemLiquidityPool({ pool, asset, poolData }: { pool: LiquidityPoolSDKType, asset: Asset, poolData?: LiquidityPoolData }) {
+function AssetItemLiquidityPool({ pool, asset, poolData, surface }: { pool: LiquidityPoolSDKType, asset: Asset, poolData?: LiquidityPoolData, surface: RowSurface }) {
     const {asset: base, isLoading: baseLoading} = useAsset(pool.base)
     const {asset: quote, isLoading: quoteLoading} = useAsset(pool.quote)
     const {toLpPage} = useNavigation()
@@ -64,200 +55,234 @@ function AssetItemLiquidityPool({ pool, asset, poolData }: { pool: LiquidityPool
     },[poolData, asset])
 
     return (
-        <Box
-            p={3}
-            bg="bg.emphasized"
-            borderWidth="1px"
-            borderColor="border"
-            borderRadius="md"
-            cursor="pointer"
-            onClick={() => toLpPage(pool.id)}
-            transition="all 0.2s"
-            _hover={{
-                bg: "bg.muted",
-                borderColor: "border.emphasized",
-                transform: "translateY(-1px)",
-                shadow: "sm"
-            }}
-        >
-            <Flex
-                justify="space-between"
-                align="center"
-                gap={3}
-                flexDirection={{ base: 'column', sm: 'row' }}
-            >
-                <HStack gap={3} flex="1">
-                    <Skeleton asChild loading={baseLoading || quoteLoading}>
-                        <Box flexShrink={0}>
-                            <LPTokenLogo
-                                baseAssetLogo={base?.logo ?? ""}
-                                quoteAssetLogo={quote?.logo ?? ""}
-                                baseAssetSymbol={base?.ticker ?? ""}
-                                quoteAssetSymbol={quote?.ticker ?? ""}
-                            />
-                        </Box>
-                    </Skeleton>
-                    <Box minW={0}>
-                        <Text fontWeight="semibold" fontSize="md">
-                            {base?.ticker}/{quote?.ticker}
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted">Liquidity Pool</Text>
+        <LinkRow surface={surface} onClick={() => toLpPage(pool.id)} label={`${base?.ticker}/${quote?.ticker} liquidity pool`}>
+            <Flex align="center" gap="12px" flex="1" minW="0">
+                <Skeleton asChild loading={baseLoading || quoteLoading}>
+                    <Box flexShrink={0}>
+                        <LPTokenLogo
+                            baseAssetLogo={base?.logo ?? ""}
+                            quoteAssetLogo={quote?.logo ?? ""}
+                            baseAssetSymbol={base?.ticker ?? ""}
+                            quoteAssetSymbol={quote?.ticker ?? ""}
+                        />
                     </Box>
-                </HStack>
-
-                {poolData && (
-                    <Flex
-                        gap={4}
-                        align="center"
-                        flexShrink={0}
-                        w={{ base: 'full', sm: 'auto' }}
-                        justify={{ base: 'space-between', sm: 'flex-end' }}
-                    >
-                        <Box textAlign={{ base: 'left', sm: 'right' }}>
-                            <Text fontSize="xs" color="fg.muted">24h Volume</Text>
-                            <Skeleton asChild loading={quoteLoading}>
-                                <HighlightText fontSize="sm" fontWeight="medium">
-                                    {prettyAmount(assetLpVolume)} {asset?.ticker}
-                                </HighlightText>
-                            </Skeleton>
-                        </Box>
-                        <Box textAlign="right">
-                            <Text fontSize="xs" color="fg.muted">TVL</Text>
-                            <HStack gap={1} justify={{ base: 'flex-start', sm: 'flex-end' }}>
-                                {hasUsdValue ? (
-                                        <HighlightText fontSize="sm" fontWeight="semibold">
-                                            ${shortNumberFormat(poolData.usdValue)}
-                                        </HighlightText>
-                                    ) : (
-                                        <VStack align={{ base: 'flex-start', sm: 'flex-end' }} gap={0.5}>
-                                            <Skeleton asChild loading={baseLoading}>
-                                                <HighlightText fontSize="sm" fontWeight="medium">
-                                                    {shortNumberFormat(uAmountToBigNumberAmount(pool.reserve_base, base?.decimals ?? 0))} {base?.ticker}
-                                                </HighlightText>
-                                            </Skeleton>
-                                            <Skeleton asChild loading={quoteLoading}>
-                                                <HighlightText fontSize="sm" fontWeight="medium">
-                                                    {shortNumberFormat(uAmountToBigNumberAmount(pool.reserve_quote, quote?.decimals ?? 0))} {quote?.ticker}
-                                                </HighlightText>
-                                            </Skeleton>
-                                        </VStack>
-                                    )}
-                            </HStack>
-                        </Box>
-                    </Flex>
-                )}
-                {!poolData && (
-                    <Box textAlign="right" flexShrink={0}>
-                        <Text fontSize="sm" color="fg.muted">No data available</Text>
-                    </Box>
-                )}
+                </Skeleton>
+                <RowName title={`${base?.ticker}/${quote?.ticker}`} kind="Liquidity Pool"/>
             </Flex>
-        </Box>
+
+            {poolData ? (
+                <RowFigures>
+                    <RowFigure label="24h Volume">
+                        <Skeleton asChild loading={quoteLoading}>
+                            <HighlightText fontSize="14px" fontWeight="700">
+                                {prettyAmount(assetLpVolume)} {asset?.ticker}
+                            </HighlightText>
+                        </Skeleton>
+                    </RowFigure>
+                    <RowFigure label="TVL">
+                        {hasUsdValue ? (
+                            <HighlightText fontSize="14px" fontWeight="700">
+                                ${shortNumberFormat(poolData.usdValue)}
+                            </HighlightText>
+                        ) : (
+                            <Flex direction="column" align={{ base: 'flex-start', sm: 'flex-end' }} gap="2px">
+                                <Skeleton asChild loading={baseLoading}>
+                                    <HighlightText fontSize="14px" fontWeight="700">
+                                        {shortNumberFormat(uAmountToBigNumberAmount(pool.reserve_base, base?.decimals ?? 0))} {base?.ticker}
+                                    </HighlightText>
+                                </Skeleton>
+                                <Skeleton asChild loading={quoteLoading}>
+                                    <HighlightText fontSize="14px" fontWeight="700">
+                                        {shortNumberFormat(uAmountToBigNumberAmount(pool.reserve_quote, quote?.decimals ?? 0))} {quote?.ticker}
+                                    </HighlightText>
+                                </Skeleton>
+                            </Flex>
+                        )}
+                    </RowFigure>
+                </RowFigures>
+            ) : (
+                <chakra.span fontSize="14px" color="fg.muted" flexShrink={0}>No data available</chakra.span>
+            )}
+        </LinkRow>
     )
 }
 
-function AssetItemMarkets({ marketId }: { marketId: string }) {
+function AssetItemMarkets({ marketId, surface }: { marketId: string, surface: RowSurface }) {
     const { marketSymbol, market, marketData, isLoading: marketLoading } = useMarket(marketId)
     const {asset: base, isLoading: baseLoading} = useAsset(market?.base ?? "")
     const {asset: quote, isLoading: quoteLoading} = useAsset(market?.quote ?? "")
     const {toMarketPage} = useNavigation()
 
     return (
-        <Box
-            p={3}
-            bg="bg.emphasized"
-            borderWidth="1px"
-            borderColor="border"
-            borderRadius="md"
-            cursor="pointer"
-            onClick={() => toMarketPage(base?.denom ?? "", quote?.denom ?? "")}
-            transition="all 0.2s"
-            _hover={{
-                bg: "bg.muted",
-                borderColor: "border.emphasized",
-                transform: "translateY(-1px)",
-                shadow: "sm"
-            }}
-        >
-            <Flex
-                justify="space-between"
-                align="center"
-                gap={3}
-                flexDirection={{ base: 'column', sm: 'row' }}
-            >
-                <HStack gap={3} flex="1">
-                    <Skeleton asChild loading={baseLoading}>
-                        <Box flexShrink={0}>
-                            <LPTokenLogo
-                                baseAssetLogo={base?.logo ?? ""}
-                                quoteAssetLogo={quote?.logo ?? ""}
-                                baseAssetSymbol={base?.ticker ?? ""}
-                                quoteAssetSymbol={quote?.ticker ?? ""}
-                            />
-                        </Box>
-                    </Skeleton>
-                    <Box minW={0}>
-                        <Text fontWeight="semibold" fontSize="md">
-                            {marketSymbol}
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted">Market</Text>
-                    </Box>
-                </HStack>
-
-                {marketData && (
-                    <Flex
-                        gap={4}
-                        align="center"
-                        flexShrink={0}
-                        w={{ base: 'full', sm: 'auto' }}
-                        justify={{ base: 'space-between', sm: 'flex-end' }}
-                    >
-                        <Box textAlign={{ base: 'left', sm: 'right' }}>
-                            <Text fontSize="xs" color="fg.muted">24h Volume</Text>
-                            <Skeleton asChild loading={marketLoading || quoteLoading}>
-                                <HighlightText fontSize="sm" fontWeight="medium">
-                                    {marketData?.quote_volume} {quote?.ticker}
-                                </HighlightText>
-                            </Skeleton>
-                        </Box>
-                        <Box textAlign="right">
-                            <Text fontSize="xs" color="fg.muted">24h Change</Text>
-                            <Skeleton asChild loading={marketLoading}>
-                                <HStack gap={1} justify={{ base: 'flex-start', sm: 'flex-end' }}>
-                                    {marketData && marketData?.change !== 0 && (
-                                        marketData.change > 0 ? (
-                                            <LuArrowUpRight size={14} color="var(--chakra-colors-green-500)" />
-                                        ) : (
-                                            <LuArrowDownRight size={14} color="var(--chakra-colors-red-500)" />
-                                        )
-                                    )}
-                                    <HighlightText
-                                        fontSize="sm"
-                                        fontWeight="semibold"
-                                        color={marketData && marketData?.change > 0 ? 'green.500' : marketData?.change < 0 ? 'red.500' : 'fg.muted'}
-                                    >
-                                        {marketData && marketData?.change > 0 ? '+' : ''}{marketData?.change}%
-                                    </HighlightText>
-                                </HStack>
-                            </Skeleton>
-                        </Box>
+        <LinkRow surface={surface} onClick={() => toMarketPage(base?.denom ?? "", quote?.denom ?? "")} label={`${marketSymbol} market`}>
+            <Flex align="center" gap="12px" flex="1" minW="0">
+                <Skeleton asChild loading={baseLoading}>
+                    <Flex boxSize="36px" flex="none" align="center" justify="center" borderRadius="10px" bg="hg.ground" borderWidth="1px" borderColor="app.border">
+                        <LPTokenLogo
+                            baseAssetLogo={base?.logo ?? ""}
+                            quoteAssetLogo={quote?.logo ?? ""}
+                            baseAssetSymbol={base?.ticker ?? ""}
+                            quoteAssetSymbol={quote?.ticker ?? ""}
+                            size="4"
+                        />
                     </Flex>
-                )}
-                {!marketData && (
-                    <Box textAlign="right" flexShrink={0}>
-                        <Text fontSize="sm" color="fg.muted">No data available</Text>
-                    </Box>
-                )}
+                </Skeleton>
+                <RowName title={marketSymbol} kind="Market"/>
             </Flex>
-        </Box>)
+
+            {marketData ? (
+                <RowFigures>
+                    <RowFigure label="24h Volume">
+                        <Skeleton asChild loading={marketLoading || quoteLoading}>
+                            <HighlightText fontSize="14px" fontWeight="700">
+                                {marketData?.quote_volume} {quote?.ticker}
+                            </HighlightText>
+                        </Skeleton>
+                    </RowFigure>
+                    <RowFigure label="24h Change" minW="80px">
+                        <Skeleton asChild loading={marketLoading}>
+                            <Box fontWeight="700">
+                                <PriceChange change={marketData?.change ?? 0} fontSize="14px"/>
+                            </Box>
+                        </Skeleton>
+                    </RowFigure>
+                </RowFigures>
+            ) : (
+                <chakra.span fontSize="14px" color="fg.muted" flexShrink={0}>No data available</chakra.span>
+            )}
+        </LinkRow>
+    )
 }
+
+type RowSurface = 'inset' | 'card'
+
+/** A market or pool row: the whole row opens its page. */
+const LinkRow = ({surface, onClick, label, children}: { surface: RowSurface; onClick: () => void; label: string; children: React.ReactNode }) => (
+    <chakra.button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        display="flex"
+        flexDirection={{ base: 'column', sm: 'row' }}
+        alignItems={{ base: 'stretch', sm: 'center' }}
+        justifyContent="space-between"
+        gap="12px"
+        w="full"
+        px="16px"
+        py="12px"
+        textAlign="left"
+        color="fg"
+        bg={surface === 'inset' ? 'hg.inset' : 'hg.card'}
+        borderRadius="14px"
+        borderWidth="1px"
+        borderColor={surface === 'inset' ? 'transparent' : 'hg.hairline'}
+        cursor="pointer"
+        transitionProperty="border-color"
+        transitionDuration="moderate"
+        focusVisibleRing="outside"
+        _hover={{ borderColor: 'app.border' }}
+    >
+        {children}
+    </chakra.button>
+)
+
+const RowName = ({title, kind}: { title: React.ReactNode; kind: string }) => (
+    <Flex direction="column" minW="0">
+        <chakra.strong fontSize="15px">{title}</chakra.strong>
+        <chakra.span fontSize="12px" color="hg.text.faint">{kind}</chakra.span>
+    </Flex>
+)
+
+const RowFigures = ({children}: { children: React.ReactNode }) => (
+    <Flex gap="24px" align="center" flexShrink={0} justify={{ base: 'space-between', sm: 'flex-end' }}>
+        {children}
+    </Flex>
+)
+
+const RowFigure = ({label, minW, children}: { label: string; minW?: string; children: React.ReactNode }) => (
+    <Flex direction="column" align={{ base: 'flex-start', sm: 'flex-end' }} minW={minW}>
+        <chakra.span fontSize="11px" color="hg.text.faint">{label}</chakra.span>
+        {children}
+    </Flex>
+)
+
+/** A labelled figure tile; the figure in the DEX link colour. */
+const FigureTile = ({label, surface, children}: { label: string; surface: RowSurface; children: React.ReactNode }) => (
+    <Flex direction="column" gap="6px" p="16px" borderRadius="14px" bg={surface === 'inset' ? 'hg.inset' : 'hg.card'} borderWidth="1px" borderColor={surface === 'inset' ? 'transparent' : 'hg.hairline'}>
+        <chakra.span fontSize="12px" fontWeight="600" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint">{label}</chakra.span>
+        <HighlightText fontWeight="700" fontSize="20px" color="hg.link">{children}</HighlightText>
+    </Flex>
+)
+
+/** A small key/value tile of the IBC and factory blocks. */
+const InfoTile = ({label, mono, link, span, surface, children}: {
+    label: string;
+    mono?: boolean;
+    link?: boolean;
+    span?: boolean;
+    surface: RowSurface;
+    children: React.ReactNode;
+}) => (
+    <Flex
+        direction="column"
+        gap="3px"
+        px="14px"
+        py="12px"
+        borderRadius="12px"
+        bg={surface === 'inset' ? 'hg.inset' : 'hg.card'}
+        borderWidth="1px"
+        borderColor={surface === 'inset' ? 'transparent' : 'hg.hairline'}
+        gridColumn={span ? { base: '1', sm: 'span 2' } : undefined}
+        minW="0"
+    >
+        <chakra.span fontSize="12px" color="hg.text.faint">{label}</chakra.span>
+        <chakra.span
+            fontSize={mono ? '12px' : '14px'}
+            fontFamily={mono ? 'mono' : undefined}
+            fontWeight={mono ? '500' : '700'}
+            color={link ? 'hg.link' : 'fg'}
+            wordBreak="break-all"
+        >
+            {children}
+        </chakra.span>
+    </Flex>
+)
+
+/** A block title with its icon and, on the right, which trading venue the rows belong to. */
+const BlockTitle = ({icon, title, tag}: { icon: React.ReactNode; title: string; tag?: React.ReactNode }) => (
+    <Flex align="baseline" justify="space-between" gap="12px" wrap="wrap">
+        <chakra.strong fontSize="16px" display="inline-flex" alignItems="center" gap="8px">
+            <Box as="span" color="hg.accent" display="inline-flex" aria-hidden>{icon}</Box>
+            {title}
+        </chakra.strong>
+        {tag}
+    </Flex>
+)
+
+const VenueLabel = ({venue}: { venue: 'orderbook' | 'amm' }) => (
+    <chakra.span
+        fontSize="10px"
+        fontWeight="700"
+        letterSpacing="0.08em"
+        px="6px"
+        py="3px"
+        borderRadius="6px"
+        color="hg.link"
+        {...(venue === 'amm' ? {bg: 'app.subtle'} : {borderWidth: '1px', borderColor: 'app.border'})}
+    >
+        {venue === 'amm' ? 'AMM · SWAP' : 'ORDER BOOK · EXCHANGE'}
+    </chakra.span>
+)
+
+const Divider = () => <Box h="1px" bg="hg.divider"/>
 
 /**
  * The full details body of an asset: supply/volume stats, IBC or Factory
  * sections, trading pairs and liquidity pools. Shared between the assets
  * listing (expanded row) and the asset details page (/assets/details?denom=).
+ * `surface` is the tiles' fill: inset on a card (the details page), card on an inset (the expanded row).
  */
-export function AssetDetails({ asset }: { asset: Asset }) {
+export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surface?: RowSurface }) {
     const [adminAddress, setAdminAddress] = useState<string>("")
 
     const {assetMarketsData, asset24hTradedVolume: marketsVolume, assetMarkets} = useAssetMarkets(asset.denom)
@@ -323,274 +348,78 @@ export function AssetDetails({ asset }: { asset: Asset }) {
     }, [asset.denom, asset.type]);
 
     return (
-        <VStack align="stretch" gap={4}>
+        <Flex direction="column" gap="16px">
             {/* Coin Stats */}
-            <Grid gridTemplateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={3}>
-                <Box
-                    bgGradient="to-br"
-                    gradientFrom="blue.500/10"
-                    gradientTo="blue.600/10"
-                    borderWidth="1px"
-                    borderColor="blue.500/20"
-                    borderRadius="lg"
-                    p={4}
-                >
-                    <Text color="fg.muted" fontSize="xs" fontWeight="semibold" textTransform="uppercase" mb={2}>
-                        {supplyLabel}
-                    </Text>
-                    <HighlightText fontWeight="bold" fontSize="lg" color="blue.600">
-                        {formattedSupply} {asset.ticker}
-                    </HighlightText>
-                </Box>
-                <Box
-                    bgGradient="to-br"
-                    gradientFrom="blue.500/10"
-                    gradientTo="blue.600/10"
-                    borderWidth="1px"
-                    borderColor="blue.500/20"
-                    borderRadius="lg"
-                    p={4}
-                >
-                    <Text color="fg.muted" fontSize="xs" fontWeight="semibold" textTransform="uppercase" mb={2}>
-                        24h Volume
-                    </Text>
-                    <HighlightText fontWeight="bold" fontSize="lg" color="blue.600">
-                        {prettyAmount(total24HoursVolume)} {asset.ticker}
-                    </HighlightText>
-                </Box>
+            <Grid gridTemplateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap="12px">
+                <FigureTile label={supplyLabel} surface={surface}>{formattedSupply} {asset.ticker}</FigureTile>
+                <FigureTile label="24h Volume" surface={surface}>{prettyAmount(total24HoursVolume)} {asset.ticker}</FigureTile>
             </Grid>
+
             {/* IBC Details */}
             {asset.type === ASSET_TYPE_IBC && (
                 <>
-                    <Separator />
-                    <Box>
-                        <HStack mb={3} gap={2}>
-                            <LuInfo size={16} color="var(--chakra-colors-teal-500)" />
-                            <Text fontWeight="semibold" fontSize="md">IBC Details</Text>
-                        </HStack>
-                        <Grid gridTemplateColumns={{ base: '1fr', sm: '1fr 1fr' }} gap={3}>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="teal.500/8"
-                                gradientTo="teal.600/8"
-                                borderWidth="1px"
-                                borderColor="teal.500/20"
-                                borderRadius="md"
-                                p={3}
-                            >
-                                <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                    Source Chain
-                                </Text>
-                                <Text fontSize="sm" fontWeight="medium" color="teal.600">
-                                    {asset.IBCData?.counterparty.chainPrettyName}
-                                </Text>
-                            </Box>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="teal.500/8"
-                                gradientTo="teal.600/8"
-                                borderWidth="1px"
-                                borderColor="teal.500/20"
-                                borderRadius="md"
-                                p={3}
-                            >
-                                <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                    Channel ID
-                                </Text>
-                                <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="teal.600">
-                                    {asset.IBCData?.chain.channelId}
-                                </Text>
-                            </Box>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="teal.500/8"
-                                gradientTo="teal.600/8"
-                                borderWidth="1px"
-                                borderColor="teal.500/20"
-                                borderRadius="md"
-                                p={3}
-                                gridColumn={{ base: '1', sm: 'span 2' }}
-                            >
-                                <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                    Base Denom
-                                </Text>
-                                <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="teal.600" wordBreak="break-all">
-                                    {asset.IBCData?.counterparty.baseDenom}
-                                </Text>
-                            </Box>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="teal.500/8"
-                                gradientTo="teal.600/8"
-                                borderWidth="1px"
-                                borderColor="teal.500/20"
-                                borderRadius="md"
-                                p={3}
-                                gridColumn={{ base: '1', sm: 'span 2' }}
-                            >
-                                <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                    IBC Denom on BeeZee
-                                </Text>
-                                <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="teal.600" wordBreak="break-all">
-                                    {asset.denom}
-                                </Text>
-                            </Box>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="teal.500/8"
-                                gradientTo="teal.600/8"
-                                borderWidth="1px"
-                                borderColor="teal.500/20"
-                                borderRadius="md"
-                                p={3}
-                                gridColumn={{ base: '1', sm: 'span 2' }}
-                            >
-                                <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                    Path
-                                </Text>
-                                <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="teal.600" wordBreak="break-all">
-                                    transfer/{asset.IBCData?.chain.channelId}/{asset.IBCData?.counterparty.baseDenom}
-                                </Text>
-                            </Box>
-                        </Grid>
-                    </Box>
+                    <Divider/>
+                    <BlockTitle icon={<LuInfo size={16}/>} title="IBC Details"/>
+                    <Grid gridTemplateColumns={{ base: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }} gap="10px">
+                        <InfoTile label="Source Chain" surface={surface}>{asset.IBCData?.counterparty.chainPrettyName}</InfoTile>
+                        <InfoTile label="Channel ID" mono surface={surface}>{asset.IBCData?.chain.channelId}</InfoTile>
+                        <InfoTile label="Base Denom" mono span surface={surface}>{asset.IBCData?.counterparty.baseDenom}</InfoTile>
+                        <InfoTile label="IBC Denom on BeeZee" mono span surface={surface}>{asset.denom}</InfoTile>
+                        <InfoTile label="Path" mono span surface={surface}>
+                            transfer/{asset.IBCData?.chain.channelId}/{asset.IBCData?.counterparty.baseDenom}
+                        </InfoTile>
+                    </Grid>
                 </>
             )}
+
             {/* Factory Details */}
             {asset.type === ASSET_TYPE_FACTORY && (
                 <>
-                    <Separator />
-                    <Box>
-                        <HStack mb={3} gap={2}>
-                            <LuFactory size={16} color="var(--chakra-colors-blue-500)" />
-                            <Text fontWeight="semibold" fontSize="md">Factory Details</Text>
-                        </HStack>
-                        <VStack align="stretch" gap={3}>
-                            <Grid gridTemplateColumns={{ base: '1fr', sm: '1fr 1fr' }} gap={3}>
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="blue.500/8"
-                                    gradientTo="blue.600/8"
-                                    borderWidth="1px"
-                                    borderColor="blue.500/20"
-                                    borderRadius="md"
-                                    p={3}
-                                >
-                                    <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                        Creator
-                                    </Text>
-                                    <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="blue.600" wordBreak="break-all">
-                                        {assetCreatorAddress}
-                                    </Text>
-                                </Box>
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="blue.500/8"
-                                    gradientTo="blue.600/8"
-                                    borderWidth="1px"
-                                    borderColor="blue.500/20"
-                                    borderRadius="md"
-                                    p={3}
-                                >
-                                    <Text color="fg.muted" fontSize="xs" fontWeight="semibold" mb={1}>
-                                        Admin
-                                    </Text>
-                                    <Text fontSize="sm" fontFamily="mono" fontWeight="medium" color="blue.600" wordBreak="break-all">
-                                        {adminAddress !== '' ? adminAddress : 'Nobody'}
-                                    </Text>
-                                </Box>
-                            </Grid>
+                    <Divider/>
+                    <BlockTitle icon={<LuFactory size={16}/>} title="Factory Details"/>
+                    <Grid gridTemplateColumns={{ base: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }} gap="10px">
+                        <InfoTile label="Creator" mono link surface={surface}>{assetCreatorAddress}</InfoTile>
+                        <InfoTile label="Admin" mono link surface={surface}>{adminAddress !== '' ? adminAddress : 'Nobody'}</InfoTile>
+                    </Grid>
 
-                            {/* Admin Warning/Notice */}
-                            {adminAddress !== '' ? (
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="orange.500/10"
-                                    gradientTo="orange.600/10"
-                                    borderWidth="1px"
-                                    borderColor="orange.500/30"
-                                    borderRadius="md"
-                                    p={3}
-                                >
-                                    <HStack gap={2} align="start">
-                                        <Box flexShrink={0} mt={0.5}>
-                                            <LuInfo size={16} color="var(--chakra-colors-orange-500)" />
-                                        </Box>
-                                        <VStack align="start" gap={1}>
-                                            <Text fontSize="sm" fontWeight="semibold" color="orange.600">
-                                                Centralized Supply Control
-                                            </Text>
-                                            <Text fontSize="xs" color="fg.muted">
-                                                This token has an admin who can mint new tokens or burn existing ones, potentially affecting the total supply.
-                                            </Text>
-                                        </VStack>
-                                    </HStack>
-                                </Box>
-                            ) : (
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="green.500/10"
-                                    gradientTo="green.600/10"
-                                    borderWidth="1px"
-                                    borderColor="green.500/30"
-                                    borderRadius="md"
-                                    p={3}
-                                >
-                                    <HStack gap={2} align="start">
-                                        <Box flexShrink={0} mt={0.5}>
-                                            <LuInfo size={16} color="var(--chakra-colors-green-500)" />
-                                        </Box>
-                                        <VStack align="start" gap={1}>
-                                            <Text fontSize="sm" fontWeight="semibold" color="green.600">
-                                                Decentralized Supply
-                                            </Text>
-                                            <Text fontSize="xs" color="fg.muted">
-                                                Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.
-                                            </Text>
-                                        </VStack>
-                                    </HStack>
-                                </Box>
-                            )}
-                        </VStack>
-                    </Box>
+                    {/* Admin Warning/Notice */}
+                    {adminAddress !== '' ? (
+                        <Notice status="warning" title="Centralized Supply Control">
+                            This token has an admin who can mint new tokens or burn existing ones, potentially affecting the total supply.
+                        </Notice>
+                    ) : (
+                        <Notice status="success" title="Decentralized Supply">
+                            Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.
+                        </Notice>
+                    )}
                 </>
             )}
 
-            <Separator />
+            <Divider/>
 
             {/* Trading Pairs */}
-            <Box>
-                <HStack mb={3}>
-                    <LuArrowLeftRight size={16} />
-                    <Text fontWeight="semibold">Trading Pairs</Text>
-                </HStack>
+            <Flex direction="column" gap="10px">
+                <BlockTitle icon={<LuArrowLeftRight size={16}/>} title="Trading Pairs" tag={<VenueLabel venue="orderbook"/>}/>
                 {markets.length > 0 ? (
-                    <VStack align="stretch" gap={2}>
-                        {markets.map((market) => (
-                            <AssetItemMarkets key={market.market_id} marketId={market.market_id} />
-                        ))}
-                    </VStack>
+                    markets.map((market) => (
+                        <AssetItemMarkets key={market.market_id} marketId={market.market_id} surface={surface}/>
+                    ))
                 ) : (
-                    <Text color="fg.muted" fontSize="sm">No trading pairs available</Text>
+                    <chakra.span color="hg.text.faint" fontSize="13px" py="6px">No trading pairs available</chakra.span>
                 )}
-            </Box>
+            </Flex>
 
             {/* Liquidity Pools */}
-            <Box>
-                <HStack mb={3}>
-                    <LuDroplets size={16} />
-                    <Text fontWeight="semibold">Liquidity Pools</Text>
-                </HStack>
+            <Flex direction="column" gap="10px" mt="8px">
+                <BlockTitle icon={<LuDroplets size={16}/>} title="Liquidity Pools" tag={<VenueLabel venue="amm"/>}/>
                 {assetPools.length > 0 ? (
-                    <VStack align="stretch" gap={2}>
-                        {assetPools.map((pool) => (
-                            <AssetItemLiquidityPool key={pool.id} pool={pool} poolData={assetPoolsData.get(pool.id)} asset={asset} />
-                        ))}
-                    </VStack>
+                    assetPools.map((pool) => (
+                        <AssetItemLiquidityPool key={pool.id} pool={pool} poolData={assetPoolsData.get(pool.id)} asset={asset} surface={surface}/>
+                    ))
                 ) : (
-                <Text color="fg.muted" fontSize="sm">No liquidity pools available</Text>
+                    <chakra.span color="hg.text.faint" fontSize="13px" py="6px">No liquidity pools available</chakra.span>
                 )}
-            </Box>
-        </VStack>
+            </Flex>
+        </Flex>
     )
 }

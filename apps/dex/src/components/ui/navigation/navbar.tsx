@@ -3,6 +3,7 @@
 import NextLink from 'next/link'
 import {AppHeader, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
+import {isNavItemActive} from "@/lib/nav-active";
 
 const navItems = [
     { label: 'Swap', href: '/' },
@@ -11,11 +12,6 @@ const navItems = [
     { label: 'Pools', href: '/pools' },
     { label: 'Assets', href: '/assets' },
 ]
-
-const navSubitems: { [key: string]: string } = {
-    "/exchange/market": "/exchange",
-    "/pools/details": "/pools",
-}
 
 export const TopNavBar = () => {
     const {currentPathName} = useNavigation()
@@ -28,7 +24,7 @@ export const TopNavBar = () => {
             linkAs={NextLink}
             items={navItems.map((item) => ({
                 ...item,
-                active: currentPathName === item.href || item.href === navSubitems[currentPathName],
+                active: isNavItemActive(item.href, currentPathName),
             }))}
             walletLabel={walletLabel}
             walletContent={<WalletSidebarContent />}

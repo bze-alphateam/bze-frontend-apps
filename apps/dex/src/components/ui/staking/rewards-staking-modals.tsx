@@ -1,23 +1,17 @@
 import {
-    Alert,
-    Badge,
-    Box,
     Button,
-    Card,
+    chakra,
     Field,
+    Flex,
     Group,
-    Heading,
-    HStack,
     Input,
     Skeleton,
     Stack,
-    Text,
-    VStack,
 } from "@chakra-ui/react";
-import {LuGift, LuLockOpen, LuTrendingUp, LuPercent} from "react-icons/lu";
+import {LuGift, LuLock, LuLockOpen} from "react-icons/lu";
 import React, {useCallback, useMemo, useState} from "react";
 import {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx, hgVariant, Notice} from "@bze/bze-ui-kit";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -30,6 +24,8 @@ import {
 import {PrettyBalance} from "@bze/bze-ui-kit";
 import { EncodeObject } from "interchainjs/types";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
+import {DexDialog} from "@/components/ui/dialog";
+import {AprMove} from "@/components/ui/pools/pool-parts";
 
 const MODAL_TYPE_ACTIONS = 'actions';
 const MODAL_TYPE_STAKE = 'stake';
@@ -344,273 +340,166 @@ export const RewardsStakingActionModal = ({
         setIsSubmitting(false)
     }, [stakingReward, address, tx, onActionPerformed, hasPendingRewards, toast, claimFeeCheck.canAfford, claimFeeCheck.message])
 
+    const title = `${
+        modalType === MODAL_TYPE_UNSTAKE ? unstakeModalTitle
+            : modalType === MODAL_TYPE_CLAIM ? claimModalTitle
+                : actionsModalTitle
+    } #${rewardNumber}`
+
     return (
-        <Skeleton asChild loading={stakingAssetIsLoading || prizeAssetIsLoading || isLoadingAssets}>
-            <Box
-                position="fixed"
-                inset="0"
-                bg="blackAlpha.600"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                zIndex="modal"
-            >
-                <Card.Root maxW="md" w="full" mx="4">
-                    <Card.Header>
-                        <HStack justify="space-between" align="center">
-                            <Heading size="lg">
-                                {modalType === MODAL_TYPE_STAKE && actionsModalTitle}
-                                {modalType === MODAL_TYPE_UNSTAKE && unstakeModalTitle}
-                                {modalType === MODAL_TYPE_CLAIM && claimModalTitle}
-                                {modalType === MODAL_TYPE_ACTIONS && actionsModalTitle}
-                                {' #' + rewardNumber}
-                            </Heading>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={onCloseClick}
-                            >
-                                ✕
-                            </Button>
-                        </HStack>
-                    </Card.Header>
-
-                    <Card.Body>
-                        {modalType === MODAL_TYPE_ACTIONS && stakingReward && (
-                            <VStack gap="4">
-                                <Text color="fg.muted">{'Stake your tokens and receive daily rewards.'}</Text>
-                                {hasUserStake && (
-                                    <RewardStakingAlert type={TYPE_STAKING} text={yourStake} />
-                                )}
-                                <RewardStakingAlert type={TYPE_BALANCE} text={userStakingAssetPrettyBalance} />
-                                {hasUserStake && (
-                                    <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards} />
-                                )}
-
-                                <RewardsStakingUnlockAlerts userUnlocking={userUnlocking}
-                                                            ticker={stakingAsset?.ticker || 'coins'}
-                                                            decimals={stakingAsset?.decimals || 0}/>
-
-                                <Stack direction={{base: 'column', sm: 'row'}} width="full" gap="3">
-                                    <RewardsStakingButton
-                                        buttonType={TYPE_STAKING}
-                                        variant='outline'
-                                        onClick={() => openModal('stake')}
-                                    >
-                                        <Text>Stake</Text>
-                                    </RewardsStakingButton>
-
-                                    <RewardsStakingButton
-                                        buttonType={TYPE_UNLOCK}
-                                        disabled={!hasUserStake}
-                                        onClick={() => openModal('unstake')}
-                                    >
-                                        <Text>Unstake</Text>
-                                    </RewardsStakingButton>
-
-                                    <RewardsStakingButton
-                                        buttonType={TYPE_REWARDS}
-                                        disabled={!hasPendingRewards}
-                                        onClick={() => openModal('claim')}
-                                    >
-                                        <Text>Claim</Text>
-                                    </RewardsStakingButton>
-                                </Stack>
-                            </VStack>
+        <DexDialog title={title} onClose={onCloseClick}>
+            <Skeleton loading={stakingAssetIsLoading || prizeAssetIsLoading || isLoadingAssets}>
+                {modalType === MODAL_TYPE_ACTIONS && stakingReward && (
+                    <Flex direction="column" gap="10px">
+                        <chakra.p m="0" fontSize="14px" color="fg.muted">Stake your tokens and receive daily rewards.</chakra.p>
+                        {hasUserStake && (
+                            <RewardStakingAlert type={TYPE_STAKING} text={yourStake} />
+                        )}
+                        <RewardStakingAlert type={TYPE_BALANCE} text={userStakingAssetPrettyBalance} />
+                        {hasUserStake && (
+                            <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards} />
                         )}
 
-                        {modalType === MODAL_TYPE_STAKE && stakingReward && (
-                            <VStack gap="4">
-                                <Text>Enter the amount you want to stake:</Text>
-                                <Field.Root invalid={formError !== ''}>
-                                    <Group attached w="full" maxW="sm">
-                                        <Input
-                                            autoComplete="off"
-                                            placeholder={prettyMinStake}
-                                            value={stakeAmount}
-                                            onChange={(e) => {
-                                                setFormError('')
-                                                setStakeAmount(sanitizeNumberInput(e.target.value))
-                                            }}
-                                            onBlur={validateStakeAmount}
-                                            type="text"
-                                            size="sm"
-                                            disabled={isSubmitting}
-                                        />
-                                        <Button variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setFormError('')
-                                                    setStakeAmount(maxSpendable.inputValue)
-                                                }}
-                                                disabled={stakingAssetBalance.amount.isZero() || isSubmitting}
-                                        >
-                                            Max
-                                        </Button>
-                                    </Group>
-                                    <Field.ErrorText>{formError}</Field.ErrorText>
-                                </Field.Root>
-                                {stakeAmount && (
-                                    <VStack gap="3" w="full">
-                                        <Alert.Root status="success" variant="subtle" w="full">
-                                            <Alert.Indicator/>
-                                            <VStack align="start" gap="2" flex="1">
-                                                <Alert.Title>Estimated Daily Rewards:</Alert.Title>
-                                                <Text fontSize="lg" fontWeight="bold" color="green.600">
-                                                    {inputEstimatedRewards}
-                                                </Text>
-                                                {estimatedDailyRewardsUsd && estimatedDailyRewardsUsd.gt(0) && (
-                                                    <Text fontSize="md" fontWeight="medium" color="green.600" _dark={{ color: "green.400" }}>
-                                                        ≈ ${shortNumberFormat(estimatedDailyRewardsUsd)}
-                                                    </Text>
-                                                )}
-                                                <Text fontSize="sm" color="gray.600" _dark={{color: "gray.400"}}>
-                                                    Unlock period: {stakingReward?.lock || 0} days
-                                                </Text>
-                                            </VStack>
-                                        </Alert.Root>
+                        <RewardsStakingUnlockAlerts userUnlocking={userUnlocking}
+                                                    ticker={stakingAsset?.ticker || 'coins'}
+                                                    decimals={stakingAsset?.decimals || 0}/>
 
-                                        {/* Show new APR if it changes by more than 10% */}
-                                        {stakingAPRData && stakingAPRData.newAPR && stakingAPRData.aprChange && Math.abs(stakingAPRData.aprChange.toNumber()) > 10 && (
-                                            <Alert.Root status="info" variant="subtle" w="full">
-                                                <Alert.Indicator/>
-                                                <VStack align="start" gap="2" flex="1">
-                                                    <HStack justify="space-between" w="full">
-                                                        <HStack gap="2">
-                                                            <LuTrendingUp size={16} />
-                                                            <Alert.Title>New Staking APR</Alert.Title>
-                                                        </HStack>
-                                                        <Badge
-                                                            colorPalette={stakingAPRData.aprChange.lt(0) ? "red" : "green"}
-                                                            size="sm"
-                                                        >
-                                                            {stakingAPRData.aprChange.lt(0) ? '' : '+'}{stakingAPRData.aprChange.toFixed(1)}%
-                                                        </Badge>
-                                                    </HStack>
-                                                    <HStack justify="space-between" w="full">
-                                                        <Text fontSize="sm" color="blue.600" _dark={{ color: "blue.400" }}>
-                                                            Current: {stakingAPRData.currentAPR.toFixed(2)}%
-                                                        </Text>
-                                                        <Text fontSize="md" fontWeight="bold" color="blue.600" _dark={{ color: "blue.400" }}>
-                                                            New: {stakingAPRData.newAPR.toFixed(2)}%
-                                                        </Text>
-                                                    </HStack>
-                                                </VStack>
-                                            </Alert.Root>
-                                        )}
-                                    </VStack>
-                                )}
+                        <Stack direction={{base: 'column', sm: 'row'}} width="full" gap="8px" mt="4px">
+                            <RewardsStakingButton buttonType={TYPE_STAKING} onClick={() => openModal('stake')}>
+                                Stake
+                            </RewardsStakingButton>
+                            <RewardsStakingButton buttonType={TYPE_UNLOCK} disabled={!hasUserStake} onClick={() => openModal('unstake')}>
+                                Unstake
+                            </RewardsStakingButton>
+                            <RewardsStakingButton buttonType={TYPE_REWARDS} disabled={!hasPendingRewards} onClick={() => openModal('claim')}>
+                                Claim
+                            </RewardsStakingButton>
+                        </Stack>
+                    </Flex>
+                )}
 
-                                <RewardsStakingButton
-                                    buttonType={TYPE_STAKING}
-                                    disabled={!stakeAmount || stakingAssetBalance.amount.isZero()}
-                                    loading={isSubmitting}
-                                    loadingText={progressTrack}
-                                    onClick={handleConfirmStake}
+                {modalType === MODAL_TYPE_STAKE && stakingReward && (
+                    <Flex direction="column" gap="10px">
+                        <Field.Root invalid={formError !== ''}>
+                            <Field.Label fontSize="14px" fontWeight="400" color="fg.muted">Enter the amount you want to stake:</Field.Label>
+                            <Group attached w="full">
+                                <Input
+                                    autoComplete="off"
+                                    inputMode="decimal"
+                                    placeholder={prettyMinStake}
+                                    value={stakeAmount}
+                                    onChange={(e) => {
+                                        setFormError('')
+                                        setStakeAmount(sanitizeNumberInput(e.target.value))
+                                    }}
+                                    onBlur={validateStakeAmount}
+                                    type="text"
+                                    h="44px"
+                                    bg="hg.inset"
+                                    disabled={isSubmitting}
+                                />
+                                <Button variant="outline"
+                                        h="44px"
+                                        px="14px"
+                                        bg="hg.card"
+                                        borderColor="hg.lineStrong"
+                                        color="hg.text.secondary"
+                                        onClick={() => {
+                                            setFormError('')
+                                            setStakeAmount(maxSpendable.inputValue)
+                                        }}
+                                        disabled={stakingAssetBalance.amount.isZero() || isSubmitting}
                                 >
-                                    <Text>Confirm Stake</Text>
-                                </RewardsStakingButton>
-                            </VStack>
-                        )}
-
-                        {modalType === MODAL_TYPE_UNSTAKE && userStake && (
-                            <VStack gap="4">
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="orange.500/15"
-                                    gradientTo="orange.600/15"
-                                    borderWidth="1px"
-                                    borderColor="orange.500/30"
-                                    borderRadius="md"
-                                    p="3"
-                                    w="full"
-                                >
-                                    <VStack align="start" gap="2">
-                                        <HStack gap="1" color="orange.600">
-                                            <LuLockOpen size={14} />
-                                            <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">Unstaking Notice</Text>
-                                        </HStack>
-                                        <Text fontSize="sm" color="fg.muted">
-                                            Your funds will be locked for {stakingReward?.lock || 0} days. You will
-                                            receive them after the lock period ends.
-                                        </Text>
-                                    </VStack>
-                                </Box>
-
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="blue.500/15"
-                                    gradientTo="blue.600/15"
-                                    borderWidth="1px"
-                                    borderColor="blue.500/30"
-                                    borderRadius="md"
-                                    p="3"
-                                    w="full"
-                                >
-                                    <VStack align="start" gap="0.5">
-                                        <HStack gap="1" color="blue.600">
-                                            <LuPercent size={12} />
-                                            <Text fontSize="xs" textTransform="uppercase" fontWeight="semibold">Amount to Unstake</Text>
-                                        </HStack>
-                                        <Text fontWeight="bold" fontSize="lg">{yourStake}</Text>
-                                    </VStack>
-                                </Box>
-
-                                <RewardsStakingButton
-                                    buttonType={TYPE_UNLOCK}
-                                    disabled={!userStake}
-                                    loading={isSubmitting}
-                                    loadingText={progressTrack || 'Unstaking...'}
-                                    onClick={handleUnstake}
-                                >
-                                    <Text>Confirm Unstake</Text>
-                                </RewardsStakingButton>
-                            </VStack>
-                        )}
-
-                        {modalType === MODAL_TYPE_CLAIM && userStake && (
-                            <VStack gap="4">
-                                <Box
-                                    bgGradient="to-br"
-                                    gradientFrom="blue.500/15"
-                                    gradientTo="blue.600/15"
-                                    borderWidth="1px"
-                                    borderColor="purple.500/30"
-                                    borderRadius="md"
-                                    p="4"
-                                    w="full"
-                                >
-                                    <VStack align="start" gap="2">
-                                        <HStack gap="1" color="purple.600">
-                                            <LuGift size={14} />
-                                            <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">Rewards</Text>
-                                        </HStack>
-                                        <Text fontSize="lg" fontWeight="bold">
-                                            {pendingRewards}
-                                        </Text>
-                                    </VStack>
-                                </Box>
-
-                                <Button
-                                    colorPalette="purple"
-                                    variant="outline"
-                                    width="full"
-                                    disabled={!userStake || !hasPendingRewards}
-                                    loading={isSubmitting}
-                                    loadingText={progressTrack || 'Claiming rewards...'}
-                                    onClick={handleRewardsClaim}
-                                >
-                                    <LuGift size={16}/>
-                                    <Text>Claim Rewards</Text>
+                                    Max
                                 </Button>
-                            </VStack>
+                            </Group>
+                            <Field.ErrorText>{formError}</Field.ErrorText>
+                        </Field.Root>
+                        {stakeAmount && (
+                            <>
+                                <Flex direction="column" gap="3px" px="14px" py="12px" borderRadius="12px" bg="hg.success/8" borderWidth="1px" borderColor="hg.success/30">
+                                    <chakra.span fontSize="13px" color="fg.muted">Estimated Daily Rewards:</chakra.span>
+                                    <chakra.strong fontSize="18px" color="hg.success.text">{inputEstimatedRewards}</chakra.strong>
+                                    <chakra.span fontSize="12px" color="hg.text.faint">
+                                        {estimatedDailyRewardsUsd && estimatedDailyRewardsUsd.gt(0) ? `≈ $${shortNumberFormat(estimatedDailyRewardsUsd)} · ` : ''}
+                                        Unlock period: {stakingReward?.lock || 0} days
+                                    </chakra.span>
+                                </Flex>
+
+                                {/* Show new APR if it changes by more than 10% */}
+                                {stakingAPRData && stakingAPRData.newAPR && stakingAPRData.aprChange && Math.abs(stakingAPRData.aprChange.toNumber()) > 10 && (
+                                    <AprMove current={stakingAPRData.currentAPR} next={stakingAPRData.newAPR} change={stakingAPRData.aprChange}/>
+                                )}
+                            </>
                         )}
-                    </Card.Body>
-                </Card.Root>
-            </Box>
-        </Skeleton>
+
+                        <Button
+                            size="lg"
+                            w="full"
+                            variant={hgVariant('primary')}
+                            gap="8px"
+                            disabled={!stakeAmount || stakingAssetBalance.amount.isZero()}
+                            loading={isSubmitting}
+                            loadingText={progressTrack}
+                            onClick={handleConfirmStake}
+                        >
+                            <LuLock size={16} aria-hidden="true"/>
+                            Confirm Stake
+                        </Button>
+                    </Flex>
+                )}
+
+                {modalType === MODAL_TYPE_UNSTAKE && userStake && (
+                    <Flex direction="column" gap="10px">
+                        <Notice status="warning" title="Unstaking Notice" icon={<LuLockOpen/>}>
+                            Your funds will be locked for {stakingReward?.lock || 0} days. You will
+                            receive them after the lock period ends.
+                        </Notice>
+                        <DialogFigure label="Amount to Unstake"><chakra.strong fontSize="18px">{yourStake}</chakra.strong></DialogFigure>
+                        <Button
+                            size="lg"
+                            w="full"
+                            variant={hgVariant('primary')}
+                            disabled={!userStake}
+                            loading={isSubmitting}
+                            loadingText={progressTrack || 'Unstaking...'}
+                            onClick={handleUnstake}
+                        >
+                            Confirm Unstake
+                        </Button>
+                    </Flex>
+                )}
+
+                {modalType === MODAL_TYPE_CLAIM && userStake && (
+                    <Flex direction="column" gap="10px">
+                        <DialogFigure label="Rewards"><chakra.strong fontSize="18px">{pendingRewards}</chakra.strong></DialogFigure>
+                        <Button
+                            size="lg"
+                            w="full"
+                            variant={hgVariant('primary')}
+                            gap="8px"
+                            disabled={!userStake || !hasPendingRewards}
+                            loading={isSubmitting}
+                            loadingText={progressTrack || 'Claiming rewards...'}
+                            onClick={handleRewardsClaim}
+                        >
+                            <LuGift size={16} aria-hidden="true"/>
+                            Claim Rewards
+                        </Button>
+                    </Flex>
+                )}
+            </Skeleton>
+        </DexDialog>
     )
 }
+
+/** A neutral labelled figure in a dialog. */
+const DialogFigure = ({label, children}: { label: string; children: React.ReactNode }) => (
+    <Flex direction="column" gap="4px" px="14px" py="12px" borderRadius="12px" bg="hg.inset">
+        <chakra.span fontSize="11px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.secondary">{label}</chakra.span>
+        {children}
+    </Flex>
+)
 
 interface RewardsStakingPendingRewardsModalProps {
     onClose: () => void;
@@ -673,88 +562,35 @@ export const RewardsStakingPendingRewardsModal = ({
     }, [address, canClaim, onClaimSuccess, pendingRewardsIds, toast, tx, feeCheck.canAfford, feeCheck.message])
 
     return (
-        <Box
-            position="fixed"
-            inset="0"
-            bg="blackAlpha.600"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            zIndex="modal"
-        >
-            <Card.Root maxW="md" w="full" mx="4">
-                <Card.Header>
-                    <HStack justify="space-between" align="center">
-                        <Heading size="lg">
-                            Claim rewards
-                        </Heading>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={onClose}
-                        >
-                            ✕
-                        </Button>
-                    </HStack>
-                </Card.Header>
-
-                <Card.Body>
-                    <VStack gap="4">
-                        {canClaim ? (
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="blue.500/15"
-                                gradientTo="blue.600/15"
-                                borderWidth="1px"
-                                borderColor="purple.500/30"
-                                borderRadius="md"
-                                p="4"
-                                w="full"
-                            >
-                                <VStack align="start" gap="2">
-                                    <HStack gap="1" color="purple.600">
-                                        <LuGift size={14} />
-                                        <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">Available Rewards</Text>
-                                    </HStack>
-                                    {pendingRewards?.filter(reward => reward.amount.gt(0)).map((reward, index) => (
-                                        <Text fontSize="2xl" fontWeight="bold" color="purple.600" key={index}>
-                                            {prettyAmount(reward.amount)} {denomTicker(reward.denom)}
-                                        </Text>
-                                    ))}
-                                </VStack>
-                            </Box>
-                        ) : (
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="gray.500/15"
-                                gradientTo="gray.600/15"
-                                borderWidth="1px"
-                                borderColor="gray.500/30"
-                                borderRadius="md"
-                                p="4"
-                                w="full"
-                                textAlign="center"
-                            >
-                                <Text fontSize="lg" fontWeight="bold" color="fg.muted">
-                                    No rewards to claim
-                                </Text>
-                            </Box>
-                        )}
-                        <RewardsStakingButton
-                            buttonType={TYPE_REWARDS}
-                            colorPalette="purple"
-                            variant="outline"
-                            width="full"
-                            disabled={!canClaim}
-                            loading={isClaiming}
-                            loadingText={progressTrack || 'Claiming rewards...'}
-                            onClick={claimRewards}
-                        >
-                            Claim Rewards
-                        </RewardsStakingButton>
-                    </VStack>
-                </Card.Body>
-            </Card.Root>
-        </Box>
+        <DexDialog title="Claim rewards" onClose={onClose}>
+            <Flex direction="column" gap="10px">
+                {canClaim ? (
+                    <DialogFigure label="Available Rewards">
+                        {pendingRewards?.filter(reward => reward.amount.gt(0)).map((reward, index) => (
+                            <chakra.strong fontSize="22px" key={index}>
+                                {prettyAmount(reward.amount)} {denomTicker(reward.denom)}
+                            </chakra.strong>
+                        ))}
+                    </DialogFigure>
+                ) : (
+                    <Flex justify="center" px="14px" py="16px" borderRadius="12px" bg="hg.inset">
+                        <chakra.strong fontSize="16px" color="fg.muted">No rewards to claim</chakra.strong>
+                    </Flex>
+                )}
+                <Button
+                    size="lg"
+                    w="full"
+                    variant={hgVariant('primary')}
+                    gap="8px"
+                    disabled={!canClaim}
+                    loading={isClaiming}
+                    loadingText={progressTrack || 'Claiming rewards...'}
+                    onClick={claimRewards}
+                >
+                    <LuGift size={16} aria-hidden="true"/>
+                    Claim Rewards
+                </Button>
+            </Flex>
+        </DexDialog>
     )
 }

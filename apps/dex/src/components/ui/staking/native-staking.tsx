@@ -1,24 +1,20 @@
+import {Button, chakra, Flex, SimpleGrid, Skeleton} from "@chakra-ui/react";
+import {LuGift, LuInfinity, LuLockOpen} from "react-icons/lu";
+import {useMemo, useState} from "react";
 import {
-    Badge,
-    Box, Button,
-    Card,
-    Heading,
-    HStack,
-    Skeleton,
-    Text,
-    VStack,
-    SimpleGrid
-} from "@chakra-ui/react";
-import {LuClock, LuCoins, LuGift, LuInfinity, LuLock, LuLockOpen, LuShield, LuTrendingUp} from "react-icons/lu";
-import React, {useMemo, useState} from "react";
-import {useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, useToast, getChainName, useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo, AppLink, getStakingApp} from "@bze/bze-ui-kit";
+    useAssets, prettyAmount, uAmountToAmount, uAmountToBigNumberAmount, shortNumberFormat, useToast, getChainName,
+    useSDKTx, useCanAffordTx, NativeStakingData, TokenLogo, AppLink, getStakingApp, AppIcon, appAccentColor, hgVariant,
+} from "@bze/bze-ui-kit";
 import {cosmos} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
 import {
     RewardStakingAlert,
-    TYPE_REWARDS
+    TYPE_REWARDS,
+    TYPE_STAKING,
 } from "@/components/ui/staking/rewards-staking-alerts";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
+import {MiniStat, MiniStats, StakeToEarn, StakingCard, StakingCardHeader, VerifiedPill} from "@/components/ui/staking/staking-card-parts";
+import {DexDialog} from "@/components/ui/dialog";
 
 interface NativeStakingCardProps {
     stakingData: NativeStakingData|undefined;
@@ -111,332 +107,122 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
         }
     }
 
+    const bzeLogo = <TokenLogo src={'/images/bze_alternative_512x512.png'} symbol={nativeAsset?.ticker ?? ''} size="8"/>
+
     return (
         <>
             <Skeleton asChild loading={isLoading}>
-            <Card.Root
-                borderWidth={hasUserStake ? "2px" : "1px"}
-                borderColor={hasUserStake ? "blue.500" : (hasUnbonding ? "orange.500" : "purple.500")}
-                cursor="pointer"
-                transition="all 0.2s"
-                bgGradient="to-br"
-                gradientFrom={hasUserStake ? "blue.500/8" : (hasUnbonding ? "orange.500/8" : "blue.400/8")}
-                gradientTo={hasUserStake ? "blue.600/8" : (hasUnbonding ? "yellow.500/8" : "cyan.500/8")}
-                _hover={{
-                    gradientFrom: hasUserStake ? "blue.500/12" : (hasUnbonding ? "orange.500/12" : "blue.400/12"),
-                    gradientTo: hasUserStake ? "blue.600/12" : (hasUnbonding ? "yellow.500/12" : "cyan.500/12"),
-                    transform: "translateY(-2px)",
-                    shadow: "lg"
-                }}
-                onClick={() => openModal('actions')}
-                shadow="sm"
-            >
-                <Card.Header pb="0">
-                    <HStack gap="3" justify="space-between" align="center" flexWrap="wrap">
-                        <HStack gap="3" flex="1" minW="0">
-                            <Box
-                                p="2"
-                                bg="bg.subtle"
-                                borderRadius="lg"
-                                borderWidth="1px"
-                                borderColor="border"
-                                flexShrink="0"
-                            >
-                                <TokenLogo src={'/images/bze_alternative_512x512.png'} symbol={nativeAsset?.ticker ?? ''} size="8"/>
-                            </Box>
-                            <VStack align="start" gap="0.5" minW="0">
-                                <Heading size="md" lineHeight="1.2">BZE Native Staking</Heading>
-                                <HStack flexWrap="wrap" gap="1.5" fontSize="xs">
-                                    <Badge colorPalette="purple" variant="solid" size="sm">Native</Badge>
-                                    <Badge colorPalette="green" variant="outline" size="sm">
-                                        <HStack gap="1">
-                                            <LuShield size={10} />
-                                            <Text>Verified</Text>
-                                        </HStack>
-                                    </Badge>
-                                </HStack>
-                            </VStack>
-                        </HStack>
-
-                        {/* APR Box - Far Right */}
-                        <Box flexShrink="0" display={{base: 'none', md: 'flex'}}>
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="green.500/15"
-                                gradientTo="green.600/15"
-                                borderWidth="1px"
-                                borderColor="green.500/30"
-                                borderRadius="lg"
-                                px={{base: '3', md: '4'}}
-                                py="2.5"
-                                minW={{base: '90px', md: '110px'}}
-                            >
-                                <VStack gap="0.5" align="center">
-                                    <HStack gap="1" color="green.600">
-                                        <LuTrendingUp size={12} />
-                                        <Text fontSize="xs" textTransform="uppercase" fontWeight="semibold">APR</Text>
-                                    </HStack>
-                                    <Text fontWeight="bold" fontSize={{base: 'lg', md: 'xl'}} color="green.600" lineHeight="1">≈{stakingData?.averageApr}%</Text>
-                                </VStack>
-                            </Box>
-                        </Box>
-                    </HStack>
-                    <Box flexShrink="0" display={{base: 'flex', md: 'none'}}>
-                        <Box
-                            bgGradient="to-br"
-                            gradientFrom="green.500/15"
-                            gradientTo="green.600/15"
-                            borderWidth="1px"
-                            borderColor="green.500/30"
-                            borderRadius="lg"
-                            px={{base: '3', md: '4'}}
-                            py="2.5"
-                            w="full"
-                        >
-                            <VStack gap="0.5" align="center">
-                                <HStack gap="1" color="green.600">
-                                    <LuTrendingUp size={12} />
-                                    <Text fontSize="xs" textTransform="uppercase" fontWeight="semibold">APR</Text>
-                                </HStack>
-                                <Text fontWeight="bold" fontSize={{base: 'lg', md: 'xl'}} color="green.600" lineHeight="1">≈{stakingData?.averageApr}%</Text>
-                            </VStack>
-                        </Box>
-                    </Box>
-                </Card.Header>
-
-                {/* Perpetual indicator as separator */}
-                <Box px="6" py="2">
-                    <HStack justify="center" gap="2" opacity="0.7">
-                        <LuInfinity size={14} />
-                        <Text fontSize="xs" fontWeight="medium" color="fg.muted">Rolling rewards for years ahead</Text>
-                    </HStack>
-                </Box>
-
-                <Card.Body pt="0">
-                    <VStack align="stretch" gap="2">
-                        {/* Stake → Earn - Large and prominent */}
-                        <Box
-                            p="4"
-                            bg="bg.emphasized"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="border.emphasized"
-                        >
-                            <VStack gap="2">
-                                <Text fontSize="xs" color="fg.muted" textTransform="uppercase" fontWeight="semibold">Stake to Earn</Text>
-                                <HStack gap={{base: '3', md: '4'}} justify="center" flexWrap="wrap">
-                                    <VStack gap="1" align="center">
-                                        <Box p="1.5" bg="bg.panel" borderRadius="md" borderWidth="1px">
-                                            <TokenLogo src={'/images/bze_alternative_512x512.png'} symbol={nativeAsset?.ticker ?? ''} size="8"/>
-                                        </Box>
-                                        <VStack align="center" gap="0">
-                                            <Text fontSize="xs" color="fg.muted">Stake</Text>
-                                            <Text fontWeight="bold" fontSize="md">{nativeAsset?.ticker}</Text>
-                                        </VStack>
-                                    </VStack>
-                                    <Box color="fg.muted" fontSize="xl" display="flex" alignItems="center">→</Box>
-                                    <VStack gap="1" align="center">
-                                        <Box p="1.5" bg="bg.panel" borderRadius="md" borderWidth="1px">
-                                            <TokenLogo src={'/images/bze_alternative_512x512.png'} symbol={nativeAsset?.ticker ?? ''} size="8"/>
-                                        </Box>
-                                        <VStack align="center" gap="0">
-                                            <Text fontSize="xs" color="fg.muted">Earn</Text>
-                                            <Text fontWeight="bold" fontSize="md">{nativeAsset?.ticker}</Text>
-                                        </VStack>
-                                    </VStack>
-                                </HStack>
-                            </VStack>
-                        </Box>
-
-                        {/* User Metrics - Colored Boxes on Same Row */}
-                        {(hasUserStake || hasUnbonding) && (
-                            <SimpleGrid
-                                columns={{
-                                    base: 1,
-                                    sm: hasUserStake && hasUnbonding ? 2 : (hasUserStake ? 2 : 1),
-                                    md: hasUserStake && hasUnbonding ? 3 : (hasUserStake ? 2 : 1)
-                                }}
-                                gap="2"
-                            >
-                                {/* Your Stake */}
-                                {hasUserStake && (
-                                    <Box
-                                        bgGradient="to-br"
-                                        gradientFrom="blue.500/15"
-                                        gradientTo="blue.600/15"
-                                        borderWidth="1px"
-                                        borderColor="blue.500/30"
-                                        borderRadius="md"
-                                        p="3"
-                                    >
-                                        <VStack align="start" gap="0.5">
-                                            <HStack gap="1" color="blue.600">
-                                                <LuLock size={12} />
-                                                <Text fontSize="xs" textTransform="uppercase" fontWeight="semibold">Your Stake</Text>
-                                            </HStack>
-                                            <Text fontWeight="bold" fontSize="lg">{yourStake}</Text>
-                                        </VStack>
-                                    </Box>
-                                )}
-
-                                {/* Pending Rewards */}
-                                {hasUserStake && (
-                                    <Box
-                                        bgGradient="to-br"
-                                        gradientFrom="blue.500/15"
-                                        gradientTo="blue.600/15"
-                                        borderWidth="1px"
-                                        borderColor="blue.500/30"
-                                        borderRadius="md"
-                                        p="3"
-                                    >
-                                        <VStack align="start" gap="0.5">
-                                            <HStack gap="1" color="purple.600">
-                                                <LuGift size={12} />
-                                                <Text fontSize="xs" textTransform="uppercase" fontWeight="semibold">Rewards</Text>
-                                            </HStack>
-                                            <Text fontWeight="bold" fontSize="lg">{pendingRewards}</Text>
-                                        </VStack>
-                                    </Box>
-                                )}
-
-                                {/* Pending Unlock */}
-                                {hasUnbonding && (
-                                    <Box
-                                        bgGradient="to-br"
-                                        gradientFrom="orange.500/15"
-                                        gradientTo="orange.600/15"
-                                        borderWidth="1px"
-                                        borderColor="orange.500/30"
-                                        borderRadius="md"
-                                        p="3"
-                                    >
-                                        <VStack align="start" gap="0.5">
-                                            <HStack gap="1" color="orange.600">
-                                                <LuLockOpen size={12} />
-                                                <Text fontSize="xs" fontWeight="semibold" textTransform="uppercase">Pending Unlock</Text>
-                                            </HStack>
-                                            <Text fontWeight="bold" fontSize="lg">{pendingUnlock}</Text>
-                                            <Text fontSize="2xs" color="fg.muted" lineClamp={1}>{pendingUnlockAlert}</Text>
-                                        </VStack>
-                                    </Box>
-                                )}
-                            </SimpleGrid>
-                        )}
-
-                        {/* Stats Grid */}
-                        <SimpleGrid columns={{ base: 2, md: 4 }} gap="2">
-                            <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">
-                                <VStack align="start" gap="0.5">
-                                    <HStack gap="1" color="fg.muted">
-                                        <LuClock size={11} />
-                                        <Text fontSize="2xs" textTransform="uppercase" fontWeight="semibold">Unlock</Text>
-                                    </HStack>
-                                    <Text fontWeight="bold" fontSize="sm">{stakingData?.unlockDuration} days</Text>
-                                </VStack>
-                            </Box>
-
-                            <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">
-                                <VStack align="start" gap="0.5">
-                                    <HStack gap="1" color="fg.muted">
-                                        <LuCoins size={11} />
-                                        <Text fontSize="2xs" textTransform="uppercase" fontWeight="semibold">Daily</Text>
-                                    </HStack>
-                                    <Text fontWeight="bold" fontSize="sm">≈{dailyDistribution}</Text>
-                                </VStack>
-                            </Box>
-
-                            <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">
-                                <VStack align="start" gap="0.5">
-                                    <HStack gap="1" color="fg.muted">
-                                        <LuTrendingUp size={11} />
-                                        <Text fontSize="2xs" textTransform="uppercase" fontWeight="semibold">Minimum</Text>
-                                    </HStack>
-                                    <Text fontWeight="bold" fontSize="sm">None</Text>
-                                </VStack>
-                            </Box>
-
-                            <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">
-                                <VStack align="start" gap="0.5">
-                                    <HStack gap="1" color="fg.muted">
-                                        <LuLock size={11} />
-                                        <Text fontSize="2xs" textTransform="uppercase" fontWeight="semibold">Total</Text>
-                                    </HStack>
-                                    <Text fontWeight="bold" fontSize="sm">{totalStaked}</Text>
-                                </VStack>
-                            </Box>
-                        </SimpleGrid>
-                    </VStack>
-                </Card.Body>
-            </Card.Root>
-        </Skeleton>
-            {modalType && (
-                <Box
-                    position="fixed"
-                    inset="0"
-                    bg="blackAlpha.600"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    zIndex="modal"
+                <StakingCard
+                    state={hasUserStake ? 'staked' : hasUnbonding ? 'unlocking' : 'default'}
+                    label="BZE Native Staking"
+                    onClick={() => openModal('actions')}
                 >
-                    <Card.Root maxW="md" w="full" mx="4">
-                        <Card.Header>
-                            <HStack justify="space-between" align="center">
-                                <Heading size="lg">
-                                    {modalType === 'stake' && 'Stake Tokens'}
-                                    {modalType === 'unstake' && 'Unstake Tokens'}
-                                    {modalType === 'claim' && 'Claim Rewards'}
-                                    {modalType === 'actions' && 'BZE Native Staking'}
-                                </Heading>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={closeModal}
-                                >
-                                    ✕
-                                </Button>
-                            </HStack>
-                        </Card.Header>
+                    <StakingCardHeader
+                        tile={bzeLogo}
+                        title="BZE Native Staking"
+                        tags={(
+                            <>
+                                <chakra.span display="inline-flex" alignItems="center" gap="5px" fontSize="12px" fontWeight="600" color={appAccentColor('staking')}>
+                                    <AppIcon app="staking" size={14}/>
+                                    From the Staking app
+                                </chakra.span>
+                                <VerifiedPill/>
+                            </>
+                        )}
+                        apr={`≈${stakingData?.averageApr}%`}
+                    />
 
-                        <Card.Body>
-                            {modalType === 'actions' && (
-                                <VStack gap="4">
-                                    <Text color="gray.600">{'Secure the BeeZee network and earn rewards by staking your BZE coins.'}</Text>
+                    {/* Perpetual indicator as separator */}
+                    <Flex justify="center" align="center" gap="6px" fontSize="12px" color="hg.text.faint">
+                        <LuInfinity size={14} aria-hidden="true"/>
+                        Rolling rewards for years ahead
+                    </Flex>
 
-                                    <VStack width="full" gap="2">
-                                        <RewardsStakingButton
-                                            buttonType={TYPE_REWARDS}
-                                            disabled={!hasRewards}
-                                            onClick={() => openModal('claim')}
-                                        >
-                                            <HStack gap="2">
-                                                <Text>Claim</Text>
-                                            </HStack>
-                                        </RewardsStakingButton>
-                                        <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
-                                    </VStack>
-                                </VStack>
+                    <StakeToEarn
+                        stakeTile={bzeLogo}
+                        stakeTicker={nativeAsset?.ticker}
+                        earnTile={bzeLogo}
+                        earnTicker={nativeAsset?.ticker}
+                    />
+
+                    {/* The user's figures */}
+                    {(hasUserStake || hasUnbonding) && (
+                        <SimpleGrid
+                            columns={{
+                                base: 1,
+                                sm: hasUserStake && hasUnbonding ? 2 : (hasUserStake ? 2 : 1),
+                                md: hasUserStake && hasUnbonding ? 3 : (hasUserStake ? 2 : 1)
+                            }}
+                            gap="10px"
+                        >
+                            {hasUserStake && <RewardStakingAlert type={TYPE_STAKING} text={yourStake}/>}
+                            {hasUserStake && <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards}/>}
+                            {hasUnbonding && (
+                                <Flex direction="column" gap="2px" bg="hg.warning/8" borderWidth="1px" borderColor="hg.warning/30" borderRadius="12px" px="12px" py="10px">
+                                    <Flex align="center" gap="6px" color="hg.warning.text">
+                                        <LuLockOpen size={14} aria-hidden="true"/>
+                                        <chakra.span fontSize="11px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase">Pending Unlock</chakra.span>
+                                    </Flex>
+                                    <chakra.strong fontSize="16px">{pendingUnlock}</chakra.strong>
+                                    <chakra.span fontSize="11px" color="hg.text.faint" lineClamp={1}>{pendingUnlockAlert}</chakra.span>
+                                </Flex>
                             )}
+                        </SimpleGrid>
+                    )}
 
-                            {modalType === 'claim' && hasRewards && (
-                                <VStack gap="4">
-                                    <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards} />
-                                    {feeCheck.message && (
-                                        <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
-                                    )}
-                                    <RewardsStakingButton
-                                        buttonType={TYPE_REWARDS}
-                                        onClick={onClaimRewards}
-                                        disabled={pendingClaim || !feeCheck.canAfford}
-                                    >
-                                        Claim Rewards
-                                    </RewardsStakingButton>
-                                </VStack>
+                    <MiniStats>
+                        <MiniStat label="Unlock">{stakingData?.unlockDuration} days</MiniStat>
+                        <MiniStat label="Daily">≈{dailyDistribution}</MiniStat>
+                        <MiniStat label="Minimum">None</MiniStat>
+                        <MiniStat label="Total">{totalStaked}</MiniStat>
+                    </MiniStats>
+                </StakingCard>
+            </Skeleton>
+            {modalType && (
+                <DexDialog
+                    title={modalType === 'claim' ? 'Claim Rewards' : 'BZE Native Staking'}
+                    onClose={closeModal}
+                >
+                    {modalType === 'actions' && (
+                        <Flex direction="column" gap="14px">
+                            <chakra.p m="0" fontSize="14px" lineHeight="1.55" color="fg.muted">
+                                Secure the BeeZee network and earn rewards by staking your BZE coins.
+                            </chakra.p>
+                            <RewardsStakingButton
+                                buttonType={TYPE_REWARDS}
+                                size="lg"
+                                disabled={!hasRewards}
+                                onClick={() => openModal('claim')}
+                            >
+                                Claim
+                            </RewardsStakingButton>
+                            <Flex justify="center">
+                                <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
+                            </Flex>
+                        </Flex>
+                    )}
+
+                    {modalType === 'claim' && hasRewards && (
+                        <Flex direction="column" gap="14px">
+                            <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards} />
+                            {feeCheck.message && (
+                                <chakra.span fontSize="12px" color="fg.error">{feeCheck.message}</chakra.span>
                             )}
-                        </Card.Body>
-                    </Card.Root>
-                </Box>
+                            <Button
+                                size="xl"
+                                w="full"
+                                variant={hgVariant('primary')}
+                                gap="8px"
+                                onClick={onClaimRewards}
+                                disabled={pendingClaim || !feeCheck.canAfford}
+                                loading={pendingClaim}
+                            >
+                                <LuGift size={16} aria-hidden="true"/>
+                                Claim Rewards
+                            </Button>
+                        </Flex>
+                    )}
+                </DexDialog>
             )}
         </>
     );

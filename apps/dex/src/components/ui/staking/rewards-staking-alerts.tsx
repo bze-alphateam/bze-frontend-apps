@@ -14,16 +14,8 @@ interface RewardStakingAlertProps {
     text: string;
 }
 
+/** A labelled figure on a staking card or dialog: your stake in the DEX tint, an unlock in amber, the rest neutral. */
 export const RewardStakingAlert = ({type, text}: RewardStakingAlertProps) => {
-    const alertColor = useMemo(() => {
-        switch (type) {
-            case TYPE_REWARDS: return 'purple.500';
-            case TYPE_STAKING: return 'blue.500';
-            case TYPE_UNLOCK: return 'orange.500';
-            case TYPE_BALANCE: return 'blue.500';
-        }
-    }, [type])
-
     const alertTitle = useMemo(() => {
         switch (type) {
             case TYPE_REWARDS: return 'Rewards';
@@ -33,50 +25,30 @@ export const RewardStakingAlert = ({type, text}: RewardStakingAlertProps) => {
         }
     }, [type])
 
-    const boxGradientFrom = useMemo(() => {
-        switch (type) {
-            case TYPE_REWARDS: return 'purple.500/15';
-            case TYPE_STAKING: return 'blue.500/15';
-            case TYPE_UNLOCK: return 'orange.500/15';
-            case TYPE_BALANCE: return 'blue.500/15';
-        }
-    }, [type])
-
-    const boxGradientTo = useMemo(() => {
-        switch (type) {
-            case TYPE_REWARDS: return 'purple.600/15';
-            case TYPE_STAKING: return 'blue.600/15';
-            case TYPE_UNLOCK: return 'orange.600/15';
-            case TYPE_BALANCE: return 'blue.600/15';
-        }
-    }, [type])
-
-    const boxBorderColor = useMemo(() => {
-        switch (type) {
-            case TYPE_REWARDS: return 'purple.500/30';
-            case TYPE_STAKING: return 'blue.500/30';
-            case TYPE_UNLOCK: return 'orange.500/30';
-            case TYPE_BALANCE: return 'blue.500/30';
-        }
-    }, [type])
+    const tone = type === TYPE_STAKING
+        ? {bg: 'app.subtle', borderColor: 'app.border', title: 'hg.link'}
+        : type === TYPE_UNLOCK
+            ? {bg: 'hg.warning/8', borderColor: 'hg.warning/30', title: 'hg.warning.text'}
+            : {bg: 'hg.inset', borderColor: 'hg.hairline', title: 'hg.text.secondary'}
 
     return (
         <Box
-            bgGradient="to-br"
-            gradientFrom={boxGradientFrom}
-            gradientTo={boxGradientTo}
+            bg={tone.bg}
             borderWidth="1px"
-            borderColor={boxBorderColor}
-            borderRadius="md"
-            p="3"
+            borderColor={tone.borderColor}
+            borderRadius="12px"
+            px="12px"
+            py="10px"
             w='full'
+            data-testid="staking-figure"
+            data-type={type}
         >
-            <VStack align="start" gap="0.5">
-                <HStack gap="1" color={alertColor}>
+            <VStack align="start" gap="2px">
+                <HStack gap="6px" color={tone.title}>
                     <RewardsStakingIcon type={type} />
-                    <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">{alertTitle}</Text>
+                    <Text fontSize="11px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase">{alertTitle}</Text>
                 </HStack>
-                <Text fontWeight="bold" fontSize="lg">{text}</Text>
+                <Text fontWeight="700" fontSize="16px" color="fg">{text}</Text>
             </VStack>
         </Box>
     )
