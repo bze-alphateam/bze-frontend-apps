@@ -207,7 +207,7 @@ function EmptyState({asset}: { asset: Asset }) {
                     <TsLinkButton variant="ghost" href={link} target="_blank" rel="noopener noreferrer">Start a holders pool</TsLinkButton>
                 )}
             </Flex>
-        </TsFeaturedCard>
+        </TsCard>
     );
 }
 
