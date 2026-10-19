@@ -1,7 +1,7 @@
 "use client"
 
 import React, { Suspense, useEffect, useState } from 'react'
-import { Box, Button, chakra, Circle, Flex, HStack, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, chakra, Circle, Flex, Grid, HStack, Text, VStack } from '@chakra-ui/react'
 import { LuCheck } from 'react-icons/lu'
 import { useSearchParams } from 'next/navigation'
 import { FeaturedCard, HgCard, PageContainer, Shimmer, TokenLogo, hgVariant, useAssets } from '@bze/bze-ui-kit'
@@ -193,51 +193,62 @@ function PlaybookDone({ playbook, facts, progress }: { playbook: Playbook; facts
     if (!allDone || !facts.denom) return null
 
     return (
-        <HgCard borderColor="hg.success/30" display="flex" flexDirection="column" alignItems="center" gap="14px" textAlign="center" data-testid="playbook-done">
+        <HgCard gridArea="done" minW={0} borderColor="hg.success/30" display="flex" flexDirection="column" alignItems="center" gap="14px" textAlign="center" data-testid="playbook-done">
             <Text as="strong" fontSize="15px" lineHeight="1.45" fontWeight="700">{`Done. ${denomTicker(facts.denom)} now ${playbook.outcome}`}</Text>
             <Button variant={hgVariant('primary')} size="lg" onClick={() => navigate('/')}>Back to the Factory</Button>
         </HgCard>
     )
 }
 
-/** The steps beside the token choice and the outcome; the side column drops under the steps on narrow screens. */
-function PlaybookBody({ playbook, facts, progress, onMarkDone, aside }: {
+/** The steps and the outcome for the facts at hand; they fill the layout's `steps` and `done` areas. */
+function PlaybookBody({ playbook, facts, progress, onMarkDone }: {
     playbook: Playbook;
     facts: PlaybookFacts;
     progress?: PlaybookProgress;
     onMarkDone: (step: string) => void;
-    aside?: React.ReactNode;
 }) {
-    const done = <PlaybookDone playbook={playbook} facts={facts} progress={progress} />
     return (
-        <Flex wrap="wrap" gap="24px" align="flex-start">
-            <Box flex="999 1 640px" minW={0}>
+        <>
+            <Box gridArea="steps" minW={0}>
                 <Steps playbook={playbook} facts={facts} progress={progress} onMarkDone={onMarkDone} />
             </Box>
-            {(aside || facts.denom) && (
-                <VStack as="aside" flex="1 1 320px" maxW={{ base: 'none', lg: '380px' }} align="stretch" gap="16px">
-                    {aside}
-                    {done}
-                </VStack>
-            )}
-        </Flex>
+            <PlaybookDone playbook={playbook} facts={facts} progress={progress} />
+        </>
     )
 }
 
 /** Steps with the chosen token's chain state; mounted only once there is a token. */
-function DetectedSteps(props: { playbook: Playbook; denom: string; progress?: PlaybookProgress; onMarkDone: (step: string) => void; aside?: React.ReactNode }) {
+function DetectedSteps(props: { playbook: Playbook; denom: string; progress?: PlaybookProgress; onMarkDone: (step: string) => void }) {
     const { isLoading, ...facts } = usePlaybookFacts(props.playbook, props.denom)
     if (isLoading) {
         return (
-            <Flex wrap="wrap" gap="24px" align="flex-start">
-                <Box flex="999 1 640px" minW={0}>
-                    <Shimmer h="256px" borderRadius="16px" data-testid="playbook-loading" />
-                </Box>
-                {props.aside && <VStack as="aside" flex="1 1 320px" maxW={{ base: 'none', lg: '380px' }} align="stretch">{props.aside}</VStack>}
-            </Flex>
+            <Box gridArea="steps" minW={0}>
+                <Shimmer h="256px" borderRadius="16px" data-testid="playbook-loading" />
+            </Box>
         )
     }
     return <PlaybookBody {...props} facts={facts} />
+}
+
+/**
+ * The steps beside the token choice and the outcome; on narrow screens the choice comes first.
+ * The choice sits outside the steps' subtree, so picking a token never remounts it.
+ */
+function PlaybookLayout({ side, children }: { side?: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <Grid
+            gap="24px"
+            alignItems="start"
+            templateColumns={side ? { base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 380px' } : 'minmax(0, 1fr)'}
+            templateRows={side ? { lg: 'auto 1fr' } : undefined}
+            templateAreas={side
+                ? { base: '"side" "steps" "done"', lg: '"steps side" "steps done"' }
+                : '"steps" "done"'}
+        >
+            {side && <Box as="aside" gridArea="side" minW={0}>{side}</Box>}
+            {children}
+        </Grid>
+    )
 }
 
 function PlaybookContent({ playbook }: { playbook: Playbook }) {
@@ -289,11 +300,13 @@ function PlaybookContent({ playbook }: { playbook: Playbook }) {
                 )}
             />
             <PageContainer as="main" pt="32px" pb="64px">
-                {denom ? (
-                    <DetectedSteps playbook={playbook} denom={denom} progress={progress} onMarkDone={onMarkDone} aside={choice} />
-                ) : (
-                    <PlaybookBody playbook={playbook} facts={NO_FACTS} progress={progress} onMarkDone={onMarkDone} aside={choice} />
-                )}
+                <PlaybookLayout side={choice}>
+                    {denom ? (
+                        <DetectedSteps playbook={playbook} denom={denom} progress={progress} onMarkDone={onMarkDone} />
+                    ) : (
+                        <PlaybookBody playbook={playbook} facts={NO_FACTS} progress={progress} onMarkDone={onMarkDone} />
+                    )}
+                </PlaybookLayout>
             </PageContainer>
         </>
     )

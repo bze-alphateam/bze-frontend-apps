@@ -171,7 +171,6 @@ function LockDialogContent({ open, onClose, onLocked, ...data }: LockDialogData 
         <FactoryDialog
             open={open}
             onClose={onClose}
-            lazy
             width="640px"
             titleSize="lg"
             closeLabel="Close dialog"

@@ -20,8 +20,6 @@ interface FactoryDialogProps {
     titleSize?: 'md' | 'lg';
     closeLabel?: string;
     finalFocusEl?: () => HTMLElement | null;
-    /** Mount the body only while open, so its state starts fresh every time. */
-    lazy?: boolean;
 }
 
 /**
@@ -40,8 +38,8 @@ export function FactoryDialog({
     titleSize = 'md',
     closeLabel = 'Close',
     finalFocusEl,
-    lazy = false,
 }: FactoryDialogProps) {
+    // Nothing renders while closed, and the body starts fresh on every open.
     return (
         <Dialog.Root
             open={open}
@@ -49,8 +47,8 @@ export function FactoryDialog({
             placement="center"
             scrollBehavior="inside"
             finalFocusEl={finalFocusEl}
-            lazyMount={lazy}
-            unmountOnExit={lazy}
+            lazyMount
+            unmountOnExit
         >
             <Portal>
                 <Dialog.Backdrop />
