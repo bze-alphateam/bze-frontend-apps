@@ -197,6 +197,8 @@ export interface CrossChainTxRecord {
   explorerLink?: string;
   /** Last raw status response from Skip — used to render hop details in the tx modal. */
   lastStatus?: SkipTxStatusResponse;
+  /** Date.now() when the tx reached a final state (completed, failed, abandoned). */
+  finishedAt?: number;
 }
 
 // ─── Skip Chain & Asset Types (from API responses) ───
