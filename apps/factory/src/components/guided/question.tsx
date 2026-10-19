@@ -22,18 +22,21 @@ const DISC = { flex: 'none', boxSize: '28px', borderRadius: 'full', display: 'in
 /**
  * One numbered question of a guided form: active (the featured card with the gradient edge and
  * number disc, inputs inside), done (the answer as a sentence + Change) or todo (a quiet row).
+ * Every state renders the same <Box as="section">, so React keeps the section's DOM node (and
+ * anything holding it) when a question opens or closes.
  */
 export function Question({ number, title, state, summary, onChange, children }: QuestionProps) {
     const titleId = useId()
 
     if (state === 'done') {
         return (
-            <Flex
+            <Box
                 as="section"
                 aria-labelledby={titleId}
                 data-state="done"
-                align="center"
-                justify="space-between"
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
                 gap="12px"
                 px={{ base: '14px', md: '18px' }}
                 py="12px"
@@ -78,17 +81,18 @@ export function Question({ number, title, state, summary, onChange, children }: 
                         Change
                     </chakra.button>
                 )}
-            </Flex>
+            </Box>
         )
     }
 
     if (state === 'todo') {
         return (
-            <Flex
+            <Box
                 as="section"
                 aria-labelledby={titleId}
                 data-state="todo"
-                align="center"
+                display="flex"
+                alignItems="center"
                 gap="12px"
                 px={{ base: '14px', md: '18px' }}
                 py="14px"
@@ -101,7 +105,7 @@ export function Question({ number, title, state, summary, onChange, children }: 
                     {number}
                 </chakra.span>
                 <chakra.span id={titleId} fontSize="15px" fontWeight="600" color="fg.muted">{title}</chakra.span>
-            </Flex>
+            </Box>
         )
     }
 
