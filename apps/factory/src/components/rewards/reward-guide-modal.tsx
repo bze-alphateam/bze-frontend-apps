@@ -1,8 +1,9 @@
 "use client"
 
 import React from 'react'
-import { Badge, Box, Button, CloseButton, Dialog, Grid, Portal, Text, VStack } from '@chakra-ui/react'
-import { useAsset } from '@bze/bze-ui-kit'
+import { Badge, Box, Button, chakra, Grid, Text, VStack } from '@chakra-ui/react'
+import { hgVariant, useAsset } from '@bze/bze-ui-kit'
+import { FactoryDialog } from '@/components/ui/factory-dialog'
 import { useNavigation } from '@/hooks/useNavigation'
 import { denomRewardHref } from '@/lib/denom-reward'
 import { VOCABULARY } from '@/lib/vocabulary'
@@ -81,19 +82,19 @@ function ComparisonTable() {
     return (
         <>
             {/* From md up: one table, a column per reward kind */}
-            <Box display={{ base: 'none', md: 'block' }} borderWidth="1px" borderRadius="lg" overflow="hidden">
-                <Grid templateColumns="minmax(0, 0.8fr) repeat(3, minmax(0, 1fr))" fontSize="sm" role="table" aria-label="Rewards compared">
+            <Box display={{ base: 'none', md: 'block' }} borderWidth="1px" borderColor="hg.divider" borderRadius="14px" overflow="hidden">
+                <Grid templateColumns="minmax(0, 0.8fr) repeat(3, minmax(0, 1fr))" fontSize="13px" role="table" aria-label="Rewards compared">
                     <Box role="row" display="contents">
-                        <Box role="columnheader" p={3} bg="bg.muted" />
+                        <Box role="columnheader" p="12px" bg="hg.cardHeader" />
                         {KINDS.map(kind => (
-                            <Box key={kind} role="columnheader" p={3} bg="bg.muted" fontWeight="semibold">{KIND_NAMES[kind]}</Box>
+                            <Box key={kind} role="columnheader" p="12px" bg="hg.cardHeader" fontWeight="700">{KIND_NAMES[kind]}</Box>
                         ))}
                     </Box>
                     {COMPARISON.map(row => (
                         <Box key={row.label} role="row" display="contents">
-                            <Box role="rowheader" p={3} borderTopWidth="1px" color="fg.muted">{row.label}</Box>
+                            <Box role="rowheader" px="12px" py="11px" borderTopWidth="1px" borderColor="hg.divider" color="hg.text.muted">{row.label}</Box>
                             {KINDS.map(kind => (
-                                <Box key={kind} role="cell" p={3} borderTopWidth="1px">{row.values[kind]}</Box>
+                                <Box key={kind} role="cell" px="12px" py="11px" borderTopWidth="1px" borderColor="hg.divider">{row.values[kind]}</Box>
                             ))}
                         </Box>
                     ))}
@@ -101,14 +102,14 @@ function ComparisonTable() {
             </Box>
 
             {/* Phones: one card per reward kind */}
-            <VStack display={{ base: 'flex', md: 'none' }} align="stretch" gap={3} data-testid="reward-comparison-stacked">
+            <VStack display={{ base: 'flex', md: 'none' }} align="stretch" gap="12px" data-testid="reward-comparison-stacked">
                 {KINDS.map(kind => (
-                    <Box key={kind} borderWidth="1px" borderRadius="lg" p={3}>
-                        <Text fontWeight="semibold" mb={2}>{KIND_NAMES[kind]}</Text>
-                        <VStack align="stretch" gap={1.5} fontSize="sm">
+                    <Box key={kind} borderWidth="1px" borderColor="hg.divider" borderRadius="14px" bg="hg.inset" p="14px">
+                        <Text fontWeight="700" mb="8px">{KIND_NAMES[kind]}</Text>
+                        <VStack align="stretch" gap="6px" fontSize="13px">
                             {COMPARISON.map(row => (
                                 <Box key={row.label}>
-                                    <Text as="span" color="fg.muted">{row.label}: </Text>
+                                    <Text as="span" color="hg.text.muted">{row.label}: </Text>
                                     <Text as="span">{row.values[kind]}</Text>
                                 </Box>
                             ))}
@@ -144,72 +145,67 @@ export function RewardGuideModal({ open, onClose, onPick, denom, finalFocusEl }:
     }
 
     return (
-        <Dialog.Root
+        <FactoryDialog
             open={open}
-            onOpenChange={(e) => !e.open && onClose()}
-            size="xl"
-            scrollBehavior="inside"
+            onClose={onClose}
+            title="Which reward fits?"
+            description="Three ways to reward people. Pick the sentence that sounds like you."
+            width="900px"
+            titleSize="lg"
+            closeLabel="Close dialog"
             finalFocusEl={finalFocusEl}
+            footer={(
+                <>
+                    <Text fontSize="14px" color="hg.text.muted" flex="1" minW="200px">
+                        Not sure? Start with holder rewards. You can add a campaign or an airdrop later.
+                    </Text>
+                    <Box display="flex" gap="10px" flexWrap="wrap">
+                        <Button variant={hgVariant('secondary')} size="lg" onClick={onClose}>Close</Button>
+                        <Button variant={hgVariant('primary')} size="lg" onClick={goPrimary}>{primary.label}</Button>
+                    </Box>
+                </>
+            )}
         >
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW={{ base: 'calc(100vw - 32px)', md: '900px' }} borderRadius="2xl">
-                        <Dialog.Header flexDirection="column" alignItems="start" gap={1}>
-                            <Dialog.Title fontSize="xl" fontWeight="bold">Which reward fits?</Dialog.Title>
-                            <Dialog.Description color="fg.muted" fontSize="sm">
-                                Three ways to reward people. Pick the sentence that sounds like you.
-                            </Dialog.Description>
-                            <Dialog.CloseTrigger asChild>
-                                <CloseButton size="sm" aria-label="Close dialog" />
-                            </Dialog.CloseTrigger>
-                        </Dialog.Header>
-
-                        <Dialog.Body>
-                            <VStack align="stretch" gap={5}>
-                                <Grid templateColumns={{ base: '1fr', md: 'repeat(3, minmax(0, 1fr))' }} gap={3}>
-                                    {CARDS.map(card => (
-                                        <Box
-                                            key={card.kind}
-                                            as="button"
-                                            onClick={() => pick(card.kind)}
-                                            textAlign="left"
-                                            p={4}
-                                            borderWidth="1px"
-                                            borderRadius="xl"
-                                            borderColor={card.kind === 'holder' ? 'yellow.500/50' : 'border'}
-                                            bg={card.kind === 'holder' ? 'yellow.500/8' : 'transparent'}
-                                            _hover={{ borderColor: 'yellow.500/70' }}
-                                            data-testid={`reward-guide-${card.kind}`}
-                                        >
-                                            <VStack align="start" gap={2}>
-                                                <Badge colorPalette={card.kind === 'holder' ? 'yellow' : 'gray'} variant="surface" size="sm">
-                                                    {card.badge}
-                                                </Badge>
-                                                <Text fontWeight="semibold">&ldquo;{card.quote}&rdquo;</Text>
-                                                <Text fontSize="sm" color="fg.muted">{card.text}</Text>
-                                                <Text fontSize="sm" fontWeight="semibold" color="yellow.600">→ {KIND_NAMES[card.kind]}</Text>
-                                            </VStack>
-                                        </Box>
-                                    ))}
-                                </Grid>
-
-                                <ComparisonTable />
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.Footer flexWrap="wrap" justifyContent="space-between" gap={3}>
-                            <Text fontSize="sm" color="fg.muted" flex="1" minW="200px">
-                                Not sure? Start with holder rewards. You can add a campaign or an airdrop later.
-                            </Text>
-                            <Box display="flex" gap={2}>
-                                <Button variant="outline" onClick={onClose}>Close</Button>
-                                <Button colorPalette="yellow" onClick={goPrimary}>{primary.label}</Button>
+            <VStack align="stretch" gap="20px">
+                <Grid templateColumns={{ base: '1fr', md: 'repeat(3, minmax(0, 1fr))' }} gap="12px">
+                    {CARDS.map(card => {
+                        const lead = card.kind === 'holder'
+                        return (
+                            <Box
+                                key={card.kind}
+                                as="button"
+                                onClick={() => pick(card.kind)}
+                                textAlign="start"
+                                p="16px"
+                                borderWidth="1px"
+                                borderRadius="16px"
+                                borderColor={lead ? 'app.border' : 'hg.hairline'}
+                                bg={lead ? 'app.subtle' : 'transparent'}
+                                cursor="pointer"
+                                transition="border-color 0.15s"
+                                _hover={{ borderColor: 'app.focusRing' }}
+                                focusVisibleRing="outside"
+                                data-testid={`reward-guide-${card.kind}`}
+                            >
+                                <VStack align="start" gap="10px">
+                                    {lead ? (
+                                        <chakra.span fontSize="11px" fontWeight="700" px="8px" py="3px" borderRadius="hg.pill" bgImage="app" color="hg.buttonText">
+                                            {card.badge}
+                                        </chakra.span>
+                                    ) : (
+                                        <Badge variant={hgVariant('neutral')} size="sm" borderRadius="hg.pill">{card.badge}</Badge>
+                                    )}
+                                    <Text fontSize="15px" fontWeight="700" lineHeight="1.4">&ldquo;{card.quote}&rdquo;</Text>
+                                    <Text fontSize="13px" lineHeight="1.5" color="hg.text.muted">{card.text}</Text>
+                                    <Text fontSize="14px" fontWeight="700" color="hg.link">→ {KIND_NAMES[card.kind]}</Text>
+                                </VStack>
                             </Box>
-                        </Dialog.Footer>
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+                        )
+                    })}
+                </Grid>
+
+                <ComparisonTable />
+            </VStack>
+        </FactoryDialog>
     )
 }

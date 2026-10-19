@@ -1,17 +1,21 @@
 "use client"
 
 import React, { useMemo } from 'react'
-import { Badge, Box, Button, Card, HStack, IconButton, Skeleton, Stack, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, chakra, HStack, IconButton, Stack, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuChartCandlestick, LuCopy, LuDroplets, LuPlus, LuSprout } from 'react-icons/lu'
 import {
     HaltedNotice,
+    HgCard,
+    IconTile,
     Market,
+    Shimmer,
     TokenLogo,
     createMarketId,
     getChainName,
     AppLink,
     getDexApp,
+    hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -22,6 +26,7 @@ import {
 import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { useChain } from '@interchain-kit/react'
 import { withReturn, type ReturnTo } from '@/components/guided/return-to'
+import { softButton } from '@/components/ui/soft-button'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
 import type { WorkspaceTabProps } from './types'
@@ -39,7 +44,11 @@ function PairLogos({ base, quote }: { base?: { logo: string; ticker: string }; q
 }
 
 function CreatedBadge() {
-    return <Badge size="sm" colorPalette="yellow" variant="surface">You created it</Badge>
+    return (
+        <chakra.span fontSize="11px" fontWeight="600" px="8px" py="3px" borderRadius="hg.pill" color="hg.link" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+            You created it
+        </chakra.span>
+    )
 }
 
 interface RowProps {
@@ -66,45 +75,43 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
     }
 
     return (
-        <Card.Root variant="outline" p="4" data-testid={`trading-pool-${pool.id}`}>
-            <Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'stretch', md: 'center' }} gap={4}>
-                <HStack gap="3" minW="0" align="start">
+        <HgCard as="article" px="20px" py="18px" data-testid={`trading-pool-${pool.id}`}>
+            <Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'stretch', md: 'center' }} gap="16px">
+                <HStack gap="14px" minW="0" align="start">
                     <PairLogos base={baseAsset} quote={quoteAsset} />
-                    <VStack align="start" gap="0.5" minW="0">
-                        <HStack gap="2" flexWrap="wrap">
-                            <Text fontWeight="semibold">{`${baseTicker}/${quoteTicker}`}</Text>
-                            <Text fontSize="sm" color="fg.muted">{`${feeLabel} swap fee`}</Text>
+                    <VStack align="start" gap="4px" minW="0">
+                        <HStack gap="8px" flexWrap="wrap">
+                            <Text as="strong" fontSize="16px" fontWeight="700">{`${baseTicker}/${quoteTicker}`}</Text>
+                            <Text fontSize="13px" color="fg.muted">{`${feeLabel} swap fee`}</Text>
                             {address && pool.creator === address && <CreatedBadge />}
                         </HStack>
-                        <Text fontSize="xs" color="fg.muted" data-testid="pool-reserves">
+                        <Text fontSize="13px" color="fg.muted" data-testid="pool-reserves">
                             {`${prettyAmount(uAmountToBigNumberAmount(pool.reserve_base, baseAsset?.decimals ?? 0))} ${baseTicker} + ${prettyAmount(uAmountToBigNumberAmount(pool.reserve_quote, quoteAsset?.decimals ?? 0))} ${quoteTicker}`}
                         </Text>
-                        <HStack gap="1" minW="0" maxW="full">
-                            <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate maxW={{ base: '48', md: 'sm' }}>
+                        <HStack gap="6px" minW="0" maxW="full">
+                            <Text fontSize="12px" color="hg.text.faint" fontFamily="mono" truncate maxW={{ base: '48', md: 'sm' }}>
                                 {pool.lp_denom}
                             </Text>
-                            <IconButton aria-label="Copy LP denom" size="2xs" variant="ghost" colorPalette="yellow" onClick={copyLpDenom}>
+                            <IconButton aria-label="Copy LP denom" size="2xs" variant="ghost" color="hg.link" onClick={copyLpDenom}>
                                 <LuCopy />
                             </IconButton>
                         </HStack>
                     </VStack>
                 </HStack>
 
-                <HStack gap={2} flexWrap="wrap" flexShrink={0}>
+                <HStack gap="8px" flexWrap="wrap" flexShrink={0} css={{ '& button svg': { color: 'var(--chakra-colors-hg-link)' } }}>
                     {!pairHalted && (
                         <Button
-                            size="sm"
-                            variant="outline"
-                            colorPalette="yellow"
+                            {...softButton}
+                            fontSize="13px"
                             onClick={() => goTo(withReturn(`/pool/add?pool=${encodeURIComponent(pool.id)}`, back))}
                         >
                             <LuPlus /> Add liquidity
                         </Button>
                     )}
                     <Button
-                        size="sm"
-                        variant="outline"
-                        colorPalette="yellow"
+                        {...softButton}
+                        fontSize="13px"
                         onClick={() => goTo(withReturn(`/reward/new?staking=${encodeURIComponent(pool.lp_denom)}`, back))}
                     >
                         <LuSprout /> Reward liquidity providers
@@ -112,7 +119,7 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
                     <AppLink app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`}>DEX</AppLink>
                 </HStack>
             </Stack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
@@ -122,16 +129,16 @@ function MarketCard({ market, address }: Pick<RowProps, 'address'> & { market: M
     const marketId = createMarketId(market.base, market.quote)
 
     return (
-        <Card.Root variant="outline" p="4" data-testid={`trading-market-${marketId}`}>
-            <Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'stretch', md: 'center' }} gap={4}>
-                <HStack gap="3" minW="0">
+        <HgCard as="article" px="20px" py="18px" data-testid={`trading-market-${marketId}`}>
+            <Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'stretch', md: 'center' }} gap="16px">
+                <HStack gap="14px" minW="0">
                     <PairLogos base={baseAsset} quote={quoteAsset} />
-                    <VStack align="start" gap="0.5" minW="0">
-                        <HStack gap="2" flexWrap="wrap">
-                            <Text fontWeight="semibold">{`${baseAsset?.ticker ?? market.base}/${quoteAsset?.ticker ?? market.quote}`}</Text>
+                    <VStack align="start" gap="4px" minW="0">
+                        <HStack gap="8px" flexWrap="wrap">
+                            <Text as="strong" fontSize="16px" fontWeight="700">{`${baseAsset?.ticker ?? market.base}/${quoteAsset?.ticker ?? market.quote}`}</Text>
                             {address && market.creator === address && <CreatedBadge />}
                         </HStack>
-                        <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate maxW={{ base: '56', md: 'md' }}>
+                        <Text fontSize="12px" color="hg.text.faint" fontFamily="mono" truncate maxW={{ base: '56', md: 'md' }}>
                             {marketId}
                         </Text>
                     </VStack>
@@ -140,23 +147,23 @@ function MarketCard({ market, address }: Pick<RowProps, 'address'> & { market: M
                     <AppLink app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`}>DEX</AppLink>
                 </Box>
             </Stack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
 function RowSkeletons() {
     return (
-        <VStack align="stretch" gap={3} data-testid="trading-skeleton">
+        <VStack align="stretch" gap="12px" data-testid="trading-skeleton">
             {[0, 1].map(i => (
-                <Card.Root key={i} variant="outline" p="4">
-                    <HStack gap="3">
-                        <Skeleton borderRadius="full" boxSize="10" />
-                        <VStack align="start" gap="2" flex="1">
-                            <Skeleton height="4" width="32" />
-                            <Skeleton height="3" width="48" />
+                <HgCard key={i} px="20px" py="18px" aria-hidden>
+                    <HStack gap="14px">
+                        <Shimmer borderRadius="full" boxSize="40px" flex="none" />
+                        <VStack align="stretch" gap="8px" flex="1">
+                            <Shimmer h="16px" w="128px" />
+                            <Shimmer h="12px" w="192px" />
                         </VStack>
                     </HStack>
-                </Card.Root>
+                </HgCard>
             ))}
         </VStack>
     )
@@ -164,13 +171,13 @@ function RowSkeletons() {
 
 function EmptyCard({ icon, text, children }: { icon: React.ReactNode; text: string; children?: React.ReactNode }) {
     return (
-        <Card.Root variant="outline" p="6">
-            <VStack gap={3}>
-                <Box p={3} borderRadius="lg" bg="yellow.500/15" color="yellow.600">{icon}</Box>
-                <Text fontSize="sm" color="fg.muted" textAlign="center">{text}</Text>
+        <HgCard p="28px">
+            <VStack gap="12px">
+                <IconTile icon={icon} size={48} />
+                <Text fontSize="14px" color="fg.muted" textAlign="center">{text}</Text>
                 {children}
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
@@ -194,21 +201,21 @@ export function TradingTab({ asset, goTo }: WorkspaceTabProps) {
     const markets = useMemo(() => allMarkets.filter(m => m.base === denom || m.quote === denom), [allMarkets, denom])
 
     return (
-        <VStack align="stretch" gap={8}>
+        <VStack align="stretch" gap="36px">
             {isHalted && (
                 <HaltedNotice tickers={[ticker]}>
                     New pools, markets and liquidity are refused. Existing positions can still be removed on the DEX.
                 </HaltedNotice>
             )}
 
-            <VStack as="section" aria-label="Pools" align="stretch" gap={3}>
-                <HStack justify="space-between" gap={3} flexWrap="wrap">
-                    <VStack align="start" gap={0.5}>
-                        <Text fontWeight="semibold" fontSize="lg">Pools</Text>
-                        <Text fontSize="sm" color="fg.muted">{`${VOCABULARY.pool.name}s let people swap ${ticker}.`}</Text>
+            <VStack as="section" aria-label="Pools" align="stretch" gap="14px">
+                <HStack justify="space-between" align="flex-end" gap="12px" flexWrap="wrap">
+                    <VStack align="start" gap="3px">
+                        <Text as="h2" fontWeight="700" fontSize="20px">Pools</Text>
+                        <Text fontSize="14px" color="fg.muted">{`${VOCABULARY.pool.name}s let people swap ${ticker}.`}</Text>
                     </VStack>
                     {!isHalted && !isPoolsLoading && pools.length > 0 && (
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => goTo(newPoolHref)}>
+                        <Button {...softButton} onClick={() => goTo(newPoolHref)}>
                             <LuPlus /> Create another pool
                         </Button>
                     )}
@@ -218,13 +225,13 @@ export function TradingTab({ asset, goTo }: WorkspaceTabProps) {
                 ) : pools.length === 0 ? (
                     <EmptyCard icon={<LuDroplets size={24} />} text={`Nobody can buy ${ticker} yet.`}>
                         {!isHalted && (
-                            <Button colorPalette="yellow" onClick={() => goTo(newPoolHref)}>
+                            <Button variant={hgVariant('primary')} size="lg" onClick={() => goTo(newPoolHref)}>
                                 <LuDroplets /> {`Create a ${ticker} pool`}
                             </Button>
                         )}
                     </EmptyCard>
                 ) : (
-                    <VStack align="stretch" gap={3}>
+                    <VStack align="stretch" gap="12px">
                         {pools.map(pool => (
                             <PoolCard key={pool.id} pool={pool} address={address} back={back} isHalted={isHalted} goTo={goTo} />
                         ))}
@@ -232,23 +239,23 @@ export function TradingTab({ asset, goTo }: WorkspaceTabProps) {
                 )}
             </VStack>
 
-            <VStack as="section" aria-label="Order-book markets" align="stretch" gap={3}>
-                <VStack align="start" gap={0.5}>
-                    <Text fontWeight="semibold" fontSize="lg">Order-book markets</Text>
-                    <Text fontSize="sm" color="fg.muted">{`Traders place limit orders on ${ticker} here.`}</Text>
+            <VStack as="section" aria-label="Order-book markets" align="stretch" gap="14px">
+                <VStack align="start" gap="3px">
+                    <Text as="h2" fontWeight="700" fontSize="20px">Order-book markets</Text>
+                    <Text fontSize="14px" color="fg.muted">{`Traders place limit orders on ${ticker} here.`}</Text>
                 </VStack>
                 {isMarketsLoading ? (
                     <RowSkeletons />
                 ) : markets.length === 0 ? (
                     <EmptyCard icon={<LuChartCandlestick size={24} />} text="No order book yet. Optional: traders can place limit orders on one.">
                         {!isHalted && (
-                            <Button colorPalette="yellow" variant="outline" onClick={() => goTo(newMarketHref)}>
+                            <Button {...softButton} onClick={() => goTo(newMarketHref)}>
                                 <LuChartCandlestick /> Create a market
                             </Button>
                         )}
                     </EmptyCard>
                 ) : (
-                    <VStack align="stretch" gap={3}>
+                    <VStack align="stretch" gap="12px">
                         {markets.map(market => (
                             <MarketCard key={createMarketId(market.base, market.quote)} market={market} address={address} />
                         ))}

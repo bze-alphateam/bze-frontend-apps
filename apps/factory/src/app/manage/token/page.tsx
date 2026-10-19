@@ -1,13 +1,14 @@
 "use client"
 
 import React, { Suspense } from 'react'
-import { Box, Button, Card, Container, Skeleton, Tabs, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Tabs, VStack } from '@chakra-ui/react'
 import { LuArrowLeft, LuSearchX } from 'react-icons/lu'
-import { getChainName, uAmountToBigNumberAmount, useBalance } from '@bze/bze-ui-kit'
+import { HgCard, PageContainer, PageState, Shimmer, getChainName, hgVariant, uAmountToBigNumberAmount, useBalance } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useMyTokens } from '@/hooks/useMyTokens'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { useTokenSupply } from '@/hooks/useTokenSupply'
+import { BandTab, BandTabList } from '@/components/ui/band-tabs'
 import { WorkspaceHeader } from '@/components/workspace/workspace-header'
 import { OverviewTab } from '@/components/workspace/overview-tab'
 import { SupplyTab } from '@/components/workspace/supply-tab'
@@ -46,34 +47,39 @@ function TokenWorkspaceContent() {
 
     if (isLoading) {
         return (
-            <VStack align="stretch" gap={4}>
-                <Skeleton height="10" width="64" />
-                <Skeleton height="24" />
-                <Skeleton height="48" />
-            </VStack>
+            <PageContainer pt="28px">
+                <VStack align="stretch" gap="16px" aria-busy="true">
+                    <Shimmer h="40px" w="256px" />
+                    <Shimmer h="96px" borderRadius="16px" />
+                    <Shimmer h="192px" borderRadius="16px" />
+                </VStack>
+            </PageContainer>
         )
     }
 
     if (!token) {
         return (
-            <Card.Root variant="outline" p="10">
-                <VStack gap={4}>
-                    <Box p={3} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                        <LuSearchX size={28} />
-                    </Box>
-                    <VStack gap={1}>
-                        <Text fontWeight="semibold">Token not found</Text>
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                            This token doesn&apos;t belong to your connected address — only the creator
-                            can manage a token here. Check the wallet you&apos;re connected with.
-                        </Text>
-                    </VStack>
-                    <Button colorPalette="yellow" variant="outline" onClick={() => navigate('/manage')}>
-                        <LuArrowLeft />
-                        Back to Your tokens
-                    </Button>
-                </VStack>
-            </Card.Root>
+            <PageContainer pt="32px" pb="64px">
+                <HgCard p="16px">
+                    <PageState
+                        kind="not-found"
+                        icon={<LuSearchX />}
+                        title="Token not found"
+                        description={(
+                            <>
+                                This token doesn&apos;t belong to your connected address — only the creator
+                                can manage a token here. Check the wallet you&apos;re connected with.
+                            </>
+                        )}
+                        action={(
+                            <Button variant={hgVariant('secondary')} size="lg" onClick={() => navigate('/manage')}>
+                                <LuArrowLeft />
+                                Back to Your tokens
+                            </Button>
+                        )}
+                    />
+                </HgCard>
+            </PageContainer>
         )
     }
 
@@ -96,43 +102,43 @@ function TokenWorkspaceContent() {
     }
 
     return (
-        <VStack align="stretch" gap={6}>
-            <WorkspaceHeader asset={asset} admin={token.admin} adminState={state} onBack={() => navigate('/manage')} />
+        // Each tab mounts when opened, so it reads the chain fresh every time.
+        <Tabs.Root
+            value={tab}
+            onValueChange={(e) => replace(workspaceHref(denom, parseWorkspaceTab(e.value)))}
+            lazyMount={true}
+            unmountOnExit={true}
+            variant="plain"
+        >
+            <WorkspaceHeader
+                asset={asset}
+                admin={token.admin}
+                adminState={state}
+                onBack={() => navigate('/manage')}
+                tabs={(
+                    <BandTabList label="Workspace">
+                        {TABS.map(t => <BandTab key={t.value} value={t.value}>{t.label}</BandTab>)}
+                    </BandTabList>
+                )}
+            />
 
-            {/* Each tab mounts when opened, so it reads the chain fresh every time. */}
-            <Tabs.Root
-                value={tab}
-                onValueChange={(e) => replace(workspaceHref(denom, parseWorkspaceTab(e.value)))}
-                lazyMount={true}
-                unmountOnExit={true}
-                colorPalette="yellow"
-                variant="line"
-            >
-                <Tabs.List overflowX="auto" flexWrap="nowrap" maxW="full" css={{ scrollbarWidth: 'none' }}>
-                    {TABS.map(t => (
-                        <Tabs.Trigger key={t.value} value={t.value} flexShrink={0}>
-                            {t.label}
-                        </Tabs.Trigger>
-                    ))}
-                </Tabs.List>
+            <PageContainer as="main" pt="28px" pb="64px">
                 {TABS.map(({ value, Content }) => (
-                    <Tabs.Content key={value} value={value} pt={6}>
+                    <Tabs.Content key={value} value={value} p="0">
                         <Content {...tabProps} />
                     </Tabs.Content>
                 ))}
-            </Tabs.Root>
-        </VStack>
+            </PageContainer>
+        </Tabs.Root>
     )
 }
 
 export default function ManageTokenPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="4xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="64" />}>
-                    <TokenWorkspaceContent />
-                </Suspense>
-            </Container>
+        <Box minH="100vh">
+            <Suspense fallback={<PageContainer pt="28px"><Shimmer h="256px" borderRadius="16px" /></PageContainer>}>
+                <TokenWorkspaceContent />
+            </Suspense>
         </Box>
     )
 }

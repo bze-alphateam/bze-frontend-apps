@@ -62,10 +62,10 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe("Home: What do you want to do?", { timeout: 20_000 }, () => {
+describe("Home: What do you want to build?", { timeout: 20_000 }, () => {
     it("renders every catalogue goal in its group with tech tag and fee", () => {
         renderPage();
-        expect(screen.getByRole("heading", { name: "What do you want to do?" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("What do you want to build?");
 
         for (const group of GOAL_GROUPS) {
             const section = screen.getByRole("region", { name: group.title });

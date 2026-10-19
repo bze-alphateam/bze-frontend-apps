@@ -1,7 +1,8 @@
 "use client"
 
 import React from 'react'
-import { HStack, Skeleton, Text } from '@chakra-ui/react'
+import { HStack, Text } from '@chakra-ui/react'
+import { Shimmer } from '@bze/bze-ui-kit'
 import { useTokenSetup } from '@/hooks/useTokenSetup'
 import { setupHint } from '@/lib/token-setup'
 
@@ -20,7 +21,7 @@ interface SetupProgressProps {
 export function SetupProgress({ denom, admin, compact = false }: SetupProgressProps) {
     const setup = useTokenSetup(denom, { admin })
 
-    if (setup.isLoading) return <Skeleton height="4" width="28" data-testid="setup-progress-loading" />
+    if (setup.isLoading) return <Shimmer h="16px" w="112px" data-testid="setup-progress-loading" />
 
     const hint = setupHint(setup)
     const count = compact ? `${setup.doneCount}/${setup.totalCount} set up` : `${setup.doneCount} of ${setup.totalCount} set up`
@@ -36,7 +37,7 @@ export function SetupProgress({ denom, admin, compact = false }: SetupProgressPr
     return (
         <HStack gap={1.5} fontSize="sm" flexWrap="wrap" data-testid="setup-progress">
             <Text fontWeight="medium">{count}</Text>
-            {hint && <Text color="orange.fg">{`· ${hint}`}</Text>}
+            {hint && <Text color="hg.warning">{`· ${hint}`}</Text>}
         </HStack>
     )
 }

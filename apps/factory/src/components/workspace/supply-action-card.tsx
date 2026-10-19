@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useMemo, useState } from 'react'
-import { Box, Button, Card, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuFlame, LuPlus } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
     Asset,
+    HgCard,
+    IconTile,
     getChainName,
+    hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
     useMaxSpendable,
@@ -87,25 +90,29 @@ export function SupplyActionCard({
     const label = isValid ? `${isMint ? 'Mint' : 'Burn'} ${new BigNumber(amount.trim()).toFormat()} ${ticker}` : `${isMint ? 'Mint' : 'Burn'} ${ticker}`
 
     return (
-        <Card.Root variant="outline" p="5" minW="0" data-testid={`supply-${mode}-card`}>
-            <VStack align="stretch" gap={4}>
-                <HStack gap={2}>
-                    <Box p={2} borderRadius="lg" bg={isMint ? 'yellow.500/15' : 'red.500/15'} color={isMint ? 'yellow.600' : 'red.500'}>
-                        {isMint ? <LuPlus size={18} /> : <LuFlame size={18} />}
-                    </Box>
-                    <Text fontWeight="semibold">{isMint ? `Mint more ${ticker}` : `Burn ${ticker}`}</Text>
+        <HgCard as="section" aria-label={isMint ? 'Mint more' : 'Burn'} p="22px" minW="0" data-testid={`supply-${mode}-card`}>
+            <VStack align="stretch" gap="16px">
+                <HStack gap="10px">
+                    <IconTile icon={isMint ? <LuPlus /> : <LuFlame />} size={36} />
+                    <Text as="h2" fontSize="17px" fontWeight="700">{isMint ? `Mint more ${ticker}` : `Burn ${ticker}`}</Text>
                 </HStack>
 
                 <Field.Root invalid={touched && amount.trim() !== '' && !isValid}>
-                    <HStack justify="space-between" w="full" gap={2} flexWrap="wrap">
-                        <Field.Label>{isMint ? 'How many?' : 'How many to burn?'}</Field.Label>
+                    <HStack justify="space-between" w="full" gap="8px" flexWrap="wrap">
+                        <Field.Label fontSize="14px" fontWeight="600">{isMint ? 'How many?' : 'How many to burn?'}</Field.Label>
                         {!isMint && (
-                            <HStack gap={1}>
-                                <Text fontSize="xs" color="fg.muted">{`of ${prettyAmount(balanceDisplay)} ${ticker}`}</Text>
+                            <HStack gap="6px">
+                                <Text fontSize="12px" color="fg.muted">{`of ${prettyAmount(balanceDisplay)} ${ticker}`}</Text>
                                 <Button
                                     size="2xs"
+                                    h="24px"
+                                    px="8px"
                                     variant="ghost"
-                                    colorPalette="red"
+                                    bg="hg.danger/12"
+                                    color="hg.danger.text"
+                                    fontSize="11px"
+                                    fontWeight="700"
+                                    _hover={{ bg: 'hg.danger/20' }}
                                     onClick={() => { setAmount(spendable.inputValue); setTouched(true) }}
                                     disabled={!spendable.amount.gt(0)}
                                 >
@@ -120,8 +127,11 @@ export function SupplyActionCard({
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         onBlur={() => setTouched(true)}
+                        h="48px"
+                        borderRadius="12px"
+                        fontSize="16px"
                     />
-                    <Field.HelperText data-testid={`supply-${mode}-sentence`}>{helper}</Field.HelperText>
+                    <Field.HelperText fontSize="13px" color="fg.muted" data-testid={`supply-${mode}-sentence`}>{helper}</Field.HelperText>
                     <Field.ErrorText>{error}</Field.ErrorText>
                 </Field.Root>
 
@@ -129,28 +139,28 @@ export function SupplyActionCard({
                     ? <WarningNote lead="Heads up:">Minting more lowers the share every holder owns.</WarningNote>
                     : <TipNote lead="Good to know:">You can only burn what you hold.</TipNote>}
 
-                <VStack align="stretch" gap={1}>
+                <VStack align="stretch" gap="6px">
                     <Button
-                        colorPalette={isMint ? 'yellow' : 'red'}
-                        variant={isMint ? 'solid' : 'outline'}
+                        variant={isMint ? hgVariant('primary') : hgVariant('danger')}
+                        size="lg"
                         onClick={submit}
                         disabled={!isValid}
                         loading={isSubmitting}
                         loadingText="Waiting for signature..."
                         whiteSpace="normal"
                         h="auto"
-                        minH="10"
-                        py={2}
+                        minH="48px"
+                        py="8px"
                     >
                         {label}
                     </Button>
-                    <Text fontSize="xs" color="fg.muted" textAlign="center" data-testid={`supply-${mode}-fee`}>
+                    <Text fontSize="12px" fontFamily="mono" color="hg.text.faint" textAlign="center" data-testid={`supply-${mode}-fee`}>
                         {gasFee.amount.gt(0)
                             ? `Network fee ≈ ${prettyAmount(gasFee.displayAmount)} ${gasFee.ticker}`
                             : 'Network fee only, no module fee'}
                     </Text>
                 </VStack>
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }

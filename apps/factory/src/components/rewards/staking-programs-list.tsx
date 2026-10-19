@@ -2,15 +2,13 @@
 
 import React, { useMemo, useState } from 'react'
 import {
-    Badge,
     Box,
     Button,
-    Card,
+    chakra,
     Field,
     HStack,
     Input,
     Separator,
-    Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
@@ -19,9 +17,13 @@ import { LuChevronDown, LuChevronRight, LuGift, LuPlus, LuRefreshCw, LuTrash2 } 
 import { bze } from '@bze/bzejs'
 import {
     AppLink,
+    HgCard,
+    IconTile,
+    Shimmer,
     TokenLogo,
     getChainName,
     getStakingApp,
+    hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -35,7 +37,9 @@ import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useNavigation } from '@/hooks/useNavigation'
 import { StakingRewardsState, useStakingRewards } from '@/hooks/useStakingRewards'
 import { ReturnTo, withReturn } from '@/components/guided/return-to'
+import { FilterChip } from '@/components/ui/filter-chip'
 import { InfoBox } from '@/components/ui/info-box'
+import { softButton } from '@/components/ui/soft-button'
 import { filterMyTokens } from '@/lib/my-tokens'
 import { ProgramStatus } from '@/lib/rewards-directory'
 import { programInvolves, splitStakingRewards, stakingRewardDeletion } from '@/lib/staking-rewards'
@@ -54,7 +58,7 @@ const STATUSES: { value: ProgramStatus; label: string }[] = [
 const formatDays = (days: number) => `${days.toLocaleString('en-US')} day${days === 1 ? '' : 's'}`
 
 function Fact({ children }: { children: React.ReactNode }) {
-    return <Text as="span" fontSize="sm" color="fg.muted">{children}</Text>
+    return <Text as="span" fontSize="12px" fontFamily="mono" color="fg.muted">{children}</Text>
 }
 
 // Extending is permissionless on-chain: anyone willing to escrow the extra
@@ -124,38 +128,40 @@ function ExtendPanel({
     const display = (amount: string | number | BigNumber) => prettyAmount(uAmountToBigNumberAmount(amount, prizeAsset.decimals))
 
     return (
-        <VStack align="stretch" gap={3} pt={3} data-testid="staking-program-extend-panel">
-            <Separator />
+        <VStack align="stretch" gap="10px" pt="4px" data-testid="staking-program-extend-panel">
+            <Separator borderColor="hg.divider" mb="4px" />
             <Field.Root invalid={extraDays !== '' && error !== ''}>
-                <Field.Label>How many more days?</Field.Label>
+                <Field.Label fontSize="14px" fontWeight="600">How many more days?</Field.Label>
                 <Input
                     placeholder="e.g. 30"
                     inputMode="numeric"
                     value={extraDays}
                     onChange={(e) => setExtraDays(e.target.value)}
-                    maxW="40"
+                    maxW="160px"
+                    h="42px"
+                    borderRadius="10px"
                 />
-                <Field.HelperText>
+                <Field.HelperText fontSize="12px" color="fg.muted">
                     Anyone can add days to a program, not only the one who started it. No fee.
                 </Field.HelperText>
                 <Field.ErrorText>{error}</Field.ErrorText>
             </Field.Root>
 
             {topUpUAmount && (
-                <Text fontSize="sm">
+                <Text fontSize="14px">
                     {`${display(topUpUAmount)} ${prizeAsset.ticker} leaves your wallet now — you have ${display(balance.amount)} ${prizeAsset.ticker}.`}
                 </Text>
             )}
             {topUpUAmount && address && !hasEnough && (
-                <Text fontSize="sm" color="fg.error">
+                <Text fontSize="14px" color="fg.error">
                     Not enough {prizeAsset.ticker} to escrow this extension.
                 </Text>
             )}
 
             <Box>
                 <Button
-                    size="sm"
-                    colorPalette="yellow"
+                    variant={hgVariant('primary')}
+                    size="md"
                     onClick={submit}
                     disabled={!canConfirm}
                     loading={isSubmitting}
@@ -196,15 +202,15 @@ function DeletePanel({
     }
 
     return (
-        <VStack align="stretch" gap={3} pt={3} data-testid="staking-reward-delete-panel">
-            <Separator />
-            <Text fontSize="sm">
+        <VStack align="stretch" gap="10px" pt="4px" data-testid="staking-reward-delete-panel">
+            <Separator borderColor="hg.divider" />
+            <Text fontSize="14px">
                 This removes the finished program from the chain. Nothing is paid out and nothing is lost.
             </Text>
             <Box>
                 <Button
-                    size="sm"
-                    colorPalette="red"
+                    variant={hgVariant('danger')}
+                    size="md"
                     onClick={submit}
                     disabled={!address}
                     loading={isSubmitting}
@@ -245,45 +251,38 @@ function ProgramRow({
         : `${reward.prize_amount} ${prizeTicker}`
 
     return (
-        <Card.Root
-            variant="outline"
-            p="4"
-            bgGradient="to-br"
-            gradientFrom="yellow.500/8"
-            gradientTo="yellow.600/8"
-            borderColor="yellow.500/20"
-            data-testid="staking-program-row"
-        >
+        <HgCard as="article" px="20px" py="18px" data-testid="staking-program-row">
             {/* A token without metadata shows its full denom (factory/bze1…/name): let it wrap anywhere on phones. */}
-            <VStack align="stretch" gap={3} overflowWrap="anywhere">
-                <HStack justify="space-between" align="center" gap={4} flexWrap="wrap">
-                    <HStack gap="3" minW="0">
+            <VStack align="stretch" gap="12px" overflowWrap="anywhere">
+                <HStack justify="space-between" align="start" gap="12px" flexWrap="wrap">
+                    <HStack gap="12px" minW="0">
                         <HStack gap="0" flexShrink={0}>
-                            <TokenLogo src={stakingAsset?.logo ?? ''} symbol={stakingAsset?.ticker ?? '?'} size="10" circular={true} />
-                            <Box ml="-3">
-                                <TokenLogo src={prizeAsset?.logo ?? ''} symbol={prizeAsset?.ticker ?? '?'} size="10" circular={true} />
+                            <TokenLogo src={stakingAsset?.logo ?? ''} symbol={stakingAsset?.ticker ?? '?'} size="8" circular={true} />
+                            <Box ml="-2.5">
+                                <TokenLogo src={prizeAsset?.logo ?? ''} symbol={prizeAsset?.ticker ?? '?'} size="8" circular={true} />
                             </Box>
                         </HStack>
-                        <VStack align="start" gap="0.5" minW="0">
-                            <Text fontWeight="semibold" wordBreak="break-word">
+                        <VStack align="start" gap="4px" minW="0">
+                            <Text as="strong" fontSize="15px" fontWeight="700" wordBreak="break-word">
                                 {`Stake ${stakeTicker}, earn ${prizeTicker}`}
                             </Text>
-                            <HStack gap="1.5">
-                                <Badge colorPalette="yellow" variant="surface" size="sm" fontFamily="mono">
+                            <HStack gap="6px">
+                                <chakra.span fontFamily="mono" fontSize="11px" px="7px" py="2px" borderRadius="hg.pill" color="hg.link" bg="app.subtle" borderWidth="1px" borderColor="app.border">
                                     #{reward.reward_id}
-                                </Badge>
+                                </chakra.span>
                                 {deletion.kind !== 'running' && (
-                                    <Badge colorPalette="gray" variant="subtle" size="sm">Finished</Badge>
+                                    <chakra.span fontSize="11px" px="7px" py="2px" borderRadius="hg.pill" color="hg.text.secondary" bg="hg.hoverFill">Finished</chakra.span>
                                 )}
                             </HStack>
                         </VStack>
                     </HStack>
 
-                    <HStack gap={2} flexWrap="wrap">
+                    <HStack gap="8px" flexWrap="wrap">
                         <Button
+                            {...(openPanel === 'extend' ? { variant: hgVariant('primary'), borderRadius: '10px' } : softButton)}
                             size="sm"
-                            variant={openPanel === 'extend' ? 'solid' : 'outline'}
-                            colorPalette="yellow"
+                            h="32px"
+                            fontSize="13px"
                             onClick={() => togglePanel('extend')}
                             aria-expanded={openPanel === 'extend'}
                         >
@@ -293,8 +292,10 @@ function ProgramRow({
                         {deletion.kind !== 'running' && (
                             <Button
                                 size="sm"
-                                variant={openPanel === 'delete' ? 'solid' : 'outline'}
-                                colorPalette="red"
+                                h="32px"
+                                fontSize="13px"
+                                variant={hgVariant('danger')}
+                                {...(openPanel === 'delete' ? { bg: 'hg.danger.solid', color: 'white' } : {})}
                                 disabled={deletion.kind !== 'deletable'}
                                 onClick={() => togglePanel('delete')}
                                 aria-expanded={openPanel === 'delete'}
@@ -307,7 +308,7 @@ function ProgramRow({
                     </HStack>
                 </HStack>
 
-                <HStack gap={2} columnGap={4} flexWrap="wrap" data-testid="staking-program-facts">
+                <HStack gap="8px" columnGap="18px" flexWrap="wrap" data-testid="staking-program-facts">
                     <Fact>{`${prizePerDay} a day`}</Fact>
                     <Fact>{`${daysRemaining.toLocaleString('en-US')} of ${formatDays(reward.duration)} left`}</Fact>
                     <Fact>{reward.lock > 0 ? `lock ${formatDays(reward.lock)}` : 'no lock'}</Fact>
@@ -316,7 +317,7 @@ function ProgramRow({
                 </HStack>
 
                 {stakedLeft && (
-                    <Text fontSize="xs" color="fg.muted" data-testid="staking-reward-delete-blocker">
+                    <Text fontSize="12px" color="hg.text.faint" data-testid="staking-reward-delete-blocker">
                         {`${stakedLeft} still staked — stakers must exit first before it can be deleted.`}
                     </Text>
                 )}
@@ -324,7 +325,7 @@ function ProgramRow({
                 {openPanel === 'extend' && <ExtendPanel reward={reward} onExtended={onChanged} />}
                 {openPanel === 'delete' && deletion.kind === 'deletable' && <DeletePanel reward={reward} onDeleted={onChanged} />}
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
@@ -335,7 +336,7 @@ function FinishedPrograms({ rewards, onChanged }: { rewards: StakingRewardSDKTyp
     return (
         <VStack align="stretch" gap={3} data-testid="finished-staking-rewards">
             <Box>
-                <Button size="sm" variant="ghost" onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
+                <Button size="sm" h="32px" px="10px" variant="ghost" bg="hg.secondaryFill" color="fg" fontWeight="600" onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
                     {isOpen ? <LuChevronDown /> : <LuChevronRight />}
                     Finished ({rewards.length})
                 </Button>
@@ -369,7 +370,7 @@ function ProgramGroup({
                 <ProgramRow key={reward.reward_id} reward={reward} onChanged={onChanged} />
             ))}
             {status === 'all' && active.length === 0 && finished.length > 0 && (
-                <Text fontSize="sm" color="fg.muted">No running programs — every program below has paid all its days.</Text>
+                <Text fontSize="14px" color="fg.muted">No running programs — every program below has paid all its days.</Text>
             )}
             {status === 'all' && finished.length > 0 && <FinishedPrograms rewards={finished} onChanged={onChanged} />}
         </VStack>
@@ -444,9 +445,9 @@ export function StakingProgramsList({
     let body: React.ReactNode
     if (isLoading) {
         body = (
-            <VStack align="stretch" gap={3} data-testid="staking-programs-loading">
-                <Skeleton height="24" />
-                <Skeleton height="24" />
+            <VStack align="stretch" gap="12px" data-testid="staking-programs-loading">
+                <Shimmer h="96px" borderRadius="16px" />
+                <Shimmer h="96px" borderRadius="16px" />
             </VStack>
         )
     } else if (hasError) {
@@ -456,7 +457,7 @@ export function StakingProgramsList({
                     The chain query failed. The node may be down; try again in a moment.
                 </InfoBox>
                 <Box>
-                    <Button size="sm" variant="outline" colorPalette="yellow" onClick={refresh}>
+                    <Button {...softButton} size="sm" onClick={refresh}>
                         <LuRefreshCw /> Retry
                     </Button>
                 </Box>
@@ -464,45 +465,41 @@ export function StakingProgramsList({
         )
     } else if (scoped.length === 0) {
         body = (
-            <Card.Root variant="outline" p="8" data-testid="staking-programs-empty">
-                <VStack gap={4}>
-                    <Box p={3} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                        <LuGift size={24} />
-                    </Box>
-                    <VStack gap={1}>
-                        <Text fontWeight="semibold">{emptyText}</Text>
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                            People stake a token and earn your prize, day by day.
-                        </Text>
-                    </VStack>
-                    <Button colorPalette="yellow" variant="outline" onClick={() => navigate(newHref)}>
+            <HgCard p="32px" data-testid="staking-programs-empty">
+                <VStack gap="12px" textAlign="center">
+                    <IconTile icon={<LuGift />} size={48} />
+                    <Text as="strong" fontSize="15px" fontWeight="700">{emptyText}</Text>
+                    <Text fontSize="14px" color="fg.muted">
+                        People stake a token and earn your prize, day by day.
+                    </Text>
+                    <Button {...softButton} onClick={() => navigate(newHref)}>
                         <LuPlus />
                         Run a campaign
                     </Button>
                 </VStack>
-            </Card.Root>
+            </HgCard>
         )
     } else if (!matchesStatus(scoped, status)) {
         body = (
-            <Text fontSize="sm" color="fg.muted" data-testid="staking-programs-filtered-empty">
+            <Text fontSize="14px" color="fg.muted" data-testid="staking-programs-filtered-empty">
                 Nothing matches this filter.
             </Text>
         )
     } else if (mine.length > 0) {
         body = (
-            <VStack align="stretch" gap={6}>
-                <VStack as="section" aria-label="Programs with your tokens" align="stretch" gap={3}>
-                    <Text fontWeight="semibold">Programs with your tokens</Text>
+            <VStack align="stretch" gap="28px">
+                <VStack as="section" aria-label="Programs with your tokens" align="stretch" gap="12px">
+                    <Text as="h2" fontSize="18px" fontWeight="700">Programs with your tokens</Text>
                     {matchesStatus(mine, status)
                         ? <ProgramGroup rewards={mine} status={status} onChanged={refresh} />
-                        : <Text fontSize="sm" color="fg.muted">Nothing matches this filter.</Text>}
+                        : <Text fontSize="14px" color="fg.muted">Nothing matches this filter.</Text>}
                 </VStack>
                 {others.length > 0 && (
-                    <VStack as="section" aria-label="Every other program" align="stretch" gap={3}>
-                        <Text fontWeight="semibold">Every other program</Text>
+                    <VStack as="section" aria-label="Every other program" align="stretch" gap="12px">
+                        <Text as="h2" fontSize="18px" fontWeight="700">Every other program</Text>
                         {matchesStatus(others, status)
                             ? <ProgramGroup rewards={others} status={status} onChanged={refresh} />
-                            : <Text fontSize="sm" color="fg.muted">Nothing matches this filter.</Text>}
+                            : <Text fontSize="14px" color="fg.muted">Nothing matches this filter.</Text>}
                     </VStack>
                 )}
             </VStack>
@@ -512,25 +509,18 @@ export function StakingProgramsList({
     }
 
     return (
-        <VStack align="stretch" gap={4}>
-            <HStack justify={onStatus ? 'space-between' : 'end'} gap={3} wrap="wrap">
+        <VStack align="stretch" gap="22px">
+            <HStack justify={onStatus ? 'space-between' : 'end'} gap="12px" wrap="wrap">
                 {onStatus && (
-                    <HStack gap={2} wrap="wrap" role="group" aria-label="Filter">
+                    <HStack gap="8px" wrap="wrap" role="group" aria-label="Filter">
                         {STATUSES.map(s => (
-                            <Button
-                                key={s.value}
-                                size="xs"
-                                colorPalette="yellow"
-                                variant={status === s.value ? 'solid' : 'outline'}
-                                aria-pressed={status === s.value}
-                                onClick={() => onStatus(s.value)}
-                            >
+                            <FilterChip key={s.value} pressed={status === s.value} onClick={() => onStatus(s.value)}>
                                 {s.label}
-                            </Button>
+                            </FilterChip>
                         ))}
                     </HStack>
                 )}
-                <Button size="sm" colorPalette="yellow" variant="outline" onClick={() => navigate(newHref)}>
+                <Button {...softButton} onClick={() => navigate(newHref)}>
                     <LuPlus />
                     New program
                 </Button>

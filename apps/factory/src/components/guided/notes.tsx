@@ -10,32 +10,35 @@ interface NoteProps {
     children: React.ReactNode;
 }
 
-function Note({ lead, children, palette, icon }: NoteProps & { palette: 'red' | 'blue'; icon: React.ReactNode }) {
+function Note({ lead, children, look, icon }: NoteProps & { look: 'warning' | 'tip'; icon: React.ReactNode }) {
+    const warning = look === 'warning'
     return (
         <Box
-            p={3}
-            borderRadius="lg"
-            bg={`${palette}.500/10`}
+            px="14px"
+            py="12px"
+            borderRadius="12px"
+            bg={warning ? 'hg.warning/8' : 'hg.inset'}
             borderWidth="1px"
-            borderColor={`${palette}.500/25`}
+            borderColor={warning ? 'hg.warning/28' : 'hg.hairline'}
+            data-testid={`note-${look}`}
         >
-            <HStack align="start" gap={2.5}>
-                <Box color={`${palette}.500`} mt={0.5} flexShrink={0}>{icon}</Box>
-                <Text fontSize="sm">
-                    <Text as="span" fontWeight="semibold">{lead}</Text>{' '}
-                    <Text as="span" color="fg.muted">{children}</Text>
+            <HStack align="start" gap="10px">
+                <Box color={warning ? 'hg.warning' : 'hg.link'} mt="2px" flexShrink={0} aria-hidden>{icon}</Box>
+                <Text fontSize="13px" lineHeight="1.5" color="fg">
+                    <Text as="span" fontWeight="700">{lead}</Text>{' '}
+                    <Text as="span">{children}</Text>
                 </Text>
             </HStack>
         </Box>
     )
 }
 
-/** Red-tinted note: what can go wrong or can't be undone. */
+/** Amber note: what can go wrong or can't be undone. */
 export function WarningNote(props: NoteProps) {
-    return <Note {...props} palette="red" icon={<LuTriangleAlert size={16} />} />
+    return <Note {...props} look="warning" icon={<LuTriangleAlert size={16} />} />
 }
 
-/** Blue-tinted note: a helpful hint. */
+/** Quiet note on the inset: a helpful hint. */
 export function TipNote(props: NoteProps) {
-    return <Note {...props} palette="blue" icon={<LuInfo size={16} />} />
+    return <Note {...props} look="tip" icon={<LuInfo size={16} />} />
 }

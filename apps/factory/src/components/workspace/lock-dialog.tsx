@@ -5,22 +5,19 @@ import {
     Box,
     Button,
     Checkbox,
-    CloseButton,
-    Dialog,
     Field,
     Grid,
     HStack,
     Input,
-    Portal,
-    Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import type BigNumber from 'bignumber.js'
 import { LuCheck, LuCircleAlert, LuLock, LuLockOpen } from 'react-icons/lu'
-import { Asset, getChainName, prettyAmount, useToast } from '@bze/bze-ui-kit'
+import { Asset, Shimmer, getChainName, hgVariant, prettyAmount, useToast } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
+import { FactoryDialog } from '@/components/ui/factory-dialog'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useTokenSetup } from '@/hooks/useTokenSetup'
 import type { SetupItem } from '@/lib/token-setup'
@@ -62,12 +59,12 @@ interface CheckRow {
 function ChecklistRow({ row }: { row: CheckRow }) {
     return (
         <HStack gap={2} align="start" data-testid={`prelock-${row.key}`} data-ok={row.ok}>
-            <Box color={row.ok ? 'green.500' : 'orange.500'} mt={0.5} flexShrink={0}>
+            <Box color={row.ok ? 'hg.success' : 'hg.warning'} mt="2px" flexShrink={0}>
                 {row.ok ? <LuCheck size={16} /> : <LuCircleAlert size={16} />}
             </Box>
-            <Text fontSize="sm" overflowWrap="anywhere">
+            <Text fontSize="14px" overflowWrap="anywhere">
                 {row.title}
-                {row.note && <Text as="span" color="fg.muted">{` ${row.note}`}</Text>}
+                {row.note && <Text as="span" color="hg.text.faint">{` ${row.note}`}</Text>}
             </Text>
         </HStack>
     )
@@ -92,19 +89,19 @@ function PreLockChecklist({ asset, admin, supply, supplyDisplay }: LockDialogDat
     const warnsAboutFrozen = rows.some(row => !row.ok && LOCK_AFFECTED.some(a => a.key === row.key))
 
     return (
-        <VStack align="stretch" gap={2} p={4} borderWidth="1px" borderRadius="xl" borderColor="border.muted">
-            <Text fontWeight="semibold" fontSize="sm">Before you lock, check your setup</Text>
+        <VStack align="stretch" gap="8px" p="16px" borderWidth="1px" borderRadius="14px" borderColor="hg.hairline" bg="hg.inset">
+            <Text fontWeight="700" fontSize="14px">Before you lock, check your setup</Text>
             {setup.isLoading ? (
-                <VStack align="stretch" gap={2}>
-                    <Skeleton height="4" />
-                    <Skeleton height="4" />
-                    <Skeleton height="4" />
+                <VStack align="stretch" gap="8px">
+                    <Shimmer h="16px" />
+                    <Shimmer h="16px" />
+                    <Shimmer h="16px" />
                 </VStack>
             ) : (
                 <>
                     {rows.map(row => <ChecklistRow key={row.key} row={row} />)}
                     {warnsAboutFrozen && (
-                        <Text fontSize="sm" color="orange.600" data-testid="prelock-warning">
+                        <Text fontSize="13px" color="hg.warning.text" data-testid="prelock-warning">
                             {`Brand kit and description can't be added after locking.`}
                         </Text>
                     )}
@@ -114,15 +111,16 @@ function PreLockChecklist({ asset, admin, supply, supplyDisplay }: LockDialogDat
     )
 }
 
-function ListColumn({ title, items, icon, color }: { title: string; items: string[]; icon: React.ReactNode; color: string }) {
+/** "Frozen forever" in the danger tint, "Keeps working" in the success tint. */
+function ListColumn({ title, items, icon, tone }: { title: string; items: string[]; icon: React.ReactNode; tone: 'danger' | 'success' }) {
     return (
-        <VStack align="stretch" gap={2} p={4} borderWidth="1px" borderRadius="xl" borderColor={`${color}/30`} bg={`${color}/5`}>
-            <HStack gap={2} color={color}>
+        <VStack align="stretch" gap="6px" p="14px" borderWidth="1px" borderRadius="14px" borderColor={`hg.${tone}/30`} bg={`hg.${tone}/8`}>
+            <HStack gap="6px" color={`hg.${tone}.text`}>
                 {icon}
-                <Text fontWeight="semibold" fontSize="sm">{title}</Text>
+                <Text fontWeight="700" fontSize="14px">{title}</Text>
             </HStack>
             {items.map(item => (
-                <Text key={item} fontSize="sm">{item}</Text>
+                <Text key={item} fontSize="13px">{item}</Text>
             ))}
         </VStack>
     )
@@ -136,8 +134,8 @@ interface LockDialogData {
     supplyDisplay: BigNumber;
 }
 
-/** The dialog's contents; mounted only while open, so the confirmation starts empty every time. */
-function LockDialogContent({ onClose, onLocked, ...data }: LockDialogData & { onClose: () => void; onLocked: () => void }) {
+/** The dialog; its body mounts only while open, so the confirmation starts empty every time. */
+function LockDialogContent({ open, onClose, onLocked, ...data }: LockDialogData & { open: boolean; onClose: () => void; onLocked: () => void }) {
     const { asset } = data
     const ticker = asset.ticker
     const { address } = useChain(getChainName())
@@ -170,70 +168,75 @@ function LockDialogContent({ onClose, onLocked, ...data }: LockDialogData & { on
     }
 
     return (
-        <>
-            <Dialog.Header flexDirection="column" alignItems="start" gap={1}>
-                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase" letterSpacing="wide">
-                    Last step of your launch · optional
-                </Text>
-                <Dialog.Title fontSize="xl" fontWeight="bold">{`Lock ${ticker} forever?`}</Dialog.Title>
-                <Dialog.Description color="fg.muted" fontSize="sm">
-                    {`Buyers will see Fixed supply instead of Mintable. It's the strongest trust signal a token can have, and it can never be undone, by you, by BeeZee or by anyone.`}
-                </Dialog.Description>
-                <Dialog.CloseTrigger asChild>
-                    <CloseButton size="sm" aria-label="Close dialog" />
-                </Dialog.CloseTrigger>
-            </Dialog.Header>
-
-            <Dialog.Body>
-                <VStack align="stretch" gap={4}>
-                    <PreLockChecklist {...data} />
-
-                    <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap={3}>
-                        <ListColumn title="Frozen forever" items={frozenForever(ticker)} icon={<LuLock size={16} />} color="red.500" />
-                        <ListColumn title="Keeps working" items={keepsWorking(ticker)} icon={<LuLockOpen size={16} />} color="green.500" />
-                    </Grid>
-
-                    <Checkbox.Root
-                        checked={understood}
-                        onCheckedChange={(e) => setUnderstood(e.checked === true)}
-                        colorPalette="red"
-                        alignItems="start"
+        <FactoryDialog
+            open={open}
+            onClose={onClose}
+            width="640px"
+            titleSize="lg"
+            closeLabel="Close dialog"
+            kicker="Last step of your launch · optional"
+            title={`Lock ${ticker} forever?`}
+            description={`Buyers will see Fixed supply instead of Mintable. It's the strongest trust signal a token can have, and it can never be undone, by you, by BeeZee or by anyone.`}
+            footer={(
+                <>
+                    <Button variant={hgVariant('secondary')} size="lg" onClick={onClose} flex={{ base: '1 1 100%', md: '0 0 auto' }}>
+                        Not now, keep control
+                    </Button>
+                    <Button
+                        variant={hgVariant('danger')}
+                        size="lg"
+                        bg="hg.danger.solid"
+                        color="white"
+                        borderColor="transparent"
+                        onClick={submit}
+                        disabled={!isArmed}
+                        loading={isSubmitting}
+                        loadingText="Waiting for signature..."
+                        flex={{ base: '1 1 100%', md: '0 0 auto' }}
+                        _disabled={{ bg: 'hg.danger.solid', color: 'white', opacity: 0.45 }}
                     >
-                        <Checkbox.HiddenInput />
-                        <Checkbox.Control mt={0.5} />
-                        <Checkbox.Label fontSize="sm">
-                            {`I understand this can't be undone, and that nobody can unlock ${ticker} again.`}
-                        </Checkbox.Label>
-                    </Checkbox.Root>
+                        {`Lock ${ticker} forever`}
+                    </Button>
+                </>
+            )}
+        >
+            <VStack align="stretch" gap="18px">
+                <PreLockChecklist {...data} />
 
-                    <Field.Root>
-                        <Field.Label>{`Type ${ticker} to confirm`}</Field.Label>
-                        <Input
-                            placeholder={ticker}
-                            value={confirmation}
-                            onChange={(e) => setConfirmation(e.target.value)}
-                            autoComplete="off"
-                        />
-                    </Field.Root>
-                </VStack>
-            </Dialog.Body>
+                <Grid templateColumns={{ base: '1fr', md: 'repeat(2, minmax(0, 1fr))' }} gap="12px">
+                    <ListColumn title="Frozen forever" items={frozenForever(ticker)} icon={<LuLock size={15} />} tone="danger" />
+                    <ListColumn title="Keeps working" items={keepsWorking(ticker)} icon={<LuLockOpen size={15} />} tone="success" />
+                </Grid>
 
-            <Dialog.Footer flexWrap="wrap" gap={2}>
-                <Button variant="outline" onClick={onClose} flex={{ base: '1 1 100%', md: '0 0 auto' }}>
-                    Not now, keep control
-                </Button>
-                <Button
-                    colorPalette="red"
-                    onClick={submit}
-                    disabled={!isArmed}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                    flex={{ base: '1 1 100%', md: '0 0 auto' }}
+                <Checkbox.Root
+                    checked={understood}
+                    onCheckedChange={(e) => setUnderstood(e.checked === true)}
+                    alignItems="start"
                 >
-                    {`Lock ${ticker} forever`}
-                </Button>
-            </Dialog.Footer>
-        </>
+                    <Checkbox.HiddenInput />
+                    <Checkbox.Control
+                        mt="2px"
+                        borderColor="hg.text.faint"
+                        _checked={{ bg: 'hg.danger.solid', borderColor: 'hg.danger.solid', color: 'white' }}
+                    />
+                    <Checkbox.Label fontSize="14px" lineHeight="1.5" fontWeight="400">
+                        {`I understand this can't be undone, and that nobody can unlock ${ticker} again.`}
+                    </Checkbox.Label>
+                </Checkbox.Root>
+
+                <Field.Root>
+                    <Field.Label fontSize="14px" fontWeight="600">{`Type ${ticker} to confirm`}</Field.Label>
+                    <Input
+                        placeholder={ticker}
+                        value={confirmation}
+                        onChange={(e) => setConfirmation(e.target.value)}
+                        autoComplete="off"
+                        h="46px"
+                        borderRadius="12px"
+                    />
+                </Field.Root>
+            </VStack>
+        </FactoryDialog>
     )
 }
 
@@ -247,23 +250,6 @@ export function LockDialog({
     onLocked,
     ...data
 }: LockDialogData & { open: boolean; onClose: () => void; onLocked: () => void }) {
-    return (
-        <Dialog.Root
-            open={open}
-            onOpenChange={(e) => !e.open && onClose()}
-            size="lg"
-            scrollBehavior="inside"
-            lazyMount={true}
-            unmountOnExit={true}
-        >
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW={{ base: 'calc(100vw - 32px)', md: '640px' }} borderRadius="2xl">
-                        <LockDialogContent {...data} onClose={onClose} onLocked={onLocked} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
-    )
+    // A fresh mount on every open, so the checkbox and the typed ticker start empty.
+    return <LockDialogContent key={open ? 'open' : 'closed'} {...data} open={open} onClose={onClose} onLocked={onLocked} />
 }

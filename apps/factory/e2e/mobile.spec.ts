@@ -14,7 +14,7 @@ const MISSING_TOKEN = "factory%2Fbze1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq%2Fut
 const heading = (name: string | RegExp) => (page: Page) => page.getByRole("heading", {name}).first();
 
 const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
-    {path: "/", ready: heading("What do you want to do?")},
+    {path: "/", ready: heading("What do you want to build?")},
     {path: "/token/new", ready: heading("Create my token")},
     {path: "/market/new", ready: heading("Allow limit orders")},
     {path: `/pool/new?base=${VDL}`, ready: heading("Let people buy and sell VDL")},

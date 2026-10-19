@@ -4,11 +4,9 @@ import React, { useMemo, useState } from 'react'
 import {
     Badge,
     Box,
-    Card,
     HStack,
     Input,
     Select,
-    Skeleton,
     Text,
     VStack,
     createListCollection,
@@ -16,11 +14,10 @@ import {
 import { LuChevronDown } from 'react-icons/lu'
 import {
     Asset,
-    ASSET_TYPE_FACTORY,
-    ASSET_TYPE_IBC,
-    ASSET_TYPE_LP,
+    Shimmer,
     TokenLogo,
     getChainName,
+    hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAssets,
@@ -28,11 +25,15 @@ import {
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 
-const TYPE_BADGE_PALETTE: Record<string, string> = {
-    [ASSET_TYPE_FACTORY]: 'green',
-    [ASSET_TYPE_IBC]: 'purple',
-    [ASSET_TYPE_LP]: 'teal',
-}
+/** The asset type ("Factory", "IBC", "LP") as a neutral pill. */
+const TypeBadge = ({ type }: { type: string }) => (
+    <Badge variant={hgVariant('neutral')} size="sm" borderRadius="hg.pill">{type}</Badge>
+)
+
+/** The user's own tokens, in the app tint. */
+const YoursBadge = () => (
+    <Badge size="sm" borderRadius="hg.pill" bg="app.subtle" color="hg.link" borderWidth="1px" borderColor="app.border">Yours</Badge>
+)
 
 const UNFILTERED_LIMIT = 10
 const SEARCH_LIMIT = 20
@@ -120,12 +121,10 @@ export function AssetPicker({
 
     if (isLoading) {
         return (
-            <Card.Root variant="outline" p="4">
-                <VStack align="start" gap="3" w="full">
-                    <Skeleton height="4" width="24" />
-                    <Skeleton height="8" width="full" />
-                </VStack>
-            </Card.Root>
+            <VStack align="stretch" gap="8px" w="full" aria-busy="true">
+                <Shimmer h="13px" w="96px" />
+                <Shimmer h="46px" borderRadius="12px" />
+            </VStack>
         )
     }
 
@@ -149,69 +148,73 @@ export function AssetPicker({
                 }
             }}
         >
-            <Select.Trigger asChild>
-                <Card.Root
-                    variant="outline"
-                    p="4"
-                    cursor="pointer"
-                    bgGradient="to-br"
-                    gradientFrom="yellow.500/8"
-                    gradientTo="yellow.600/8"
-                    borderColor="yellow.500/20"
-                    _hover={{
-                        gradientFrom: "yellow.500/12",
-                        gradientTo: "yellow.600/12",
-                        borderColor: "yellow.500/30",
-                    }}
-                    transition="all 0.2s"
-                >
-                    <VStack align="start" gap="3" w="full">
-                        <Text fontSize="sm" color="fg.muted">
-                            {label}
-                        </Text>
-                        <HStack justify="space-between" w="full">
+            <VStack align="stretch" gap="8px" w="full">
+                <Select.Label fontSize="13px" fontWeight="400" color="hg.text.muted">
+                    {label}
+                </Select.Label>
+                <Select.Trigger asChild>
+                    <Box
+                        as="button"
+                        textAlign="start"
+                        w="full"
+                        minH="46px"
+                        px="14px"
+                        py={selectedAsset ? '10px' : '0'}
+                        borderRadius="12px"
+                        bg="hg.inset"
+                        borderWidth="1px"
+                        borderColor="hg.hairline"
+                        cursor="pointer"
+                        transition="border-color 0.15s"
+                        _hover={{ borderColor: 'app.border' }}
+                        _expanded={{ borderColor: 'app.focusRing', boxShadow: '0 0 0 3px {colors.app.subtle}' }}
+                        focusVisibleRing="outside"
+                    >
+                        <HStack justify="space-between" w="full" minH="44px" gap="12px">
                             {selectedAsset ? (
-                                <HStack gap="3">
+                                <HStack gap="12px" minW="0">
                                     <TokenLogo
                                         src={selectedAsset.logo}
                                         symbol={selectedAsset.ticker}
                                         size="8"
                                         circular={true}
                                     />
-                                    <VStack align="start" gap="1">
-                                        <HStack gap="2">
-                                            <Text fontWeight="bold" fontSize="lg">
+                                    <VStack align="start" gap="2px" minW="0">
+                                        <HStack gap="8px" flexWrap="wrap">
+                                            <Text fontWeight="700" fontSize="16px">
                                                 {selectedAsset.ticker}
                                             </Text>
-                                            <Text fontSize="md" color="fg.muted">
+                                            <Text fontSize="14px" color="hg.text.muted" truncate>
                                                 {selectedAsset.name}
                                             </Text>
-                                            <Badge
-                                                colorPalette={TYPE_BADGE_PALETTE[selectedAsset.type] ?? 'gray'}
-                                                size="sm"
-                                                variant="surface"
-                                            >
-                                                {selectedAsset.type}
-                                            </Badge>
+                                            <TypeBadge type={selectedAsset.type} />
                                         </HStack>
-                                        <Text fontSize="sm" color="fg.muted">
+                                        <Text fontSize="13px" color="hg.text.faint">
                                             {balanceLine(selectedAsset)}
                                         </Text>
                                     </VStack>
                                 </HStack>
                             ) : (
-                                <Text fontSize="lg" color="fg.muted">
+                                <Text fontSize="15px" color="hg.text.faint">
                                     Select asset
                                 </Text>
                             )}
-                            <LuChevronDown />
+                            <Box color="hg.text.faint" flexShrink={0}><LuChevronDown size={16} /></Box>
                         </HStack>
-                    </VStack>
-                </Card.Root>
-            </Select.Trigger>
+                    </Box>
+                </Select.Trigger>
+            </VStack>
             <Select.Positioner>
-                <Select.Content maxH="400px" overflowY="auto" background="bg.muted">
-                    <Box p="3" borderBottomWidth="1px">
+                <Select.Content
+                    maxH="400px"
+                    overflowY="auto"
+                    bg="hg.card"
+                    borderWidth="1px"
+                    borderColor="hg.hairline"
+                    borderRadius="14px"
+                    boxShadow="hg.popover"
+                >
+                    <Box p="3" borderBottomWidth="1px" borderColor="hg.divider">
                         <Input
                             placeholder="Search by name or ticker..."
                             value={searchTerm}
@@ -227,7 +230,9 @@ export function AssetPicker({
                                     key={assetOption.denom}
                                     item={assetOption.denom}
                                     cursor="pointer"
-                                    _hover={{ bg: "bg.panel" }}
+                                    borderRadius="10px"
+                                    _hover={{ bg: 'hg.hoverFill' }}
+                                    _highlighted={{ bg: 'app.subtle' }}
                                 >
                                     <Select.ItemText>
                                         <HStack gap="3" py="2">
@@ -239,26 +244,16 @@ export function AssetPicker({
                                             />
                                             <VStack align="start" gap="0" flex="1">
                                                 <HStack gap={2} w="full">
-                                                    <Text fontWeight="medium" fontSize="md">
+                                                    <Text fontWeight="600" fontSize="15px">
                                                         {assetOption.ticker}
                                                     </Text>
-                                                    <Text fontSize="sm" color="fg.muted">
+                                                    <Text fontSize="13px" color="hg.text.muted">
                                                         {assetOption.name}
                                                     </Text>
-                                                    <Badge
-                                                        colorPalette={TYPE_BADGE_PALETTE[assetOption.type] ?? 'gray'}
-                                                        size="sm"
-                                                        variant="surface"
-                                                    >
-                                                        {assetOption.type}
-                                                    </Badge>
-                                                    {isOwn(assetOption) && (
-                                                        <Badge colorPalette="yellow" size="sm" variant="surface">
-                                                            Yours
-                                                        </Badge>
-                                                    )}
+                                                    <TypeBadge type={assetOption.type} />
+                                                    {isOwn(assetOption) && <YoursBadge />}
                                                 </HStack>
-                                                <Text fontSize="sm" color="fg.muted">
+                                                <Text fontSize="12px" color="hg.text.faint">
                                                     {balanceLine(assetOption)}
                                                 </Text>
                                             </VStack>
@@ -269,15 +264,15 @@ export function AssetPicker({
                             ))
                         ) : (
                             <Box p="4" textAlign="center">
-                                <Text fontSize="sm" color="fg.muted">
+                                <Text fontSize="14px" color="hg.text.muted">
                                     No assets found
                                 </Text>
                             </Box>
                         )}
                     </Box>
                     {!searchTerm && selectableAssets.length > UNFILTERED_LIMIT && (
-                        <Box p="2" borderTopWidth="1px" textAlign="center">
-                            <Text fontSize="xs" color="fg.muted">
+                        <Box p="2" borderTopWidth="1px" borderColor="hg.divider" textAlign="center">
+                            <Text fontSize="12px" color="hg.text.faint">
                                 Showing first {UNFILTERED_LIMIT} assets. Search to find more.
                             </Text>
                         </Box>
