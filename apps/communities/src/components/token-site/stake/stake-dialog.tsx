@@ -27,7 +27,7 @@ import {type FixedTermProgram, programMessage} from "@/lib/token-site/fixed-term
 import {formatDays} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsDialog, TsField, TsNotice, ts, tsMix} from "../kit";
+import {TsButton, TsDialog, TsField, TsNotice, ts} from "../kit";
 
 const {joinDenomReward, claimDenomRewards, exitDenomReward} = bze.rewards.MessageComposer.withTypeUrl;
 
@@ -256,7 +256,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
 
                 {action === "claim" && (
                     <>
-                        <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)}>
+                        <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.inset}>
                             <chakra.span color={ts.muted} fontSize="13px">You receive</chakra.span>
                             <Coins coins={pending}/>
                         </Flex>
@@ -266,7 +266,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
 
                 {action === "unstake" && (
                     <>
-                        <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)}>
+                        <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.inset}>
                             <Row label="Your stake">{stake}</Row>
                             {pending.length > 0 && (
                                 <>

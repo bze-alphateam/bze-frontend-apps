@@ -10,11 +10,11 @@ import {type TokenBurnData, useTokenBurn} from "@/hooks/token-site/useTokenBurn"
 import {burnCountdown, formatBurnShare} from "@/lib/token-site/burn";
 import {walletAmount, walletUsd} from "@/lib/token-site/wallet";
 
-import {TsButton, TsCard, TsDialog, TsInvertedCard, TsSection, TsTable, ts, tsLabel, tsMix} from "../kit";
+import {TsButton, TsCard, TsDialog, TsSection, TsTable, ts, tsLabel} from "../kit";
 import {BurnForm} from "./burn-form";
 import {useNow} from "./use-now";
 
-/** The inverted "Burned forever" card: total, USD, share of the original supply and Burn T. */
+/** The "Burned forever" card: a big total, USD, share of the original supply and Burn T. */
 function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; onBurn: () => void }) {
     const percent = burn.share.multipliedBy(100);
     const details = [
@@ -24,8 +24,8 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
     ].filter(Boolean).join(" · ");
 
     return (
-        <TsInvertedCard flex="999 1 520px" minW="0" p={{base: "28px", md: "40px"}} display="flex" flexDirection="column" gap="28px" data-testid="burn-total">
-            <chakra.span {...tsLabel} color="inherit" opacity={0.72}>Burned forever</chakra.span>
+        <TsCard flex="999 1 520px" minW="0" p={{base: "24px", md: "36px"}} display="flex" flexDirection="column" gap="26px" data-testid="burn-total">
+            <chakra.span {...tsLabel}>Burned forever</chakra.span>
             <Flex direction="column" gap="6px">
                 <chakra.span
                     fontVariantNumeric="tabular-nums"
@@ -38,7 +38,7 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
                 >
                     {walletAmount(burn.burned)}
                 </chakra.span>
-                <chakra.span fontVariantNumeric="tabular-nums" fontSize="18px" opacity={0.78} data-testid="burn-total-details">{details}</chakra.span>
+                <chakra.span fontVariantNumeric="tabular-nums" fontSize={{base: "16px", md: "18px"}} color={ts.muted} data-testid="burn-total-details">{details}</chakra.span>
             </Flex>
             <Box
                 role="progressbar"
@@ -49,15 +49,15 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
                 h="10px"
                 borderRadius="999px"
                 overflow="hidden"
-                bg={tsMix(ts.bg, 22, ts.fg)}
+                bg={ts.inset}
             >
                 {/* A burn too small to see still shows a sliver. */}
-                <Box h="100%" bg={ts.pri} w={`${BigNumber.min(percent, 100).toFixed(2)}%`} minW={burn.burned.gt(0) ? "14px" : "0"}/>
+                <Box h="100%" bgImage={`linear-gradient(90deg, ${ts.pri}, ${ts.pri2})`} w={`${BigNumber.min(percent, 100).toFixed(2)}%`} minW={burn.burned.gt(0) ? "14px" : "0"}/>
             </Box>
             <Flex wrap="wrap" gap="12px">
                 <TsButton variant="primary" onClick={onBurn}>Burn {asset.ticker}</TsButton>
             </Flex>
-        </TsInvertedCard>
+        </TsCard>
     );
 }
 
@@ -66,7 +66,7 @@ function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; 
     const now = useNow();
 
     return (
-        <TsCard flex="1 1 320px" minW="0" p={{base: "24px", md: "32px"}} display="flex" flexDirection="column" gap="18px" data-testid="next-burn">
+        <TsCard flex="1 1 320px" minW="0" p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="18px" data-testid="next-burn">
             <chakra.span {...tsLabel}>Next burn</chakra.span>
             {burn.next ? (
                 <>
@@ -88,9 +88,9 @@ function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; 
 function BurnHistory({asset, burn}: { asset: Asset; burn: TokenBurnData }) {
     return (
         <TsCard overflow="hidden" data-testid="burn-history">
-            <chakra.h3 m="0" px="16px" pt="24px" pb="8px" fontSize="20px" fontWeight={700}>Burn history</chakra.h3>
+            <chakra.h3 m="0" px="20px" pt="22px" pb="8px" fontSize="20px" fontWeight={700}>Burn history</chakra.h3>
             {burn.history.length === 0 ? (
-                <chakra.p m="0" px="16px" pb="24px" color={ts.muted} data-testid="burn-history-empty">
+                <chakra.p m="0" px="20px" pb="24px" color={ts.muted} data-testid="burn-history-empty">
                     No {asset.ticker} has been burned yet. The first burn starts the count.
                 </chakra.p>
             ) : (
@@ -103,7 +103,7 @@ function BurnHistory({asset, burn}: { asset: Asset; burn: TokenBurnData }) {
                             <tr key={`${item.blockHeight}-${index}`}>
                                 <chakra.td fontWeight={600}>{walletAmount(item.amount)} {asset.ticker}</chakra.td>
                                 <td>{item.usd ? walletUsd(item.usd) : "—"}</td>
-                                <td>{new BigNumber(item.blockHeight).toFormat()}</td>
+                                <chakra.td fontFamily="mono" fontSize="13px">{new BigNumber(item.blockHeight).toFormat()}</chakra.td>
                                 <td>{item.timestamp}</td>
                             </tr>
                         ))}
@@ -145,10 +145,10 @@ export function BurnSection({asset, raffle}: { asset: Asset; raffle?: React.Reac
     return (
         <TsSection id="burn" eyebrow="Burn" title={`Every burn makes ${asset.ticker} scarcer`}>
             {burn.isLoading ? (
-                <Skeleton height="360px" borderRadius="20px" data-testid="burn-loading"/>
+                <Skeleton height="360px" borderRadius="16px" data-testid="burn-loading"/>
             ) : (
                 <>
-                    <Flex wrap="wrap" gap="20px">
+                    <Flex wrap="wrap" gap="16px">
                         <BurnTotal asset={asset} burn={burn} onBurn={() => setDialogOpen(true)}/>
                         <NextBurn asset={asset} burn={burn}>{raffle}</NextBurn>
                     </Flex>

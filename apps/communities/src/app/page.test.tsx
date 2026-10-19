@@ -132,7 +132,8 @@ describe("Communities token directory page", () => {
         useCommunitiesContext.mockReturnValue(context(new Map(), {isLoading: true}));
         renderHome();
 
-        expect(screen.getByText("Token directory")).toBeInTheDocument();
+        expect(screen.getByRole("heading", {level: 1, name: "Every token has a home"})).toBeInTheDocument();
+        expect(screen.getByText("BeeZee Communities · Token directory")).toBeInTheDocument();
         expect(screen.queryByText("No tokens yet")).not.toBeInTheDocument();
         expect(screen.queryByTestId("directory-card")).not.toBeInTheDocument();
     });

@@ -36,10 +36,10 @@ interface TsSegmentedProps<T extends string> {
     onChange: (value: T) => void;
 }
 
-/** Segmented control (Buy/Sell, wallet tabs) as a tablist. */
+/** Segmented control (Buy/Sell, wallet tabs) as a tablist: an inset track, the active tab raised. */
 export function TsSegmented<T extends string>({label, options, value, onChange}: TsSegmentedProps<T>) {
     return (
-        <Flex role="tablist" aria-label={label} gap="4px" p="4px" borderRadius="999px" bg={tsMix(ts.fg, 8)}>
+        <Flex role="tablist" aria-label={label} gap="4px" p="4px" borderRadius="14px" bg={ts.inset}>
             {options.map((option) => {
                 const selected = option.value === value;
                 return (
@@ -52,14 +52,14 @@ export function TsSegmented<T extends string>({label, options, value, onChange}:
                         flex="1"
                         font="inherit"
                         fontSize="14px"
-                        fontWeight={600}
+                        fontWeight={selected ? 700 : 600}
                         minH="40px"
                         border="0"
-                        borderRadius="999px"
+                        borderRadius="10px"
                         cursor="pointer"
-                        color={ts.fg}
-                        bg={selected ? ts.bg : "transparent"}
-                        boxShadow={selected ? `0 1px 3px color-mix(in oklab, ${ts.fg} 20%, transparent)` : undefined}
+                        color={selected ? ts.fg : ts.muted}
+                        bg={selected ? ts.card : "transparent"}
+                        boxShadow={selected ? `0 0 0 1px ${ts.border}` : undefined}
                     >
                         {option.label}
                     </chakra.button>
@@ -74,13 +74,24 @@ interface TsFieldProps extends Omit<HTMLChakraProps<"input">, "size"> {
     suffix?: React.ReactNode;
 }
 
-/** Amount field: label, borderless input and a suffix (the token ticker). */
+/** Amount field: label, borderless input and a suffix (the token ticker); a primary ring while focused. */
 export function TsField({label, suffix, id, ...props}: TsFieldProps) {
     const generated = useId();
     const inputId = id ?? generated;
 
     return (
-        <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.bg} borderWidth="1px" borderStyle="solid" borderColor={ts.border}>
+        <Flex
+            direction="column"
+            gap="6px"
+            borderRadius="14px"
+            px="16px"
+            py="12px"
+            bg={ts.bg}
+            borderWidth="1px"
+            borderStyle="solid"
+            borderColor={ts.border}
+            _focusWithin={{borderColor: tsMix(ts.pri, 55), boxShadow: `0 0 0 3px ${tsMix(ts.pri, 18, "transparent")}`}}
+        >
             <chakra.label htmlFor={inputId} color={ts.muted} fontSize="13px">{label}</chakra.label>
             <Flex align="center" gap="10px">
                 <chakra.input
@@ -133,10 +144,10 @@ export function TsTable({children, stackOnPhone, ...props}: BoxProps & { stackOn
                         textTransform: "uppercase",
                         fontWeight: 600,
                         color: ts.muted,
-                        padding: "12px 16px",
+                        padding: "12px 20px",
                     },
                     "& td": {
-                        padding: "16px",
+                        padding: "16px 20px",
                         borderTop: `1px solid ${ts.border}`,
                         fontVariantNumeric: "tabular-nums",
                     },

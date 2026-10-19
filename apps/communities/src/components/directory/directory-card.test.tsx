@@ -1,9 +1,9 @@
 import {describe, it, expect, vi, beforeEach} from "vitest";
 import type {ReactNode} from "react";
-import {render, screen} from "@testing-library/react";
-import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
+import {render, screen, within} from "@testing-library/react";
+import {ChakraProvider} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
-import type {Asset, DenomBranding} from "@bze/bze-ui-kit";
+import {type Asset, createHiveGlowSystem, type DenomBranding} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 let colorMode: "light" | "dark" = "light";
@@ -14,6 +14,23 @@ vi.mock("@/components/ui/color-mode", () => ({
 import {DirectoryCard, type DirectoryCardProps} from "./directory-card";
 
 forbidNetwork();
+
+const system = createHiveGlowSystem("communities");
+
+/** The CSS rules aimed at an element's classes, from the styles Chakra injected. */
+function rulesFor(el: HTMLElement): string {
+    const text = Array.from(document.querySelectorAll("style")).map((s) => s.textContent ?? "").join("\n");
+    const inserted = Array.from(document.styleSheets).flatMap((sheet) => {
+        try {
+            return Array.from(sheet.cssRules).map((rule) => rule.cssText);
+        } catch {
+            return [];
+        }
+    });
+    return [...text.split("}"), ...inserted]
+        .filter((rule) => Array.from(el.classList).some((cls) => rule.includes(`.${cls}`)))
+        .join("\n");
+}
 
 const KIT: DenomBranding = {
     font: "poppins",
@@ -38,7 +55,7 @@ function renderCard(props: Partial<DirectoryCardProps> = {}) {
             tradable={true}
             {...props}
         />,
-        {wrapper: ({children}: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>},
+        {wrapper: ({children}: { children: ReactNode }) => <ChakraProvider value={system}>{children}</ChakraProvider>},
     );
 }
 
@@ -109,5 +126,38 @@ describe("DirectoryCard", () => {
         renderCard();
         expect(screen.queryByText("Holders pool")).not.toBeInTheDocument();
         expect(screen.queryByText("Not traded yet")).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["up", 5.8, "+5.8%", "hg-up"],
+        ["down", -2.4, "-2.4%", "hg-down"],
+        ["none", 0, "0.0%", "hg-text-faint"],
+    ] as const)("colours a %s 24h change from the shared data colours", (direction, change, text, token) => {
+        renderCard({change});
+        const value = screen.getByTestId("directory-card-change");
+
+        expect(value).toHaveAttribute("data-direction", direction);
+        expect(value).toHaveTextContent(text);
+        expect(rulesFor(value)).toContain(`--chakra-colors-${token}`);
+    });
+
+    it("draws a card without a market's change in grey", () => {
+        renderCard({change: undefined});
+        const value = screen.getByTestId("directory-card-change");
+
+        expect(value).toHaveAttribute("data-direction", "none");
+        expect(rulesFor(value)).toContain("--chakra-colors-hg-text-faint");
+    });
+
+    it("keeps price and supply neutral: neither takes the up or down colour", () => {
+        renderCard({change: 5.8});
+        const card = screen.getByRole("link");
+        const price = within(card).getByText("$0.0412");
+        const supply = within(card).getByText("97.66M");
+
+        for (const value of [price, supply]) {
+            expect(rulesFor(value)).not.toMatch(/colors-hg-(up|down)/);
+            expect(rulesFor(value)).not.toMatch(/colors-(green|red)-/);
+        }
     });
 });

@@ -11,7 +11,7 @@ import {type EarnOpportunity, joinTickers} from "@/lib/token-site/earn";
 import {formatApr, formatDays} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsCard, TsDialog, TsNotice, TsSection, TsTag, ts, tsLabel, tsMix} from "../kit";
+import {TsButton, TsCard, TsDialog, TsFeaturedCard, TsNotice, TsSection, TsTag, ts, tsLabel, tsMix} from "../kit";
 import {StakeDialog} from "../stake/stake-dialog";
 
 function Term({label, children}: { label: string; children: React.ReactNode }) {
@@ -27,25 +27,28 @@ interface EarnCardProps {
     asset: Asset;
     item: EarnOpportunity;
     onStake: () => void;
+    /** The page's featured card (T has no holders pool, so the first way to earn stands out). */
+    featured?: boolean;
 }
 
 /** One place paying T: the token staked there, its APR, T paid daily, its terms and the stake button. */
-function EarnCard({asset, item, onStake}: EarnCardProps) {
+function EarnCard({asset, item, onStake, featured}: EarnCardProps) {
     const {denomTicker} = useAssets();
     const ticker = denomTicker(item.stakingDenom);
     const pool = item.kind === "pool";
+    const Card = featured ? TsFeaturedCard : TsCard;
 
     return (
-        <TsCard p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="22px" data-testid={`earn-${item.key}`}>
+        <Card p={{base: "20px", md: "28px"}} display="flex" flexDirection="column" gap="22px" data-testid={`earn-${item.key}`}>
             <Flex justify="space-between" align="flex-start" gap="12px">
                 <Flex direction="column" gap="6px" minW="0">
                     <chakra.span color={ts.muted} fontSize="14px">Stake</chakra.span>
-                    <chakra.h3 m="0" fontSize="26px" fontWeight={700} overflowWrap="anywhere">{ticker}</chakra.h3>
+                    <chakra.h3 m="0" fontSize="24px" fontWeight={700} overflowWrap="anywhere">{ticker}</chakra.h3>
                     <TsTag alignSelf="flex-start" data-testid="earn-kind">{pool ? "Holders pool" : "Fixed-term program"}</TsTag>
                 </Flex>
                 {item.apr && (
                     <Flex direction="column" align="flex-end" gap="4px" data-testid="earn-apr">
-                        <chakra.span fontVariantNumeric="tabular-nums" fontSize="30px" fontWeight={800} color={tsMix(ts.sec, 80, ts.fg)}>
+                        <chakra.span fontVariantNumeric="tabular-nums" fontSize="30px" fontWeight={800}>
                             {formatApr(item.apr)}
                         </chakra.span>
                         <chakra.span {...tsLabel}>APR</chakra.span>
@@ -70,7 +73,7 @@ function EarnCard({asset, item, onStake}: EarnCardProps) {
             )}
 
             <TsButton variant="secondary" mt="auto" onClick={onStake}>Stake {ticker}</TsButton>
-        </TsCard>
+        </Card>
     );
 }
 
@@ -134,6 +137,8 @@ interface EarnSectionProps {
     asset: Asset;
     /** From `useEarnOpportunities`, read by the page so the header knows whether the section exists. */
     opportunities: EarnOpportunity[];
+    /** Feature the first card: T has no holders pool to feature. */
+    featureFirst?: boolean;
 }
 
 /**
@@ -141,7 +146,7 @@ interface EarnSectionProps {
  * can stake to get paid in T — fixed-term programs whose prize is T and other tokens' holders
  * pools paying T. Staking opens the stake dialog on the **other** token. Hidden with none.
  */
-export function EarnSection({asset, opportunities}: EarnSectionProps) {
+export function EarnSection({asset, opportunities, featureFirst}: EarnSectionProps) {
     const {status, address, connect} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
     const [selected, setSelected] = useState<EarnOpportunity>();
@@ -164,9 +169,9 @@ export function EarnSection({asset, opportunities}: EarnSectionProps) {
             title={`Ways to earn ${asset.ticker}`}
             description={`Don't hold ${asset.ticker} yet? Stake one of these tokens and get paid in ${asset.ticker} every day.`}
         >
-            <Grid templateColumns="repeat(auto-fit, minmax(min(360px, 100%), 1fr))" gap="20px" data-testid="earn-list">
-                {opportunities.map((item) => (
-                    <EarnCard key={item.key} asset={asset} item={item} onStake={() => stake(item)}/>
+            <Grid templateColumns="repeat(auto-fit, minmax(min(360px, 100%), 1fr))" gap="16px" data-testid="earn-list">
+                {opportunities.map((item, index) => (
+                    <EarnCard key={item.key} asset={asset} item={item} featured={featureFirst && index === 0} onStake={() => stake(item)}/>
                 ))}
             </Grid>
             {selected && address && (selected.kind === "program" && selected.rewardId

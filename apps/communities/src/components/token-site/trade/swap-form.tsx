@@ -58,7 +58,7 @@ function TokenSelect({label, value, options, onChange}: TokenSelectProps) {
             font="inherit"
             fontWeight={700}
             color={ts.fg}
-            bg={tsMix(ts.fg, 6)}
+            bg={ts.inset}
             border="0"
             borderRadius="999px"
             px="10px"

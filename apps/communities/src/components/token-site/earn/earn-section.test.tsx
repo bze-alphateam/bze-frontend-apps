@@ -80,9 +80,9 @@ const program: StakingRewardSDKType = {
 };
 const bzeProgram: FixedTermProgram = {program, unlocking: [], pending: new BigNumber(0)};
 
-function renderSection(opportunities: EarnOpportunity[] = [POOL, PROGRAM]) {
+function renderSection(opportunities: EarnOpportunity[] = [POOL, PROGRAM], featureFirst?: boolean) {
     const user = userEvent.setup();
-    const view = render(<EarnSection asset={ASSET} opportunities={opportunities}/>, {
+    const view = render(<EarnSection asset={ASSET} opportunities={opportunities} featureFirst={featureFirst}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
         ),
@@ -187,5 +187,19 @@ describe("EarnSection", () => {
 
         expect(connect).toHaveBeenCalled();
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("features the first card when T has no holders pool", () => {
+        renderSection([POOL, PROGRAM], true);
+
+        expect(screen.getByTestId(`earn-pool-${GUILD}`)).toHaveAttribute("data-featured");
+        expect(screen.getByTestId("earn-program-07")).not.toHaveAttribute("data-featured");
+    });
+
+    it("features no card while T's holders pool is the featured one", () => {
+        renderSection([POOL, PROGRAM], false);
+
+        expect(screen.getByTestId(`earn-pool-${GUILD}`)).not.toHaveAttribute("data-featured");
+        expect(screen.getByTestId("earn-program-07")).not.toHaveAttribute("data-featured");
     });
 });

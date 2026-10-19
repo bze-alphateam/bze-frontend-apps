@@ -27,7 +27,7 @@ import {TsButton, TsDialog, TsField, TsNotice, TsTag, ts, tsMix} from "../kit";
 function Fact({label, value, testId}: { label: string; value: React.ReactNode; testId: string }) {
     return (
         <Flex direction="column" gap="4px" minW="0">
-            <chakra.span color={ts.muted} fontSize="14px">{label}</chakra.span>
+            <chakra.span color={ts.muted} fontSize="13px">{label}</chakra.span>
             <chakra.span fontWeight={600} fontVariantNumeric="tabular-nums" overflowWrap="anywhere" data-testid={testId}>{value}</chakra.span>
         </Flex>
     );
@@ -62,7 +62,7 @@ function RaffleCard({asset, raffle, onBuy}: { asset: Asset; raffle: RaffleSDKTyp
                 {`Each ticket has a ${odds} chance to win ${raffleShare(raffle.ratio)} of the pot. Losing tickets grow the pot, `
                     + "and what's left when the raffle ends is burned."}
             </chakra.p>
-            <chakra.div display="grid" gridTemplateColumns="repeat(2, minmax(0, 1fr))" gap="12px">
+            <chakra.div display="grid" gridTemplateColumns="repeat(2, minmax(0, 1fr))" gap="12px" px="16px" py="14px" borderRadius="12px" bg={ts.inset}>
                 <Fact label="Ticket" value={tAmount(asset, raffle.ticket_price)} testId="raffle-ticket"/>
                 <Fact label="Current pot" value={tAmount(asset, raffle.pot)} testId="raffle-pot"/>
                 <Fact label="Win chance" value={odds} testId="raffle-odds"/>
@@ -145,7 +145,7 @@ function TicketForm({asset, raffle, join, onJoined}: TicketFormProps) {
                 aria-describedby={error ? "raffle-tickets-error" : undefined}
             />
             {error && <chakra.span id="raffle-tickets-error" role="alert" fontSize="13px" color={ts.danger} px="4px">{error}</chakra.span>}
-            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)}>
+            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.inset}>
                 <Row label="Ticket price">{tAmount(asset, price)}</Row>
                 <Row label="Total cost">{cost ? tAmount(asset, cost) : "—"}</Row>
                 <Row label="Each ticket's chance">{raffleOdds(raffle.chances)}</Row>
@@ -189,7 +189,10 @@ function TicketResults({asset, entry, onMore, onClose}: { asset: Asset; entry: R
                             px="14px"
                             py="10px"
                             borderRadius="12px"
-                            bg={result?.won ? tsMix(ts.pri, 14) : tsMix(ts.fg, 4)}
+                            bg={result?.won ? tsMix(ts.pri, 14) : ts.inset}
+                            borderWidth="1px"
+                            borderStyle="solid"
+                            borderColor={result?.won ? tsMix(ts.pri, 40) : "transparent"}
                             data-testid={`raffle-ticket-${index + 1}`}
                         >
                             <chakra.span>Ticket {index + 1}</chakra.span>

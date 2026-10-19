@@ -2,7 +2,7 @@
 
 import React, {useState} from "react";
 import {Box, chakra, Flex} from "@chakra-ui/react";
-import {LuMenu, LuMoon, LuSun, LuX} from "react-icons/lu";
+import {LuMenu, LuMoon, LuSun, LuWallet, LuX} from "react-icons/lu";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {type Asset, getChainName, shortNumberFormat, uAmountToBigNumberAmount, useBalance} from "@bze/bze-ui-kit";
@@ -26,12 +26,19 @@ function WalletButton({asset}: { asset: Asset }) {
     const {balance} = useBalance(asset.denom);
     const amount = shortNumberFormat(uAmountToBigNumberAmount(balance.amount, asset.decimals));
 
+    if (!isConnected) {
+        return (
+            <TsButton variant="primary" onClick={() => open("get")} aria-label="Connect wallet" borderRadius="12px" px={{base: "14px", md: "20px"}} fontWeight={600}>
+                <LuWallet aria-hidden="true"/>
+                Connect
+            </TsButton>
+        );
+    }
+
     return (
-        <TsButton variant="ghost" onClick={() => open("get")} aria-label={isConnected ? "Open wallet" : "Connect wallet"} px={{base: "14px", md: "22px"}}>
+        <TsButton variant="ghost" onClick={() => open("get")} aria-label="Open wallet" borderRadius="12px" px={{base: "14px", md: "20px"}}>
             <chakra.span aria-hidden="true" w="8px" h="8px" borderRadius="50%" bg={ts.pri}/>
-            <chakra.span fontVariantNumeric="tabular-nums">
-                {isConnected ? `${amount} ${asset.ticker}` : "Connect"}
-            </chakra.span>
+            <chakra.span fontVariantNumeric="tabular-nums">{`${amount} ${asset.ticker}`}</chakra.span>
         </TsButton>
     );
 }
@@ -44,6 +51,9 @@ function ModeButton() {
         <TsChip
             aria-label={toDark ? "Switch to dark mode" : "Switch to light mode"}
             onClick={toggleColorMode}
+            borderRadius="12px"
+            bg={ts.card}
+            borderColor={ts.border}
             display="inline-flex"
             alignItems="center"
             justifyContent="center"
@@ -75,7 +85,7 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
     const {openSettings} = useTokenWallet();
 
     return (
-        <Box as="header" {...tsContainer} py={{base: "14px", md: "20px"}}>
+        <Box as="header" position="relative" {...tsContainer} py={{base: "12px", md: "18px"}}>
             <Flex align="center" gap={{base: "12px", md: "32px"}} wrap="wrap">
                 <chakra.a href="#top" display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0">
                     <TokenMark asset={asset} size={40}/>
@@ -95,6 +105,9 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
                     <WalletButton asset={asset}/>
                     <TsChip
                         display={{base: "inline-flex", md: "none"}}
+                        borderRadius="12px"
+                        bg={ts.card}
+                        borderColor={ts.border}
                         alignItems="center"
                         justifyContent="center"
                         w="44px"

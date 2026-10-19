@@ -2,9 +2,20 @@
 
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {usePathname, useSearchParams} from "next/navigation";
-import {Box, Button, Container, Flex, SimpleGrid, Skeleton, Text, VStack} from "@chakra-ui/react";
-import {LuInbox, LuSearch} from "react-icons/lu";
-import {getChainNativeAssetDenom, getUSDCDenom} from "@bze/bze-ui-kit";
+import {Box, Button, Flex, SimpleGrid, Text} from "@chakra-ui/react";
+import {LuFilter, LuSearch} from "react-icons/lu";
+import {
+    Eyebrow,
+    getChainNativeAssetDenom,
+    getUSDCDenom,
+    GradientText,
+    HeroGlow,
+    HgCard,
+    HomeHero,
+    PageContainer,
+    PageState,
+    Shimmer,
+} from "@bze/bze-ui-kit";
 
 import {useCommunitiesContext} from "@/hooks/useCommunitiesContext";
 import {useDirectoryData} from "@/hooks/useDirectoryData";
@@ -29,40 +40,43 @@ import {DirectorySort} from "./directory-sort";
 
 const CARD_GRID = {base: "minmax(0, 1fr)", md: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))"};
 
-/** The page heading, shared with the Suspense fallback. */
-export function DirectoryHeading() {
+/** The hero, shared with the Suspense fallback; `controls` are the search and sort under it. */
+export function DirectoryHeading({controls}: { controls?: React.ReactNode }) {
     return (
-        <VStack gap="3" align="center" textAlign="center">
-            <Text as="h1" fontSize={{base: "3xl", md: "4xl"}} fontWeight="bold" letterSpacing="tight">
-                Token directory
-            </Text>
-            <Text fontSize={{base: "md", md: "lg"}} color="fg.muted" maxW="2xl">
-                Every token created on BeeZee&apos;s Token Factory. Open one to see its community page:
-                staking rewards, trading, burns and more.
-            </Text>
-        </VStack>
+        <HomeHero
+            align="center"
+            eyebrow={<Eyebrow app="communities">BeeZee Communities · Token directory</Eyebrow>}
+            title={<>Every token has a <GradientText>home</GradientText></>}
+            subtitle={
+                "A home for every community token. Every token created on BeeZee's Token Factory gets a page: "
+                + "staking rewards, trading, burns and more."
+            }
+        >
+            {controls && <Flex wrap="wrap" gap="10px" w="100%" maxW="760px" mx="auto">{controls}</Flex>}
+        </HomeHero>
     );
 }
 
 export function DirectorySkeleton() {
     return (
-        <SimpleGrid templateColumns={CARD_GRID} gap="4">
+        <SimpleGrid templateColumns={CARD_GRID} gap="16px" aria-busy="true">
             {Array.from({length: 6}).map((_, i) => (
-                <Skeleton key={i} height="180px" borderRadius="xl"/>
+                <Shimmer key={i} h="196px" borderRadius="hg.lg"/>
             ))}
         </SimpleGrid>
     );
 }
 
-export function DirectoryLayout({children}: { children: React.ReactNode }) {
+export function DirectoryLayout({controls, children}: { controls?: React.ReactNode; children: React.ReactNode }) {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" px={{base: "4", md: "8"}} py={{base: "7", md: "14"}}>
-                <VStack align="stretch" gap={{base: "5", md: "8"}}>
-                    <DirectoryHeading/>
+        <Box position="relative" minH="100vh">
+            <HeroGlow/>
+            <PageContainer as="main" position="relative" pt={{base: "32px", md: "72px"}} pb={{base: "40px", md: "96px"}}>
+                <Flex direction="column" gap={{base: "28px", md: "40px"}}>
+                    <DirectoryHeading controls={controls}/>
                     {children}
-                </VStack>
-            </Container>
+                </Flex>
+            </PageContainer>
         </Box>
     );
 }
@@ -130,52 +144,56 @@ export function Directory() {
         if (!isLoading && page !== urlState.page) write({...urlState, q: query, page});
     }, [isLoading, page, urlState, query, write]);
 
+    const controls = (
+        <>
+            <DirectorySearch value={query} onChange={onSearch} onClear={clearSearch}/>
+            <DirectorySort value={state.sort} onChange={(sort) => update({sort})}/>
+        </>
+    );
+
     return (
-        <DirectoryLayout>
-            <VStack align="stretch" gap="3.5">
-                <Flex wrap="wrap" gap="3">
-                    <DirectorySearch value={query} onChange={onSearch} onClear={clearSearch}/>
-                    <DirectorySort value={state.sort} onChange={(sort) => update({sort})}/>
-                </Flex>
-                <Flex wrap="wrap" justify="space-between" align="center" gap="3">
-                    <DirectoryFilters value={state.filter} onChange={(filter) => update({filter})}/>
-                    {!isLoading && (
-                        <Text fontSize="sm" color="fg.muted" fontVariantNumeric="tabular-nums" data-testid="directory-count">
-                            {showingLine(matches.length, page)}
-                        </Text>
-                    )}
-                </Flex>
-            </VStack>
+        <DirectoryLayout controls={controls}>
+            <Flex wrap="wrap" justify="space-between" align="center" gap="12px">
+                <DirectoryFilters value={state.filter} onChange={(filter) => update({filter})}/>
+                {!isLoading && (
+                    <Text fontSize="13px" color="hg.text.faint" fontVariantNumeric="tabular-nums" data-testid="directory-count">
+                        {showingLine(matches.length, page)}
+                    </Text>
+                )}
+            </Flex>
 
             {isLoading ? (
                 <DirectorySkeleton/>
             ) : tokens.length === 0 ? (
-                <VStack gap="3" align="center" py="16" color="fg.muted">
-                    <LuInbox size={40}/>
-                    <Text fontSize="lg" fontWeight="medium">No tokens yet</Text>
-                    <Text fontSize="sm" maxW="md" textAlign="center">
-                        No tokens have been created on the Token Factory yet. Check back soon.
-                    </Text>
-                </VStack>
+                <HgCard>
+                    <PageState
+                        kind="empty"
+                        title="No tokens yet"
+                        description="No tokens have been created on the Token Factory yet. Check back soon."
+                    />
+                </HgCard>
             ) : matches.length === 0 ? (
-                <VStack gap="3" align="center" py="16" px="4" textAlign="center" data-testid="directory-empty">
-                    <Box color="fg.muted"><LuSearch size={40}/></Box>
+                <HgCard data-testid="directory-empty">
                     {query.trim() !== "" ? (
-                        <>
-                            <Text fontSize="lg" fontWeight="semibold">No tokens match “{query.trim()}”</Text>
-                            <Text color="fg.muted">Try a different name or ticker, or paste the full denom.</Text>
-                            <Button variant="outline" onClick={clearSearch}>Clear search</Button>
-                        </>
+                        <PageState
+                            kind="not-found"
+                            icon={<LuSearch/>}
+                            title={`No tokens match “${query.trim()}”`}
+                            description="Try a different name or ticker, or paste the full denom."
+                            action={<Button variant="secondary" size="md" onClick={clearSearch}>Clear search</Button>}
+                        />
                     ) : (
-                        <>
-                            <Text fontSize="lg" fontWeight="semibold">No tokens match this filter</Text>
-                            <Button variant="outline" onClick={() => update({filter: "all"})}>Show all tokens</Button>
-                        </>
+                        <PageState
+                            kind="empty"
+                            icon={<LuFilter/>}
+                            title="No tokens match this filter"
+                            action={<Button variant="secondary" size="md" onClick={() => update({filter: "all"})}>Show all tokens</Button>}
+                        />
                     )}
-                </VStack>
+                </HgCard>
             ) : (
                 <>
-                    <SimpleGrid templateColumns={CARD_GRID} gap={{base: "3", md: "4"}}>
+                    <SimpleGrid templateColumns={CARD_GRID} gap={{base: "12px", md: "16px"}}>
                         {pageTokens.map((asset) => {
                             const {price, change} = tokenMarket(asset.denom, usdPricesMap, marketsDataMap, quotes);
                             return (

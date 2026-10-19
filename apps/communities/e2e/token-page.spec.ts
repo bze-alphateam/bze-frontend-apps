@@ -12,6 +12,10 @@ import {expect, type Fixture, test} from "./support/mock-network";
 const NOAD = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin";
 // Vidulum (VDL) sits in no pool, so it can't be swapped into.
 const VIDULUM = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum";
+// Primary buttons draw the kit's gradient: its primary into the primary 25 % darker.
+const LIGHT_GRADIENT = "linear-gradient(135deg, rgb(190, 25, 129), rgb(143, 19, 97))";
+const DARK_GRADIENT = "linear-gradient(135deg, rgb(230, 127, 192), rgb(173, 95, 144))";
+
 const tokenPage = (denom: string) => `/token?denom=${encodeURIComponent(denom)}`;
 const recorded = (file: string): Fixture =>
     JSON.parse(readFileSync(join(__dirname, "fixtures", "lcd", file), "utf8")) as Fixture;
@@ -38,7 +42,7 @@ test("the kit's primary colour and font are applied", async ({page}) => {
     await page.goto(tokenPage(NOAD));
 
     const get = page.getByRole("button", {name: "Get NOAD"}).first();
-    await expect(get).toHaveCSS("background-color", "rgb(190, 25, 129)");
+    await expect(get).toHaveCSS("background-image", LIGHT_GRADIENT);
     await expect(page.getByTestId("token-site")).toHaveCSS("font-family", /JetBrains Mono/);
 });
 
@@ -48,7 +52,7 @@ test.describe("in dark mode", () => {
     test("the kit's dark primary is applied", async ({page}) => {
         await page.goto(tokenPage(NOAD));
 
-        await expect(page.getByRole("button", {name: "Get NOAD"}).first()).toHaveCSS("background-color", "rgb(230, 127, 192)");
+        await expect(page.getByRole("button", {name: "Get NOAD"}).first()).toHaveCSS("background-image", DARK_GRADIENT);
     });
 });
 
@@ -63,7 +67,7 @@ test("the header's wallet button opens the token's wallet drawer with a connect 
     await expect(drawer).toBeVisible();
     await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
     // Portaled outside the page, still in the kit's colours.
-    await expect(drawer.getByRole("button", {name: "Connect wallet"})).toHaveCSS("background-color", "rgb(190, 25, 129)");
+    await expect(drawer.getByRole("button", {name: "Connect wallet"})).toHaveCSS("background-image", LIGHT_GRADIENT);
 
     await page.keyboard.press("Escape");
     await expect(drawer).toBeHidden();
@@ -107,7 +111,7 @@ test("the wallet drawer's settings switch the page to the kit's dark palette, no
     await expect(darkMode).toHaveAttribute("aria-checked", "true");
     await expect(site).not.toHaveCSS("background-color", lightBackground);
     // The kit's dark primary, as in the dark-mode test above.
-    await expect(page.getByRole("button", {name: "Get NOAD"}).first()).toHaveCSS("background-color", "rgb(230, 127, 192)");
+    await expect(page.getByRole("button", {name: "Get NOAD"}).first()).toHaveCSS("background-image", DARK_GRADIENT);
 
     await drawer.getByRole("button", {name: "Back to wallet"}).click();
     await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();

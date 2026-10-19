@@ -14,7 +14,7 @@ export function DirectorySearch({value, onChange, onClear}: DirectorySearchProps
             flex="999 1 420px"
             startElement={<LuSearch size={18}/>}
             endElement={value !== "" ? (
-                <Button size="xs" variant="subtle" onClick={onClear}>Clear</Button>
+                <Button size="sm" variant="secondary" onClick={onClear}>Clear</Button>
             ) : undefined}
             endElementProps={{pointerEvents: "auto"}}
         >
@@ -24,9 +24,12 @@ export function DirectorySearch({value, onChange, onClear}: DirectorySearchProps
                 placeholder="Search by name, ticker or denom"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                size="lg"
-                bg="bg.panel"
-                fontSize="md"
+                h="52px"
+                borderRadius="14px"
+                bg="hg.card"
+                borderColor="app.border"
+                boxShadow="hg.featured"
+                fontSize="16px"
             />
         </InputGroup>
     );

@@ -20,8 +20,11 @@ export function DirectorySort({value, onChange}: DirectorySortProps) {
                 aria-label="Sort tokens"
                 value={value}
                 onChange={(e) => onChange(e.target.value as SortValue)}
-                bg="bg.panel"
-                fontSize="sm"
+                h="52px"
+                borderRadius="14px"
+                bg="hg.card"
+                fontSize="14px"
+                fontWeight="500"
             >
                 {DIRECTORY_SORTS.map((sort) => (
                     <option key={sort} value={sort}>{SORT_LABELS[sort]}</option>

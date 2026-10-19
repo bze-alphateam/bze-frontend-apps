@@ -7,9 +7,10 @@ import {type Asset, formatUsdAmount, useAssetPrice} from "@bze/bze-ui-kit";
 
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
 
-import {TsButton, TsLinkButton, TsTag, ts, tsContainer, tsMix} from "./kit";
+import {TsButton, TsLinkButton, TsTag, ts, tsChangeColor, tsContainer, tsEyebrow} from "./kit";
+import {TokenMark} from "./token-mark";
 
-/** The 24h change with an arrow and a sign; the kit has no up/down colours (Business Logic R1). */
+/** The 24h change with an arrow and a sign, in the shared up/down colours; grey when flat. */
 function PriceChange({change}: { change: number }) {
     const up = change >= 0;
     const text = `${up ? "+" : "−"}${Math.abs(change).toFixed(2)}% today`;
@@ -17,13 +18,14 @@ function PriceChange({change}: { change: number }) {
     return (
         <chakra.span
             data-testid="token-site-change"
+            data-direction={change > 0 ? "up" : change < 0 ? "down" : "flat"}
             display="inline-flex"
             alignItems="center"
             gap="4px"
             fontWeight={600}
-            fontSize="17px"
+            fontSize="16px"
             fontVariantNumeric="tabular-nums"
-            color={tsMix(ts.pri, 80, ts.fg)}
+            color={tsChangeColor(change)}
         >
             {up ? <LuArrowUp aria-hidden="true"/> : <LuArrowDown aria-hidden="true"/>}
             {text}
@@ -31,47 +33,37 @@ function PriceChange({change}: { change: number }) {
     );
 }
 
-/** Hero (Business Logic R3): name, ticker, verified tag, description, USD price, Get / Stake. */
+/**
+ * Hero (Business Logic R3): the token mark and ticker as the eyebrow, the name as the gradient
+ * word, the description, USD price and change, Get / Stake. The kit's glow sits behind it.
+ */
 export function Hero({asset, hasStake}: { asset: Asset; hasStake: boolean }) {
     const {price, change, hasPrice} = useAssetPrice(asset.denom);
     const {open} = useTokenWallet();
 
     return (
-        <Box as="section" id="top" aria-label={asset.name} position="relative" overflow="hidden">
-            <chakra.svg
-                aria-hidden="true"
-                viewBox="0 0 600 600"
-                position="absolute"
-                right={{base: "-170px", md: "-120px"}}
-                top={{base: "-40px", md: "-60px"}}
-                w={{base: "380px", md: "640px"}}
-                h={{base: "380px", md: "640px"}}
-                pointerEvents="none"
-            >
-                <circle cx="300" cy="300" r="280" fill="none" stroke="var(--ts-pri)" strokeOpacity=".18" strokeWidth="2"/>
-                <circle cx="300" cy="300" r="220" fill="none" stroke="var(--ts-sec)" strokeOpacity=".22" strokeWidth="2"/>
-                <circle cx="300" cy="300" r="160" fill="var(--ts-pri)" fillOpacity=".10"/>
-                <circle cx="300" cy="300" r="96" fill="var(--ts-sec)" fillOpacity=".16"/>
-            </chakra.svg>
-
-            <Flex position="relative" direction="column" gap={{base: "18px", md: "28px"}} {...tsContainer} pt={{base: "40px", md: "72px"}} pb={{base: "32px", md: "56px"}}>
+        <Box as="section" id="top" aria-label={asset.name} position="relative">
+            <Flex position="relative" direction="column" gap={{base: "18px", md: "22px"}} {...tsContainer} pt={{base: "36px", md: "72px"}} pb={{base: "28px", md: "48px"}}>
                 <Flex wrap="wrap" align="center" gap="10px">
-                    <TsTag>{asset.ticker}</TsTag>
+                    <TokenMark asset={asset} size={32}/>
+                    <chakra.span {...tsEyebrow} color={ts.pri} data-testid="token-site-ticker">{asset.ticker}</chakra.span>
                     {asset.verified && <TsTag>Verified</TsTag>}
                 </Flex>
                 <chakra.h1
                     m="0"
-                    fontSize={{base: "40px", md: "56px"}}
+                    fontSize={{base: "40px", md: "52px"}}
                     lineHeight="1.05"
                     letterSpacing="-0.03em"
                     fontWeight={800}
                     maxW="900px"
                     overflowWrap="anywhere"
                 >
-                    {asset.name}
+                    <chakra.span data-testid="token-site-name" bgImage={ts.heroGradient} bgClip="text" color="transparent">
+                        {asset.name}
+                    </chakra.span>
                 </chakra.h1>
                 {asset.description && (
-                    <chakra.p m="0" fontSize={{base: "17px", md: "20px"}} lineHeight="1.55" maxW="620px" color={ts.muted} whiteSpace="pre-line">
+                    <chakra.p m="0" fontSize={{base: "17px", md: "18px"}} lineHeight="1.55" maxW="620px" color={ts.muted} whiteSpace="pre-line">
                         {asset.description}
                     </chakra.p>
                 )}

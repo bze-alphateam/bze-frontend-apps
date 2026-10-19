@@ -78,9 +78,9 @@ const position = (amount: string, pending: { denom: string; amount: string }[] =
     participant: {address: ME, staking_denom: T, amount}, pending,
 });
 
-function renderPool() {
+function renderPool(onPoolKnown?: (hasPool: boolean) => void) {
     const user = userEvent.setup();
-    render(<HoldersPool asset={ASSET}/>, {
+    render(<HoldersPool asset={ASSET} onPoolKnown={onPoolKnown}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
         ),
@@ -219,6 +219,33 @@ describe("HoldersPool", () => {
 
         await user.click(screen.getByRole("button", {name: "Retry"}));
         expect(reloadPool).toHaveBeenCalled();
+    });
+
+    it("is the page's featured card and tells the page T has a pool", async () => {
+        const onPoolKnown = vi.fn();
+        renderPool(onPoolKnown);
+
+        expect(await screen.findByTestId("holders-pool")).toHaveAttribute("data-featured");
+        expect(onPoolKnown).toHaveBeenCalledWith(true);
+    });
+
+    it("tells the page T has no pool, so another card can be featured", () => {
+        pool = {isLoading: false, hasError: false};
+        const onPoolKnown = vi.fn();
+        renderPool(onPoolKnown);
+
+        expect(screen.getByTestId("holders-pool-empty")).not.toHaveAttribute("data-featured");
+        expect(onPoolKnown).toHaveBeenCalledWith(false);
+    });
+
+    it("says nothing about the pool while it loads or can't be read", () => {
+        const onPoolKnown = vi.fn();
+        pool = {isLoading: true, hasError: false};
+        renderPool(onPoolKnown);
+        pool = {isLoading: false, hasError: true};
+        renderPool(onPoolKnown);
+
+        expect(onPoolKnown).not.toHaveBeenCalled();
     });
 });
 

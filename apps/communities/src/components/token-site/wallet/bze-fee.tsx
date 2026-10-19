@@ -15,7 +15,7 @@ import {useFeeMode} from "@/hooks/token-site/useTokenFeeMode";
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsNotice, ts, tsMix} from "../kit";
+import {TsButton, TsNotice, ts} from "../kit";
 
 /** BZE's ticker and decimals (TBZE on testnet). */
 function useBze() {
@@ -71,7 +71,7 @@ function FeeRow() {
             borderRadius="14px"
             px="14px"
             py="10px"
-            bg={tsMix(ts.fg, 4)}
+            bg={ts.inset}
             fontSize="14px"
             data-testid="bze-fee-row"
         >
