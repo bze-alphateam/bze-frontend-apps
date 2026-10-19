@@ -10,6 +10,7 @@ import {
     getUSDCDenom,
     GradientText,
     HeroGlow,
+    hgVariant,
     HgCard,
     HomeHero,
     PageContainer,
@@ -180,14 +181,14 @@ export function Directory() {
                             icon={<LuSearch/>}
                             title={`No tokens match “${query.trim()}”`}
                             description="Try a different name or ticker, or paste the full denom."
-                            action={<Button variant="secondary" size="md" onClick={clearSearch}>Clear search</Button>}
+                            action={<Button variant={hgVariant("secondary")} size="md" onClick={clearSearch}>Clear search</Button>}
                         />
                     ) : (
                         <PageState
                             kind="empty"
                             icon={<LuFilter/>}
                             title="No tokens match this filter"
-                            action={<Button variant="secondary" size="md" onClick={() => update({filter: "all"})}>Show all tokens</Button>}
+                            action={<Button variant={hgVariant("secondary")} size="md" onClick={() => update({filter: "all"})}>Show all tokens</Button>}
                         />
                     )}
                 </HgCard>

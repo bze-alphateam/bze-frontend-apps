@@ -1,4 +1,5 @@
 import {Box, Button, Flex, HStack, Text} from "@chakra-ui/react";
+import {hgVariant} from "@bze/bze-ui-kit";
 import {LuChevronLeft, LuChevronRight} from "react-icons/lu";
 
 import {paginationItems} from "@/lib/token-directory";
@@ -25,7 +26,7 @@ export function DirectoryPagination({page, totalPages, onChange}: DirectoryPagin
             <Flex hideBelow="md" wrap="wrap" justify="space-between" align="center" gap="3">
                 <Text fontSize="13px" color="hg.text.faint">{label}</Text>
                 <HStack gap="6px">
-                    <Button variant="secondary" size="md" disabled={page <= 1} onClick={prev}>
+                    <Button variant={hgVariant("secondary")} size="md" disabled={page <= 1} onClick={prev}>
                         <LuChevronLeft/>Previous
                     </Button>
                     {paginationItems(page, totalPages).map((item, i) => item === "gap" ? (
@@ -49,18 +50,18 @@ export function DirectoryPagination({page, totalPages, onChange}: DirectoryPagin
                             {item}
                         </Button>
                     ))}
-                    <Button variant="secondary" size="md" disabled={page >= totalPages} onClick={next}>
+                    <Button variant={hgVariant("secondary")} size="md" disabled={page >= totalPages} onClick={next}>
                         Next<LuChevronRight/>
                     </Button>
                 </HStack>
             </Flex>
 
             <Flex hideFrom="md" justify="space-between" align="center" gap="8px">
-                <Button variant="secondary" minH="44px" aria-label="Previous page" disabled={page <= 1} onClick={prev}>
+                <Button variant={hgVariant("secondary")} minH="44px" aria-label="Previous page" disabled={page <= 1} onClick={prev}>
                     <LuChevronLeft/>Prev
                 </Button>
                 <Text fontSize="14px" fontWeight="600">{label}</Text>
-                <Button variant="secondary" minH="44px" aria-label="Next page" disabled={page >= totalPages} onClick={next}>
+                <Button variant={hgVariant("secondary")} minH="44px" aria-label="Next page" disabled={page >= totalPages} onClick={next}>
                     Next<LuChevronRight/>
                 </Button>
             </Flex>

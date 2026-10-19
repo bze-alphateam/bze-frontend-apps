@@ -1,4 +1,5 @@
 import {Button, Flex} from "@chakra-ui/react";
+import {hgVariant} from "@bze/bze-ui-kit";
 
 import type {DirectoryFilter} from "@/lib/token-directory";
 
@@ -28,7 +29,7 @@ export function DirectoryFilters({value, onChange}: DirectoryFiltersProps) {
                         px={on ? "16px" : "14px"}
                         fontSize="13px"
                         fontWeight={on ? "700" : "500"}
-                        variant={on ? "primary" : "secondary"}
+                        variant={hgVariant(on ? "primary" : "secondary")}
                         aria-pressed={on}
                         onClick={() => onChange(filter)}
                     >

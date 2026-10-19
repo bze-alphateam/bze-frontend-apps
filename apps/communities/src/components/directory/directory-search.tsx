@@ -1,4 +1,5 @@
 import {Button, Input, InputGroup} from "@chakra-ui/react";
+import {hgVariant} from "@bze/bze-ui-kit";
 import {LuSearch} from "react-icons/lu";
 
 interface DirectorySearchProps {
@@ -14,7 +15,7 @@ export function DirectorySearch({value, onChange, onClear}: DirectorySearchProps
             flex="999 1 420px"
             startElement={<LuSearch size={18}/>}
             endElement={value !== "" ? (
-                <Button size="sm" variant="secondary" onClick={onClear}>Clear</Button>
+                <Button size="sm" variant={hgVariant("secondary")} onClick={onClear}>Clear</Button>
             ) : undefined}
             endElementProps={{pointerEvents: "auto"}}
         >
