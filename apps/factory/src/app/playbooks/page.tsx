@@ -1,10 +1,11 @@
 "use client"
 
 import React, { Suspense, useEffect, useState } from 'react'
-import { Badge, Box, Button, Circle, Container, HStack, Link, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowLeft, LuCheck } from 'react-icons/lu'
+import { Box, Button, chakra, Circle, Flex, HStack, Text, VStack } from '@chakra-ui/react'
+import { LuCheck } from 'react-icons/lu'
 import { useSearchParams } from 'next/navigation'
-import { TokenLogo, useAssets } from '@bze/bze-ui-kit'
+import { FeaturedCard, HgCard, PageContainer, Shimmer, TokenLogo, hgVariant, useAssets } from '@bze/bze-ui-kit'
+import { InnerHero } from '@/components/ui/inner-hero'
 import { PlaybookCards } from '@/components/home/playbooks-section'
 import { useMyTokens } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
@@ -27,6 +28,20 @@ import {
 
 const NO_FACTS: PlaybookFacts = { items: [], lpCampaign: false }
 
+/** The step's number disc: green check when done, the app gradient when current, quiet otherwise. */
+function StepDisc({ state, n }: { state: StepStatus['state']; n: number }) {
+    const look = state === 'done'
+        ? { bg: 'hg.success/16', borderWidth: '1px', borderColor: 'hg.success/45', color: 'hg.success.text' }
+        : state === 'current'
+            ? { bgImage: 'app', color: 'hg.buttonText' }
+            : { bg: 'hg.inset', color: 'fg.muted' }
+    return (
+        <Circle size="28px" flexShrink={0} fontSize="13px" fontWeight="800" aria-hidden {...look}>
+            {state === 'done' ? <LuCheck size={14} strokeWidth={3} /> : n}
+        </Circle>
+    )
+}
+
 function StepCard({ playbook, status, index, facts, onMarkDone }: {
     playbook: Playbook;
     status: StepStatus;
@@ -39,49 +54,75 @@ function StepCard({ playbook, status, index, facts, onMarkDone }: {
     const waiting = step.needsToken !== false && !facts.denom
     const current = state === 'current'
 
+    if (state === 'done') {
+        return (
+            <Flex
+                as="li"
+                listStyleType="none"
+                align="center"
+                gap="14px"
+                px="20px"
+                py="14px"
+                borderRadius="16px"
+                bg="hg.inset"
+                borderWidth="1px"
+                borderColor="hg.divider"
+                data-testid={`playbook-step-${step.goalId}`}
+                data-state={state}
+            >
+                <StepDisc state={state} n={index + 1} />
+                <Text fontSize="14px" color="fg.muted">{step.doneText}</Text>
+            </Flex>
+        )
+    }
+
+    const body = (
+        <Flex align="start" gap="14px">
+            <StepDisc state={state} n={index + 1} />
+            <VStack align="stretch" gap="10px" flex="1" minW={0}>
+                <HStack gap="8px" flexWrap="wrap">
+                    <Text as="strong" fontSize="16px" fontWeight="700">{step.title}</Text>
+                    {current && (
+                        <chakra.span fontSize="11px" fontWeight="700" px="8px" py="3px" borderRadius="hg.pill" color="hg.link" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+                            Current
+                        </chakra.span>
+                    )}
+                </HStack>
+                <Text fontSize="14px" lineHeight="1.5" color="fg.muted">{step.why}</Text>
+                <HStack gap="14px" flexWrap="wrap">
+                    <Button
+                        size={current ? 'lg' : 'md'}
+                        variant={current ? hgVariant('primary') : hgVariant('secondary')}
+                        disabled={waiting}
+                        onClick={() => navigate(stepHref(playbook, step, facts))}
+                    >
+                        {step.action}
+                    </Button>
+                    {manual && (
+                        <chakra.button
+                            type="button"
+                            bg="transparent"
+                            border="0"
+                            p="0"
+                            fontSize="14px"
+                            fontWeight="600"
+                            color="hg.link"
+                            cursor="pointer"
+                            _hover={{ textDecoration: 'underline' }}
+                            onClick={onMarkDone}
+                        >
+                            Mark as done
+                        </chakra.button>
+                    )}
+                    {waiting && <Text fontSize="12px" color="hg.text.faint">Choose the token first.</Text>}
+                </HStack>
+            </VStack>
+        </Flex>
+    )
+
     return (
-        <Box
-            as="li"
-            listStyleType="none"
-            p={4}
-            borderRadius="xl"
-            borderWidth="1px"
-            borderColor={current ? 'yellow.500/50' : 'border.muted'}
-            bg={state === 'done' ? 'bg.subtle' : 'bg.panel'}
-            data-testid={`playbook-step-${step.goalId}`}
-            data-state={state}
-        >
-            <HStack align="start" gap={3}>
-                <Circle size="7" flexShrink={0} bg={state === 'done' ? 'green.500' : current ? 'yellow.500' : 'bg.muted'} color={state === 'later' ? 'fg.muted' : 'white'} fontSize="sm" fontWeight="bold">
-                    {state === 'done' ? <LuCheck size={14} /> : index + 1}
-                </Circle>
-                {state === 'done' ? (
-                    <Text fontSize="sm" color="fg.muted" pt={1}>{step.doneText}</Text>
-                ) : (
-                    <VStack align="stretch" gap={2} flex="1" minW={0}>
-                        <HStack gap={2} flexWrap="wrap">
-                            <Text fontWeight="semibold">{step.title}</Text>
-                            {current && <Badge colorPalette="yellow" size="sm">Current</Badge>}
-                        </HStack>
-                        <Text fontSize="sm" color="fg.muted">{step.why}</Text>
-                        <HStack gap={3} flexWrap="wrap">
-                            <Button
-                                size="sm"
-                                colorPalette="yellow"
-                                variant={current ? 'solid' : 'outline'}
-                                disabled={waiting}
-                                onClick={() => navigate(stepHref(playbook, step, facts))}
-                            >
-                                {step.action}
-                            </Button>
-                            {manual && (
-                                <Link as="button" fontSize="sm" color="yellow.fg" onClick={onMarkDone}>Mark as done</Link>
-                            )}
-                            {waiting && <Text fontSize="xs" color="fg.muted">Choose the token first.</Text>}
-                        </HStack>
-                    </VStack>
-                )}
-            </HStack>
+        <Box as="li" listStyleType="none" data-testid={`playbook-step-${step.goalId}`} data-state={state}>
+            {current ? <FeaturedCard p="20px">{body}</FeaturedCard> : <HgCard p="20px">{body}</HgCard>}
         </Box>
     )
 }
@@ -89,30 +130,34 @@ function StepCard({ playbook, status, index, facts, onMarkDone }: {
 function TokenChoice({ denom, onChoose }: { denom?: string; onChoose: (denom: string) => void }) {
     const { tokens, isLoading } = useMyTokens()
     return (
-        <VStack as="section" aria-label="Which token is this for?" align="stretch" gap={2}>
-            <Text fontWeight="semibold">Which token is this for?</Text>
+        <HgCard as="section" aria-label="Which token is this for?" px="20px" py="18px" display="flex" flexDirection="column" gap="12px">
+            <Text as="strong" fontSize="15px" fontWeight="700">Which token is this for?</Text>
             {isLoading ? (
-                <Skeleton height="10" borderRadius="lg" />
+                <Shimmer h="36px" borderRadius="10px" />
             ) : tokens.length === 0 ? (
-                <Text fontSize="sm" color="fg.muted">Connect the wallet that created your token to pick it.</Text>
+                <Text fontSize="13px" lineHeight="1.5" color="fg.muted">Connect the wallet that created your token to pick it.</Text>
             ) : (
-                <HStack gap={2} flexWrap="wrap">
-                    {tokens.map(({ asset }) => (
-                        <Button
-                            key={asset.denom}
-                            size="sm"
-                            variant={asset.denom === denom ? 'solid' : 'outline'}
-                            colorPalette="yellow"
-                            aria-pressed={asset.denom === denom}
-                            onClick={() => onChoose(asset.denom)}
-                        >
-                            <TokenLogo src={asset.logo} symbol={asset.ticker} size="5" circular={true} />
-                            {asset.ticker}
-                        </Button>
-                    ))}
+                <HStack gap="8px" flexWrap="wrap">
+                    {tokens.map(({ asset }) => {
+                        const chosen = asset.denom === denom
+                        return (
+                            <Button
+                                key={asset.denom}
+                                size="md"
+                                ps="6px"
+                                variant={chosen ? hgVariant('primary') : 'outline'}
+                                {...(chosen ? {} : { borderColor: 'app.border', bg: 'app.subtle', color: 'fg', borderRadius: 'hg.md', _hover: { bg: 'app.muted' } })}
+                                aria-pressed={chosen}
+                                onClick={() => onChoose(asset.denom)}
+                            >
+                                <TokenLogo src={asset.logo} symbol={asset.ticker} size="5" circular={true} />
+                                {asset.ticker}
+                            </Button>
+                        )
+                    })}
                 </HStack>
             )}
-        </VStack>
+        </HgCard>
     )
 }
 
@@ -122,45 +167,82 @@ function Steps({ playbook, facts, progress, onMarkDone }: {
     progress?: PlaybookProgress;
     onMarkDone: (step: string) => void;
 }) {
-    const { navigate } = useNavigation()
-    const { denomTicker } = useAssets()
     const statuses = stepStatuses(playbook, facts, progress?.manualDone ?? [])
-    const allDone = statuses.every(s => s.state === 'done')
 
     return (
-        <VStack align="stretch" gap={4}>
-            <VStack as="ol" align="stretch" gap={3} ps={0} m={0} aria-label="Steps">
-                {statuses.map((status, i) => (
-                    <StepCard
-                        key={status.step.goalId}
-                        playbook={playbook}
-                        status={status}
-                        index={i}
-                        facts={facts}
-                        onMarkDone={() => onMarkDone(status.step.goalId)}
-                    />
-                ))}
-            </VStack>
-            {allDone && facts.denom && (
-                <VStack gap={3} p={5} borderRadius="xl" borderWidth="1px" borderColor="green.500/30" bg="bg.panel" data-testid="playbook-done">
-                    <Text fontWeight="bold" textAlign="center">{`Done. ${denomTicker(facts.denom)} now ${playbook.outcome}`}</Text>
-                    <Button colorPalette="yellow" onClick={() => navigate('/')}>Back to the Factory</Button>
-                </VStack>
-            )}
+        <VStack as="ol" align="stretch" gap="12px" ps={0} m={0} aria-label="Steps">
+            {statuses.map((status, i) => (
+                <StepCard
+                    key={status.step.goalId}
+                    playbook={playbook}
+                    status={status}
+                    index={i}
+                    facts={facts}
+                    onMarkDone={() => onMarkDone(status.step.goalId)}
+                />
+            ))}
         </VStack>
     )
 }
 
+/** "Done. TICKER now …": shown next to the steps once every step is done for the chosen token. */
+function PlaybookDone({ playbook, facts, progress }: { playbook: Playbook; facts: PlaybookFacts; progress?: PlaybookProgress }) {
+    const { navigate } = useNavigation()
+    const { denomTicker } = useAssets()
+    const allDone = stepStatuses(playbook, facts, progress?.manualDone ?? []).every(s => s.state === 'done')
+    if (!allDone || !facts.denom) return null
+
+    return (
+        <HgCard borderColor="hg.success/30" display="flex" flexDirection="column" alignItems="center" gap="14px" textAlign="center" data-testid="playbook-done">
+            <Text as="strong" fontSize="15px" lineHeight="1.45" fontWeight="700">{`Done. ${denomTicker(facts.denom)} now ${playbook.outcome}`}</Text>
+            <Button variant={hgVariant('primary')} size="lg" onClick={() => navigate('/')}>Back to the Factory</Button>
+        </HgCard>
+    )
+}
+
+/** The steps beside the token choice and the outcome; the side column drops under the steps on narrow screens. */
+function PlaybookBody({ playbook, facts, progress, onMarkDone, aside }: {
+    playbook: Playbook;
+    facts: PlaybookFacts;
+    progress?: PlaybookProgress;
+    onMarkDone: (step: string) => void;
+    aside?: React.ReactNode;
+}) {
+    const done = <PlaybookDone playbook={playbook} facts={facts} progress={progress} />
+    return (
+        <Flex wrap="wrap" gap="24px" align="flex-start">
+            <Box flex="999 1 640px" minW={0}>
+                <Steps playbook={playbook} facts={facts} progress={progress} onMarkDone={onMarkDone} />
+            </Box>
+            {(aside || facts.denom) && (
+                <VStack as="aside" flex="1 1 320px" maxW={{ base: 'none', lg: '380px' }} align="stretch" gap="16px">
+                    {aside}
+                    {done}
+                </VStack>
+            )}
+        </Flex>
+    )
+}
+
 /** Steps with the chosen token's chain state; mounted only once there is a token. */
-function DetectedSteps(props: { playbook: Playbook; denom: string; progress?: PlaybookProgress; onMarkDone: (step: string) => void }) {
+function DetectedSteps(props: { playbook: Playbook; denom: string; progress?: PlaybookProgress; onMarkDone: (step: string) => void; aside?: React.ReactNode }) {
     const { isLoading, ...facts } = usePlaybookFacts(props.playbook, props.denom)
-    if (isLoading) return <Skeleton height="64" borderRadius="xl" data-testid="playbook-loading" />
-    return <Steps {...props} facts={facts} />
+    if (isLoading) {
+        return (
+            <Flex wrap="wrap" gap="24px" align="flex-start">
+                <Box flex="999 1 640px" minW={0}>
+                    <Shimmer h="256px" borderRadius="16px" data-testid="playbook-loading" />
+                </Box>
+                {props.aside && <VStack as="aside" flex="1 1 320px" maxW={{ base: 'none', lg: '380px' }} align="stretch">{props.aside}</VStack>}
+            </Flex>
+        )
+    }
+    return <PlaybookBody {...props} facts={facts} />
 }
 
 function PlaybookContent({ playbook }: { playbook: Playbook }) {
     const searchParams = useSearchParams()
-    const { replace } = useNavigation()
+    const { navigate, replace } = useNavigation()
     const step = searchParams.get('step')
     const completed = searchParams.get('completed')
 
@@ -189,26 +271,31 @@ function PlaybookContent({ playbook }: { playbook: Playbook }) {
     const onMarkDone = (goalId: string) => setProgress(p => markDone(p, goalId))
     const showChoice = playbook.id !== 'launch' || Boolean(denom)
 
+    const choice = showChoice ? <TokenChoice denom={denom} onChoose={(d) => update(chooseToken(progress, d))} /> : undefined
+
     return (
-        <VStack align="stretch" gap={6}>
-            <VStack align="start" gap={2}>
-                <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" letterSpacing="tight">{playbook.title}</Text>
-                <Text color="fg.muted">{playbook.pitch}</Text>
-                <HStack gap={3} fontSize="sm" color="fg.muted" flexWrap="wrap">
-                    <Text>{playbook.time}</Text>
-                    <Text>·</Text>
-                    <Text>Leave any time, your progress stays.</Text>
-                </HStack>
-            </VStack>
-
-            {showChoice && <TokenChoice denom={denom} onChoose={(d) => update(chooseToken(progress, d))} />}
-
-            {denom ? (
-                <DetectedSteps playbook={playbook} denom={denom} progress={progress} onMarkDone={onMarkDone} />
-            ) : (
-                <Steps playbook={playbook} facts={NO_FACTS} progress={progress} onMarkDone={onMarkDone} />
-            )}
-        </VStack>
+        <>
+            <InnerHero
+                back={{ label: 'What do you want to do?', onClick: () => navigate('/') }}
+                eyebrow="Playbook"
+                title={playbook.title}
+                subtitle={playbook.pitch}
+                meta={(
+                    <>
+                        <Text as="span">{playbook.time}</Text>
+                        <Text as="span" aria-hidden>·</Text>
+                        <Text as="span">Leave any time, your progress stays.</Text>
+                    </>
+                )}
+            />
+            <PageContainer as="main" pt="32px" pb="64px">
+                {denom ? (
+                    <DetectedSteps playbook={playbook} denom={denom} progress={progress} onMarkDone={onMarkDone} aside={choice} />
+                ) : (
+                    <PlaybookBody playbook={playbook} facts={NO_FACTS} progress={progress} onMarkDone={onMarkDone} aside={choice} />
+                )}
+            </PageContainer>
+        </>
     )
 }
 
@@ -217,31 +304,28 @@ function PlaybooksPageContent() {
     const { navigate } = useNavigation()
     const playbook = playbookById(searchParams.get('id'))
 
+    if (playbook) return <PlaybookContent key={playbook.id} playbook={playbook} />
+
     return (
-        <VStack align="stretch" gap={6}>
-            <Link as="button" alignSelf="start" fontSize="sm" color="fg.muted" onClick={() => navigate('/')}>
-                <LuArrowLeft /> What do you want to do?
-            </Link>
-            {playbook ? (
-                <PlaybookContent key={playbook.id} playbook={playbook} />
-            ) : (
-                <VStack align="stretch" gap={4}>
-                    <Text as="h1" fontSize="2xl" fontWeight="bold">Playbooks</Text>
-                    <PlaybookCards />
-                </VStack>
-            )}
-        </VStack>
+        <>
+            <InnerHero
+                back={{ label: 'What do you want to do?', onClick: () => navigate('/') }}
+                title="Playbooks"
+                subtitle="Proven recipes, step by step. Leave any time, your progress stays."
+            />
+            <PageContainer as="main" pt="32px" pb="64px">
+                <PlaybookCards />
+            </PageContainer>
+        </>
     )
 }
 
 export default function PlaybooksPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="3xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <PlaybooksPageContent />
-                </Suspense>
-            </Container>
+        <Box minH="100vh">
+            <Suspense fallback={<PageContainer pt="32px"><Shimmer h="384px" borderRadius="16px" /></PageContainer>}>
+                <PlaybooksPageContent />
+            </Suspense>
         </Box>
     )
 }

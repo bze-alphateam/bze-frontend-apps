@@ -20,11 +20,11 @@ export function RewardInfoButton({ withLabel = false, ...modalProps }: RewardInf
         // button and the dialog away from a clickable card around it.
         <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
             {withLabel ? (
-                <Button ref={buttonRef} variant="ghost" size="xs" colorPalette="yellow" aria-label="Which reward fits?" onClick={() => setOpen(true)}>
+                <Button ref={buttonRef} variant="ghost" size="sm" color="hg.link" fontWeight="600" fontSize="13px" aria-label="Which reward fits?" onClick={() => setOpen(true)}>
                     <LuInfo /> Which one?
                 </Button>
             ) : (
-                <IconButton ref={buttonRef} variant="ghost" size="xs" colorPalette="yellow" aria-label="Which reward fits?" onClick={() => setOpen(true)}>
+                <IconButton ref={buttonRef} variant="ghost" size="xs" color="hg.link" aria-label="Which reward fits?" onClick={() => setOpen(true)}>
                     <LuInfo />
                 </IconButton>
             )}

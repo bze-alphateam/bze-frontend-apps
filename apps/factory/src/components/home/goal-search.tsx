@@ -103,26 +103,26 @@ export function GoalSearch({ tokens, onGoal, onToken, tools }: GoalSearchProps) 
                 role="option"
                 aria-selected={selected}
                 gap={3}
-                px={3}
-                py={2}
-                borderRadius="md"
+                px="12px"
+                py="10px"
+                borderRadius="10px"
                 cursor="pointer"
-                bg={selected ? 'yellow.500/10' : undefined}
+                bg={selected ? 'app.subtle' : undefined}
                 onMouseEnter={() => setActive(i)}
                 // Keep the focus in the box, so the panel doesn't close before the click lands.
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(option)}
             >
                 {option.kind === 'goal' ? (
-                    <VStack align="start" gap={0} flex="1" minW={0}>
-                        <Text fontSize="sm" fontWeight="semibold">{option.goal.title}</Text>
-                        <Text fontSize="xs" color="fg.muted" truncate maxW="full">{option.goal.description}</Text>
-                        <Text fontSize="2xs" color="fg.subtle" fontFamily="mono">{option.goal.techTag}</Text>
+                    <VStack align="start" gap="2px" flex="1" minW={0}>
+                        <Text fontSize="14px" fontWeight="700">{option.goal.title}</Text>
+                        <Text fontSize="12px" color="fg.muted" truncate maxW="full">{option.goal.description}</Text>
+                        <Text fontSize="11px" color="hg.text.faint" fontFamily="mono">{option.goal.techTag}</Text>
                     </VStack>
                 ) : (
-                    <HStack gap={2} flex="1" minW={0}>
+                    <HStack gap="10px" flex="1" minW={0}>
                         <TokenLogo src={option.asset.logo} symbol={option.asset.ticker} size="6" circular={true} />
-                        <Text fontSize="sm" fontWeight="semibold" truncate>{`Open ${option.asset.ticker}`}</Text>
+                        <Text fontSize="14px" fontWeight="700" truncate>{`Open ${option.asset.ticker}`}</Text>
                     </HStack>
                 )}
                 {selected && <Box color="fg.muted" flexShrink={0} aria-hidden><LuCornerDownLeft size={14} /></Box>}
@@ -131,8 +131,15 @@ export function GoalSearch({ tokens, onGoal, onToken, tools }: GoalSearchProps) 
     }
 
     return (
-        <Box position="relative" maxW="xl" w="full">
-            <InputGroup w="full" startElement={<LuSearch />} endElement={<Kbd size="sm">/</Kbd>}>
+        <Box position="relative" maxW="620px" w="full">
+            <InputGroup
+                w="full"
+                startElement={<Box color="hg.text.faint"><LuSearch size={18} /></Box>}
+                startElementProps={{ ps: '18px' }}
+                endElement={(
+                    <Kbd size="sm" bg="hg.inset" borderWidth="1px" borderColor="hg.lineStrong" color="hg.text.secondary" fontFamily="mono" boxShadow="none">/</Kbd>
+                )}
+            >
                 <Input
                     ref={inputRef}
                     role="combobox"
@@ -151,8 +158,15 @@ export function GoalSearch({ tokens, onGoal, onToken, tools }: GoalSearchProps) 
                     onFocus={() => setOpen(true)}
                     onBlur={() => setOpen(false)}
                     onKeyDown={onKeyDown}
-                    bg="bg.panel"
-                    size="lg"
+                    h="56px"
+                    ps="46px"
+                    fontSize="16px"
+                    bg="hg.card"
+                    borderRadius="16px"
+                    borderColor="app.border"
+                    boxShadow="hg.featured"
+                    _placeholder={{ color: 'hg.text.faint' }}
+                    _focusVisible={{ borderColor: 'app.focusRing', boxShadow: '0 0 0 3px {colors.app.subtle}', outline: 'none' }}
                 />
             </InputGroup>
 
@@ -161,42 +175,42 @@ export function GoalSearch({ tokens, onGoal, onToken, tools }: GoalSearchProps) 
                     position="absolute"
                     top="100%"
                     insetX={0}
-                    mt={2}
+                    mt="8px"
                     zIndex="dropdown"
-                    bg="bg.panel"
+                    bg="hg.card"
                     borderWidth="1px"
-                    borderColor="border.muted"
-                    borderRadius="xl"
-                    boxShadow="lg"
-                    p={2}
+                    borderColor="hg.lineStrong"
+                    borderRadius="16px"
+                    boxShadow="hg.popover"
+                    p="8px"
                     textAlign="start"
                     data-testid="goal-search-panel"
                 >
                     <Box id={listboxId} role="listbox" aria-label="Search results">
                         {result.goals.length > 0 && (
                             <VStack align="stretch" gap={0} role="group" aria-label="Goals">
-                                <Text px={3} pt={1} pb={1} fontSize="xs" fontWeight="semibold" color="fg.muted">Goals</Text>
+                                <Text px="12px" py="6px" fontSize="12px" fontWeight="600" color="hg.text.faint">Goals</Text>
                                 {result.goals.map((goal, i) => row({ kind: 'goal', goal }, i))}
                             </VStack>
                         )}
                         {result.tokens.length > 0 && (
                             <VStack align="stretch" gap={0} role="group" aria-label="Your tokens" mt={result.goals.length > 0 ? 2 : 0}>
-                                <Text px={3} pt={1} pb={1} fontSize="xs" fontWeight="semibold" color="fg.muted">Your tokens</Text>
+                                <Text px="12px" py="6px" fontSize="12px" fontWeight="600" color="hg.text.faint">Your tokens</Text>
                                 {result.tokens.map((asset, i) => row({ kind: 'token', asset }, result.goals.length + i))}
                             </VStack>
                         )}
                     </Box>
 
                     {options.length === 0 ? (
-                        <VStack align="stretch" gap={3} p={3}>
-                            <Text fontSize="sm" color="fg.muted">
+                        <VStack align="stretch" gap="14px" p="10px">
+                            <Text fontSize="14px" color="fg.muted">
                                 {`Nothing matches "${query.trim()}". Try other words, or browse all tools below.`}
                             </Text>
                             {/* The chips navigate away; keep the focus so the panel stays until the click lands. */}
                             <Box onMouseDown={(e) => e.preventDefault()}>{tools}</Box>
                         </VStack>
                     ) : hint && hint.length > 0 && (
-                        <Text px={3} pt={2} fontSize="xs" color="fg.subtle" borderTopWidth="1px" borderColor="border.muted" mt={2}>
+                        <Text px="12px" pt="10px" pb="4px" fontSize="12px" color="hg.text.faint" borderTopWidth="1px" borderColor="hg.divider" mt="8px">
                             {`Also finds: ${hint.join(', ')}…`}
                         </Text>
                     )}

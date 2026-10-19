@@ -1,8 +1,8 @@
 "use client"
 
 import React from 'react'
-import { Badge, Box, HStack, Text, VStack } from '@chakra-ui/react'
-import { FeeCoin, prettyAmount, uAmountToBigNumberAmount, useAsset } from '@bze/bze-ui-kit'
+import { Badge, Box, chakra, Flex, Text, VStack } from '@chakra-ui/react'
+import { FeeCoin, hgVariant, prettyAmount, uAmountToBigNumberAmount, useAsset } from '@bze/bze-ui-kit'
 import type { Goal } from '@/lib/goals'
 
 /** "· 25,000 BZE": nothing while the fee or its asset is unknown. */
@@ -21,31 +21,41 @@ export function GoalCard({ goal, fee, onOpen }: { goal: Goal; fee?: FeeCoin; onO
             as="button"
             textAlign="start"
             w="full"
-            p={4}
-            borderRadius="lg"
+            px="16px"
+            py="14px"
+            borderRadius="12px"
             borderWidth="1px"
-            borderColor="border.muted"
-            bg="bg.panel"
+            borderColor="transparent"
+            bg="hg.inset"
+            color="fg"
             cursor={isLive ? 'pointer' : 'not-allowed'}
             opacity={isLive ? 1 : 0.65}
             aria-disabled={!isLive}
-            transition="all 0.15s"
-            _hover={isLive ? { borderColor: 'yellow.500/50', bg: 'yellow.500/5' } : {}}
+            transition="border-color 0.15s"
+            _hover={isLive ? { borderColor: 'app.border' } : {}}
+            focusVisibleRing="outside"
             onClick={() => { if (isLive) onOpen(goal) }}
             data-testid={`goal-${goal.id}`}
         >
-            <VStack align="start" gap={1}>
-                <HStack gap={2} flexWrap="wrap">
-                    <Text fontWeight="semibold">{goal.title}</Text>
-                    {goal.badge && <Badge colorPalette="yellow" size="sm" variant="solid">{goal.badge}</Badge>}
-                    {!isLive && <Badge colorPalette="gray" size="sm" variant="surface">Coming soon</Badge>}
-                </HStack>
-                <Text fontSize="sm" color="fg.muted">{goal.description}</Text>
-                <Text fontSize="xs" color="fg.subtle" fontFamily="mono">
-                    <Text as="span">{goal.techTag}</Text>
-                    <GoalFee fee={fee} />
-                </Text>
-            </VStack>
+            <Flex align="center" justify="space-between" gap="12px">
+                <VStack align="start" gap="4px" minW={0}>
+                    <Flex align="center" gap="8px" wrap="wrap">
+                        <Text as="strong" fontSize="15px" fontWeight="700">{goal.title}</Text>
+                        {goal.badge && (
+                            <chakra.span fontSize="11px" fontWeight="700" px="8px" py="3px" borderRadius="hg.pill" bgImage="app" color="hg.buttonText">
+                                {goal.badge}
+                            </chakra.span>
+                        )}
+                        {!isLive && <Badge variant={hgVariant('neutral')} size="sm" borderRadius="hg.pill">Coming soon</Badge>}
+                    </Flex>
+                    <Text fontSize="13px" lineHeight="1.45" color="fg.muted">{goal.description}</Text>
+                    <Text fontSize="12px" color="hg.text.faint" fontFamily="mono">
+                        <Text as="span">{goal.techTag}</Text>
+                        <GoalFee fee={fee} />
+                    </Text>
+                </VStack>
+                {isLive && <chakra.span aria-hidden color="hg.link" fontSize="18px" flex="none">→</chakra.span>}
+            </Flex>
         </Box>
     )
 }

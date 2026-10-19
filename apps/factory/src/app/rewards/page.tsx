@@ -1,9 +1,10 @@
 "use client"
 
 import React, { Suspense, useEffect, useState } from 'react'
-import { Badge, Box, Container, HStack, Skeleton, Tabs, Text, VStack } from '@chakra-ui/react'
-import { LuGift } from 'react-icons/lu'
-import { getAllDenomRewards } from '@bze/bze-ui-kit'
+import { Box, chakra, Tabs, Text } from '@chakra-ui/react'
+import { GradientText, PageContainer, Shimmer, getAllDenomRewards } from '@bze/bze-ui-kit'
+import { BandTab, BandTabList } from '@/components/ui/band-tabs'
+import { InnerHero } from '@/components/ui/inner-hero'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { RewardInfoButton } from '@/components/rewards/reward-info-button'
 import { HolderListState, HolderRewardsTab } from '@/components/rewards/holder-rewards-tab'
@@ -43,47 +44,39 @@ function RewardsDirectory() {
     const show = (next: Partial<RewardsView>) => replace(rewardsHref({ ...view, ...next }))
 
     return (
-        <VStack align="stretch" gap={6}>
-            <HStack gap={3} align="start">
-                <Box p={2.5} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                    <LuGift size={22} />
-                </Box>
-                <VStack align="start" gap={0}>
-                    <HStack gap={1} wrap="wrap">
-                        <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">Rewards on BeeZee</Text>
-                        <RewardInfoButton withLabel={true} />
-                    </HStack>
-                    <Text fontSize="sm" color="fg.muted">Anyone can add prizes or airdrop to any of these.</Text>
-                </VStack>
-            </HStack>
-
-            <Tabs.Root
-                value={view.tab}
-                onValueChange={(e) => show({ tab: parseRewardsView(k => (k === 'tab' ? e.value : null)).tab })}
-                lazyMount={true}
-                unmountOnExit={true}
-                colorPalette="yellow"
-                variant="line"
-                size={{ base: 'sm', md: 'md' }}
+        <Tabs.Root
+            value={view.tab}
+            onValueChange={(e) => show({ tab: parseRewardsView(k => (k === 'tab' ? e.value : null)).tab })}
+            lazyMount={true}
+            unmountOnExit={true}
+            variant="plain"
+        >
+            <InnerHero
+                title={<>Rewards on <GradientText>BeeZee</GradientText></>}
+                subtitle="Anyone can add prizes or airdrop to any of these."
+                actions={<RewardInfoButton withLabel={true} />}
             >
-                <Tabs.List overflowX="auto" flexWrap="nowrap" maxW="full" css={{ scrollbarWidth: 'none' }}>
-                    <Tabs.Trigger value="holder" flexShrink={0}>
+                <BandTabList label="Rewards">
+                    <BandTab value="holder">
                         Holder rewards
-                        {state.status === 'ready' && <Badge size="sm" variant="subtle" colorPalette="yellow">{state.list.length}</Badge>}
-                    </Tabs.Trigger>
-                    <Tabs.Trigger value="programs" flexShrink={0}>
+                        {state.status === 'ready' && <CountPill active={view.tab === 'holder'}>{state.list.length}</CountPill>}
+                    </BandTab>
+                    <BandTab value="programs">
                         Staking programs
                         {!programs.isLoading && !programs.hasError && (
                             // Phones get just the count: both labels must fit 390 px, or the selected
                             // second tab pushes the whole page sideways.
-                            <Badge size="sm" variant="subtle" colorPalette="yellow">
+                            <CountPill active={view.tab === 'programs'}>
                                 {runningPrograms}{' '}
                                 <Text as="span" hideBelow="sm">running</Text>
-                            </Badge>
+                            </CountPill>
                         )}
-                    </Tabs.Trigger>
-                </Tabs.List>
-                <Tabs.Content value="holder" pt={6}>
+                    </BandTab>
+                </BandTabList>
+            </InnerHero>
+
+            <PageContainer as="main" pt="28px" pb="64px">
+                <Tabs.Content value="holder" p="0">
                     <HolderRewardsTab
                         state={state}
                         filter={view.filter}
@@ -93,7 +86,7 @@ function RewardsDirectory() {
                         onRetry={retry}
                     />
                 </Tabs.Content>
-                <Tabs.Content value="programs" pt={6}>
+                <Tabs.Content value="programs" p="0">
                     <StakingProgramsList
                         pinMine={true}
                         programs={programs}
@@ -101,19 +94,34 @@ function RewardsDirectory() {
                         onStatus={(status) => show({ status })}
                     />
                 </Tabs.Content>
-            </Tabs.Root>
-        </VStack>
+            </PageContainer>
+        </Tabs.Root>
+    )
+}
+
+/** A tab's count: app-tinted on the selected tab, neutral otherwise. */
+function CountPill({ active, children }: { active: boolean; children: React.ReactNode }) {
+    return (
+        <chakra.span
+            fontSize="11px"
+            fontWeight="700"
+            px="7px"
+            py="2px"
+            borderRadius="hg.pill"
+            color={active ? 'hg.link' : 'hg.text.secondary'}
+            bg={active ? 'app.subtle' : 'hg.hoverFill'}
+        >
+            {children}
+        </chakra.span>
     )
 }
 
 export default function RewardsPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="48" />}>
-                    <RewardsDirectory />
-                </Suspense>
-            </Container>
+        <Box minH="100vh">
+            <Suspense fallback={<PageContainer pt="28px"><Shimmer h="192px" borderRadius="16px" /></PageContainer>}>
+                <RewardsDirectory />
+            </Suspense>
         </Box>
     )
 }

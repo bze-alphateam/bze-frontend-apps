@@ -5,13 +5,11 @@ import { preinit } from 'react-dom'
 import {
     Box,
     Button,
-    Card,
     Field,
     Grid,
     HStack,
     Input,
     NativeSelect,
-    Skeleton,
     Text,
     VStack,
 } from '@chakra-ui/react'
@@ -20,6 +18,10 @@ import { LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
 import {
     AppLink,
     Asset,
+    HgCard,
+    IconTile,
+    Shimmer,
+    hgVariant,
     BRANDING_COLOR_KEYS,
     BRANDING_FONTS,
     BRANDING_PALETTES,
@@ -39,6 +41,7 @@ import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useDenomBranding } from '@/hooks/useDenomBranding'
 import { InfoBox } from '@/components/ui/info-box'
+import { softButton } from '@/components/ui/soft-button'
 import { colorPickerValue, sameBranding, withBrandingColor } from '@/lib/brand-kit'
 
 const { setDenomBranding } = bze.tokenfactory.MessageComposer.withTypeUrl
@@ -60,18 +63,18 @@ function PalettePreview({ asset, branding, palette }: { asset: Asset; branding: 
     const family = brandingFont(branding.font)?.family
 
     return (
-        <VStack align="stretch" gap={1.5} data-testid={`brand-kit-preview-${palette}`}>
-            <Text fontSize="xs" color="fg.muted">
+        <VStack align="stretch" gap="6px" data-testid={`brand-kit-preview-${palette}`}>
+            <Text fontSize="12px" color="hg.text.faint">
                 {PALETTE_LABELS[palette]}
             </Text>
             <Box
                 bg={colors.background}
                 color={colors.text}
                 fontFamily={family}
-                borderRadius="lg"
+                borderRadius="14px"
                 borderWidth="1px"
-                borderColor="border.muted"
-                p={4}
+                borderColor="hg.lineStrong"
+                p="16px"
             >
                 <VStack align="stretch" gap={3}>
                     <HStack gap={2}>
@@ -108,10 +111,10 @@ function BrandKitPreview({ asset, branding, stacked = false }: { asset: Asset; b
 
     return (
         <VStack align="stretch" gap={2}>
-            <Text fontSize="sm" color="fg.muted">
-                Font: <Text as="span" fontWeight="medium" color="fg">{brandingFont(branding.font)?.label ?? `${branding.font} (not supported — shown in the default font)`}</Text>
+            <Text fontSize="14px" color="fg.muted">
+                Font: <Text as="span" fontWeight="700" color="fg">{brandingFont(branding.font)?.label ?? `${branding.font} (not supported — shown in the default font)`}</Text>
             </Text>
-            <Grid templateColumns={stacked ? 'minmax(0, 1fr)' : { base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={3}>
+            <Grid templateColumns={stacked ? 'minmax(0, 1fr)' : { base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
                 {BRANDING_PALETTES.map(palette => (
                     <PalettePreview key={palette} asset={asset} branding={branding} palette={palette} />
                 ))}
@@ -133,7 +136,7 @@ function ColorInput({
 }) {
     return (
         <Field.Root invalid={Boolean(error)}>
-            <Field.Label fontSize="sm">{label}</Field.Label>
+            <Field.Label fontSize="13px" fontWeight="600">{label}</Field.Label>
             <HStack gap={2} w="full">
                 <input
                     type="color"
@@ -145,6 +148,7 @@ function ColorInput({
                 <Input
                     aria-label={label}
                     size="sm"
+                    borderRadius="10px"
                     fontFamily="mono"
                     maxLength={7}
                     placeholder="#000000"
@@ -197,7 +201,7 @@ function BrandKitForm({
             <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={6} alignItems="start">
                 <VStack align="stretch" gap={4} minW="0">
                     <Field.Root invalid={Boolean(errors.font)}>
-                        <Field.Label>Font</Field.Label>
+                        <Field.Label fontSize="14px" fontWeight="600">Font</Field.Label>
                         <NativeSelect.Root size="sm">
                             <NativeSelect.Field
                                 aria-label="Font"
@@ -217,7 +221,7 @@ function BrandKitForm({
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap={4}>
                         {BRANDING_PALETTES.map(palette => (
                             <VStack key={palette} align="stretch" gap={3}>
-                                <Text fontSize="sm" fontWeight="semibold">
+                                <Text fontSize="14px" fontWeight="700">
                                     {PALETTE_LABELS[palette]} palette
                                 </Text>
                                 {BRANDING_COLOR_KEYS.map(key => {
@@ -238,10 +242,10 @@ function BrandKitForm({
                 </VStack>
 
                 <VStack align="stretch" gap={2} minW="0" data-testid="brand-kit-live-preview">
-                    <Text fontSize="sm" fontWeight="semibold">Live preview</Text>
+                    <Text fontSize="14px" fontWeight="700">Live preview</Text>
                     {isValid
                         ? <BrandKitPreview asset={asset} branding={kit} stacked />
-                        : <Text fontSize="sm" color="fg.muted">Fix the fields marked in red to see the preview.</Text>}
+                        : <Text fontSize="14px" color="fg.muted">Fix the fields marked in red to see the preview.</Text>}
                 </VStack>
             </Grid>
 
@@ -250,12 +254,13 @@ function BrandKitForm({
                 and apps that support brand kits pick it up right away.
             </InfoBox>
 
-            <HStack gap={2}>
-                <Button variant="ghost" colorPalette="purple" onClick={onCancel} flex="1">
+            <HStack gap="10px">
+                <Button variant="ghost" size="lg" color="hg.link" fontWeight="600" onClick={onCancel} flex="1">
                     Cancel
                 </Button>
                 <Button
-                    colorPalette="purple"
+                    variant={hgVariant('primary')}
+                    size="lg"
                     onClick={submit}
                     disabled={!isValid || isUnchanged}
                     loading={isSubmitting}
@@ -266,7 +271,7 @@ function BrandKitForm({
                 </Button>
             </HStack>
             {isValid && isUnchanged && (
-                <Text fontSize="sm" color="fg.muted" textAlign="center">
+                <Text fontSize="14px" color="fg.muted" textAlign="center">
                     Nothing changed yet.
                 </Text>
             )}
@@ -299,12 +304,13 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
                 Apps that support brand kits go back to their default look for {asset.ticker}. You
                 can set a new kit at any time while you control the token.
             </InfoBox>
-            <HStack gap={2}>
-                <Button variant="ghost" colorPalette="purple" onClick={onCancel} flex="1">
+            <HStack gap="10px">
+                <Button variant="ghost" size="lg" color="hg.link" fontWeight="600" onClick={onCancel} flex="1">
                     Keep it
                 </Button>
                 <Button
-                    colorPalette="red"
+                    variant={hgVariant('danger')}
+                    size="lg"
                     onClick={submit}
                     loading={isSubmitting}
                     loadingText="Waiting for signature..."
@@ -336,23 +342,21 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
     }
 
     return (
-        <Card.Root as="section" aria-label={`How ${ticker} looks on Communities`} variant="outline" p="5" data-testid="brand-kit-card">
-            <VStack align="stretch" gap={4}>
-                <HStack justify="space-between" gap={2} flexWrap="wrap">
-                    <HStack gap={2}>
-                        <Box p={2} borderRadius="lg" bg="purple.500/15" color="purple.600">
-                            <LuPalette size={18} />
-                        </Box>
-                        <Text fontWeight="semibold">{`How ${ticker} looks on Communities`}</Text>
+        <HgCard as="section" aria-label={`How ${ticker} looks on Communities`} p="22px" data-testid="brand-kit-card">
+            <VStack align="stretch" gap="16px">
+                <HStack justify="space-between" gap="10px" flexWrap="wrap">
+                    <HStack gap="10px">
+                        <IconTile icon={<LuPalette />} size={36} />
+                        <Text as="h2" fontSize="17px" fontWeight="700">{`How ${ticker} looks on Communities`}</Text>
                     </HStack>
                     {isAdmin && mode === 'view' && !isLoading && !hasError && (
-                        <HStack gap={2}>
+                        <HStack gap="8px">
                             {branding && (
-                                <Button size="sm" variant="ghost" colorPalette="red" onClick={() => setMode('remove')}>
+                                <Button size="sm" h="34px" variant="ghost" color="hg.danger.text" fontWeight="600" onClick={() => setMode('remove')}>
                                     Remove brand kit
                                 </Button>
                             )}
-                            <Button size="sm" variant="outline" colorPalette="purple" onClick={() => setMode('edit')}>
+                            <Button {...softButton} size="sm" h="34px" px="14px" onClick={() => setMode('edit')}>
                                 {branding ? 'Edit' : 'Set brand kit'}
                             </Button>
                         </HStack>
@@ -360,9 +364,9 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                 </HStack>
 
                 {isLoading ? (
-                    <VStack align="stretch" gap={2}>
-                        <Skeleton height="4" />
-                        <Skeleton height="24" />
+                    <VStack align="stretch" gap="8px">
+                        <Shimmer h="16px" />
+                        <Shimmer h="96px" borderRadius="14px" />
                     </VStack>
                 ) : hasError ? (
                     <VStack align="stretch" gap={3}>
@@ -371,7 +375,7 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                             whether this token has a brand kit is unknown.
                         </InfoBox>
                         <Box>
-                            <Button size="sm" variant="outline" colorPalette="purple" onClick={() => void refresh()}>
+                            <Button {...softButton} size="sm" onClick={() => void refresh()}>
                                 <LuRefreshCw />
                                 Retry
                             </Button>
@@ -384,14 +388,14 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                         {branding ? (
                             <BrandKitPreview asset={asset} branding={branding} />
                         ) : (
-                            <Text fontSize="sm" color="fg.muted">
+                            <Text fontSize="14px" color="fg.muted">
                                 {isAdmin
                                     ? `No brand kit yet. Pick colours and a font so ${ticker}'s Communities page feels like yours.`
                                     : 'This token has no brand kit.'}
                             </Text>
                         )}
                         {access === 'renounced' && (
-                            <HStack gap={2} color="fg.muted" fontSize="sm" data-testid="brand-kit-frozen">
+                            <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="brand-kit-frozen">
                                 <LuLock />
                                 <Text>
                                     {branding
@@ -403,12 +407,12 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                         {isAdmin && mode === 'remove' && (
                             <RemovePanel asset={asset} onCancel={() => setMode('view')} onRemoved={backToView} />
                         )}
-                        <Box fontSize="sm" alignSelf="start">
+                        <Box alignSelf="start">
                             <AppLink app="communities" href={communitiesHref}>Communities</AppLink>
                         </Box>
                     </VStack>
                 )}
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }

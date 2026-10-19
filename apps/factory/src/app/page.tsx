@@ -4,15 +4,27 @@ import React, { useState } from 'react'
 import {
     Box,
     Button,
-    Card,
-    Container,
+    chakra,
+    Flex,
     Grid,
     HStack,
     Text,
     VStack,
+    VisuallyHidden,
 } from '@chakra-ui/react'
 import { LuArrowRight } from 'react-icons/lu'
-import { AppLink, TokenLogo, getBurnerApp, useCreationFees } from '@bze/bze-ui-kit'
+import {
+    AppLink,
+    Eyebrow,
+    GradientText,
+    HeroGlow,
+    HgCard,
+    HomeHero,
+    PageContainer,
+    TokenLogo,
+    getBurnerApp,
+    useCreationFees,
+} from '@bze/bze-ui-kit'
 import { GoalCard } from '@/components/home/goal-card'
 import { GoalSearch } from '@/components/home/goal-search'
 import { PlaybooksSection } from '@/components/home/playbooks-section'
@@ -33,40 +45,56 @@ function YourTokensStrip() {
     if (tokens.length === 0) return null
 
     return (
-        <VStack as="section" aria-label="Your tokens" align="stretch" gap={3}>
-            <HStack justify="space-between" gap={2}>
-                <Text as="h2" fontSize="lg" fontWeight="bold">Your tokens</Text>
-                <Button size="sm" variant="ghost" colorPalette="yellow" onClick={() => navigate('/manage')}>
+        <VStack as="section" aria-label="Your tokens" align="stretch" gap="12px">
+            <HStack justify="space-between" gap="8px">
+                <Text as="h2" fontSize="20px" fontWeight="700">Your tokens</Text>
+                <Button size="sm" variant="ghost" color="hg.link" fontWeight="600" onClick={() => navigate('/manage')}>
                     All my tokens <LuArrowRight />
                 </Button>
             </HStack>
-            <Grid templateColumns={{ base: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }} gap={3}>
+            <Grid templateColumns={{ base: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }} gap="12px">
                 {tokens.slice(0, STRIP_SIZE).map(({ asset, admin }) => (
-                    <Box
+                    <HgCard
                         key={asset.denom}
                         as="button"
+                        interactive
                         textAlign="start"
-                        p={3}
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        borderColor="yellow.500/20"
-                        bg="bg.panel"
-                        _hover={{ borderColor: 'yellow.500/50' }}
+                        p="14px"
+                        borderRadius="14px"
+                        color="fg"
+                        cursor="pointer"
+                        focusVisibleRing="outside"
                         onClick={() => navigate(workspaceHref(asset.denom))}
                         data-testid="strip-token"
                     >
-                        <HStack gap={2} minW={0}>
+                        <HStack gap="12px" minW={0}>
                             <TokenLogo src={asset.logo} symbol={asset.ticker} size="8" circular={true} />
-                            <VStack align="start" gap={0} minW={0}>
-                                <Text fontWeight="semibold" fontSize="sm" truncate maxW="full">{asset.ticker}</Text>
+                            <VStack align="start" gap="2px" minW={0}>
+                                <Text as="strong" fontWeight="700" fontSize="14px" truncate maxW="full">{asset.ticker}</Text>
                                 <SetupProgress denom={asset.denom} admin={admin} compact />
                             </VStack>
                         </HStack>
-                    </Box>
+                    </HgCard>
                 ))}
             </Grid>
         </VStack>
     )
+}
+
+/** An All tools chip: the technical name in mono on a quiet outline. */
+const toolChip = {
+    size: 'sm' as const,
+    h: '32px',
+    px: '12px',
+    variant: 'outline' as const,
+    borderRadius: '10px',
+    borderColor: 'hg.lineStrong',
+    bg: 'hg.secondaryFill',
+    color: 'fg',
+    fontFamily: 'mono',
+    fontSize: '12px',
+    fontWeight: '500',
+    _hover: { borderColor: 'app.border', bg: 'hg.hoverFill' },
 }
 
 function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => void }) {
@@ -77,12 +105,12 @@ function ToolChip({ tool, onGoal }: { tool: ToolLink; onGoal: (goal: Goal) => vo
         )
     }
     const onClick = 'goal' in tool ? () => onGoal(goalById(tool.goal)) : () => navigate(tool.href)
-    return <Button size="xs" variant="outline" fontFamily="mono" onClick={onClick}>{tool.label}</Button>
+    return <Button {...toolChip} onClick={onClick}>{tool.label}</Button>
 }
 
 function ToolChips({ onGoal }: { onGoal: (goal: Goal) => void }) {
     return (
-        <HStack gap={2} flexWrap="wrap">
+        <HStack gap="8px" flexWrap="wrap">
             {ALL_TOOLS.map(tool => <ToolChip key={tool.label} tool={tool} onGoal={onGoal} />)}
         </HStack>
     )
@@ -113,60 +141,102 @@ export default function FactoryHomePage() {
     }
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="6xl" py={{ base: 8, md: 12 }}>
-                <VStack align="stretch" gap={8}>
-                    <VStack gap={3} align="center" textAlign="center">
-                        <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" letterSpacing="tight">
-                            What do you want to do?
-                        </Text>
-                        <Text color="fg.muted" maxW="2xl">
-                            Create a token, get it traded, grow its community and make it official. Say it in your own words.
-                        </Text>
-                        <GoalSearch
-                            tokens={tokens.map(t => t.asset)}
-                            onGoal={openGoal}
-                            onToken={(denom) => navigate(workspaceHref(denom))}
-                            tools={<ToolChips onGoal={openGoal} />}
-                        />
-                        <HStack gap={2} flexWrap="wrap" justify="center">
-                            {GOAL_CHIPS.map(chip => (
-                                <Button key={chip.goal} size="xs" variant="subtle" colorPalette="yellow" borderRadius="full" onClick={() => openGoal(goalById(chip.goal))}>
-                                    {chip.label}
-                                </Button>
-                            ))}
-                        </HStack>
-                    </VStack>
+        <Box position="relative" minH="100vh">
+            <HeroGlow />
+            <PageContainer as="main" position="relative" pt={{ base: '40px', md: '72px' }} pb="80px">
+                <VStack align="stretch" gap={{ base: '32px', md: '44px' }}>
+                    <HomeHero
+                        align="center"
+                        eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
+                        title={<>What do you want to <GradientText>build</GradientText>?</>}
+                        subtitle="Launch your own token. No code needed. Then get it traded, grow its community and make it official. Say it in your own words."
+                    >
+                        <VStack gap="20px">
+                            <GoalSearch
+                                tokens={tokens.map(t => t.asset)}
+                                onGoal={openGoal}
+                                onToken={(denom) => navigate(workspaceHref(denom))}
+                                tools={<ToolChips onGoal={openGoal} />}
+                            />
+                            <HStack gap="8px" flexWrap="wrap" justify="center">
+                                {GOAL_CHIPS.map(chip => (
+                                    <Button
+                                        key={chip.goal}
+                                        size="sm"
+                                        h="34px"
+                                        px="14px"
+                                        variant="outline"
+                                        borderRadius="hg.pill"
+                                        borderColor="hg.lineStrong"
+                                        bg="hg.secondaryFill"
+                                        color="hg.text.secondary"
+                                        fontSize="13px"
+                                        fontWeight="500"
+                                        _hover={{ borderColor: 'app.border', color: 'fg' }}
+                                        onClick={() => openGoal(goalById(chip.goal))}
+                                    >
+                                        {chip.label}
+                                    </Button>
+                                ))}
+                            </HStack>
+                        </VStack>
+                    </HomeHero>
 
                     <YourTokensStrip />
 
-                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={4} alignItems="start">
+                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
                         {GOAL_GROUPS.map(group => {
                             const goals = GOALS.filter(g => g.group === group.id)
                             return (
-                                <Card.Root key={group.id} as="section" aria-label={group.title} variant="outline" p={4} data-testid={`goal-group-${group.id}`}>
-                                    <VStack align="stretch" gap={3}>
-                                        <HStack justify="space-between" gap={2}>
-                                            <Text as="h2" fontSize="lg" fontWeight="bold">{`${group.number} · ${group.title}`}</Text>
+                                <HgCard
+                                    key={group.id}
+                                    as="section"
+                                    aria-label={group.title}
+                                    p={{ base: '18px', md: '22px' }}
+                                    borderRadius="18px"
+                                    data-testid={`goal-group-${group.id}`}
+                                >
+                                    <VStack align="stretch" gap="14px">
+                                        <Flex justify="space-between" align="center" gap="12px">
+                                            <chakra.h2 m="0" display="flex" alignItems="center" gap="12px" fontSize="19px" fontWeight="700">
+                                                <Flex
+                                                    as="span"
+                                                    boxSize="36px"
+                                                    flex="none"
+                                                    align="center"
+                                                    justify="center"
+                                                    borderRadius="10px"
+                                                    bgImage="app"
+                                                    color="hg.buttonText"
+                                                    fontSize="16px"
+                                                    fontWeight="800"
+                                                >
+                                                    {group.number}
+                                                </Flex>
+                                                <VisuallyHidden> · </VisuallyHidden>
+                                                {group.title}
+                                            </chakra.h2>
                                             {group.id === 'community' && <RewardInfoButton withLabel />}
-                                        </HStack>
-                                        {goals.map(goal => (
-                                            <GoalCard key={goal.id} goal={goal} fee={goal.feeKey ? fees[goal.feeKey] : undefined} onOpen={openGoal} />
-                                        ))}
+                                        </Flex>
+                                        <VStack align="stretch" gap="8px">
+                                            {goals.map(goal => (
+                                                <GoalCard key={goal.id} goal={goal} fee={goal.feeKey ? fees[goal.feeKey] : undefined} onOpen={openGoal} />
+                                            ))}
+                                        </VStack>
                                     </VStack>
-                                </Card.Root>
+                                </HgCard>
                             )
                         })}
                     </Grid>
 
                     <PlaybooksSection />
 
-                    <VStack as="section" aria-label="All tools" align="stretch" gap={2}>
-                        <Text fontSize="sm" fontWeight="semibold" color="fg.muted">All tools</Text>
+                    <VStack as="section" aria-label="All tools" align="stretch" gap="10px">
+                        <Text fontSize="13px" fontWeight="600" color="fg.muted">All tools</Text>
                         <ToolChips onGoal={openGoal} />
                     </VStack>
                 </VStack>
-            </Container>
+            </PageContainer>
 
             <TokenChoiceDialog
                 goal={choosing}

@@ -1,9 +1,10 @@
 "use client"
 
 import React, { Suspense, useEffect, useState } from 'react'
-import { Box, Button, Card, Code, Container, Field, Grid, GridItem, HStack, Image, Input, Link, List, Skeleton, Text, VStack } from '@chakra-ui/react'
-import { LuArrowUpRight, LuChevronRight, LuCircleCheck, LuCopy, LuRefreshCw, LuTriangleAlert } from 'react-icons/lu'
-import { useAsset, useToast } from '@bze/bze-ui-kit'
+import { Box, Button, Code, Field, Flex, HStack, Image, Input, Link, List, Text, VStack } from '@chakra-ui/react'
+import { LuArrowUpRight, LuChevronRight, LuCircleCheck, LuCopy, LuInfo, LuRefreshCw } from 'react-icons/lu'
+import { Eyebrow, GradientText, HeroGlow, HgCard, Notice, PageContainer, PageHero, PageState, Shimmer, hgVariant, useAsset, useToast } from '@bze/bze-ui-kit'
+import { softButton } from '@/components/ui/soft-button'
 import { Question, useGuidedSteps } from '@/components/guided'
 import { LogoStep } from '@/components/official/logo-step'
 import { useMyTokens } from '@/hooks/useMyTokens'
@@ -36,36 +37,46 @@ function StatusBanner({ status, ticker, logo, onRetry }: {
     logo?: string;
     onRetry: () => void;
 }) {
-    const palette = status === 'listed' ? 'green' : status === 'error' ? 'red' : status === 'off' ? 'gray' : 'blue'
+    // Listed is green, a failed lookup red; waiting and testnet sit on the plain card.
+    const look = status === 'listed'
+        ? { bg: 'hg.success/6', borderColor: 'hg.success/30' }
+        : status === 'error'
+            ? { bg: 'hg.danger/6', borderColor: 'hg.danger/30' }
+            : { bg: 'hg.card', borderColor: 'hg.lineStrong' }
     return (
         <Box
             as="section"
             aria-label="Registry status"
             data-status={status}
-            p={4}
-            borderRadius="xl"
+            px="16px"
+            py="14px"
+            borderRadius="14px"
             borderWidth="1px"
-            borderColor={`${palette}.500/30`}
-            bg={`${palette}.500/8`}
+            fontSize="14px"
+            lineHeight="1.5"
+            {...look}
         >
-            {status === 'loading' && <Skeleton height="5" width="72" />}
+            {status === 'loading' && <Shimmer h="20px" w="288px" />}
             {status === 'listed' && (
-                <HStack gap={3}>
-                    {logo ? <Image src={logo} alt={`${ticker} logo`} boxSize="8" borderRadius="full" /> : <Box color="green.600"><LuCircleCheck size={20} /></Box>}
-                    <Text fontWeight="semibold">{`Listed. ${ticker} is in the registry.`}</Text>
+                <HStack gap="10px">
+                    {logo ? <Image src={logo} alt={`${ticker} logo`} boxSize="32px" borderRadius="full" /> : <Box color="hg.success" aria-hidden><LuCircleCheck size={18} /></Box>}
+                    <Text fontWeight="700">{`Listed. ${ticker} is in the registry.`}</Text>
                 </HStack>
             )}
             {status === 'not-listed' && (
-                <Text fontSize="sm">{`Not in the registry yet. We check the registry for ${ticker}, and this turns green when it's listed.`}</Text>
+                <HStack gap="10px" align="start">
+                    <Box color="hg.link" mt="3px" flexShrink={0} aria-hidden><LuInfo size={16} /></Box>
+                    <Text>{`Not in the registry yet. We check the registry for ${ticker}, and this turns green when it's listed.`}</Text>
+                </HStack>
             )}
             {status === 'error' && (
-                <HStack justify="space-between" gap={3} flexWrap="wrap">
-                    <Text fontSize="sm">Couldn&apos;t reach the registry right now.</Text>
-                    <Button size="xs" variant="outline" colorPalette="red" onClick={onRetry}><LuRefreshCw /> Retry</Button>
+                <HStack justify="space-between" gap="10px" flexWrap="wrap">
+                    <Text>Couldn&apos;t reach the registry right now.</Text>
+                    <Button size="xs" h="28px" variant={hgVariant('danger')} borderRadius="8px" fontSize="12px" onClick={onRetry}><LuRefreshCw /> Retry</Button>
                 </HStack>
             )}
             {status === 'off' && (
-                <Text fontSize="sm">The registry lists mainnet tokens only. You can read the guide here, but there is nothing to submit for a testnet token.</Text>
+                <Text color="fg.muted">The registry lists mainnet tokens only. You can read the guide here, but there is nothing to submit for a testnet token.</Text>
             )}
         </Box>
     )
@@ -73,12 +84,12 @@ function StatusBanner({ status, ticker, logo, onRetry }: {
 
 function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <Card.Root as="section" aria-label={title} variant="outline" p={4}>
-            <VStack align="stretch" gap={2}>
-                <Text fontSize="sm" fontWeight="semibold">{title}</Text>
+        <HgCard as="section" aria-label={title} p="18px">
+            <VStack align="stretch" gap="8px">
+                <Text as="strong" fontSize="14px" fontWeight="700">{title}</Text>
                 {children}
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
@@ -134,230 +145,240 @@ function OfficialContent() {
 
     if (!denom.startsWith('factory/')) {
         return (
-            <Card.Root variant="outline" p={8}>
-                <VStack gap={3}>
-                    <Text fontWeight="semibold">Open this guide from your token&apos;s page</Text>
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">It works for tokens made in the Factory: the link needs the token ID.</Text>
-                    <Button colorPalette="yellow" variant="outline" onClick={() => navigate('/manage')}>Your tokens</Button>
-                </VStack>
-            </Card.Root>
+            <PageContainer pt="32px" pb="64px">
+                <HgCard p="16px">
+                    <PageState
+                        kind="not-found"
+                        title="Open this guide from your token's page"
+                        description="It works for tokens made in the Factory: the link needs the token ID."
+                        action={<Button {...softButton} size="lg" onClick={() => navigate('/manage')}>Your tokens</Button>}
+                    />
+                </HgCard>
+            </PageContainer>
         )
     }
 
     const crumb = (label: string, href: string) => isMine
-        ? <Link href={href} color="yellow.fg" onClick={(e) => { e.preventDefault(); navigate(href) }}>{label}</Link>
+        ? <Link href={href} color="fg.muted" _hover={{ color: 'fg' }} onClick={(e) => { e.preventDefault(); navigate(href) }}>{label}</Link>
         : <Text as="span">{label}</Text>
 
     return (
-        <VStack align="stretch" gap={6}>
-            <HStack as="nav" aria-label="Breadcrumb" gap={1} fontSize="sm" color="fg.muted" flexWrap="wrap">
-                {crumb(name, workspaceHref(denom))}
-                <LuChevronRight size={14} />
-                {crumb('Profile', workspaceHref(denom, 'profile'))}
-                <LuChevronRight size={14} />
-                <Text as="span" color="fg">Make it official</Text>
-            </HStack>
+        <>
+            <Box position="relative" overflow="hidden" borderBottomWidth="1px" borderColor="hg.divider">
+                <HeroGlow strength="inner" />
+                <PageContainer position="relative" pt={{ base: '24px', md: '28px' }} pb={{ base: '28px', md: '36px' }}>
+                    <VStack align="stretch" gap="14px">
+                        <HStack as="nav" aria-label="Breadcrumb" gap="6px" fontSize="14px" color="fg.muted" flexWrap="wrap">
+                            {crumb(name, workspaceHref(denom))}
+                            <LuChevronRight size={14} aria-hidden />
+                            {crumb('Profile', workspaceHref(denom, 'profile'))}
+                            <LuChevronRight size={14} aria-hidden />
+                            <Text as="span" color="fg">Make it official</Text>
+                        </HStack>
+                        <PageHero
+                            eyebrow={<Eyebrow app="factory" iconSize={24}>Make it official</Eyebrow>}
+                            title={<Box as="span" wordBreak="break-word">{`Get ${ticker}'s logo into `}<GradientText>every wallet</GradientText></Box>}
+                            subtitle={`Wallets, explorers and DEXes across Cosmos read token names and logos from one public list: the Cosmos Chain Registry on GitHub. Adding ${ticker} is free. You send a request with your logo, and the registry's maintainers review it.`}
+                        />
+                    </VStack>
+                </PageContainer>
+            </Box>
 
-            <VStack align="start" gap={2}>
-                <Text as="h1" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold" letterSpacing="tight" wordBreak="break-word">
-                    {`Get ${ticker}'s logo into every wallet`}
-                </Text>
-                <Text color="fg.muted">
-                    {`Wallets, explorers and DEXes across Cosmos read token names and logos from one public list: the Cosmos Chain Registry on GitHub. Adding ${ticker} is free. You send a request with your logo, and the registry's maintainers review it.`}
-                </Text>
-            </VStack>
+            <PageContainer as="main" pt="28px" pb="64px">
+                <Flex wrap="wrap" gap="24px" align="flex-start">
+                    <Box flex="999 1 640px" minW={0}>
+                        <VStack align="stretch" gap="14px">
+                            <StatusBanner status={listing.status} ticker={ticker} logo={listing.logo} onRetry={listing.retry} />
+                            <Text fontSize="14px" color="fg.muted" data-testid="official-progress">{`Your progress: ${doneCount} of 5 steps`}</Text>
 
-            <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 320px' }} gap={6} alignItems="start">
-                <GridItem minW={0}>
-                    <VStack align="stretch" gap={3}>
-                        <StatusBanner status={listing.status} ticker={ticker} logo={listing.logo} onRetry={listing.retry} />
-                        <Text fontSize="sm" color="fg.muted" data-testid="official-progress">{`Your progress: ${doneCount} of 5 steps`}</Text>
+                            <Question number={1} title="Prepare your logo" state={steps.state.logo} summary={fileName} onChange={() => steps.open('logo')}>
+                                <LogoStep
+                                    display={metadata?.display ?? ticker}
+                                    initial={{ format: progress.format, fileName: progress.fileName }}
+                                    onReady={(ready) => finish('logo', ready)}
+                                />
+                            </Question>
 
-                        <Question number={1} title="Prepare your logo" state={steps.state.logo} summary={fileName} onChange={() => steps.open('logo')}>
-                            <LogoStep
-                                display={metadata?.display ?? ticker}
-                                initial={{ format: progress.format, fileName: progress.fileName }}
-                                onReady={(ready) => finish('logo', ready)}
-                            />
-                        </Question>
-
-                        <Question
-                            number={2}
-                            title="Add your links (optional)"
-                            state={steps.state.links}
-                            summary={[progress.socials?.website && 'Website', progress.socials?.x && 'X'].filter(Boolean).join(', ') || 'Skipped'}
-                            onChange={() => steps.open('links')}
-                        >
-                            <VStack align="stretch" gap={4}>
-                                <Field.Root invalid={websiteError}>
-                                    <Field.Label>Website</Field.Label>
-                                    <Input placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />
-                                    <Field.ErrorText>Use a full https:// link.</Field.ErrorText>
-                                </Field.Root>
-                                <Field.Root invalid={xError}>
-                                    <Field.Label>X (Twitter)</Field.Label>
-                                    <Input placeholder="https://x.com/…" value={x} onChange={(e) => setX(e.target.value)} />
-                                    <Field.ErrorText>Use a full https:// link.</Field.ErrorText>
-                                </Field.Root>
-                                <HStack gap={2}>
-                                    <Button
-                                        colorPalette="yellow"
-                                        size="sm"
-                                        disabled={websiteError || xError || (website.trim() === '' && x.trim() === '')}
-                                        onClick={() => finish('links', { socials: { website: website.trim() || undefined, x: x.trim() || undefined } })}
-                                    >
-                                        Save links
-                                    </Button>
-                                    <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => finish('links', { socials: undefined })}>
-                                        Skip
-                                    </Button>
-                                </HStack>
-                            </VStack>
-                        </Question>
-
-                        <Question number={3} title="Copy your registry entry" state={steps.state.entry} summary="Copied" onChange={() => steps.open('entry')}>
-                            <VStack align="stretch" gap={3}>
-                                <Text fontSize="sm" color="fg.muted">{`We wrote it for you from ${ticker}'s on-chain details. You won't need to edit it.`}</Text>
-                                {metadata && !metadata.description.trim() && (
-                                    <HStack gap={2} align="start" p={3} borderRadius="lg" bg="orange.500/10" data-testid="official-no-description">
-                                        <Box color="orange.500" mt={0.5}><LuTriangleAlert size={16} /></Box>
-                                        <Text fontSize="sm">
-                                            {"Add a description first, it's shown in wallets. "}
-                                            <Link
-                                                href={workspaceHref(denom, 'profile')}
-                                                color="yellow.fg"
-                                                onClick={(e) => { e.preventDefault(); navigate(workspaceHref(denom, 'profile')) }}
-                                            >
-                                                Open Profile
-                                            </Link>
-                                        </Text>
+                            <Question
+                                number={2}
+                                title="Add your links (optional)"
+                                state={steps.state.links}
+                                summary={[progress.socials?.website && 'Website', progress.socials?.x && 'X'].filter(Boolean).join(', ') || 'Skipped'}
+                                onChange={() => steps.open('links')}
+                            >
+                                <VStack align="stretch" gap="16px">
+                                    <Field.Root invalid={websiteError}>
+                                        <Field.Label>Website</Field.Label>
+                                        <Input placeholder="https://" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                                        <Field.ErrorText>Use a full https:// link.</Field.ErrorText>
+                                    </Field.Root>
+                                    <Field.Root invalid={xError}>
+                                        <Field.Label>X (Twitter)</Field.Label>
+                                        <Input placeholder="https://x.com/…" value={x} onChange={(e) => setX(e.target.value)} />
+                                        <Field.ErrorText>Use a full https:// link.</Field.ErrorText>
+                                    </Field.Root>
+                                    <HStack gap="8px">
+                                        <Button
+                                            variant={hgVariant('primary')}
+                                            size="md"
+                                            disabled={websiteError || xError || (website.trim() === '' && x.trim() === '')}
+                                            onClick={() => finish('links', { socials: { website: website.trim() || undefined, x: x.trim() || undefined } })}
+                                        >
+                                            Save links
+                                        </Button>
+                                        <Button variant="ghost" color="hg.link" fontWeight="600" size="md" onClick={() => finish('links', { socials: undefined })}>
+                                            Skip
+                                        </Button>
                                     </HStack>
-                                )}
-                                {isMetadataLoading ? <Skeleton height="40" /> : metadata ? (
-                                    <Code
-                                        as="pre"
-                                        data-testid="official-entry"
-                                        display="block"
-                                        whiteSpace="pre"
-                                        overflowX="auto"
-                                        maxW="full"
-                                        p={3}
-                                        fontSize="xs"
-                                        borderRadius="md"
+                                </VStack>
+                            </Question>
+
+                            <Question number={3} title="Copy your registry entry" state={steps.state.entry} summary="Copied" onChange={() => steps.open('entry')}>
+                                <VStack align="stretch" gap="12px">
+                                    <Text fontSize="14px" color="fg.muted">{`We wrote it for you from ${ticker}'s on-chain details. You won't need to edit it.`}</Text>
+                                    {metadata && !metadata.description.trim() && (
+                                        <Box data-testid="official-no-description">
+                                            <Notice status="warning">
+                                                {"Add a description first, it's shown in wallets. "}
+                                                <Link
+                                                    href={workspaceHref(denom, 'profile')}
+                                                    color="hg.link"
+                                                    fontWeight="600"
+                                                    onClick={(e) => { e.preventDefault(); navigate(workspaceHref(denom, 'profile')) }}
+                                                >
+                                                    Open Profile
+                                                </Link>
+                                            </Notice>
+                                        </Box>
+                                    )}
+                                    {isMetadataLoading ? <Shimmer h="160px" borderRadius="12px" /> : metadata ? (
+                                        <Code
+                                            as="pre"
+                                            data-testid="official-entry"
+                                            display="block"
+                                            whiteSpace="pre"
+                                            overflowX="auto"
+                                            maxW="full"
+                                            p="14px"
+                                            fontSize="12px"
+                                            borderRadius="12px"
+                                            bg="hg.inset"
+                                            color="fg"
+                                            borderWidth="1px"
+                                            borderColor="hg.hairline"
+                                        >
+                                            {entryJson}
+                                        </Code>
+                                    ) : (
+                                        <Text fontSize="14px" color="fg.error">{`Couldn't read ${ticker}'s on-chain details. Reload the page to try again.`}</Text>
+                                    )}
+                                    <HStack gap="8px">
+                                        <Button {...softButton} disabled={!metadata} onClick={copyEntry}>
+                                            <LuCopy /> Copy
+                                        </Button>
+                                        <Button variant={hgVariant('primary')} size="md" disabled={!metadata} onClick={() => finish('entry')}>
+                                            Next step
+                                        </Button>
+                                    </HStack>
+                                </VStack>
+                            </Question>
+
+                            <Question
+                                number={4}
+                                title="Send it to the registry"
+                                state={steps.state.submit}
+                                summary={progress.prUrl ? `Your request #${progress.prUrl.split('/').pop()}` : ''}
+                                onChange={() => steps.open('submit')}
+                            >
+                                <VStack align="stretch" gap="12px">
+                                    <Text fontSize="14px" color="fg.muted">You need a free GitHub account. Everything happens in the browser, no coding.</Text>
+                                    <List.Root as="ol" fontSize="14px" lineHeight="1.5" ps="20px" gap="8px">
+                                        <List.Item>Open the registry on GitHub and click <b>Fork</b>. That makes your own copy.</List.Item>
+                                        <List.Item>
+                                            {'In your copy, open the '}<Code fontSize="xs">{`${registryChainName()}/images`}</Code>
+                                            {' folder, choose '}<b>Add file → Upload files</b>{' and upload '}<Code fontSize="xs">{fileName}</Code>.
+                                        </List.Item>
+                                        <List.Item>
+                                            {'Open '}<Code fontSize="xs">{`${registryChainName()}/assetlist.json`}</Code>
+                                            {', click the pencil, and paste your entry as the last item of '}<Code fontSize="xs">&quot;assets&quot;</Code>
+                                            {'. Put a comma after the item before it.'}
+                                        </List.Item>
+                                        <List.Item>
+                                            {'Click '}<b>Commit changes</b>{', then '}<b>Contribute → Open pull request</b>
+                                            {'. Title it '}<Code fontSize="xs">{`Add ${ticker} to ${registryChainName()}`}</Code>.
+                                        </List.Item>
+                                    </List.Root>
+                                    <Button asChild alignSelf="start" {...softButton}>
+                                        <a href={REGISTRY_REPO_URL} target="_blank" rel="noopener noreferrer">
+                                            Open the registry on GitHub <LuArrowUpRight />
+                                        </a>
+                                    </Button>
+                                    <Field.Root invalid={prError}>
+                                        <Field.Label>Paste your pull request link so we can follow it for you</Field.Label>
+                                        <Input placeholder="https://github.com/cosmos/chain-registry/pull/…" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} />
+                                        <Field.ErrorText>A link like https://github.com/cosmos/chain-registry/pull/1234</Field.ErrorText>
+                                    </Field.Root>
+                                    <Button
+                                        alignSelf="start"
+                                        variant={hgVariant('primary')}
+                                        size="md"
+                                        disabled={!isRegistryPrUrl(prUrl)}
+                                        onClick={() => finish('submit', { prUrl: prUrl.trim() })}
                                     >
-                                        {entryJson}
-                                    </Code>
-                                ) : (
-                                    <Text fontSize="sm" color="fg.error">{`Couldn't read ${ticker}'s on-chain details. Reload the page to try again.`}</Text>
-                                )}
-                                <HStack gap={2}>
-                                    <Button size="sm" colorPalette="yellow" variant="outline" disabled={!metadata} onClick={copyEntry}>
-                                        <LuCopy /> Copy
+                                        Save the link
                                     </Button>
-                                    <Button size="sm" colorPalette="yellow" disabled={!metadata} onClick={() => finish('entry')}>
-                                        Next step
-                                    </Button>
-                                </HStack>
-                            </VStack>
-                        </Question>
+                                </VStack>
+                            </Question>
 
-                        <Question
-                            number={4}
-                            title="Send it to the registry"
-                            state={steps.state.submit}
-                            summary={progress.prUrl ? `Your request #${progress.prUrl.split('/').pop()}` : ''}
-                            onChange={() => steps.open('submit')}
-                        >
-                            <VStack align="stretch" gap={3}>
-                                <Text fontSize="sm" color="fg.muted">You need a free GitHub account. Everything happens in the browser, no coding.</Text>
-                                <List.Root as="ol" fontSize="sm" ps={5} gap={2}>
-                                    <List.Item>Open the registry on GitHub and click <b>Fork</b>. That makes your own copy.</List.Item>
-                                    <List.Item>
-                                        {'In your copy, open the '}<Code fontSize="xs">{`${registryChainName()}/images`}</Code>
-                                        {' folder, choose '}<b>Add file → Upload files</b>{' and upload '}<Code fontSize="xs">{fileName}</Code>.
-                                    </List.Item>
-                                    <List.Item>
-                                        {'Open '}<Code fontSize="xs">{`${registryChainName()}/assetlist.json`}</Code>
-                                        {', click the pencil, and paste your entry as the last item of '}<Code fontSize="xs">&quot;assets&quot;</Code>
-                                        {'. Put a comma after the item before it.'}
-                                    </List.Item>
-                                    <List.Item>
-                                        {'Click '}<b>Commit changes</b>{', then '}<b>Contribute → Open pull request</b>
-                                        {'. Title it '}<Code fontSize="xs">{`Add ${ticker} to ${registryChainName()}`}</Code>.
-                                    </List.Item>
+                            <Question number={5} title="Wait for the review" state={steps.state.review} summary={`${ticker} is listed`}>
+                                <VStack align="stretch" gap="8px">
+                                    {progress.prUrl && (
+                                        <Link href={progress.prUrl} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">
+                                            Your request <LuArrowUpRight />
+                                        </Link>
+                                    )}
+                                    <Text fontSize="14px" color="fg.muted">The maintainers review requests as they come in. It can take from a few days to a few weeks.</Text>
+                                    <Text fontSize="14px" color="fg.muted" data-testid="official-after-merge">{AFTER_MERGE_COPY}</Text>
+                                </VStack>
+                            </Question>
+                        </VStack>
+                    </Box>
+
+                    <Box as="aside" flex="1 1 300px" maxW={{ base: 'none', lg: '360px' }} minW={0}>
+                        <VStack align="stretch" gap="14px">
+                            <SideCard title="Why it matters">
+                                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
+                                    {`Without an entry, most wallets show ${ticker} as a long factory/… code with no logo. That looks like a scam, even when it isn't.`}
+                                </Text>
+                            </SideCard>
+                            <SideCard title="Common reasons a request is sent back">
+                                <List.Root fontSize="14px" lineHeight="1.5" color="fg.muted" ps="18px" gap="4px">
+                                    <List.Item>The logo isn&apos;t square, or is over 250 KB.</List.Item>
+                                    <List.Item>A JPG renamed to .png.</List.Item>
+                                    <List.Item>An upper-case file name.</List.Item>
+                                    <List.Item>A missing comma in the list.</List.Item>
                                 </List.Root>
-                                <Button asChild alignSelf="start" size="sm" variant="outline" colorPalette="yellow">
-                                    <a href={REGISTRY_REPO_URL} target="_blank" rel="noopener noreferrer">
-                                        Open the registry on GitHub <LuArrowUpRight />
-                                    </a>
-                                </Button>
-                                <Field.Root invalid={prError}>
-                                    <Field.Label>Paste your pull request link so we can follow it for you</Field.Label>
-                                    <Input placeholder="https://github.com/cosmos/chain-registry/pull/…" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} />
-                                    <Field.ErrorText>A link like https://github.com/cosmos/chain-registry/pull/1234</Field.ErrorText>
-                                </Field.Root>
-                                <Button
-                                    alignSelf="start"
-                                    size="sm"
-                                    colorPalette="yellow"
-                                    disabled={!isRegistryPrUrl(prUrl)}
-                                    onClick={() => finish('submit', { prUrl: prUrl.trim() })}
-                                >
-                                    Save the link
-                                </Button>
-                            </VStack>
-                        </Question>
-
-                        <Question number={5} title="Wait for the review" state={steps.state.review} summary={`${ticker} is listed`}>
-                            <VStack align="stretch" gap={2}>
-                                {progress.prUrl && (
-                                    <Link href={progress.prUrl} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">
-                                        Your request <LuArrowUpRight />
-                                    </Link>
-                                )}
-                                <Text fontSize="sm" color="fg.muted">The maintainers review requests as they come in. It can take from a few days to a few weeks.</Text>
-                                <Text fontSize="sm" color="fg.muted" data-testid="official-after-merge">{AFTER_MERGE_COPY}</Text>
-                            </VStack>
-                        </Question>
-                    </VStack>
-                </GridItem>
-
-                <GridItem minW={0}>
-                    <VStack align="stretch" gap={4}>
-                        <SideCard title="Why it matters">
-                            <Text fontSize="sm" color="fg.muted">
-                                {`Without an entry, most wallets show ${ticker} as a long factory/… code with no logo. That looks like a scam, even when it isn't.`}
-                            </Text>
-                        </SideCard>
-                        <SideCard title="Common reasons a request is sent back">
-                            <List.Root fontSize="sm" color="fg.muted" ps={5} gap={1}>
-                                <List.Item>The logo isn&apos;t square, or is over 250 KB.</List.Item>
-                                <List.Item>A JPG renamed to .png.</List.Item>
-                                <List.Item>An upper-case file name.</List.Item>
-                                <List.Item>A missing comma in the list.</List.Item>
-                            </List.Root>
-                        </SideCard>
-                        <SideCard title="Stuck? Ask in the BeeZee community">
-                            <HStack gap={4}>
-                                <Link href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">Telegram <LuArrowUpRight /></Link>
-                                <Link href={DISCORD_URL} target="_blank" rel="noopener noreferrer" fontSize="sm" color="yellow.fg">Discord <LuArrowUpRight /></Link>
-                            </HStack>
-                        </SideCard>
-                    </VStack>
-                </GridItem>
-            </Grid>
-        </VStack>
+                            </SideCard>
+                            <SideCard title="Stuck? Ask in the BeeZee community">
+                                <HStack gap="16px">
+                                    <Link href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Telegram <LuArrowUpRight /></Link>
+                                    <Link href={DISCORD_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Discord <LuArrowUpRight /></Link>
+                                </HStack>
+                            </SideCard>
+                        </VStack>
+                    </Box>
+                </Flex>
+            </PageContainer>
+        </>
     )
 }
 
 export default function OfficialPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <OfficialContent />
-                </Suspense>
-            </Container>
+        <Box minH="100vh">
+            <Suspense fallback={<PageContainer pt="28px"><Shimmer h="384px" borderRadius="16px" /></PageContainer>}>
+                <OfficialContent />
+            </Suspense>
         </Box>
     )
 }

@@ -6,7 +6,7 @@ import {expect, test} from "./support/mock-network";
 test("the home starts from goals, with their live fees and the All tools row", async ({page}) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", {name: "What do you want to do?"})).toBeVisible();
+    await expect(page.getByRole("heading", {name: "What do you want to build?"})).toBeVisible();
     for (const group of ["1 · Start", "2 · Get it traded", "3 · Grow the community", "4 · Make it official"]) {
         await expect(page.getByRole("heading", {name: group})).toBeVisible();
     }

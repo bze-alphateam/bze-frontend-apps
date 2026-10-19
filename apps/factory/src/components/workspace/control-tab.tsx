@@ -1,46 +1,61 @@
 "use client"
 
 import React, { useMemo, useState } from 'react'
-import { Box, Button, Card, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Field, Grid, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import { LuCheck, LuKeyRound, LuLock, LuRefreshCw, LuShieldCheck, LuUserRound } from 'react-icons/lu'
-import { Asset, getChainName, validateBZEBech32Address } from '@bze/bze-ui-kit'
+import { Asset, HgCard, IconTile, Notice, getChainName, hgVariant, validateBZEBech32Address } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { InfoBox } from '@/components/ui/info-box'
+import { softButton } from '@/components/ui/soft-button'
 import { workspaceHref } from '@/lib/workspace'
 import { keepsWorking, LockDialog } from './lock-dialog'
 import type { WorkspaceTabProps } from './types'
 
 const { changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
 
-function CardTitle({ icon, color, children }: { icon: React.ReactNode; color: string; children: React.ReactNode }) {
+function CardTitle({ icon, children, success = false }: { icon: React.ReactNode; children: React.ReactNode; success?: boolean }) {
     return (
-        <HStack gap={2}>
-            <Box p={2} borderRadius="lg" bg={`${color}/15`} color={color}>
-                {icon}
-            </Box>
-            <Text fontWeight="semibold">{children}</Text>
+        <HStack gap="10px">
+            {success ? (
+                <Box
+                    as="span"
+                    aria-hidden
+                    boxSize="36px"
+                    flexShrink={0}
+                    borderRadius="hg.md"
+                    bg="hg.success/16"
+                    color="hg.success.text"
+                    display="inline-flex"
+                    alignItems="center"
+                    justifyContent="center"
+                >
+                    {icon}
+                </Box>
+            ) : (
+                <IconTile icon={icon} size={36} />
+            )}
+            <Text as="h3" fontSize="17px" fontWeight="700">{children}</Text>
         </HStack>
     )
 }
 
 function LockCard({ ticker, onOpen }: { ticker: string; onOpen: () => void }) {
     return (
-        <Card.Root as="section" aria-label="Lock the supply" variant="outline" p="5" borderColor="red.500/25">
-            <VStack align="stretch" gap={4}>
-                <CardTitle icon={<LuLock size={18} />} color="red.500">Lock the supply</CardTitle>
-                <Text fontSize="sm" color="fg.muted">
+        <HgCard as="section" aria-label="Lock the supply" p="22px">
+            <VStack align="stretch" gap="16px">
+                <CardTitle icon={<LuLock />}>Lock the supply</CardTitle>
+                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
                     The strongest trust signal a token can have. Do it last, when your setup is done.
                 </Text>
                 <Box>
-                    <Button colorPalette="red" variant="outline" onClick={onOpen}>
+                    <Button variant={hgVariant('danger')} size="lg" h="42px" fontWeight="700" onClick={onOpen}>
                         {`Lock ${ticker} forever…`}
                     </Button>
                 </Box>
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
@@ -75,14 +90,16 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
     }
 
     return (
-        <Card.Root as="section" aria-label="Hand over control" variant="outline" p="5">
-            <VStack align="stretch" gap={4}>
-                <CardTitle icon={<LuKeyRound size={18} />} color="orange.500">Hand over control</CardTitle>
+        <HgCard as="section" aria-label="Hand over control" p="22px">
+            <VStack align="stretch" gap="16px">
+                <CardTitle icon={<LuKeyRound />}>Hand over control</CardTitle>
 
                 <Field.Root invalid={touched && error !== ''}>
-                    <Field.Label>Hand control to (address)</Field.Label>
+                    <Field.Label fontSize="14px" fontWeight="600">Hand control to (address)</Field.Label>
                     <Input
                         placeholder="bze1…"
+                        h="46px"
+                        borderRadius="12px"
                         fontFamily="mono"
                         value={recipient}
                         onChange={(e) => setRecipient(e.target.value)}
@@ -91,19 +108,27 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
                     <Field.ErrorText>{error}</Field.ErrorText>
                 </Field.Root>
 
-                <Text fontSize="sm" color="fg.muted">
+                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
                     The new address gets every power above and you lose all of it. Use this to move
                     control to a team wallet or a DAO.
                 </Text>
 
-                <InfoBox title="You lose all control">
+                <Notice status="warning" title="You lose all control">
                     {`From the moment this is signed, only the new address can mint, edit what wallets show, set the brand kit or hand control on. Triple-check the address: sending it to the wrong one can't be fixed by anyone but that address's owner.`}
-                </InfoBox>
+                </Notice>
 
                 <Box>
                     <Button
-                        colorPalette="orange"
                         variant="outline"
+                        size="lg"
+                        h="42px"
+                        borderRadius="hg.md"
+                        fontWeight="700"
+                        color="hg.warning.text"
+                        borderColor="hg.warning/40"
+                        bg="transparent"
+                        _hover={{ bg: 'hg.warning/8' }}
+                        _disabled={{ opacity: 0.55 }}
                         onClick={submit}
                         disabled={error !== ''}
                         loading={isSubmitting}
@@ -113,27 +138,27 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
                     </Button>
                 </Box>
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }
 
 function LockedCard({ ticker }: { ticker: string }) {
     return (
-        <Card.Root variant="outline" p="5" borderColor="green.500/30" bg="green.500/5" data-testid="control-locked">
-            <VStack align="stretch" gap={3}>
-                <CardTitle icon={<LuShieldCheck size={18} />} color="green.500">Supply provably fixed</CardTitle>
-                <Text fontSize="sm">{`Nobody can ever mint, edit or brand ${ticker} again.`}</Text>
-                <Text fontSize="sm" fontWeight="semibold" color="fg.muted">Still works</Text>
-                <VStack align="stretch" gap={1.5}>
+        <Box p="22px" borderRadius="hg.lg" borderWidth="1px" borderColor="hg.success/30" bg="hg.success/5" data-testid="control-locked">
+            <VStack align="stretch" gap="12px">
+                <CardTitle icon={<LuShieldCheck />} success>Supply provably fixed</CardTitle>
+                <Text fontSize="14px">{`Nobody can ever mint, edit or brand ${ticker} again.`}</Text>
+                <Text fontSize="13px" fontWeight="600" color="fg.muted">Still works</Text>
+                <VStack align="stretch" gap="6px">
                     {keepsWorking(ticker).map(item => (
-                        <HStack key={item} gap={2}>
-                            <Box color="green.500" flexShrink={0}><LuCheck size={14} /></Box>
-                            <Text fontSize="sm">{item}</Text>
+                        <HStack key={item} gap="8px">
+                            <Box color="hg.success" flexShrink={0} aria-hidden><LuCheck size={14} strokeWidth={3} /></Box>
+                            <Text fontSize="14px">{item}</Text>
                         </HStack>
                     ))}
                 </VStack>
             </VStack>
-        </Card.Root>
+        </Box>
     )
 }
 
@@ -154,13 +179,13 @@ export function ControlTab({ asset, admin, adminState, supply, supplyDisplay, re
     }
 
     return (
-        <VStack align="stretch" gap={6}>
-            <VStack align="stretch" gap={1}>
-                <Text fontWeight="semibold" fontSize="lg">{`Who controls ${ticker}`}</Text>
-                <Text fontSize="sm" color="fg.muted">
+        <VStack align="stretch" gap="24px">
+            <VStack align="stretch" gap="6px">
+                <Text as="h2" fontWeight="700" fontSize="20px">{`Who controls ${ticker}`}</Text>
+                <Text fontSize="14px" color="fg.muted">
                     The admin can mint more, edit what wallets show, and set the brand kit.
                 </Text>
-                <Text fontSize="sm" color="fg.muted">
+                <Text fontSize="14px" color="fg.muted">
                     {`Buyers see ${ticker} as `}<Text as="strong" color="fg">Mintable</Text>
                     {` while someone has control, and `}<Text as="strong" color="fg">Fixed supply</Text>
                     {` once it is locked.`}
@@ -169,8 +194,10 @@ export function ControlTab({ asset, admin, adminState, supply, supplyDisplay, re
 
             {adminState === 'admin' && (
                 <>
-                    <LockCard ticker={ticker} onOpen={() => setIsLockOpen(true)} />
-                    <HandOverCard asset={asset} onChanged={() => void refreshAdmins()} />
+                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
+                        <LockCard ticker={ticker} onOpen={() => setIsLockOpen(true)} />
+                        <HandOverCard asset={asset} onChanged={() => void refreshAdmins()} />
+                    </Grid>
                     <LockDialog
                         open={isLockOpen}
                         onClose={closeLock}
@@ -186,29 +213,29 @@ export function ControlTab({ asset, admin, adminState, supply, supplyDisplay, re
             {adminState === 'renounced' && <LockedCard ticker={ticker} />}
 
             {adminState === 'not-admin' && (
-                <Card.Root variant="outline" p="5" data-testid="control-not-admin">
-                    <HStack gap={3} align="start">
-                        <Box color="fg.muted" mt={0.5} flexShrink={0}><LuUserRound size={18} /></Box>
-                        <Text fontSize="sm" overflowWrap="anywhere">
-                            <Text as="span" fontFamily="mono">{admin}</Text>
+                <HgCard p="22px" data-testid="control-not-admin">
+                    <HStack gap="12px" align="start">
+                        <Box color="fg.muted" mt="2px" flexShrink={0} aria-hidden><LuUserRound size={18} /></Box>
+                        <Text fontSize="14px" lineHeight="1.55" overflowWrap="anywhere">
+                            <Text as="span" fontFamily="mono" fontSize="13px">{admin}</Text>
                             {` controls ${ticker} now.`}
                         </Text>
                     </HStack>
-                </Card.Root>
+                </HgCard>
             )}
 
             {adminState === 'unknown' && (
-                <Card.Root variant="outline" p="5" data-testid="control-unknown">
-                    <VStack align="stretch" gap={3}>
-                        <Text fontSize="sm">{`Couldn't load who controls ${ticker}.`}</Text>
+                <HgCard p="22px" data-testid="control-unknown">
+                    <VStack align="stretch" gap="12px">
+                        <Text fontSize="14px">{`Couldn't load who controls ${ticker}.`}</Text>
                         <Box>
-                            <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => void refreshAdmins()}>
+                            <Button {...softButton} size="sm" onClick={() => void refreshAdmins()}>
                                 <LuRefreshCw />
                                 Retry
                             </Button>
                         </Box>
                     </VStack>
-                </Card.Root>
+                </HgCard>
             )}
         </VStack>
     )

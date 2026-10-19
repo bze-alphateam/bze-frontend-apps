@@ -6,7 +6,8 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }));
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: navigateMock }) }));
-vi.mock("@bze/bze-ui-kit", () => ({
+vi.mock("@bze/bze-ui-kit", async (importActual) => ({
+    ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
     useAsset: (denom: string) => ({ asset: denom === "factory/bze1x/honey" ? { ticker: "HONEY" } : undefined }),
 }));
 

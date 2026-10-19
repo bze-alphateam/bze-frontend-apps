@@ -1,11 +1,13 @@
 "use client"
 
 import React, { useMemo } from 'react'
-import { Box, Button, Card, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Grid, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuCopy, LuPlus } from 'react-icons/lu'
 import {
     Market,
+    HgCard,
+    Shimmer,
     TokenLogo,
     createMarketId,
     getChainName,
@@ -19,6 +21,7 @@ import {
 import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { useChain } from '@interchain-kit/react'
 import { useNavigation } from '@/hooks/useNavigation'
+import { softButton } from '@/components/ui/soft-button'
 
 
 function usePair(base: string, quote: string) {
@@ -40,9 +43,9 @@ function usePair(base: string, quote: string) {
 
 function Row({ children }: { children: React.ReactNode }) {
     return (
-        <Card.Root variant="outline" px={3} py={2.5}>
-            <HStack justify="space-between" align="center" gap={3} flexWrap="wrap">{children}</HStack>
-        </Card.Root>
+        <HgCard px="14px" py="12px" borderRadius="14px">
+            <HStack justify="space-between" align="center" gap="12px" flexWrap="wrap">{children}</HStack>
+        </HgCard>
     )
 }
 
@@ -60,23 +63,23 @@ function PoolRow({ pool }: { pool: LiquidityPoolSDKType }) {
 
     return (
         <Row>
-            <HStack gap={3} minW={0} flex="1">
+            <HStack gap="12px" minW={0} flex="1">
                 {logos}
-                <VStack align="start" gap={0} minW={0}>
-                    <HStack gap={2} flexWrap="wrap">
-                        <Text fontWeight="semibold" fontSize="sm" wordBreak="break-all">{pair}</Text>
-                        <Text fontSize="xs" color="fg.muted">{fee}</Text>
+                <VStack align="start" gap="2px" minW={0}>
+                    <HStack gap="8px" flexWrap="wrap">
+                        <Text as="strong" fontWeight="700" fontSize="14px" wordBreak="break-all">{pair}</Text>
+                        <Text fontSize="12px" color="fg.muted">{fee}</Text>
                     </HStack>
-                    <HStack gap={1} minW={0} maxW="full">
-                        <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate>{pool.lp_denom}</Text>
-                        <IconButton aria-label="Copy LP denom" size="2xs" variant="ghost" colorPalette="yellow" onClick={copyLpDenom}>
+                    <HStack gap="4px" minW={0} maxW="full">
+                        <Text fontSize="12px" color="hg.text.faint" fontFamily="mono" truncate>{pool.lp_denom}</Text>
+                        <IconButton aria-label="Copy LP denom" size="2xs" variant="ghost" color="hg.link" onClick={copyLpDenom}>
                             <LuCopy />
                         </IconButton>
                     </HStack>
                 </VStack>
             </HStack>
-            <HStack gap={1} flexWrap="wrap">
-                <Button size="xs" variant="outline" colorPalette="yellow" onClick={() => navigate(`/pool/add?pool=${encodeURIComponent(pool.id)}`)}>
+            <HStack gap="6px" flexWrap="wrap">
+                <Button {...softButton} size="xs" h="30px" fontSize="12px" onClick={() => navigate(`/pool/add?pool=${encodeURIComponent(pool.id)}`)}>
                     <LuPlus /> Add liquidity
                 </Button>
                 <AppLink app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`}>DEX</AppLink>
@@ -91,11 +94,11 @@ function MarketRow({ market }: { market: Market }) {
 
     return (
         <Row>
-            <HStack gap={3} minW={0} flex="1">
+            <HStack gap="12px" minW={0} flex="1">
                 {logos}
-                <VStack align="start" gap={0} minW={0} maxW="full">
-                    <Text fontWeight="semibold" fontSize="sm" wordBreak="break-all">{pair}</Text>
-                    <Text fontSize="xs" color="fg.muted" fontFamily="mono" truncate maxW="full">{marketId}</Text>
+                <VStack align="start" gap="2px" minW={0} maxW="full">
+                    <Text as="strong" fontWeight="700" fontSize="14px" wordBreak="break-all">{pair}</Text>
+                    <Text fontSize="12px" color="hg.text.faint" fontFamily="mono" truncate maxW="full">{marketId}</Text>
                 </VStack>
             </HStack>
             <AppLink app="dex" href={`${getDexApp().href}/exchange/market?id=${encodeURIComponent(marketId)}`}>DEX</AppLink>
@@ -105,9 +108,9 @@ function MarketRow({ market }: { market: Market }) {
 
 function GroupHeader({ title, action, onAction }: { title: string; action: string; onAction: () => void }) {
     return (
-        <HStack justify="space-between" gap={2}>
-            <Text fontSize="sm" fontWeight="semibold" color="fg.muted">{title}</Text>
-            <Button size="xs" variant="ghost" colorPalette="yellow" onClick={onAction}>
+        <HStack justify="space-between" gap="8px">
+            <Text fontSize="14px" fontWeight="600" color="fg.muted">{title}</Text>
+            <Button size="xs" h="30px" variant="ghost" color="hg.link" fontWeight="600" fontSize="13px" onClick={onAction}>
                 <LuPlus /> {action}
             </Button>
         </HStack>
@@ -126,43 +129,41 @@ export function CreatedByYou() {
     const isLoading = isPoolsLoading || isMarketsLoading
 
     return (
-        <VStack as="section" aria-label="Markets and pools you created" align="stretch" gap={3}>
-            <Text as="h2" fontSize="lg" fontWeight="bold" letterSpacing="tight">Markets and pools you created</Text>
+        <VStack as="section" aria-label="Markets and pools you created" align="stretch" gap="14px">
+            <Text as="h2" fontSize="20px" fontWeight="700">Markets and pools you created</Text>
 
             {isLoading ? (
-                <VStack align="stretch" gap={2}>
-                    <Skeleton height="14" borderRadius="lg" />
-                    <Skeleton height="14" borderRadius="lg" />
+                <VStack align="stretch" gap="8px" aria-busy="true">
+                    <Shimmer h="56px" borderRadius="14px" />
+                    <Shimmer h="56px" borderRadius="14px" />
                 </VStack>
             ) : myPools.length === 0 && myMarkets.length === 0 ? (
-                <Card.Root variant="outline" p={6}>
-                    <VStack gap={3}>
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">{"You haven't created a market or pool yet."}</Text>
-                        <HStack gap={2} flexWrap="wrap" justify="center">
-                            <Button size="sm" colorPalette="yellow" variant="outline" onClick={() => navigate('/pool/new')}>
-                                <LuPlus /> Create a pool
-                            </Button>
-                            <Button size="sm" colorPalette="yellow" variant="outline" onClick={() => navigate('/market/new')}>
-                                <LuPlus /> Create a market
-                            </Button>
-                        </HStack>
-                    </VStack>
-                </Card.Root>
+                <HgCard p="22px" display="flex" flexDirection="column" alignItems="center" gap="12px">
+                    <Text fontSize="14px" color="fg.muted" textAlign="center">{"You haven't created a market or pool yet."}</Text>
+                    <HStack gap="8px" flexWrap="wrap" justify="center">
+                        <Button {...softButton} onClick={() => navigate('/pool/new')}>
+                            <LuPlus /> Create a pool
+                        </Button>
+                        <Button {...softButton} onClick={() => navigate('/market/new')}>
+                            <LuPlus /> Create a market
+                        </Button>
+                    </HStack>
+                </HgCard>
             ) : (
-                <VStack align="stretch" gap={4}>
-                    <VStack align="stretch" gap={2} data-testid="created-pools">
+                <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
+                    <VStack align="stretch" gap="10px" data-testid="created-pools">
                         <GroupHeader title={`Pools (${myPools.length})`} action="New pool" onAction={() => navigate('/pool/new')} />
                         {myPools.length === 0
-                            ? <Text fontSize="sm" color="fg.muted">No pools yet</Text>
+                            ? <Text fontSize="14px" color="hg.text.faint">No pools yet</Text>
                             : myPools.map(pool => <PoolRow key={pool.id} pool={pool} />)}
                     </VStack>
-                    <VStack align="stretch" gap={2} data-testid="created-markets">
+                    <VStack align="stretch" gap="10px" data-testid="created-markets">
                         <GroupHeader title={`Markets (${myMarkets.length})`} action="New market" onAction={() => navigate('/market/new')} />
                         {myMarkets.length === 0
-                            ? <Text fontSize="sm" color="fg.muted">No markets yet</Text>
+                            ? <Text fontSize="14px" color="hg.text.faint">No markets yet</Text>
                             : myMarkets.map(m => <MarketRow key={createMarketId(m.base, m.quote)} market={m} />)}
                     </VStack>
-                </VStack>
+                </Grid>
             )}
         </VStack>
     )

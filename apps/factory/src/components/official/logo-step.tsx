@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Box, Button, HStack, Image, List, Text, VStack } from '@chakra-ui/react'
 import { LuCheck, LuCircleAlert, LuUpload, LuX } from 'react-icons/lu'
+import { hgVariant } from '@bze/bze-ui-kit'
+import { softButton } from '@/components/ui/soft-button'
 import type { LogoFormat } from '@/lib/registry-entry'
 import { type LogoCheck, type LogoCheckResult, MAX_READ_BYTES, checkLogo, logoPasses } from '@/lib/logo-check'
 
@@ -36,12 +38,12 @@ const readBytes = (file: File): Promise<Uint8Array> => new Promise((resolve, rej
 
 function CheckRow({ check }: { check: LogoCheck }) {
     const result = !check.ok ? 'fail' : check.warn ? 'warn' : 'ok'
-    const color = result === 'fail' ? 'red.fg' : result === 'warn' ? 'orange.fg' : 'green.fg'
+    const color = result === 'fail' ? 'hg.danger' : result === 'warn' ? 'hg.warning' : 'hg.success'
     const Icon = result === 'fail' ? LuX : result === 'warn' ? LuCircleAlert : LuCheck
     return (
         <List.Item display="flex" alignItems="start" gap={2} data-testid={`logo-check-${check.key}`} data-result={result}>
             <Box color={color} pt="2px" flexShrink={0}><Icon size={14} /></Box>
-            <Text fontSize="sm" wordBreak="break-word">{check.message}</Text>
+            <Text fontSize="13px" wordBreak="break-word">{check.message}</Text>
         </List.Item>
     )
 }
@@ -49,8 +51,9 @@ function CheckRow({ check }: { check: LogoCheck }) {
 function Preview({ url }: { url: string }) {
     return (
         <HStack gap={3} data-testid="logo-preview">
-            {[{ bg: 'white', label: 'On a light wallet' }, { bg: 'gray.900', label: 'On a dark wallet' }].map(side => (
-                <Box key={side.label} p={2} borderRadius="full" bg={side.bg} borderWidth="1px" borderColor="border.muted">
+            {/* Stand-ins for a wallet's own background, so they stay white and black in either mode. */}
+            {[{ bg: 'white', label: 'On a light wallet' }, { bg: 'black', label: 'On a dark wallet' }].map(side => (
+                <Box key={side.label} p="6px" borderRadius="full" bg={side.bg} borderWidth="1px" borderColor="hg.lineStrong">
                     <Image src={url} alt={side.label} boxSize="56px" borderRadius="full" objectFit="cover" />
                 </Box>
             ))}
@@ -120,13 +123,13 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
 
             {!chosen || !result ? (
                 <VStack
-                    gap={2}
-                    p={6}
-                    borderWidth="2px"
+                    gap="10px"
+                    p="24px"
+                    borderWidth="1.5px"
                     borderStyle="dashed"
-                    borderRadius="xl"
-                    borderColor={dragging ? 'yellow.500' : 'border.muted'}
-                    bg={dragging ? 'yellow.500/10' : 'bg.subtle'}
+                    borderRadius="14px"
+                    borderColor={dragging ? 'app.focusRing' : 'app.border'}
+                    bg={dragging ? 'app.subtle' : 'app.subtle/25'}
                     textAlign="center"
                     onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
                     onDragLeave={() => setDragging(false)}
@@ -137,30 +140,30 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                         if (file) void check(file)
                     }}
                 >
-                    <LuUpload size={20} />
-                    <Text fontSize="sm">Drop your logo here</Text>
-                    <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => inputRef.current?.click()}>
+                    <Box color="hg.link" aria-hidden><LuUpload size={22} /></Box>
+                    <Text fontSize="14px">Drop your logo here</Text>
+                    <Button {...softButton} size="sm" onClick={() => inputRef.current?.click()}>
                         Choose a file
                     </Button>
                     {initial?.fileName && (
-                        <Text fontSize="xs" color="fg.muted">{`Last time you checked ${initial.fileName}.`}</Text>
+                        <Text fontSize="12px" color="hg.text.faint">{`Last time you checked ${initial.fileName}.`}</Text>
                     )}
                 </VStack>
             ) : (
-                <VStack align="stretch" gap={3}>
-                    <HStack gap={4} align="start" flexWrap="wrap">
+                <VStack align="stretch" gap="12px" p="16px" borderRadius="14px" borderWidth="1px" borderColor="hg.hairline" bg="hg.inset">
+                    <HStack gap="12px" align="center" flexWrap="wrap">
                         {previewUrl && <Preview url={previewUrl} />}
                         <VStack align="start" gap={0} minW={0}>
-                            <Text fontSize="sm" fontWeight="medium" wordBreak="break-all">{chosen.fileName}</Text>
-                            <Text fontSize="xs" color="fg.muted">Checked in your browser, nothing is uploaded.</Text>
+                            <Text fontSize="13px" fontWeight="700" wordBreak="break-all">{chosen.fileName}</Text>
+                            <Text fontSize="11px" color="hg.text.faint">Checked in your browser, nothing is uploaded.</Text>
                         </VStack>
                     </HStack>
                     <List.Root gap={1} aria-label="Logo checks">
                         {result.checks.map(c => <CheckRow key={c.key} check={c} />)}
                     </List.Root>
-                    <HStack gap={2} flexWrap="wrap">
+                    <HStack gap="8px" flexWrap="wrap">
                         <Button
-                            colorPalette="yellow"
+                            variant={hgVariant('primary')}
                             size="sm"
                             disabled={!passes}
                             onClick={() => {
@@ -169,13 +172,13 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                         >
                             Mark as done
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={reset}>Choose another file</Button>
+                        <Button size="sm" variant="ghost" color="hg.text.secondary" fontWeight="600" onClick={reset}>Choose another file</Button>
                     </HStack>
                 </VStack>
             )}
 
             {!chosen && (
-                <Text fontSize="xs" color="fg.muted">Checked in your browser, nothing is uploaded.</Text>
+                <Text fontSize="12px" color="hg.text.faint">Checked in your browser, nothing is uploaded.</Text>
             )}
         </VStack>
     )

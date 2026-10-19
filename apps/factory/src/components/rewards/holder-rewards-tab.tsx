@@ -1,13 +1,16 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { Box, Button, Card, HStack, NativeSelect, Skeleton, Table, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Grid, HStack, NativeSelect, Table, Text, VStack } from '@chakra-ui/react'
 import { LuChevronRight, LuGift, LuPlus, LuRefreshCw } from 'react-icons/lu'
 import {
     DenomReward,
+    HgCard,
+    Shimmer,
     TokenLogo,
     getDenomRewardPrizes,
     getDenomRewardSchedules,
+    hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAssets,
@@ -17,6 +20,8 @@ import { useMyTokens } from '@/hooks/useMyTokens'
 import { useNavigation } from '@/hooks/useNavigation'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { InfoBox } from '@/components/ui/info-box'
+import { FilterChip } from '@/components/ui/filter-chip'
+import { softButton } from '@/components/ui/soft-button'
 import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
 import {
     DenomRewardCounts,
@@ -80,39 +85,46 @@ function useDenomRewardCounts(denoms: ReadonlyArray<string>): CountsMap {
 }
 
 const countCell = (counts: DenomRewardCounts | null | undefined, render: (c: DenomRewardCounts) => React.ReactNode) =>
-    counts === undefined ? <Skeleton height="4" width="6" display="inline-block" /> : counts === null ? '—' : render(counts)
+    counts === undefined ? <Shimmer h="14px" w="24px" display="inline-block" verticalAlign="middle" /> : counts === null ? '—' : render(counts)
 
 /** How many daily prizes are running, as the directory showed them before the redesign. */
 const payingText = (c: DenomRewardCounts) => (c.schedules > 0 ? `${c.schedules} daily prize${c.schedules === 1 ? '' : 's'}` : 'No')
 
 const stop = (e: React.MouseEvent) => e.stopPropagation()
 
+/** A row's Airdrop / Add prize button: the soft app button, small. */
+const rowButton = (size: 'xs' | 'sm') => ({ ...softButton, size, h: size === 'xs' ? '30px' : '32px', fontSize: '12px', borderRadius: '8px' })
+
+/** Header and body cells of the directory table. */
+const headerCell = { px: '20px', py: '10px', fontSize: '12px', fontWeight: '600', color: 'hg.text.faint', borderColor: 'hg.divider' }
+const bodyCell = { px: '20px', py: '14px', fontSize: '14px', borderColor: 'hg.divider' }
+
 function RowActions({ dr, size = 'xs' }: { dr: DenomReward; size?: 'xs' | 'sm' }) {
     const { navigate } = useNavigation()
     const reason = airdropDisabledReason(dr)
 
     return (
-        <VStack align={{ base: 'stretch', md: 'end' }} gap={1} onClick={stop}>
-            <HStack gap={2} justify={{ base: 'start', md: 'end' }} wrap="wrap">
-                <Button size={size} variant="outline" colorPalette="yellow" disabled={reason !== ''} onClick={() => navigate(airdropFormHref(dr.staking_denom))}>
+        <VStack align={{ base: 'stretch', md: 'end' }} gap="4px" onClick={stop}>
+            <HStack gap="6px" justify={{ base: 'start', md: 'end' }} wrap="wrap">
+                <Button {...rowButton(size)} disabled={reason !== ''} onClick={() => navigate(airdropFormHref(dr.staking_denom))}>
                     <LuGift /> Airdrop
                 </Button>
-                <Button size={size} variant="outline" colorPalette="yellow" onClick={() => navigate(scheduleFormHref(dr.staking_denom))}>
+                <Button {...rowButton(size)} onClick={() => navigate(scheduleFormHref(dr.staking_denom))}>
                     <LuPlus /> Add prize
                 </Button>
             </HStack>
-            {reason && <Text fontSize="xs" color="fg.muted">{reason}</Text>}
+            {reason && <Text fontSize="12px" color="hg.text.faint">{reason}</Text>}
         </VStack>
     )
 }
 
 function TokenName({ denom, ticker, name, logo }: { denom: string; ticker: string; name?: string; logo?: string }) {
     return (
-        <HStack gap={3} minW={0} title={denom}>
+        <HStack gap="10px" minW={0} title={denom}>
             <TokenLogo src={logo} symbol={ticker} size="8" circular={true} />
             <VStack align="start" gap={0} minW={0}>
-                <Text fontWeight="semibold" truncate>{ticker}</Text>
-                {name && <Text fontSize="xs" color="fg.muted" truncate>{name}</Text>}
+                <Text fontWeight="700" fontSize="14px" truncate>{ticker}</Text>
+                {name && <Text fontSize="12px" color="fg.muted" truncate>{name}</Text>}
             </VStack>
         </HStack>
     )
@@ -120,9 +132,9 @@ function TokenName({ denom, ticker, name, logo }: { denom: string; ticker: strin
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
     return (
-        <VStack align="start" gap={0}>
-            <Text fontSize="xs" color="fg.muted">{label}</Text>
-            <Box fontSize="sm" fontWeight="semibold">{value}</Box>
+        <VStack align="stretch" gap="2px" bg="hg.inset" borderRadius="10px" px="12px" py="8px" minW={0}>
+            <Text fontSize="11px" color="fg.muted">{label}</Text>
+            <Box fontSize="13px" fontWeight="700">{value}</Box>
         </VStack>
     )
 }
@@ -135,27 +147,34 @@ interface ViewRow extends HolderRow {
 /** Wide screens: one table row per DR, the whole row opens the token page. */
 function HolderTable({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string) => void }) {
     return (
-        <Table.ScrollArea borderWidth="1px" borderRadius="lg" hideBelow="md" bg="bg.panel">
-            <Table.Root size="sm" interactive={true} aria-label="Holder rewards">
+        <Table.ScrollArea borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.lg" hideBelow="md" bg="hg.card">
+            <Table.Root size="sm" aria-label="Holder rewards" bg="transparent">
                 <Table.Header>
-                    <Table.Row>
-                        <Table.ColumnHeader>Token</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">Staked</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">Prize tokens</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">Paying</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="end">Unstaking wait</Table.ColumnHeader>
-                        <Table.ColumnHeader />
+                    <Table.Row bg="hg.cardHeader">
+                        <Table.ColumnHeader {...headerCell}>Token</Table.ColumnHeader>
+                        <Table.ColumnHeader {...headerCell} textAlign="end">Staked</Table.ColumnHeader>
+                        <Table.ColumnHeader {...headerCell} textAlign="end">Prize tokens</Table.ColumnHeader>
+                        <Table.ColumnHeader {...headerCell} textAlign="end">Paying</Table.ColumnHeader>
+                        <Table.ColumnHeader {...headerCell} textAlign="end">Unstaking wait</Table.ColumnHeader>
+                        <Table.ColumnHeader {...headerCell} />
                     </Table.Row>
                 </Table.Header>
                 <Table.Body>
                     {rows.map(r => (
-                        <Table.Row key={r.dr.staking_denom} cursor="pointer" onClick={() => onOpen(r.dr.staking_denom)} data-testid="denom-reward-row">
-                            <Table.Cell><TokenName denom={r.dr.staking_denom} ticker={r.ticker} name={r.name} logo={r.logo} /></Table.Cell>
-                            <Table.Cell textAlign="end">{`${prettyAmount(r.stakedDisplay)} ${r.ticker}`}</Table.Cell>
-                            <Table.Cell textAlign="end">{countCell(r.counts, c => c.prizes)}</Table.Cell>
-                            <Table.Cell textAlign="end">{countCell(r.counts, payingText)}</Table.Cell>
-                            <Table.Cell textAlign="end">{formatDays(r.dr.lock)}</Table.Cell>
-                            <Table.Cell><RowActions dr={r.dr} /></Table.Cell>
+                        <Table.Row
+                            key={r.dr.staking_denom}
+                            cursor="pointer"
+                            bg="transparent"
+                            _hover={{ bg: 'hg.hoverFill' }}
+                            onClick={() => onOpen(r.dr.staking_denom)}
+                            data-testid="denom-reward-row"
+                        >
+                            <Table.Cell {...bodyCell}><TokenName denom={r.dr.staking_denom} ticker={r.ticker} name={r.name} logo={r.logo} /></Table.Cell>
+                            <Table.Cell {...bodyCell} textAlign="end">{`${prettyAmount(r.stakedDisplay)} ${r.ticker}`}</Table.Cell>
+                            <Table.Cell {...bodyCell} textAlign="end">{countCell(r.counts, c => c.prizes)}</Table.Cell>
+                            <Table.Cell {...bodyCell} textAlign="end">{countCell(r.counts, payingText)}</Table.Cell>
+                            <Table.Cell {...bodyCell} textAlign="end">{formatDays(r.dr.lock)}</Table.Cell>
+                            <Table.Cell {...bodyCell}><RowActions dr={r.dr} /></Table.Cell>
                         </Table.Row>
                     ))}
                 </Table.Body>
@@ -167,31 +186,30 @@ function HolderTable({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string
 /** Phones: the same rows as stacked cards. */
 function HolderCards({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string) => void }) {
     return (
-        <VStack align="stretch" gap={3} hideFrom="md">
+        <VStack align="stretch" gap="12px" hideFrom="md">
             {rows.map(r => (
-                <Card.Root
+                <HgCard
                     key={r.dr.staking_denom}
-                    variant="outline"
-                    p="4"
+                    interactive
+                    p="16px"
                     cursor="pointer"
-                    _hover={{ borderColor: 'yellow.500/50' }}
                     onClick={() => onOpen(r.dr.staking_denom)}
                     data-testid="denom-reward-card"
                 >
-                    <VStack align="stretch" gap={3}>
-                        <HStack justify="space-between" gap={2}>
+                    <VStack align="stretch" gap="12px">
+                        <HStack justify="space-between" gap="8px">
                             <TokenName denom={r.dr.staking_denom} ticker={r.ticker} name={r.name} logo={r.logo} />
-                            <Box color="fg.muted"><LuChevronRight /></Box>
+                            <Box color="hg.text.faint" aria-hidden><LuChevronRight /></Box>
                         </HStack>
-                        <HStack gap={5} wrap="wrap">
+                        <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="8px">
                             <Stat label="Staked" value={`${prettyAmount(r.stakedDisplay)} ${r.ticker}`} />
                             <Stat label="Prize tokens" value={countCell(r.counts, c => c.prizes)} />
                             <Stat label="Paying" value={countCell(r.counts, payingText)} />
                             <Stat label="Unstaking wait" value={formatDays(r.dr.lock)} />
-                        </HStack>
+                        </Grid>
                         <RowActions dr={r.dr} size="sm" />
                     </VStack>
-                </Card.Root>
+                </HgCard>
             ))}
         </VStack>
     )
@@ -205,27 +223,28 @@ function YourTokens({ list, counts }: { list: DenomReward[]; counts: CountsMap }
     if (tokens.length === 0) return null
 
     return (
-        <VStack as="section" aria-label="Your tokens" align="stretch" gap={3}>
-            <Text fontWeight="semibold">Your tokens</Text>
+        <VStack as="section" aria-label="Your tokens" align="stretch" gap="12px">
+            <Text as="h2" fontSize="18px" fontWeight="700">Your tokens</Text>
+            <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
             {tokens.map(({ asset }) => {
                 const dr = list.find(d => d.staking_denom === asset.denom)
                 if (!dr) {
                     return (
-                        <Card.Root key={asset.denom} variant="outline" p="4" data-testid="your-token">
-                            <VStack align="stretch" gap={3}>
+                        <HgCard key={asset.denom} p="18px" data-testid="your-token">
+                            <VStack align="stretch" gap="12px">
                                 <TokenName denom={asset.denom} ticker={asset.ticker} name={asset.name} logo={asset.logo} />
-                                <Text fontSize="sm" color="fg.muted">Not stakable yet. Holders have no reason to stake it.</Text>
-                                <Button size="sm" colorPalette="yellow" alignSelf="start" onClick={() => navigate(denomRewardHref(asset.denom))}>
+                                <Text fontSize="14px" color="fg.muted">Not stakable yet. Holders have no reason to stake it.</Text>
+                                <Button variant={hgVariant('primary')} size="md" alignSelf="start" onClick={() => navigate(denomRewardHref(asset.denom))}>
                                     {`Make ${asset.ticker} stakable`}
                                 </Button>
                             </VStack>
-                        </Card.Root>
+                        </HgCard>
                     )
                 }
                 const c = counts[dr.staking_denom]
                 const staked = `${prettyAmount(uAmountToBigNumberAmount(dr.staked_amount, asset.decimals))} ${asset.ticker} staked`
                 const paying = c === undefined
-                    ? <Skeleton height="4" width="24" display="inline-block" />
+                    ? <Shimmer h="14px" w="96px" display="inline-block" verticalAlign="middle" />
                     : c === null
                         ? '—'
                         : [
@@ -234,26 +253,27 @@ function YourTokens({ list, counts }: { list: DenomReward[]; counts: CountsMap }
                         ].join(' · ')
 
                 return (
-                    <Card.Root key={asset.denom} variant="outline" p="4" data-testid="your-token">
-                        <VStack align="stretch" gap={3}>
+                    <HgCard key={asset.denom} p="18px" data-testid="your-token">
+                        <VStack align="stretch" gap="12px">
                             <TokenName denom={asset.denom} ticker={asset.ticker} name={asset.name} logo={asset.logo} />
-                            <Text fontSize="sm" color="fg.muted">{staked} · {paying}</Text>
-                            <HStack gap={2} wrap="wrap">
-                                <Button size="sm" variant="outline" colorPalette="yellow" disabled={airdropDisabledReason(dr) !== ''} onClick={() => navigate(airdropFormHref(dr.staking_denom))}>
+                            <Text fontSize="14px" color="fg.muted">{staked} · {paying}</Text>
+                            <HStack gap="8px" wrap="wrap">
+                                <Button {...softButton} size="sm" disabled={airdropDisabledReason(dr) !== ''} onClick={() => navigate(airdropFormHref(dr.staking_denom))}>
                                     <LuGift /> Airdrop
                                 </Button>
-                                <Button size="sm" variant="outline" colorPalette="yellow" onClick={() => navigate(scheduleFormHref(dr.staking_denom))}>
+                                <Button {...softButton} size="sm" onClick={() => navigate(scheduleFormHref(dr.staking_denom))}>
                                     <LuPlus /> Add daily prize
                                 </Button>
-                                <Button size="sm" variant="ghost" colorPalette="yellow" onClick={() => navigate(denomRewardHref(dr.staking_denom))}>
+                                <Button size="sm" variant="ghost" color="hg.link" fontWeight="600" onClick={() => navigate(denomRewardHref(dr.staking_denom))}>
                                     Open <LuChevronRight />
                                 </Button>
                             </HStack>
-                            {airdropDisabledReason(dr) && <Text fontSize="xs" color="fg.muted">{airdropDisabledReason(dr)}</Text>}
+                            {airdropDisabledReason(dr) && <Text fontSize="12px" color="hg.text.faint">{airdropDisabledReason(dr)}</Text>}
                         </VStack>
-                    </Card.Root>
+                    </HgCard>
                 )
             })}
+            </Grid>
         </VStack>
     )
 }
@@ -294,31 +314,31 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
     const open = (denom: string) => navigate(denomRewardHref(denom))
 
     return (
-        <VStack align="stretch" gap={6}>
-            <Text fontSize="sm" color="fg.muted">
+        <VStack align="stretch" gap="28px">
+            <Text fontSize="14px" color="fg.muted">
                 Holders stake a token and earn prizes that anyone can fund, every day or all at once.
             </Text>
 
-            <Card.Root variant="outline" p="4">
+            <HgCard px="18px" py="16px">
                 <AssetPicker
                     label="Open the holder rewards of any token"
                     includeLP={true}
                     onSelect={(asset) => navigate(denomRewardHref(asset.denom))}
                 />
-            </Card.Root>
+            </HgCard>
 
             {state.status === 'loading' ? (
-                <VStack align="stretch" gap={3} data-testid="denom-reward-loading">
-                    <Skeleton height="16" />
-                    <Skeleton height="16" />
+                <VStack align="stretch" gap="12px" data-testid="denom-reward-loading">
+                    <Shimmer h="64px" borderRadius="16px" />
+                    <Shimmer h="64px" borderRadius="16px" />
                 </VStack>
             ) : state.status === 'error' ? (
-                <VStack align="stretch" gap={3}>
+                <VStack align="stretch" gap="12px">
                     <InfoBox title="Couldn't load the holder rewards">
                         The chain query failed. The node may be down, or not run chain v8.2.0 yet.
                     </InfoBox>
                     <Box>
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={onRetry}>
+                        <Button {...softButton} size="sm" onClick={onRetry}>
                             <LuRefreshCw /> Retry
                         </Button>
                     </Box>
@@ -327,32 +347,34 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
                 <>
                     <YourTokens list={list} counts={counts} />
 
-                    <VStack as="section" aria-label="Every token" align="stretch" gap={3}>
-                        <Text fontWeight="semibold">Every token</Text>
+                    <VStack as="section" aria-label="Every token" align="stretch" gap="14px">
+                        <Text as="h2" fontSize="18px" fontWeight="700">Every token</Text>
                         {list.length === 0 ? (
-                            <Text fontSize="sm" color="fg.muted" data-testid="denom-reward-empty">
+                            <Text fontSize="14px" color="fg.muted" data-testid="denom-reward-empty">
                                 No token has holder rewards yet. Pick a token above to make it stakable.
                             </Text>
                         ) : (
                             <>
-                                <HStack justify="space-between" gap={3} wrap="wrap">
-                                    <HStack gap={2} wrap="wrap" role="group" aria-label="Filter">
+                                <HStack justify="space-between" gap="12px" wrap="wrap">
+                                    <HStack gap="8px" wrap="wrap" role="group" aria-label="Filter">
                                         {FILTERS.map(f => (
-                                            <Button
+                                            <FilterChip
                                                 key={f.value}
-                                                size="xs"
-                                                colorPalette="yellow"
-                                                variant={filter === f.value ? 'solid' : 'outline'}
-                                                aria-pressed={filter === f.value}
+                                                pressed={filter === f.value}
                                                 onClick={() => onFilter(f.value)}
                                             >
                                                 {f.label}
-                                            </Button>
+                                            </FilterChip>
                                         ))}
                                     </HStack>
                                     <NativeSelect.Root size="xs" width="auto">
                                         <NativeSelect.Field
                                             aria-label="Sort"
+                                            h="32px"
+                                            borderRadius="10px"
+                                            bg="hg.card"
+                                            borderColor="hg.lineStrong"
+                                            fontSize="13px"
                                             value={sort}
                                             onChange={(e) => onSort(e.currentTarget.value as HolderSort)}
                                         >
@@ -363,7 +385,7 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
                                 </HStack>
 
                                 {rows.length === 0 ? (
-                                    <Text fontSize="sm" color="fg.muted" data-testid="denom-reward-filtered-empty">
+                                    <Text fontSize="14px" color="fg.muted" data-testid="denom-reward-filtered-empty">
                                         Nothing matches this filter.
                                     </Text>
                                 ) : (
