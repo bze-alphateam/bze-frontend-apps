@@ -17,7 +17,7 @@ const evmConfig = createEvmConfig({
     projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
     appName: 'BeeZee Burner',
     appUrl: 'https://burner.getbze.com',
-    appIcon: 'https://burner.getbze.com/images/logo_320px.png',
+    appIcon: 'https://burner.getbze.com/images/app-icon-512.png',
 });
 
 const walletConnect = new WCWallet(
@@ -29,7 +29,7 @@ const walletConnect = new WCWallet(
             description: "Coin melting pot & Burning Raffles",
             url: "https://burner.getbze.com",
             icons: [
-                "https://burner.getbze.com/images/logo_320px.png",
+                "https://burner.getbze.com/images/app-icon-512.png",
             ],
         },
     }

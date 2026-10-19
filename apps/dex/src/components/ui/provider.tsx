@@ -17,7 +17,7 @@ const evmConfig = createEvmConfig({
     projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
     appName: 'BeeZee DEX',
     appUrl: 'https://dex.getbze.com',
-    appIcon: 'https://dex.getbze.com/images/logo_320px.png',
+    appIcon: 'https://dex.getbze.com/images/app-icon-512.png',
 });
 
 const walletConnect = new WCWallet(
@@ -29,7 +29,7 @@ const walletConnect = new WCWallet(
             description: "DEX & More",
             url: "https://dex.getbze.com",
             icons: [
-                "https://dex.getbze.com/images/logo_320px.png",
+                "https://dex.getbze.com/images/app-icon-512.png",
             ],
         },
     }

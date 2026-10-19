@@ -23,7 +23,12 @@ export const metadata: Metadata = {
   title: "🔥Burner | BeeZee Blockchain",
   description: "BZE is a community-driven network committed to reducing supply through regular token burns, often executed via governance proposals. Taxes from token creation, trading, and other on-chain activity are directed to the community pool or burn address. The Burner App also features burning raffles, where users can voluntarily contribute tokens for a chance to win a share of the burned amount — combining deflationary impact with gamified incentives.",
   icons: {
-    icon: "/images/logo_320px.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/images/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
@@ -36,7 +41,7 @@ export const metadata: Metadata = {
         url: "/images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "BeeZee Burner",
+        alt: "BeeZee Burner logo, burner.getbze.com",
       },
     ],
   },
