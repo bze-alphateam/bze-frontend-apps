@@ -27,6 +27,13 @@ src/
     useRaffles.tsx             # Raffle data, winners, pending contributions
 ```
 
+### Look (Hive Glow)
+
+- Home opens with the centred home hero ("The Burning Pot", Burn coins + Join a raffle), the countdown in the page's one `FeaturedCard`, then three stat tiles (`BurnStat`: BZE burned, value locked forever, coins in the pot). Inner pages (raffles) start with `components/ui/burner/inner-hero.tsx`; the coin page uses the inner glow and its own header row.
+- Shared pieces live in `components/ui/burner/`: `parts.tsx` (section header, app pill, stat tile, table card + cells, stacked phone rows) and `dialog.tsx` (the dialog frame every Burner dialog uses, inset rows). Main actions are the `primary` button, Cancel/MAX/Info the `secondary`; info cards are the shared `Notice`, warnings the amber one.
+- No emoji anywhere in the copy (`src/no-emoji.test.ts` scans every source file). Loading draws shimmer or `PageState` rows, never a bare "Loading..." on a blank page; tables become stacked rows below `md`.
+- The raffle result overlay is always dark (`className="dark"`), its embers use the app gradient, and `usePrefersReducedMotion` turns every animation off.
+
 ### What comes from @bze/bze-ui-kit
 
 Everything else: `useAssets`, `useBalances`, `useLiquidityPools`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useAssetPrice`, `useAssetsValue`, all utils, all types, all constants, all query clients (including burner, raffle, block, module queries), all services, sidebar components (coloured by the Hive Glow system), toaster, HighlightText.

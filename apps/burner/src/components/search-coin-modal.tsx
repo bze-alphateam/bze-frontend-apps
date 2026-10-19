@@ -2,19 +2,18 @@
 
 import {
     Box,
-    HStack,
+    chakra,
+    Flex,
     Input,
-    Portal,
-    Text,
-    VStack,
-    Dialog,
-    Badge,
+    InputGroup,
+    VisuallyHidden,
 } from "@chakra-ui/react";
 import { useState, useMemo } from "react";
-import { LuSearch } from "react-icons/lu";
+import { LuBadgeCheck, LuSearch } from "react-icons/lu";
 import { useRouter } from "next/navigation";
-import { useAssets, truncateDenom } from "@bze/bze-ui-kit";
+import { useAssets, truncateDenom, PageState } from "@bze/bze-ui-kit";
 import {AssetLogo} from "@/components/ui/asset_logo";
+import {BurnerDialog} from "@/components/ui/burner/dialog";
 
 interface SearchCoinModalProps {
     isOpen: boolean;
@@ -68,126 +67,72 @@ export const SearchCoinModal = ({ isOpen, onClose, onCoinSelect }: SearchCoinMod
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && handleClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content
-                        maxW={{ base: "90vw", md: "500px" }}
-                        borderRadius="2xl"
-                    >
-                        <Dialog.Header>
-                            <Dialog.Title fontSize="xl" fontWeight="black">
-                                🔍 Search Coins
-                            </Dialog.Title>
-                        </Dialog.Header>
+        <BurnerDialog isOpen={isOpen} onClose={handleClose} title="Search Coins">
+            <InputGroup startElement={<LuSearch size={18} aria-hidden />}>
+                <Input
+                    size="lg"
+                    type="search"
+                    aria-label="Search coins"
+                    borderRadius="hg.md"
+                    placeholder="Search by name or ticker..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </InputGroup>
 
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                {/* Search Input */}
-                                <Box position="relative">
-                                    <Input
-                                        size="lg"
-                                        placeholder="Search by name or ticker..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        pl="12"
-                                    />
-                                    <Box
-                                        position="absolute"
-                                        left="4"
-                                        top="50%"
-                                        transform="translateY(-50%)"
-                                        color="fg.muted"
-                                    >
-                                        <LuSearch size="20" />
-                                    </Box>
-                                </Box>
-
-                                {/* Coins List */}
-                                <Box
-                                    maxH="400px"
-                                    overflowY="auto"
-                                    borderRadius="lg"
+            <Box maxH="400px" overflowY="auto" mx="-8px">
+                {isLoading ? (
+                    <Box aria-busy="true" px="8px">
+                        <VisuallyHidden>Loading coins...</VisuallyHidden>
+                        <PageState kind="loading" rows={3} />
+                    </Box>
+                ) : filteredCoins.length > 0 ? (
+                    <chakra.ul m="0" p="0" listStyleType="none" display="flex" flexDirection="column" gap="2px">
+                        {filteredCoins.map((coin) => (
+                            <li key={coin.denom}>
+                                <chakra.button
+                                    type="button"
+                                    onClick={() => handleCoinClick(coin.denom)}
+                                    w="100%"
+                                    display="flex"
+                                    alignItems="center"
+                                    gap="12px"
+                                    px="10px"
+                                    py="10px"
+                                    borderRadius="hg.md"
+                                    textAlign="start"
+                                    bg="transparent"
+                                    cursor="pointer"
+                                    _hover={{bg: 'hg.hoverFill'}}
+                                    focusVisibleRing="inside"
                                 >
-                                    {isLoading ? (
-                                        <Box p="8" textAlign="center">
-                                            <Text fontSize="md" color="fg.muted">
-                                                Loading coins...
-                                            </Text>
-                                        </Box>
-                                    ) : filteredCoins.length > 0 ? (
-                                        <VStack gap="0" align="stretch">
-                                            {filteredCoins.map((coin, idx) => {
-                                                return (
-                                                    <Box
-                                                        key={coin.denom}
-                                                        p="4"
-                                                        cursor="pointer"
-                                                        borderBottomWidth={idx < filteredCoins.length - 1 ? "1px" : "0"}
-                                                        borderColor="border"
-                                                        _hover={{
-                                                            bg: "orange.50",
-                                                            _dark: { bg: "gray.800" }
-                                                        }}
-                                                        transition="all 0.2s"
-                                                        onClick={() => handleCoinClick(coin.denom)}
-                                                    >
-                                                        <HStack gap="3">
-                                                            <Box
-                                                                p="1"
-                                                                borderRadius="full"
-                                                            >
-                                                                <AssetLogo asset={coin} size="40px" />
-                                                            </Box>
-                                                            <VStack gap="0" align="start" flex="1">
-                                                                <HStack gap="2">
-                                                                    <Text fontWeight="bold" fontSize="md">
-                                                                        {coin.ticker}
-                                                                    </Text>
-                                                                    {coin.verified && (
-                                                                        <Badge colorPalette="green" size="xs" variant="solid">
-                                                                            ✓
-                                                                        </Badge>
-                                                                    )}
-                                                                </HStack>
-                                                                <Text fontSize="sm" color="fg.muted">
-                                                                    {coin.name}
-                                                                </Text>
-                                                                <Text fontSize="xs" color="fg.muted">
-                                                                    {truncateDenom(coin.denom)}
-                                                                </Text>
-                                                            </VStack>
-                                                        </HStack>
-                                                    </Box>
-                                                );
-                                            })}
-                                        </VStack>
-                                    ) : (
-                                        <Box p="8" textAlign="center">
-                                            <Text fontSize="lg" fontWeight="bold" color="fg.muted" mb="2">
-                                                🤷 No coins found
-                                            </Text>
-                                            <Text fontSize="sm" color="fg.muted">
-                                                Try a different search term
-                                            </Text>
-                                        </Box>
-                                    )}
-                                </Box>
+                                    <AssetLogo asset={coin} size="40px" />
+                                    <Flex direction="column" gap="2px" minW="0" flex="1">
+                                        <Flex align="center" gap="6px">
+                                            <chakra.strong fontSize="15px">{coin.ticker}</chakra.strong>
+                                            {coin.verified && (
+                                                <chakra.span role="img" aria-label="Verified" color="hg.success" display="inline-flex">
+                                                    <LuBadgeCheck size={14} aria-hidden />
+                                                </chakra.span>
+                                            )}
+                                        </Flex>
+                                        <chakra.span fontSize="13px" color="hg.text.secondary" truncate>{coin.name}</chakra.span>
+                                        <chakra.span fontSize="12px" fontFamily="mono" color="hg.text.faint" truncate>{truncateDenom(coin.denom)}</chakra.span>
+                                    </Flex>
+                                </chakra.button>
+                            </li>
+                        ))}
+                    </chakra.ul>
+                ) : (
+                    <PageState kind="not-found" title="No coins found" description="Try a different search term" />
+                )}
+            </Box>
 
-                                {/* Results count */}
-                                {searchQuery && (
-                                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                        Found {filteredCoins.length} coin{filteredCoins.length !== 1 ? 's' : ''}
-                                    </Text>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.CloseTrigger />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {searchQuery && (
+                <chakra.span fontSize="13px" color="hg.text.faint" textAlign="center">
+                    Found {filteredCoins.length} coin{filteredCoins.length !== 1 ? 's' : ''}
+                </chakra.span>
+            )}
+        </BurnerDialog>
     );
 };

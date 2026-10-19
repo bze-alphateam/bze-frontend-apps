@@ -2,20 +2,17 @@
 
 import {
     Box,
-    Container,
-    VStack,
-    HStack,
-    Text,
-    Card,
-    Badge,
-    Table,
     Button,
+    chakra,
+    Flex,
     Grid,
+    Table,
 } from "@chakra-ui/react";
+import {LuArrowLeft, LuBadgeCheck, LuClock, LuFlame, LuInfo, LuLock, LuTicket} from "react-icons/lu";
 import { useRouter, useSearchParams } from "next/navigation";
-import {useCallback, useEffect, useMemo, useState, Suspense} from "react";
+import {useCallback, useEffect, useMemo, useState, Suspense, type ReactNode} from "react";
 import { useChain } from "@interchain-kit/react";
-import { getChainName, prettyAmount, uAmountToBigNumberAmount, toBigNumber, truncateDenom, isLpDenom, isIbcDenom, formatTimeRemainingFromEpochs, truncateAddress, useAssetsValue, useEpochs, HighlightText, useAssets } from "@bze/bze-ui-kit";
+import { getChainName, prettyAmount, uAmountToBigNumberAmount, toBigNumber, truncateDenom, isLpDenom, isIbcDenom, formatTimeRemainingFromEpochs, truncateAddress, useAssetsValue, useEpochs, useAssets, FeaturedCard, HeroGlow, Notice, PageContainer, PageState, Shimmer, hgVariant } from "@bze/bze-ui-kit";
 import { useBurnerContext } from "@/hooks/useBurnerContext";
 import { BurnModal } from "@/components/burn-modal";
 import { RaffleModal } from "@/components/raffle-modal";
@@ -26,8 +23,45 @@ import { useNextBurning } from "@/hooks/useNextBurning";
 import {useRaffle, useRaffleContributions} from "@/hooks/useRaffles";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
+import {AppPill, BodyCell, BurnStat, emberAmount, HeaderCell, SectionHeader, TableCard} from "@/components/ui/burner/parts";
 
 const WINNERS_LIST_MAX_LEN = 20;
+
+/** A raffle figure on the inset: label, number, a muted line. */
+const RaffleFigure = ({label, value, foot, tone}: { label: string; value: string; foot: string; tone?: 'ember' | 'success' }) => (
+    <Flex direction="column" gap="2px" bg="hg.inset" borderRadius="hg.md" px="16px" py="14px" minW="0">
+        <chakra.span fontSize="11px" letterSpacing="0.1em" textTransform="uppercase" fontWeight="700" color="hg.text.faint">{label}</chakra.span>
+        <chakra.span fontSize="24px" fontWeight="800" overflowWrap="anywhere" color={tone === 'ember' ? 'hg.link' : tone === 'success' ? 'hg.success.text' : 'fg'}>{value}</chakra.span>
+        <chakra.span fontSize="12px" color="hg.text.faint">{foot}</chakra.span>
+    </Flex>
+);
+
+/** The page frame: the half-strength glow behind a 1200 px column. */
+const CoinFrame = ({children}: { children: ReactNode }) => (
+    <Box position="relative" minH="100vh" pb="80px">
+        <HeroGlow strength="inner"/>
+        <PageContainer as="main" position="relative" pt={{base: '24px', md: '36px'}}>
+            <Flex direction="column" gap={{base: '24px', md: '32px'}}>{children}</Flex>
+        </PageContainer>
+    </Box>
+);
+
+/** The coin page's skeleton while the assets load. */
+const CoinLoading = () => (
+    <CoinFrame>
+        <Flex gap="16px" align="center" aria-busy="true" data-testid="coin-loading">
+            <Shimmer boxSize="64px" borderRadius="full" flex="none"/>
+            <Flex direction="column" gap="8px" flex="1">
+                <Shimmer h="24px" w="160px"/>
+                <Shimmer h="14px" w="120px"/>
+            </Flex>
+        </Flex>
+        <Grid templateColumns={{base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))'}} gap="16px" aria-hidden>
+            <Shimmer h="120px" borderRadius="hg.lg"/>
+            <Shimmer h="120px" borderRadius="hg.lg"/>
+        </Grid>
+    </CoinFrame>
+);
 
 function CoinDetailContent() {
     const searchParams = useSearchParams();
@@ -282,620 +316,249 @@ function CoinDetailContent() {
         };
     }, [currentRaffleContribution, asset]);
 
-    // Show loading state
     if (isLoadingAssets) {
-        return (
-            <Container py="10">
-                <VStack gap="4" align="center" py="20">
-                    <Text fontSize="xl" color="fg.muted">
-                        Loading...
-                    </Text>
-                </VStack>
-            </Container>
-        );
+        return <CoinLoading/>;
     }
 
-    // Show 404 if coin not found
     if (!asset) {
         return (
-            <Container py="10">
-                <VStack gap="4" align="center" py="20">
-                    <Text fontSize="4xl">🤷</Text>
-                    <Text fontSize="xl" fontWeight="bold">
-                        Coin not found
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted">
-                        The coin &quot;{denom}&quot; does not exist.
-                    </Text>
-                    <Button onClick={() => router.push('/')} colorPalette="orange">
-                        Go Home
-                    </Button>
-                </VStack>
-            </Container>
+            <CoinFrame>
+                <Box bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.lg">
+                    <PageState
+                        kind="not-found"
+                        title="Coin not found"
+                        description={`The coin "${denom}" does not exist.`}
+                        action={<Button variant={hgVariant('primary')} onClick={() => router.push('/')}>Go Home</Button>}
+                    />
+                </Box>
+            </CoinFrame>
         );
     }
 
+    const actionVerb = isLP ? 'Lock' : 'Burn';
+    const ActionIcon = isLP ? LuLock : LuFlame;
+    const nextBurnDate = nextCoinBurn?.date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+    const showLocked = !isIBC && (isLP || (raffleData && lockedAmount && lockedAmount.amount.gt(0)));
+    const showBurned = !isLP && !isIBC;
+    const showNext = !isLoadingNextBurn && !!nextCoinBurn;
+
     return (
-        <Box minH="100vh" pb="12">
-            <Container py={{ base: '6', md: '10' }}>
-                <VStack gap="8" align="stretch" transition="opacity 0.2s ease-in-out">
-                    {/* Back Button */}
-                    <Box>
-                        <Button
-                            variant="ghost"
-                            onClick={() => router.back()}
-                            size="sm"
-                        >
-                            ← Back
-                        </Button>
-                    </Box>
+        <CoinFrame>
+            <Box>
+                <Button variant="ghost" size="sm" color="hg.link" px="8px" ml="-8px" onClick={() => router.back()}>
+                    <LuArrowLeft/> Back
+                </Button>
+            </Box>
 
-                    {/* Coin Header */}
-                    <Card.Root
-                        bgGradient="to-br"
-                        gradientFrom="orange.50"
-                        gradientTo="orange.100"
-                        _dark={{
-                            gradientFrom: "orange.950",
-                            gradientTo: "orange.900",
-                        }}
-                        borderRadius="3xl"
-                        shadow="lg"
-                    >
-                        <Card.Body>
-                            <VStack gap="6" align="stretch">
-                                {/* Coin Info */}
-                                <HStack justify="space-between" flexWrap="wrap" gap="4">
-                                    <HStack gap="4">
-                                        <Box
-                                            p="3"
-                                            borderRadius="full"
-                                        >
-                                            <AssetLogo asset={asset} size="64px" />
-                                        </Box>
-                                        <VStack gap="1" align="start">
-                                            <HStack gap="2">
-                                                <Text fontSize="2xl" fontWeight="black">
-                                                    {asset.ticker}
-                                                </Text>
-                                                {asset.verified && (
-                                                    <Badge colorPalette="green" size="sm" variant="solid">
-                                                        ✓ Verified
-                                                    </Badge>
-                                                )}
-                                            </HStack>
-                                            <Text fontSize="md" color="fg.muted" fontWeight="medium">
-                                                {asset.name}
-                                            </Text>
-                                            <Badge colorPalette="gray" size="sm" variant="subtle" maxW="full" overflow="hidden" textOverflow="ellipsis">
-                                                {truncateDenom(asset.denom)}
-                                            </Badge>
-                                        </VStack>
-                                    </HStack>
+            <Flex as="section" justify="space-between" align="center" gap="20px" wrap="wrap">
+                <Flex align="center" gap="16px" minW="0">
+                    <AssetLogo asset={asset} size="64px"/>
+                    <Flex direction="column" gap="4px" minW="0">
+                        <Flex align="center" gap="10px" wrap="wrap">
+                            <chakra.h1 m="0" textStyle="pageTitle" fontSize={{base: '28px', md: '36px'}} overflowWrap="anywhere">{asset.ticker}</chakra.h1>
+                            {asset.verified && (
+                                <chakra.span display="inline-flex" alignItems="center" gap="4px" fontSize="12px" fontWeight="600" px="10px" py="3px" borderRadius="hg.pill" color="hg.success.text" bg="hg.success/12" borderWidth="1px" borderColor="hg.success/30">
+                                    <LuBadgeCheck size={12} aria-hidden/> Verified
+                                </chakra.span>
+                            )}
+                        </Flex>
+                        <chakra.span fontSize="15px" color="hg.text.secondary">{asset.name}</chakra.span>
+                        <chakra.span fontSize="12px" fontFamily="mono" color="hg.text.faint" truncate>{truncateDenom(asset.denom)}</chakra.span>
+                    </Flex>
+                </Flex>
 
-                                    {!raffleData && (
-                                        <Button
-                                            size="lg"
-                                            colorPalette={"orange"}
-                                            onClick={() => setIsBurnModalOpen(true)}
-                                            fontWeight="bold"
-                                        >
-                                            {isLP ? '🔒' : '🔥'} {isLP ? 'Lock' : 'Burn'} {asset.ticker}
-                                        </Button>
-                                    )}
-                                </HStack>
-                            </VStack>
-                        </Card.Body>
-                    </Card.Root>
+                {!raffleData && (
+                    <Button variant={hgVariant('primary')} size="lg" onClick={() => setIsBurnModalOpen(true)}>
+                        <ActionIcon/> {actionVerb} {asset.ticker}
+                    </Button>
+                )}
+            </Flex>
 
-                    {/* LP Coin Explanation */}
-                    {isLP && (
-                        <Card.Root
-                            bgGradient="to-br"
-                            gradientFrom="blue.50"
-                            gradientTo="blue.100"
-                            _dark={{
-                                gradientFrom: "blue.950",
-                                gradientTo: "blue.900",
-                            }}
-                            borderRadius="3xl"
-                            shadow="lg"
-                        >
-                            <Card.Body>
-                                <VStack gap="4" align="stretch">
-                                    <HStack gap="3">
-                                        <Text fontSize="3xl">ℹ️</Text>
-                                        <Text fontSize="xl" fontWeight="black" color="blue.700" _dark={{ color: "blue.300" }}>
-                                            About Locking LP Coins
-                                        </Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color="fg.muted" lineHeight="1.6">
-                                        LP (Liquidity Pool) Coins are not literally burned. Instead, they are locked forever in a secure address, permanently removing them from circulation. Once locked, these coins can never be retrieved or used again.
-                                    </Text>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
+            {isLP && (
+                <Notice status="info" title="About locking LP coins">
+                    LP (Liquidity Pool) Coins are not literally burned. Instead, they are locked forever in a secure address, permanently removing them from circulation. Once locked, these coins can never be retrieved or used again.
+                </Notice>
+            )}
 
-                    {/* IBC Coin Explanation */}
-                    {isIBC && (
-                        <Card.Root
-                            bgGradient="to-br"
-                            gradientFrom="blue.50"
-                            gradientTo="blue.100"
-                            _dark={{
-                                gradientFrom: "blue.950",
-                                gradientTo: "blue.900",
-                            }}
-                            borderRadius="3xl"
-                            shadow="lg"
-                        >
-                            <Card.Body>
-                                <VStack gap="4" align="stretch">
-                                    <HStack gap="3">
-                                        <Text fontSize="3xl">ℹ️</Text>
-                                        <Text fontSize="xl" fontWeight="black" color="blue.700" _dark={{ color: "blue.300" }}>
-                                            About Burning IBC Coins
-                                        </Text>
-                                    </HStack>
-                                    <Text fontSize="sm" color="fg.muted" lineHeight="1.6">
-                                        IBC coins cannot be directly burned since their origin is from another blockchain. Instead, the BeeZee blockchain will exchange these coins to BZE and burn the resulting BZE, but only if the IBC coin has enough liquidity paired directly with BZE.
-                                    </Text>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
+            {isIBC && (
+                <Notice status="info" title="About burning IBC coins">
+                    IBC coins cannot be directly burned since their origin is from another blockchain. Instead, the BeeZee blockchain will exchange these coins to BZE and burn the resulting BZE, but only if the IBC coin has enough liquidity paired directly with BZE.
+                </Notice>
+            )}
 
-                    {/* Burning Raffle Section */}
-                    {!isLoadingRaffles && raffleData && (
-                        <Box>
-                            <HStack justify="space-between" mb="4" flexWrap="wrap" gap="2">
-                                <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="black">
-                                    🔥 Burning Raffle
-                                </Text>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    colorPalette="blue"
-                                    onClick={() => setIsRaffleInfoModalOpen(true)}
-                                >
-                                    ℹ️ Info
-                                </Button>
-                            </HStack>
-                            <VStack gap="4" align="stretch">
-                                <Card.Root
-                                    bgGradient="to-br"
-                                    gradientFrom="purple.50"
-                                    gradientVia="pink.50"
-                                    gradientTo="orange.50"
-                                    _dark={{
-                                        gradientFrom: "purple.950",
-                                        gradientVia: "pink.950",
-                                        gradientTo: "orange.950",
-                                    }}
-                                    borderRadius="3xl"
-                                    shadow="xl"
-                                >
-                                    <Card.Body>
-                                        <VStack gap="4" align="stretch">
-                                            {/* Raffle Header */}
-                                            <HStack justify="space-between" flexWrap="wrap" gap="2">
-                                                <VStack gap="1" align="start">
-                                                    <Text fontSize="xl" fontWeight="black" color="purple.600" _dark={{ color: "purple.300" }}>
-                                                        {raffleData.name}
-                                                    </Text>
-                                                    <HStack gap="2">
-                                                        <Badge colorPalette="purple" size="sm">
-                                                            ⏰ {raffleData.timeRemaining} left
-                                                        </Badge>
-                                                        <Badge colorPalette="pink" size="sm">
-                                                            {raffleData.winChance} chance
-                                                        </Badge>
-                                                    </HStack>
-                                                </VStack>
-                                                <Button
-                                                    colorPalette="purple"
-                                                    size={{ base: "md", md: "lg" }}
-                                                    fontWeight="bold"
-                                                    onClick={handleRaffleClick}
-                                                    loading={isRaffleInProgress}
-                                                    loadingText="Joined..."
-                                                >
-                                                    🎫 Join Raffle
-                                                </Button>
-                                            </HStack>
-
-                                            {/* Prize and Stats Grid */}
-                                            <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap="3">
-                                                {/* Current Prize */}
-                                                <Box
-                                                    p="4"
-                                                    bg="white"
-                                                    _dark={{ bg: "gray.800" }}
-                                                    borderRadius="lg"
-                                                    textAlign="center"
-                                                >
-                                                    <VStack gap="1">
-                                                        <Text fontSize="xs" color="fg.muted" fontWeight="bold">
-                                                            🏆 Prize
-                                                        </Text>
-                                                        <HighlightText fontSize="2xl" fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                                            {raffleData.currentPrize}
-                                                        </HighlightText>
-                                                        <Text fontSize="xs" color="fg.muted">
-                                                            {asset.ticker}
-                                                        </Text>
-                                                    </VStack>
-                                                </Box>
-
-                                                {/* Contribution Price */}
-                                                <Box
-                                                    p="4"
-                                                    bg="white"
-                                                    _dark={{ bg: "gray.800" }}
-                                                    borderRadius="lg"
-                                                    textAlign="center"
-                                                >
-                                                    <VStack gap="1">
-                                                        <Text fontSize="xs" color="fg.muted" fontWeight="bold">
-                                                            💰 CONTRIBUTION
-                                                        </Text>
-                                                        <Text fontSize="2xl" fontWeight="black" color="purple.500">
-                                                            {raffleData.contributionPrice}
-                                                        </Text>
-                                                        <Text fontSize="xs" color="fg.muted">
-                                                            {asset.ticker}
-                                                        </Text>
-                                                    </VStack>
-                                                </Box>
-
-                                                {/* Total Won */}
-                                                <Box
-                                                    p="4"
-                                                    bg="white"
-                                                    _dark={{ bg: "gray.800" }}
-                                                    borderRadius="lg"
-                                                    textAlign="center"
-                                                >
-                                                    <VStack gap="1">
-                                                        <Text fontSize="xs" color="fg.muted" fontWeight="bold">
-                                                            💰 TOTAL WON
-                                                        </Text>
-                                                        <HighlightText fontSize="2xl" fontWeight="black" color="green.500" highlightColor="green.500" highlightIntensity="evident">
-                                                            {raffleData.totalWon}
-                                                        </HighlightText>
-                                                        <Text fontSize="xs" color="fg.muted">
-                                                            by {raffleData.numWinners} winners
-                                                        </Text>
-                                                    </VStack>
-                                                </Box>
-                                            </Grid>
-
-                                            {/* Winners List */}
-                                            {raffleData.winners.length > 0 && (
-                                                <Box>
-                                                    <Text fontSize="sm" fontWeight="bold" mb="2" color="purple.600" _dark={{ color: "purple.400" }}>
-                                                        🎉 Last {WINNERS_LIST_MAX_LEN} Winners
-                                                    </Text>
-                                                    <VStack gap="2" align="stretch">
-                                                        {raffleData.winners.map((winner: {fullAddress: string; address: string; amount: string}, idx: number) => {
-                                                            const isCurrentUser = address && winner.fullAddress === address;
-                                                            return (
-                                                                <HStack
-                                                                    key={idx}
-                                                                    justify="space-between"
-                                                                    p="3"
-                                                                    bg="white"
-                                                                    _dark={{ bg: "gray.800" }}
-                                                                    borderRadius="md"
-                                                                >
-                                                                    <HStack gap="2">
-                                                                        <Text fontSize="sm" fontFamily="mono" color="fg.muted" fontWeight={isCurrentUser ? "semibold" : "normal"}>
-                                                                            {idx + 1}. {winner.address}
-                                                                        </Text>
-                                                                        {isCurrentUser && (
-                                                                            <Badge colorPalette="green" size="xs" variant="subtle">
-                                                                                YOU
-                                                                            </Badge>
-                                                                        )}
-                                                                    </HStack>
-                                                                    <Text fontSize="sm" fontWeight="bold" color="green.500">
-                                                                        +{winner.amount} {asset.ticker}
-                                                                    </Text>
-                                                                </HStack>
-                                                            );
-                                                        })}
-                                                    </VStack>
-                                                </Box>
-                                            )}
-                                        </VStack>
-                                    </Card.Body>
-                                </Card.Root>
-                            </VStack>
-                        </Box>
-                    )}
-
-                    {/* Forever Locked Section - Show for LP coins (even if 0) or non-burnable coins with raffles, but never for IBC */}
-                    {!isIBC && (isLP || (raffleData && lockedAmount && lockedAmount.amount.gt(0))) && (
-                        <Card.Root
-                            bgGradient="to-br"
-                            gradientFrom="orange.50"
-                            gradientTo="orange.100"
-                            _dark={{
-                                gradientFrom: "orange.950",
-                                gradientTo: "orange.900",
-                            }}
-                            borderRadius="2xl"
-                            shadow="lg"
-                            transition="all 0.3s ease-in-out"
-                        >
-                            <Card.Body>
-                                <VStack gap="2" align="center" py="4">
-                                    <Text fontSize={{ base: "sm", md: "md" }} fontWeight="semibold" color="orange.600" _dark={{ color: "orange.400" }} textTransform="uppercase">
-                                        🔒 Forever Locked
-                                    </Text>
-                                    {lockedAmount ? (
-                                        <VStack gap="1" align="center">
-                                            <HighlightText fontSize={{ base: "3xl", md: "4xl" }} fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                                {prettyAmount(lockedAmount.amount)}
-                                            </HighlightText>
-                                            {lockedAmount.usdValue.gt(0) && (
-                                                <Text fontSize={{ base: "md", md: "lg" }} color="fg.muted" fontWeight="semibold">
-                                                    ≈ ${prettyAmount(lockedAmount.usdValue)}
-                                                </Text>
-                                            )}
-                                        </VStack>
-                                    ) : (
-                                        <VStack gap="1" align="center">
-                                            <HighlightText fontSize={{ base: "3xl", md: "4xl" }} fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                                0
-                                            </HighlightText>
-                                        </VStack>
-                                    )}
-                                    <Badge colorPalette="orange" variant="subtle" size="md" borderRadius="full">
-                                        Never Coming Back
-                                    </Badge>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
-
-                    {/* Total Burned Statistics - Only show for burnable coins (not LP, not IBC) */}
-                    {!isLP && !isIBC && (
-                        <Card.Root
-                            bgGradient="to-br"
-                            gradientFrom="orange.50"
-                            gradientTo="orange.100"
-                            _dark={{
-                                gradientFrom: "orange.950",
-                                gradientTo: "orange.900",
-                            }}
-                            borderRadius="2xl"
-                            shadow="lg"
-                            transition="all 0.3s ease-in-out"
-                        >
-                            <Card.Body>
-                                <VStack gap="2" align="center" py="4">
-                                    <Text fontSize={{ base: "sm", md: "md" }} fontWeight="semibold" color="orange.600" _dark={{ color: "orange.400" }} textTransform="uppercase">
-                                        💰 Total {asset.ticker} Burned
-                                    </Text>
-                                    {isLoadingHistory ? (
-                                        <Text fontSize="md" color="fg.muted">
-                                            Loading...
-                                        </Text>
-                                    ) : (
-                                        <VStack gap="1" align="center">
-                                            <HighlightText fontSize={{ base: "3xl", md: "4xl" }} fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                                {prettyAmount(totalBurned)}
-                                            </HighlightText>
-                                            {totalBurnedUsdValue.gt(0) && (
-                                                <Text fontSize={{ base: "md", md: "lg" }} color="fg.muted" fontWeight="semibold">
-                                                    ≈ ${prettyAmount(totalBurnedUsdValue)}
-                                                </Text>
-                                            )}
-                                        </VStack>
-                                    )}
-                                    <Badge colorPalette="orange" variant="subtle" size="md" borderRadius="full">
-                                        All Time
-                                    </Badge>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
-
-                    {/* Next Burning Section - Show if there's something in the burner address */}
-                    {!isLoadingNextBurn && nextCoinBurn && (
-                        <Card.Root
-                            bgGradient="to-br"
-                            gradientFrom="orange.50"
-                            gradientTo="orange.100"
-                            _dark={{
-                                gradientFrom: "orange.950",
-                                gradientTo: "orange.900",
-                            }}
-                            borderRadius="2xl"
-                            shadow="lg"
-                            transition="all 0.3s ease-in-out"
-                        >
-                            <Card.Body>
-                                <VStack gap="2" align="center" py="4">
-                                    <Text fontSize={{ base: "sm", md: "md" }} fontWeight="semibold" color="orange.600" _dark={{ color: "orange.400" }} textTransform="uppercase">
-                                        {isLP ? '🔒 Next Locking' : '🔥 Next Burning'}
-                                    </Text>
-                                    <VStack gap="1" align="center">
-                                        <HighlightText fontSize={{ base: "3xl", md: "4xl" }} fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                            {prettyAmount(nextCoinBurn.amount)}
-                                        </HighlightText>
-                                        {nextCoinBurn.usdValue.gt(0) && (
-                                            <Text fontSize={{ base: "md", md: "lg" }} color="fg.muted" fontWeight="semibold">
-                                                ≈ ${prettyAmount(nextCoinBurn.usdValue)}
-                                            </Text>
-                                        )}
-                                    </VStack>
-                                    <Badge colorPalette="orange" variant="subtle" size="md" borderRadius="full">
-                                        {nextCoinBurn.date.toLocaleString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                        })}
-                                    </Badge>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
-
-                    {/* Burn History - Only show for burnable coins (not LP, not IBC) */}
-                    {!isLP && !isIBC && (
-                        <Box>
-                            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="black" mb="4">
-                                🔥 Recent Burns
-                            </Text>
-                        {isLoadingHistory ? (
-                            <Card.Root>
-                                <Card.Body>
-                                    <Text textAlign="center" py="8" color="fg.muted">
-                                        Loading burn history...
-                                    </Text>
-                                </Card.Body>
-                            </Card.Root>
-                        ) : burnHistory.length > 0 ? (
-                            <Box
-                                borderRadius="3xl"
-                                overflow="hidden"
-                                bg="bg.panel"
-                                shadow="xl"
+            {!isLoadingRaffles && raffleData && (
+                <Flex as="section" direction="column" gap="16px">
+                    <SectionHeader
+                        title="Burning raffle"
+                        actions={
+                            <Button size="sm" variant={hgVariant('secondary')} onClick={() => setIsRaffleInfoModalOpen(true)}>
+                                <LuInfo/> Info
+                            </Button>
+                        }
+                    />
+                    <FeaturedCard display="flex" flexDirection="column" gap="20px">
+                        <Flex justify="space-between" align="center" gap="16px" wrap="wrap">
+                            <Flex direction="column" gap="8px" minW="0">
+                                <chakra.h3 m="0" fontSize="20px" fontWeight="700">{raffleData.name}</chakra.h3>
+                                <Flex gap="8px" wrap="wrap">
+                                    <AppPill><Flex as="span" align="center" gap="6px"><LuClock size={12} aria-hidden/>{raffleData.timeRemaining} left</Flex></AppPill>
+                                    <chakra.span fontSize="12px" fontWeight="600" px="10px" py="3px" borderRadius="hg.pill" color="hg.text.secondary" bg="hg.secondaryFill" borderWidth="1px" borderColor="hg.hairline">
+                                        {raffleData.winChance} chance
+                                    </chakra.span>
+                                </Flex>
+                            </Flex>
+                            <Button
+                                variant={hgVariant('primary')}
+                                size={{base: 'md', md: 'lg'}}
+                                onClick={handleRaffleClick}
+                                loading={isRaffleInProgress}
+                                loadingText="Joined..."
                             >
-                                {/* Desktop Table View */}
-                                <Box display={{ base: "none", md: "block" }} overflowX="auto">
-                                    <Table.Root size="md" variant="outline">
+                                <LuTicket/> Join raffle
+                            </Button>
+                        </Flex>
+
+                        <Grid templateColumns={{base: 'minmax(0, 1fr)', md: 'repeat(3, minmax(0, 1fr))'}} gap="12px">
+                            <RaffleFigure label="Prize" value={raffleData.currentPrize} foot={asset.ticker} tone="ember"/>
+                            <RaffleFigure label="Contribution" value={raffleData.contributionPrice} foot={asset.ticker}/>
+                            <RaffleFigure label="Total won" value={raffleData.totalWon} foot={`by ${raffleData.numWinners} winners`} tone="success"/>
+                        </Grid>
+
+                        {raffleData.winners.length > 0 && (
+                            <Flex direction="column" gap="10px">
+                                <chakra.h4 m="0" fontSize="14px" fontWeight="700" color="hg.text.secondary">Last {WINNERS_LIST_MAX_LEN} winners</chakra.h4>
+                                <chakra.ol m="0" p="0" listStyleType="none" display="flex" flexDirection="column" gap="6px">
+                                    {raffleData.winners.map((winner: {fullAddress: string; address: string; amount: string}, idx: number) => {
+                                        const isCurrentUser = address && winner.fullAddress === address;
+                                        return (
+                                            <chakra.li key={idx} display="flex" justifyContent="space-between" alignItems="center" gap="12px" px="14px" py="10px" borderRadius="hg.md" bg="hg.inset">
+                                                <Flex align="center" gap="8px" minW="0">
+                                                    <chakra.span fontSize="13px" fontFamily="mono" color={isCurrentUser ? 'fg' : 'hg.text.secondary'} fontWeight={isCurrentUser ? '600' : '400'} truncate>
+                                                        {idx + 1}. {winner.address}
+                                                    </chakra.span>
+                                                    {isCurrentUser && <AppPill>YOU</AppPill>}
+                                                </Flex>
+                                                <chakra.span fontSize="14px" fontWeight="700" color="hg.success.text" whiteSpace="nowrap">
+                                                    +{winner.amount} {asset.ticker}
+                                                </chakra.span>
+                                            </chakra.li>
+                                        );
+                                    })}
+                                </chakra.ol>
+                            </Flex>
+                        )}
+                    </FeaturedCard>
+                </Flex>
+            )}
+
+            {(showLocked || showBurned || showNext) && (
+                <Grid templateColumns={{base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))'}} gap="16px">
+                    {showLocked && (
+                        <BurnStat
+                            label="Forever locked"
+                            value={lockedAmount ? prettyAmount(lockedAmount.amount) : '0'}
+                            foot={lockedAmount && lockedAmount.usdValue.gt(0) ? `≈ $${prettyAmount(lockedAmount.usdValue)}` : undefined}
+                            tag={<AppPill>Never coming back</AppPill>}
+                        />
+                    )}
+                    {showBurned && (
+                        <BurnStat
+                            label={`Total ${asset.ticker} burned`}
+                            value={isLoadingHistory ? 'Loading...' : prettyAmount(totalBurned)}
+                            foot={!isLoadingHistory && totalBurnedUsdValue.gt(0) ? `≈ $${prettyAmount(totalBurnedUsdValue)}` : undefined}
+                            tag={<AppPill>All time</AppPill>}
+                        />
+                    )}
+                    {showNext && nextCoinBurn && (
+                        <BurnStat
+                            label={isLP ? 'Next locking' : 'Next burning'}
+                            value={prettyAmount(nextCoinBurn.amount)}
+                            foot={nextCoinBurn.usdValue.gt(0) ? `≈ $${prettyAmount(nextCoinBurn.usdValue)}` : undefined}
+                            tag={<AppPill>{nextBurnDate}</AppPill>}
+                        />
+                    )}
+                </Grid>
+            )}
+
+            {showBurned && (
+                <Flex as="section" direction="column" gap="16px">
+                    <SectionHeader title="Recent burns"/>
+                    <TableCard>
+                        {isLoadingHistory ? (
+                            <Box px={{base: '16px', md: '20px'}}><PageState kind="loading" rows={4}/></Box>
+                        ) : burnHistory.length > 0 ? (
+                            <>
+                                <Box display={{base: 'none', md: 'block'}} overflowX="auto">
+                                    <Table.Root size="md" bg="transparent">
                                         <Table.Header>
-                                            <Table.Row bg="orange.100" _dark={{ bg: "orange.900" }}>
-                                                <Table.ColumnHeader fontWeight="black">Amount Burned</Table.ColumnHeader>
-                                                <Table.ColumnHeader fontWeight="black">USD Value</Table.ColumnHeader>
-                                                <Table.ColumnHeader fontWeight="black">Block Height</Table.ColumnHeader>
-                                                <Table.ColumnHeader fontWeight="black">Time</Table.ColumnHeader>
+                                            <Table.Row>
+                                                <HeaderCell>Amount burned</HeaderCell>
+                                                <HeaderCell>USD value</HeaderCell>
+                                                <HeaderCell>Block height</HeaderCell>
+                                                <HeaderCell>Time</HeaderCell>
                                             </Table.Row>
                                         </Table.Header>
                                         <Table.Body>
                                             {burnHistory.map((burn, idx) => {
-                                                const assetData = getAsset(burn.denom);
-                                                const ticker = assetData?.ticker || burn.denom;
-                                                const formattedAmount = prettyAmount(burn.amount);
-                                                const formattedUsdValue = prettyAmount(burn.usdValue);
-
+                                                const ticker = getAsset(burn.denom)?.ticker || burn.denom;
                                                 return (
-                                                    <Table.Row
-                                                        key={idx}
-                                                        _hover={{
-                                                            bg: "orange.50",
-                                                            _dark: { bg: "orange.950" }
-                                                        }}
-                                                        transition="all 0.2s"
-                                                    >
-                                                        <Table.Cell>
-                                                            <Text fontWeight="black" fontSize="md" color="orange.500">
-                                                                {formattedAmount} {ticker}
-                                                            </Text>
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            <Text fontSize="sm" color="fg.muted">
-                                                                {burn.usdValue.gt(0) ? `$${formattedUsdValue}` : '-'}
-                                                            </Text>
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            <Badge colorPalette="gray" variant="subtle" size="md" borderRadius="full">
-                                                                #{burn.blockHeight}
-                                                            </Badge>
-                                                        </Table.Cell>
-                                                        <Table.Cell>
-                                                            <Text fontSize="sm" color="fg.muted">
-                                                                {burn.timestamp}
-                                                            </Text>
-                                                        </Table.Cell>
+                                                    <Table.Row key={idx} bg="transparent" _hover={{bg: 'hg.hoverFill'}}>
+                                                        <BodyCell><chakra.span {...emberAmount}>{prettyAmount(burn.amount)} {ticker}</chakra.span></BodyCell>
+                                                        <BodyCell><chakra.span color="hg.text.secondary">{burn.usdValue.gt(0) ? `$${prettyAmount(burn.usdValue)}` : '-'}</chakra.span></BodyCell>
+                                                        <BodyCell><chakra.span fontFamily="mono" fontSize="13px" color="hg.text.secondary">#{burn.blockHeight}</chakra.span></BodyCell>
+                                                        <BodyCell><chakra.span fontSize="13px" color="hg.text.faint">{burn.timestamp}</chakra.span></BodyCell>
                                                     </Table.Row>
                                                 );
                                             })}
                                         </Table.Body>
                                     </Table.Root>
                                 </Box>
-
-                                {/* Mobile Card View */}
-                                <Box display={{ base: "block", md: "none" }}>
-                                    <VStack gap="0" align="stretch">
-                                        {burnHistory.map((burn, idx) => {
-                                            const assetData = getAsset(burn.denom);
-                                            const ticker = assetData?.ticker || burn.denom;
-                                            const formattedAmount = prettyAmount(burn.amount);
-                                            const formattedUsdValue = prettyAmount(burn.usdValue);
-
-                                            return (
-                                                <Box
-                                                    key={idx}
-                                                    p="4"
-                                                    borderBottomWidth={idx < burnHistory.length - 1 ? "2px" : "0"}
-                                                    borderColor="orange.200"
-                                                    _dark={{ borderColor: "orange.800" }}
-                                                >
-                                                    <VStack gap="2" align="stretch">
-                                                        <HStack justify="space-between">
-                                                            <Text fontWeight="black" color="orange.500" fontSize="md">
-                                                                {formattedAmount} {ticker}
-                                                            </Text>
-                                                            <Text fontSize="sm" color="fg.muted">
-                                                                {burn.usdValue.gt(0) ? `$${formattedUsdValue}` : '-'}
-                                                            </Text>
-                                                        </HStack>
-                                                        <HStack justify="space-between">
-                                                            <Badge colorPalette="gray" variant="subtle" size="sm" borderRadius="full">
-                                                                #{burn.blockHeight}
-                                                            </Badge>
-                                                            <Text fontSize="xs" color="fg.muted">
-                                                                {burn.timestamp}
-                                                            </Text>
-                                                        </HStack>
-                                                    </VStack>
-                                                </Box>
-                                            );
-                                        })}
-                                    </VStack>
+                                <Box display={{base: 'block', md: 'none'}}>
+                                    {burnHistory.map((burn, idx) => {
+                                        const ticker = getAsset(burn.denom)?.ticker || burn.denom;
+                                        return (
+                                            <Flex key={idx} direction="column" gap="6px" px="16px" py="14px" borderTopWidth={idx ? '1px' : '0'} borderColor="hg.divider">
+                                                <Flex justify="space-between" gap="12px">
+                                                    <chakra.span {...emberAmount}>{prettyAmount(burn.amount)} {ticker}</chakra.span>
+                                                    <chakra.span fontSize="13px" color="hg.text.secondary">{burn.usdValue.gt(0) ? `$${prettyAmount(burn.usdValue)}` : '-'}</chakra.span>
+                                                </Flex>
+                                                <Flex justify="space-between" gap="12px">
+                                                    <chakra.span fontFamily="mono" fontSize="12px" color="hg.text.secondary">#{burn.blockHeight}</chakra.span>
+                                                    <chakra.span fontSize="12px" color="hg.text.faint">{burn.timestamp}</chakra.span>
+                                                </Flex>
+                                            </Flex>
+                                        );
+                                    })}
                                 </Box>
-                            </Box>
+                            </>
                         ) : (
-                            <Card.Root>
-                                <Card.Body>
-                                    <VStack gap="3" align="center" py="8">
-                                        <Text fontSize="4xl">🔍</Text>
-                                        <Text fontSize="xl" fontWeight="bold">
-                                            No Burns Yet
-                                        </Text>
-                                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                            This coins hasn&apos;t been burned yet. Be the first to toss it into the fire!
-                                        </Text>
-                                        <Button
-                                            colorPalette={"orange"}
-                                            onClick={() => setIsBurnModalOpen(true)}
-                                            mt="2"
-                                        >
-                                            {isLP ? '🔒' : '🔥'} {isLP ? 'Lock' : 'Burn'} Some Now
-                                        </Button>
-                                    </VStack>
-                                </Card.Body>
-                            </Card.Root>
+                            <PageState
+                                kind="empty"
+                                icon={<LuFlame/>}
+                                title="No Burns Yet"
+                                description="This coin hasn't been burned yet. Be the first to toss it into the fire!"
+                                action={
+                                    <Button variant={hgVariant('primary')} onClick={() => setIsBurnModalOpen(true)}>
+                                        <ActionIcon/> {actionVerb} some now
+                                    </Button>
+                                }
+                            />
                         )}
-                        </Box>
-                    )}
-                </VStack>
-            </Container>
+                    </TableCard>
+                </Flex>
+            )}
 
-            {/* Burn Modal with preselected coin */}
             <BurnModal
                 isOpen={isBurnModalOpen}
                 onClose={onModalClose}
                 preselectedCoin={denom}
             />
 
-            {/* Raffle Modal */}
             {raffleData && asset && (
                 <RaffleModal
                     isOpen={isRaffleModalOpen}
@@ -909,13 +572,11 @@ function CoinDetailContent() {
                 />
             )}
 
-            {/* Raffle Info Modal */}
             <RaffleInfoModal
                 isOpen={isRaffleInfoModalOpen}
                 onClose={() => setIsRaffleInfoModalOpen(false)}
             />
 
-            {/* Raffle Result Animation */}
             {showRaffleAnimation && asset && currentRaffleContribution && summaryData && raffleData && (
                 <RaffleResultAnimation
                     result={showRaffleAnimation}
@@ -931,21 +592,13 @@ function CoinDetailContent() {
                     contributionPrice={raffleData.contributionPrice}
                 />
             )}
-        </Box>
+        </CoinFrame>
     );
 }
 
 export default function CoinDetailPage() {
     return (
-        <Suspense fallback={
-            <Container py="10">
-                <VStack gap="4" align="center" py="20">
-                    <Text fontSize="xl" color="fg.muted">
-                        Loading...
-                    </Text>
-                </VStack>
-            </Container>
-        }>
+        <Suspense fallback={<CoinLoading/>}>
             <CoinDetailContent />
         </Suspense>
     );
