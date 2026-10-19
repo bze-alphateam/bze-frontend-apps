@@ -127,7 +127,11 @@ export interface HiveGlowNeutrals {
     testnetPillFill: string;
     testnetPillLine: string;
     backdrop: string;
+    /** The sticky header's translucent ground (Header board), blurred behind. */
+    headerFill: string;
     drawerShadow: string;
+    /** Menus, tooltips and toasts (CompOverlays, SurfAppsMenu). */
+    popoverShadow: string;
     cardShadow: string;
     switchOff: string;
 }
@@ -167,7 +171,9 @@ export const HIVE_GLOW_DARK: HiveGlowNeutrals = {
     testnetPillFill: 'rgba(239,68,68,0.14)',
     testnetPillLine: 'rgba(239,68,68,0.35)',
     backdrop: 'rgba(0,0,0,0.6)',
+    headerFill: 'rgba(10,12,16,0.72)',
     drawerShadow: '-24px 0 60px -20px rgba(0,0,0,0.8)',
+    popoverShadow: '0 20px 40px -20px rgba(0,0,0,0.9)',
     cardShadow: 'none',
     switchOff: '#2A313C',
 };
@@ -207,7 +213,9 @@ export const HIVE_GLOW_LIGHT: HiveGlowNeutrals = {
     testnetPillFill: 'rgba(220,38,38,0.08)',
     testnetPillLine: 'rgba(220,38,38,0.30)',
     backdrop: 'rgba(20,23,28,0.45)',
+    headerFill: 'rgba(255,255,255,0.86)',
     drawerShadow: '-24px 0 60px -24px rgba(20,23,28,0.35)',
+    popoverShadow: '0 20px 40px -20px rgba(20,23,28,0.35)',
     cardShadow: '0 1px 2px rgba(20,23,28,0.06)',
     switchOff: '#D5DAE1',
 };

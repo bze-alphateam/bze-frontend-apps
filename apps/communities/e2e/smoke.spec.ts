@@ -44,6 +44,8 @@ test("an unknown denom shows the not-found state", async ({page}) => {
 
 test("the navbar's Apps menu lists the other BZE apps with their icons, Explorer included", async ({page}) => {
     await page.goto("/");
+    // The shared header carries the Communities lockup; the token page test checks it is absent there by this alt text.
+    await expect(page.getByTestId("app-header").getByAltText("BeeZee Communities").filter({visible: true})).toHaveCount(1);
     await page.getByRole("button", {name: "Apps"}).click();
 
     const menu = page.getByRole("menu");

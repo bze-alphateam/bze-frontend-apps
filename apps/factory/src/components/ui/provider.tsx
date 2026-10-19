@@ -17,7 +17,7 @@ const evmConfig = createEvmConfig({
     projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
     appName: 'BeeZee Factory',
     appUrl: 'https://factory.getbze.com',
-    appIcon: 'https://factory.getbze.com/images/logo_320px.png',
+    appIcon: 'https://factory.getbze.com/images/app-icon-512.png',
 });
 
 const walletConnect = new WCWallet(
@@ -29,7 +29,7 @@ const walletConnect = new WCWallet(
             description: "Create tokens, markets, liquidity pools and rewards on the BeeZee blockchain",
             url: "https://factory.getbze.com",
             icons: [
-                "https://factory.getbze.com/images/logo_320px.png",
+                "https://factory.getbze.com/images/app-icon-512.png",
             ],
         },
     }

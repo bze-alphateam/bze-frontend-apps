@@ -24,7 +24,12 @@ export const metadata: Metadata = {
   description: "BZE DEX is a comprehensive decentralized exchange platform on BeeZee blockchain. Swap tokens with AMM liquidity pools, trade on order book DEX, stake your coins, and provide liquidity to earn rewards. Fast, secure, and high-performance DeFi trading.",
   keywords: "BZE, BeeZee, DEX, decentralized exchange, AMM, automated market maker, order book, DeFi, swap tokens, stake, staking, liquidity provider, liquidity pools, crypto trading, blockchain, BZE coin",
   icons: {
-    icon: "/images/logo_320px.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/images/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
@@ -37,7 +42,7 @@ export const metadata: Metadata = {
         url: "/images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "BZE DEX - Decentralized Exchange Platform",
+        alt: "BeeZee DEX logo, dex.getbze.com",
       },
     ],
   },

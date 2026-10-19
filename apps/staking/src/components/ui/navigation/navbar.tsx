@@ -1,82 +1,58 @@
 'use client';
 
-import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Text} from '@chakra-ui/react'
-import {NavbarLinks} from './navbar-links'
-import {useColorModeValue} from "@/components/ui/color-mode";
-import {LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsToggle, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
-import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
-import {useChain} from "@interchain-kit/react";
-import {WalletState} from "@interchain-kit/core";
-import {useMemo} from "react";
+import NextLink from 'next/link'
+import {AppHeader, type AppHeaderBadge, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
+import {useNavigation} from "@/hooks/useNavigation";
+import {useOpenProposalsSummary} from "@/hooks/useOpenProposalsSummary";
+import {badgeCount, badgeLabel, GOVERNANCE_HREF} from "@/lib/governance/summary";
 
-interface TopNavBarProps {
-    appLabel?: string;
+const navItems = [
+    { label: 'Dashboard', href: '/' },
+    { label: 'Governance', href: GOVERNANCE_HREF },
+]
+
+const navSubitems: { [key: string]: string } = {}
+
+// An item is active on its own path and, except for the root, on every path below it
+// (Governance stays active on /governance/<id>).
+const isItemActive = (href: string, pathname: string | null) => {
+    if (!pathname) return false
+    if (pathname === href || href === navSubitems[pathname]) return true
+    return href !== '/' && pathname.startsWith(`${href}/`)
 }
 
-export const TopNavBar = ({ appLabel = "STAKING" }: TopNavBarProps) => {
-    const {nativeAsset} = useAssets()
-    const {balance} = useBalance(getChainNativeAssetDenom())
-    const {status} = useChain(getChainName());
+// The open proposals that need the wallet's vote (all open ones without a wallet); nothing
+// at 0 or while the summary is missing. In the phone menu a caption says what the number means.
+const useGovernanceBadge = (): AppHeaderBadge | undefined => {
+    const {summary} = useOpenProposalsSummary()
+    const count = badgeCount(summary)
+    if (!summary || count === 0) return undefined
 
-    const walletButtonText = useMemo(() => {
-        if (status !== WalletState.Connected || !nativeAsset) {
-            return "";
-        }
+    return {
+        count,
+        label: badgeLabel(summary, count),
+        caption: summary.connected ? (count === 1 ? 'needs your vote' : 'need your vote') : 'open',
+    }
+}
 
-        const humanBalance = uAmountToBigNumberAmount(balance.amount, nativeAsset.decimals)
-
-        return `${shortNumberFormat(humanBalance)} ${nativeAsset.ticker}`
-    }, [status, nativeAsset, balance])
+export const TopNavBar = () => {
+    const {currentPathName} = useNavigation()
+    const walletLabel = useWalletButtonLabel()
+    const governanceBadge = useGovernanceBadge()
 
     return (
-        <Box borderBottomWidth="1px" bg="bg.panel">
-            <Container py={{ base: '3.5', md: '4' }}>
-                <HStack justify="space-between">
-                    <HStack gap="2" align="center">
-                        <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
-                            <Image
-                                height={{base: "22px", md: "28px"}}
-                                src={useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg")}
-                                alt="BZE application logo"
-                            />
-                        </ClientOnly>
-                        <Text
-                            fontSize={{ base: "sm", md: "md" }}
-                            fontWeight="extrabold"
-                            color="#9b59b6"
-                            letterSpacing="tighter"
-                            textTransform="uppercase"
-                            opacity="0.9"
-                            transition="all 0.3s ease"
-                            _hover={{ opacity: 1, color: "#8e44ad" }}
-                        >
-                            {appLabel}
-                        </Text>
-                    </HStack>
-                    <Spacer hideFrom="md" />
-                    <NavbarLinks hideBelow="md" />
-                    <Box display={"flex"} gap={{ base: 1, md: 4}}>
-                        {/* Wallet Sidebar */}
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <Sidebar
-                                ariaLabel="Wallet"
-                                trigger={
-                                    <Button size={{ base: 'sm', md: 'md' }}>
-                                        <LuWallet /> <Text hideBelow="md">{walletButtonText}</Text>
-                                    </Button>
-                                }
-                            >
-                                <WalletSidebarContent accentColor="purple" skipWalletModal />
-                            </Sidebar>
-                        </ClientOnly>
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <SettingsToggle accentColor="purple" />
-                        </ClientOnly>
-                    </Box>
-                    <MobileNavbarLinks />
-                </HStack>
-            </Container>
-        </Box>
+        <AppHeader
+            app="staking"
+            appName="BeeZee Staking"
+            linkAs={NextLink}
+            items={navItems.map((item) => ({
+                ...item,
+                active: isItemActive(item.href, currentPathName),
+                badge: item.href === GOVERNANCE_HREF ? governanceBadge : undefined,
+            }))}
+            walletLabel={walletLabel}
+            walletContent={<WalletSidebarContent accentColor="purple" skipWalletModal />}
+            settings={<SettingsToggle accentColor="purple" />}
+        />
     )
 }

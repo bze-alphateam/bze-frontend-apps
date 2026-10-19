@@ -157,7 +157,8 @@ describe("Communities token page", () => {
         expect(screen.getByText("factory/bze1owner/ufull")).toBeInTheDocument();
         await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent("Admin renounced"));
 
-        expect(screen.queryByAltText("BZE application logo")).not.toBeInTheDocument();
+        expect(screen.queryAllByAltText("BeeZee Communities")).toHaveLength(0);
+        expect(screen.queryByTestId("app-header")).not.toBeInTheDocument();
         expect(screen.queryByText(/directory/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/BZE/)).not.toBeInTheDocument();
         expect(screen.queryByText("Runs on BeeZee")).not.toBeInTheDocument();

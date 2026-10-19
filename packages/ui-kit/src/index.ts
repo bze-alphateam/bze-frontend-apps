@@ -266,6 +266,7 @@ export { useWalletHealthCheck } from './hooks/useWalletHealthCheck';
 export { useAssetPrice } from './hooks/usePrices';
 export { useSettings } from './hooks/useSettings';
 export { useBalances, useBalance } from './hooks/useBalances';
+export { useWalletButtonLabel } from './hooks/useWalletButtonLabel';
 export type { AssetBalance } from './hooks/useBalances';
 export { useCounterpartyBalance } from './hooks/useCounterpartyBalance';
 export type { UseCounterpartyBalanceResult, CounterpartyBalanceStatus } from './hooks/useCounterpartyBalance';
