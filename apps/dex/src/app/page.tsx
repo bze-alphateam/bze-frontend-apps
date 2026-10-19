@@ -3,31 +3,34 @@
 import {
   Box,
   Button,
-  Card,
-  Container,
-  HStack,
-  VStack,
-  Text,
-  Input,
+  chakra,
   Collapsible,
-  Badge,
   Flex,
+  Grid,
+  GridItem,
+  Input,
   Select,
   createListCollection,
-  Alert,
 } from '@chakra-ui/react';
 import {
   LuArrowUpDown,
   LuChevronDown,
   LuChevronUp,
   LuArrowRight,
+  LuSearch,
 } from 'react-icons/lu';
-import { useState, useMemo, memo, useEffect, useCallback } from 'react';
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms} from "@bze/bze-ui-kit";
+import { useState, useMemo, memo, useEffect, useCallback, useId, type ComponentProps, type ReactNode } from 'react';
+import NextLink from "next/link";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms, useMarkets, useAssetPrice, getChainNativeAssetDenom, createMarketId, formatUsdAmount, shortNumberFormat, LPTokenLogo, PageContainer, HeroGlow, HomeHero, Eyebrow, GradientText, FeaturedCard, HgCard, StatCard, StatStrip, Notice, hgVariant} from "@bze/bze-ui-kit";
 import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
 import {SLIPPAGE_PRESETS, isSlippagePreset, parseCustomSlippage} from "@/lib/slippage";
 import {AMM_SLIPPAGE_KEY, createLocalSlippageStore} from "@/lib/slippage-store";
+import {sortPools} from "@/lib/pool-list";
+import {sortMarkets} from "@/lib/market-list";
 import {useStoredSlippage} from "@/hooks/useStoredSlippage";
+import {marketPagePath} from "@/hooks/useNavigation";
+import {VenueTag, VenueTitle} from "@/components/ui/trading/venue";
+import {PriceImpactBadge} from "@/components/ui/trading/badges";
 import BigNumber from 'bignumber.js';
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
@@ -51,13 +54,11 @@ type AssetWithBalance = {
 const AssetSelector = memo(({
   asset,
   onSelect,
-  placeholder,
   assetsWithBalanceInfo,
   isLoading,
 }: {
   asset: AssetWithBalance | null;
   onSelect: (asset: AssetWithBalance) => void;
-  placeholder: string;
   assetsWithBalanceInfo: AssetWithBalance[];
   isLoading: boolean;
 }) => {
@@ -92,11 +93,11 @@ const AssetSelector = memo(({
   }, [filteredAssets]);
 
   if (isLoading) {
-    return <Box>Loading...</Box>;
+    return <chakra.span fontSize="14px" color="hg.text.muted">Loading...</chakra.span>;
   }
 
   if (!asset) {
-    return <Box>No asset available</Box>
+    return <chakra.span fontSize="14px" color="hg.text.muted">No asset available</chakra.span>
   }
 
   return (
@@ -104,6 +105,7 @@ const AssetSelector = memo(({
           collection={collection}
           value={[asset.denom]}
           open={isOpen}
+          positioning={{sameWidth: false, placement: 'bottom-start'}}
           onOpenChange={(details) => {
             setIsOpen(details.open);
             if (!details.open) {
@@ -121,112 +123,117 @@ const AssetSelector = memo(({
           }}
       >
         <Select.Trigger asChild>
-          <Card.Root
-            variant="outline"
-            p="4"
+          <chakra.button
+            type="button"
+            display="inline-flex"
+            alignItems="center"
+            gap="8px"
+            h="40px"
+            minW="0"
+            maxW="100%"
+            pl="6px"
+            pr="12px"
+            borderRadius="full"
+            borderWidth="1px"
+            borderColor="hg.lineStrong"
+            bg="hg.card"
+            color="fg"
+            fontSize="15px"
+            fontWeight="600"
             cursor="pointer"
-            bgGradient="to-br"
-            gradientFrom="blue.500/8"
-            gradientTo="blue.600/8"
-            borderColor="blue.500/20"
-            _hover={{
-              gradientFrom: "blue.500/12",
-              gradientTo: "blue.600/12",
-              borderColor: "blue.500/30"
-            }}
-            transition="all 0.2s"
+            transitionProperty="border-color"
+            transitionDuration="moderate"
+            _hover={{borderColor: 'app.border'}}
+            _expanded={{borderColor: 'app.solid'}}
+            focusVisibleRing="outside"
           >
-            <VStack align="start" gap="3" w="full">
-              <Text fontSize="sm" color="fg.muted">
-                {placeholder}
-              </Text>
-              <HStack justify="space-between" w="full">
-                <HStack gap="3">
-                  <TokenLogo
-                      src={asset.logo}
-                      symbol={asset.ticker}
-                      size="8"
-                      circular={true}
-                  />
-                  <VStack align="start" gap="1">
-                    <HStack gap="2">
-                      <Text fontWeight="bold" fontSize="lg">
-                        {asset.ticker}
-                      </Text>
-                      <Text fontSize="md" color="fg.muted">
-                        {asset.name}
-                      </Text>
-                    </HStack>
-                    <Text fontSize="sm" color="fg.muted">
-                      Balance: {asset.balanceFormatted}
-                    </Text>
-                  </VStack>
-                </HStack>
-                <LuChevronDown />
-              </HStack>
-            </VStack>
-          </Card.Root>
+            <TokenLogo
+                src={asset.logo}
+                symbol={asset.ticker}
+                size="7"
+                circular={true}
+            />
+            <chakra.span flex="none">{asset.ticker}</chakra.span>
+            <chakra.span color="hg.text.faint" fontWeight="500" truncate hideBelow="sm">{asset.name}</chakra.span>
+            <Box as="span" flex="none" color="hg.text.muted"><LuChevronDown size={16} /></Box>
+          </chakra.button>
         </Select.Trigger>
         <Select.Positioner>
-          <Select.Content maxH="400px" overflowY="auto" background={"bg.muted"}>
-            <Box p="3" borderBottomWidth="1px">
+          <Select.Content
+            w="360px"
+            maxW="calc(100vw - 32px)"
+            p="10px"
+            bg="hg.card"
+            borderWidth="1px"
+            borderColor="hg.lineStrong"
+            borderRadius="16px"
+            boxShadow="hg.popover"
+            aria-label="Choose an asset"
+          >
+            <Box position="relative" mb="6px">
+              <Box position="absolute" left="12px" top="50%" transform="translateY(-50%)" color="hg.text.faint" pointerEvents="none" zIndex="1">
+                <LuSearch size={15} />
+              </Box>
               <Input
+                  aria-label="Search assets"
                   placeholder="Search assets..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  size="sm"
+                  h="40px"
+                  pl="34px"
+                  borderRadius="10px"
+                  bg="hg.inset"
+                  borderColor="app.border"
+                  fontSize="14px"
                   autoFocus
               />
             </Box>
-            <Box maxH="300px" overflowY="auto">
+            <Box maxH="336px" overflowY="auto">
               {filteredAssets.length > 0 ? (
                   filteredAssets.map((assetOption) => (
                       <Select.Item
                           key={assetOption.denom}
                           item={assetOption.denom}
+                          minH="48px"
+                          px="10px"
+                          borderRadius="10px"
                           cursor="pointer"
-                          _hover={{ bg: "bg.panel" }}
+                          _hover={{ bg: "hg.hoverFill" }}
+                          _highlighted={{ bg: "hg.hoverFill" }}
+                          _checked={{ bg: "app.subtle" }}
                       >
-                        <Select.ItemText>
-                          <HStack gap="3" py="2">
+                        <Select.ItemText flex="1" minW="0">
+                          <Flex align="center" gap="10px">
                             <TokenLogo
                                 src={assetOption.logo}
                                 symbol={assetOption.ticker}
                                 size="8"
                                 circular={true}
                             />
-                            <VStack align="start" gap="0" flex="1">
-                              <HStack gap={2} w="full">
-                                <Text fontWeight="medium" fontSize="md">
-                                  {assetOption.ticker}
-                                </Text>
-                                <Text fontSize="sm" color="fg.muted">
-                                  {assetOption.name}
-                                </Text>
-                              </HStack>
-                              <HighlightText fontSize="sm" color="fg.muted">
+                            <Flex direction="column" minW="0">
+                              <chakra.span truncate>
+                                <chakra.strong fontSize="14px" fontWeight="700">{assetOption.ticker}</chakra.strong>{' '}
+                                <chakra.span fontSize="13px" color="hg.text.faint">{assetOption.name}</chakra.span>
+                              </chakra.span>
+                              <HighlightText fontSize="12px" color="hg.text.faint">
                                 Balance: {assetOption.balanceFormatted}
                               </HighlightText>
-                            </VStack>
-                          </HStack>
+                            </Flex>
+                          </Flex>
                         </Select.ItemText>
-                        <Select.ItemIndicator />
+                        <Select.ItemIndicator color="hg.link" />
                       </Select.Item>
                   ))
               ) : (
-                  <Box p="4" textAlign="center">
-                    <Text fontSize="sm" color="fg.muted">
-                      No assets found
-                    </Text>
-                  </Box>
+                  <chakra.p m="0" py="24px" px="10px" textAlign="center" fontSize="14px" color="hg.text.muted">
+                    No assets found
+                  </chakra.p>
               )}
             </Box>
             {!searchTerm && assetsWithBalanceInfo.length > 10 && (
-                <Box p="2" borderTopWidth="1px" textAlign="center">
-                  <Text fontSize="xs" color="fg.muted">
-                    Showing first 10 assets. Search to find more.
-                  </Text>
-                </Box>
+                <chakra.p m="0" pt="8px" px="10px" pb="4px" fontSize="12px" color="hg.text.faint">
+                  Showing first 10 assets. Search to find more.
+                </chakra.p>
             )}
           </Select.Content>
         </Select.Positioner>
@@ -236,20 +243,130 @@ const AssetSelector = memo(({
 
 AssetSelector.displayName = 'AssetSelector';
 
+/** One side of the swap: label and balance, the token pill and the amount, and what sits under them. */
+const SwapSide = ({label, balance, selector, input, children}: {
+  label: string;
+  balance: ReactNode;
+  selector: ReactNode;
+  input: (id: string) => ReactNode;
+  children?: ReactNode;
+}) => {
+  const id = useId();
+
+  return (
+      <Flex direction="column" gap="10px" bg="hg.inset" borderRadius="16px" p="16px">
+        <Flex justify="space-between" gap="12px" fontSize="13px" color="hg.text.faint">
+          <chakra.label htmlFor={id}>{label}</chakra.label>
+          {balance}
+        </Flex>
+        <Flex justify="space-between" align="center" gap="12px">
+          <Box minW="0" flexShrink={1}>{selector}</Box>
+          {input(id)}
+        </Flex>
+        {children}
+      </Flex>
+  );
+};
+
+/** The big amount field of a swap side. */
+const AmountInput = (props: ComponentProps<typeof chakra.input>) => (
+    <chakra.input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        placeholder="0.0"
+        flex="1"
+        minW="0"
+        w="160px"
+        textAlign="right"
+        bg="transparent"
+        border="0"
+        outline="none"
+        color="fg"
+        fontSize="28px"
+        fontWeight="700"
+        _placeholder={{color: 'hg.text.faint'}}
+        {...props}
+    />
+);
+
+/** A label on the left and its value on the right, in the quote summary. */
+const SummaryRow = ({label, children}: { label: ReactNode; children: ReactNode }) => (
+    <Flex justify="space-between" align="center" gap="12px" fontSize="14px">
+      <chakra.span color="hg.text.muted">{label}</chakra.span>
+      <chakra.span textAlign="right" color="fg">{children}</chakra.span>
+    </Flex>
+);
+
+/** The small text button of the summary ("Change", "Done"). */
+const TextButton = (props: ComponentProps<typeof chakra.button>) => (
+    <chakra.button
+        type="button"
+        p="0"
+        border="0"
+        bg="transparent"
+        fontSize="12px"
+        fontWeight="600"
+        cursor="pointer"
+        focusVisibleRing="outside"
+        {...props}
+    />
+);
+
+/** One of the "Two ways to trade" bullets: a dot for Swap, an outlined square for Exchange. */
+const WayBullet = ({square, children}: { square?: boolean; children: ReactNode }) => (
+    <Flex as="li" gap="10px" align="center">
+      <Box
+          as="span"
+          flex="none"
+          boxSize="6px"
+          borderRadius={square ? '2px' : 'full'}
+          {...(square ? {borderWidth: '1.5px', borderColor: 'app.solid'} : {bg: 'app.solid'})}
+      />
+      {children}
+    </Flex>
+);
+
+/** A row of the "Top pools" and "Order-book markets" lists. */
+const ListRow = ({lead, title, meta, action}: { lead: ReactNode; title: string; meta: ReactNode; action: ReactNode }) => (
+    <Flex align="center" justify="space-between" gap="12px" p="12px" borderRadius="12px" bg="hg.inset">
+      <Flex align="center" gap="10px" minW="0">
+        {lead}
+        <chakra.strong fontSize="15px" fontWeight="700" truncate>{title}</chakra.strong>
+      </Flex>
+      <Flex align="center" gap="14px" flex="none">
+        <chakra.span fontSize="13px" color="hg.text.faint" hideBelow="sm">{meta}</chakra.span>
+        {action}
+      </Flex>
+    </Flex>
+);
+
+/** The heading row of a home list card. */
+const ListHeader = ({title, venue, href, linkText}: { title: string; venue: string; href: string; linkText: string }) => (
+    <Flex justify="space-between" align="baseline" gap="12px" px="4px" pb="10px">
+      <chakra.h3 m="0" fontSize="17px" fontWeight="700">
+        {title} <chakra.span fontWeight="500" color="hg.text.faint">· {venue}</chakra.span>
+      </chakra.h3>
+      <chakra.a asChild fontSize="14px" color="hg.link" _hover={{color: 'hg.accent'}} flex="none">
+        <NextLink href={href}>{linkText}</NextLink>
+      </chakra.a>
+    </Flex>
+);
+
 // Composition root for the swap form's slippage persistence (one entry per chain, see ui-kit storage).
 const ammSlippageStore = createLocalSlippageStore(AMM_SLIPPAGE_KEY);
 
 export default function SwapPage() {
-  const { denomTicker, getAsset } = useAssets();
+  const { denomTicker, getAsset, isVerifiedAsset } = useAssets();
   const { getBalanceByDenom } = useBalances();
-  const { pools, liquidAssets, isLoading } = useLiquidityPools();
+  const { pools, poolsData, liquidAssets, isLoading } = useLiquidityPools();
   const {toast} = useToast()
   const {tx, progressTrack} = useBZETx()
   const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
   const {address} = useChain(getChainName())
-  const {denomUsdValue} = useAssetsValue()
+  const {denomUsdValue, compareValues} = useAssetsValue()
 
-  const {isDenomHalted, isPoolHalted} = useHaltedDenoms()
+  const {isDenomHalted, isPoolHalted, isMarketHalted} = useHaltedDenoms()
 
   // The chain refuses any swap whose route crosses a pool holding a governance-halted denom, so
   // those pools never reach the router and halted denoms never reach the pickers.
@@ -569,540 +686,99 @@ export default function SwapPage() {
     return Array.from(timestampGroups.entries());
   }, [swapHistory]);
 
+
+  // Home page data: the stat strip and the two short lists under the swap card.
+  const {markets, getMarketData} = useMarkets();
+  const {price: bzePrice, hasPrice: hasBzePrice, isLoading: bzePriceLoading} = useAssetPrice(getChainNativeAssetDenom());
+
+  const poolsVolume = useMemo(
+    () => tradeablePools.reduce((sum, pool) => sum.plus(poolsData?.get(pool.id)?.usdVolume ?? 0), toBigNumber(0)),
+    [tradeablePools, poolsData]
+  );
+  const topPools = useMemo(
+    () => sortPools(tradeablePools, poolsData ?? new Map(), 'totalLiquidity', 'desc').slice(0, 3),
+    [tradeablePools, poolsData]
+  );
+  const topMarkets = useMemo(
+    () => sortMarkets(markets.filter(market => !isMarketHalted(market)), {
+      isHalted: isMarketHalted,
+      getMarketData: (market) => getMarketData(createMarketId(market.base, market.quote)),
+      isVerified: (market) => isVerifiedAsset(market.base) && isVerifiedAsset(market.quote),
+      compareValues,
+    }).slice(0, 3),
+    [markets, isMarketHalted, getMarketData, isVerifiedAsset, compareValues]
+  );
+
+  // "Swap" on a top pool loads its pair into the swap card.
+  const handlePickPool = (base: string, quote: string) => {
+    setFromDenom(base);
+    setToDenom(quote);
+    setInput({side: 'from', value: ''});
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  };
+
+  const usdLine = (amount: string, asset: AssetWithBalance | null) => {
+    const usd = amount ? calculateUSDValue(amount, asset) : null;
+    return usd ? (
+        <chakra.span alignSelf="flex-end" fontSize="13px" color="hg.text.faint">≈ ${usd} USD</chakra.span>
+    ) : null;
+  };
+
   return (
-      <Box minH="100vh" bg="bg.subtle">
-        <Container maxW="lg" py="12">
-          <VStack gap="6" align="stretch">
-            {/* Page Header */}
-            <VStack gap="2" align="center" mb="4">
-              <Text fontSize="3xl" fontWeight="bold" letterSpacing="tight">
-                Swap Assets
-              </Text>
-              <Text fontSize="sm" color="fg.muted">
-                Trade tokens instantly with the best rates
-              </Text>
-            </VStack>
-
-            {/* No Liquidity Pools Message */}
-            {!isLoading && liquidAssets.length === 0 && (
-              <Alert.Root status="info">
-                <Alert.Indicator />
-                <Alert.Content>
-                  <Alert.Title>No Liquidity Pools Available</Alert.Title>
-                  <Alert.Description>
-                    Liquidity pools will be created soon. Please check back later to start trading.
-                  </Alert.Description>
-                </Alert.Content>
-              </Alert.Root>
-            )}
-
-            {/* Swap Form */}
-            <Card.Root
-              maxW="480px"
-              mx="auto"
-              w="full"
-              borderWidth="1px"
-              shadow="lg"
-              bgGradient="to-br"
-              gradientFrom="blue.500/5"
-              gradientTo="blue.600/5"
-              borderColor="blue.500/20"
+      <Box position="relative" overflow="hidden">
+        <HeroGlow />
+        <PageContainer position="relative" zIndex="1" pt={{ base: '32px', md: '72px' }} pb="80px">
+          <Flex direction="column" gap={{ base: '40px', md: '56px' }}>
+            <Grid
+              templateColumns={{ base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 460px' }}
+              templateRows={{ lg: 'auto auto 1fr' }}
+              templateAreas={{
+                base: `"hero" "card" "stats" "history"`,
+                lg: `"hero card" "stats card" "history card"`,
+              }}
+              columnGap="56px"
+              rowGap={{ base: '24px', lg: '22px' }}
+              alignItems="start"
             >
-              <VStack gap="1" align="stretch">
-                {/* Header */}
-                <HStack justify="space-between" align="center" px="6" pt="6" pb="4">
-                  <Text fontSize="lg" fontWeight="semibold">
-                    Swap
-                  </Text>
-                </HStack>
+              <GridItem area="hero" pt={{ lg: '24px' }}>
+                <HomeHero
+                  eyebrow={<Eyebrow app="dex">BeeZee DEX</Eyebrow>}
+                  title={<>Swap tokens <GradientText>instantly</GradientText></>}
+                  subtitle="Swap, trade and earn on BeeZee. A swap fills right away from a liquidity pool, and the fees are shown before you sign."
+                />
+              </GridItem>
 
-                {/* From Asset */}
-                <Box px="6" py="2">
-                  <VStack gap="3" align="stretch">
-                    <AssetSelector
-                        asset={fromAsset}
-                        onSelect={(asset) => setFromDenom(asset.denom)}
-                        placeholder="From"
-                        assetsWithBalanceInfo={assetsWithBalanceInfo}
-                        isLoading={isLoading && assetsWithBalanceInfo.length === 0}
-                    />
-                    <Box
-                      bgGradient="to-br"
-                      gradientFrom="blue.500/10"
-                      gradientTo="blue.600/10"
-                      borderRadius="lg"
-                      p="4"
-                      borderWidth="1px"
-                      borderColor="blue.500/25"
-                    >
-                      <VStack gap="3" align="stretch">
-                        <HStack gap="2">
-                          <Input
-                              placeholder="0.0"
-                              value={fromAmount}
-                              onChange={(e) => handleFromAmountChange(sanitizeNumberInput(e.target.value))}
-                              fontSize="2xl"
-                              fontWeight="semibold"
-                              textAlign="right"
-                              variant="flushed"
-                              border="none"
-                              px="0"
-                              _focus={{ border: "none" }}
-                              flex="1"
-                          />
-                          <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleFromAmountChange(maxSpendable.inputValue)}
-                              disabled={!fromAsset || fromAsset.balance.lte(0)}
-                              colorPalette="blue"
-                          >
-                            MAX
-                          </Button>
-                        </HStack>
-                        <HStack justify="space-between" gap="2">
-                          {[25, 50, 75, 100].map((percentage) => (
-                              <Button
-                                  key={percentage}
-                                  size="xs"
-                                  variant="outline"
-                                  onClick={() => {
-                                    if (fromAsset) {
-                                      // Percentages of the spendable balance, so 100 % equals MAX.
-                                      const amount = maxSpendable.displayAmount.multipliedBy(percentage).dividedBy(100);
-                                      handleFromAmountChange(amount.toFixed());
-                                    }
-                                  }}
-                                  disabled={!fromAsset || fromAsset.balance.lte(0)}
-                                  colorPalette="gray"
-                                  flex="1"
-                              >
-                                {percentage}%
-                              </Button>
-                          ))}
-                        </HStack>
-                      </VStack>
-                      {fromAmount && calculateUSDValue(fromAmount, fromAsset) && (
-                          <Text fontSize="sm" color="fg.muted" textAlign="right" mt="2">
-                            ≈ ${calculateUSDValue(fromAmount, fromAsset)} USD
-                          </Text>
-                      )}
-                    </Box>
-                  </VStack>
-                </Box>
+              <GridItem area="stats">
+                <StatStrip columns={3}>
+                  <StatCard
+                    label="BZE price"
+                    value={hasBzePrice ? `$${formatUsdAmount(bzePrice)}` : '—'}
+                    loading={bzePriceLoading}
+                  />
+                  <StatCard label="24h volume" value={`$${shortNumberFormat(poolsVolume)}`} loading={isLoading} />
+                  <StatCard label="Liquidity pools" value={tradeablePools.length} loading={isLoading} />
+                </StatStrip>
+              </GridItem>
 
-                {/* Swap Button */}
-                <Flex justify="center" position="relative" my="-2">
-                  <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleSwapAssets}
-                      aria-label="Switch assets"
-                      borderRadius="full"
-                      p="2"
-                      h="10"
-                      w="10"
-                      bg="bg.panel"
-                      borderWidth="4px"
-                      borderColor="bg.panel"
-                      shadow="sm"
-                      _hover={{
-                        transform: "rotate(180deg)",
-                        transition: "transform 0.3s ease"
-                      }}
-                      transition="transform 0.3s ease"
-                  >
-                    <LuArrowUpDown />
-                  </Button>
-                </Flex>
-
-                {/* To Asset */}
-                <Box px="6" py="2">
-                  <VStack gap="3" align="stretch">
-                    <AssetSelector
-                        asset={toAsset}
-                        onSelect={(asset) => setToDenom(asset.denom)}
-                        placeholder="To"
-                        assetsWithBalanceInfo={assetsWithBalanceInfo}
-                        isLoading={isLoading && assetsWithBalanceInfo.length === 0}
-                    />
-                    <Box
-                      bgGradient="to-br"
-                      gradientFrom="blue.500/10"
-                      gradientTo="cyan.500/10"
-                      borderRadius="lg"
-                      p="4"
-                      borderWidth="1px"
-                      borderColor="blue.500/25"
-                    >
-                      <Input
-                          placeholder="0.0"
-                          value={toAmount}
-                          onChange={(e) => handleToAmountChange(sanitizeNumberInput(e.target.value))}
-                          fontSize="2xl"
-                          fontWeight="semibold"
-                          textAlign="right"
-                          variant="flushed"
-                          border="none"
-                          px="0"
-                          _focus={{ border: "none" }}
-                      />
-                      {toAmount && calculateUSDValue(toAmount, toAsset) && (
-                          <Text fontSize="sm" color="fg.muted" textAlign="right" mt="1">
-                            ≈ ${calculateUSDValue(toAmount, toAsset)} USD
-                          </Text>
-                      )}
-                    </Box>
-                  </VStack>
-                </Box>
-
-                {/* Minimum Output & Price Impact */}
-                {fromAmount && routeResult && (
-                    <Box px="6" pt="2">
-                      <Card.Root
-                        variant="subtle"
-                        p="4"
-                        borderRadius="lg"
-                        bgGradient="to-br"
-                        gradientFrom="green.500/8"
-                        gradientTo="blue.500/8"
-                        borderWidth="1px"
-                        borderColor="green.500/20"
-                      >
-                        <VStack gap="3" align="stretch">
-                          <HStack justify="space-between" align="flex-start">
-                            <VStack gap="0" align="flex-start">
-                              <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                                Minimum Output
-                              </Text>
-                              <Text fontSize="xs" color="fg.subtle">
-                                {slippage}% max slippage ·{' '}
-                                <Button
-                                    variant="plain"
-                                    size="xs"
-                                    h="auto"
-                                    minW="0"
-                                    p="0"
-                                    fontSize="xs"
-                                    fontWeight="normal"
-                                    colorPalette="blue"
-                                    color="colorPalette.fg"
-                                    aria-expanded={showSlippageEditor}
-                                    onClick={() => setShowSlippageEditor(!showSlippageEditor)}
-                                >
-                                  {showSlippageEditor ? 'Close' : 'Change'}
-                                </Button>
-                              </Text>
-                            </VStack>
-                            <Text fontSize="sm" fontWeight="semibold">
-                              {prettyAmount(uAmountToBigNumberAmount(
-                                routeResult.expectedOutput.multipliedBy(
-                                  toBigNumber(1).minus(toBigNumber(slippage).dividedBy(100))
-                                ),
-                                toAsset?.decimals ?? 6
-                              ).toFixed(toAsset?.decimals ?? 6))} {toAsset?.ticker || ''}
-                            </Text>
-                          </HStack>
-                          {showSlippageEditor && (
-                            <Box
-                              role="group"
-                              aria-label="Max slippage"
-                              p="3"
-                              borderRadius="md"
-                              borderWidth="1px"
-                              borderColor="blue.500/25"
-                              bg="bg.panel/60"
-                            >
-                              <VStack gap="2.5" align="stretch">
-                                <HStack justify="space-between">
-                                  <Text fontSize="xs" fontWeight="semibold" color="fg.muted">
-                                    Max slippage
-                                  </Text>
-                                  <Button
-                                      variant="plain"
-                                      size="xs"
-                                      h="auto"
-                                      minW="0"
-                                      p="0"
-                                      fontSize="xs"
-                                      fontWeight="normal"
-                                      colorPalette="gray"
-                                      onClick={() => setShowSlippageEditor(false)}
-                                  >
-                                    Done
-                                  </Button>
-                                </HStack>
-                                <HStack gap="2">
-                                  {SLIPPAGE_PRESETS.map((preset) => (
-                                      <Button
-                                          key={preset}
-                                          size="xs"
-                                          flex="1"
-                                          variant={slippage === preset && !customSlippage ? "solid" : "outline"}
-                                          onClick={() => handleSlippagePreset(preset)}
-                                          colorPalette={slippage === preset && !customSlippage ? "blue" : "gray"}
-                                          aria-pressed={slippage === preset && !customSlippage}
-                                      >
-                                        {preset}%
-                                      </Button>
-                                  ))}
-                                  <Input
-                                      placeholder="Custom %"
-                                      aria-label="Custom slippage percent"
-                                      value={customSlippage}
-                                      onChange={(e) => handleCustomSlippage(sanitizeNumberInput(e.target.value))}
-                                      size="xs"
-                                      type="text"
-                                      inputMode="decimal"
-                                      flex="1.4"
-                                      minW="0"
-                                  />
-                                </HStack>
-                              </VStack>
-                            </Box>
-                          )}
-                          <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                              Price Impact
-                            </Text>
-                            <Badge
-                              colorPalette={routeResult.priceImpact.gt(1) ? 'red' : routeResult.priceImpact.gt(0.5) ? 'yellow' : 'green'}
-                              variant="subtle"
-                            >
-                              {routeResult.priceImpact.toFixed(2)}%
-                            </Badge>
-                          </HStack>
-                          <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                              Swap Fee
-                            </Text>
-                            <Text fontSize="sm" fontWeight="medium">
-                              {routeResult.feesPerHop.length > 0 && uAmountToAmount(routeResult.feesPerHop[0], fromAsset?.decimals ?? 6)} {fromAsset?.ticker || ''}
-                            </Text>
-                          </HStack>
-                          <FeeEstimateRow
-                            size="sm"
-                            label="Taker Fee"
-                            fee={tradingFees.takerFee}
-                            isLoading={tradingFeesLoading}
-                            description="Fee paid to the network for executing the swap."
-                            txKind={swapSpec}
-                          />
-                          <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                              Rate
-                            </Text>
-                            <Text fontSize="sm" fontWeight="medium">
-                              1 {fromAsset?.ticker || ''} ≈ {
-                                uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6)
-                                  .dividedBy(toBigNumber(fromAmount))
-                                  .toFixed(toAsset?.decimals ?? 6)
-                              } {toAsset?.ticker || ''}
-                            </Text>
-                          </HStack>
-                        </VStack>
-                      </Card.Root>
-                    </Box>
-                )}
-                {hasAmount && !routeResult && (
-                    <Box px="6" pt="2">
-                      <Alert.Root status="warning">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                          <Alert.Title>No Route Found</Alert.Title>
-                        </Alert.Content>
-                      </Alert.Root>
-                    </Box>
-                )}
-
-                {/* Routes Section */}
-                {fromAmount && routeResult && (
-                    <Box px="6">
-                      <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowRoutes(!showRoutes)}
-                          w="full"
-                          justifyContent="space-between"
-                          colorPalette="gray"
-                      >
-                        <Text fontSize="sm" fontWeight="medium">Trade Route ({routeResult.pools.length} hop{routeResult.pools.length > 1 ? 's' : ''})</Text>
-                        {showRoutes ? <LuChevronUp size={18} /> : <LuChevronDown size={18} />}
-                      </Button>
-
-                      <Collapsible.Root open={showRoutes}>
-                        <Collapsible.Content>
-                          <Box mt="3">
-                            <Card.Root
-                              variant="subtle"
-                              p="3"
-                              bgGradient="to-br"
-                              gradientFrom="blue.500/8"
-                              gradientTo="blue.600/8"
-                              borderWidth="1px"
-                              borderColor="blue.500/20"
-                            >
-                              {/* Route Path */}
-                              <Flex wrap="wrap" gap="2" align="center" justify="center">
-                                {routeResult.path.map((denom, index) => {
-                                  const asset = getAsset(denom);
-                                  const isLast = index === routeResult.path.length - 1;
-                                  const pool = !isLast ? routeResult.pools[index] : null;
-
-                                  return (
-                                    <Flex key={index} align="center" gap="2">
-                                      {/* Asset */}
-                                      <Tooltip
-                                        content={`${asset?.name || denomTicker(denom)}${pool ? ` → Pool ${denomTicker(pool.base)}/${denomTicker(pool.quote)}` : ''}`}
-                                        showArrow
-                                      >
-                                        <HStack
-                                          gap="1.5"
-                                          px="2"
-                                          py="1.5"
-                                          borderRadius="md"
-                                          borderWidth="1px"
-                                          bg="bg.panel"
-                                          _hover={{ bg: "bg.muted" }}
-                                          transition="background 0.2s"
-                                        >
-                                          <TokenLogo
-                                            src={asset?.logo || ''}
-                                            symbol={denomTicker(denom)}
-                                            size="6"
-                                            circular={true}
-                                          />
-                                          <Text fontSize="sm" fontWeight="medium">
-                                            {denomTicker(denom)}
-                                          </Text>
-                                        </HStack>
-                                      </Tooltip>
-
-                                      {/* Arrow with pool info */}
-                                      {!isLast && pool && (
-                                        <VStack gap="0" align="center">
-                                          <Box color="fg.muted">
-                                            <LuArrowRight size={16} />
-                                          </Box>
-                                          <Text fontSize="xs" color="fg.muted" fontWeight="medium">
-                                            {toBigNumber(pool.fee).multipliedBy(100).toFixed(2)}%
-                                          </Text>
-                                        </VStack>
-                                      )}
-                                    </Flex>
-                                  );
-                                })}
-                              </Flex>
-                            </Card.Root>
-                          </Box>
-                        </Collapsible.Content>
-                      </Collapsible.Root>
-                    </Box>
-                )}
-
-                {/* Insufficient Balance Warning */}
-                {hasInsufficientBalance && (
-                    <Box px="6" pt="2">
-                      <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                          <Alert.Title>Insufficient Balance</Alert.Title>
-                          <Alert.Description>
-                            You have {fromAsset?.balanceFormatted || '0'} {fromAsset?.ticker || ''}
-                          </Alert.Description>
-                        </Alert.Content>
-                      </Alert.Root>
-                    </Box>
-                )}
-
-                {/* Balance covers the amount but not the fees on top of it */}
-                {hasFeeShortfall && (
-                    <Box px="6" pt="2">
-                      <Alert.Root status="error">
-                        <Alert.Indicator />
-                        <Alert.Content>
-                          <Alert.Title>Not enough left for fees</Alert.Title>
-                          <Alert.Description>
-                            {affordability.message || 'Your balance does not cover the swap plus its fees.'}
-                          </Alert.Description>
-                        </Alert.Content>
-                      </Alert.Root>
-                    </Box>
-                )}
-
-                {/* Swap Button */}
-                <Box px="6" pt="4" pb="6">
-                  <Button
-                      size="xl"
-                      w="full"
-                      disabled={!canSubmit}
-                      loading={isSubmitting}
-                      loadingText={progressTrack || 'Submitting...'}
-                      onClick={handleSwapSubmit}
-                      colorPalette="blue"
-                      fontSize="lg"
-                      fontWeight="bold"
-                      h="14"
-                      borderRadius="xl"
-                  >
-                    {!hasAmount
-                      ? 'Enter Amount'
-                      : !routeResult
-                        ? 'No Route Available'
-                        : 'Swap'}
-                  </Button>
-                </Box>
-              </VStack>
-            </Card.Root>
-
-            {/* Swap History */}
-            {address && (
-              <Card.Root
-                maxW="480px"
-                mx="auto"
-                w="full"
-                borderWidth="1px"
-                shadow="lg"
-                bgGradient="to-br"
-                gradientFrom="purple.500/5"
-                gradientTo="purple.600/5"
-                borderColor="purple.500/20"
-              >
-                <Box px="6" pt="6" pb="4">
-                  <Text fontSize="lg" fontWeight="semibold">
-                    Your Recent Swaps
-                  </Text>
-                </Box>
-
-                <Box px="6" pb="6">
-                  {swapHistory.length === 0 ? (
-                    isLoadingHistory ? (
-                      <VStack gap="3" py="4">
-                        <Text fontSize="sm" color="fg.muted">Loading swap history...</Text>
-                      </VStack>
+              {/* Swap History */}
+              {address && (
+                <GridItem area="history">
+                  <HgCard as="section" aria-label="Your Recent Swaps" p="20px" display="flex" flexDirection="column" gap="12px">
+                    <Flex justify="space-between" align="baseline" gap="12px">
+                      <chakra.h2 m="0" fontSize="17px" fontWeight="700">Your Recent Swaps</chakra.h2>
+                      <chakra.span fontSize="12px" color="hg.text.faint">this wallet · newest first</chakra.span>
+                    </Flex>
+                    {swapHistory.length === 0 ? (
+                      isLoadingHistory ? (
+                        <chakra.span fontSize="14px" color="hg.text.muted">Loading swap history...</chakra.span>
+                      ) : (
+                        <Flex direction="column" align="center" gap="4px" textAlign="center" bg="hg.inset" borderRadius="12px" p="22px">
+                          <chakra.span fontSize="14px" fontWeight="600">No swap history yet</chakra.span>
+                          <chakra.span fontSize="12px" color="hg.text.faint">Your swaps will appear here</chakra.span>
+                        </Flex>
+                      )
                     ) : (
-                      <VStack gap="3" py="8">
-                        <Text fontSize="sm" color="fg.muted" textAlign="center">
-                          No swap history yet
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted" textAlign="center">
-                          Your swaps will appear here
-                        </Text>
-                      </VStack>
-                    )
-                  ) : (
-                    <Box maxH="400px" overflowY="auto" css={{
-                      '&::-webkit-scrollbar': { width: '8px' },
-                      '&::-webkit-scrollbar-track': { background: 'transparent' },
-                      '&::-webkit-scrollbar-thumb': {
-                        background: 'rgba(155, 155, 155, 0.3)',
-                        borderRadius: '4px',
-                      },
-                      '&::-webkit-scrollbar-thumb:hover': {
-                        background: 'rgba(155, 155, 155, 0.5)',
-                      },
-                    }}>
-                      <VStack gap="3" align="stretch">
+                      <Flex direction="column" gap="8px" maxH="400px" overflowY="auto">
                         {groupedSwapHistory.map(([timestamp, swaps], groupIdx) => {
                           const date = new Date(parseInt(timestamp));
                           const dateKey = date.toLocaleDateString('en-US', {
@@ -1126,88 +802,529 @@ export default function SwapPage() {
                           const showDateHeader = prevDate !== dateKey;
 
                           return (
-                            <Box key={timestamp}>
+                            <Flex key={timestamp} direction="column" gap="8px">
                               {showDateHeader && (
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" mb="2" px="2">
+                                <chakra.span fontSize="12px" fontWeight="600" color="hg.text.faint">
                                   {dateKey}
-                                </Text>
+                                </chakra.span>
                               )}
-                              <Box
-                                p="3"
-                                bgGradient="to-br"
-                                gradientFrom="blue.500/8"
-                                gradientTo="purple.500/8"
-                                borderRadius="md"
-                                borderWidth="1px"
-                                borderColor="blue.500/20"
-                                _hover={{
-                                  gradientFrom: "blue.500/12",
-                                  gradientTo: "purple.500/12",
-                                }}
-                                transition="all 0.2s"
-                              >
-                                <VStack gap="2" align="stretch">
-                                  <Text fontSize="xs" color="fg.muted" fontWeight="medium">
-                                    {time}
-                                  </Text>
-                                  {swaps.map((swap, idx) => {
-                                    const baseAsset = getAsset(swap.base);
-                                    const quoteAsset = getAsset(swap.quote);
-                                    const isSell = swap.order_type === 'sell';
-                                    const fromAssetData = isSell ? baseAsset : quoteAsset;
-                                    const toAssetData = isSell ? quoteAsset : baseAsset;
-                                    const fromTicker = denomTicker(isSell ? swap.base : swap.quote);
-                                    const toTicker = denomTicker(isSell ? swap.quote : swap.base);
-                                    const fromAmount = isSell ? swap.base_volume : swap.quote_volume;
-                                    const toAmount = isSell ? swap.quote_volume : swap.base_volume;
+                              <Flex direction="column" gap="8px" bg="hg.inset" borderRadius="12px" px="14px" py="12px">
+                                <chakra.span fontFamily="mono" fontSize="11px" color="hg.text.faint">
+                                  {time}
+                                </chakra.span>
+                                {swaps.map((swap, idx) => {
+                                  const baseAsset = getAsset(swap.base);
+                                  const quoteAsset = getAsset(swap.quote);
+                                  const isSell = swap.order_type === 'sell';
+                                  const fromAssetData = isSell ? baseAsset : quoteAsset;
+                                  const toAssetData = isSell ? quoteAsset : baseAsset;
+                                  const fromTicker = denomTicker(isSell ? swap.base : swap.quote);
+                                  const toTicker = denomTicker(isSell ? swap.quote : swap.base);
+                                  const fromAmount = isSell ? swap.base_volume : swap.quote_volume;
+                                  const toAmount = isSell ? swap.quote_volume : swap.base_volume;
 
-                                    return (
-                                      <HStack key={`${swap.order_id}-${idx}`} justify="space-between" gap="3">
-                                        <HStack gap="2">
-                                          <TokenLogo
-                                            src={fromAssetData?.logo}
-                                            symbol={fromTicker}
-                                            size="7"
-                                            circular={true}
-                                          />
-                                          <Text fontSize="sm" fontWeight="semibold">
-                                            {prettyAmount(fromAmount.toString())}
-                                          </Text>
-                                          <Text fontSize="sm" fontWeight="medium">
-                                            {fromTicker}
-                                          </Text>
-                                        </HStack>
-                                        <Text fontSize="xs" color="fg.muted">→</Text>
-                                        <HStack gap="2">
-                                          <Text fontSize="sm" fontWeight="semibold" color="purple.500">
-                                            {prettyAmount(toAmount.toString())}
-                                          </Text>
-                                          <Text fontSize="sm" fontWeight="medium" color="purple.500">
-                                            {toTicker}
-                                          </Text>
-                                          <TokenLogo
-                                            src={toAssetData?.logo}
-                                            symbol={toTicker}
-                                            size="7"
-                                            circular={true}
-                                          />
-                                        </HStack>
-                                      </HStack>
-                                    );
-                                  })}
-                                </VStack>
-                              </Box>
-                            </Box>
+                                  return (
+                                    <Flex key={`${swap.order_id}-${idx}`} align="center" gap="10px" wrap="wrap" fontSize="14px">
+                                      <TokenLogo
+                                        src={fromAssetData?.logo}
+                                        symbol={fromTicker}
+                                        size="6"
+                                        circular={true}
+                                      />
+                                      <chakra.strong>{prettyAmount(fromAmount.toString())}</chakra.strong>
+                                      <chakra.span color="hg.text.muted">{fromTicker}</chakra.span>
+                                      <Box as="span" color="hg.text.faint"><LuArrowRight size={14} aria-hidden="true" /></Box>
+                                      <chakra.strong color="hg.link">
+                                        {prettyAmount(toAmount.toString())} {toTicker}
+                                      </chakra.strong>
+                                      <TokenLogo
+                                        src={toAssetData?.logo}
+                                        symbol={toTicker}
+                                        size="6"
+                                        circular={true}
+                                      />
+                                    </Flex>
+                                  );
+                                })}
+                              </Flex>
+                            </Flex>
                           );
                         })}
-                      </VStack>
+                      </Flex>
+                    )}
+                  </HgCard>
+                </GridItem>
+              )}
+
+              <GridItem area="card" display="flex" flexDirection="column" gap="16px" w="100%" maxW={{ lg: '460px' }} mx={{ base: 'auto', lg: '0' }}>
+                {/* No Liquidity Pools Message */}
+                {!isLoading && liquidAssets.length === 0 && (
+                  <Notice status="info" title="No Liquidity Pools Available">
+                    Liquidity pools will be created soon. Please check back later to start trading.
+                  </Notice>
+                )}
+
+                {/* Swap Form */}
+                <FeaturedCard p={{ base: '18px', md: '22px' }} display="flex" flexDirection="column" gap="10px">
+                  <Flex justify="space-between" align="center" mb="4px">
+                    <Flex align="center" gap="8px">
+                      <chakra.strong fontSize="17px" fontWeight="700">Swap</chakra.strong>
+                      <VenueTag venue="amm" />
+                    </Flex>
+                    <chakra.span fontFamily="mono" fontSize="12px" color="hg.text.faint">Slippage {slippage}%</chakra.span>
+                  </Flex>
+
+                  {/* From Asset */}
+                  <SwapSide
+                    label="From"
+                    balance={<HighlightText color="hg.text.faint">Balance: {fromAsset?.balanceFormatted ?? '0'}</HighlightText>}
+                    selector={
+                      <AssetSelector
+                        asset={fromAsset}
+                        onSelect={(asset) => setFromDenom(asset.denom)}
+                        assetsWithBalanceInfo={assetsWithBalanceInfo}
+                        isLoading={isLoading && assetsWithBalanceInfo.length === 0}
+                      />
+                    }
+                    input={(id) => (
+                      <AmountInput
+                        id={id}
+                        value={fromAmount}
+                        onChange={(e) => handleFromAmountChange(sanitizeNumberInput(e.target.value))}
+                      />
+                    )}
+                  >
+                    <Flex gap="6px">
+                      {[25, 50, 75].map((percentage) => (
+                        <Button
+                          key={percentage}
+                          size="xs"
+                          h="30px"
+                          flex="1"
+                          variant="outline"
+                          borderColor="hg.hairline"
+                          color="hg.text.muted"
+                          fontWeight="500"
+                          borderRadius="8px"
+                          onClick={() => {
+                            if (fromAsset) {
+                              // Percentages of the spendable balance, so they match Max.
+                              const amount = maxSpendable.displayAmount.multipliedBy(percentage).dividedBy(100);
+                              handleFromAmountChange(amount.toFixed());
+                            }
+                          }}
+                          disabled={!fromAsset || fromAsset.balance.lte(0)}
+                        >
+                          {percentage}%
+                        </Button>
+                      ))}
+                      <Button
+                        size="xs"
+                        h="30px"
+                        flex="1"
+                        variant="outline"
+                        borderColor="hg.hairline"
+                        color="hg.text.muted"
+                        fontWeight="500"
+                        borderRadius="8px"
+                        onClick={() => handleFromAmountChange(maxSpendable.inputValue)}
+                        disabled={!fromAsset || fromAsset.balance.lte(0)}
+                      >
+                        Max
+                      </Button>
+                    </Flex>
+                    {usdLine(fromAmount, fromAsset)}
+                  </SwapSide>
+
+                  {/* Swap Button */}
+                  <Flex justify="center" position="relative" my="-18px" zIndex="1">
+                    <chakra.button
+                      type="button"
+                      onClick={handleSwapAssets}
+                      aria-label="Switch assets"
+                      display="inline-flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      boxSize="40px"
+                      borderRadius="12px"
+                      borderWidth="4px"
+                      borderColor="hg.card"
+                      bgImage="app"
+                      color="hg.buttonText"
+                      cursor="pointer"
+                      transition="transform 0.3s ease"
+                      _hover={{ transform: "rotate(180deg)" }}
+                      focusVisibleRing="outside"
+                    >
+                      <LuArrowUpDown size={16} />
+                    </chakra.button>
+                  </Flex>
+
+                  {/* To Asset */}
+                  <SwapSide
+                    label="To"
+                    balance={<HighlightText color="hg.text.faint">Balance: {toAsset?.balanceFormatted ?? '0'}</HighlightText>}
+                    selector={
+                      <AssetSelector
+                        asset={toAsset}
+                        onSelect={(asset) => setToDenom(asset.denom)}
+                        assetsWithBalanceInfo={assetsWithBalanceInfo}
+                        isLoading={isLoading && assetsWithBalanceInfo.length === 0}
+                      />
+                    }
+                    input={(id) => (
+                      <AmountInput
+                        id={id}
+                        value={toAmount}
+                        onChange={(e) => handleToAmountChange(sanitizeNumberInput(e.target.value))}
+                      />
+                    )}
+                  >
+                    {usdLine(toAmount, toAsset)}
+                  </SwapSide>
+
+                  {/* Minimum Output & Price Impact */}
+                  {fromAmount && routeResult && (
+                    <Flex direction="column" gap="11px" mt="6px" px="16px" py="14px" borderRadius="14px" borderWidth="1px" borderColor="hg.hairline">
+                      <Flex justify="space-between" align="flex-start" gap="12px" fontSize="14px">
+                        <Flex direction="column" gap="2px">
+                          <chakra.span color="hg.text.muted">Minimum Output</chakra.span>
+                          <chakra.span fontSize="12px" color="hg.text.faint">
+                            {slippage}% max slippage ·{' '}
+                            <TextButton
+                              color="hg.link"
+                              aria-expanded={showSlippageEditor}
+                              onClick={() => setShowSlippageEditor(!showSlippageEditor)}
+                            >
+                              {showSlippageEditor ? 'Close' : 'Change'}
+                            </TextButton>
+                          </chakra.span>
+                        </Flex>
+                        <chakra.strong textAlign="right">
+                          {prettyAmount(uAmountToBigNumberAmount(
+                            routeResult.expectedOutput.multipliedBy(
+                              toBigNumber(1).minus(toBigNumber(slippage).dividedBy(100))
+                            ),
+                            toAsset?.decimals ?? 6
+                          ).toFixed(toAsset?.decimals ?? 6))} {toAsset?.ticker || ''}
+                        </chakra.strong>
+                      </Flex>
+                      {showSlippageEditor && (
+                        <Flex
+                          role="group"
+                          aria-label="Max slippage"
+                          direction="column"
+                          gap="8px"
+                          bg="hg.inset"
+                          borderRadius="12px"
+                          px="12px"
+                          py="10px"
+                        >
+                          <Flex justify="space-between" fontSize="12px">
+                            <chakra.span fontWeight="600" color="hg.text.faint">Max slippage</chakra.span>
+                            <TextButton color="hg.text.muted" onClick={() => setShowSlippageEditor(false)}>
+                              Done
+                            </TextButton>
+                          </Flex>
+                          <Flex gap="6px" wrap="wrap">
+                            {SLIPPAGE_PRESETS.map((preset) => {
+                              const active = slippage === preset && !customSlippage;
+                              return (
+                                <Button
+                                  key={preset}
+                                  size="xs"
+                                  h="30px"
+                                  px="10px"
+                                  borderRadius="8px"
+                                  fontSize="12px"
+                                  {...(active
+                                    ? { variant: hgVariant('primary'), boxShadow: 'none' }
+                                    : { variant: 'outline' as const, borderColor: 'hg.lineStrong', color: 'hg.text.secondary' })}
+                                  onClick={() => handleSlippagePreset(preset)}
+                                  aria-pressed={active}
+                                >
+                                  {preset}%
+                                </Button>
+                              );
+                            })}
+                            <Input
+                              placeholder="Custom %"
+                              aria-label="Custom slippage percent"
+                              value={customSlippage}
+                              onChange={(e) => handleCustomSlippage(sanitizeNumberInput(e.target.value))}
+                              size="xs"
+                              h="30px"
+                              w="90px"
+                              borderRadius="8px"
+                              bg="hg.card"
+                              type="text"
+                              inputMode="decimal"
+                            />
+                          </Flex>
+                        </Flex>
+                      )}
+                      <SummaryRow label="Price Impact">
+                        <PriceImpactBadge percent={routeResult.priceImpact} />
+                      </SummaryRow>
+                      <SummaryRow label="Swap Fee">
+                        {routeResult.feesPerHop.length > 0 && uAmountToAmount(routeResult.feesPerHop[0], fromAsset?.decimals ?? 6)} {fromAsset?.ticker || ''}
+                      </SummaryRow>
+                      <FeeEstimateRow
+                        size="sm"
+                        label="Taker Fee"
+                        fee={tradingFees.takerFee}
+                        isLoading={tradingFeesLoading}
+                        description="Fee paid to the network for executing the swap."
+                        txKind={swapSpec}
+                      />
+                      <SummaryRow label="Rate">
+                        1 {fromAsset?.ticker || ''} ≈ {
+                          uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6)
+                            .dividedBy(toBigNumber(fromAmount))
+                            .toFixed(toAsset?.decimals ?? 6)
+                        } {toAsset?.ticker || ''}
+                      </SummaryRow>
+                    </Flex>
+                  )}
+                  {hasAmount && !routeResult && (
+                    <Notice status="warning" title="No Route Found" />
+                  )}
+
+                  {/* Routes Section */}
+                  {fromAmount && routeResult && (
+                    <Box>
+                      <chakra.button
+                        type="button"
+                        onClick={() => setShowRoutes(!showRoutes)}
+                        aria-expanded={showRoutes}
+                        display="flex"
+                        w="full"
+                        h="40px"
+                        px="12px"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        border="0"
+                        borderRadius="10px"
+                        bg="transparent"
+                        color="hg.text.secondary"
+                        fontSize="13px"
+                        fontWeight="600"
+                        cursor="pointer"
+                        _hover={{ bg: 'hg.hoverFill' }}
+                        focusVisibleRing="inside"
+                      >
+                        Trade Route ({routeResult.pools.length} hop{routeResult.pools.length > 1 ? 's' : ''})
+                        {showRoutes ? <LuChevronUp size={16} /> : <LuChevronDown size={16} />}
+                      </chakra.button>
+
+                      <Collapsible.Root open={showRoutes}>
+                        <Collapsible.Content>
+                          {/* Route Path */}
+                          <Flex mt="6px" wrap="wrap" gap="8px" align="center" justify="center" bg="hg.inset" borderRadius="12px" p="14px">
+                            {routeResult.path.map((denom, index) => {
+                              const asset = getAsset(denom);
+                              const isLast = index === routeResult.path.length - 1;
+                              const pool = !isLast ? routeResult.pools[index] : null;
+
+                              return (
+                                <Flex key={index} align="center" gap="8px">
+                                  {/* Asset */}
+                                  <Tooltip
+                                    content={`${asset?.name || denomTicker(denom)}${pool ? ` → Pool ${denomTicker(pool.base)}/${denomTicker(pool.quote)}` : ''}`}
+                                    showArrow
+                                  >
+                                    <Flex
+                                      align="center"
+                                      gap="6px"
+                                      h="30px"
+                                      pl="4px"
+                                      pr="10px"
+                                      borderRadius="full"
+                                      borderWidth="1px"
+                                      borderColor="hg.lineStrong"
+                                      bg="hg.card"
+                                      fontSize="13px"
+                                      fontWeight="600"
+                                    >
+                                      <TokenLogo
+                                        src={asset?.logo || ''}
+                                        symbol={denomTicker(denom)}
+                                        size="5"
+                                        circular={true}
+                                      />
+                                      {denomTicker(denom)}
+                                    </Flex>
+                                  </Tooltip>
+
+                                  {/* Arrow with pool info */}
+                                  {!isLast && pool && (
+                                    <Flex direction="column" align="center" gap="1px" color="hg.text.faint">
+                                      <LuArrowRight size={14} aria-hidden="true" />
+                                      <chakra.span fontSize="11px">
+                                        {toBigNumber(pool.fee).multipliedBy(100).toFixed(2)}%
+                                      </chakra.span>
+                                    </Flex>
+                                  )}
+                                </Flex>
+                              );
+                            })}
+                          </Flex>
+                        </Collapsible.Content>
+                      </Collapsible.Root>
                     </Box>
                   )}
+
+                  {/* Insufficient Balance Warning */}
+                  {hasInsufficientBalance && (
+                    <Notice status="danger" title="Insufficient Balance">
+                      You have {fromAsset?.balanceFormatted || '0'} {fromAsset?.ticker || ''}
+                    </Notice>
+                  )}
+
+                  {/* Balance covers the amount but not the fees on top of it */}
+                  {hasFeeShortfall && (
+                    <Notice status="danger" title="Not enough left for fees">
+                      {affordability.message || 'Your balance does not cover the swap plus its fees.'}
+                    </Notice>
+                  )}
+
+                  {/* Swap Button */}
+                  <Button
+                    variant={hgVariant('primary')}
+                    size="xl"
+                    w="full"
+                    h="52px"
+                    mt="6px"
+                    borderRadius="14px"
+                    fontSize="16px"
+                    fontWeight="700"
+                    disabled={!canSubmit}
+                    loading={isSubmitting}
+                    loadingText={progressTrack || 'Submitting...'}
+                    onClick={handleSwapSubmit}
+                  >
+                    {!hasAmount
+                      ? 'Enter Amount'
+                      : !routeResult
+                        ? 'No Route Available'
+                        : 'Swap'}
+                  </Button>
+                </FeaturedCard>
+              </GridItem>
+            </Grid>
+
+            {/* The two ways to trade on the DEX */}
+            <Flex as="section" direction="column" gap="16px" aria-labelledby="two-ways">
+              <chakra.h2 id="two-ways" m="0" fontSize="22px" fontWeight="700">Two ways to trade</chakra.h2>
+              <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
+                <Box p="1px" borderRadius="hg.lg" bgImage="featuredEdge">
+                  <Flex direction="column" gap="16px" h="100%" bg="hg.card" borderRadius="hg.lg" p={{ base: '20px', md: '24px' }}>
+                    <Flex align="center" justify="space-between" gap="12px">
+                      <VenueTitle venue="amm" title="Swap" />
+                      <chakra.span flex="none" fontSize="12px" fontWeight="600" px="10px" py="4px" borderRadius="full" bgImage="app" color="hg.buttonText">
+                        You&apos;re here
+                      </chakra.span>
+                    </Flex>
+                    <chakra.p m="0" fontSize="15px" lineHeight="1.55" color="hg.text.secondary">
+                      Trade against a liquidity pool. Pick two tokens, the pool sets the price and the swap fills at once.
+                    </chakra.p>
+                    <Flex as="ul" direction="column" gap="8px" m="0" p="0" listStyleType="none" fontSize="14px" color="hg.text.muted">
+                      <WayBullet>Fills instantly, no waiting for a match</WayBullet>
+                      <WayBullet>Price set by the pool, slippage shown upfront</WayBullet>
+                      <WayBullet>Best for quick, everyday trades</WayBullet>
+                    </Flex>
+                  </Flex>
                 </Box>
-              </Card.Root>
-            )}
-          </VStack>
-        </Container>
+                <HgCard display="flex" flexDirection="column" gap="16px">
+                  <VenueTitle venue="orderbook" title="Exchange" />
+                  <chakra.p m="0" fontSize="15px" lineHeight="1.55" color="hg.text.secondary">
+                    Trade on a market&apos;s order book. Place a limit order at your own price, or fill orders already on the book.
+                  </chakra.p>
+                  <Flex as="ul" direction="column" gap="8px" m="0" p="0" listStyleType="none" fontSize="14px" color="hg.text.muted">
+                    <WayBullet square>Name your price, wait for a match</WayBullet>
+                    <WayBullet square>See buy and sell depth before you trade</WayBullet>
+                    <WayBullet square>Best for larger or patient trades</WayBullet>
+                  </Flex>
+                  <Button asChild variant={hgVariant('secondary')} size="lg" alignSelf="flex-start">
+                    <NextLink href="/exchange">Open the exchange →</NextLink>
+                  </Button>
+                </HgCard>
+              </Grid>
+            </Flex>
+
+            {/* Top pools and order-book markets */}
+            <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
+              <HgCard p="20px" display="flex" flexDirection="column" gap="6px">
+                <ListHeader title="Top pools" venue="Swap" href="/pools" linkText="All pools →" />
+                {topPools.length === 0 && (
+                  <chakra.span px="4px" fontSize="14px" color="hg.text.muted">No liquidity pools yet</chakra.span>
+                )}
+                {topPools.map(pool => {
+                  const pair = `${denomTicker(pool.base)} / ${denomTicker(pool.quote)}`;
+                  const liquidity = poolsData?.get(pool.id)?.usdValue;
+                  return (
+                    <ListRow
+                      key={pool.id}
+                      lead={
+                        <LPTokenLogo
+                          baseAssetLogo={getAsset(pool.base)?.logo || ''}
+                          quoteAssetLogo={getAsset(pool.quote)?.logo || ''}
+                          baseAssetSymbol={denomTicker(pool.base)}
+                          quoteAssetSymbol={denomTicker(pool.quote)}
+                          size="6"
+                        />
+                      }
+                      title={pair}
+                      meta={liquidity ? `Liquidity $${shortNumberFormat(liquidity)}` : null}
+                      action={
+                        <Button
+                          size="sm"
+                          h="32px"
+                          px="12px"
+                          borderRadius="8px"
+                          bg="app.subtle"
+                          color="hg.link"
+                          _hover={{ bg: 'app.muted' }}
+                          aria-label={`Swap ${pair}`}
+                          onClick={() => handlePickPool(pool.base, pool.quote)}
+                        >
+                          Swap
+                        </Button>
+                      }
+                    />
+                  );
+                })}
+              </HgCard>
+              <HgCard p="20px" display="flex" flexDirection="column" gap="6px">
+                <ListHeader title="Order-book markets" venue="Exchange" href="/exchange" linkText="All markets →" />
+                {topMarkets.length === 0 && (
+                  <chakra.span px="4px" fontSize="14px" color="hg.text.muted">No markets yet</chakra.span>
+                )}
+                {topMarkets.map(market => {
+                  const pair = `${denomTicker(market.base)} / ${denomTicker(market.quote)}`;
+                  const lastPrice = getMarketData(createMarketId(market.base, market.quote))?.last_price;
+                  return (
+                    <ListRow
+                      key={market.base + market.quote}
+                      lead={
+                        <Flex boxSize="26px" flex="none" align="center" justify="center" borderRadius="8px" bg="hg.inset" borderWidth="1px" borderColor="app.border">
+                          <TokenLogo src={getAsset(market.base)?.logo || ''} symbol={denomTicker(market.base)} size="4" circular={true} />
+                        </Flex>
+                      }
+                      title={pair}
+                      meta={lastPrice ? `Last ${lastPrice} ${denomTicker(market.quote)}` : null}
+                      action={
+                        <Button asChild variant={hgVariant('secondary')} size="sm" h="32px" px="12px" borderRadius="8px">
+                          <NextLink href={marketPagePath(market.base, market.quote)} aria-label={`Trade ${pair}`}>Trade</NextLink>
+                        </Button>
+                      }
+                    />
+                  );
+                })}
+              </HgCard>
+            </Grid>
+          </Flex>
+        </PageContainer>
       </Box>
   );
 }

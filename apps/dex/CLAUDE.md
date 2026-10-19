@@ -24,6 +24,13 @@ src/
     useRewardsStakingData.tsx  # Rewards staking program data
 ```
 
+### Look (Hive Glow)
+
+- **Swap is the AMM, Exchange is the order book**, and every surface says which: `components/ui/trading/venue.tsx` has the AMM / ORDER BOOK tags, the filled (Swap) and outlined (Exchange) tiles and the "Liquidity pools · AMM" / "Order book · limit orders" lines.
+- Trade sides and price moves use the data colours `hg.up` / `hg.down` (`trading/badges.tsx`: `ChangePill`, `SideBadge`, `PriceImpactBadge` green ≤ 0.5 %, amber > 0.5 %, red > 1 %), never the app colour. Market History keeps its old colouring (buy trades red, sell trades green).
+- The chart canvas cannot read CSS tokens, so `trading/chart.tsx` takes its colours from ui-kit's exported token values (`HIVE_GLOW_DARK` / `HIVE_GLOW_LIGHT`, `HIVE_GLOW_APPS.dex`).
+- The market page's cards, book rows, order forms and small tables are in `trading/market-parts.tsx`.
+
 ### What comes from @bze/bze-ui-kit
 
 Everything else: `useAssets`, `useBalances`, `useMarkets`, `useLiquidityPools`, `useLiquidityPool`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useAssetPrice`, `useAssetsValue`, all utils, all types, all constants, all query clients, all services, sidebar components, toaster, HighlightText.

@@ -71,6 +71,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         }),
         useCanAffordTx: () => ({ canAfford: true, shortfalls: [], shortOnFees: false, message: "", gasFee: zeroGas, isLoading: false }),
         getAddressSwapHistory: async () => [],
+        // The home page's market list and BZE price; empty here, the swap card is under test.
+        useMarkets: () => ({ markets: [], getMarketData: () => undefined, isLoading: false }),
+        useAssetPrice: () => ({ price: new BigNumber(0), hasPrice: false, isLoading: false }),
         FeeEstimateRow: () => null,
     };
 });
@@ -164,7 +167,7 @@ beforeEach(() => {
     localStorage.clear();
 });
 
-describe("Swap page MAX button", () => {
+describe("Swap page Max button", () => {
     it("fills the spendable amount (balance minus gas) when selling the fee token", () => {
         // Both assets have a balance, so the list is alphabetical by ticker: BZE is "from".
         mocks.liquidAssets = [makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
@@ -175,7 +178,7 @@ describe("Swap page MAX button", () => {
         );
         renderSwap();
 
-        fireEvent.click(screen.getByRole("button", { name: "MAX" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
 
         expect(fromInput().value).toBe("9.9955");
         // The reserve is sized for the worst case: a 3-hop route.
@@ -192,13 +195,13 @@ describe("Swap page MAX button", () => {
         );
         renderSwap();
 
-        fireEvent.click(screen.getByRole("button", { name: "MAX" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
 
         expect(fromInput().value).toBe("10");
         expect(mocks.useMaxSpendable).toHaveBeenCalledWith("uatom", { kind: "swap", count: 3 });
     });
 
-    it("takes the percentage presets from the spendable balance, so 100 % equals MAX", () => {
+    it("takes the percentage presets from the spendable balance, the same one Max fills", () => {
         mocks.liquidAssets = [makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
         mocks.balances.set("ubze", new BigNumber(10).shiftedBy(6));
         mocks.balances.set("uusdc", new BigNumber(5).shiftedBy(6));
@@ -210,7 +213,7 @@ describe("Swap page MAX button", () => {
         fireEvent.click(screen.getByRole("button", { name: "75%" }));
         expect(fromInput().value).toBe("7.496625");
 
-        fireEvent.click(screen.getByRole("button", { name: "100%" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
         expect(fromInput().value).toBe("9.9955");
     });
 });
