@@ -1,22 +1,20 @@
 'use client';
 
 import {
-    Box,
     Button,
+    chakra,
     Field,
-    HStack,
+    Flex,
     Input,
-    Portal,
-    Text,
-    VStack,
-    Dialog,
 } from "@chakra-ui/react";
+import {LuTicket} from "react-icons/lu";
 import { useState, useMemo, useCallback } from "react";
 import { useChain } from "@interchain-kit/react";
-import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, amountToUAmount, sanitizeIntegerInput, useAsset } from "@bze/bze-ui-kit";
+import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, amountToUAmount, sanitizeIntegerInput, useAsset, FeaturedCard, Notice, hgVariant } from "@bze/bze-ui-kit";
 import { bze } from '@bze/bzejs';
 import BigNumber from "bignumber.js";
 import {useRaffleContributions} from "@/hooks/useRaffles";
+import {BurnerDialog, InsetRow} from "@/components/ui/burner/dialog";
 
 interface RaffleModalProps {
     isOpen: boolean;
@@ -131,172 +129,71 @@ export const RaffleModal = ({
 
     }, [address, numContributions, hasEnoughBalance, affordability.shortOnFees, affordability.message, totalCost, ticker, denom, tx, onClose, toast, addPendingRaffleContribution]);
 
-    const handleClose = () => {
-        if (!isSubmitting) {
-            onClose();
-        }
-    };
-
     const isFormValid = useMemo(() => {
         const tickets = toBigNumber(numContributions);
         return address && !tickets.isNaN() && tickets.gt(0) && hasEnoughBalance && !contributionsError;
     }, [address, numContributions, hasEnoughBalance, contributionsError]);
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && handleClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content
-                        maxW={{ base: "90vw", md: "500px" }}
-                        borderRadius="2xl"
+        <BurnerDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            title={raffleName}
+            footer={
+                <>
+                    <Button flex="1" variant={hgVariant('secondary')} onClick={onClose} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        flex="1"
+                        variant={hgVariant('primary')}
+                        onClick={handleJoinRaffle}
+                        disabled={!isFormValid || isSubmitting}
+                        loading={isSubmitting}
+                        loadingText="Joining..."
                     >
-                        <Dialog.Header>
-                            <Dialog.Title fontSize="xl" fontWeight="black">
-                                🔥 {raffleName}
-                            </Dialog.Title>
-                        </Dialog.Header>
+                        <LuTicket /> Join raffle
+                    </Button>
+                </>
+            }
+        >
+            <FeaturedCard textAlign="center" py="20px">
+                <Flex direction="column" align="center" gap="4px">
+                    <chakra.span textStyle="eyebrow" color="hg.eyebrow">Current prize</chakra.span>
+                    <chakra.span fontSize="28px" fontWeight="800" color="hg.link" overflowWrap="anywhere">{currentPrize} {ticker}</chakra.span>
+                    <chakra.span fontSize="13px" color="hg.text.faint">Your chance: {winChance}</chakra.span>
+                </Flex>
+            </FeaturedCard>
 
-                        <Dialog.Body>
-                            <VStack gap="5" align="stretch">
-                                {/* Prize Display */}
-                                <Box
-                                    p="5"
-                                    bgGradient="to-br"
-                                    gradientFrom="yellow.100"
-                                    gradientTo="orange.100"
-                                    _dark={{
-                                        gradientFrom: "yellow.900/30",
-                                        gradientTo: "orange.900/30",
-                                    }}
-                                    borderRadius="xl"
-                                    textAlign="center"
-                                >
-                                    <VStack gap="2">
-                                        <Text fontSize="sm" fontWeight="bold" color="orange.600" _dark={{ color: "orange.400" }}>
-                                            🏆 Current Prize
-                                        </Text>
-                                        <Text fontSize="3xl" fontWeight="black" color="orange.500">
-                                            {currentPrize} {ticker}
-                                        </Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Your chance: {winChance}
-                                        </Text>
-                                    </VStack>
-                                </Box>
+            {address && asset && (
+                <InsetRow label="Available Balance:">{userBalance.toFixed(2)} {ticker}</InsetRow>
+            )}
 
-                                {/* Available Balance */}
-                                {address && asset && (
-                                    <Box
-                                        p="3"
-                                        bg="orange.50"
-                                        _dark={{
-                                            bg: "gray.800",
-                                        }}
-                                        borderRadius="lg"
-                                    >
-                                        <HStack justify="space-between">
-                                            <Text fontSize="sm" fontWeight="medium">
-                                                Available Balance:
-                                            </Text>
-                                            <Text fontSize="sm" fontWeight="bold" color="orange.500" _dark={{ color: "orange.300" }}>
-                                                {userBalance.toFixed(2)} {ticker}
-                                            </Text>
-                                        </HStack>
-                                    </Box>
-                                )}
+            <Field.Root invalid={!!contributionsError}>
+                <Field.Label fontWeight="600">Number of Contributions</Field.Label>
+                <Input
+                    size="lg"
+                    borderRadius="hg.md"
+                    type="text"
+                    inputMode="numeric"
+                    min="1"
+                    value={numContributions}
+                    onChange={(e) => handleContributionsChange(sanitizeIntegerInput(e.target.value))}
+                    placeholder="1"
+                    disabled={isSubmitting || !address}
+                />
+                <Field.HelperText fontSize="12px" color="hg.text.faint">
+                    {contributionPrice} {ticker} per contribution
+                </Field.HelperText>
+                {contributionsError && <Field.ErrorText>{contributionsError}</Field.ErrorText>}
+            </Field.Root>
 
-                                {/* Number of Contributions */}
-                                <Box>
-                                    <Field.Root invalid={!!contributionsError}>
-                                        <Field.Label fontWeight="semibold">Number of Contributions</Field.Label>
-                                        <Input
-                                            size="lg"
-                                            type="text"
-                                            min="1"
-                                            value={numContributions}
-                                            onChange={(e) => handleContributionsChange(sanitizeIntegerInput(e.target.value))}
-                                            placeholder="1"
-                                            disabled={isSubmitting || !address}
-                                        />
-                                        <Field.HelperText fontSize="xs" color="fg.muted">
-                                            {contributionPrice} {ticker} per contribution
-                                        </Field.HelperText>
-                                        {contributionsError && <Field.ErrorText>{contributionsError}</Field.ErrorText>}
-                                    </Field.Root>
-                                </Box>
+            <InsetRow label="Total Cost:">{totalCost.toFixed(2)} {ticker}</InsetRow>
 
-                                {/* Total Cost */}
-                                <Box
-                                    p="3"
-                                    bg="orange.50"
-                                    _dark={{ bg: "gray.800" }}
-                                    borderRadius="lg"
-                                >
-                                    <HStack justify="space-between">
-                                        <Text fontSize="sm" fontWeight="medium">
-                                            Total Cost:
-                                        </Text>
-                                        <Text fontSize="lg" fontWeight="bold" color="orange.500">
-                                            {totalCost.toFixed(2)} {ticker}
-                                        </Text>
-                                    </HStack>
-                                </Box>
-
-                                {/* Warning */}
-                                <Box
-                                    p="3"
-                                    bg="yellow.50"
-                                    _dark={{ bg: "gray.800" }}
-                                    borderRadius="lg"
-                                >
-                                    <HStack gap="2">
-                                        <Text fontSize="lg">⚠️</Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Remember: More contributions increase your chances, but don&apos;t guarantee you&apos;ll win!
-                                        </Text>
-                                    </HStack>
-                                </Box>
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.Footer>
-                            <HStack gap="3" width="full">
-                                <Button
-                                    flex="1"
-                                    variant="outline"
-                                    onClick={onClose}
-                                    disabled={isSubmitting}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    flex="1"
-                                    size="lg"
-                                    colorPalette="purple"
-                                    onClick={handleJoinRaffle}
-                                    disabled={!isFormValid || isSubmitting}
-                                    loading={isSubmitting}
-                                    loadingText="Joining..."
-                                    fontWeight="black"
-                                >
-                                    🎫 Join Raffle
-                                </Button>
-                            </HStack>
-                        </Dialog.Footer>
-
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-
-                        {/* Add spinning animation */}
-                        <style jsx global>{`
-                            @keyframes spin {
-                                from { transform: rotate(0deg); }
-                                to { transform: rotate(360deg); }
-                            }
-                        `}</style>
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            <Notice status="warning">
+                {"Remember: More contributions increase your chances, but don't guarantee you'll win!"}
+            </Notice>
+        </BurnerDialog>
     );
 };

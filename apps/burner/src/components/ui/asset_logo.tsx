@@ -1,5 +1,6 @@
 import {Asset, isLpDenom, useLiquidityPools, useAsset, TokenLogo, LPTokenLogo} from "@bze/bze-ui-kit";
 import {useMemo} from "react";
+import {Box} from "@chakra-ui/react";
 
 interface AssetLogoProps {
     asset: Asset;
@@ -25,7 +26,10 @@ export const AssetLogo = ({asset, size}: AssetLogoProps) => {
                         size={size}
                     />
                 ) : (
-                    <TokenLogo src={asset.logo} symbol={asset.ticker} size={size} />
+                    // A 2 px Burner-tinted ring around the logo.
+                    <Box as="span" display="inline-flex" flex="none" borderRadius="full" borderWidth="2px" borderColor="app.border">
+                        <TokenLogo src={asset.logo} symbol={asset.ticker} size={size} />
+                    </Box>
                 )
             }
         </>

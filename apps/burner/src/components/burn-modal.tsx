@@ -1,25 +1,22 @@
 'use client';
 
 import {
-    Box,
     Button,
+    chakra,
     createListCollection,
     Field,
-    HStack,
+    Flex,
     Input,
-    Portal,
     Select,
-    Text,
-    VStack,
-    Dialog,
 } from "@chakra-ui/react";
 import {useState, useMemo, useCallback} from "react";
-import {LuWallet} from "react-icons/lu";
-import { useAsset, useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, isLpDenom, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput } from "@bze/bze-ui-kit";
+import {LuFlame, LuWallet} from "react-icons/lu";
+import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from '@bze/bzejs'
 import {AssetLogo} from "@/components/ui/asset_logo";
+import {BurnerDialog, CoinRow, InsetRow} from "@/components/ui/burner/dialog";
 
 interface BurnModalProps {
     isOpen: boolean;
@@ -27,82 +24,13 @@ interface BurnModalProps {
     preselectedCoin?: string; // denom of preselected coin
 }
 
-// Component to render select item with logo
-const SelectItemContent = ({ asset, label }: { asset: Asset; label: string }) => {
-    const isLP = useMemo(() => isLpDenom(asset.denom), [asset]);
-
-    return (
-        <HStack gap="2">
-            <Box
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                width={isLP ? "28px" : "auto"}
-            >
-                <AssetLogo asset={asset} size="28px" />
-            </Box>
-            <Text>{label}</Text>
-        </HStack>
-    );
-};
-
-// Component to display token info with LP support
-const TokenInfoBox = ({ denom, name, ticker, balance }: {
-    denom: string;
-    name: string;
-    ticker: string;
-    balance: string;
-}) => {
-    const {asset} = useAsset(denom)
-    const isLP = isLpDenom(denom);
-
-    return (
-        <VStack gap="3" align="stretch">
-            {/* Token Info */}
-            <Box
-                p="4"
-                bg="bg.muted"
-                borderRadius="lg"
-            >
-                <HStack gap="3">
-                    <Box
-                        width={isLP ? "56px" : "auto"}
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                    >
-                        {asset && <AssetLogo asset={asset} size="48px" /> }
-                    </Box>
-                    <VStack gap="0" align="start" flex="1" ml={3}>
-                        <Text fontSize="lg" fontWeight="bold">{name}</Text>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="medium">
-                            {ticker}
-                        </Text>
-                    </VStack>
-                </HStack>
-            </Box>
-
-            {/* Available Balance - same style as non-preselected */}
-            <Box
-                p="3"
-                bg="orange.50"
-                _dark={{
-                    bg: "gray.800",
-                }}
-                borderRadius="lg"
-            >
-                <HStack justify="space-between">
-                    <Text fontSize="sm" fontWeight="medium">
-                        Available Balance:
-                    </Text>
-                    <Text fontSize="sm" fontWeight="bold" color="orange.500" _dark={{ color: "orange.300" }}>
-                        {balance} {ticker}
-                    </Text>
-                </HStack>
-            </Box>
-        </VStack>
-    );
-};
+// A coin in the select list: its logo and "TICKER - balance".
+const SelectItemContent = ({ asset, label }: { asset: Asset; label: string }) => (
+    <Flex align="center" gap="10px">
+        <AssetLogo asset={asset} size="24px" />
+        <span>{label}</span>
+    </Flex>
+);
 
 export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) => {
     const [selectedCoin, setSelectedCoin] = useState<string>(preselectedCoin || "");
@@ -239,219 +167,131 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
         }, 150);
     }, [onClose]);
 
+    const footer = !isConnected ? (
+        <>
+            <Button flex="1" variant={hgVariant('secondary')} onClick={onClose}>
+                Cancel
+            </Button>
+            <Button flex="1" variant={hgVariant('primary')} onClick={handleConnectWallet}>
+                <LuWallet /> Connect Wallet
+            </Button>
+        </>
+    ) : (
+        <>
+            <Button flex="1" variant={hgVariant('secondary')} onClick={onClose} disabled={isSubmitting}>
+                Cancel
+            </Button>
+            <Button
+                flex="1"
+                variant={hgVariant('primary')}
+                onClick={handleBurn}
+                disabled={!isFormValid || isSubmitting}
+                loading={isSubmitting}
+                loadingText="Burning..."
+            >
+                <LuFlame /> Burn it!
+            </Button>
+        </>
+    );
+
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content
-                        maxW={{ base: "90vw", md: "500px" }}
-                        borderRadius="2xl"
+        <BurnerDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            title={preselectedCoin && selectedAsset ? `Burn ${selectedAsset.ticker}` : 'Burn your tokens'}
+            footer={footer}
+        >
+            <Notice status="warning" title="Warning: No Take-Backs!">
+                {"Once you burn your tokens, they're gone forever! Like throwing money into a volcano. Make sure you really want to do this!"}
+            </Notice>
+
+            {/* Coin selection when no coin is preselected */}
+            {!preselectedCoin && (
+                <Field.Root>
+                    <Field.Label fontWeight="600">Select Token to Burn</Field.Label>
+                    <Select.Root
+                        collection={tokensCollection}
+                        size="lg"
+                        value={selectedCoin ? [selectedCoin] : []}
+                        onValueChange={(details) => setSelectedCoin(details.value[0] || '')}
+                        disabled={!isConnected || tokensCollection.items.length === 0}
                     >
-                        <Dialog.Header>
-                            <Dialog.Title fontSize="xl" fontWeight="black">
-                                {preselectedCoin && selectedAsset
-                                    ? `🔥 Burn ${selectedAsset.ticker} 🔥`
-                                    : '🔥 Burn Your Tokens 🔥'
-                                }
-                            </Dialog.Title>
-                        </Dialog.Header>
+                        <Select.Control>
+                            <Select.Trigger borderRadius="hg.md">
+                                <Select.ValueText placeholder="Choose a token..." />
+                            </Select.Trigger>
+                            <Select.IndicatorGroup>
+                                <Select.Indicator />
+                            </Select.IndicatorGroup>
+                        </Select.Control>
+                        <Select.Positioner>
+                            <Select.Content>
+                                {tokensCollection.items.map((item) => (
+                                    <Select.Item key={item.value} item={item}>
+                                        <Select.ItemText>
+                                            <SelectItemContent asset={item.asset} label={item.label} />
+                                        </Select.ItemText>
+                                        <Select.ItemIndicator />
+                                    </Select.Item>
+                                ))}
+                            </Select.Content>
+                        </Select.Positioner>
+                    </Select.Root>
+                </Field.Root>
+            )}
 
-                        <Dialog.Body>
-                            <VStack gap="5" align="stretch">
-                                {/* Warning Box */}
-                                <Box
-                                    p="4"
-                                    bg="red.50"
-                                    _dark={{
-                                        bg: "gray.800",
-                                    }}
-                                    borderRadius="xl"
-                                >
-                                    <VStack gap="2" align="center">
-                                        <Text fontSize="3xl">⚠️</Text>
-                                        <Text fontSize="sm" fontWeight="bold" textAlign="center" color="red.700" _dark={{ color: "orange.300" }}>
-                                            Warning: No Take-Backs!
-                                        </Text>
-                                        <Text fontSize="xs" textAlign="center" color="red.800" _dark={{ color: "gray.200" }}>
-                                            Once you burn your tokens, they&apos;re gone forever! Like throwing money into a volcano. Make sure you really want to do this!
-                                        </Text>
-                                    </VStack>
-                                </Box>
+            {preselectedCoin && selectedAsset && (
+                <CoinRow
+                    logo={<AssetLogo asset={selectedAsset} size="40px" />}
+                    name={selectedAsset.name}
+                    ticker={selectedAsset.ticker}
+                />
+            )}
 
-                                {/* Coin Selection (if not preselected) */}
-                                {!preselectedCoin && (
-                                    <Box>
-                                        <Field.Root>
-                                            <Field.Label fontWeight="semibold">Select Token to Burn</Field.Label>
-                                            <Select.Root
-                                                collection={tokensCollection}
-                                                size="md"
-                                                value={selectedCoin ? [selectedCoin] : []}
-                                                onValueChange={(details) => setSelectedCoin(details.value[0] || '')}
-                                                disabled={!isConnected || tokensCollection.items.length === 0}
-                                            >
-                                                <Select.Control>
-                                                    <Select.Trigger>
-                                                        <Select.ValueText placeholder="Choose a token..." />
-                                                    </Select.Trigger>
-                                                </Select.Control>
-                                                <Select.Positioner>
-                                                    <Select.Content>
-                                                        {tokensCollection.items.map((item) => (
-                                                            <Select.Item key={item.value} item={item}>
-                                                                <Select.ItemText>
-                                                                    <SelectItemContent asset={item.asset} label={item.label} />
-                                                                </Select.ItemText>
-                                                                <Select.ItemIndicator />
-                                                            </Select.Item>
-                                                        ))}
-                                                    </Select.Content>
-                                                </Select.Positioner>
-                                            </Select.Root>
-                                        </Field.Root>
-                                    </Box>
-                                )}
+            {selectedAsset && (
+                <InsetRow label="Available Balance:">{prettyBalance} {selectedAsset.ticker}</InsetRow>
+            )}
 
-                                {/* Show selected token info if preselected */}
-                                {preselectedCoin && selectedAsset && (
-                                    <TokenInfoBox
-                                        denom={selectedAsset.denom}
-                                        name={selectedAsset.name}
-                                        ticker={selectedAsset.ticker}
-                                        balance={prettyBalance}
-                                    />
-                                )}
+            <Field.Root invalid={!!amountError}>
+                <Field.Label fontWeight="600">
+                    {selectedAsset ? `Amount of ${selectedAsset.ticker} to Burn` : 'Amount to Burn'}
+                </Field.Label>
+                <Flex gap="8px" w="100%">
+                    <Input
+                        size="lg"
+                        flex="1"
+                        borderRadius="hg.md"
+                        inputMode="decimal"
+                        placeholder={selectedAsset ? `0.00 ${selectedAsset.ticker}` : "0.00"}
+                        value={amount}
+                        onChange={(e) => handleAmountChange(sanitizeNumberInput(e.target.value))}
+                        disabled={!isConnected || !selectedCoin || isSubmitting || !hasBalance}
+                    />
+                    <Button
+                        size="lg"
+                        variant={hgVariant('secondary')}
+                        onClick={handleMaxClick}
+                        disabled={!isConnected || !selectedCoin || isSubmitting || !hasBalance}
+                    >
+                        MAX
+                    </Button>
+                </Flex>
+                {amountError && <Field.ErrorText>{amountError}</Field.ErrorText>}
+                {selectedCoin && !hasBalance && !amountError && (
+                    <Field.ErrorText>No balance available for this token</Field.ErrorText>
+                )}
+            </Field.Root>
 
-                                {/* Available Balance (if token selected) */}
-                                {selectedAsset && !preselectedCoin && (
-                                    <Box
-                                        p="3"
-                                        bg="orange.50"
-                                        _dark={{
-                                            bg: "gray.800",
-                                        }}
-                                        borderRadius="lg"
-                                    >
-                                        <HStack justify="space-between">
-                                            <Text fontSize="sm" fontWeight="medium">
-                                                Available Balance:
-                                            </Text>
-                                            <Text fontSize="sm" fontWeight="bold" color="orange.500" _dark={{ color: "orange.300" }}>
-                                                {prettyBalance} {selectedAsset.ticker}
-                                            </Text>
-                                        </HStack>
-                                    </Box>
-                                )}
-
-                                {/* Amount Input */}
-                                <Box>
-                                    <Field.Root invalid={!!amountError}>
-                                        <Field.Label fontWeight="semibold">
-                                            {selectedAsset
-                                                ? `Amount of ${selectedAsset.ticker} to Burn`
-                                                : 'Amount to Burn'
-                                            }
-                                        </Field.Label>
-                                        <HStack gap="2">
-                                            <Input
-                                                size="lg"
-                                                placeholder={selectedAsset ? `0.00 ${selectedAsset.ticker}` : "0.00"}
-                                                value={amount}
-                                                onChange={(e) => handleAmountChange(sanitizeNumberInput(e.target.value))}
-                                                disabled={!isConnected || !selectedCoin || isSubmitting || !hasBalance}
-                                            />
-                                            <Button
-                                                size="lg"
-                                                variant="outline"
-                                                colorPalette="orange"
-                                                onClick={handleMaxClick}
-                                                disabled={!isConnected || !selectedCoin || isSubmitting || !hasBalance}
-                                            >
-                                                MAX
-                                            </Button>
-                                        </HStack>
-                                        {amountError && <Field.ErrorText>{amountError}</Field.ErrorText>}
-                                        {selectedCoin && !hasBalance && !amountError && (
-                                            <Field.ErrorText>No balance available for this token</Field.ErrorText>
-                                        )}
-                                    </Field.Root>
-                                </Box>
-
-                                {/* Confirmation Preview */}
-                                {isFormValid && selectedAsset && (
-                                    <Box
-                                        p="4"
-                                        bg="bg.muted"
-                                        borderRadius="lg"
-                                    >
-                                        <VStack gap="2" align="stretch">
-                                            <Text fontSize="sm" fontWeight="bold" textAlign="center">
-                                                You&apos;re about to burn:
-                                            </Text>
-                                            <HStack justify="center" gap="2">
-                                                <Text fontSize="2xl" fontWeight="black" color="orange.500">
-                                                    {amount}
-                                                </Text>
-                                                <Text fontSize="2xl" fontWeight="black">
-                                                    {selectedAsset.ticker}
-                                                </Text>
-                                            </HStack>
-                                            <Text fontSize="xs" textAlign="center" color="fg.muted" fontStyle="italic">
-                                                Into the fire it goes! 🔥
-                                            </Text>
-                                        </VStack>
-                                    </Box>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.Footer>
-                            {!isConnected ? (
-                                <HStack gap="3" width="full">
-                                    <Button
-                                        flex="1"
-                                        variant="outline"
-                                        onClick={onClose}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        flex="1"
-                                        colorPalette="orange"
-                                        onClick={handleConnectWallet}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                </HStack>
-                            ) : (
-                                <HStack gap="3" width="full">
-                                    <Button
-                                        flex="1"
-                                        variant="outline"
-                                        onClick={onClose}
-                                        disabled={isSubmitting}
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        flex="1"
-                                        colorPalette="orange"
-                                        onClick={handleBurn}
-                                        disabled={!isFormValid || isSubmitting}
-                                        loading={isSubmitting}
-                                        loadingText="Burning..."
-                                    >
-                                        🔥 Burn It!
-                                    </Button>
-                                </HStack>
-                            )}
-                        </Dialog.Footer>
-
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {isFormValid && selectedAsset && (
+                <Flex direction="column" align="center" gap="4px" px="16px" py="14px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border" textAlign="center">
+                    <chakra.span fontSize="13px" fontWeight="600" color="hg.text.secondary">{"You're about to burn:"}</chakra.span>
+                    <chakra.span fontSize="24px" fontWeight="800" overflowWrap="anywhere">
+                        <chakra.span color="hg.link">{amount}</chakra.span> {selectedAsset.ticker}
+                    </chakra.span>
+                    <chakra.span fontSize="12px" color="hg.text.faint">Into the fire it goes!</chakra.span>
+                </Flex>
+            )}
+        </BurnerDialog>
     );
 };

@@ -1,14 +1,9 @@
-import {Badge, HStack, Text} from "@chakra-ui/react";
-import {LuShield} from "react-icons/lu";
-import React from "react";
+import {LuBadgeCheck} from "react-icons/lu";
+import {StatusPill} from "@bze/bze-ui-kit";
 
-export const VerifiedBadge = () => {
-  return (
-      <Badge colorPalette={'green'} variant="subtle">
-          <HStack gap="1">
-              <LuShield size={12} />
-              <Text>Verified</Text>
-          </HStack>
-      </Badge>
-  )
-}
+/** The green "Verified" pill next to a verified coin. */
+export const VerifiedBadge = () => (
+    <StatusPill tone="success">
+        <LuBadgeCheck size={12} aria-hidden/> Verified
+    </StatusPill>
+);
