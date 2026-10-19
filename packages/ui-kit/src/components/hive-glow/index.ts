@@ -6,3 +6,5 @@ export { HgCard, FeaturedCard, StatCard, StatStrip, IconTile, Change, Shimmer } 
 export type { HgCardProps, StatCardProps, IconTileProps, ChangeProps } from './cards';
 export { Notice, StatusPill, SegmentedTabs, LoadingRow, PageState } from './status';
 export type { NoticeProps, NoticeStatus, StatusPillProps, SegmentedTabsProps, SegmentedOption, PageStateProps, PageStateKind } from './status';
+export { AppHeader } from './app-header';
+export type { AppHeaderProps, AppHeaderNavItem, AppHeaderBadge } from './app-header';

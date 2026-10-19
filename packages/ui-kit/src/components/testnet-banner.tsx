@@ -1,8 +1,14 @@
 'use client'
 
-import { Box, Text } from "@chakra-ui/react"
+import { Box, chakra } from "@chakra-ui/react"
 import { isTestnetChain } from "../constants/chain"
+import { HIVE_GLOW_LAYOUT } from "../theme/hive-glow-tokens"
 
+/**
+ * The testnet ribbon (SurfTestnet): 28 px fixed to the bottom, dark red ground, a red
+ * hairline on top, pale red caps after a dot. The header's TESTNET pill is the other half
+ * of the same signal. Nothing on mainnet.
+ */
 export const TestnetBanner = () => {
     if (!isTestnetChain()) {
         return null
@@ -10,20 +16,28 @@ export const TestnetBanner = () => {
 
     return (
         <Box
+            role="status"
+            data-testid="testnet-banner"
             position="fixed"
             bottom="0"
             left="0"
             right="0"
-            bg="red.600"
-            color="white"
-            textAlign="center"
-            py="1"
+            h={`${HIVE_GLOW_LAYOUT.testnetRibbon}px`}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            gap="8px"
+            bg="hg.testnet.ground"
+            borderTopWidth="1px"
+            borderColor="hg.testnet.line"
+            color="hg.testnet.text"
             zIndex="banner"
-            fontSize="xs"
-            fontWeight="bold"
-            letterSpacing="wide"
+            fontSize="11px"
+            fontWeight="700"
+            letterSpacing="0.14em"
         >
-            <Text>YOU ARE ON TESTNET</Text>
+            <chakra.span aria-hidden boxSize="6px" borderRadius="full" bg="hg.testnet.dot" />
+            YOU ARE ON TESTNET
         </Box>
     )
 }

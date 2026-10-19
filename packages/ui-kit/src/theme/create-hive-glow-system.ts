@@ -228,6 +228,7 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                             pillLine: neutral('testnetPillLine'),
                         },
                         backdrop: neutral('backdrop'),
+                        header: neutral('headerFill'),
                         link,
                         eyebrow,
                         accent,
@@ -259,6 +260,7 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                 shadows: {
                     hg: {
                         card: neutral('cardShadow'),
+                        popover: neutral('popoverShadow'),
                         drawer: neutral('drawerShadow'),
                         primary: mode(`0 8px 24px -8px ${alpha(c1, HIVE_GLOW_BUTTON_GLOW_ALPHA)}`, `0 6px 18px -8px ${a.ink}`),
                         primaryHover: mode(`0 10px 30px -8px ${alpha(c1, 0.8)}`, `0 8px 22px -8px ${a.ink}`),
@@ -355,6 +357,60 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                     },
                 },
                 nativeSelect: { slots: slotsOf('nativeSelect'), variants: { variant: { outline: { field } } } },
+                // CompOverlays: the inset surface with a hairline, not Chakra's inverted chip.
+                tooltip: {
+                    slots: slotsOf('tooltip'),
+                    base: {
+                        content: {
+                            '--tooltip-bg': 'colors.hg.inset',
+                            color: 'fg',
+                            borderWidth: '1px',
+                            borderColor: 'hg.hairline',
+                            borderRadius: '10px',
+                            px: '12px',
+                            py: '10px',
+                            fontSize: '13px',
+                            lineHeight: '1.45',
+                            fontWeight: '400',
+                            boxShadow: 'hg.popover',
+                            maxW: '300px',
+                        },
+                        arrowTip: { borderColor: 'hg.hairline' },
+                    },
+                },
+                // CompOverlays: every toast on the card surface; the status shows in the edge and the icon disc.
+                toast: {
+                    slots: slotsOf('toast'),
+                    base: {
+                        root: {
+                            bg: 'hg.card',
+                            color: 'fg',
+                            borderWidth: '1px',
+                            borderColor: 'hg.hairline',
+                            borderRadius: '14px',
+                            boxShadow: 'hg.popover',
+                            py: '14px',
+                            ps: '16px',
+                            pe: '40px',
+                            ...Object.fromEntries(
+                                (
+                                    [
+                                        ['warning', 'hg.warning/30'],
+                                        ['success', 'hg.success/30'],
+                                        ['error', 'hg.danger/35'],
+                                        ['info', 'hg.info/30'],
+                                    ] as const
+                                ).map(([type, edge]) => [
+                                    `&[data-type=${type}]`,
+                                    { bg: 'hg.card', color: 'fg', borderColor: edge, '--toast-trigger-bg': 'colors.hg.hoverFill', '--toast-border-color': 'colors.hg.lineStrong' },
+                                ]),
+                            ),
+                        },
+                        title: { fontSize: '14px', fontWeight: '600' },
+                        description: { fontSize: '13px', lineHeight: '1.45', color: 'fg.muted', opacity: 1 },
+                        closeTrigger: { color: 'hg.text.faint', top: '10px', insetEnd: '10px', borderRadius: '8px' },
+                    },
+                },
                 select: { slots: slotsOf('select'), variants: { variant: { outline: { trigger: field } } } },
             },
         },
