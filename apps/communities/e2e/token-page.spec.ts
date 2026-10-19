@@ -126,7 +126,8 @@ test("no element links to other BeeZee apps and no BeeZee chrome shows", async (
     const hrefs = await page.locator("a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
     expect(hrefs.filter((href) => /\.getbze\.com/.test(href))).toEqual([addRewards]);
 
-    await expect(page.getByAltText("BZE application logo")).toHaveCount(0);
+    await expect(page.getByAltText("BeeZee Communities")).toHaveCount(0);
+    await expect(page.getByTestId("app-header")).toHaveCount(0);
     await expect(page.getByRole("button", {name: /directory/i})).toHaveCount(0);
     // NOAD has no BZE pool, so it can't pay fees itself: the footer names the network (R12).
     await expect(page.getByRole("link", {name: "Runs on BeeZee"})).toHaveAttribute("href", "https://getbze.com");

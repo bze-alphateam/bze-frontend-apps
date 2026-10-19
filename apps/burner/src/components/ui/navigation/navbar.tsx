@@ -1,82 +1,40 @@
 'use client';
 
-import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Text} from '@chakra-ui/react'
-import {NavbarLinks} from './navbar-links'
-import {useColorModeValue} from "@/components/ui/color-mode";
-import {LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsToggle, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
-import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
-import {useChain} from "@interchain-kit/react";
-import {WalletState} from "@interchain-kit/core";
-import {useMemo} from "react";
+import NextLink from 'next/link'
+import {useState} from 'react';
+import {AppHeader, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
+import {useNavigation} from "@/hooks/useNavigation";
+import {SearchCoinModal} from '@/components/search-coin-modal';
 
-interface TopNavBarProps {
-    appLabel?: string;
-}
+const navItems = [
+    { label: 'Home', href: '/' },
+    { label: 'Raffles', href: '/raffles' },
+]
 
-export const TopNavBar = ({ appLabel = "DEX" }: TopNavBarProps) => {
-    const {nativeAsset} = useAssets()
-    const {balance} = useBalance(getChainNativeAssetDenom())
-    const {status} = useChain(getChainName());
-
-    const walletButtonText = useMemo(() => {
-        if (status !== WalletState.Connected || !nativeAsset) {
-            return "";
-        }
-
-        const humanBalance = uAmountToBigNumberAmount(balance.amount, nativeAsset.decimals)
-
-        return `${shortNumberFormat(humanBalance)} ${nativeAsset.ticker}`
-    }, [status, nativeAsset, balance])
+export const TopNavBar = () => {
+    const {currentPathName} = useNavigation()
+    const walletLabel = useWalletButtonLabel()
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
 
     return (
-        <Box borderBottomWidth="1px" bg="bg.panel">
-            <Container py={{ base: '3.5', md: '4' }}>
-                <HStack justify="space-between">
-                    <HStack gap="2" align="center">
-                        <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
-                            <Image
-                                height={{base: "22px", md: "28px"}}
-                                src={useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg")}
-                                alt="BZE application logo"
-                            />
-                        </ClientOnly>
-                        <Text
-                            fontSize={{ base: "sm", md: "md" }}
-                            fontWeight="extrabold"
-                            color="#ff6b00"
-                            letterSpacing="tighter"
-                            textTransform="uppercase"
-                            opacity="0.9"
-                            transition="all 0.3s ease"
-                            _hover={{ opacity: 1, color: "#ff4500" }}
-                        >
-                            {appLabel}
-                        </Text>
-                    </HStack>
-                    <Spacer hideFrom="md" />
-                    <NavbarLinks hideBelow="md" />
-                    <Box display={"flex"} gap={{ base: 1, md: 4}}>
-                        {/* Wallet Sidebar */}
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <Sidebar
-                                ariaLabel="Wallet"
-                                trigger={
-                                    <Button data-wallet-trigger size={{ base: 'sm', md: 'md' }}>
-                                        <LuWallet /> <Text hideBelow="md">{walletButtonText}</Text>
-                                    </Button>
-                                }
-                            >
-                                <WalletSidebarContent accentColor="orange" />
-                            </Sidebar>
-                        </ClientOnly>
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <SettingsToggle accentColor="orange" />
-                        </ClientOnly>
-                    </Box>
-                    <MobileNavbarLinks />
-                </HStack>
-            </Container>
-        </Box>
+        <>
+            <AppHeader
+                app="burner"
+                appName="BeeZee Burner"
+                linkAs={NextLink}
+                items={[
+                    ...navItems.map((item) => ({...item, active: currentPathName === item.href})),
+                    { label: 'Search Coin', onClick: () => setIsSearchModalOpen(true) },
+                ]}
+                walletLabel={walletLabel}
+                walletContent={<WalletSidebarContent accentColor="orange" />}
+                settings={<SettingsToggle accentColor="orange" />}
+            />
+
+            <SearchCoinModal
+                isOpen={isSearchModalOpen}
+                onClose={() => setIsSearchModalOpen(false)}
+            />
+        </>
     )
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import {Suspense} from "react";
-import {getAppName} from "@bze/bze-ui-kit";
 
 import {Directory, DirectoryLayout, DirectorySkeleton} from "@/components/directory/directory";
 import {TopNavBar} from "@/components/ui/navigation/navbar";
@@ -15,7 +14,7 @@ export default function Home() {
 
     return (
         <>
-            <TopNavBar appLabel={getAppName()}/>
+            <TopNavBar/>
             <Suspense fallback={<DirectoryLayout><DirectorySkeleton/></DirectoryLayout>}>
                 <Directory/>
             </Suspense>

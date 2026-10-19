@@ -1,34 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { render, screen } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { render, screen, within } from "@testing-library/react";
+import { ChakraProvider } from "@chakra-ui/react";
 
 const m = vi.hoisted(() => ({ path: "/" }));
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: vi.fn(), currentPathName: m.path }) }));
-vi.mock("@bze/bze-ui-kit", () => ({ AppsMenu: () => null }));
+vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    AppsMenu: () => null,
+    useWalletButtonLabel: () => "Connect",
+    WalletSidebarContent: () => null,
+    SettingsToggle: () => null,
+}));
 
-import { NavbarLinks } from "./navbar-links";
+import { createHiveGlowSystem } from "@bze/bze-ui-kit";
+import { TopNavBar } from "./navbar";
+
+const system = createHiveGlowSystem("factory");
 
 const CREATE = ["/", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/multisend", "/reach", "/playbooks", "/raffle/new"];
 const MANAGE = ["/manage", "/manage/token", "/rewards", "/denom-reward/token", "/denom-reward/schedule", "/denom-reward/airdrop", "/official"];
 
-const active = () => screen.getAllByRole("link").filter(l => l.getAttribute("aria-current") === "page").map(l => l.textContent);
+// The desktop nav's links (the logo links home too).
+const active = () => within(screen.getAllByRole("navigation", { name: "Main" })[0]).getAllByRole("link").filter(l => l.getAttribute("aria-current") === "page").map(l => l.textContent);
 
 beforeEach(() => {
     m.path = "/";
 });
 
-describe("NavbarLinks", () => {
+describe("TopNavBar", () => {
     it.each(CREATE)("%s lights up Create", (path) => {
         m.path = path;
-        render(<ChakraProvider value={defaultSystem}><NavbarLinks /></ChakraProvider>);
+        render(<ChakraProvider value={system}><TopNavBar /></ChakraProvider>);
         expect(active()).toEqual(["Create"]);
     });
 
     it.each(MANAGE)("%s lights up Manage", (path) => {
         m.path = path;
-        render(<ChakraProvider value={defaultSystem}><NavbarLinks /></ChakraProvider>);
+        render(<ChakraProvider value={system}><TopNavBar /></ChakraProvider>);
         expect(active()).toEqual(["Manage"]);
     });
 

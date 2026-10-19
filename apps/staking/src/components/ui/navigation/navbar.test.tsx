@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { render, screen, within } from "@testing-library/react";
+import { ChakraProvider } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { OpenProposalsSummary, SummaryProposal } from "@/lib/governance/summary";
 
@@ -13,18 +13,33 @@ vi.mock("@/hooks/useNavigation", () => ({
 vi.mock("@/hooks/useOpenProposalsSummary", () => ({
     useOpenProposalsSummary: () => summaryMock(),
 }));
-vi.mock("@bze/bze-ui-kit", () => ({
+vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     AppsMenu: () => null,
+    useWalletButtonLabel: () => "Connect",
+    WalletSidebarContent: () => null,
+    SettingsToggle: () => null,
 }));
 
-import { NavbarLinks } from "./navbar-links";
-import { MobileNavbarLinks } from "./mobile-navbar-links";
+import { createHiveGlowSystem } from "@bze/bze-ui-kit";
+import { TopNavBar } from "./navbar";
 
-const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
+// The phone menu positions itself with ResizeObserver, which jsdom lacks.
+globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+};
+
+const system = createHiveGlowSystem("staking");
+const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={system}>{children}</ChakraProvider>;
+
+// The desktop nav; the phone menu repeats the items once opened.
+const nav = () => screen.getAllByRole("navigation", { name: "Main" })[0];
 
 function renderLinks(pathname: string) {
     pathnameMock.mockReturnValue(pathname);
-    return render(<NavbarLinks />, { wrapper });
+    return render(<TopNavBar />, { wrapper });
 }
 
 const yes = { proposal_id: "48", voter: "bze1me", metadata: "", options: [{ option: "VOTE_OPTION_YES", weight: "1" }] } as SummaryProposal["vote"];
@@ -39,26 +54,26 @@ beforeEach(() => {
     withSummary(undefined);
 });
 
-describe("NavbarLinks", () => {
+describe("TopNavBar links", () => {
     it("links to Governance", () => {
         renderLinks("/");
 
-        expect(screen.getByRole("link", { name: "Governance" })).toHaveAttribute("href", "/governance");
-        expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
-        expect(screen.getByRole("link", { name: "Governance" })).not.toHaveAttribute("aria-current");
+        expect(within(nav()).getByRole("link", { name: "Governance" })).toHaveAttribute("href", "/governance");
+        expect(within(nav()).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+        expect(within(nav()).getByRole("link", { name: "Governance" })).not.toHaveAttribute("aria-current");
     });
 
     it.each(["/governance", "/governance/48"])("marks Governance active on %s", (path) => {
         renderLinks(path);
 
-        expect(screen.getByRole("link", { name: "Governance" })).toHaveAttribute("aria-current", "page");
-        expect(screen.getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
+        expect(within(nav()).getByRole("link", { name: "Governance" })).toHaveAttribute("aria-current", "page");
+        expect(within(nav()).getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
     });
 
     it("does not match a path that only starts with the same letters", () => {
         renderLinks("/governanceship");
 
-        expect(screen.getByRole("link", { name: "Governance" })).not.toHaveAttribute("aria-current");
+        expect(within(nav()).getByRole("link", { name: "Governance" })).not.toHaveAttribute("aria-current");
     });
 });
 
@@ -67,15 +82,15 @@ describe("Governance badge", () => {
         withSummary({ connected: true, power: new BigNumber(1), proposals: [proposal("48", yes), proposal("49"), proposal("50")] });
         renderLinks("/");
 
-        expect(screen.getByLabelText("2 proposals need your vote")).toHaveTextContent("2");
-        expect(screen.getByRole("link", { name: /^Governance 2 proposals need your vote/ })).toHaveAttribute("href", "/governance");
+        expect(within(nav()).getByLabelText("2 proposals need your vote")).toHaveTextContent("2");
+        expect(within(nav()).getByRole("link", { name: /^Governance 2 proposals need your vote/ })).toHaveAttribute("href", "/governance");
     });
 
     it("counts every open proposal without a wallet", () => {
         withSummary({ connected: false, power: null, proposals: [proposal("48")] });
         renderLinks("/");
 
-        expect(screen.getByLabelText("1 open proposal")).toHaveTextContent("1");
+        expect(within(nav()).getByLabelText("1 open proposal")).toHaveTextContent("1");
     });
 
     it.each([
@@ -87,21 +102,21 @@ describe("Governance badge", () => {
         withSummary(summary as OpenProposalsSummary | undefined, failed);
         renderLinks("/");
 
-        expect(screen.getByRole("link", { name: "Governance" })).toHaveTextContent(/^Governance$/);
+        expect(within(nav()).getByRole("link", { name: "Governance" })).toHaveTextContent(/^Governance$/);
     });
 });
 
-describe("MobileNavbarLinks", () => {
+describe("phone menu", () => {
     it("marks the menu button with a dot while proposals wait", () => {
         withSummary({ connected: false, power: null, proposals: [proposal("48")] });
-        render(<MobileNavbarLinks />, { wrapper });
+        renderLinks("/");
 
-        expect(screen.getByRole("button", { name: "Open Menu" })).toContainElement(screen.getByTestId("menu-badge-dot"));
+        expect(screen.getByRole("button", { name: "Open menu" })).toContainElement(screen.getByTestId("menu-badge-dot"));
     });
 
     it("has no dot when nothing waits", () => {
         withSummary({ connected: true, power: new BigNumber(1), proposals: [proposal("48", yes)] });
-        render(<MobileNavbarLinks />, { wrapper });
+        renderLinks("/");
 
         expect(screen.queryByTestId("menu-badge-dot")).not.toBeInTheDocument();
     });
