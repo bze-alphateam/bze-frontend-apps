@@ -9,13 +9,15 @@ const DENOM_PARAM = 'denom'
 // query string (URL-encoded), never in the path.
 export const assetPagePath = (denom: string) => `/assets/details?${DENOM_PARAM}=${encodeURIComponent(denom)}`
 
+export const marketPagePath = (base: string, quote: string) => `/exchange/market?${ID_PARAM}=${createMarketId(base, quote)}`
+
 // Basic navigation without search params (no Suspense needed)
 export const useNavigation = () => {
     const router = useRouter();
     const pathname = usePathname();
 
     const toMarketPage = useCallback((base: string, quote: string) => {
-        router.push(`/exchange/market?${ID_PARAM}=${createMarketId(base, quote)}`)
+        router.push(marketPagePath(base, quote))
     }, [router]);
 
     const toExchangePage = useCallback(() => {
