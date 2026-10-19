@@ -15,7 +15,7 @@ import {useSigningClient} from "./useSigningClient";
 import {openExternalLink, sleep} from "../utils/functions";
 import BigNumber from "bignumber.js";
 import {getDefaultTxMemo} from "../constants/placeholders";
-import {useCallback, useState} from "react";
+import {useCallback, useMemo, useState} from "react";
 import {useLiquidityPools} from "./useLiquidityPools";
 import {useSettings} from "./useSettings";
 import {useFeeTokens} from "./useFeeTokens";
@@ -152,6 +152,8 @@ const useTx = (chainName: string) => {
     const {getDenomsPool} = useLiquidityPools()
     const {feeDenom} = useSettings()
     const {isValidFeeDenom} = useFeeTokens()
+
+    const defaultChainName = useMemo(() => getChainName(), []);
 
     const canUseClient = useCallback(async () => {
         if (!isSigningClientReady) {
@@ -297,7 +299,13 @@ const useTx = (chainName: string) => {
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
+                    // BZE Scan only knows BZE transactions: a tx signed on another
+                    // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
+                    if (chainName === defaultChainName) {
+                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
+                    } else {
+                        toast.success(TxStatus.Successful);
+                    }
 
                     if (options?.onSuccess) {
                         options.onSuccess(toTxSuccessResponse(resp))
@@ -334,7 +342,7 @@ const useTx = (chainName: string) => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)
         return success;
-    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, buildDirectSigningClient]);
+    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient]);
 
     return {
         tx,
