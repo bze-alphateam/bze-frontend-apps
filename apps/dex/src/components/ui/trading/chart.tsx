@@ -140,8 +140,8 @@ export const LightweightChart = (props: ChartProps) => {
                 return;
             }
 
+            // An empty series shows "No data available" (derived in render, no state to set).
             if (!priceData || priceData.length === 0) {
-                setChartText("No data available");
                 clearTimeout(errorTimeout);
                 return;
             }
@@ -291,7 +291,7 @@ export const LightweightChart = (props: ChartProps) => {
                 >
                     <VStack>
                         <Box as="span" color="hg.text.faint"><LuChartBar size={32} /></Box>
-                        <Text color="fg.muted" fontSize="sm">{chartText}</Text>
+                        <Text color="fg.muted" fontSize="sm">{!priceData || priceData.length === 0 ? "No data available" : chartText}</Text>
                     </VStack>
                 </Box>
             )}
