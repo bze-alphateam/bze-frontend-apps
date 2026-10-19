@@ -1,8 +1,8 @@
 'use client';
 
 import {useState, useMemo, useRef} from 'react';
-import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
-import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
+import {Button} from '@chakra-ui/react';
+import {LuWallet} from 'react-icons/lu';
 import {
     useAssets,
     useBalance,
@@ -14,6 +14,8 @@ import {
     uAmountToBigNumberAmount,
     amountToUAmount,
     sanitizeNumberInput,
+    hgVariant,
+    Notice,
 } from '@bze/bze-ui-kit';
 import {
     validateDelegationAmount,
@@ -29,6 +31,7 @@ import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {CopyStakeLinkButton} from './copy-stake-link-button';
+import {AmountField, InsetRow, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 
 interface DelegateModalProps {
     isOpen: boolean;
@@ -130,121 +133,82 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
     const initialFocusEl = () => (isConnected ? amountInputRef.current : null) ?? contentRef.current;
 
     return (
-        <Dialog.Root
-            open={isOpen}
-            onOpenChange={(e) => !isSubmitting && !e.open && onClose()}
+        <StakingDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            contentRef={contentRef}
             initialFocusEl={initialFocusEl}
+            title={`Delegate to ${validator?.description?.moniker ?? ''}`}
+            titleAside={validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
         >
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content ref={contentRef} maxW="md" p="6">
-                        <Dialog.Header pb="4">
-                            <HStack gap="1">
-                                <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
-                                {validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
-                            </HStack>
-                        </Dialog.Header>
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                <Box bg="purple.500/5" p="3" borderRadius="md" borderWidth="1px" borderColor="purple.500/15">
-                                    <HStack justify="space-between" fontSize="sm">
-                                        <Text color="fg.muted">Commission</Text>
-                                        <Text fontWeight="semibold">{commission}%</Text>
-                                    </HStack>
-                                </Box>
+            <InsetRow label="Commission">{commission}%</InsetRow>
 
-                                {earnsNoRewards && (
-                                    <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
-                                        <HStack gap="2" align="start">
-                                            <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
-                                            <Text fontSize="xs" color="fg.muted">
-                                                {validator?.jailed ? 'This validator is jailed. ' : 'This validator is outside the active set. '}
-                                                It does not earn rewards while jailed or outside the active set, so your stake earns nothing until it is back.
-                                            </Text>
-                                        </HStack>
-                                    </Box>
-                                )}
+            {earnsNoRewards && (
+                <Notice status="warning">
+                    {validator?.jailed ? 'This validator is jailed. ' : 'This validator is outside the active set. '}
+                    It does not earn rewards while jailed or outside the active set, so your stake earns nothing until it is back.
+                </Notice>
+            )}
 
-                                <VStack align="stretch" gap="2">
-                                    <HStack justify="space-between">
-                                        <Text fontSize="sm" fontWeight="medium">Amount</Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Available: {prettyAmount(availableHuman)} {nativeAsset?.ticker}
-                                        </Text>
-                                    </HStack>
-                                    <Input
-                                        ref={amountInputRef}
-                                        placeholder="0.00"
-                                        value={amount}
-                                        onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
-                                        type="text"
-                                        disabled={!isConnected}
-                                    />
-                                    <HStack gap="2">
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.25)} disabled={!isConnected}>25%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.5)} disabled={!isConnected}>50%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.75)} disabled={!isConnected}>75%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(1)} disabled={!isConnected}>Max</Button>
-                                    </HStack>
-                                </VStack>
+            <AmountField
+                value={amount}
+                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                aside={`Available: ${prettyAmount(availableHuman)} ${nativeAsset?.ticker ?? ''}`}
+                ticker={nativeAsset?.ticker}
+                disabled={!isConnected}
+                warning={exceedsSpendable}
+                inputRef={amountInputRef}
+            >
+                <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
+            </AmountField>
 
-                                {exceedsSpendable && (
-                                    <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
-                                        <HStack gap="2" align="start">
-                                            <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
-                                            <VStack align="stretch" gap="2" flex="1">
-                                                <Text fontSize="xs" color="fg.muted">
-                                                    This amount leaves less than the network fee
-                                                    (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
-                                                    so the transaction would fail.
-                                                </Text>
-                                                {maxSpendable.amount.gt(0) && (
-                                                    <Button
-                                                        size="xs"
-                                                        variant="outline"
-                                                        colorPalette="orange"
-                                                        onClick={useSpendableMax}
-                                                        alignSelf="start"
-                                                    >
-                                                        Delegate {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
-                                                    </Button>
-                                                )}
-                                            </VStack>
-                                        </HStack>
-                                    </Box>
-                                )}
+            {exceedsSpendable && (
+                <Notice status="warning">
+                    This amount leaves less than the network fee
+                    (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
+                    so the transaction would fail.
+                    {maxSpendable.amount.gt(0) && (
+                        <Button
+                            display="flex"
+                            mt="8px"
+                            size="xs"
+                            variant="outline"
+                            color="hg.warning.text"
+                            borderColor="hg.warning/45"
+                            bg="transparent"
+                            _hover={{bg: 'hg.warning/12'}}
+                            onClick={useSpendableMax}
+                        >
+                            Delegate {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
+                        </Button>
+                    )}
+                </Notice>
+            )}
 
-                                {progressTrack && (
-                                    <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
-                                )}
+            <ProgressLine>{progressTrack}</ProgressLine>
 
-                                {!isConnected ? (
-                                    <Button
-                                        colorPalette="purple"
-                                        w="full"
-                                        onClick={onConnectWallet ?? (() => { onClose(); connect(); })}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        colorPalette="purple"
-                                        onClick={handleDelegate}
-                                        loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
-                                        w="full"
-                                    >
-                                        Delegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
-                                    </Button>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {!isConnected ? (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    w="full"
+                    onClick={onConnectWallet ?? (() => { onClose(); connect(); })}
+                >
+                    <LuWallet /> Connect Wallet
+                </Button>
+            ) : (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    onClick={handleDelegate}
+                    loading={isSubmitting}
+                    disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
+                    w="full"
+                >
+                    Delegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                </Button>
+            )}
+        </StakingDialog>
     );
 }

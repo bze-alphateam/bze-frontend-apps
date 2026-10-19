@@ -1,9 +1,9 @@
 'use client';
 
-import {Box, Container, Text, VStack, HStack, Button, Spinner} from '@chakra-ui/react';
+import {Box, Button} from '@chakra-ui/react';
 import {LuRefreshCw, LuWallet} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
-import {getChainName, Sidebar, WalletSidebarContent, useValidatorLogos, useToast} from '@bze/bze-ui-kit';
+import {getChainName, HeroGlow, hgVariant, PageContainer, Sidebar, WalletSidebarContent, useValidatorLogos, useToast} from '@bze/bze-ui-kit';
 import {WalletState} from '@interchain-kit/core';
 import {useNativeStakingData} from '@/hooks/useNativeStakingData';
 import {StakingOverview} from '@/components/staking/overview';
@@ -11,6 +11,9 @@ import {GovernanceCallout} from '@/components/governance/governance-callout';
 import {MyValidators} from '@/components/staking/my-validators';
 import {UnbondingDelegations} from '@/components/staking/unbonding-delegations';
 import {ValidatorsList} from '@/components/staking/validators-list';
+import {ValidatorsLoading} from '@/components/staking/validators-loading';
+import {VALIDATORS_ANCHOR} from '@/lib/validator-list';
+import {quietButton} from '@/components/ui/staking/parts';
 import {DelegateModal} from '@/components/staking/delegate-modal';
 import {StakeLinkHandler} from '@/components/staking/stake-link-handler';
 import {validatorRowId} from '@/lib/stake-link';
@@ -91,97 +94,103 @@ export default function StakingPage() {
 
     const notify = useCallback((title: string) => toast.info(title), [toast]);
 
-    if (isLoading && !fullData) {
-        return (
-            <Box minH="60vh" display="flex" alignItems="center" justifyContent="center">
-                <VStack gap="4">
-                    <Spinner size="lg" color="purple.500" />
-                    <Text color="fg.muted">Loading staking data...</Text>
-                </VStack>
-            </Box>
-        );
-    }
+    const loading = isLoading && !fullData;
+    const showMyValidators = isConnected && !!fullData && fullData.myValidators.length > 0;
+
+    const refreshButton = (
+        <Button size="md" {...quietButton} onClick={handleRefresh} loading={isRefreshing}>
+            <LuRefreshCw /> Refresh
+        </Button>
+    );
+
+    const heroActions = (
+        <>
+            {!isConnected && (
+                <Sidebar
+                    ariaLabel="Connect Wallet"
+                    isOpen={isConnectOpen}
+                    onOpenChange={handleConnectOpenChange}
+                    trigger={
+                        <Button variant={hgVariant('primary')} size="xl" w={{base: 'full', md: 'auto'}}>
+                            <LuWallet /> Connect Wallet to Stake
+                        </Button>
+                    }
+                >
+                    <WalletSidebarContent skipWalletModal />
+                </Sidebar>
+            )}
+            <Button asChild variant={hgVariant('secondary')} size="xl" display={{base: 'none', md: 'inline-flex'}}>
+                <a href={`#${VALIDATORS_ANCHOR}`}>Browse validators</a>
+            </Button>
+        </>
+    );
 
     return (
-        <Box pb="12">
-            <Suspense fallback={null}>
-                <StakeLinkHandler
-                    validators={fullData?.allValidators}
-                    isConnecting={status === WalletState.Connecting}
-                    openDelegate={openDelegate}
-                    highlight={highlight}
-                    notify={notify}
+        <Box position="relative" overflow="hidden">
+            <HeroGlow />
+            <PageContainer
+                as="main"
+                position="relative"
+                zIndex="1"
+                pt={{base: '32px', md: '72px'}}
+                pb={{base: '48px', md: '80px'}}
+                display="flex"
+                flexDirection="column"
+                gap={{base: '28px', md: '40px'}}
+                aria-busy={loading || undefined}
+                aria-label={loading ? 'Loading staking data' : undefined}
+            >
+                <Suspense fallback={null}>
+                    <StakeLinkHandler
+                        validators={fullData?.allValidators}
+                        isConnecting={status === WalletState.Connecting}
+                        openDelegate={openDelegate}
+                        highlight={highlight}
+                        notify={notify}
+                    />
+                </Suspense>
+
+                <StakingOverview
+                    stakingData={fullData?.stakingData}
+                    isLoading={isLoading}
+                    callout={<GovernanceCallout />}
+                    actions={heroActions}
                 />
-            </Suspense>
 
-            {/* Overview Stats */}
-            <StakingOverview
-                stakingData={fullData?.stakingData}
-                isLoading={isLoading}
-                callout={<GovernanceCallout />}
-            />
+                {loading && <ValidatorsLoading />}
 
-            {/* Action Bar */}
-            <Container maxW="7xl" py="2">
-                <HStack justify="space-between" flexWrap="wrap" gap="2">
-                    <HStack gap="2">
-                        {!isConnected && (
-                            <Sidebar
-                                ariaLabel="Connect Wallet"
-                                isOpen={isConnectOpen}
-                                onOpenChange={handleConnectOpenChange}
-                                trigger={
-                                    <Button size="sm" colorPalette="purple">
-                                        <LuWallet /> Connect Wallet to Stake
-                                    </Button>
-                                }
-                            >
-                                <WalletSidebarContent skipWalletModal />
-                            </Sidebar>
-                        )}
-                    </HStack>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleRefresh}
-                        loading={isRefreshing}
-                    >
-                        <LuRefreshCw /> Refresh
-                    </Button>
-                </HStack>
-            </Container>
+                {/* My Validators (only if connected and has delegations) */}
+                {fullData && showMyValidators && (
+                    <MyValidators
+                        myValidators={fullData.myValidators}
+                        allValidators={fullData.allValidators}
+                        onActionComplete={handleRefresh}
+                        logos={logos}
+                        unbondingDays={fullData.stakingData?.unlockDuration}
+                        actions={refreshButton}
+                    />
+                )}
 
-            {/* My Validators (only if connected and has delegations) */}
-            {isConnected && fullData && fullData.myValidators.length > 0 && (
-                <MyValidators
-                    myValidators={fullData.myValidators}
-                    allValidators={fullData.allValidators}
-                    onActionComplete={handleRefresh}
-                    logos={logos}
-                    unbondingDays={fullData.stakingData?.unlockDuration}
-                />
-            )}
+                {/* Unbonding Delegations */}
+                {isConnected && fullData && fullData.unbondingDelegations.length > 0 && (
+                    <UnbondingDelegations
+                        unbondingDelegations={fullData.unbondingDelegations}
+                        allValidators={fullData.allValidators}
+                        logos={logos}
+                    />
+                )}
 
-            {/* Unbonding Delegations */}
-            {isConnected && fullData && fullData.unbondingDelegations.length > 0 && (
-                <UnbondingDelegations
-                    unbondingDelegations={fullData.unbondingDelegations}
-                    allValidators={fullData.allValidators}
-                    logos={logos}
-                />
-            )}
-
-            {/* All Validators */}
-            {fullData && fullData.allValidators.length > 0 && (
-                <Box mt="6">
+                {/* All Validators */}
+                {fullData && fullData.allValidators.length > 0 && (
                     <ValidatorsList
                         validators={fullData.allValidators}
                         onStake={openDelegate}
                         logos={logos}
                         highlightedOperator={highlighted}
+                        actions={showMyValidators ? undefined : refreshButton}
                     />
-                </Box>
-            )}
+                )}
+            </PageContainer>
 
             <DelegateModal
                 key={`delegate-${modalNonce}`}

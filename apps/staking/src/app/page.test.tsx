@@ -74,7 +74,7 @@ beforeEach(() => {
 });
 
 describe("Staking page", () => {
-    it("shows the loading state until the first data load resolves", () => {
+    it("shows the hero and shimmer validator cards, not a spinner, until the first data load resolves", () => {
         useStakingDataMock.mockReturnValue({
             isLoading: true,
             fullData: undefined,
@@ -82,8 +82,14 @@ describe("Staking page", () => {
         });
         renderPage();
 
-        expect(screen.getByText("Loading staking data...")).toBeInTheDocument();
-        expect(screen.queryByTestId("overview")).not.toBeInTheDocument();
+        // The hero renders at once; only the numbers wait, as shimmer rows.
+        expect(screen.getByLabelText("Loading staking data")).toHaveAttribute("aria-busy", "true");
+        expect(screen.getByTestId("overview")).toBeInTheDocument();
+        expect(screen.getAllByTestId("validator-card-loading")).toHaveLength(6);
+        expect(screen.getAllByTestId("shimmer").length).toBeGreaterThan(0);
+        expect(screen.queryByText("Loading staking data...")).not.toBeInTheDocument();
+        expect(document.querySelector(".chakra-spinner")).toBeNull();
+        expect(screen.queryByTestId("validators-list")).not.toBeInTheDocument();
     });
 
     it("renders the overview, my-validators and the list once data has loaded", () => {

@@ -82,21 +82,22 @@ export function proposalSummary(p: Pick<GovProposal, "summary" | "messages">): s
     return text(p.summary) || text(legacyContent(p)?.description);
 }
 
-export type StatusTone = "purple" | "green" | "red" | "gray";
+/** The badge's colour: the app colour while voting, then the shared status tones. */
+export type StatusTone = "app" | "success" | "danger" | "neutral";
 
 /** The status badge: `Voting`, `Passed`, `Rejected`, `Failed`. */
 export function statusInfo(status: GovProposalStatus): {text: string; tone: StatusTone} {
     switch (status) {
         case "PROPOSAL_STATUS_VOTING_PERIOD":
-            return {text: "Voting", tone: "purple"};
+            return {text: "Voting", tone: "app"};
         case "PROPOSAL_STATUS_PASSED":
-            return {text: "Passed", tone: "green"};
+            return {text: "Passed", tone: "success"};
         case "PROPOSAL_STATUS_REJECTED":
-            return {text: "Rejected", tone: "red"};
+            return {text: "Rejected", tone: "danger"};
         case "PROPOSAL_STATUS_FAILED":
-            return {text: "Failed", tone: "red"};
+            return {text: "Failed", tone: "danger"};
         default:
-            return {text: "Deposit period", tone: "gray"};
+            return {text: "Deposit period", tone: "neutral"};
     }
 }
 

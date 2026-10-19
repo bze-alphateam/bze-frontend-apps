@@ -25,10 +25,11 @@ export function CopyStakeLinkButton({operatorAddress}: CopyStakeLinkButtonProps)
 
     return (
         <IconButton
-            size="2xs"
+            size="xs"
             variant="ghost"
-            color="fg.subtle"
-            _hover={{color: 'fg.muted'}}
+            color="hg.text.faint"
+            borderRadius="8px"
+            _hover={{color: 'fg', bg: 'hg.hoverFill'}}
             aria-label="Copy stake link"
             title="Copy stake link"
             onClick={copy}
