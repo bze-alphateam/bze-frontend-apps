@@ -1,29 +1,21 @@
 'use client';
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-    Box,
-    Container,
-    Text,
-    Input,
-    Card,
-    VStack,
-    Grid, Skeleton, Badge, HStack, Spacer,
-} from '@chakra-ui/react';
-import {
-    LuSearch,
-} from 'react-icons/lu';
+import {Box, chakra, Flex, Input, InputGroup, SimpleGrid} from '@chakra-ui/react';
+import {LuSearch} from 'react-icons/lu';
 import {useNativeStakingData} from "@/hooks/useNativeStakingData";
 import {NativeStakingCard} from "@/components/ui/staking/native-staking";
 import {RewardsStakingBox} from "@/components/ui/staking/rewards-staking";
 import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
-import {useAssets, prettyAmount, uAmountToBigNumberAmount, shortNumberFormat, calculateRewardsStakingPendingRewards, useAssetsValue, useDenomRewardsData, claimableCoins, getChainName} from "@bze/bze-ui-kit";
+import {useAssets, prettyAmount, uAmountToBigNumberAmount, shortNumberFormat, calculateRewardsStakingPendingRewards, useAssetsValue, useDenomRewardsData, claimableCoins, getChainName, PageContainer, HgCard, Shimmer, AppLink, getStakingApp} from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {DenomRewardsSection} from "@/components/ui/staking/denom-rewards-section";
 import BigNumber from "bignumber.js";
 import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
 import {PrettyBalance} from "@bze/bze-ui-kit";
+import {InnerHero, CountPill} from "@/components/ui/layout/inner-hero";
+import {StakingSection} from "@/components/ui/staking/staking-card-parts";
 
 //150 seconds
 const STAKING_DATA_RELOAD_INTERVAL = 150_000;
@@ -207,191 +199,114 @@ const StakingPage = () => {
     }, [reload, reloadRewardsStaking, reloadDenomRewards])
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" py={12}>
-                <VStack align="stretch" gap="8">
-                    {/* Page Header */}
-                    <VStack gap={3} align="center" mb={4}>
-                        <Text fontSize="3xl" fontWeight="bold" letterSpacing="tight">
-                            Staking & Rewards
-                        </Text>
-                        <Text fontSize="md" color="fg.muted">
-                            Earn passive income by staking and locking your tokens
-                        </Text>
-                    </VStack>
+        <Box minH="100vh">
+            <InnerHero
+                section="Staking"
+                title="Staking & Rewards"
+                subtitle="Earn passive income by staking and locking your tokens"
+            />
 
+            <PageContainer pt="32px" pb="80px">
+                <Flex direction="column" gap="24px">
                     {/* Search */}
-                    <Box
-                        p={6}
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="blue.600/8"
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor="blue.500/20"
-                        shadow="sm"
-                    >
-                        <HStack gap={4} wrap="wrap">
-                            <Box position="relative" flex="1" minW="300px" maxW="500px">
-                                <Input
-                                    placeholder="Search staking opportunities..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    pl="12"
-                                    size="lg"
-                                    borderRadius="lg"
-                                />
-                                <Box
-                                    position="absolute"
-                                    left="4"
-                                    top="50%"
-                                    transform="translateY(-50%)"
-                                    color="fg.muted"
-                                >
-                                    <LuSearch size={20} />
-                                </Box>
-                            </Box>
-                            <Spacer />
-                            <Badge
-                                variant="outline"
-                                colorPalette="gray"
-                                fontSize="md"
-                                px={4}
-                                py={2}
-                                borderRadius="lg"
-                            >
-                                {allActiveStakingRewardsCount} staking rewards
-                            </Badge>
-                        </HStack>
-                    </Box>
+                    <Flex justify="space-between" align="center" gap="16px" wrap="wrap">
+                        <InputGroup startElement={<LuSearch size={16}/>} w="460px" maxW="100%">
+                            <Input
+                                aria-label="Search staking opportunities"
+                                placeholder="Search staking opportunities..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                h="44px"
+                                borderRadius="12px"
+                                bg="hg.inset"
+                                borderColor="hg.hairline"
+                                fontSize="15px"
+                            />
+                        </InputGroup>
+                        <CountPill>{allActiveStakingRewardsCount} staking rewards</CountPill>
+                    </Flex>
 
-                {/* Stats Overview */}
-                <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap="3">
-                    <Card.Root
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        shadow="sm"
-                        bgGradient="to-br"
-                        gradientFrom="green.500/8"
-                        gradientTo="blue.500/8"
-                        borderColor="green.500/20"
-                    >
-                        <Card.Body p={4}>
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Total Value Staked
-                                </Text>
-                                <Skeleton asChild loading={summaryLoading}>
-                                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        ≈ ${shortNumberFormat(stakedUsdValue)}
-                                    </Text>
-                                </Skeleton>
-                            </VStack>
-                        </Card.Body>
-                    </Card.Root>
+                    {/* Stats Overview */}
+                    <SimpleGrid columns={{base: 1, sm: 2, md: 3}} gap="16px">
+                        <SummaryCard label="Total Value Staked" loading={summaryLoading}>
+                            <chakra.strong fontSize="26px" letterSpacing="-0.01em">≈ ${shortNumberFormat(stakedUsdValue)}</chakra.strong>
+                        </SummaryCard>
+                        <SummaryCard label="Active Stakes" loading={summaryLoading} note="Earning rewards">
+                            <chakra.strong fontSize="26px" letterSpacing="-0.01em">{stakingCount}</chakra.strong>
+                        </SummaryCard>
+                        <SummaryCard label="Unclaimed Rewards" loading={summaryLoading} note={`≈ $${prettyAmount(pendingUsdRewards)}`}>
+                            <chakra.strong fontSize="24px" letterSpacing="-0.01em">
+                                {prettyAmount(pendingBzeRedwards)} {nativeAsset?.ticker}
+                                {pendingOtherRewards > 0 && (
+                                    <chakra.span fontSize="14px" fontWeight="500" color="hg.text.faint">{` + ${pendingOtherRewards}`}</chakra.span>
+                                )}
+                            </chakra.strong>
+                        </SummaryCard>
+                    </SimpleGrid>
 
-                    <Card.Root
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        shadow="sm"
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="blue.600/8"
-                        borderColor="blue.500/20"
+                    {/* Network staking */}
+                    <StakingSection
+                        title="Network staking"
+                        description="BZE’s own staking, run by the Staking app. Claim your rewards here; stake, unstake and pick validators in Staking."
+                        aside={<AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>}
                     >
-                        <Card.Body p={4}>
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Active Stakes
-                                </Text>
-                                <Skeleton asChild loading={summaryLoading}>
-                                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        {stakingCount}
-                                    </Text>
-                                </Skeleton>
-                                <Text fontSize="xs" color="blue.500" fontWeight="medium">
-                                    Earning rewards
-                                </Text>
-                            </VStack>
-                        </Card.Body>
-                    </Card.Root>
-
-                    <Card.Root
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        shadow="sm"
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="cyan.500/8"
-                        borderColor="blue.500/20"
-                    >
-                        <Card.Body p={4}>
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Unclaimed Rewards
-                                </Text>
-                                <Skeleton asChild loading={summaryLoading}>
-                                    <Box display="flex" alignItems="baseline" gap="1">
-                                        <Text fontSize="xl" fontWeight="bold" letterSpacing="tight">
-                                            {prettyAmount(pendingBzeRedwards)} {nativeAsset?.ticker}
-                                        </Text>
-                                        {pendingOtherRewards > 0 && (
-                                            <Text fontSize="sm" color="fg.muted">
-                                                {` + ${pendingOtherRewards}`}
-                                            </Text>
-                                        )}
-                                    </Box>
-                                </Skeleton>
-                                <Skeleton asChild loading={summaryLoading}>
-                                    <Text fontSize="xs" color="blue.500" fontWeight="medium">
-                                        ≈ ${prettyAmount(pendingUsdRewards)}
-                                    </Text>
-                                </Skeleton>
-                            </VStack>
-                        </Card.Body>
-                    </Card.Root>
-                </Grid>
-
-                {/* Staking Opportunities */}
-                <VStack gap={3} align="stretch">
-                    <NativeStakingCard
-                        stakingData={stakingData}
-                        isLoading={isLoading}
-                        onClaimSuccess={reload}
-                    />
-                    {!isLoadingStakingRewards && filteredOpportunities.map((sr) => (
-                        <RewardsStakingBox
-                            key={sr.reward_id}
-                            stakingReward={sr}
-                            userStake={addressData?.active.get(sr.reward_id)}
-                            userUnlocking={addressData?.unlocking.get(sr.reward_id)}
-                            onClick={() => openModal(sr)}
+                        <NativeStakingCard
+                            stakingData={stakingData}
+                            isLoading={isLoading}
+                            onClaimSuccess={reload}
                         />
-                    ))}
-                </VStack>
+                    </StakingSection>
 
-                <DenomRewardsSection
-                    items={denomRewards}
-                    isLoading={isLoadingDenomRewards}
-                    hasError={denomRewardsError}
-                    hasWallet={Boolean(address)}
-                    searchTerm={searchTerm}
-                    onReload={reloadDenomRewards}
-                />
+                    {/* Simple rewards */}
+                    <StakingSection
+                        title="Simple rewards"
+                        description="Stake one token, earn one token every day until the program ends."
+                    >
+                        {!isLoadingStakingRewards && filteredOpportunities.map((sr) => (
+                            <RewardsStakingBox
+                                key={sr.reward_id}
+                                stakingReward={sr}
+                                userStake={addressData?.active.get(sr.reward_id)}
+                                userUnlocking={addressData?.unlocking.get(sr.reward_id)}
+                                onClick={() => openModal(sr)}
+                            />
+                        ))}
+                    </StakingSection>
 
-                {/* Action Modal */}
-                {isModalOpen && (
-                    <RewardsStakingActionModal
-                        stakingReward={selectedStaking}
-                        userStake={addressData?.active.get(selectedStaking?.reward_id ?? '')}
-                        userUnlocking={addressData?.unlocking.get(selectedStaking?.reward_id ?? '')}
-                        onClose={closeModal}
-                        onActionPerformed={onModalAction}
-                    />)}
-            </VStack>
-        </Container>
+                    {/* Compounded rewards */}
+                    <DenomRewardsSection
+                        items={denomRewards}
+                        isLoading={isLoadingDenomRewards}
+                        hasError={denomRewardsError}
+                        hasWallet={Boolean(address)}
+                        searchTerm={searchTerm}
+                        onReload={reloadDenomRewards}
+                    />
+
+                    {/* Action Modal */}
+                    {isModalOpen && (
+                        <RewardsStakingActionModal
+                            stakingReward={selectedStaking}
+                            userStake={addressData?.active.get(selectedStaking?.reward_id ?? '')}
+                            userUnlocking={addressData?.unlocking.get(selectedStaking?.reward_id ?? '')}
+                            onClose={closeModal}
+                            onActionPerformed={onModalAction}
+                        />)}
+                </Flex>
+            </PageContainer>
         </Box>
     );
 };
+
+/** A summary figure: an uppercase label, the number, and a DEX-coloured note. */
+const SummaryCard = ({label, loading, note, children}: { label: string; loading: boolean; note?: string; children: React.ReactNode }) => (
+    <HgCard px="20px" py="18px">
+        <Flex direction="column" gap="8px">
+            <chakra.span fontSize="12px" fontWeight="600" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint">{label}</chakra.span>
+            {loading ? <Shimmer h="28px" w="60%"/> : children}
+            {note && (loading ? <Shimmer h="12px" w="35%"/> : <chakra.span fontSize="12px" color="hg.link">{note}</chakra.span>)}
+        </Flex>
+    </HgCard>
+);
 
 export default StakingPage;

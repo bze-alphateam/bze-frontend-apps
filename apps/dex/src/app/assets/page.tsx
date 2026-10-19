@@ -2,32 +2,21 @@
 
 import React, {useCallback, useMemo, useState} from 'react'
 
-import {
-    Box,
-    Container,
-    Text,
-    Flex,
-    Badge,
-    Grid,
-    IconButton,
-    HStack,
-    VStack,
-    Input,
-    Skeleton,
-} from '@chakra-ui/react'
+import {Box, chakra, Flex, Grid, IconButton, Input, InputGroup, Skeleton} from '@chakra-ui/react'
 import {
     LuChevronDown,
     LuChevronUp,
-    LuArrowUpRight,
-    LuArrowDownRight,
     LuLink,
     LuSearch,
 } from 'react-icons/lu'
-import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast, HaltedBadge} from "@bze/bze-ui-kit";
+import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast, HaltedBadge, PageContainer, HgCard, Shimmer} from "@bze/bze-ui-kit";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {AssetDetails} from "@/components/ui/assets/asset-details";
 import {assetPagePath} from "@/hooks/useNavigation";
 import {sortAssetsForDirectory, filterAssetsBySearch} from "@/lib/asset-list";
+import {InnerHero} from "@/components/ui/layout/inner-hero";
+import {PriceChange} from "@/components/ui/assets/price-change";
+import {KindTag} from "@/components/ui/staking/staking-card-parts";
 
 function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpanded: boolean, toggleExpanded: (denom: string) => void}) {
     const [priceLoadedOnce, setPriceLoadedOnce] = useState(false)
@@ -41,44 +30,11 @@ function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpa
         setPriceLoadedOnce(true)
     }
 
-    const getTypeColor = useCallback((type: string) => {
-        switch (type) {
-            case ASSET_TYPE_NATIVE:
-                return 'purple'
-            case ASSET_TYPE_FACTORY:
-                return 'blue'
-            case ASSET_TYPE_IBC:
-                return 'teal'
-            default:
-                return 'gray'
-        }
-    }, [])
-
     const formattedPrice = useMemo(() => {
         return formatUsdAmount(price)
     }, [price])
 
-    const renderChangeArrow = useMemo(() => {
-        if (change > 0) {
-            return  <LuArrowUpRight size={14} color="var(--chakra-colors-green-500)" />
-        }
-        if (change < 0) {
-            return  <LuArrowDownRight size={14} color="var(--chakra-colors-red-500)" />
-        }
-        return null
-    }, [change])
-
-    const renderChangeText = useMemo(() => {
-        if (change > 0) {
-            return <Text fontSize="sm" color="green.500">+{change}%</Text>
-        }
-
-        if (change < 0) {
-            return <Text fontSize="sm" color="red.500">{change}%</Text>
-        }
-
-        return <Text fontSize="sm" color="red.200">{change}%</Text>
-    }, [change])
+    const changeLine = <PriceChange change={change}/>
 
     const copyAssetLink = useCallback(async (e: React.MouseEvent) => {
         // Don't toggle the expanded details when copying the link
@@ -91,129 +47,110 @@ function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpa
 
     return (
         <Box
-            key={asset.denom}
-            bgGradient="to-br"
-            gradientFrom="blue.500/5"
-            gradientTo="blue.600/5"
+            bg="hg.card"
             borderWidth="1px"
-            borderColor="blue.500/15"
-            borderRadius="lg"
+            borderColor={isExpanded ? 'app.border' : 'hg.hairline'}
+            borderRadius="16px"
             overflow="hidden"
-            transition="all 0.2s"
-            shadow="sm"
-            _hover={{
-                gradientFrom: "blue.500/10",
-                gradientTo: "blue.600/10",
-                borderColor: "blue.500/25",
-                shadow: "md"
-            }}
+            transitionProperty="border-color"
+            transitionDuration="moderate"
+            _hover={{borderColor: 'app.border'}}
         >
             {/* Main Asset Info */}
             <Flex
-                p={4}
+                px={{base: '14px', md: '18px'}}
+                py="14px"
                 align="center"
-                justify="space-between"
+                gap="14px"
                 cursor="pointer"
                 onClick={() => toggleExpanded(asset.denom)}
             >
-                <HStack gap={3}>
-                    <Box
-                        position="relative"
-                        width="40px"
-                        height="40px"
-                        borderRadius="full"
-                        bg="bg.surface"
-                        borderWidth="1px"
-                        borderColor="border.subtle"
-                    >
-                        <TokenLogo
-                            src={asset.logo}
-                            symbol={asset.ticker}
-                            circular={true}
-                        />
-                    </Box>
-                    <Box>
-                        <HStack gap={2}>
-                            <Text fontWeight="semibold" fontSize="md">
-                                {asset.name}
-                            </Text>
-                            <Badge colorPalette={getTypeColor(asset.type)} size="sm">
-                                {asset.type.toUpperCase()}
-                            </Badge>
-                            {asset.verified && (<VerifiedBadge/>)}
-                            {asset.halted && (<HaltedBadge/>)}
-                        </HStack>
-                        <Text color="fg.muted" fontSize="sm">
-                            {asset.ticker}
-                        </Text>
-                    </Box>
-                </HStack>
+                <Box
+                    position="relative"
+                    boxSize="40px"
+                    flex="none"
+                    borderRadius="full"
+                    borderWidth="1px"
+                    borderColor="hg.hairline"
+                >
+                    <TokenLogo
+                        src={asset.logo}
+                        symbol={asset.ticker}
+                        circular={true}
+                    />
+                </Box>
+                <Flex direction="column" gap="3px" flex="1" minW="0">
+                    <Flex align="center" gap="8px" wrap="wrap">
+                        <chakra.strong fontSize="15px">{asset.name}</chakra.strong>
+                        <KindTag>{asset.type.toUpperCase()}</KindTag>
+                        {asset.verified && (<VerifiedBadge/>)}
+                        {asset.halted && (<HaltedBadge/>)}
+                    </Flex>
+                    <chakra.span color="hg.text.faint" fontSize="13px">{asset.ticker}</chakra.span>
+                </Flex>
 
-                <HStack gap={4}>
-                    <Box textAlign="right" display={{ base: 'none', sm: 'block' }}>
-                        <Skeleton asChild loading={!priceLoadedOnce}>
-                            <HighlightText fontWeight="medium" fontSize="md">
-                                ${formattedPrice}
-                            </HighlightText>
-                        </Skeleton>
-                        <Skeleton asChild loading={!priceLoadedOnce}>
-                            <HStack gap={1} justify="flex-end">
-                                {renderChangeArrow}
-                                {renderChangeText}
-                            </HStack>
-                        </Skeleton>
-                    </Box>
-                    <HStack gap={1}>
-                        <IconButton
-                            aria-label="Copy link to this asset"
-                            size="sm"
-                            variant="ghost"
-                            onClick={copyAssetLink}
-                        >
-                            <LuLink />
-                        </IconButton>
-                        <IconButton
-                            aria-label="Toggle details"
-                            size="sm"
-                            variant="ghost"
-                        >
-                            {isExpanded ? <LuChevronUp /> : <LuChevronDown />}
-                        </IconButton>
-                    </HStack>
-                </HStack>
+                <Flex direction="column" align="flex-end" gap="2px" hideBelow="sm">
+                    <Skeleton asChild loading={!priceLoadedOnce}>
+                        <HighlightText fontWeight="600" fontSize="15px">
+                            ${formattedPrice}
+                        </HighlightText>
+                    </Skeleton>
+                    <Skeleton asChild loading={!priceLoadedOnce}>
+                        {changeLine}
+                    </Skeleton>
+                </Flex>
+                <Flex gap="2px" flex="none">
+                    <IconButton
+                        aria-label="Copy link to this asset"
+                        size="md"
+                        variant="ghost"
+                        color="hg.text.muted"
+                        onClick={copyAssetLink}
+                    >
+                        <LuLink />
+                    </IconButton>
+                    <IconButton
+                        aria-label="Toggle details"
+                        aria-expanded={isExpanded}
+                        size="md"
+                        variant="ghost"
+                        color="hg.text.secondary"
+                        bg={isExpanded ? 'hg.secondaryFill' : undefined}
+                    >
+                        {isExpanded ? <LuChevronUp /> : <LuChevronDown />}
+                    </IconButton>
+                </Flex>
             </Flex>
 
-            {/* Mobile Price Display */}
-            <Box display={{ base: 'block', sm: 'none' }} px={4} pb={2}>
-                <HStack justify="space-between">
-                    <Skeleton asChild loading={!priceLoadedOnce}>
-                        <HighlightText fontWeight="medium">${formattedPrice}</HighlightText>
-                    </Skeleton>
-                    <HStack gap={1}>
-                        <Skeleton asChild loading={!priceLoadedOnce}>
-                            <HStack gap={1} justify="flex-end">
-                                {renderChangeArrow}
-                                {renderChangeText}
-                            </HStack>
-                        </Skeleton>
-                    </HStack>
-                </HStack>
-            </Box>
+            {/* Phone Price Display */}
+            <Flex hideFrom="sm" justify="space-between" align="center" px="14px" pb="12px">
+                <Skeleton asChild loading={!priceLoadedOnce}>
+                    <HighlightText fontWeight="600" fontSize="15px">${formattedPrice}</HighlightText>
+                </Skeleton>
+                <Skeleton asChild loading={!priceLoadedOnce}>
+                    {changeLine}
+                </Skeleton>
+            </Flex>
 
             {/* Expanded Details */}
             {isExpanded && (
-                <Box
-                    borderTopWidth="1px"
-                    borderColor="border"
-                    p={4}
-                    bg="bg.subtle"
-                >
-                    <AssetDetails asset={asset} />
+                <Box borderTopWidth="1px" borderColor="hg.divider" p={{base: '14px', md: '18px'}} bg="hg.inset">
+                    <AssetDetails asset={asset} surface="card"/>
                 </Box>
             )}
         </Box>
     )
 }
+
+/** One of the four counts over the list. */
+const CountCard = ({label, loading, children}: { label: string; loading: boolean; children: React.ReactNode }) => (
+    <HgCard px="18px" py="16px">
+        <Flex direction="column" gap="6px">
+            <chakra.span fontSize="12px" fontWeight="600" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint">{label}</chakra.span>
+            {loading ? <Shimmer h="30px" w="40%"/> : <HighlightText fontSize="26px" fontWeight="700">{children}</HighlightText>}
+        </Flex>
+    </HgCard>
+)
 
 export default function AssetsPage() {
     const [expandedAsset, setExpandedAsset] = useState<string>('')
@@ -233,140 +170,46 @@ export default function AssetsPage() {
     }
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" py={12}>
-                <VStack align="stretch" gap="8">
-                    {/* Page Header */}
-                    <VStack gap={3} align="center" mb={4}>
-                        <Text fontSize="3xl" fontWeight="bold" letterSpacing="tight">
-                            Assets
-                        </Text>
-                        <Text fontSize="md" color="fg.muted">
-                            Explore all available tokens on the BeeZee blockchain
-                        </Text>
-                    </VStack>
+        <Box minH="100vh">
+            <InnerHero
+                section="Assets"
+                title="Assets"
+                subtitle="Explore all available tokens on the BeeZee blockchain"
+            />
 
+            <PageContainer pt="32px" pb="80px">
+                <Flex direction="column" gap="20px">
                     {/* Stats Overview */}
-                    <Grid templateColumns={{ base: '1fr 1fr', md: 'repeat(4, 1fr)' }} gap="3">
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/8"
-                            gradientTo="blue.600/8"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="blue.500/20"
-                            shadow="sm"
-                        >
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Total Assets
-                                </Text>
-                                <Skeleton asChild loading={isLoading}>
-                                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        {assetsLpExcluded.length}
-                                    </Text>
-                                </Skeleton>
-                            </VStack>
-                        </Box>
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/8"
-                            gradientTo="blue.600/8"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="blue.500/20"
-                            shadow="sm"
-                        >
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Native
-                                </Text>
-                                <Skeleton asChild loading={isLoading}>
-                                    <HighlightText fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        {assetsLpExcluded.filter(a => a.type === ASSET_TYPE_NATIVE).length}
-                                    </HighlightText>
-                                </Skeleton>
-                            </VStack>
-                        </Box>
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/8"
-                            gradientTo="blue.600/8"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="blue.500/20"
-                            shadow="sm"
-                        >
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    Factory
-                                </Text>
-                                <Skeleton asChild loading={isLoading}>
-                                    <HighlightText fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        {assetsLpExcluded.filter(a => a.type === ASSET_TYPE_FACTORY).length}
-                                    </HighlightText>
-                                </Skeleton>
-                            </VStack>
-                        </Box>
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/8"
-                            gradientTo="blue.600/8"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="blue.500/20"
-                            shadow="sm"
-                        >
-                            <VStack align="start" gap={2}>
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted" textTransform="uppercase">
-                                    IBC
-                                </Text>
-                                <Skeleton asChild loading={isLoading}>
-                                    <HighlightText fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                                        {assetsLpExcluded.filter(a => a.type === ASSET_TYPE_IBC).length}
-                                    </HighlightText>
-                                </Skeleton>
-                            </VStack>
-                        </Box>
+                    <Grid templateColumns={{ base: '1fr 1fr', md: 'repeat(4, minmax(0, 1fr))' }} gap="12px">
+                        <CountCard label="Total Assets" loading={isLoading}>{assetsLpExcluded.length}</CountCard>
+                        <CountCard label="Native" loading={isLoading}>{assetsLpExcluded.filter(a => a.type === ASSET_TYPE_NATIVE).length}</CountCard>
+                        <CountCard label="Factory" loading={isLoading}>{assetsLpExcluded.filter(a => a.type === ASSET_TYPE_FACTORY).length}</CountCard>
+                        <CountCard label="IBC" loading={isLoading}>{assetsLpExcluded.filter(a => a.type === ASSET_TYPE_IBC).length}</CountCard>
                     </Grid>
 
-                    {/* Search Section */}
-                    <Box
-                        p={6}
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="blue.600/8"
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor="blue.500/20"
-                        shadow="sm"
-                    >
-                        <Box position="relative" w="full" maxW="500px">
-                            <Input
-                                placeholder="Search assets..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                size="lg"
-                                pl="12"
-                                borderRadius="lg"
-                            />
-                            <Box position="absolute" left="4" top="50%" transform="translateY(-50%)" color="fg.muted">
-                                <LuSearch size={20} />
-                            </Box>
-                        </Box>
-                    </Box>
+                    {/* Search */}
+                    <InputGroup startElement={<LuSearch size={16}/>} w="500px" maxW="100%">
+                        <Input
+                            aria-label="Search assets"
+                            placeholder="Search assets..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            h="44px"
+                            borderRadius="12px"
+                            bg="hg.inset"
+                            borderColor="hg.hairline"
+                            fontSize="15px"
+                        />
+                    </InputGroup>
+
                     {/* Assets List */}
-                    <VStack align="stretch" gap={3}>
+                    <Flex direction="column" gap="10px">
                         {filteredAssets.map(asset =>
                             <AssetItem asset={asset} isExpanded={expandedAsset === asset.denom} key={asset.denom} toggleExpanded={toggleExpanded}/>
                         )}
-                    </VStack>
-                </VStack>
-            </Container>
+                    </Flex>
+                </Flex>
+            </PageContainer>
         </Box>
     )
 }

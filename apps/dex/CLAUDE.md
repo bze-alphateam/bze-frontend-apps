@@ -30,6 +30,10 @@ src/
 - Trade sides and price moves use the data colours `hg.up` / `hg.down` (`trading/badges.tsx`: `ChangePill`, `SideBadge`, `PriceImpactBadge` green ≤ 0.5 %, amber > 0.5 %, red > 1 %), never the app colour. Market History keeps its old colouring (buy trades red, sell trades green).
 - The chart canvas cannot read CSS tokens, so `trading/chart.tsx` takes its colours from ui-kit's exported token values (`HIVE_GLOW_DARK` / `HIVE_GLOW_LIGHT`, `HIVE_GLOW_APPS.dex`).
 - The market page's cards, book rows, order forms and small tables are in `trading/market-parts.tsx`.
+- **Reward names**: the chain's rewards staking is a **"Simple reward"** and its denom rewards a **"Compounded reward"** in every UI string; code identifiers keep the chain names. `/staking` has three sections: Network staking (the native card, "From the Staking app" + the Staking `AppLink`), Simple rewards, Compounded rewards.
+- Staking cards (`staking/staking-card-parts.tsx`): staked = DEX gradient edge, unlocking = amber edge, otherwise the hairline; stat tiles stay neutral. Stake / Claim are the DEX soft button, Unlock / Unstake / Exit the neutral outline with the amber lock-open icon (`staking/rewards-staking-buttons.tsx`); each dialog's confirm is the one gradient button.
+- Dialogs use `components/ui/dialog.tsx` (`DexDialog`, the ui-kit fee details frame). Inner pages start with `layout/inner-hero.tsx`; the pool forms' fields, slippage, tabs and tiles are in `pools/pool-parts.tsx`, the pool APR chip (green > 15 %, amber > 10 %, else DEX) in `pools/apr-chip.tsx`.
+- The header's active item follows `lib/nav-active.ts`: a detail page (`/exchange/market`, `/pools/details`, `/assets/details`) highlights its parent.
 
 ### What comes from @bze/bze-ui-kit
 

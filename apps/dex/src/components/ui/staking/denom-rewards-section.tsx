@@ -1,9 +1,11 @@
-import {Box, Button, HStack, Skeleton, Text, VStack} from "@chakra-ui/react";
+import {Box, Button, chakra, Flex} from "@chakra-ui/react";
 import {LuGift, LuRefreshCw} from "react-icons/lu";
-import React, {useState} from "react";
-import {claimableCoins, DenomRewardAction, DenomRewardHolderItem, useAssets} from "@bze/bze-ui-kit";
+import {useState} from "react";
+import {claimableCoins, DenomRewardAction, DenomRewardHolderItem, HgCard, hgVariant, Shimmer, useAssets} from "@bze/bze-ui-kit";
 import {DenomRewardBox} from "@/components/ui/staking/denom-reward-box";
 import {DenomRewardActionModal, DenomRewardClaimAllModal} from "@/components/ui/staking/denom-reward-modals";
+import {softButtonStyle} from "@/components/ui/staking/rewards-staking-buttons";
+import {StakingSection} from "@/components/ui/staking/staking-card-parts";
 
 /** Matches a DR by the ticker of its staking denom or of any prize it pays / owes me. */
 export function filterDenomRewardItems(
@@ -34,7 +36,7 @@ interface DenomRewardsSectionProps {
     onReload: () => void;
 }
 
-/** "Denom rewards" on the staking page: every DR, my positions first, with the holder actions. */
+/** "Compounded rewards" (the chain's denom rewards) on the staking page: every DR, my positions first, with the holder actions. */
 export const DenomRewardsSection = ({items, isLoading, hasError, hasWallet, searchTerm, onReload}: DenomRewardsSectionProps) => {
     const {denomTicker} = useAssets();
     const [open, setOpen] = useState<{ denom: string; action: DenomRewardAction } | undefined>();
@@ -52,47 +54,45 @@ export const DenomRewardsSection = ({items, isLoading, hasError, hasWallet, sear
     };
 
     return (
-        <VStack gap={3} align="stretch" data-testid="denom-rewards-section">
-            <HStack justify="space-between" flexWrap="wrap" gap={3} pt={4}>
-                <HStack gap={3}>
-                    <Box p={2} borderRadius="lg" bg="purple.500/15" color="purple.600"><LuGift size={20}/></Box>
-                    <VStack align="start" gap={0}>
-                        <Text fontSize="xl" fontWeight="bold">Denom rewards</Text>
-                        <Text fontSize="sm" color="fg.muted">
-                            Stake a token into its pool and earn the prizes anyone funds for it — daily or as airdrops.
-                        </Text>
-                    </VStack>
-                </HStack>
-                {claimableCount > 0 && (
-                    <Button size="sm" colorPalette="purple" variant="outline" onClick={() => setClaimAllOpen(true)}>
-                        <LuGift/> Claim all denom rewards ({claimableCount})
+        <Box data-testid="denom-rewards-section">
+            <StakingSection
+                title="Compounded rewards"
+                description="Stake a token and share every prize anyone adds to it — several tokens, daily or as airdrops."
+                icon={<LuGift size={18}/>}
+                aside={claimableCount > 0 ? (
+                    <Button size="md" {...softButtonStyle} gap="6px" onClick={() => setClaimAllOpen(true)}>
+                        <LuGift aria-hidden="true"/> Claim all compounded rewards ({claimableCount})
                     </Button>
+                ) : undefined}
+            >
+                {isLoading ? (
+                    <Flex direction="column" gap="12px" aria-busy="true">
+                        <Shimmer h="160px" borderRadius="20px"/>
+                    </Flex>
+                ) : hasError ? (
+                    <HgCard>
+                        <Flex align="center" gap="12px" wrap="wrap">
+                            <chakra.span fontSize="14px" color="fg.muted" flex="1">
+                                Couldn&apos;t load the compounded rewards — the node may be down, or not run chain v8.2.0 yet.
+                            </chakra.span>
+                            <Button size="md" variant={hgVariant('secondary')} gap="6px" onClick={onReload}><LuRefreshCw aria-hidden="true"/> Retry</Button>
+                        </Flex>
+                    </HgCard>
+                ) : visible.length === 0 ? (
+                    <chakra.span fontSize="14px" color="fg.muted" data-testid="denom-rewards-empty">
+                        {items.length === 0 ? 'No token has a compounded reward yet.' : 'No compounded reward matches your search.'}
+                    </chakra.span>
+                ) : (
+                    visible.map(item => (
+                        <DenomRewardBox
+                            key={item.denomReward.staking_denom}
+                            item={item}
+                            hasWallet={hasWallet}
+                            onAction={(action) => setOpen({denom: item.denomReward.staking_denom, action})}
+                        />
+                    ))
                 )}
-            </HStack>
-
-            {isLoading ? (
-                <Skeleton height="40"/>
-            ) : hasError ? (
-                <HStack gap={3} p={4} borderRadius="lg" borderWidth="1px" bg="bg.panel">
-                    <Text fontSize="sm" color="fg.muted" flex="1">
-                        Couldn&apos;t load the denom rewards — the node may be down, or not run chain v8.2.0 yet.
-                    </Text>
-                    <Button size="sm" variant="outline" onClick={onReload}><LuRefreshCw/> Retry</Button>
-                </HStack>
-            ) : visible.length === 0 ? (
-                <Text fontSize="sm" color="fg.muted" data-testid="denom-rewards-empty">
-                    {items.length === 0 ? 'No token has a denom reward yet.' : 'No denom reward matches your search.'}
-                </Text>
-            ) : (
-                visible.map(item => (
-                    <DenomRewardBox
-                        key={item.denomReward.staking_denom}
-                        item={item}
-                        hasWallet={hasWallet}
-                        onAction={(action) => setOpen({denom: item.denomReward.staking_denom, action})}
-                    />
-                ))
-            )}
+            </StakingSection>
 
             {open && openItem && (
                 <DenomRewardActionModal item={openItem} action={open.action} onClose={() => setOpen(undefined)} onDone={done}/>
@@ -100,6 +100,6 @@ export const DenomRewardsSection = ({items, isLoading, hasError, hasWallet, sear
             {claimAllOpen && (
                 <DenomRewardClaimAllModal items={items} onClose={() => setClaimAllOpen(false)} onDone={done}/>
             )}
-        </VStack>
+        </Box>
     );
 };

@@ -15,7 +15,8 @@ import {
     type DenomRewardHolderItem,
 } from "@bze/bze-ui-kit";
 import { DenomRewardBox } from "@/components/ui/staking/denom-reward-box";
-import { filterDenomRewardItems } from "@/components/ui/staking/denom-rewards-section";
+import { DenomRewardsSection, filterDenomRewardItems } from "@/components/ui/staking/denom-rewards-section";
+import { DenomRewardActionModal } from "@/components/ui/staking/denom-reward-modals";
 import { forbidNetwork } from "@bze/vitest-preset/no-network";
 
 // The panels are the shared ui-kit bodies running the REAL gas engine; only the wallet is mocked
@@ -111,6 +112,8 @@ describe("DenomRewardBox", () => {
     it("shows my stake and the chain's pending prizes, with every action enabled", () => {
         renderWith(<DenomRewardBox item={{ denomReward: DR, dailyPrizes: PAYS, position: positionOf("20000000"), unlocks: [] }} hasWallet={true} onAction={vi.fn()} />);
 
+        // the chain's denom reward is a "Compounded reward" in the UI
+        expect(screen.getByText("Compounded reward")).toBeInTheDocument();
         expect(screen.getByTestId("denom-reward-my-stake")).toHaveTextContent("20 TOK");
         expect(screen.getByText("1.5 BZE")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /Add/ })).toBeEnabled();
@@ -129,6 +132,41 @@ describe("DenomRewardBox", () => {
         expect(screen.getByRole("button", { name: /Stake/ })).toBeDisabled();
         expect(screen.getByTestId("denom-reward-blockers")).toHaveTextContent(/below the minimum stake/);
         expect(screen.getByRole("button", { name: /Claim/ })).toBeDisabled();
+    });
+});
+
+describe("DenomRewardsSection", () => {
+    const mine = { denomReward: DR, dailyPrizes: PAYS, position: positionOf("20000000"), unlocks: [] };
+
+    it("is the Compounded rewards section, with Claim all counting the rewards that owe me prizes", () => {
+        renderWith(<DenomRewardsSection items={[mine]} isLoading={false} hasError={false} hasWallet={true} searchTerm="" onReload={vi.fn()} />);
+
+        expect(screen.getByRole("heading", { name: "Compounded rewards" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Claim all compounded rewards \(1\)/ })).toBeEnabled();
+    });
+
+    it("says no compounded reward exists, or none matches the search", () => {
+        const { unmount } = renderWith(<DenomRewardsSection items={[]} isLoading={false} hasError={false} hasWallet={true} searchTerm="" onReload={vi.fn()} />);
+        expect(screen.getByTestId("denom-rewards-empty")).toHaveTextContent("No token has a compounded reward yet.");
+        unmount();
+
+        renderWith(<DenomRewardsSection items={[mine]} isLoading={false} hasError={false} hasWallet={true} searchTerm="nothing" onReload={vi.fn()} />);
+        expect(screen.getByTestId("denom-rewards-empty")).toHaveTextContent("No compounded reward matches your search.");
+    });
+});
+
+describe("DenomRewardActionModal", () => {
+    it("titles the exit dialog with the Compounded reward name", async () => {
+        renderWith(
+            <DenomRewardActionModal
+                item={{ denomReward: DR, dailyPrizes: PAYS, position: positionOf("20000000"), unlocks: [] }}
+                action="exit"
+                onClose={vi.fn()}
+                onDone={vi.fn()}
+            />,
+        );
+
+        expect(await screen.findByRole("dialog", { name: "Exit the TOK compounded reward" })).toBeInTheDocument();
     });
 });
 

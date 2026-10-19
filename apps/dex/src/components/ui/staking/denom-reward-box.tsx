@@ -1,6 +1,5 @@
-import {Badge, Box, Card, Heading, HStack, SimpleGrid, Stack, Text, VStack} from "@chakra-ui/react";
-import {LuClock, LuCoins, LuGift, LuLock, LuTrendingUp} from "react-icons/lu";
-import React, {type ReactNode} from "react";
+import {Badge, chakra, Flex, SimpleGrid, Stack} from "@chakra-ui/react";
+import {LuGift} from "react-icons/lu";
 import {
     claimableCoins,
     DenomRewardAction,
@@ -16,21 +15,11 @@ import {
     useAsset,
     useBalance,
     useEpochs,
+    hgVariant,
 } from "@bze/bze-ui-kit";
 import {RewardStakingAlert, TYPE_UNLOCK} from "@/components/ui/staking/rewards-staking-alerts";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
-
-const Stat = ({icon, label, children}: { icon: ReactNode; label: string; children: ReactNode }) => (
-    <Box p="2.5" bg="bg.muted" borderRadius="md" borderWidth="1px">
-        <VStack align="start" gap="0.5">
-            <HStack gap="1" color="fg.muted">
-                {icon}
-                <Text fontSize="2xs" textTransform="uppercase" fontWeight="semibold">{label}</Text>
-            </HStack>
-            <Box fontWeight="bold" fontSize="sm" w="full">{children}</Box>
-        </VStack>
-    </Box>
-);
+import {KindTag, MiniStat, MiniStats, StakingCard, StakingCardHeader, VerifiedPill} from "@/components/ui/staking/staking-card-parts";
 
 interface DenomRewardBoxProps {
     item: DenomRewardHolderItem;
@@ -58,100 +47,87 @@ export const DenomRewardBox = ({item, hasWallet, onAction}: DenomRewardBoxProps)
     const reasons = Array.from(new Set([blockers.stake, position ? blockers.claim : ''].filter(Boolean)));
 
     return (
-        <Card.Root
-            borderWidth={position ? "2px" : "1px"}
-            borderColor={position ? "blue.500" : (unlocks.length > 0 ? "orange.500" : "border")}
-            bgGradient="to-br"
-            gradientFrom={position ? "blue.500/5" : "blue.400/5"}
-            gradientTo={position ? "blue.600/5" : "cyan.500/5"}
-            shadow="sm"
+        <StakingCard
+            state={position ? 'staked' : unlocks.length > 0 ? 'unlocking' : 'default'}
             data-testid="denom-reward-box"
         >
-            <Card.Header pb="0">
-                <HStack gap="3" flexWrap="wrap">
-                    <Box p="2" bg="bg.subtle" borderRadius="lg" borderWidth="1px" borderColor="border" flexShrink="0">
-                        <TokenLogo src={asset?.logo} symbol={ticker} size="8"/>
-                    </Box>
-                    <VStack align="start" gap="0.5" minW="0">
-                        <Heading size="md" lineHeight="1.2">Stake {ticker}, earn prizes</Heading>
-                        <HStack flexWrap="wrap" gap="1.5">
-                            <Badge colorPalette="purple" variant="subtle" size="sm">Denom reward</Badge>
-                            {dailyPrizes === undefined ? null : isPaying
-                                ? <Badge colorPalette="green" variant="subtle" size="sm">Paying daily</Badge>
-                                : <Badge colorPalette="gray" variant="subtle" size="sm">No daily schedule — airdrops only</Badge>}
-                            {asset?.verified && <Badge colorPalette="green" variant="outline" size="sm">Verified</Badge>}
-                        </HStack>
-                    </VStack>
-                </HStack>
-            </Card.Header>
+            <StakingCardHeader
+                tile={<TokenLogo src={asset?.logo} symbol={ticker} size="8"/>}
+                title={`Stake ${ticker}, earn prizes`}
+                tags={(
+                    <>
+                        <KindTag>Compounded reward</KindTag>
+                        {dailyPrizes === undefined ? null : isPaying
+                            ? <Badge variant={hgVariant('success')} borderRadius="full" px="8px">Paying daily</Badge>
+                            : <Badge variant={hgVariant('neutral')} borderRadius="full" px="8px">No daily schedule — airdrops only</Badge>}
+                        {asset?.verified && <VerifiedPill/>}
+                    </>
+                )}
+            />
 
-            <Card.Body>
-                <VStack align="stretch" gap="2">
-                    {position && (
-                        <SimpleGrid columns={{base: 1, md: 2}} gap="2">
-                            <Box p="3" borderRadius="md" borderWidth="1px" borderColor="blue.500/30" bg="blue.500/10">
-                                <Text fontSize="sm" fontWeight="semibold" color="blue.600" textTransform="uppercase">Your stake</Text>
-                                <Text fontWeight="bold" fontSize="lg" data-testid="denom-reward-my-stake">
-                                    {prettyAmount(uAmountToBigNumberAmount(position.participant.amount, decimals))} {ticker}
-                                </Text>
-                                {dailyPrizes?.map(prize => {
-                                    const share = estimateDailyShare(position.participant.amount, denomReward.staked_amount, prize.amount);
-                                    return share.gt(0) ? (
-                                        <DenomRewardCoinLine key={prize.denom} coin={{denom: prize.denom, amount: share.toFixed(0)}} suffix=" / day (est.)"/>
-                                    ) : null;
-                                })}
-                            </Box>
-                            <Box p="3" borderRadius="md" borderWidth="1px" borderColor="purple.500/30" bg="purple.500/10">
-                                <HStack gap="1" color="purple.600">
-                                    <LuGift size={14}/>
-                                    <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">Pending prizes</Text>
-                                </HStack>
-                                {pending.length > 0
-                                    ? pending.map(c => <DenomRewardCoinLine key={c.denom} coin={c}/>)
-                                    : <Text color="fg.muted" fontSize="sm">Nothing to claim yet.</Text>}
-                            </Box>
-                        </SimpleGrid>
-                    )}
+            {position && (
+                <SimpleGrid columns={{base: 1, md: 2}} gap="10px">
+                    <Flex direction="column" gap="4px" px="12px" py="12px" borderRadius="12px" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+                        <chakra.span fontSize="11px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase" color="hg.link">Your stake</chakra.span>
+                        <chakra.strong fontSize="17px" data-testid="denom-reward-my-stake">
+                            {prettyAmount(uAmountToBigNumberAmount(position.participant.amount, decimals))} {ticker}
+                        </chakra.strong>
+                        {dailyPrizes?.map(prize => {
+                            const share = estimateDailyShare(position.participant.amount, denomReward.staked_amount, prize.amount);
+                            return share.gt(0) ? (
+                                <DenomRewardCoinLine key={prize.denom} coin={{denom: prize.denom, amount: share.toFixed(0)}} suffix=" / day (est.)"/>
+                            ) : null;
+                        })}
+                    </Flex>
+                    <Flex direction="column" gap="4px" px="12px" py="12px" borderRadius="12px" bg="hg.inset" borderWidth="1px" borderColor="hg.hairline">
+                        <Flex align="center" gap="6px" color="hg.text.secondary">
+                            <LuGift size={14} aria-hidden="true"/>
+                            <chakra.span fontSize="11px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase">Pending prizes</chakra.span>
+                        </Flex>
+                        {pending.length > 0
+                            ? pending.map(c => <DenomRewardCoinLine key={c.denom} coin={c}/>)
+                            : <chakra.span color="fg.muted" fontSize="14px">Nothing to claim yet.</chakra.span>}
+                    </Flex>
+                </SimpleGrid>
+            )}
 
-                    {unlocks.map(u => (
-                        <RewardStakingAlert
-                            key={u.unlockEpoch}
-                            type={TYPE_UNLOCK}
-                            text={`${prettyAmount(uAmountToBigNumberAmount(u.amount, decimals))} ${ticker} unlocking ${currentHour !== undefined ? formatUnlockCountdown(u.unlockEpoch, currentHour) : 'soon'}`}
-                        />
-                    ))}
+            {unlocks.map(u => (
+                <RewardStakingAlert
+                    key={u.unlockEpoch}
+                    type={TYPE_UNLOCK}
+                    text={`${prettyAmount(uAmountToBigNumberAmount(u.amount, decimals))} ${ticker} unlocking ${currentHour !== undefined ? formatUnlockCountdown(u.unlockEpoch, currentHour) : 'soon'}`}
+                />
+            ))}
 
-                    <SimpleGrid columns={{base: 2, md: 4}} gap="2">
-                        <Stat icon={<LuCoins size={11}/>} label="Pays per day">
-                            {dailyPrizes === undefined
-                                ? '—'
-                                : isPaying
-                                    ? dailyPrizes.map(p => <DenomRewardCoinLine key={p.denom} coin={p}/>)
-                                    : 'Nothing scheduled'}
-                        </Stat>
-                        <Stat icon={<LuLock size={11}/>} label="Total staked">{fmt(denomReward.staked_amount)}</Stat>
-                        <Stat icon={<LuClock size={11}/>} label="Unlock">
-                            {denomReward.lock > 0 ? `${denomReward.lock} day${denomReward.lock === 1 ? '' : 's'}` : 'Instant'}
-                        </Stat>
-                        <Stat icon={<LuTrendingUp size={11}/>} label="Minimum">{fmt(denomReward.min_stake)}</Stat>
-                    </SimpleGrid>
+            <MiniStats>
+                <MiniStat label="Pays per day">
+                    {dailyPrizes === undefined
+                        ? '—'
+                        : isPaying
+                            ? dailyPrizes.map(p => <DenomRewardCoinLine key={p.denom} coin={p}/>)
+                            : 'Nothing scheduled'}
+                </MiniStat>
+                <MiniStat label="Total staked">{fmt(denomReward.staked_amount)}</MiniStat>
+                <MiniStat label="Unlock">
+                    {denomReward.lock > 0 ? `${denomReward.lock} day${denomReward.lock === 1 ? '' : 's'}` : 'Instant'}
+                </MiniStat>
+                <MiniStat label="Minimum">{fmt(denomReward.min_stake)}</MiniStat>
+            </MiniStats>
 
-                    <Stack direction={{base: 'column', sm: 'row'}} gap="2" pt="1">
-                        <RewardsStakingButton buttonType="staking" disabled={blockers.stake !== ''} onClick={() => onAction('stake')}>
-                            <Text>{position ? 'Add' : 'Stake'}</Text>
-                        </RewardsStakingButton>
-                        <RewardsStakingButton buttonType="rewards" disabled={blockers.claim !== ''} onClick={() => onAction('claim')}>
-                            <Text>Claim</Text>
-                        </RewardsStakingButton>
-                        <RewardsStakingButton buttonType="unlock" disabled={blockers.exit !== ''} onClick={() => onAction('exit')}>
-                            <Text>Exit</Text>
-                        </RewardsStakingButton>
-                    </Stack>
-                    {reasons.length > 0 && (
-                        <Text fontSize="xs" color="fg.muted" data-testid="denom-reward-blockers">{reasons.join(' ')}</Text>
-                    )}
-                </VStack>
-            </Card.Body>
-        </Card.Root>
+            <Stack direction={{base: 'column', sm: 'row'}} gap="10px">
+                <RewardsStakingButton buttonType="staking" size="lg" disabled={blockers.stake !== ''} onClick={() => onAction('stake')}>
+                    {position ? 'Add' : 'Stake'}
+                </RewardsStakingButton>
+                <RewardsStakingButton buttonType="rewards" size="lg" disabled={blockers.claim !== ''} onClick={() => onAction('claim')}>
+                    Claim
+                </RewardsStakingButton>
+                <RewardsStakingButton buttonType="unlock" size="lg" disabled={blockers.exit !== ''} onClick={() => onAction('exit')}>
+                    Exit
+                </RewardsStakingButton>
+            </Stack>
+            {reasons.length > 0 && (
+                <chakra.span fontSize="12px" color="hg.text.faint" data-testid="denom-reward-blockers">{reasons.join(' ')}</chakra.span>
+            )}
+        </StakingCard>
     );
 };
