@@ -1,11 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 // Hive Glow rule for the Burner: no emoji in any UI string (headings, buttons, toasts, the
 // raffle waiting lines, the page title). Scans every source file of the app.
-const SRC = fileURLToPath(new URL(".", import.meta.url));
+const SRC = __dirname;
 const EMOJI = /\p{Extended_Pictographic}/u;
 
 function sourceFiles(dir: string): string[] {

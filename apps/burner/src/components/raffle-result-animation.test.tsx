@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 import { RaffleResultAnimation } from "./raffle-result-animation";
@@ -25,6 +25,7 @@ function renderOverlay(props: Partial<Parameters<typeof RaffleResultAnimation>[0
 }
 
 afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
 });
 
@@ -52,8 +53,13 @@ describe("Raffle result overlay", () => {
         { result: "summary" as const, totalContributions: 3, winnersCount: 1, losersCount: 2, totalWon: "12", contributionPrice: "1" },
         { result: "summary" as const, totalContributions: 1, winnersCount: 0, losersCount: 1 },
     ])("shows its $result copy without emoji", (props) => {
+        vi.useFakeTimers();
         mockReducedMotion(true);
         renderOverlay(props);
+        // A win or a loss shows half a second after the overlay opens.
+        act(() => {
+            vi.advanceTimersByTime(600);
+        });
 
         const text = screen.getByTestId("raffle-result").textContent ?? "";
         expect(text.trim()).not.toBe("");

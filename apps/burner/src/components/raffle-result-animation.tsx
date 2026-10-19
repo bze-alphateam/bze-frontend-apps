@@ -137,11 +137,8 @@ export const RaffleResultAnimation = ({
             return () => clearInterval(messageInterval);
         }
 
-        // The summary stays until the user closes it
-        if (result === 'summary') {
-            setShowResult(true);
-            return;
-        }
+        // The summary shows at once and stays until the user closes it
+        if (result === 'summary') return;
 
         const resultTimer = setTimeout(() => {
             setShowResult(true);
@@ -254,7 +251,7 @@ export const RaffleResultAnimation = ({
                 </Flex>
             )}
 
-            {result !== 'waiting' && showResult && (
+            {result !== 'waiting' && (showResult || result === 'summary') && (
                 <Flex
                     direction="column"
                     align="center"

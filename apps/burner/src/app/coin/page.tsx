@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import {LuArrowLeft, LuBadgeCheck, LuClock, LuFlame, LuInfo, LuLock, LuTicket} from "react-icons/lu";
 import { useRouter, useSearchParams } from "next/navigation";
-import {useCallback, useEffect, useMemo, useState, Suspense, type ReactNode} from "react";
+import {useCallback, useMemo, useState, Suspense, type ReactNode} from "react";
 import { useChain } from "@interchain-kit/react";
 import { getChainName, prettyAmount, uAmountToBigNumberAmount, toBigNumber, truncateDenom, isLpDenom, isIbcDenom, formatTimeRemainingFromEpochs, truncateAddress, useAssetsValue, useEpochs, useAssets, FeaturedCard, HeroGlow, Notice, PageContainer, PageState, Shimmer, hgVariant } from "@bze/bze-ui-kit";
 import { useBurnerContext } from "@/hooks/useBurnerContext";
@@ -72,7 +72,6 @@ function CoinDetailContent() {
     const [isBurnModalOpen, setIsBurnModalOpen] = useState(false);
     const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
     const [isRaffleInfoModalOpen, setIsRaffleInfoModalOpen] = useState(false);
-    const [showRaffleAnimation, setShowRaffleAnimation] = useState<'win' | 'lose' | 'waiting' | 'summary' | null>(null);
     const [currentResultIndex, setCurrentResultIndex] = useState(0); // Track which result we're displaying
 
     // Get asset from useAssets
@@ -195,41 +194,28 @@ function CoinDetailContent() {
         };
     }, [coinRaffle, asset, currentEpoch, winners]);
 
-    // Check for pending raffle contribution and manage animation state
-    useEffect(() => {
-        if (!denom || !asset) return;
+    // The overlay follows the pending raffle contribution: waiting until a result arrives, then
+    // each result in turn, then the summary once every contribution is decided.
+    const pendingContribution = denom && asset ? getPendingContribution(denom) : undefined;
+    const contributionActive = !!pendingContribution && !pendingContribution.wasClosed;
 
-        const pendingContribution = getPendingContribution(denom);
+    // A finished or closed contribution starts the next one from its first result. Adjusted
+    // during render instead of in an effect (React's "adjust state while rendering" pattern).
+    if (!contributionActive && currentResultIndex !== 0) {
+        setCurrentResultIndex(0);
+    }
 
-        // If no pending contribution or it was closed, hide animation
-        if (!pendingContribution || pendingContribution.wasClosed) {
-            setShowRaffleAnimation(null);
-            setCurrentResultIndex(0);
-            return;
+    const showRaffleAnimation = useMemo((): 'win' | 'lose' | 'waiting' | 'summary' | null => {
+        if (!pendingContribution || pendingContribution.wasClosed) return null;
+
+        const results = pendingContribution.results;
+        if (currentResultIndex < results.length) {
+            return results[currentResultIndex].hasWon ? 'win' : 'lose';
         }
+        if (results.length > 0 && pendingContribution.isComplete) return 'summary';
 
-        // If there are results to display
-        if (pendingContribution.results.length > 0) {
-            // Check if all results have been displayed
-            if (currentResultIndex >= pendingContribution.results.length && pendingContribution.isComplete) {
-                // Show summary
-                setShowRaffleAnimation('summary');
-                return;
-            }
-
-            // Check if we have a result to display at current index
-            if (currentResultIndex < pendingContribution.results.length) {
-                const result = pendingContribution.results[currentResultIndex];
-                setShowRaffleAnimation(result.hasWon ? 'win' : 'lose');
-            } else {
-                // Waiting for more results
-                setShowRaffleAnimation('waiting');
-            }
-        } else {
-            // No results yet, show waiting
-            setShowRaffleAnimation('waiting');
-        }
-    }, [denom, asset, getPendingContribution, currentResultIndex]);
+        return 'waiting';
+    }, [pendingContribution, currentResultIndex]);
 
     const handleRaffleClick = useCallback(() => {
         if (raffleData) {
@@ -252,7 +238,6 @@ function CoinDetailContent() {
                 removePendingContribution(denom);
             }
         }
-        setShowRaffleAnimation(null);
         setCurrentResultIndex(0);
     }, [denom, getPendingContribution, markAsClosed, removePendingContribution]);
 

@@ -545,8 +545,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [address, pendingRaffleContributions, assetsMap, toast]);
 
     useEffect(() => {
-        setIsLoading(true)
-        //initial context loading
+        // Initial context loading; isLoading starts out true.
         const init = async () => {
             const [
                 assets,
@@ -601,12 +600,11 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [usdPricesMap, assetsMap]);
 
     useEffect(() => {
-        if (!address) {
-            doUpdateBalances([]);
-            return
-        }
-
         const fetchBalances = async () => {
+            if (!address) {
+                doUpdateBalances([]);
+                return
+            }
             setIsLoading(true)
             const balances = await getAddressBalances(address);
             doUpdateBalances(balances);
