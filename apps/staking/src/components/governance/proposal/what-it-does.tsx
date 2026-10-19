@@ -3,9 +3,10 @@
 import {useState} from 'react';
 import {Box, Button, Grid, HStack, Link, Stack, Text} from '@chakra-ui/react';
 import {LuChevronDown, LuChevronUp, LuCoins, LuFileText, LuRefreshCw, LuSlidersHorizontal, LuCable, LuNewspaper, LuPuzzle} from 'react-icons/lu';
-import {AppLink, getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovProposal} from '@bze/bze-ui-kit';
+import {AppLink, getExplorerAccountURL, getExplorerProposalURL, IconTile, truncateAddress, type GovProposal} from '@bze/bze-ui-kit';
 import {describeProposal, humanise, type Action, type Entry} from '@/lib/governance/describe';
 import {coinsText, isOpen, type DenomResolver} from '@/lib/governance/details';
+import {Panel} from './panel';
 
 // One box per proposal message, in plain words (the describers are BZE
 // Scan's), plus the messages as JSON behind "Show technical details".
@@ -42,7 +43,7 @@ const Mono = ({children}: {children: React.ReactNode}) => (
 
 function Address({address}: {address: string}) {
     return (
-        <Link href={getExplorerAccountURL(address)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="purple.fg" title={address}>
+        <Link href={getExplorerAccountURL(address)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={address}>
             {truncateAddress(address)}
         </Link>
     );
@@ -152,20 +153,17 @@ function ActionBox({action, proposal, resolve}: {action: Action; proposal: GovPr
         <HStack
             align="flex-start"
             gap="3.5"
-            bg="purple.500/5"
+            bg="hg.inset"
             borderWidth="1px"
-            borderColor="purple.500/25"
-            borderRadius="lg"
-            px="4"
-            py="3.5"
+            borderColor="app.subtle"
+            borderRadius="14px"
+            p="16px"
             data-testid="action"
             data-action={action.type}
         >
-            <Box hideBelow="md" w="9" h="9" borderRadius="lg" bg="purple.subtle" color="purple.fg" display="flex" alignItems="center" justifyContent="center" flex="none">
-                <Icon size={18} />
-            </Box>
+            <Box hideBelow="md"><IconTile icon={<Icon />} size={36} /></Box>
             <Stack gap="1" minW="0" flex="1">
-                <Text fontSize="sm" fontWeight="bold">{action.type === 'other' ? action.title : LABELS[action.type]}</Text>
+                <Text fontSize="15px" fontWeight="bold">{action.type === 'other' ? action.title : LABELS[action.type]}</Text>
                 <ActionText action={action} proposal={proposal} resolve={resolve} />
             </Stack>
         </HStack>
@@ -178,8 +176,7 @@ export function WhatItDoes({proposal, resolve}: {proposal: GovProposal; resolve?
     const hasMessages = (proposal.messages ?? []).length > 0;
 
     return (
-        <Stack as="section" aria-labelledby="what-h" bg="bg.panel" borderWidth="1px" borderRadius="lg" px={{base: '4', md: '6'}} py={{base: '4', md: '5'}} gap="3.5">
-            <Text as="h2" id="what-h" fontSize="md" fontWeight="bold">What it does if it passes</Text>
+        <Panel headingId="what-h" title="What it does if it passes" px={{base: '16px', md: '24px'}} py={{base: '16px', md: '22px'}} gap="16px">
             {actions.map((action, i) => <ActionBox key={i} action={action} proposal={proposal} resolve={resolve} />)}
             {hasMessages && (
                 <>
@@ -188,8 +185,9 @@ export function WhatItDoes({proposal, resolve}: {proposal: GovProposal; resolve?
                         size="xs"
                         alignSelf="flex-start"
                         px="0"
-                        color="fg.muted"
+                        color="hg.text.secondary"
                         fontWeight="semibold"
+                        _hover={{color: 'fg'}}
                         aria-expanded={showRaw}
                         onClick={() => setShowRaw((v) => !v)}
                     >
@@ -197,12 +195,12 @@ export function WhatItDoes({proposal, resolve}: {proposal: GovProposal; resolve?
                         {showRaw ? <LuChevronUp /> : <LuChevronDown />}
                     </Button>
                     {showRaw && (
-                        <Box as="pre" data-testid="raw-messages" m="0" px="4" py="3.5" borderRadius="lg" bg="bg.muted" fontFamily="mono" fontSize="xs" lineHeight="1.6" overflowX="auto" whiteSpace="pre">
+                        <Box as="pre" data-testid="raw-messages" m="0" px="4" py="3.5" borderRadius="hg.md" bg="hg.inset" fontFamily="mono" fontSize="xs" lineHeight="1.6" overflowX="auto" whiteSpace="pre">
                             {JSON.stringify(proposal.messages, null, 2)}
                         </Box>
                     )}
                 </>
             )}
-        </Stack>
+        </Panel>
     );
 }

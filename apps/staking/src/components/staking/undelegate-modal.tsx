@@ -1,7 +1,7 @@
 'use client';
 
 import {useState} from 'react';
-import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
+import {Button, chakra} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
@@ -13,13 +13,16 @@ import {
     amountToUAmount,
     sanitizeNumberInput,
     getChainName,
+    hgVariant,
+    Notice,
 } from '@bze/bze-ui-kit';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
-import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
+import {LuWallet} from 'react-icons/lu';
+import {AmountField, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 
 interface UndelegateModalProps {
     isOpen: boolean;
@@ -93,87 +96,59 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW="md" p="6">
-                        <Dialog.Header pb="4">
-                            <Dialog.Title>Undelegate from {validator?.description?.moniker}</Dialog.Title>
-                        </Dialog.Header>
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
-                                    <HStack gap="2">
-                                        <Box color="orange.500"><LuTriangleAlert size={16} /></Box>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            {unbondingDays ? (
-                                                <>
-                                                    Undelegated tokens are locked for <Text as="span" fontWeight="bold">{unbondingDays} days</Text> (the unbonding period) and earn no rewards during that time.
-                                                </>
-                                            ) : (
-                                                'Undelegated tokens will be locked for the unbonding period before becoming available.'
-                                            )}
-                                        </Text>
-                                    </HStack>
-                                </Box>
+        <StakingDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            title={`Undelegate from ${validator?.description?.moniker ?? ''}`}
+        >
+            <Notice status="warning">
+                {unbondingDays ? (
+                    <>
+                        Undelegated tokens are locked for <chakra.strong color="fg">{unbondingDays} days</chakra.strong> (the unbonding period) and earn no rewards during that time.
+                    </>
+                ) : (
+                    'Undelegated tokens will be locked for the unbonding period before becoming available.'
+                )}
+            </Notice>
 
-                                <VStack align="stretch" gap="2">
-                                    <HStack justify="space-between">
-                                        <Text fontSize="sm" fontWeight="medium">Amount</Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Delegated: {prettyAmount(delegatedHuman)} {nativeAsset?.ticker}
-                                        </Text>
-                                    </HStack>
-                                    <Input
-                                        placeholder="0.00"
-                                        value={amount}
-                                        onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
-                                        type="text"
-                                        disabled={!isConnected}
-                                    />
-                                    <HStack gap="2">
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.25)} disabled={!isConnected}>25%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.5)} disabled={!isConnected}>50%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.75)} disabled={!isConnected}>75%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(1)} disabled={!isConnected}>Max</Button>
-                                    </HStack>
-                                </VStack>
+            <AmountField
+                value={amount}
+                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                aside={`Delegated: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
+                ticker={nativeAsset?.ticker}
+                disabled={!isConnected}
+            >
+                <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
+            </AmountField>
 
-                                {feeCheck.message && (
-                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
-                                )}
+            {feeCheck.message && (
+                <chakra.span fontSize="12px" color="hg.danger.text" textAlign="center">{feeCheck.message}</chakra.span>
+            )}
 
-                                {progressTrack && (
-                                    <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
-                                )}
+            <ProgressLine>{progressTrack}</ProgressLine>
 
-                                {!isConnected ? (
-                                    <Button
-                                        colorPalette="orange"
-                                        w="full"
-                                        onClick={() => { onClose(); connect(); }}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        colorPalette="orange"
-                                        onClick={handleUndelegate}
-                                        loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || !feeCheck.canAfford}
-                                        w="full"
-                                    >
-                                        Undelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
-                                    </Button>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {!isConnected ? (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    w="full"
+                    onClick={() => { onClose(); connect(); }}
+                >
+                    <LuWallet /> Connect Wallet
+                </Button>
+            ) : (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    onClick={handleUndelegate}
+                    loading={isSubmitting}
+                    disabled={!amount || new BigNumber(amount).lte(0) || !address || !feeCheck.canAfford}
+                    w="full"
+                >
+                    Undelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                </Button>
+            )}
+        </StakingDialog>
     );
 }

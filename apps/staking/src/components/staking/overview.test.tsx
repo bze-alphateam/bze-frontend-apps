@@ -63,17 +63,22 @@ describe("StakingOverview", () => {
         expect(screen.getByText("14 days")).toBeInTheDocument();
     });
 
-    it("renders the callout under the header and above the stat cards", () => {
+    it("renders the hero with the APR, then the callout beside it, above the stat cards", () => {
         renderOverview(stakingData(false), { callout: <div data-testid="callout" /> });
 
         const callout = screen.getByTestId("callout");
-        expect(follows(screen.getByText("BZE Staking"), callout)).toBe(true);
+        expect(screen.getByText("10% APR")).toBeInTheDocument();
+        expect(screen.getByText(/^Stake BZE and earn rewards\./)).toBeInTheDocument();
+        expect(follows(screen.getByTestId("home-hero"), callout)).toBe(true);
         expect(follows(callout, screen.getByText("Staking APR"))).toBe(true);
     });
 
-    it("leaves the callout out of the loading skeleton", () => {
+    it("leaves the callout and the numbers out of the loading skeleton", () => {
         renderOverview(stakingData(false), { callout: <div data-testid="callout" />, isLoading: true });
 
         expect(screen.queryByTestId("callout")).not.toBeInTheDocument();
+        expect(screen.getByTestId("home-hero")).toBeInTheDocument();
+        expect(screen.getAllByTestId("stat-tile-loading")).toHaveLength(4);
+        expect(screen.queryByText("10% APR")).not.toBeInTheDocument();
     });
 });

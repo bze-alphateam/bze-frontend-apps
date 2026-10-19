@@ -11,7 +11,7 @@ import {safeUrl} from '@/lib/governance/markdown';
 // URLs; images become links, so a summary loads nothing by itself.
 
 const ExternalLink = ({href, children}: {href: string; children: React.ReactNode}) => (
-    <Link href={href} target="_blank" rel="noopener noreferrer nofollow" color="purple.fg" textDecoration="underline" wordBreak="break-word">
+    <Link href={href} target="_blank" rel="noopener noreferrer nofollow" color="hg.link" textDecoration="underline" wordBreak="break-word">
         {children}
     </Link>
 );
@@ -38,7 +38,7 @@ const components: Components = {
     ),
     code: ({children}) => <Code fontSize="xs" whiteSpace="pre-wrap" wordBreak="break-word">{children}</Code>,
     pre: ({children}) => (
-        <Box as="pre" bg="bg.muted" p="3" borderRadius="md" overflowX="auto" fontSize="xs">{children}</Box>
+        <Box as="pre" bg="hg.inset" p="3" borderRadius="hg.sm" overflowX="auto" fontSize="xs">{children}</Box>
     ),
     hr: () => <Box as="hr" borderColor="border" />,
     table: ({children}) => (

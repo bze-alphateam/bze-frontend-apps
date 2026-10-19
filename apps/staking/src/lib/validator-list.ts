@@ -49,3 +49,6 @@ export function formatCommissionRate(rate: string | undefined): string {
         .decimalPlaces(1)
         .toString();
 }
+
+/** The All Validators section's id: the hero's "Browse validators" jumps there. */
+export const VALIDATORS_ANCHOR = 'validators';

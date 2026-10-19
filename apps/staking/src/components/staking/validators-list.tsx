@@ -1,19 +1,23 @@
 'use client';
 
-import {Box, Container, Text, VStack, HStack, Input, Button, Badge, Grid} from '@chakra-ui/react';
+import {Button, chakra, Flex, Grid, Input, InputGroup} from '@chakra-ui/react';
 import {LuSearch, LuArrowUpRight} from 'react-icons/lu';
 import {
     useAssets,
     prettyAmount,
     uAmountToBigNumberAmount,
     truncateAddress,
+    HgCard,
+    PageState,
+    StatusPill,
 } from '@bze/bze-ui-kit';
 import BigNumber from 'bignumber.js';
-import {filterValidators, formatCommissionRate} from '@/lib/validator-list';
+import {filterValidators, formatCommissionRate, VALIDATORS_ANCHOR} from '@/lib/validator-list';
 import {validatorRowId} from '@/lib/stake-link';
-import {useState} from 'react';
+import {useState, type ReactNode} from 'react';
 import {ValidatorAvatar} from './validator-avatar';
 import {CopyStakeLinkButton} from './copy-stake-link-button';
+import {cardsGrid, InfoRow, SectionHeader, softButton} from '@/components/ui/staking/parts';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 
 interface ValidatorsListProps {
@@ -23,9 +27,11 @@ interface ValidatorsListProps {
     logos: Record<string, string>;
     // Operator address of a row to highlight (a followed stake link).
     highlightedOperator?: string | null;
+    /** Buttons next to the search (Refresh, when My Validators is not shown). */
+    actions?: ReactNode;
 }
 
-export function ValidatorsList({validators, onStake, logos, highlightedOperator}: ValidatorsListProps) {
+export function ValidatorsList({validators, onStake, logos, highlightedOperator, actions}: ValidatorsListProps) {
     const {nativeAsset} = useAssets();
     const decimals = nativeAsset?.decimals ?? 6;
     const [search, setSearch] = useState('');
@@ -33,107 +39,85 @@ export function ValidatorsList({validators, onStake, logos, highlightedOperator}
     const filtered = filterValidators(validators, search);
 
     return (
-        <Container maxW="7xl" py="2">
-            <VStack align="stretch" gap="4">
-                <HStack justify="space-between" align="center">
-                    <Text fontSize="lg" fontWeight="bold">
-                        All Validators ({validators.length})
-                    </Text>
-                </HStack>
+        <Flex as="section" id={VALIDATORS_ANCHOR} direction="column" gap="16px" scrollMarginTop="96px">
+            <SectionHeader
+                title={`All Validators (${validators.length})`}
+                actions={
+                    <>
+                        <InputGroup startElement={<LuSearch size={16} />} w={{base: 'full', sm: '320px'}}>
+                            <Input
+                                placeholder="Search validators..."
+                                aria-label="Search validators"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                h="40px"
+                                borderRadius="hg.md"
+                            />
+                        </InputGroup>
+                        {actions}
+                    </>
+                }
+            />
 
-                <HStack>
-                    <Box position="relative" flex="1" maxW="400px">
-                        <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="fg.muted">
-                            <LuSearch size={16} />
-                        </Box>
-                        <Input
-                            pl="10"
-                            placeholder="Search validators..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            size="sm"
-                        />
-                    </Box>
-                </HStack>
+            <Grid {...cardsGrid}>
+                {filtered.map((validator, idx) => {
+                    const votingPower = uAmountToBigNumberAmount(new BigNumber(validator.tokens), decimals);
+                    const commission = formatCommissionRate(validator.commission?.commission_rates?.rate);
+                    const isHighlighted = validator.operator_address === highlightedOperator;
 
-                <Grid templateColumns={{base: '1fr', md: 'repeat(2, 1fr)', xl: 'repeat(3, 1fr)'}} gap="3">
-                    {filtered.map((validator, idx) => {
-                        const votingPower = uAmountToBigNumberAmount(new BigNumber(validator.tokens), decimals);
-                        const commission = formatCommissionRate(validator.commission?.commission_rates?.rate);
-                        const isHighlighted = validator.operator_address === highlightedOperator;
+                    return (
+                        <HgCard
+                            key={validator.operator_address}
+                            id={validatorRowId(validator.operator_address)}
+                            data-highlighted={isHighlighted || undefined}
+                            interactive
+                            bg={isHighlighted ? 'app.subtle' : 'hg.card'}
+                            borderColor={isHighlighted ? 'app.solid' : 'hg.hairline'}
+                            px="20px"
+                            py="18px"
+                            display="flex"
+                            flexDirection="column"
+                            gap="14px"
+                            minW="0"
+                        >
+                            <Flex align="center" justify="space-between" gap="10px">
+                                <Flex align="center" gap="12px" minW="0">
+                                    <ValidatorAvatar
+                                        src={logos[validator.operator_address]}
+                                        name={validator.description?.moniker}
+                                        size="36px"
+                                    />
+                                    <Flex direction="column" minW="0">
+                                        <chakra.span fontSize="12px" color="hg.text.faint">#{idx + 1}</chakra.span>
+                                        <Flex align="center" gap="8px" minW="0">
+                                            <chakra.strong fontSize="15px" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+                                                {validator.description?.moniker || truncateAddress(validator.operator_address)}
+                                            </chakra.strong>
+                                            {validator.jailed && <StatusPill tone="danger">Jailed</StatusPill>}
+                                        </Flex>
+                                    </Flex>
+                                </Flex>
 
-                        return (
-                            <Box
-                                key={validator.operator_address}
-                                id={validatorRowId(validator.operator_address)}
-                                data-highlighted={isHighlighted || undefined}
-                                bg={isHighlighted ? 'purple.500/10' : 'bg.panel'}
-                                borderWidth="1px"
-                                borderColor={isHighlighted ? 'purple.500' : undefined}
-                                borderRadius="lg"
-                                p="4"
-                                transition="all 0.2s"
-                                _hover={{borderColor: 'purple.500/25', shadow: 'sm'}}
-                            >
-                                <HStack justify="space-between" align="start">
-                                    <HStack gap="3" flex="1" minW="0" align="start">
-                                        <ValidatorAvatar
-                                            src={logos[validator.operator_address]}
-                                            name={validator.description?.moniker}
-                                            size="36px"
-                                        />
-                                        <VStack align="start" gap="2" flex="1" minW="0">
-                                            <HStack gap="2">
-                                                <Text
-                                                    fontWeight="bold"
-                                                    fontSize="sm"
-                                                    color="fg.muted"
-                                                    opacity={0.6}
-                                                >
-                                                    #{idx + 1}
-                                                </Text>
-                                                <Text fontWeight="semibold" fontSize="sm" lineClamp={1}>
-                                                    {validator.description?.moniker || truncateAddress(validator.operator_address)}
-                                                </Text>
-                                                {validator.jailed && (
-                                                    <Badge colorPalette="red" size="sm">Jailed</Badge>
-                                                )}
-                                            </HStack>
+                                <Flex align="center" gap="4px" flex="none">
+                                    <CopyStakeLinkButton operatorAddress={validator.operator_address} />
+                                    <Button size="sm" {...softButton} onClick={() => onStake(validator)}>
+                                        <LuArrowUpRight /> Stake
+                                    </Button>
+                                </Flex>
+                            </Flex>
 
-                                        <HStack gap="4" fontSize="xs" color="fg.muted">
-                                            <Text>
-                                                VP: {prettyAmount(votingPower)} {nativeAsset?.ticker}
-                                            </Text>
-                                            <Text>
-                                                Commission: {commission}%
-                                            </Text>
-                                        </HStack>
-                                    </VStack>
-                                    </HStack>
+                            <InfoRow label="Voting power">{prettyAmount(votingPower)} {nativeAsset?.ticker}</InfoRow>
+                            <InfoRow label="Commission">{commission}%</InfoRow>
+                        </HgCard>
+                    );
+                })}
+            </Grid>
 
-                                    <HStack gap="1" flexShrink={0}>
-                                        <CopyStakeLinkButton operatorAddress={validator.operator_address} />
-                                        <Button
-                                            size="xs"
-                                            colorPalette="purple"
-                                            variant="subtle"
-                                            onClick={() => onStake(validator)}
-                                        >
-                                            <LuArrowUpRight /> Stake
-                                        </Button>
-                                    </HStack>
-                                </HStack>
-                            </Box>
-                        );
-                    })}
-                </Grid>
-
-                {filtered.length === 0 && (
-                    <Box textAlign="center" py="8">
-                        <Text color="fg.muted">No validators found matching &quot;{search}&quot;</Text>
-                    </Box>
-                )}
-            </VStack>
-        </Container>
+            {filtered.length === 0 && (
+                <HgCard p="0">
+                    <PageState kind="empty" title="No validators found" description={`No validators found matching "${search}"`} />
+                </HgCard>
+            )}
+        </Flex>
     );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import {Box, Container, Text, VStack, HStack, Badge, Button, Grid} from '@chakra-ui/react';
-import {LuArrowUpRight, LuArrowDownRight, LuShuffle, LuGift, LuTriangleAlert} from 'react-icons/lu';
+import {Button, chakra, Flex, Grid} from '@chakra-ui/react';
+import {LuArrowUpRight, LuArrowDownRight, LuShuffle, LuGift} from 'react-icons/lu';
 import {
     useAssets,
     prettyAmount,
@@ -9,10 +9,15 @@ import {
     useAssetPrice,
     formatUsdAmount,
     truncateAddress,
+    HgCard,
+    hgVariant,
+    Notice,
+    StatusPill,
 } from '@bze/bze-ui-kit';
 import BigNumber from 'bignumber.js';
 import {ValidatorWithDelegation} from '@/hooks/useNativeStakingData';
-import {useState, useMemo} from 'react';
+import {useState, useMemo, type ReactNode} from 'react';
+import {InfoRow, neutralButton, SectionHeader, softButton} from '@/components/ui/staking/parts';
 import {DelegateModal} from './delegate-modal';
 import {UndelegateModal} from './undelegate-modal';
 import {RedelegateModal} from './redelegate-modal';
@@ -27,6 +32,8 @@ interface MyValidatorsProps {
     onActionComplete: () => void;
     logos: Record<string, string>;
     unbondingDays?: string;
+    /** Buttons before Claim All (Refresh). */
+    actions?: ReactNode;
 }
 
 type ModalType = 'delegate' | 'undelegate' | 'redelegate' | 'claim' | null;
@@ -35,7 +42,7 @@ function isValidatorActive(validator: ValidatorSDKType): boolean {
     return bondStatusFromJSON(validator.status) === BondStatus.BOND_STATUS_BONDED;
 }
 
-export function MyValidators({myValidators, allValidators, onActionComplete, logos, unbondingDays}: MyValidatorsProps) {
+export function MyValidators({myValidators, allValidators, onActionComplete, logos, unbondingDays, actions}: MyValidatorsProps) {
     const {nativeAsset} = useAssets();
     const {price: bzePrice} = useAssetPrice(nativeAsset?.denom ?? '');
     const decimals = nativeAsset?.decimals ?? 6;
@@ -79,160 +86,111 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
     const hasClaimableRewards = totalRewardsHuman.gt(0.0001);
 
     return (
-        <Container maxW="7xl" py="2">
-            <VStack align="stretch" gap="4">
-                <HStack justify="space-between" align="center">
-                    <Text fontSize="lg" fontWeight="bold">
-                        My Validators
-                    </Text>
-                    {hasClaimableRewards && (
-                        <Button
-                            size="sm"
-                            colorPalette="purple"
-                            variant="subtle"
-                            onClick={() => openModal('claim')}
+        <Flex as="section" direction="column" gap={{base: '12px', md: '16px'}}>
+            <SectionHeader
+                title="My Validators"
+                actions={(actions || hasClaimableRewards) && (
+                    <>
+                        {actions}
+                        {hasClaimableRewards && (
+                            <Button size="md" {...softButton} borderRadius="hg.md" onClick={() => openModal('claim')}>
+                                <LuGift /> Claim All ({prettyAmount(totalRewardsHuman)} {nativeAsset?.ticker})
+                            </Button>
+                        )}
+                    </>
+                )}
+            />
+
+            <Grid templateColumns={{base: 'minmax(0, 1fr)', md: 'repeat(auto-fill, minmax(340px, 1fr))'}} gap={{base: '12px', md: '16px'}}>
+                {myValidators.map((item) => {
+                    const delegatedAmount = new BigNumber(item.delegation?.balance?.amount ?? '0');
+                    const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
+                    const delegatedUsd = bzePrice ? delegatedHuman.multipliedBy(bzePrice) : new BigNumber(0);
+                    const rewardsHuman = uAmountToBigNumberAmount(item.rewards, decimals);
+                    const commission = new BigNumber(item.validator.commission?.commission_rates?.rate ?? '0')
+                        .multipliedBy(100)
+                        .decimalPlaces(1)
+                        .toString();
+
+                    const isInactive = !isValidatorActive(item.validator);
+
+                    return (
+                        <HgCard
+                            key={item.validator.operator_address}
+                            borderColor={isInactive ? 'hg.danger/45' : 'app.subtle'}
+                            p={{base: '16px', md: '20px'}}
+                            display="flex"
+                            flexDirection="column"
+                            gap={{base: '14px', md: '16px'}}
+                            minW="0"
                         >
-                            <LuGift /> Claim All ({prettyAmount(totalRewardsHuman)} {nativeAsset?.ticker})
-                        </Button>
-                    )}
-                </HStack>
+                            <Flex justify="space-between" align="center" gap="10px">
+                                <Flex align="center" gap="12px" minW="0">
+                                    <ValidatorAvatar
+                                        src={logos[item.validator.operator_address]}
+                                        name={item.validator.description?.moniker}
+                                        size="36px"
+                                    />
+                                    <Flex direction="column" minW="0">
+                                        <chakra.strong fontSize="15px" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+                                            {item.validator.description?.moniker || truncateAddress(item.validator.operator_address)}
+                                        </chakra.strong>
+                                        <chakra.span fontSize="12px" color="hg.text.faint">
+                                            Commission: {commission}%
+                                        </chakra.span>
+                                    </Flex>
+                                </Flex>
+                                {item.validator.jailed && <StatusPill tone="danger">Jailed</StatusPill>}
+                            </Flex>
 
-                <Grid templateColumns={{base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)'}} gap="4">
-                    {myValidators.map((item) => {
-                        const delegatedAmount = new BigNumber(item.delegation?.balance?.amount ?? '0');
-                        const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
-                        const delegatedUsd = bzePrice ? delegatedHuman.multipliedBy(bzePrice) : new BigNumber(0);
-                        const rewardsHuman = uAmountToBigNumberAmount(item.rewards, decimals);
-                        const commission = new BigNumber(item.validator.commission?.commission_rates?.rate ?? '0')
-                            .multipliedBy(100)
-                            .decimalPlaces(1)
-                            .toString();
+                            {isInactive && (
+                                <Notice status="danger" title="Not Earning Rewards">
+                                    This validator is {item.validator.jailed ? 'jailed' : item.validator.status === BondStatus.BOND_STATUS_UNBONDING ? 'unbonding' : 'inactive'} and not producing rewards. Redelegate to an active validator to continue earning.
+                                    <Button
+                                        display="flex"
+                                        size="sm"
+                                        variant={hgVariant('danger')}
+                                        onClick={() => openModal('redelegate', item)}
+                                        mt="8px"
+                                    >
+                                        <LuShuffle /> Redelegate Now
+                                    </Button>
+                                </Notice>
+                            )}
 
-                        const isInactive = !isValidatorActive(item.validator);
+                            <Flex direction="column" gap="6px">
+                                <InfoRow label="Delegated">
+                                    <chakra.strong fontSize="14px">{prettyAmount(delegatedHuman)} {nativeAsset?.ticker}</chakra.strong>
+                                </InfoRow>
+                                {delegatedUsd.gt(0) && (
+                                    <chakra.span fontSize="12px" color="hg.text.faint" alignSelf="flex-end">
+                                        ~{formatUsdAmount(delegatedUsd)}
+                                    </chakra.span>
+                                )}
+                                {rewardsHuman.gt(0.0001) && (
+                                    <InfoRow label="Rewards">
+                                        <chakra.strong fontSize="14px" color="hg.accent">
+                                            +{prettyAmount(rewardsHuman)} {nativeAsset?.ticker}
+                                        </chakra.strong>
+                                    </InfoRow>
+                                )}
+                            </Flex>
 
-                        return (
-                            <Box
-                                key={item.validator.operator_address}
-                                bg="bg.panel"
-                                borderWidth={isInactive ? '2px' : '1px'}
-                                borderColor={isInactive ? 'red.500/40' : 'purple.500/15'}
-                                borderRadius="lg"
-                                p="5"
-                                transition="all 0.2s"
-                                _hover={{borderColor: isInactive ? 'red.500/60' : 'purple.500/30', shadow: 'md'}}
-                            >
-                                <VStack align="stretch" gap="4">
-                                    <HStack justify="space-between">
-                                        <HStack gap="3">
-                                            <ValidatorAvatar
-                                                src={logos[item.validator.operator_address]}
-                                                name={item.validator.description?.moniker}
-                                                size="36px"
-                                            />
-                                            <VStack align="start" gap="0">
-                                                <Text fontWeight="bold" fontSize="sm" lineClamp={1}>
-                                                    {item.validator.description?.moniker || truncateAddress(item.validator.operator_address)}
-                                                </Text>
-                                                <Text fontSize="xs" color="fg.muted">
-                                                    Commission: {commission}%
-                                                </Text>
-                                            </VStack>
-                                        </HStack>
-                                        {item.validator.jailed && (
-                                            <Badge colorPalette="red" size="sm">Jailed</Badge>
-                                        )}
-                                    </HStack>
-
-                                    {!isValidatorActive(item.validator) && (
-                                        <Box
-                                            bg="red.500/10"
-                                            borderWidth="1px"
-                                            borderColor="red.500/30"
-                                            borderRadius="md"
-                                            p="3"
-                                        >
-                                            <HStack gap="2" align="start">
-                                                <Box color="red.500" mt="0.5">
-                                                    <LuTriangleAlert size={16} />
-                                                </Box>
-                                                <VStack align="start" gap="1">
-                                                    <Text fontSize="xs" fontWeight="bold" color="red.500">
-                                                        Not Earning Rewards
-                                                    </Text>
-                                                    <Text fontSize="xs" color="fg.muted">
-                                                        This validator is {item.validator.jailed ? 'jailed' : item.validator.status === BondStatus.BOND_STATUS_UNBONDING ? 'unbonding' : 'inactive'} and not producing rewards. Redelegate to an active validator to continue earning.
-                                                    </Text>
-                                                    <Button
-                                                        size="xs"
-                                                        colorPalette="red"
-                                                        variant="solid"
-                                                        onClick={() => openModal('redelegate', item)}
-                                                        mt="1"
-                                                    >
-                                                        <LuShuffle /> Redelegate Now
-                                                    </Button>
-                                                </VStack>
-                                            </HStack>
-                                        </Box>
-                                    )}
-
-                                    <VStack align="start" gap="1">
-                                        <HStack justify="space-between" w="full">
-                                            <Text fontSize="xs" color="fg.muted">Delegated</Text>
-                                            <Text fontSize="sm" fontWeight="semibold">
-                                                {prettyAmount(delegatedHuman)} {nativeAsset?.ticker}
-                                            </Text>
-                                        </HStack>
-                                        {delegatedUsd.gt(0) && (
-                                            <Text fontSize="xs" color="fg.muted" alignSelf="end">
-                                                ~{formatUsdAmount(delegatedUsd)}
-                                            </Text>
-                                        )}
-                                        {rewardsHuman.gt(0.0001) && (
-                                            <HStack justify="space-between" w="full">
-                                                <Text fontSize="xs" color="fg.muted">Rewards</Text>
-                                                <Text fontSize="sm" fontWeight="semibold" color="purple.500">
-                                                    +{prettyAmount(rewardsHuman)} {nativeAsset?.ticker}
-                                                </Text>
-                                            </HStack>
-                                        )}
-                                    </VStack>
-
-                                    <HStack gap="2" flexWrap="wrap">
-                                        <Button
-                                            size="xs"
-                                            colorPalette="purple"
-                                            variant="subtle"
-                                            onClick={() => openModal('delegate', item)}
-                                            flex="1"
-                                        >
-                                            <LuArrowUpRight /> Delegate
-                                        </Button>
-                                        <Button
-                                            size="xs"
-                                            colorPalette="orange"
-                                            variant="subtle"
-                                            onClick={() => openModal('undelegate', item)}
-                                            flex="1"
-                                        >
-                                            <LuArrowDownRight /> Undelegate
-                                        </Button>
-                                        <Button
-                                            size="xs"
-                                            colorPalette="blue"
-                                            variant="subtle"
-                                            onClick={() => openModal('redelegate', item)}
-                                            flex="1"
-                                        >
-                                            <LuShuffle /> Redelegate
-                                        </Button>
-                                    </HStack>
-                                </VStack>
-                            </Box>
-                        );
-                    })}
-                </Grid>
-            </VStack>
+                            <Grid templateColumns="repeat(3, minmax(0, 1fr))" gap="8px">
+                                <Button size={{base: 'lg', md: 'sm'}} {...softButton} onClick={() => openModal('delegate', item)}>
+                                    <LuArrowUpRight /> Delegate
+                                </Button>
+                                <Button size={{base: 'lg', md: 'sm'}} {...neutralButton} onClick={() => openModal('undelegate', item)}>
+                                    <LuArrowDownRight /> Undelegate
+                                </Button>
+                                <Button size={{base: 'lg', md: 'sm'}} {...neutralButton} onClick={() => openModal('redelegate', item)}>
+                                    <LuShuffle /> Redelegate
+                                </Button>
+                            </Grid>
+                        </HgCard>
+                    );
+                })}
+            </Grid>
 
             {/* Modals — always rendered, controlled by isOpen */}
             <DelegateModal
@@ -268,6 +226,6 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                 rewardEntries={rewardEntries}
                 onSuccess={handleActionComplete}
             />
-        </Container>
+        </Flex>
     );
 }

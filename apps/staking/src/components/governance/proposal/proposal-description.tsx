@@ -1,8 +1,10 @@
 'use client';
 
 import {useState} from 'react';
-import {Box, Button, Stack, Text} from '@chakra-ui/react';
+import {Box, Button, chakra} from '@chakra-ui/react';
+import {hgVariant} from '@bze/bze-ui-kit';
 import {Markdown} from '../markdown';
+import {Panel} from './panel';
 
 /** Summaries longer than this start collapsed. */
 const LONG_SUMMARY = 600;
@@ -13,20 +15,19 @@ export function ProposalDescription({summary}: {summary: string}) {
     const collapsed = long && !expanded;
 
     return (
-        <Stack as="section" aria-labelledby="desc-h" bg="bg.panel" borderWidth="1px" borderRadius="lg" px={{base: '4', md: '6'}} py={{base: '4', md: '5'}} gap="3">
-            <Text as="h2" id="desc-h" fontSize="md" fontWeight="bold">Description</Text>
+        <Panel headingId="desc-h" title="Description" px={{base: '16px', md: '24px'}} py={{base: '16px', md: '22px'}}>
             {summary === '' ? (
-                <Text fontSize="sm" color="fg.muted">This proposal has no description.</Text>
+                <chakra.span fontSize="14px" color="fg.muted">This proposal has no description.</chakra.span>
             ) : (
                 <Box position="relative" maxH={collapsed ? {base: '180px', md: '320px'} : undefined} overflow={collapsed ? 'hidden' : undefined} data-collapsed={collapsed}>
                     <Markdown text={summary} />
                     {collapsed && (
-                        <Box position="absolute" left="0" right="0" bottom="0" h="12" bgGradient="to-b" gradientFrom="transparent" gradientTo="bg.panel" />
+                        <Box position="absolute" left="0" right="0" bottom="0" h="12" bgGradient="to-b" gradientFrom="transparent" gradientTo="hg.card" />
                     )}
                 </Box>
             )}
             {long && (
-                <Button variant="outline" size="sm" alignSelf={{base: 'stretch', md: 'flex-start'}} onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+                <Button variant={hgVariant('secondary')} size="sm" alignSelf={{base: 'stretch', md: 'flex-start'}} onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
                     {expanded ? 'Show less' : (
                         <>
                             <Box as="span" hideBelow="md">Show full description</Box>
@@ -35,6 +36,6 @@ export function ProposalDescription({summary}: {summary: string}) {
                     )}
                 </Button>
             )}
-        </Stack>
+        </Panel>
     );
 }
