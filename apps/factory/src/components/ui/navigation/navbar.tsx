@@ -42,8 +42,8 @@ export const TopNavBar = () => {
                 active: currentPathName === item.href || item.href === navSubitems[currentPathName],
             }))}
             walletLabel={walletLabel}
-            walletContent={<WalletSidebarContent accentColor="yellow" skipWalletModal />}
-            settings={<SettingsToggle accentColor="yellow" />}
+            walletContent={<WalletSidebarContent skipWalletModal />}
+            settings={<SettingsToggle />}
         />
     )
 }

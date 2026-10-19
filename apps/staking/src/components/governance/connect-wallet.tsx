@@ -17,7 +17,7 @@ export function ConnectWallet({phoneLabel = 'Connect Wallet'}: {phoneLabel?: str
                 </Button>
             }
         >
-            <WalletSidebarContent accentColor="purple" skipWalletModal />
+            <WalletSidebarContent skipWalletModal />
         </Sidebar>
     );
 }

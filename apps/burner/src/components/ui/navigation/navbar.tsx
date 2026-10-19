@@ -27,8 +27,8 @@ export const TopNavBar = () => {
                     { label: 'Search Coin', onClick: () => setIsSearchModalOpen(true) },
                 ]}
                 walletLabel={walletLabel}
-                walletContent={<WalletSidebarContent accentColor="orange" />}
-                settings={<SettingsToggle accentColor="orange" />}
+                walletContent={<WalletSidebarContent />}
+                settings={<SettingsToggle />}
             />
 
             <SearchCoinModal

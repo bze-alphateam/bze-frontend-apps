@@ -34,7 +34,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         Sidebar: ({ trigger, children }: { trigger: ReactNode; children: ReactNode }) => (
             <div>{trigger}<div data-testid="settings-sidebar">{children}</div></div>
         ),
-        SettingsSidebarContent: ({ accentColor }: { accentColor: string }) => <div>settings ({accentColor})</div>,
+        SettingsSidebarContent: () => <div>settings</div>,
     };
 });
 
@@ -95,11 +95,11 @@ describe("PayPanel", () => {
         expect(screen.getByText(/You have enough BZE to pay this fee and the network fee\./)).toBeInTheDocument();
     });
 
-    it("offers the Fee token button that opens the yellow Settings sidebar", () => {
+    it("offers the Fee token button that opens the Settings sidebar", () => {
         payment.current = pay({ altAsset: { ticker: "ATOM" } });
         renderPanel();
         expect(screen.getByRole("button", { name: /Fee token: ATOM/ })).toBeInTheDocument();
-        expect(screen.getByTestId("settings-sidebar")).toHaveTextContent("settings (yellow)");
+        expect(screen.getByTestId("settings-sidebar")).toHaveTextContent("settings");
     });
 
     it("asks to connect a wallet to check the balance", () => {

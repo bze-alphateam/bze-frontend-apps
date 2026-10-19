@@ -6,12 +6,8 @@ import { Sidebar } from "./sidebar/sidebar"
 import { SettingsSidebarContent } from "./sidebar/settings-sidebar"
 import { hgVariant } from "../theme/variants"
 
-interface SettingsToggleProps {
-    accentColor?: string
-}
-
 /** The header's settings button (the ghost square of the Header board) and its drawer. */
-export function SettingsToggle({ accentColor }: SettingsToggleProps) {
+export function SettingsToggle() {
     return (
         <Sidebar
             ariaLabel="Settings"
@@ -21,7 +17,7 @@ export function SettingsToggle({ accentColor }: SettingsToggleProps) {
                 </IconButton>
             }
         >
-            <SettingsSidebarContent accentColor={accentColor} />
+            <SettingsSidebarContent />
         </Sidebar>
     )
 }

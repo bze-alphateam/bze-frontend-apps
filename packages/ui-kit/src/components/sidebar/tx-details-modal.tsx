@@ -2,25 +2,30 @@
 
 import {useState} from 'react';
 import {
-    Badge,
     Box,
     Button,
+    chakra,
     Collapsible,
+    Flex,
     HStack,
+    IconButton,
+    Spinner,
     Text,
     VStack,
 } from '@chakra-ui/react';
-import {LuChevronRight, LuCopy, LuExternalLink, LuX} from 'react-icons/lu';
+import {LuCheck, LuChevronRight, LuCopy, LuExternalLink} from 'react-icons/lu';
 import type {CrossChainTxRecord, SkipTransferEvent} from '../../types/cross_chain';
 import {openExternalLink} from '../../utils/functions';
 import {getChainId, getExplorerTxURL} from '../../constants/chain';
 import {AppIconButton, AppLink} from '../app-identity/app-button';
-import {txStateLabel, txStateColor, isPendingState} from '../../utils/tx_state';
+import {txStateLabel, isPendingState} from '../../utils/tx_state';
+import {Notice, StatusPill, type NoticeStatus} from '../hive-glow/status';
+import {hgVariant} from '../../theme/variants';
+import {DrawerInset, DrawerKV, DrawerMono, DrawerViewHeader, txStateTone} from './drawer-kit';
 
 interface TxDetailsModalProps {
     tx: CrossChainTxRecord;
     onClose: () => void;
-    accentColor: string;
 }
 
 const hopStateLabel = (state: string): string => {
@@ -34,12 +39,12 @@ const hopStateLabel = (state: string): string => {
     }
 };
 
-const hopStateColor = (state: string): string => {
+const hopStateTone = (state: string): NoticeStatus | 'neutral' => {
     switch (state) {
-        case 'TRANSFER_SUCCESS': case 'TRANSFER_RECEIVED': return 'green';
-        case 'TRANSFER_FAILURE': return 'red';
-        case 'TRANSFER_PENDING': return 'blue';
-        default: return 'gray';
+        case 'TRANSFER_SUCCESS': case 'TRANSFER_RECEIVED': return 'success';
+        case 'TRANSFER_FAILURE': return 'danger';
+        case 'TRANSFER_PENDING': return 'info';
+        default: return 'neutral';
     }
 };
 
@@ -69,12 +74,12 @@ const CopyableHash = ({hash, label}: { hash: string; label?: string }) => {
     };
 
     return (
-        <HStack gap="1">
-            {label && <Text fontSize="xs" color="fg.muted">{label}</Text>}
-            <Text fontSize="xs" fontFamily="mono" truncate maxW="120px">{truncateHash(hash)}</Text>
-            <Button size="xs" variant="ghost" minW="auto" px="0.5" onClick={handleCopy}>
-                {copied ? <Text fontSize="xs" color="green.500">✓</Text> : <LuCopy size="10"/>}
-            </Button>
+        <HStack gap="6px">
+            {label && <Text fontSize="12px" color="hg.text.faint" w="52px">{label}</Text>}
+            <DrawerMono size={12} color="hg.text.secondary">{truncateHash(hash)}</DrawerMono>
+            <IconButton aria-label="Copy hash" size="2xs" variant="ghost" color={copied ? 'hg.success.text' : 'hg.text.muted'} onClick={handleCopy}>
+                {copied ? <LuCheck/> : <LuCopy/>}
+            </IconButton>
         </HStack>
     );
 };
@@ -83,9 +88,9 @@ const CopyableHash = ({hash, label}: { hash: string; label?: string }) => {
 const ExplorerLink = ({link}: { link?: string }) => {
     if (!link) return null;
     return (
-        <Button size="xs" variant="ghost" minW="auto" px="0.5" onClick={() => openExternalLink(link)}>
-            <LuExternalLink size="10"/>
-        </Button>
+        <IconButton aria-label="Open in chain explorer" size="2xs" variant="ghost" color="hg.text.muted" onClick={() => openExternalLink(link)}>
+            <LuExternalLink/>
+        </IconButton>
     );
 };
 
@@ -101,24 +106,20 @@ const HopDetail = ({event}: { event: SkipTransferEvent }) => {
     ].filter(e => e.tx?.tx_hash);
 
     return (
-        <Box px="3" py="2" borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-            <VStack gap="1.5" align="stretch">
-                <HStack justify="space-between">
-                    <Text fontSize="xs" fontWeight="medium">
-                        {ibc.src_chain_id} → {ibc.dst_chain_id}
-                    </Text>
-                    <Badge size="xs" variant="subtle" colorPalette={hopStateColor(ibc.state)}>
-                        {hopStateLabel(ibc.state)}
-                    </Badge>
+        <Flex direction="column" gap="6px" px="12px" py="10px" borderWidth="1px" borderColor="hg.hairline" borderRadius="12px">
+            <HStack justify="space-between">
+                <Text fontSize="13px" fontWeight="600" color="fg">
+                    {ibc.src_chain_id} → {ibc.dst_chain_id}
+                </Text>
+                <StatusPill tone={hopStateTone(ibc.state)}>{hopStateLabel(ibc.state)}</StatusPill>
+            </HStack>
+            {txEntries.map(({label, tx}) => (
+                <HStack key={label} justify="space-between">
+                    <CopyableHash hash={tx!.tx_hash} label={label}/>
+                    <ExplorerLink link={tx!.explorer_link}/>
                 </HStack>
-                {txEntries.map(({label, tx}) => (
-                    <HStack key={label} justify="space-between" pl="2">
-                        <CopyableHash hash={tx!.tx_hash} label={label}/>
-                        <ExplorerLink link={tx!.explorer_link}/>
-                    </HStack>
-                ))}
-            </VStack>
-        </Box>
+            ))}
+        </Flex>
     );
 };
 
@@ -128,7 +129,7 @@ const HopDetail = ({event}: { event: SkipTransferEvent }) => {
  * error info, and collapsible per-hop details with copyable tx hashes and
  * explorer links.
  */
-export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) => {
+export const TxDetailsModal = ({tx, onClose}: TxDetailsModalProps) => {
     const transfers = tx.lastStatus?.transfers ?? [];
     const allHops = transfers.flatMap(t => t.transfer_sequence ?? []);
     const hasHops = allHops.length > 0;
@@ -136,92 +137,51 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
     const [detailsOpen, setDetailsOpen] = useState(isPending);
     // A tx broadcast on BZE opens in the BZE Explorer; Skip's link is for other chains.
     const broadcastOnBze = !!tx.txHash && tx.broadcastChainId === getChainId();
+    const release = tx.lastStatus?.transfer_asset_release;
 
     return (
-        <VStack gap="4" align="stretch">
-            {/* Header */}
-            <HStack justify="space-between" align="center">
-                <Text fontSize="sm" fontWeight="medium">Transaction Details</Text>
-                <Button size="xs" variant="ghost" onClick={onClose}>
-                    <LuX size="14"/>
-                </Button>
-            </HStack>
+        <VStack gap="14px" align="stretch">
+            <DrawerViewHeader title="Transaction Details" onClose={onClose}/>
 
             {/* Summary */}
-            <Box
-                p="3"
-                bg={`${accentColor}.500/5`}
-                borderRadius="md"
-                borderWidth="1px"
-                borderColor={`${accentColor}.500/20`}
-            >
-                <VStack gap="2" align="stretch">
-                    <HStack justify="space-between">
-                        <Text fontSize="xs" color="fg.muted">Status</Text>
-                        <Badge
-                            size="sm" variant="subtle"
-                            colorPalette={txStateColor(tx.state)}
-                            {...(isPending ? {animation: 'pulse'} : {})}
-                        >
-                            {txStateLabel(tx.state)}
-                        </Badge>
-                    </HStack>
-                    <HStack justify="space-between">
-                        <Text fontSize="xs" color="fg.muted">You sent</Text>
-                        <Text fontSize="xs" fontFamily="mono">{tx.amountIn} {tx.assetTicker}</Text>
-                    </HStack>
-                    <HStack justify="space-between">
-                        <Text fontSize="xs" color="fg.muted">Estimated output</Text>
-                        <Text fontSize="xs" fontFamily="mono">~{tx.estimatedAmountOut} BZE</Text>
-                    </HStack>
-                    <HStack justify="space-between">
-                        <Text fontSize="xs" color="fg.muted">Route</Text>
-                        <Text fontSize="xs">{tx.sourceChainName} → {tx.destChainName}</Text>
-                    </HStack>
-                    <HStack justify="space-between">
-                        <Text fontSize="xs" color="fg.muted">Submitted</Text>
-                        <Text fontSize="xs">{formatTime(tx.timestamp)}</Text>
-                    </HStack>
-                </VStack>
-            </Box>
+            <DrawerInset>
+                <DrawerKV label="Status">
+                    <StatusPill tone={txStateTone(tx.state)} live={isPending}>{txStateLabel(tx.state)}</StatusPill>
+                </DrawerKV>
+                <DrawerKV label="You sent"><DrawerMono>{tx.amountIn} {tx.assetTicker}</DrawerMono></DrawerKV>
+                <DrawerKV label="Estimated output"><DrawerMono>~{tx.estimatedAmountOut} BZE</DrawerMono></DrawerKV>
+                <DrawerKV label="Route">{tx.sourceChainName} → {tx.destChainName}</DrawerKV>
+                <DrawerKV label="Submitted">{formatTime(tx.timestamp)}</DrawerKV>
+            </DrawerInset>
 
             {/* Error */}
-            {tx.error && (
-                <Box p="3" bg="red.500/10" borderRadius="md" borderWidth="1px" borderColor="red.500/20">
-                    <Text fontSize="xs" color="red.600">{tx.error}</Text>
-                </Box>
-            )}
+            {tx.error && <Notice status="danger">{tx.error}</Notice>}
 
             {/* Transfer details — collapsible, includes broadcast tx + hops */}
             <Collapsible.Root defaultOpen={isPending} onOpenChange={(details) => setDetailsOpen(details.open)}>
                 <Collapsible.Trigger asChild>
-                    <Button size="sm" variant="ghost" w="full" justifyContent="space-between">
-                        <Text fontSize="xs" fontWeight="medium">Transfer details</Text>
+                    <Button size="md" variant="ghost" w="full" px="8px" justifyContent="space-between" fontSize="13px" fontWeight="600" color="fg">
+                        Transfer details
                         <Box transition="transform 0.2s" transform={detailsOpen ? 'rotate(90deg)' : 'rotate(0deg)'}>
                             <LuChevronRight size="14"/>
                         </Box>
                     </Button>
                 </Collapsible.Trigger>
                 <Collapsible.Content>
-                    <VStack gap="2" align="stretch" pt="2">
+                    <VStack gap="8px" align="stretch" pt="4px">
                         {/* Broadcast tx hash */}
                         {tx.txHash && (
-                            <Box px="3" py="2" borderWidth="1px" borderColor="border.subtle" borderRadius="md">
-                                <HStack justify="space-between">
-                                    <Text fontSize="xs" color="fg.muted">Broadcast tx</Text>
-                                    <HStack gap="1">
-                                        <CopyableHash hash={tx.txHash}/>
-                                        {broadcastOnBze ? (
-                                            <AppIconButton app="explorer" href={getExplorerTxURL(tx.txHash)} aria-label="View on Explorer" size="xs"/>
-                                        ) : tx.explorerLink && (
-                                            <Button size="xs" variant="ghost" minW="auto" px="0.5"
-                                                    onClick={() => openExternalLink(tx.explorerLink!)}>
-                                                <LuExternalLink size="10"/>
-                                            </Button>
-                                        )}
-                                    </HStack>
+                            <HStack justify="space-between" px="12px" py="8px" borderWidth="1px" borderColor="hg.hairline" borderRadius="12px">
+                                <Text fontSize="12px" color="hg.text.faint">Broadcast tx</Text>
+                                <HStack gap="0">
+                                    <CopyableHash hash={tx.txHash}/>
+                                    {broadcastOnBze ? (
+                                        <AppIconButton app="explorer" href={getExplorerTxURL(tx.txHash)} aria-label="View on Explorer" size="xs"/>
+                                    ) : (
+                                        <ExplorerLink link={tx.explorerLink}/>
+                                    )}
                                 </HStack>
-                            </Box>
+                            </HStack>
                         )}
 
                         {/* Per-hop details */}
@@ -229,23 +189,11 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
                             <HopDetail key={i} event={hop}/>
                         ))}
 
-                        {/* Pending indicator when hops haven't loaded yet */}
-                        {isPending && !hasHops && (
-                            <HStack gap="2" px="3" py="2" justify="center">
-                                <Box h="2" w="2" borderRadius="full" bg={`${accentColor}.500`} animation="pulse"/>
-                                <Text fontSize="xs" color="fg.muted">
-                                    Waiting for relay details...
-                                </Text>
-                            </HStack>
-                        )}
-
-                        {/* Pending indicator when hops exist but tx not done */}
-                        {isPending && hasHops && (
-                            <HStack gap="2" px="3" py="1" justify="center">
-                                <Box h="2" w="2" borderRadius="full" bg={`${accentColor}.500`} animation="pulse"/>
-                                <Text fontSize="xs" color="fg.muted">
-                                    Processing...
-                                </Text>
+                        {/* Pending indicator: before the relay details arrive, then while the hops run */}
+                        {isPending && (
+                            <HStack gap="8px" p="4px" justify="center" fontSize="12px" color="hg.text.faint">
+                                <Spinner size="xs" color="hg.info"/>
+                                <chakra.span>{hasHops ? 'Processing...' : 'Waiting for relay details...'}</chakra.span>
                             </HStack>
                         )}
                     </VStack>
@@ -253,31 +201,26 @@ export const TxDetailsModal = ({tx, onClose, accentColor}: TxDetailsModalProps) 
             </Collapsible.Root>
 
             {/* Asset release info */}
-            {tx.lastStatus?.transfer_asset_release && (
-                <Box p="2" bg={tx.lastStatus.transfer_asset_release.released ? 'green.500/10' : 'orange.500/10'}
-                     borderRadius="md">
-                    <Text fontSize="xs">
-                        {tx.lastStatus.transfer_asset_release.released
-                            ? 'Funds have been released to your wallet.'
-                            : 'Funds are pending release...'}
-                    </Text>
-                </Box>
+            {release && (
+                release.released
+                    ? <Notice status="success">Funds have been released to your wallet.</Notice>
+                    : <Notice status="warning">Funds are pending release...</Notice>
             )}
 
-            <VStack gap="2" w="full">
+            <VStack gap="8px" w="full" align="stretch">
                 {broadcastOnBze ? (
-                    <AppLink app="explorer" href={getExplorerTxURL(tx.txHash!)}>Explorer</AppLink>
+                    <HStack justify="center">
+                        <AppLink app="explorer" href={getExplorerTxURL(tx.txHash!)}>Explorer</AppLink>
+                    </HStack>
                 ) : tx.explorerLink && (
                     // Broadcast on another chain: Skip's link goes to that chain's own explorer.
-                    <Button size="sm" variant="outline" w="full"
+                    <Button size="md" variant={hgVariant('secondary')} w="full"
                             onClick={() => openExternalLink(tx.explorerLink!)}>
-                        <HStack gap="1">
-                            <Text>View on chain explorer</Text>
-                            <LuExternalLink size="12"/>
-                        </HStack>
+                        View on chain explorer
+                        <LuExternalLink size="12"/>
                     </Button>
                 )}
-                <Button size="sm" variant="outline" w="full" onClick={onClose}>
+                <Button size="md" variant={hgVariant('secondary')} w="full" onClick={onClose}>
                     Close
                 </Button>
             </VStack>

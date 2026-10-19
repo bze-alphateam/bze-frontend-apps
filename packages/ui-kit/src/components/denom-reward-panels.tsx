@@ -1,10 +1,10 @@
 'use client'
 
-import {Box, Button, Field, Group, HStack, Input, Text, VStack} from '@chakra-ui/react';
+import {Box, Button, chakra, Field, Group, HStack, Input, Text, VStack} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import BigNumber from 'bignumber.js';
 import {type ReactNode, useMemo, useState} from 'react';
-import {LuGift, LuInfo, LuLockOpen} from 'react-icons/lu';
+import {LuInfo} from 'react-icons/lu';
 import {bze} from '@bze/bzejs';
 import {getChainName} from '../constants/chain';
 import {useAsset} from '../hooks/useAssets';
@@ -15,6 +15,8 @@ import {useMaxSpendable} from '../hooks/useMaxSpendable';
 import {DenomRewardCoin} from '../types/denom_rewards';
 import {amountToBigNumberUAmount, prettyAmount, uAmountToBigNumberAmount} from '../utils/amount';
 import {sanitizeNumberInput} from '../utils/number';
+import {hgVariant} from '../theme/variants';
+import {Notice} from './hive-glow/status';
 import {
     claimableCoins,
     DenomRewardHolderItem,
@@ -41,37 +43,45 @@ export const DenomRewardCoinLine = ({coin, suffix}: { coin: DenomRewardCoin; suf
 
     return (
         <HStack gap={2} justify="space-between" w="full" data-testid="denom-reward-coin">
-            <Text fontWeight="semibold">
+            <Text fontFamily="mono" fontWeight="600" fontSize="14px" color="fg">
                 {prettyAmount(uAmountToBigNumberAmount(coin.amount, decimals))} {asset?.ticker ?? coin.denom}{suffix ?? ''}
             </Text>
-            {usd && usd.gt(0) && <Text fontSize="sm" color="fg.muted">≈ ${prettyAmount(usd)}</Text>}
+            {usd && usd.gt(0) && <Text fontSize="13px" color="hg.text.faint">≈ ${prettyAmount(usd)}</Text>}
         </HStack>
     );
 };
 
-const Panel = ({icon, title, color, children}: { icon: ReactNode; title: string; color: string; children: ReactNode }) => (
-    <Box w="full" p={3} borderRadius="md" borderWidth="1px" borderColor={`${color}.500/30`} bg={`${color}.500/10`}>
-        <VStack align="start" gap={1.5}>
-            <HStack gap={1} color={`${color}.600`}>
-                {icon}
-                <Text fontSize="sm" fontWeight="semibold" textTransform="uppercase">{title}</Text>
-            </HStack>
+/** A neutral inset panel with a small-caps heading (SurfDenomReward board). */
+const Panel = ({title, children}: { title: string; children: ReactNode }) => (
+    <Box w="full" bg="hg.inset" borderRadius="14px" px="14px" py="12px" data-testid="denom-reward-panel">
+        <VStack align="start" gap="8px">
+            <chakra.span fontSize="12px" letterSpacing="0.12em" textTransform="uppercase" fontWeight="700" color="hg.text.faint">
+                {title}
+            </chakra.span>
             {children}
         </VStack>
     </Box>
 );
 
 const Note = ({children}: { children: ReactNode }) => (
-    <HStack align="start" gap={2} w="full" fontSize="sm" color="fg.muted">
-        <Box mt={0.5} flexShrink={0}><LuInfo size={14}/></Box>
+    <HStack align="start" gap="8px" w="full" fontSize="13px" lineHeight="1.5" color="fg.muted">
+        <Box mt="2px" flexShrink={0} color="hg.text.faint"><LuInfo size={14}/></Box>
         <Text>{children}</Text>
     </HStack>
 );
 
 const NetworkFee = ({fee}: { fee: { displayAmount: BigNumber; ticker: string; isLoading: boolean } }) => (
-    <Text fontSize="xs" color="fg.muted" w="full">
-        Network fee: {fee.isLoading ? '…' : `≈ ${prettyAmount(fee.displayAmount)} ${fee.ticker}`}
+    <Text fontSize="12px" color="hg.text.faint" w="full">
+        Network fee: {fee.isLoading ? '…' : <chakra.span fontFamily="mono">≈ {prettyAmount(fee.displayAmount)} {fee.ticker}</chakra.span>}
     </Text>
+);
+
+const FeeError = ({children}: { children: ReactNode }) => (
+    <Text role="alert" fontSize="13px" color="hg.danger.text">{children}</Text>
+);
+
+const SubmitButton = (props: { onClick: () => void; disabled: boolean; loading: boolean; loadingText: string; children: ReactNode }) => (
+    <Button size="lg" variant={hgVariant('primary')} {...props}/>
 );
 
 export interface DenomRewardPanelProps {
@@ -137,7 +147,7 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
 
     return (
         <VStack gap={4} w="full" align="stretch">
-            <Text fontSize="sm" color="fg.muted">
+            <Text fontSize="13px" color="fg.muted">
                 Balance: {prettyAmount(uAmountToBigNumberAmount(maxSpendable.balance, decimals))} {ticker}
                 {' · '}Minimum stake: {minStake}{isTopUp ? ' (for your whole position)' : ''}
             </Text>
@@ -150,11 +160,16 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
                         onChange={(e) => setInput(sanitizeNumberInput(e.target.value))}
                         disabled={isSubmitting}
                         size="sm"
+                        fontFamily="mono"
                         data-testid="denom-reward-stake-input"
                     />
                     <Button
                         variant="outline"
                         size="sm"
+                        color="hg.accent"
+                        borderColor="app.border"
+                        bg="app.subtle"
+                        fontWeight="700"
                         onClick={() => setInput(maxSpendable.inputValue)}
                         disabled={!maxSpendable.amount.gt(0) || isSubmitting}
                     >
@@ -165,7 +180,7 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
             </Field.Root>
 
             {newStake && newTotal && (item.dailyPrizes?.length ?? 0) > 0 && (
-                <Panel icon={<LuGift size={14}/>} title="Estimated daily share" color="green">
+                <Panel title="Estimated daily share">
                     {item.dailyPrizes?.map(prize => (
                         <DenomRewardCoinLine
                             key={prize.denom}
@@ -173,7 +188,7 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
                             suffix=" / day"
                         />
                     ))}
-                    <Text fontSize="xs" color="fg.muted">
+                    <Text fontSize="12px" lineHeight="1.45" color="hg.text.faint">
                         An estimate from today&apos;s stakes: each day&apos;s prize is split pro rata among
                         everyone staking when it is paid.
                     </Text>
@@ -198,10 +213,10 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
             </Note>
 
             <NetworkFee fee={afford.gasFee}/>
-            <Button colorPalette="blue" onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
+            <SubmitButton onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
                 {isTopUp ? 'Add to stake' : 'Stake'}
-            </Button>
-            {!address && <Text fontSize="sm" color="fg.muted" textAlign="center">Connect your wallet to stake.</Text>}
+            </SubmitButton>
+            {!address && <Text fontSize="13px" color="fg.muted" textAlign="center">Connect your wallet to stake.</Text>}
         </VStack>
     );
 };
@@ -229,20 +244,20 @@ export const DenomRewardClaimPanel = ({item, onDone}: DenomRewardPanelProps) => 
 
     return (
         <VStack gap={4} w="full" align="stretch">
-            <Panel icon={<LuGift size={14}/>} title="You receive" color="purple">
+            <Panel title="You receive">
                 {coins.length > 0
                     ? coins.map(c => <DenomRewardCoinLine key={c.denom} coin={c}/>)
-                    : <Text color="fg.muted">Nothing to claim yet.</Text>}
+                    : <Text fontSize="14px" color="fg.muted">Nothing to claim yet.</Text>}
             </Panel>
             <Note>
                 Your stake stays in and keeps earning. Amounts smaller than one base unit stay behind
                 and keep accruing.
             </Note>
-            {!afford.isLoading && !afford.canAfford && afford.message && <Text fontSize="sm" color="red.500">{afford.message}</Text>}
+            {!afford.isLoading && !afford.canAfford && afford.message && <FeeError>{afford.message}</FeeError>}
             <NetworkFee fee={afford.gasFee}/>
-            <Button colorPalette="purple" onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
+            <SubmitButton onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
                 Claim
-            </Button>
+            </SubmitButton>
         </VStack>
     );
 };
@@ -273,17 +288,17 @@ export const DenomRewardClaimAllPanel = ({items, onDone}: { items: DenomRewardHo
 
     return (
         <VStack gap={4} w="full" align="stretch">
-            <Panel icon={<LuGift size={14}/>} title={`You receive (from ${claimable.length} denom reward${claimable.length === 1 ? '' : 's'})`} color="purple">
+            <Panel title={`You receive (from ${claimable.length} compounded reward${claimable.length === 1 ? '' : 's'})`}>
                 {totals.length > 0
                     ? totals.map(c => <DenomRewardCoinLine key={c.denom} coin={c}/>)
-                    : <Text color="fg.muted">Nothing to claim yet.</Text>}
+                    : <Text fontSize="14px" color="fg.muted">Nothing to claim yet.</Text>}
             </Panel>
             <Note>Your stakes stay in and keep earning.</Note>
-            {!afford.isLoading && !afford.canAfford && afford.message && <Text fontSize="sm" color="red.500">{afford.message}</Text>}
+            {!afford.isLoading && !afford.canAfford && afford.message && <FeeError>{afford.message}</FeeError>}
             <NetworkFee fee={afford.gasFee}/>
-            <Button colorPalette="purple" onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
+            <SubmitButton onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
                 Claim all
-            </Button>
+            </SubmitButton>
         </VStack>
     );
 };
@@ -320,24 +335,32 @@ export const DenomRewardExitPanel = ({item, onDone}: DenomRewardPanelProps) => {
     return (
         <VStack gap={4} w="full" align="stretch">
             {coins.length > 0 && (
-                <Panel icon={<LuGift size={14}/>} title="Paid out first" color="purple">
+                <Panel title="Paid out first">
                     {coins.map(c => <DenomRewardCoinLine key={c.denom} coin={c}/>)}
                 </Panel>
             )}
-            <Panel icon={<LuLockOpen size={14}/>} title="Your stake" color="orange">
-                <Text fontWeight="bold" fontSize="lg">{stake}</Text>
-                <Text fontSize="sm" color="fg.muted" data-testid="denom-reward-exit-unlock">
-                    {unlockDate
-                        ? `Unlocks around ${formatUnlockDate(unlockDate)} (${denomReward.lock} day${denomReward.lock === 1 ? '' : 's'} from now) — until then it shows under your pending unlocks and earns nothing.`
-                        : 'Returns to your wallet immediately, in this transaction.'}
-                </Text>
+            <Panel title="Your stake">
+                <Text fontFamily="mono" fontWeight="700" fontSize="18px" color="fg">{stake}</Text>
+                {!unlockDate && (
+                    <Text fontSize="13px" color="fg.muted" data-testid="denom-reward-exit-unlock">
+                        Returns to your wallet immediately, in this transaction.
+                    </Text>
+                )}
             </Panel>
-            <Note>Exiting is all or nothing: your whole stake leaves this denom reward.</Note>
-            {!afford.isLoading && !afford.canAfford && afford.message && <Text fontSize="sm" color="red.500">{afford.message}</Text>}
+            {unlockDate && (
+                // The lock-up is the one warning of the dialog: the amber notice.
+                <Box data-testid="denom-reward-exit-unlock">
+                    <Notice status="warning">
+                        {`Unlocks around ${formatUnlockDate(unlockDate)} (${denomReward.lock} day${denomReward.lock === 1 ? '' : 's'} from now) — until then it shows under your pending unlocks and earns nothing.`}
+                    </Notice>
+                </Box>
+            )}
+            <Note>Exiting is all or nothing: your whole stake leaves this compounded reward.</Note>
+            {!afford.isLoading && !afford.canAfford && afford.message && <FeeError>{afford.message}</FeeError>}
             <NetworkFee fee={afford.gasFee}/>
-            <Button colorPalette="orange" onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
+            <SubmitButton onClick={submit} disabled={!canSubmit} loading={isSubmitting} loadingText={progressTrack || 'Waiting for signature...'}>
                 Exit
-            </Button>
+            </SubmitButton>
         </VStack>
     );
 };

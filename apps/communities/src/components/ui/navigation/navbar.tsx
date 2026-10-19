@@ -19,8 +19,8 @@ export const TopNavBar = () => {
             linkAs={NextLink}
             items={navItems.map((item) => ({...item, active: currentPathName === item.href}))}
             walletLabel={walletLabel}
-            walletContent={<WalletSidebarContent accentColor="green" skipWalletModal />}
-            settings={<SettingsToggle accentColor="green" />}
+            walletContent={<WalletSidebarContent skipWalletModal />}
+            settings={<SettingsToggle />}
         />
     )
 }
