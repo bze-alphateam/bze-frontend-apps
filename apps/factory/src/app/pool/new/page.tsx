@@ -120,8 +120,8 @@ function ReserveField({
                     onBlur={() => setTouched(true)}
                 />
                 <Button
-                    size="sm"
                     {...softButton}
+                    size="sm"
                     flexShrink={0}
                     aria-label={`Max ${asset.ticker}`}
                     disabled={max.isLoading}

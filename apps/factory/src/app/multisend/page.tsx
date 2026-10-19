@@ -577,7 +577,7 @@ function MultiSendContent() {
                                 e.target.value = ''
                             }}
                         />
-                        <Button size="sm" {...softButton} onClick={() => fileInput.current?.click()}>
+                        <Button {...softButton} size="sm" onClick={() => fileInput.current?.click()}>
                             <LuUpload /> Upload CSV or TXT
                         </Button>
                         <Button asChild size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}>

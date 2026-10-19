@@ -335,7 +335,7 @@ function RaffleFormContent() {
                             <Text fontSize="14px" color="hg.danger.text" role="alert">
                                 {`Couldn't check whether ${ticker} already has a raffle running.`}
                             </Text>
-                            <Button size="xs" {...softButton} onClick={refresh}>
+                            <Button {...softButton} size="xs" onClick={refresh}>
                                 <LuRefreshCw />
                                 Retry
                             </Button>
@@ -362,7 +362,7 @@ function RaffleFormContent() {
                         placeholder="e.g. 1000"
                     />
                     {address && (
-                        <Button alignSelf="start" size="xs" {...softButton} onClick={() => setPotInput(max.inputValue)}>
+                        <Button alignSelf="start" {...softButton} size="xs" onClick={() => setPotInput(max.inputValue)}>
                             MAX
                         </Button>
                     )}
