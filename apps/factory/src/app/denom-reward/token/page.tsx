@@ -1,12 +1,13 @@
 "use client"
 
-import React, { Suspense } from 'react'
-import { Box, Button, Container, HStack, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React from 'react'
+import { Box, chakra, Flex, HStack, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft } from 'react-icons/lu'
-import { TokenLogo, useAsset } from '@bze/bze-ui-kit'
+import { HeroGlow, PageContainer, Shimmer, TokenLogo, useAsset } from '@bze/bze-ui-kit'
 import { HolderRewardsPanel } from '@/components/rewards/holder-rewards-panel'
 import { Notice } from '@/components/manage/denom-reward-form-parts'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
+import { FormFrame, FormPage } from '@/components/guided'
 
 /**
  * The holder rewards (denom reward) of any token, for any wallet: the panel with create, daily
@@ -25,10 +26,12 @@ function DenomRewardTokenContent() {
 
     if (isLoading) {
         return (
-            <VStack align="stretch" gap={4}>
-                <Skeleton height="10" width="64" />
-                <Skeleton height="48" />
-            </VStack>
+            <FormFrame>
+                <VStack align="stretch" gap="16px">
+                    <Shimmer h="40px" w="256px" />
+                    <Shimmer h="192px" borderRadius="hg.lg" />
+                </VStack>
+            </FormFrame>
         )
     }
 
@@ -41,37 +44,56 @@ function DenomRewardTokenContent() {
     }
 
     return (
-        <VStack align="stretch" gap={6}>
-            <Box>
-                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={toDirectory}>
-                    <LuArrowLeft /> Rewards
-                </Button>
+        <>
+            <Box position="relative" overflow="hidden" borderBottomWidth="1px" borderColor="hg.divider">
+                <HeroGlow strength="inner" />
+                <PageContainer position="relative" pt={{ base: '12px', md: '24px' }} pb={{ base: '22px', md: '32px' }}>
+                    <Flex direction="column" gap="12px">
+                        <chakra.button
+                            type="button"
+                            alignSelf="flex-start"
+                            display="inline-flex"
+                            alignItems="center"
+                            gap="6px"
+                            h={{ base: '44px', md: '36px' }}
+                            fontSize="14px"
+                            fontWeight="600"
+                            color="hg.link"
+                            bg="transparent"
+                            border="0"
+                            p="0"
+                            cursor="pointer"
+                            _hover={{ color: 'hg.link.hover' }}
+                            focusVisibleRing="outside"
+                            onClick={toDirectory}
+                        >
+                            <LuArrowLeft size={14} aria-hidden /> Rewards
+                        </chakra.button>
+                        <HStack gap="14px" minW={0}>
+                            <TokenLogo src={asset.logo} symbol={asset.ticker} size="9" circular={true} />
+                            <VStack align="start" gap="2px" minW={0}>
+                                <HStack gap="8px" align="baseline" wrap="wrap">
+                                    <Text as="h1" fontSize="22px" fontWeight="700">{asset.name}</Text>
+                                    <Text color="fg.muted">{asset.ticker}</Text>
+                                </HStack>
+                                <Text fontSize="12px" color="hg.text.faint" fontFamily="mono" wordBreak="break-all">{asset.denom}</Text>
+                            </VStack>
+                        </HStack>
+                    </Flex>
+                </PageContainer>
             </Box>
 
-            <HStack gap="3">
-                <TokenLogo src={asset.logo} symbol={asset.ticker} size="12" circular={true} />
-                <VStack align="start" gap="0.5" minW={0}>
-                    <HStack gap="2">
-                        <Text fontSize="xl" fontWeight="bold">{asset.name}</Text>
-                        <Text color="fg.muted">{asset.ticker}</Text>
-                    </HStack>
-                    <Text fontSize="xs" color="fg.muted" fontFamily="mono" wordBreak="break-all">{asset.denom}</Text>
-                </VStack>
-            </HStack>
-
-            <HolderRewardsPanel asset={asset} />
-        </VStack>
+            <FormFrame>
+                <HolderRewardsPanel asset={asset} />
+            </FormFrame>
+        </>
     )
 }
 
 export default function DenomRewardTokenPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="4xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="64" />}>
-                    <DenomRewardTokenContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <DenomRewardTokenContent />
+        </FormPage>
     )
 }

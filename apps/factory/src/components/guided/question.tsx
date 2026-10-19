@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useId } from 'react'
-import { Box, Button, Circle, HStack, Text, VStack } from '@chakra-ui/react'
+import { Box, chakra, Flex, VStack } from '@chakra-ui/react'
 import { LuCheck } from 'react-icons/lu'
 import type { StepState } from './use-guided-steps'
 
@@ -17,7 +17,14 @@ interface QuestionProps {
     children?: React.ReactNode;
 }
 
-/** One numbered question of a guided form: active (inputs), done (a sentence + Change) or todo. */
+const DISC = { flex: 'none', boxSize: '28px', borderRadius: 'full', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } as const
+
+/**
+ * One numbered question of a guided form: active (the featured card with the gradient edge and
+ * number disc, inputs inside), done (the answer as a sentence + Change) or todo (a quiet row).
+ * Every state renders the same <Box as="section">, so React keeps the section's DOM node (and
+ * anything holding it) when a question opens or closes.
+ */
 export function Question({ number, title, state, summary, onChange, children }: QuestionProps) {
     const titleId = useId()
 
@@ -27,74 +34,101 @@ export function Question({ number, title, state, summary, onChange, children }: 
                 as="section"
                 aria-labelledby={titleId}
                 data-state="done"
-                px={4}
-                py={3}
-                borderRadius="xl"
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                gap="12px"
+                px={{ base: '14px', md: '18px' }}
+                py="12px"
+                borderRadius="hg.lg"
+                bg="hg.inset"
                 borderWidth="1px"
-                borderColor="border"
-                bg="bg.panel"
+                borderColor="hg.divider"
             >
-                <HStack gap={3} justify="space-between" align="center">
-                    <HStack gap={3} minW={0} align="center">
-                        <Circle size="6" bg="green.500" color="white" flexShrink={0}>
-                            <LuCheck size={14} />
-                        </Circle>
-                        <Text fontSize="sm" minW={0}>
-                            <Text as="span" id={titleId} color="fg.muted">{title}</Text>{' '}
-                            <Text as="span" fontWeight="semibold">{summary}</Text>
-                        </Text>
-                    </HStack>
-                    {onChange && (
-                        <Button
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="yellow"
-                            flexShrink={0}
-                            aria-label={`Change ${title}`}
-                            onClick={onChange}
-                        >
-                            Change
-                        </Button>
-                    )}
-                </HStack>
+                <Flex align="center" gap="12px" minW={0}>
+                    <chakra.span
+                        {...DISC}
+                        aria-hidden
+                        bg="hg.success/16"
+                        borderWidth="1px"
+                        borderColor="hg.success/45"
+                        color="hg.success.text"
+                    >
+                        <LuCheck size={13} strokeWidth={3} />
+                    </chakra.span>
+                    <chakra.span fontSize="14px" color="fg.muted" minW={0}>
+                        <chakra.span id={titleId}>{title}</chakra.span>{' '}
+                        <chakra.strong color="fg" fontWeight="600">{summary}</chakra.strong>
+                    </chakra.span>
+                </Flex>
+                {onChange && (
+                    <chakra.button
+                        type="button"
+                        flex="none"
+                        h="28px"
+                        px="8px"
+                        borderRadius="hg.sm"
+                        fontSize="12px"
+                        fontWeight="600"
+                        color="hg.link"
+                        bg="transparent"
+                        cursor="pointer"
+                        _hover={{ bg: 'app.subtle' }}
+                        focusVisibleRing="outside"
+                        aria-label={`Change ${title}`}
+                        onClick={onChange}
+                    >
+                        Change
+                    </chakra.button>
+                )}
             </Box>
         )
     }
 
-    const isActive = state === 'active'
+    if (state === 'todo') {
+        return (
+            <Box
+                as="section"
+                aria-labelledby={titleId}
+                data-state="todo"
+                display="flex"
+                alignItems="center"
+                gap="12px"
+                px={{ base: '14px', md: '18px' }}
+                py="14px"
+                borderRadius="hg.lg"
+                bg="hg.card"
+                borderWidth="1px"
+                borderColor="hg.hairline"
+            >
+                <chakra.span {...DISC} aria-hidden bg="hg.raised" color="fg.muted" fontSize="13px" fontWeight="700">
+                    {number}
+                </chakra.span>
+                <chakra.span id={titleId} fontSize="15px" fontWeight="600" color="fg.muted">{title}</chakra.span>
+            </Box>
+        )
+    }
 
     return (
         <Box
             as="section"
             aria-labelledby={titleId}
-            data-state={state}
-            p={{ base: 4, md: 5 }}
-            borderRadius="xl"
-            borderWidth={isActive ? '2px' : '1px'}
-            borderStyle={isActive ? 'solid' : 'dashed'}
-            borderColor={isActive ? 'yellow.500' : 'border'}
-            bg={isActive ? 'bg.panel' : 'transparent'}
-            opacity={isActive ? 1 : 0.6}
+            data-state="active"
+            p="1px"
+            borderRadius="17px"
+            bgImage="featuredEdge"
+            boxShadow="hg.featured"
         >
-            <VStack align="stretch" gap={isActive ? 4 : 0}>
-                <HStack gap={3}>
-                    <Circle
-                        size="6"
-                        flexShrink={0}
-                        fontSize="xs"
-                        fontWeight="bold"
-                        bg={isActive ? 'yellow.500' : 'transparent'}
-                        color={isActive ? 'black' : 'fg.muted'}
-                        borderWidth={isActive ? 0 : '1px'}
-                        borderColor="border"
-                    >
+            <VStack align="stretch" gap="16px" bg="hg.card" borderRadius="hg.lg" p={{ base: '16px', md: '22px' }}>
+                <Flex align="center" gap="12px">
+                    <chakra.span {...DISC} aria-hidden bgImage="app" color="hg.buttonText" fontSize="13px" fontWeight="800">
                         {number}
-                    </Circle>
-                    <Text id={titleId} fontWeight="semibold" fontSize={isActive ? 'md' : 'sm'}>
+                    </chakra.span>
+                    <chakra.h2 id={titleId} m="0" fontSize="17px" fontWeight="700">
                         {title}
-                    </Text>
-                </HStack>
-                {isActive && children}
+                    </chakra.h2>
+                </Flex>
+                {children}
             </VStack>
         </Box>
     )

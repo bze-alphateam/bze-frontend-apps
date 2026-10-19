@@ -1,11 +1,26 @@
 "use client"
 
-import React, { Suspense, useCallback, useEffect, useState } from 'react'
-import { Box, Button, Circle, Container, Field, HStack, IconButton, Input, Skeleton, Text, Textarea, VStack } from '@chakra-ui/react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { Button, chakra, Circle, Field, Grid, HStack, IconButton, Input, Text, Textarea, VStack } from '@chakra-ui/react'
 import { LuCopy } from 'react-icons/lu'
-import { type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees, useToast } from '@bze/bze-ui-kit'
+import { GradientText, type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees, useToast } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { GuidedForm, PayPanel, Question, TipNote, useGuidedSteps, useReturnTo } from '@/components/guided'
+import {
+    AnswerChip,
+    AnswerChips,
+    ContinueRow,
+    FormPage,
+    GuidedForm,
+    Hint,
+    Optional,
+    PayPanel,
+    Question,
+    SubmitBlock,
+    SubmitNote,
+    TipNote,
+    useGuidedSteps,
+    useReturnTo,
+} from '@/components/guided'
 import { LaunchNextSteps } from '@/components/launch/launch-next-steps'
 import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
@@ -56,45 +71,63 @@ function TokenPreview({ form, ticker, supplyText, tokenId }: {
     }
 
     return (
-        <Box as="section" aria-label="Preview" p={4} borderRadius="xl" borderWidth="1px" borderColor="border" bg="bg.panel">
-            <VStack align="stretch" gap={3}>
-                <Text fontSize="sm" fontWeight="semibold">Preview</Text>
-                <HStack gap={3} minW={0}>
-                    <Circle size="10" bg="yellow.500/20" color="yellow.fg" fontWeight="bold" fontSize="sm" flexShrink={0}>
-                        {initials(form.name, form.symbol)}
-                    </Circle>
-                    <VStack align="start" gap={0} minW={0}>
-                        <Text fontWeight="semibold" wordBreak="break-word" data-testid="preview-name">
-                            {form.name.trim() || 'Your token'}
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted">{ticker} · Mintable</Text>
-                    </VStack>
-                </HStack>
-                {form.description.trim() && (
-                    <Text fontSize="sm" color="fg.muted" wordBreak="break-word" lineClamp={4}>
-                        {form.description.trim()}
+        <VStack
+            as="section"
+            aria-label="Preview"
+            align="stretch"
+            gap="12px"
+            p="18px"
+            borderRadius="hg.lg"
+            borderWidth="1px"
+            borderColor="hg.hairline"
+            bg="hg.card"
+        >
+            <chakra.h3 m="0" fontSize="14px" fontWeight="700">Preview</chakra.h3>
+            <HStack gap="12px" minW={0}>
+                <Circle
+                    size="40px"
+                    bg="app.subtle"
+                    boxShadow="0 0 0 2px {colors.app.border}"
+                    color="hg.link"
+                    fontWeight="800"
+                    fontSize="13px"
+                    flexShrink={0}
+                >
+                    {initials(form.name, form.symbol)}
+                </Circle>
+                <VStack align="start" gap="2px" minW={0}>
+                    <Text fontWeight="700" wordBreak="break-word" data-testid="preview-name">
+                        {form.name.trim() || 'Your token'}
                     </Text>
-                )}
-                <HStack justify="space-between" gap={3}>
-                    <Text fontSize="sm" color="fg.muted">In your wallet</Text>
-                    <Text fontSize="sm" fontWeight="semibold" textAlign="right" data-testid="preview-supply">
+                    <Text fontSize="12px" color="hg.text.faint">{ticker} · Mintable</Text>
+                </VStack>
+            </HStack>
+            {form.description.trim() && (
+                <Text fontSize="14px" lineHeight="1.5" color="fg.muted" wordBreak="break-word" lineClamp={4}>
+                    {form.description.trim()}
+                </Text>
+            )}
+            <VStack align="stretch" gap="10px">
+                <HStack justify="space-between" gap="12px">
+                    <Text fontSize="14px" color="fg.muted">In your wallet</Text>
+                    <Text fontSize="14px" fontWeight="600" textAlign="right" data-testid="preview-supply">
                         {supplyText} {ticker}
                     </Text>
                 </HStack>
-                <HStack justify="space-between" gap={3}>
-                    <Text fontSize="sm" color="fg.muted">Decimals</Text>
-                    <Text fontSize="sm" fontWeight="semibold" data-testid="preview-decimals">{TOKEN_DECIMALS}</Text>
-                </HStack>
-                <HStack gap={1} align="start">
-                    <Text flex="1" minW={0} fontSize="xs" color="fg.muted" fontFamily="mono" wordBreak="break-all">{tokenId}</Text>
-                    {tokenIdKnown && (
-                        <IconButton aria-label="Copy token ID" size="2xs" variant="ghost" onClick={() => void copyTokenId()}>
-                            <LuCopy />
-                        </IconButton>
-                    )}
+                <HStack justify="space-between" gap="12px">
+                    <Text fontSize="14px" color="fg.muted">Decimals</Text>
+                    <Text fontSize="14px" fontWeight="600" data-testid="preview-decimals">{TOKEN_DECIMALS}</Text>
                 </HStack>
             </VStack>
-        </Box>
+            <HStack gap="4px" align="center">
+                <Text flex="1" minW={0} fontSize="12px" color="hg.text.faint" fontFamily="mono" wordBreak="break-all">{tokenId}</Text>
+                {tokenIdKnown && (
+                    <IconButton aria-label="Copy token ID" size="2xs" variant="ghost" color="hg.link" onClick={() => void copyTokenId()}>
+                        <LuCopy />
+                    </IconButton>
+                )}
+            </HStack>
+        </VStack>
     )
 }
 
@@ -187,42 +220,28 @@ function TokenNewContent() {
                 feeUnknown={!fee}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Create {form.symbol || 'token'}
-                </Button>
+            <SubmitBlock label={`Create ${form.symbol || 'token'}`} onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to create this token.
-                    </Text>
+                    <SubmitNote>Connect your wallet to create this token.</SubmitNote>
                 ) : isComplete && !isBalanceLoading && !canPayFee && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center">
-                        Not enough balance to cover the creation fee.
-                    </Text>
+                    <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
-            title="Create my token"
+            title={<>Create my <GradientText>token</GradientText></>}
             subtitle="Name it, pick a ticker and choose how many to create. Everything is shown before you sign."
             techTag="tokenfactory · create denom"
             status={!isEmptyTokenForm(form) && (
-                <HStack gap={2}>
-                    <Text>Draft saved in this browser</Text>
-                    <Button variant="plain" size="xs" colorPalette="yellow" px={0} onClick={startOver}>
+                <>
+                    <Text as="span">Draft saved in this browser</Text>
+                    <Button variant="ghost" size="xs" h="28px" px="8px" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={startOver}>
                         Start over
                     </Button>
-                </HStack>
+                </>
             )}
             aside={aside}
         >
@@ -233,36 +252,34 @@ function TokenNewContent() {
                 summary={`${form.name.trim()} (${form.symbol})`}
                 onChange={() => steps.open('identity')}
             >
-                <VStack align="stretch" gap={4}>
-                    <Field.Root invalid={errorFor('name') !== ''}>
-                        <Field.Label>Token name</Field.Label>
-                        <Input
-                            placeholder="e.g. Honey Coin"
-                            value={form.name}
-                            onChange={(e) => update({ name: e.target.value })}
-                            onBlur={() => touch('name')}
-                        />
-                        <Field.ErrorText>{errorFor('name')}</Field.ErrorText>
-                    </Field.Root>
-                    <Field.Root invalid={errorFor('symbol') !== ''}>
-                        <Field.Label>Ticker</Field.Label>
-                        <Input
-                            placeholder="e.g. HONEY"
-                            value={form.symbol}
-                            onChange={(e) => update({ symbol: e.target.value.toUpperCase() })}
-                            onBlur={() => touch('symbol')}
-                        />
-                        <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
-                    </Field.Root>
-                    <Text fontSize="xs" color="fg.muted" fontFamily="mono" wordBreak="break-all">
-                        Token ID: {tokenId}
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
-                        {TOKEN_DECIMALS} decimals: 1 {ticker} = 1,000,000 base units
-                    </Text>
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!isIdentityValid} onClick={() => answer('identity')}>
-                        Continue
-                    </Button>
+                <VStack align="stretch" gap="16px">
+                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
+                        <Field.Root invalid={errorFor('name') !== ''}>
+                            <Field.Label>Token name</Field.Label>
+                            <Input
+                                placeholder="e.g. Honey Coin"
+                                value={form.name}
+                                onChange={(e) => update({ name: e.target.value })}
+                                onBlur={() => touch('name')}
+                            />
+                            <Field.ErrorText>{errorFor('name')}</Field.ErrorText>
+                        </Field.Root>
+                        <Field.Root invalid={errorFor('symbol') !== ''}>
+                            <Field.Label>Ticker</Field.Label>
+                            <Input
+                                placeholder="e.g. HONEY"
+                                value={form.symbol}
+                                onChange={(e) => update({ symbol: e.target.value.toUpperCase() })}
+                                onBlur={() => touch('symbol')}
+                            />
+                            <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
+                        </Field.Root>
+                    </Grid>
+                    <VStack align="stretch" gap="4px">
+                        <Hint mono>Token ID: {tokenId}</Hint>
+                        <Hint>{TOKEN_DECIMALS} decimals: 1 {ticker} = 1,000,000 base units</Hint>
+                    </VStack>
+                    <ContinueRow disabled={!isIdentityValid} onContinue={() => answer('identity')} />
                 </VStack>
             </Question>
 
@@ -275,9 +292,9 @@ function TokenNewContent() {
                     : 'No description'}
                 onChange={() => steps.open('description')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <Field.Root invalid={errorFor('description') !== ''}>
-                        <Field.Label>Description <Text as="span" color="fg.muted" fontWeight="normal">(optional)</Text></Field.Label>
+                        <Field.Label>Description <Optional /></Field.Label>
                         <Textarea
                             rows={4}
                             placeholder="What is it for? Shown in wallets."
@@ -285,25 +302,17 @@ function TokenNewContent() {
                             onChange={(e) => update({ description: e.target.value })}
                             onBlur={() => touch('description')}
                         />
-                        <Field.HelperText>{form.description.length} / {MAX_DESCRIPTION_LENGTH}</Field.HelperText>
+                        <Field.HelperText alignSelf="flex-end" fontFamily="mono" fontSize="12px">{form.description.length} / {MAX_DESCRIPTION_LENGTH}</Field.HelperText>
                         <Field.ErrorText>{errorFor('description')}</Field.ErrorText>
                     </Field.Root>
-                    <HStack gap={2}>
-                        <Button colorPalette="yellow" size="sm" disabled={!isDescriptionValid} onClick={() => answer('description')}>
-                            Continue
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            colorPalette="yellow"
-                            size="sm"
-                            onClick={() => {
-                                update({ description: '' })
-                                answer('description')
-                            }}
-                        >
-                            Skip
-                        </Button>
-                    </HStack>
+                    <ContinueRow
+                        disabled={!isDescriptionValid}
+                        onContinue={() => answer('description')}
+                        onSkip={() => {
+                            update({ description: '' })
+                            answer('description')
+                        }}
+                    />
                 </VStack>
             </Question>
 
@@ -314,10 +323,10 @@ function TokenNewContent() {
                 summary={`${supplyText} ${ticker} to your wallet`}
                 onChange={() => steps.open('supply')}
             >
-                <VStack align="stretch" gap={4}>
-                    <Text fontSize="sm" color="fg.muted">
+                <VStack align="stretch" gap="16px">
+                    <Hint>
                         All of it goes to your wallet when the token is created. You decide later how much to sell, pool or give away.
-                    </Text>
+                    </Hint>
                     <Field.Root invalid={errorFor('initialSupply') !== ''}>
                         <Field.Label>Amount</Field.Label>
                         <Input
@@ -329,23 +338,18 @@ function TokenNewContent() {
                         />
                         <Field.ErrorText>{errorFor('initialSupply')}</Field.ErrorText>
                     </Field.Root>
-                    <HStack gap={2} flexWrap="wrap">
+                    <AnswerChips>
                         {SUPPLY_PRESETS.map(p => (
-                            <Button
+                            <AnswerChip
                                 key={p.value}
-                                size="xs"
-                                variant={form.initialSupply === p.value ? 'solid' : 'outline'}
-                                colorPalette="yellow"
-                                borderRadius="full"
+                                selected={form.initialSupply === p.value}
                                 onClick={() => update({ initialSupply: p.value })}
                             >
                                 {p.label}
-                            </Button>
+                            </AnswerChip>
                         ))}
-                    </HStack>
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!isSupplyValid} onClick={() => answer('supply')}>
-                        Continue
-                    </Button>
+                    </AnswerChips>
+                    <ContinueRow disabled={!isSupplyValid} onContinue={() => answer('supply')} />
                 </VStack>
             </Question>
 
@@ -359,12 +363,8 @@ function TokenNewContent() {
 
 export default function TokenNewPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <TokenNewContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <TokenNewContent />
+        </FormPage>
     )
 }

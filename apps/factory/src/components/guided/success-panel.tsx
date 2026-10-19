@@ -1,10 +1,12 @@
 "use client"
 
 import React from 'react'
-import { Box, Button, Code, HStack, IconButton, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, chakra, Code, HStack, IconButton, Text, VStack } from '@chakra-ui/react'
 import { LuArrowUpRight, LuCircleCheck, LuCopy } from 'react-icons/lu'
-import { AppLink, useToast, type AppKey } from '@bze/bze-ui-kit'
+import { AppLink, Shimmer, hgVariant, useToast, type AppKey } from '@bze/bze-ui-kit'
 import { useNavigation } from '@/hooks/useNavigation'
+import { softButton } from '@/components/ui/soft-button'
+import { FormFrame } from './guided-form'
 import { completedReturnHref, useReturnTo } from './return-to'
 
 export interface SuccessLink {
@@ -37,6 +39,8 @@ interface SuccessPanelProps {
     primary?: SuccessLink;
     /** "Do another" with a caller-supplied label and reset. */
     again?: { label: string; onClick: () => void };
+    /** Under the panel, e.g. a report download. */
+    after?: React.ReactNode;
 }
 
 const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer')
@@ -45,7 +49,7 @@ const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noref
  * Replaces a guided form once its transaction is signed. Reads search params (return
  * path), so render it inside a <Suspense> boundary.
  */
-export function SuccessPanel({ title, text, code, links = [], next = [], primary, again }: SuccessPanelProps) {
+export function SuccessPanel({ title, text, code, links = [], next = [], primary, again, after }: SuccessPanelProps) {
     const { navigate } = useNavigation()
     const { toast } = useToast()
     const returnTo = useReturnTo()
@@ -62,77 +66,82 @@ export function SuccessPanel({ title, text, code, links = [], next = [], primary
     }
 
     return (
-        <Box
-            as="section"
-            aria-label="Done"
-            p={{ base: 5, md: 8 }}
-            borderRadius="xl"
-            borderWidth="1px"
-            borderColor="green.500/30"
-            bg="bg.panel"
-        >
-            <VStack align="stretch" gap={6}>
-                <VStack gap={3} align="center" textAlign="center">
-                    <Box color="green.500"><LuCircleCheck size={52} /></Box>
-                    <Text as="h1" fontSize="2xl" fontWeight="bold" letterSpacing="tight">{title}</Text>
-                    {text && <Text fontSize="sm" color="fg.muted">{text}</Text>}
-                </VStack>
-
-                {code && (
-                    <VStack align="stretch" gap={1}>
-                        {code.label && <Text fontSize="xs" color="fg.muted">{code.label}</Text>}
-                        {code.value ? (
-                            <HStack gap={2} p={2} borderRadius="md" bg="bg.muted">
-                                <Code flex="1" minW={0} bg="transparent" fontSize="xs" wordBreak="break-all" whiteSpace="normal">
-                                    {code.value}
-                                </Code>
-                                <IconButton aria-label={`Copy ${code.label ?? 'value'}`} size="xs" variant="ghost" onClick={copy}>
-                                    <LuCopy />
-                                </IconButton>
-                            </HStack>
-                        ) : (
-                            <Skeleton height="8" data-testid="code-loading" />
-                        )}
+        <FormFrame narrow>
+            <VStack align="stretch" gap="16px">
+                <VStack
+                    as="section"
+                    aria-label="Done"
+                    align="stretch"
+                    gap="24px"
+                    p={{ base: '20px', md: '32px' }}
+                    borderRadius="hg.xl"
+                    borderWidth="1px"
+                    borderColor="hg.success/30"
+                    bg="hg.card"
+                >
+                    <VStack gap="12px" align="center" textAlign="center">
+                        <Box color="hg.success" aria-hidden><LuCircleCheck size={52} strokeWidth={1.6} /></Box>
+                        <chakra.h1 m="0" fontSize="26px" fontWeight="800" letterSpacing="-0.02em">{title}</chakra.h1>
+                        {text && <Text fontSize="14px" lineHeight="1.6" color="fg.muted" maxW="560px">{text}</Text>}
                     </VStack>
-                )}
 
-                {links.length > 0 && (
-                    <HStack gap={3} justify="center" wrap="wrap">
-                        {links.map(l => l.app ? (
-                            <AppLink key={l.href} app={l.app} href={l.href}>{l.label}</AppLink>
-                        ) : (
-                            <Button key={l.href} variant="outline" colorPalette="yellow" onClick={() => openExternal(l.href)}>
-                                {l.label} <LuArrowUpRight />
-                            </Button>
-                        ))}
-                    </HStack>
-                )}
+                    {code && (
+                        <VStack align="stretch" gap="4px">
+                            {code.label && <Text fontSize="12px" color="hg.text.faint">{code.label}</Text>}
+                            {code.value ? (
+                                <HStack gap="8px" px="10px" py="8px" borderRadius="10px" bg="hg.inset">
+                                    <Code flex="1" minW={0} bg="transparent" fontSize="12px" color="hg.text.secondary" wordBreak="break-all" whiteSpace="normal">
+                                        {code.value}
+                                    </Code>
+                                    <IconButton aria-label={`Copy ${code.label ?? 'value'}`} size="xs" variant="ghost" color="hg.link" onClick={copy}>
+                                        <LuCopy />
+                                    </IconButton>
+                                </HStack>
+                            ) : (
+                                <Shimmer h="36px" borderRadius="10px" data-testid="code-loading" />
+                            )}
+                        </VStack>
+                    )}
 
-                {(next.length > 0 || again) && (
-                    <VStack align="stretch" gap={3}>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="medium" textAlign="center">
-                            What&apos;s next?
-                        </Text>
-                        <HStack gap={3} justify="center" wrap="wrap">
-                            {next.map(n => (
-                                <Button key={n.href} variant="outline" colorPalette="yellow" size="sm" disabled={n.disabled} onClick={() => navigate(n.href)}>
-                                    {n.icon}
-                                    {n.label}
+                    {links.length > 0 && (
+                        <HStack gap="10px" justify="center" wrap="wrap">
+                            {links.map(l => l.app ? (
+                                <AppLink key={l.href} app={l.app} href={l.href}>{l.label}</AppLink>
+                            ) : (
+                                <Button key={l.href} variant={hgVariant('secondary')} onClick={() => openExternal(l.href)}>
+                                    {l.label} <LuArrowUpRight />
                                 </Button>
                             ))}
-                            {again && (
-                                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={again.onClick}>
-                                    {again.label}
-                                </Button>
-                            )}
                         </HStack>
-                    </VStack>
-                )}
+                    )}
 
-                <Button colorPalette="yellow" size="lg" onClick={() => (main.external ? openExternal(main.href) : navigate(main.href))}>
-                    {main.label}
-                </Button>
+                    {(next.length > 0 || again) && (
+                        <VStack align="stretch" gap="12px">
+                            <Text fontSize="14px" color="fg.muted" fontWeight="500" textAlign="center">
+                                What&apos;s next?
+                            </Text>
+                            <HStack gap="10px" justify="center" wrap="wrap">
+                                {next.map(n => (
+                                    <Button key={n.href} {...softButton} size="sm" disabled={n.disabled} onClick={() => navigate(n.href)}>
+                                        {n.icon}
+                                        {n.label}
+                                    </Button>
+                                ))}
+                                {again && (
+                                    <Button variant="ghost" size="sm" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={again.onClick}>
+                                        {again.label}
+                                    </Button>
+                                )}
+                            </HStack>
+                        </VStack>
+                    )}
+
+                    <Button variant={hgVariant('primary')} size="xl" onClick={() => (main.external ? openExternal(main.href) : navigate(main.href))}>
+                        {main.label}
+                    </Button>
+                </VStack>
+                {after}
             </VStack>
-        </Box>
+        </FormFrame>
     )
 }

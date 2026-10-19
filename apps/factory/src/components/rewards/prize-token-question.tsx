@@ -3,7 +3,7 @@
 import React from 'react'
 import { Box, HStack, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
-import { LuCircleCheck, LuInfo, LuTriangleAlert } from 'react-icons/lu'
+import { LuCircleCheck, LuInfo } from 'react-icons/lu'
 import {
     Asset,
     DenomReward,
@@ -13,6 +13,7 @@ import {
     uAmountToBigNumberAmount,
     useAsset,
 } from '@bze/bze-ui-kit'
+import { BlockerNote } from '@/components/guided/notes'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { prizeSlot } from '@/lib/denom-reward'
 
@@ -29,16 +30,12 @@ interface PrizeTokenQuestionProps {
     label?: string;
 }
 
-function Note({ tone, icon, children }: { tone: 'red' | 'muted' | 'green'; icon: React.ReactNode; children: React.ReactNode }) {
-    const styles = tone === 'red'
-        ? { bg: 'red.500/10', color: 'red.600' }
-        : tone === 'green'
-            ? { bg: 'green.500/10', color: 'fg' }
-            : { bg: 'bg.muted', color: 'fg' }
+/** A quiet line under the picker: what this prize costs (muted) or that it is free (green). */
+function Line({ tone, icon, children }: { tone: 'muted' | 'good'; icon: React.ReactNode; children: React.ReactNode }) {
     return (
-        <HStack gap={2} p={3} borderRadius="lg" align="start" {...styles}>
-            <Box mt="0.5" flexShrink={0}>{icon}</Box>
-            <Text fontSize="sm">{children}</Text>
+        <HStack gap="8px" align="start" color={tone === 'good' ? 'hg.success.text' : 'fg.muted'}>
+            <Box mt="3px" flexShrink={0} aria-hidden>{icon}</Box>
+            <Text fontSize="14px" lineHeight="1.5">{children}</Text>
         </HStack>
     )
 }
@@ -73,25 +70,25 @@ export function PrizeTokenQuestion({
         : `prize slot ${slot.used + 1}`
 
     return (
-        <VStack align="stretch" gap={3}>
+        <VStack align="stretch" gap="12px">
             <AssetPicker label={label} value={value} onSelect={onSelect} />
 
             {value && slot.capReached && (
-                <Note tone="red" icon={<LuTriangleAlert size={16} />}>
+                <BlockerNote>
                     This holder reward already uses {slot.used} prize tokens, the maximum of {maxPrizeDenoms}.
                     Pick a prize token it already pays.
-                </Note>
+                </BlockerNote>
             )}
             {value && slot.isNewPrize && !slot.capReached && (
-                <Note tone="muted" icon={<LuInfo size={16} />}>
+                <Line tone="muted" icon={<LuInfo size={16} />}>
                     {prizeTicker} is new to {stakeTicker}&apos;s holder rewards, so the one-time new prize
                     fee{feeText} applies. It takes {slotText} for good. Paying {prizeTicker} here again later is free.
-                </Note>
+                </Line>
             )}
             {value && !slot.isNewPrize && (
-                <Note tone="green" icon={<LuCircleCheck size={16} />}>
+                <Line tone="good" icon={<LuCircleCheck size={16} />}>
                     No prize fee: {stakeTicker} already pays {prizeTicker}.
-                </Note>
+                </Line>
             )}
         </VStack>
     )

@@ -41,4 +41,18 @@ describe("Question", () => {
         await userEvent.click(screen.getByRole("button", { name: "Change What is being traded?" }));
         expect(onChange).toHaveBeenCalledOnce();
     });
+
+    it("keeps the same section node through active, done and todo", () => {
+        const { rerender } = render(<Question number={1} title="Name and ticker" state="active"><input aria-label="the input" /></Question>, { wrapper });
+        const section = screen.getByRole("region", { name: "Name and ticker" });
+
+        rerender(<Question number={1} title="Name and ticker" state="done" summary="Honey (HONEY)" />);
+        expect(screen.getByRole("region", { name: "Name and ticker" })).toBe(section);
+        expect(section).toHaveAttribute("data-state", "done");
+        expect(section).toHaveTextContent("Honey (HONEY)");
+
+        rerender(<Question number={1} title="Name and ticker" state="todo" />);
+        expect(screen.getByRole("region", { name: "Name and ticker" })).toBe(section);
+        expect(section).toHaveAttribute("data-state", "todo");
+    });
 });

@@ -1,11 +1,12 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import { Box, Button, Container, Field, HStack, Input, Skeleton, Text, VStack } from '@chakra-ui/react'
+import React, { useMemo, useState } from 'react'
+import { Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuGift } from 'react-icons/lu'
 import { bze } from '@bze/bzejs'
 import {
+    GradientText,
     amountToUAmount,
     createPoolId,
     getExplorerTxURL,
@@ -35,10 +36,16 @@ import {
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import {
+    AnswerChip,
+    BlockerNote,
+    ContinueRow,
+    FormPage,
     GuidedForm,
     OutcomePanel,
     PayPanel,
     Question,
+    SubmitBlock,
+    SubmitNote,
     SuccessPanel,
     TipNote,
     WarningNote,
@@ -55,6 +62,7 @@ import {
     swapFeeToChain,
     validateSwapFee,
 } from '@/lib/pool-new'
+import { softButton } from '@/components/ui/soft-button'
 
 const { createLiquidityPool } = bze.tradebin.MessageComposer.withTypeUrl
 
@@ -103,7 +111,7 @@ function ReserveField({
     return (
         <Field.Root invalid={touched && error !== ''}>
             <Field.Label>{label} ({asset.ticker})</Field.Label>
-            <HStack gap={2} w="full">
+            <HStack gap="8px" w="full">
                 <Input
                     placeholder="e.g. 1000"
                     inputMode="decimal"
@@ -112,9 +120,8 @@ function ReserveField({
                     onBlur={() => setTouched(true)}
                 />
                 <Button
+                    {...softButton}
                     size="sm"
-                    variant="outline"
-                    colorPalette="yellow"
                     flexShrink={0}
                     aria-label={`Max ${asset.ticker}`}
                     disabled={max.isLoading}
@@ -133,9 +140,9 @@ function ReserveField({
 
 function OutcomeRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
-        <HStack justify="space-between" align="start" gap={3}>
+        <HStack justify="space-between" align="start" gap="12px">
             <Text color="fg.muted">{label}</Text>
-            <Text fontWeight="semibold" textAlign="right" minW={0} wordBreak="break-word">{value}</Text>
+            <Text fontWeight="600" textAlign="right" minW={0} wordBreak="break-word">{value}</Text>
         </HStack>
     )
 }
@@ -346,8 +353,8 @@ function PoolNewContent() {
     const aside = (
         <>
             <OutcomePanel>
-                <VStack align="stretch" gap={2} aria-label="Your pool" role="group">
-                    <Text fontWeight="semibold">Your pool</Text>
+                <VStack align="stretch" gap="8px" aria-label="Your pool" role="group">
+                    <Text fontWeight="700">Your pool</Text>
                     <OutcomeRow label="Pair" value={canonicalPairLabel || '—'} />
                     <OutcomeRow
                         label="Deposit"
@@ -360,7 +367,7 @@ function PoolNewContent() {
                         value={impliedPrice ? `1 ${baseTicker} = ${priceText} ${quoteTicker}` : '—'}
                     />
                     <OutcomeRow label="Swap fee" value={swapFeeError === '' ? `${swapFee.trim()}%` : '—'} />
-                    <Text fontSize="xs" color="fg.muted">
+                    <Text fontSize="12px" lineHeight="1.45" color="hg.text.faint">
                         {canonicalPairLabel || 'Your pair'} opens for swaps. Your deposit becomes its permanent floor.
                     </Text>
                 </VStack>
@@ -374,39 +381,25 @@ function PoolNewContent() {
                 feeUnknown={!fee}
                 footer={totalInFeeDenom && (
                     <Text color="fg.muted">
-                        {feeTicker} needed in total: <Text as="span" fontWeight="semibold" color="fg">{totalInFeeDenom} {feeTicker}</Text>
+                        {feeTicker} needed in total: <Text as="span" fontWeight="600" color="fg">{totalInFeeDenom} {feeTicker}</Text>
                         {' '}(your deposit + the creation fee)
                     </Text>
                 )}
             />
 
-            <VStack align="stretch" gap={2}>
-                <Button
-                    size="lg"
-                    colorPalette="yellow"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Create pool
-                </Button>
+            <SubmitBlock label="Create pool" onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
                 {!address ? (
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Connect your wallet to create this pool.
-                    </Text>
+                    <SubmitNote>Connect your wallet to create this pool.</SubmitNote>
                 ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
-                    <Text fontSize="sm" color="fg.error" textAlign="center">
-                        Not enough balance to cover the creation fee on top of the reserves.
-                    </Text>
+                    <SubmitNote tone="error">Not enough balance to cover the creation fee on top of the reserves.</SubmitNote>
                 )}
-            </VStack>
+            </SubmitBlock>
         </>
     )
 
     return (
         <GuidedForm
-            title={`Let people buy and sell ${baseTicker || 'your token'}`}
+            title={<>Let people buy and sell <GradientText>{baseTicker || 'your token'}</GradientText></>}
             subtitle="Pair it with another token. What you put in sets the starting price."
             techTag="tradebin · liquidity pool"
             aside={aside}
@@ -418,7 +411,7 @@ function PoolNewContent() {
                 summary={pairSummary}
                 onChange={() => steps.open('pair')}
             >
-                <VStack align="stretch" gap={4}>
+                <VStack align="stretch" gap="16px">
                     <AssetPicker
                         label="Your token"
                         value={baseDenom}
@@ -436,16 +429,11 @@ function PoolNewContent() {
                     />
 
                     {pairError && (
-                        <Box role="alert">
-                            <Text fontSize="sm" color="fg.error" fontWeight="medium">
-                                {pairError.message}
-                            </Text>
-                            {pairError.existingPoolId && (
+                        <BlockerNote
+                            action={pairError.existingPoolId && (
                                 <Button
-                                    mt={2}
+                                    {...softButton}
                                     size="sm"
-                                    variant="outline"
-                                    colorPalette="yellow"
                                     onClick={() => navigate(withReturn(
                                         `/pool/add?pool=${encodeURIComponent(pairError.existingPoolId as string)}`,
                                         returnTo,
@@ -454,19 +442,19 @@ function PoolNewContent() {
                                     Add liquidity to it
                                 </Button>
                             )}
-                        </Box>
+                        >
+                            {pairError.message}
+                        </BlockerNote>
                     )}
 
                     {canonicalPairLabel && !pairError && (
-                        <Text fontSize="sm" color="fg.muted">
-                            Stored on-chain as <Text as="span" fontWeight="semibold">{canonicalPairLabel}</Text>
+                        <Text fontSize="14px" color="fg.muted">
+                            Stored on-chain as <Text as="span" fontWeight="600">{canonicalPairLabel}</Text>
                             {!isCanonicalOrder && ' — the chain orders every pair alphabetically.'}
                         </Text>
                     )}
 
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!isPairValid} onClick={() => answer('pair')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!isPairValid} onContinue={() => answer('pair')} />
                 </VStack>
             </Question>
 
@@ -477,16 +465,16 @@ function PoolNewContent() {
                 summary={depositSummary}
                 onChange={() => steps.open('deposit')}
             >
-                <VStack align="stretch" gap={4}>
-                    <Text fontSize="sm" color="fg.muted">
+                <VStack align="stretch" gap="16px">
+                    <Text fontSize="14px" color="fg.muted">
                         The ratio of the two amounts sets {baseTicker || 'your token'}&apos;s starting price.
                     </Text>
                     <ReserveField label="Your token" denom={baseDenom} amount={baseAmount} onChange={setBaseAmount} fee={fee} />
                     <ReserveField label="Paired with" denom={quoteDenom} amount={quoteAmount} onChange={setQuoteAmount} fee={fee} />
 
                     {impliedPrice && (
-                        <Text fontSize="sm" color="fg.muted">
-                            Starting price <Text as="span" fontWeight="semibold" color="fg">
+                        <Text fontSize="14px" color="fg.muted">
+                            Starting price <Text as="span" fontWeight="600" color="fg">
                                 1 {baseTicker} = {priceText} {quoteTicker}
                             </Text>
                             {impliedUsd && <> ≈ ${prettyAmount(impliedUsd)}</>}
@@ -498,9 +486,7 @@ function PoolNewContent() {
                         tokens for it. To add liquidity you can take back later, use Add liquidity after the pool exists.
                     </WarningNote>
 
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={!amountsValid} onClick={() => answer('deposit')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={!amountsValid} onContinue={() => answer('deposit')} />
                 </VStack>
             </Question>
 
@@ -511,25 +497,20 @@ function PoolNewContent() {
                 summary={swapFeeSummary(swapFee, feeSplit)}
                 onChange={() => steps.open('fee')}
             >
-                <VStack align="stretch" gap={4}>
-                    <VStack align="stretch" gap={2}>
-                        <Text fontSize="sm" fontWeight="medium">Swap fee, charged on every swap</Text>
-                        <HStack gap={2} flexWrap="wrap">
+                <VStack align="stretch" gap="16px">
+                    <VStack align="stretch" gap="8px">
+                        <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">Swap fee, charged on every swap</Text>
+                        <HStack gap="6px" flexWrap="wrap">
                             {SWAP_FEE_PRESETS.map(preset => (
-                                <Button
-                                    key={preset}
-                                    size="xs"
-                                    borderRadius="full"
-                                    variant={swapFee === preset ? 'solid' : 'outline'}
-                                    colorPalette="yellow"
-                                    onClick={() => setSwapFee(preset)}
-                                >
+                                <AnswerChip key={preset} selected={swapFee === preset} onClick={() => setSwapFee(preset)}>
                                     {preset}%
-                                </Button>
+                                </AnswerChip>
                             ))}
-                            <Field.Root invalid={swapFeeError !== ''} maxW="28">
+                            <Field.Root invalid={swapFeeError !== ''} maxW="112px">
                                 <Input
                                     size="xs"
+                                    h="30px"
+                                    borderRadius="hg.pill"
                                     inputMode="decimal"
                                     aria-label="Custom swap fee (%)"
                                     value={swapFee}
@@ -538,12 +519,12 @@ function PoolNewContent() {
                             </Field.Root>
                         </HStack>
                         {swapFeeError !== '' && (
-                            <Text fontSize="sm" color="fg.error">{swapFeeError}</Text>
+                            <Text fontSize="14px" color="hg.danger.text">{swapFeeError}</Text>
                         )}
                     </VStack>
 
-                    <VStack align="stretch" gap={2}>
-                        <Text fontSize="sm" fontWeight="medium">Where the fees go</Text>
+                    <VStack align="stretch" gap="8px">
+                        <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">Where the fees go</Text>
                         <FeeSplitSlider value={feeSplit} onChange={setFeeSplit} />
                     </VStack>
 
@@ -551,9 +532,7 @@ function PoolNewContent() {
                         The pair gets exactly one pool. The fee and where it goes are fixed at creation.
                     </TipNote>
 
-                    <Button alignSelf="start" colorPalette="yellow" size="sm" disabled={swapFeeError !== ''} onClick={() => answer('fee')}>
-                        Continue
-                    </Button>
+                    <ContinueRow disabled={swapFeeError !== ''} onContinue={() => answer('fee')} />
                 </VStack>
             </Question>
         </GuidedForm>
@@ -562,12 +541,8 @@ function PoolNewContent() {
 
 export default function PoolNewPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="5xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <PoolNewContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <PoolNewContent />
+        </FormPage>
     )
 }

@@ -1,12 +1,13 @@
 "use client"
 
 import React, { useMemo } from 'react'
-import { Box, Button, HStack, Separator, Skeleton, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, chakra, HStack, Separator, Text, VStack } from '@chakra-ui/react'
 import { LuCircleAlert, LuCircleCheck, LuSettings, LuTriangleAlert } from 'react-icons/lu'
 import {
     FeeCoin,
     Sidebar,
     SettingsSidebarContent,
+    Shimmer,
     TokenLogo,
     TxSpec,
     getChainName,
@@ -50,20 +51,20 @@ interface PayPanelProps {
 
 function PanelShell({ children }: { children: React.ReactNode }) {
     return (
-        <Box
+        <VStack
             as="section"
             aria-label="You will pay"
-            p={4}
-            borderRadius="xl"
+            align="stretch"
+            gap="12px"
+            p="18px"
+            borderRadius="hg.lg"
             borderWidth="1px"
-            borderColor="border"
-            bg="bg.panel"
+            borderColor="hg.hairline"
+            bg="hg.card"
         >
-            <VStack align="stretch" gap={3}>
-                <Text fontSize="sm" fontWeight="semibold">You will pay</Text>
-                {children}
-            </VStack>
-        </Box>
+            <chakra.h3 m="0" fontSize="14px" fontWeight="700">You will pay</chakra.h3>
+            {children}
+        </VStack>
     )
 }
 
@@ -81,28 +82,28 @@ function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; altText?: 
     const extra = [usd ? `≈ $${prettyAmount(usd)}` : '', altText ? `(≈ ${altText})` : ''].filter(Boolean).join(' ')
 
     return (
-        <VStack align="stretch" gap={0.5}>
-            <HStack justify="space-between" align="start" gap={3}>
-                <Text fontSize="sm" color="fg.muted">{row.label}</Text>
-                <HStack gap={1.5} flexShrink={0}>
+        <VStack align="stretch" gap="3px">
+            <HStack justify="space-between" align="start" gap="12px">
+                <Text fontSize="14px" color="fg.muted">{row.label}</Text>
+                <HStack gap="6px" flexShrink={0}>
                     <TokenLogo src={asset?.logo} symbol={ticker} size="4" />
-                    <Text fontSize="sm" fontWeight="semibold">{display} {ticker}</Text>
+                    <Text fontSize="14px" fontWeight="600">{display} {ticker}</Text>
                 </HStack>
             </HStack>
-            {extra && <Text fontSize="xs" color="fg.muted" textAlign="right">{extra}</Text>}
-            {row.info && <Box fontSize="xs" color="fg.muted">{row.info}</Box>}
+            {extra && <Text fontSize="12px" color="hg.text.faint" textAlign="right">{extra}</Text>}
+            {row.info && <Box fontSize="12px" lineHeight="1.45" color="hg.text.faint">{row.info}</Box>}
         </VStack>
     )
 }
 
 function TextRow({ label, value, info }: { label: string; value: React.ReactNode; info?: React.ReactNode }) {
     return (
-        <VStack align="stretch" gap={0.5}>
-            <HStack justify="space-between" align="start" gap={3}>
-                <Text fontSize="sm" color="fg.muted">{label}</Text>
-                <Text fontSize="sm" fontWeight="semibold" textAlign="right">{value}</Text>
+        <VStack align="stretch" gap="3px">
+            <HStack justify="space-between" align="start" gap="12px">
+                <Text fontSize="14px" color="fg.muted">{label}</Text>
+                <Text fontSize="14px" fontWeight="600" textAlign="right">{value}</Text>
             </HStack>
-            {info && <Box fontSize="xs" color="fg.muted">{info}</Box>}
+            {info && <Box fontSize="12px" lineHeight="1.45" color="hg.text.faint">{info}</Box>}
         </VStack>
     )
 }
@@ -124,8 +125,8 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
     if (isLoading) {
         return (
             <PanelShell>
-                <Skeleton height="4" width="48" />
-                <Skeleton height="4" width="40" />
+                <Shimmer h="14px" w="190px" />
+                <Shimmer h="14px" w="150px" />
             </PanelShell>
         )
     }
@@ -133,9 +134,9 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
     if (feeUnknown) {
         return (
             <PanelShell>
-                <HStack gap={2} color="fg.muted" align="start">
-                    <Box mt={0.5}><LuCircleAlert size={16} /></Box>
-                    <Text fontSize="sm">
+                <HStack gap="8px" color="fg.muted" align="start">
+                    <Box mt="3px" flexShrink={0}><LuCircleAlert size={16} /></Box>
+                    <Text fontSize="14px" lineHeight="1.5">
                         Could not load the current fee from the chain. Please refresh and try again.
                     </Text>
                 </HStack>
@@ -158,7 +159,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
 
     return (
         <PanelShell>
-            <VStack align="stretch" gap={2.5}>
+            <VStack align="stretch" gap="10px">
                 {rows.map((row, i) => row.coin
                     ? <CoinRow key={`${row.label}-${i}`} row={row as PayRow & { coin: FeeCoin }} altText={i === moduleRowIndex ? altText : undefined} />
                     : <TextRow key={`${row.label}-${i}`} label={row.label} value={row.text ?? ''} info={row.info} />
@@ -171,7 +172,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
             <Sidebar
                 ariaLabel="Settings"
                 trigger={
-                    <Button variant="ghost" size="xs" colorPalette="yellow" alignSelf="start" ml={-2}>
+                    <Button variant="ghost" size="xs" color="hg.link" alignSelf="start" ml="-8px" _hover={{ bg: 'app.subtle' }}>
                         <LuSettings />
                         Fee token: {payment.altAsset?.ticker ?? '...'}
                     </Button>
@@ -182,40 +183,40 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
 
             {moduleFee && (
                 <>
-                    <Separator />
+                    <Separator borderColor="hg.divider" />
                     {!address ? (
-                        <Text fontSize="sm" color="fg.muted">
+                        <Text fontSize="14px" color="fg.muted">
                             Connect your wallet to check your balance.
                         </Text>
                     ) : isBalanceLoading || payment.isLoading ? (
-                        <Skeleton height="4" width="40" data-testid="balance-loading" />
+                        <Shimmer h="14px" w="160px" data-testid="balance-loading" />
                     ) : payment.method === 'alt' ? (
-                        <HStack gap={1.5} color="green.500" align="start">
-                            <Box mt={0.5}><LuCircleCheck size={14} /></Box>
-                            <Text fontSize="sm">
+                        <HStack gap="8px" color="hg.success.text" align="start">
+                            <Box mt="3px" flexShrink={0}><LuCircleCheck size={16} /></Box>
+                            <Text fontSize="14px" lineHeight="1.5">
                                 You have enough {altTicker} to pay this fee{plusGas}.
                             </Text>
                         </HStack>
                     ) : payment.method === 'fallback' ? (
-                        <HStack gap={1.5} color="orange.500" align="start">
-                            <Box mt={0.5}><LuTriangleAlert size={14} /></Box>
-                            <Text fontSize="sm">
+                        <HStack gap="8px" color="hg.warning.text" align="start">
+                            <Box mt="3px" flexShrink={0}><LuTriangleAlert size={16} /></Box>
+                            <Text fontSize="14px" lineHeight="1.5">
                                 Not enough {altTicker} (you have{' '}
                                 {prettyAmount(payment.altBalanceDisplay)}{gasText ? ', the network fee goes first' : ''}) — the fee will be
                                 charged in {nativeTicker} instead. You have enough {nativeTicker}.
                             </Text>
                         </HStack>
                     ) : payment.method === 'native' ? (
-                        <HStack gap={1.5} color="green.500" align="start">
-                            <Box mt={0.5}><LuCircleCheck size={14} /></Box>
-                            <Text fontSize="sm">
+                        <HStack gap="8px" color="hg.success.text" align="start">
+                            <Box mt="3px" flexShrink={0}><LuCircleCheck size={16} /></Box>
+                            <Text fontSize="14px" lineHeight="1.5">
                                 You have enough {nativeTicker} to pay this fee{plusGas}.
                             </Text>
                         </HStack>
                     ) : (
-                        <HStack gap={1.5} color="red.500" align="start">
-                            <Box mt={0.5}><LuCircleAlert size={14} /></Box>
-                            <Text fontSize="sm">
+                        <HStack gap="8px" color="hg.danger.text" align="start">
+                            <Box mt="3px" flexShrink={0}><LuCircleAlert size={16} /></Box>
+                            <Text fontSize="14px" lineHeight="1.5">
                                 {payment.isAltSelected
                                     ? `Not enough ${altTicker} or ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${nativeBalance} ${nativeTicker}.`
                                     : `Not enough ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${nativeBalance}.`}
@@ -225,7 +226,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                 </>
             )}
 
-            {footer && <Box fontSize="sm">{footer}</Box>}
+            {footer && <Box fontSize="14px">{footer}</Box>}
         </PanelShell>
     )
 }

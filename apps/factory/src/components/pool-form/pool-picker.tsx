@@ -3,18 +3,16 @@
 import React, { useMemo, useState } from 'react'
 import {
     Box,
-    Card,
     HStack,
     Input,
     Select,
-    Skeleton,
     Text,
     VStack,
     createListCollection,
 } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { LuChevronDown } from 'react-icons/lu'
-import { TokenLogo, useAssets, useLiquidityPools } from '@bze/bze-ui-kit'
+import { Shimmer, TokenLogo, useAssets, useLiquidityPools } from '@bze/bze-ui-kit'
 import type { Asset } from '@bze/bze-ui-kit'
 import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 
@@ -41,18 +39,18 @@ interface PoolPickerProps {
 
 function PairLogos({ option }: { option: PoolOption }) {
     return (
-        <HStack gap={0}>
+        <HStack gap="0">
             <TokenLogo
                 src={option.baseAsset?.logo}
                 symbol={option.baseAsset?.ticker ?? '?'}
-                size="8"
+                size="6"
                 circular={true}
             />
-            <Box ml="-3">
+            <Box ml="-6px">
                 <TokenLogo
                     src={option.quoteAsset?.logo}
                     symbol={option.quoteAsset?.ticker ?? '?'}
-                    size="8"
+                    size="6"
                     circular={true}
                 />
             </Box>
@@ -111,12 +109,10 @@ export function PoolPicker({ value, onSelect, label, excludeHalted = false }: Po
 
     if (isLoading) {
         return (
-            <Card.Root variant="outline" p="4">
-                <VStack align="start" gap="3" w="full">
-                    <Skeleton height="4" width="24" />
-                    <Skeleton height="8" width="full" />
-                </VStack>
-            </Card.Root>
+            <VStack align="stretch" gap="8px" w="full" aria-busy="true">
+                <Shimmer h="13px" w="96px" />
+                <Shimmer h="62px" borderRadius="14px" />
+            </VStack>
         )
     }
 
@@ -141,51 +137,58 @@ export function PoolPicker({ value, onSelect, label, excludeHalted = false }: Po
             }}
         >
             <Select.Trigger asChild>
-                <Card.Root
-                    variant="outline"
-                    p="4"
+                <Box
+                    as="button"
+                    textAlign="start"
+                    w="full"
+                    px="14px"
+                    py="12px"
+                    borderRadius="14px"
+                    bg="hg.inset"
+                    borderWidth="1px"
+                    borderColor="hg.hairline"
                     cursor="pointer"
-                    bgGradient="to-br"
-                    gradientFrom="yellow.500/8"
-                    gradientTo="yellow.600/8"
-                    borderColor="yellow.500/20"
-                    _hover={{
-                        gradientFrom: "yellow.500/12",
-                        gradientTo: "yellow.600/12",
-                        borderColor: "yellow.500/30",
-                    }}
-                    transition="all 0.2s"
+                    transition="border-color 0.15s"
+                    _hover={{ borderColor: 'app.border' }}
+                    _expanded={{ borderColor: 'app.focusRing', boxShadow: '0 0 0 3px {colors.app.subtle}' }}
+                    focusVisibleRing="outside"
                 >
-                    <VStack align="start" gap="3" w="full">
-                        <Text fontSize="sm" color="fg.muted">
-                            {label}
-                        </Text>
-                        <HStack justify="space-between" w="full">
+                    <HStack justify="space-between" w="full" gap="12px">
+                        <VStack align="start" gap="4px" minW={0}>
+                            <Text fontSize="12px" color="hg.text.faint">
+                                {label}
+                            </Text>
                             {selectedOption ? (
-                                <HStack gap="3">
+                                <HStack gap="10px" minW={0}>
                                     <PairLogos option={selectedOption} />
-                                    <VStack align="start" gap="1">
-                                        <Text fontWeight="bold" fontSize="lg">
-                                            {selectedOption.pairLabel}
-                                        </Text>
-                                        <Text fontSize="sm" color="fg.muted">
-                                            {selectedOption.feeLabel}
-                                        </Text>
-                                    </VStack>
+                                    <Text fontWeight="700" fontSize="16px">
+                                        {selectedOption.pairLabel}
+                                    </Text>
+                                    <Text fontSize="12px" color="hg.text.faint">
+                                        {selectedOption.feeLabel}
+                                    </Text>
                                 </HStack>
                             ) : (
-                                <Text fontSize="lg" color="fg.muted">
+                                <Text fontSize="16px" color="hg.text.faint">
                                     Select pool
                                 </Text>
                             )}
-                            <LuChevronDown />
-                        </HStack>
-                    </VStack>
-                </Card.Root>
+                        </VStack>
+                        <Box color="hg.text.faint" flexShrink={0}><LuChevronDown size={16} /></Box>
+                    </HStack>
+                </Box>
             </Select.Trigger>
             <Select.Positioner>
-                <Select.Content maxH="400px" overflowY="auto" background="bg.muted">
-                    <Box p="3" borderBottomWidth="1px">
+                <Select.Content
+                    maxH="400px"
+                    overflowY="auto"
+                    bg="hg.card"
+                    borderWidth="1px"
+                    borderColor="hg.hairline"
+                    borderRadius="14px"
+                    boxShadow="hg.popover"
+                >
+                    <Box p="3" borderBottomWidth="1px" borderColor="hg.divider">
                         <Input
                             placeholder="Search by pair or denom..."
                             value={searchTerm}
@@ -201,16 +204,18 @@ export function PoolPicker({ value, onSelect, label, excludeHalted = false }: Po
                                     key={option.pool.id}
                                     item={option.pool.id}
                                     cursor="pointer"
-                                    _hover={{ bg: "bg.panel" }}
+                                    borderRadius="10px"
+                                    _hover={{ bg: 'hg.hoverFill' }}
+                                    _highlighted={{ bg: 'app.subtle' }}
                                 >
                                     <Select.ItemText>
                                         <HStack gap="3" py="2">
                                             <PairLogos option={option} />
                                             <VStack align="start" gap="0" flex="1">
-                                                <Text fontWeight="medium" fontSize="md">
+                                                <Text fontWeight="600" fontSize="15px">
                                                     {option.pairLabel}
                                                 </Text>
-                                                <Text fontSize="sm" color="fg.muted">
+                                                <Text fontSize="12px" color="hg.text.faint">
                                                     {option.feeLabel}
                                                 </Text>
                                             </VStack>
@@ -221,15 +226,15 @@ export function PoolPicker({ value, onSelect, label, excludeHalted = false }: Po
                             ))
                         ) : (
                             <Box p="4" textAlign="center">
-                                <Text fontSize="sm" color="fg.muted">
+                                <Text fontSize="14px" color="hg.text.muted">
                                     No pools found
                                 </Text>
                             </Box>
                         )}
                     </Box>
                     {!searchTerm && options.length > UNFILTERED_LIMIT && (
-                        <Box p="2" borderTopWidth="1px" textAlign="center">
-                            <Text fontSize="xs" color="fg.muted">
+                        <Box p="2" borderTopWidth="1px" borderColor="hg.divider" textAlign="center">
+                            <Text fontSize="12px" color="hg.text.faint">
                                 Showing first {UNFILTERED_LIMIT} pools. Search to find more.
                             </Text>
                         </Box>
