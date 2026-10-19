@@ -32,8 +32,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         WalletSidebarContent: () => <div data-testid="wallet-sidebar" />,
     };
 });
+// The hero holds the page's Connect Wallet to Stake sidebar, so the stub renders its actions.
 vi.mock("@/components/staking/overview", () => ({
-    StakingOverview: () => null,
+    StakingOverview: ({ actions }: { actions?: ReactNode }) => <div>{actions}</div>,
 }));
 vi.mock("@/components/staking/validators-list", () => ({
     ValidatorsList: () => null,
