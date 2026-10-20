@@ -188,16 +188,43 @@ export const NativeStakingCard = ({ stakingData, isLoading, onClaimSuccess }: Na
                             <chakra.p m="0" fontSize="14px" lineHeight="1.55" color="fg.muted">
                                 Secure the BeeZee network and earn rewards by staking your BZE coins.
                             </chakra.p>
-                            <RewardsStakingButton
-                                buttonType={TYPE_REWARDS}
-                                size="lg"
-                                disabled={!hasRewards}
-                                onClick={() => openModal('claim')}
+                            {hasUserStake ? (
+                                <SimpleGrid columns={{base: 1, sm: 2}} gap="10px">
+                                    <RewardStakingAlert type={TYPE_STAKING} text={yourStake}/>
+                                    <RewardStakingAlert type={TYPE_REWARDS} text={pendingRewards}/>
+                                </SimpleGrid>
+                            ) : (
+                                <chakra.p m="0" px="14px" py="12px" borderRadius="12px" bg="hg.inset" fontSize="13px" color="hg.text.secondary">
+                                    You are not staking BZE yet. Pick a validator in the Staking app.
+                                </chakra.p>
+                            )}
+                            {/* The Staking link on the left, Claim on the right, as in the other reward dialogs' footers. */}
+                            <Flex
+                                data-testid="native-staking-actions"
+                                justify="space-between"
+                                align="center"
+                                wrap="wrap"
+                                gap="12px"
+                                pt="14px"
+                                borderTopWidth="1px"
+                                borderColor="hg.divider"
                             >
-                                Claim
-                            </RewardsStakingButton>
-                            <Flex justify="center">
-                                <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
+                                <Flex align="center" gap="2px" fontSize="13px" color="fg.muted">
+                                    Stake and unstake in
+                                    <AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>
+                                </Flex>
+                                {hasUserStake && (
+                                    <RewardsStakingButton
+                                        buttonType={TYPE_REWARDS}
+                                        flex="none"
+                                        w="auto"
+                                        px="18px"
+                                        disabled={!hasRewards}
+                                        onClick={() => openModal('claim')}
+                                    >
+                                        Claim
+                                    </RewardsStakingButton>
+                                )}
                             </Flex>
                         </Flex>
                     )}

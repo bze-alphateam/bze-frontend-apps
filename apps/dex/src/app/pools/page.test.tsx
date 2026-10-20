@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import BigNumber from "bignumber.js";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
 
 // The pools page reads three ui-kit hooks (pools, ticker lookup, balances) plus
@@ -45,6 +46,7 @@ vi.mock("@/hooks/useNavigation", () => ({
 }));
 
 import LiquidityPoolsPage from "./page";
+import { rulesFor } from "@/test-support/css-rules";
 
 const POOLS = [
     { id: "1", base: "ubze", quote: "uusdc", lp_denom: "ulp/1" },
@@ -112,5 +114,19 @@ describe("Liquidity pools page", () => {
         // Clearing the search restores the full list.
         await user.click(screen.getByRole("button", { name: /Clear Search/i }));
         expect(screen.getByText(/Showing 2 of 2 pools/)).toBeInTheDocument();
+    });
+
+    it("shows My Liquidity as plain text, without a chip border", () => {
+        useLiquidityPoolsMock.mockReturnValue({ pools: POOLS, poolsData: new Map() });
+        useBalancesMock.mockReturnValue({
+            getBalanceByDenom: (denom: string) => (denom === "ulp/1" ? { denom, amount: new BigNumber(5) } : undefined),
+        });
+        renderPools();
+
+        const cells = screen.getAllByTestId("my-liquidity");
+        expect(cells.length).toBeGreaterThan(0);
+        for (const cell of cells) {
+            expect(rulesFor(cell)).not.toMatch(/border-width/);
+        }
     });
 });
