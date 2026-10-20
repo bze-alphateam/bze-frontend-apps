@@ -16,13 +16,11 @@ import {
 } from '@chakra-ui/react'
 import { LuChevronDown, LuCircleHelp, LuCoins, LuCopy, LuInfo, LuPlus } from 'react-icons/lu'
 import {
-    AppLink,
     HgCard,
     PageContainer,
     PageState,
     Shimmer,
     TokenLogo,
-    getBurnerApp,
     hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -45,8 +43,6 @@ function TokenCard({ token }: { token: MyToken }) {
     const { asset, admin } = token
     const { toast } = useToast()
     const { navigate } = useNavigation()
-
-    const burnerUrl = `${getBurnerApp().href}/coin?coin=${encodeURIComponent(asset.denom)}`
 
     const copyDenom = async () => {
         await navigator.clipboard.writeText(asset.denom)
@@ -82,12 +78,9 @@ function TokenCard({ token }: { token: MyToken }) {
                         </IconButton>
                     </HStack>
                 </VStack>
-                <HStack gap="8px">
-                    <AppLink app="burner" href={burnerUrl}>Burner</AppLink>
-                    <Button size="md" variant={hgVariant('primary')} onClick={() => navigate(workspaceHref(asset.denom))}>
-                        Open
-                    </Button>
-                </HStack>
+                <Button size="md" variant={hgVariant('primary')} onClick={() => navigate(workspaceHref(asset.denom))}>
+                    Open
+                </Button>
             </Flex>
         </HgCard>
     )

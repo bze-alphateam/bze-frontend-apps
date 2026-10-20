@@ -125,6 +125,15 @@ describe("Your tokens (/manage)", () => {
         expect(screen.getAllByText("Total supply")).toHaveLength(2);
     });
 
+    it("a token card offers Open only, no Burner link", () => {
+        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin")], isLoading: false });
+        renderPage();
+
+        const card = screen.getByTestId("my-token");
+        expect(within(card).getByRole("button", { name: "Open" })).toBeInTheDocument();
+        expect(within(card).queryByRole("link", { name: /Burner/ })).not.toBeInTheDocument();
+    });
+
     it("shows a neutral badge when the admin lookup failed, never Fixed supply", () => {
         m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", undefined)], isLoading: false });
         renderPage();

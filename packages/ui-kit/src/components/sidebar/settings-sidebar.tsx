@@ -8,12 +8,13 @@ import {
     Button,
     Separator,
     Box,
+    Flex,
     Input,
     createListCollection,
 } from '@chakra-ui/react'
 import { Select, Portal } from '@chakra-ui/react'
 import { useTheme } from "next-themes"
-import {useState, useEffect, useMemo, useCallback} from 'react'
+import {useState, useEffect, useMemo, useCallback, useId} from 'react'
 import { useSettings } from '../../hooks/useSettings'
 import {convertToWebSocketUrl, validateEndpoints} from '../../utils/validation'
 import {
@@ -32,6 +33,7 @@ import {DrawerHelper, DrawerSectionTitle} from "./drawer-kit"
 
 export const SettingsSidebarContent = () => {
     const { setTheme, resolvedTheme} = useTheme()
+    const darkModeLabelId = useId()
     const {toast} = useToast()
     const { settings, isLoaded, updateEndpoints, updatePreferredFeeDenom, defaultSettings } = useSettings()
     const {connectionType} = useConnectionType()
@@ -164,22 +166,23 @@ export const SettingsSidebarContent = () => {
             {/* Appearance Section */}
             <VStack as="section" gap="6px" align="stretch">
                 <DrawerSectionTitle>Appearance</DrawerSectionTitle>
-                <Switch.Root
-                    display="flex"
-                    justifyContent="space-between"
-                    minH="40px"
-                    checked={resolvedTheme === 'dark'}
-                    onCheckedChange={(details) => {
-                        const newTheme = details.checked ? 'dark' : 'light'
-                        setTheme(newTheme)
-                    }}
-                >
-                    <Switch.Label fontSize="14px" fontWeight="400" color="fg">Dark Mode</Switch.Label>
-                    <Switch.HiddenInput />
-                    <Switch.Control bg="hg.switchOff" _checked={{ bgImage: 'appButton' }}>
-                        <Switch.Thumb />
-                    </Switch.Control>
-                </Switch.Root>
+                {/* Only the switch toggles: the text sits outside its label so a click on it does nothing. */}
+                <Flex justify="space-between" align="center" minH="40px">
+                    <Text id={darkModeLabelId} fontSize="14px" fontWeight="400" color="fg">Dark Mode</Text>
+                    <Switch.Root
+                        ids={{label: darkModeLabelId}}
+                        checked={resolvedTheme === 'dark'}
+                        onCheckedChange={(details) => {
+                            const newTheme = details.checked ? 'dark' : 'light'
+                            setTheme(newTheme)
+                        }}
+                    >
+                        <Switch.HiddenInput />
+                        <Switch.Control bg="hg.switchOff" _checked={{ bgImage: 'appButton' }} data-testid="dark-mode-switch">
+                            <Switch.Thumb />
+                        </Switch.Control>
+                    </Switch.Root>
+                </Flex>
             </VStack>
 
             <Separator borderColor="hg.divider" />

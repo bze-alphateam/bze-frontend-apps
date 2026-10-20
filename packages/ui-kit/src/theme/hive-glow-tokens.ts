@@ -11,7 +11,7 @@ export interface HiveGlowAppColors {
     gradient: ColorPair;
     /** App name and eyebrow on dark. */
     onDark: string;
-    /** Primary button gradient (Staking's deeper pair, the icon pair elsewhere). */
+    /** Primary button gradient (Staking's and Factory's deeper pairs, the icon pair elsewhere). */
     button: ColorPair;
     /** Text on the button gradient (dark mode). */
     buttonText: string;
@@ -68,9 +68,9 @@ export const HIVE_GLOW_APPS: Record<HiveGlowAppKey, HiveGlowAppColors> = {
     factory: {
         gradient: ['#FFC933', '#E09B00'],
         onDark: '#FFC933',
-        button: ['#FFC933', '#E09B00'],
+        button: ['#D9A62E', '#B07C08'],
         buttonText: '#1A1200',
-        buttonHover: ['#FFD65C', '#EDAE10'],
+        buttonHover: ['#E4B444', '#C08B12'],
         accentText: '#FFD970',
         accentTextHover: '#FFE8A8',
         ink: '#9A6A00',
