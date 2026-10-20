@@ -63,7 +63,7 @@ describe("UndelegateModal", () => {
         renderModal(undefined);
 
         expect(
-            await screen.findByText("Undelegated tokens will be locked for the unbonding period before becoming available."),
+            await screen.findByText("Unstaked tokens will be locked for the unbonding period before becoming available."),
         ).toBeInTheDocument();
         expect(screen.queryByText(/days/)).not.toBeInTheDocument();
     });

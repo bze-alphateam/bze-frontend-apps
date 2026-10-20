@@ -145,7 +145,7 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
 
                             {isInactive && (
                                 <Notice status="danger" title="Not Earning Rewards">
-                                    This validator is {item.validator.jailed ? 'jailed' : item.validator.status === BondStatus.BOND_STATUS_UNBONDING ? 'unbonding' : 'inactive'} and not producing rewards. Redelegate to an active validator to continue earning.
+                                    This validator is {item.validator.jailed ? 'jailed' : item.validator.status === BondStatus.BOND_STATUS_UNBONDING ? 'unbonding' : 'inactive'} and not producing rewards. Move your stake to an active validator to keep earning.
                                     <Button
                                         display="flex"
                                         size="sm"
@@ -153,13 +153,13 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                                         onClick={() => openModal('redelegate', item)}
                                         mt="8px"
                                     >
-                                        <LuShuffle /> Redelegate Now
+                                        <LuShuffle /> Move stake
                                     </Button>
                                 </Notice>
                             )}
 
                             <Flex direction="column" gap="6px">
-                                <InfoRow label="Delegated">
+                                <InfoRow label="Staked">
                                     <chakra.strong fontSize="14px">{prettyAmount(delegatedHuman)} {nativeAsset?.ticker}</chakra.strong>
                                 </InfoRow>
                                 {delegatedUsd.gt(0) && (
@@ -178,13 +178,13 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
 
                             <Grid templateColumns="repeat(3, minmax(0, 1fr))" gap="8px">
                                 <Button size={{base: 'lg', md: 'sm'}} {...softButton} onClick={() => openModal('delegate', item)}>
-                                    <LuArrowUpRight /> Delegate
+                                    <LuArrowUpRight /> Stake
                                 </Button>
                                 <Button size={{base: 'lg', md: 'sm'}} {...neutralButton} onClick={() => openModal('undelegate', item)}>
-                                    <LuArrowDownRight /> Undelegate
+                                    <LuArrowDownRight /> Unstake
                                 </Button>
                                 <Button size={{base: 'lg', md: 'sm'}} {...neutralButton} onClick={() => openModal('redelegate', item)}>
-                                    <LuShuffle /> Redelegate
+                                    <LuShuffle /> Move
                                 </Button>
                             </Grid>
                         </HgCard>

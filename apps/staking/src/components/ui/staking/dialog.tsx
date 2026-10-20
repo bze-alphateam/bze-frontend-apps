@@ -60,7 +60,7 @@ export const StakingDialog = ({isOpen, onClose, title, titleAside, children, bus
     </Dialog.Root>
 );
 
-/** A label and value on the inset surface (Commission, Delegated). */
+/** A label and value on the inset surface (Commission, Staked). */
 export const InsetRow = ({label, children}: {label: ReactNode; children: ReactNode}) => (
     <Flex justify="space-between" align="center" gap="12px" px="14px" py="12px" borderRadius="hg.md" bg="hg.inset" fontSize="14px">
         <chakra.span color="hg.text.secondary">{label}</chakra.span>
@@ -71,7 +71,7 @@ export const InsetRow = ({label, children}: {label: ReactNode; children: ReactNo
 interface AmountFieldProps {
     value: string;
     onChange: (value: string) => void;
-    /** Right of the "Amount" label: "Available: …", "Delegated: …". */
+    /** Right of the "Amount" label: "Available: …", "Staked: …". */
     aside?: ReactNode;
     ticker?: string;
     disabled?: boolean;

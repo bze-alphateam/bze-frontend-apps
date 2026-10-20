@@ -51,7 +51,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
 
     const handleUndelegate = async () => {
         if (!address || !validator || !amount || new BigNumber(amount).lte(0)) {
-            toast.error('Invalid amount', 'Please enter a valid amount to undelegate');
+            toast.error('Invalid amount', 'Please enter a valid amount to unstake');
             return;
         }
         if (!feeCheck.canAfford) {
@@ -61,7 +61,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
 
         const uAmount = amountToUAmount(amount, decimals);
         if (new BigNumber(uAmount).gt(delegatedAmount)) {
-            toast.error('Exceeds delegation', 'Amount exceeds your delegated balance');
+            toast.error('Exceeds your stake', 'Amount exceeds what you have staked with this validator');
             return;
         }
 
@@ -79,12 +79,12 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
 
             const success = await tx([msg]);
             if (success) {
-                toast.success('Undelegation started', `Undelegating ${amount} ${nativeAsset?.ticker} from ${validator.description?.moniker}`);
+                toast.success('Unstaking started', `Unstaking ${amount} ${nativeAsset?.ticker} from ${validator.description?.moniker}`);
                 onSuccess();
             }
         } catch (e) {
             console.error('Undelegate failed:', e);
-            toast.error('Undelegation failed', 'Transaction failed. Please try again.');
+            toast.error('Unstaking failed', 'Transaction failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -100,22 +100,22 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
             isOpen={isOpen}
             onClose={onClose}
             busy={isSubmitting}
-            title={`Undelegate from ${validator?.description?.moniker ?? ''}`}
+            title={`Unstake from ${validator?.description?.moniker ?? ''}`}
         >
             <Notice status="warning">
                 {unbondingDays ? (
                     <>
-                        Undelegated tokens are locked for <chakra.strong color="fg">{unbondingDays} days</chakra.strong> (the unbonding period) and earn no rewards during that time.
+                        Unstaked tokens are locked for <chakra.strong color="fg">{unbondingDays} days</chakra.strong> (the unbonding period) and earn no rewards during that time.
                     </>
                 ) : (
-                    'Undelegated tokens will be locked for the unbonding period before becoming available.'
+                    'Unstaked tokens will be locked for the unbonding period before becoming available.'
                 )}
             </Notice>
 
             <AmountField
                 value={amount}
                 onChange={(value) => setAmount(sanitizeNumberInput(value))}
-                aside={`Delegated: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
+                aside={`Staked: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
                 ticker={nativeAsset?.ticker}
                 disabled={!isConnected}
             >
@@ -146,7 +146,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                     disabled={!amount || new BigNumber(amount).lte(0) || !address || !feeCheck.canAfford}
                     w="full"
                 >
-                    Undelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Unstake {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>

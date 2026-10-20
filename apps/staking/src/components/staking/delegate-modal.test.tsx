@@ -73,7 +73,7 @@ describe("DelegateModal", () => {
     it("shows no warning for an active validator", async () => {
         renderModal(validator({}));
 
-        expect(await screen.findByText("Delegate to Alice Node")).toBeInTheDocument();
+        expect(await screen.findByText("Stake with Alice Node")).toBeInTheDocument();
         expect(screen.queryByText(WARNING)).not.toBeInTheDocument();
     });
 
