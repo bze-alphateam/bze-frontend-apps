@@ -4,16 +4,35 @@ import React from "react";
 import {Box, type BoxProps, chakra, Flex, type FlexProps} from "@chakra-ui/react";
 import {LuTriangleAlert} from "react-icons/lu";
 
-import {ts, tsContainer, tsLabel, tsMix} from "./tokens";
+import {ts, tsContainer, tsEyebrow, tsLabel, tsMix} from "./tokens";
 
-/** Card on the page: a faint text tint over the background, hairline border, 20 px radius. */
+/** Card on the page: a faint text tint over the background, hairline border, 16 px radius. */
 export function TsCard(props: BoxProps) {
-    return <Box bg={ts.card} borderWidth="1px" borderStyle="solid" borderColor={ts.border} borderRadius="20px" {...props}/>;
+    return <Box bg={ts.card} borderWidth="1px" borderStyle="solid" borderColor={ts.border} borderRadius="16px" {...props}/>;
 }
 
-/** Inverted block (burn total, wallet balance card): text colour as background and vice versa. */
-export function TsInvertedCard(props: BoxProps) {
-    return <Box bg={ts.fg} color={ts.bg} borderRadius="20px" {...props}/>;
+/**
+ * The one featured card of the page (the holders pool, else the first Earn card; the balance card
+ * in the wallet): a 1 px edge in the kit's gradient and a soft glow of the primary below it.
+ */
+export function TsFeaturedCard(props: BoxProps) {
+    return (
+        <Box
+            data-featured=""
+            bg={`linear-gradient(${ts.card}, ${ts.card}) padding-box, ${ts.gradient} border-box`}
+            borderWidth="1px"
+            borderStyle="solid"
+            borderColor="transparent"
+            borderRadius="16px"
+            boxShadow={`0 30px 80px -50px ${ts.pri}`}
+            {...props}
+        />
+    );
+}
+
+/** A recessed block inside a card: stat tiles, the "Your position" column, code. */
+export function TsInset(props: BoxProps) {
+    return <Box bg={ts.inset} borderRadius="12px" {...props}/>;
 }
 
 interface TsSectionProps extends Omit<BoxProps, "title"> {
@@ -26,15 +45,15 @@ interface TsSectionProps extends Omit<BoxProps, "title"> {
 /** A page section: the anchor target of a header link, with its label, heading and lead text. */
 export function TsSection({id, eyebrow, title, description, children, ...props}: TsSectionProps) {
     return (
-        <Box as="section" id={id} aria-labelledby={`${id}-title`} {...tsContainer} pt={{base: "72px", md: "120px"}} {...props}>
-            <Flex direction="column" gap={{base: "20px", md: "32px"}}>
+        <Box as="section" id={id} aria-labelledby={`${id}-title`} {...tsContainer} pt={{base: "72px", md: "112px"}} {...props}>
+            <Flex direction="column" gap={{base: "20px", md: "28px"}}>
                 <Flex direction="column" gap="12px" maxW="640px">
-                    <chakra.span {...tsLabel}>{eyebrow}</chakra.span>
+                    <chakra.span {...tsEyebrow}>{eyebrow}</chakra.span>
                     <chakra.h2
                         id={`${id}-title`}
                         m="0"
-                        fontSize={{base: "34px", md: "48px"}}
-                        lineHeight="1.02"
+                        fontSize={{base: "34px", md: "44px"}}
+                        lineHeight="1.05"
                         letterSpacing="-0.03em"
                         fontWeight={800}
                     >

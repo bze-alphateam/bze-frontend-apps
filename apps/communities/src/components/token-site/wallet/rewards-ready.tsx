@@ -56,7 +56,7 @@ export function RewardsReady({asset, address, positions, onClaimed}: RewardsRead
         .join(" · ");
 
     return (
-        <TsCard as="section" aria-label="Rewards ready" px="18px" py="16px" borderRadius="16px">
+        <TsCard as="section" aria-label="Rewards ready" px="16px" py="14px" borderRadius="14px">
             <Flex align="center" justify="space-between" gap="12px" wrap="wrap">
                 <Flex direction="column" gap="2px" minW="0" flex="1 1 160px">
                     <chakra.span color={ts.muted} fontSize="13px">Rewards ready · {sourcesLabel(positions)}</chakra.span>

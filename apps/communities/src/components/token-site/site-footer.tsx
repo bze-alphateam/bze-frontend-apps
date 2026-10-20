@@ -17,13 +17,13 @@ export function SiteFooter({asset}: { asset: Asset }) {
     const {needsBze} = useFeeMode();
 
     return (
-        <Box as="footer" {...tsContainer} pt={{base: "56px", md: "120px"}} pb={{base: "24px", md: "48px"}}>
+        <Box as="footer" position="relative" {...tsContainer} pt={{base: "56px", md: "112px"}} pb={{base: "24px", md: "48px"}}>
             <Flex
                 wrap="wrap"
                 justify="space-between"
                 align="center"
                 gap="16px"
-                pt={{base: "24px", md: "32px"}}
+                pt={{base: "24px", md: "28px"}}
                 borderTopWidth="1px"
                 borderStyle="solid"
                 borderColor={ts.border}

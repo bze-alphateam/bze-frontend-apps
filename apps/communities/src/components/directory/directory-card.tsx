@@ -1,10 +1,11 @@
 import {useMemo} from "react";
-import {Badge, Box, Flex, HStack, Link, SimpleGrid, Text} from "@chakra-ui/react";
+import {Box, Flex, HStack, Link, SimpleGrid, Text} from "@chakra-ui/react";
 import {LuArrowUpRight, LuBadgeCheck} from "react-icons/lu";
 import BigNumber from "bignumber.js";
 import {
     type Asset,
     type DenomBranding,
+    StatusPill,
     TokenLogo,
     formatUsdAmount,
     shortNumberFormat,
@@ -31,19 +32,32 @@ export interface DirectoryCardProps {
 
 const formatChange = (change: number) => `${change > 0 ? "+" : ""}${change.toFixed(1)}%`;
 
-function Stat({label, value, color}: { label: string; value: string; color?: string }) {
+/** The 24h change direction: only the change takes a colour (up green, down red, grey without one). */
+const changeDirection = (change?: number) => (change === undefined || change === 0 ? "none" : change > 0 ? "up" : "down");
+const CHANGE_COLOR = {up: "hg.up", down: "hg.down", none: "hg.text.faint"} as const;
+
+interface StatProps {
+    label: string;
+    value: string;
+    color?: string;
+    testId?: string;
+    direction?: string;
+}
+
+function Stat({label, value, color, testId, direction}: StatProps) {
     return (
-        <Box minW={0}>
-            <Text fontSize="xs" color="fg.muted" textTransform="uppercase" letterSpacing="wider">{label}</Text>
-            <Text fontWeight="semibold" fontVariantNumeric="tabular-nums" color={color} truncate>{value}</Text>
-        </Box>
+        <Flex direction="column" gap="4px" minW={0}>
+            <Text fontSize="11px" color="hg.text.faint" textTransform="uppercase" letterSpacing="0.08em">{label}</Text>
+            <Text fontSize="15px" fontWeight="600" fontVariantNumeric="tabular-nums" color={color ?? "fg"} truncate data-testid={testId} data-direction={direction}>{value}</Text>
+        </Flex>
     );
 }
 
 /**
  * A token in the directory, coloured with its brand kit (the kit's primary for the current colour
  * mode): strip, logo ring and, for a token without a logo, the coin placeholder. Without a kit the
- * card stays neutral and shows ui-kit's default logo. The whole card links to the token page in a new tab (Business Logic §3).
+ * card stays neutral and shows ui-kit's default logo. Prices and supplies are neutral; only the 24h
+ * change is coloured. The whole card links to the token page in a new tab (Business Logic §3).
  */
 export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPrograms, tradable}: DirectoryCardProps) {
     const {colorMode} = useColorMode();
@@ -54,6 +68,7 @@ export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPro
         [asset.supply, asset.decimals],
     );
     const hasPrice = price.gt(0);
+    const direction = changeDirection(change);
 
     return (
         <Link
@@ -62,32 +77,35 @@ export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPro
             rel="noopener noreferrer"
             display="flex"
             flexDirection="column"
-            bg="bg.panel"
+            bg="hg.card"
             borderWidth="1px"
-            borderColor="border"
-            borderRadius="xl"
+            borderColor="hg.hairline"
+            borderRadius="hg.lg"
+            boxShadow="hg.card"
             overflow="hidden"
-            shadow="xs"
-            transition="box-shadow 0.2s, border-color 0.2s"
-            _hover={{textDecoration: "none", borderColor: "green.500/35", shadow: "md"}}
+            color="fg"
+            transitionProperty="border-color"
+            transitionDuration="moderate"
+            _hover={{textDecoration: "none", borderColor: "app.border"}}
+            focusVisibleRing="outside"
             data-testid="directory-card"
         >
             <Box
                 h="6px"
-                bg={brand ? undefined : "border"}
+                bg={brand ? undefined : "hg.divider"}
                 style={brand ? {background: brand} : undefined}
                 data-testid="directory-card-strip"
             />
-            <Flex direction="column" gap={{base: "3.5", md: "4.5"}} p={{base: "4", md: "5"}}>
-                <Flex align="center" justify="space-between" gap="3">
-                    <HStack gap="3" minW={0}>
+            <Flex direction="column" gap="16px" p="20px">
+                <Flex align="center" justify="space-between" gap="12px">
+                    <HStack gap="12px" minW={0}>
                         <Box
                             w="44px"
                             h="44px"
                             p="2px"
                             borderRadius="full"
                             borderWidth="2px"
-                            borderColor={brand ? undefined : "border.subtle"}
+                            borderColor={brand ? undefined : "hg.lineStrong"}
                             style={brand ? {borderColor: brand} : undefined}
                             flexShrink={0}
                             data-testid="directory-card-logo"
@@ -98,35 +116,37 @@ export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPro
                                 <TokenLogo src={asset.logo} symbol={asset.ticker} size="36px" circular={true}/>
                             )}
                         </Box>
-                        <Box minW={0}>
-                            <HStack gap="1.5" minW={0}>
-                                <Text fontWeight="semibold" truncate>{asset.name}</Text>
+                        <Flex direction="column" gap="2px" minW={0}>
+                            <HStack gap="6px" minW={0}>
+                                <Text fontSize="16px" fontWeight="700" truncate>{asset.name}</Text>
                                 {asset.verified && (
-                                    <Box color="green.fg" flexShrink={0} role="img" aria-label="Verified">
+                                    <Box color="hg.accent" flexShrink={0} role="img" aria-label="Verified">
                                         <LuBadgeCheck size={16}/>
                                     </Box>
                                 )}
                             </HStack>
-                            <Text fontSize="sm" color="fg.muted">{asset.ticker}</Text>
-                        </Box>
+                            <Text fontFamily="mono" fontSize="12px" color="hg.text.faint">{asset.ticker}</Text>
+                        </Flex>
                     </HStack>
-                    <Box color="green.fg" flexShrink={0}><LuArrowUpRight size={18}/></Box>
+                    <Box color="hg.accent" flexShrink={0} aria-hidden="true"><LuArrowUpRight size={18}/></Box>
                 </Flex>
 
-                <SimpleGrid columns={3} gap="3">
+                <SimpleGrid columns={3} gap="8px" px="14px" py="12px" borderRadius="12px" bg="hg.inset">
                     <Stat label="Price" value={hasPrice ? `$${formatUsdAmount(price)}` : "—"}/>
                     <Stat
                         label="24h"
                         value={change === undefined ? "—" : formatChange(change)}
-                        color={change === undefined || change === 0 ? undefined : change > 0 ? "green.fg" : "red.fg"}
+                        color={CHANGE_COLOR[direction]}
+                        testId="directory-card-change"
+                        direction={direction}
                     />
                     <Stat label="Supply" value={supply}/>
                 </SimpleGrid>
 
-                <HStack gap="1.5" wrap="wrap" minH="22px">
-                    {holdersPool && <Badge colorPalette="green" variant="subtle" borderRadius="full">Holders pool</Badge>}
-                    {rewardPrograms && <Badge colorPalette="green" variant="subtle" borderRadius="full">Reward programs</Badge>}
-                    {!tradable && <Badge colorPalette="gray" variant="subtle" borderRadius="full">Not traded yet</Badge>}
+                <HStack gap="6px" wrap="wrap" minH="24px">
+                    {holdersPool && <StatusPill tone="neutral">Holders pool</StatusPill>}
+                    {rewardPrograms && <StatusPill tone="neutral">Reward programs</StatusPill>}
+                    {!tradable && <StatusPill tone="neutral">Not traded yet</StatusPill>}
                 </HStack>
             </Flex>
         </Link>

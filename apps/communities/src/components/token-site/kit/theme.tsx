@@ -9,6 +9,7 @@ import {useColorMode} from "@/components/ui/color-mode";
 import {brandFontStylesheetUrl, resolveBrandFont} from "@/lib/brand-kit";
 import {tokenSiteVars} from "@/lib/token-site/theme";
 
+import {tokenSiteGlowVars} from "./hive-glow";
 import {ts} from "./tokens";
 
 interface TokenSiteThemeValue {
@@ -21,13 +22,14 @@ interface TokenSiteThemeValue {
 const TokenSiteThemeContext = createContext<TokenSiteThemeValue | null>(null);
 
 /**
- * Themes the token site with a brand kit: the palette of the app's colour mode as `--ts-*`
- * variables on a wrapper element, and the kit's font when it is a curated one.
+ * Themes the token site with a brand kit: the palette of the app's colour mode and its Hive Glow
+ * gradient and glow (`tokenSiteGlow`) as `--ts-*` variables on a wrapper element, and the kit's
+ * font when it is a curated one.
  */
 export function TokenSiteTheme({kit, children}: { kit: DenomBranding; children: React.ReactNode }) {
     const {colorMode} = useColorMode();
     const mode: BrandingPalette = colorMode === "dark" ? "dark" : "light";
-    const vars = useMemo(() => tokenSiteVars(kit, mode), [kit, mode]);
+    const vars = useMemo(() => ({...tokenSiteVars(kit, mode), ...tokenSiteGlowVars(kit[mode])}), [kit, mode]);
     const value = useMemo(() => ({kit, mode, vars}), [kit, mode, vars]);
 
     // Only curated fonts are ever loaded. preinit dedupes and, unlike a `<link precedence>`, does

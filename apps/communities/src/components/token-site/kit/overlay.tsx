@@ -101,16 +101,24 @@ function OverlayLayer({open, onClose, title, icon, children, placement}: LayerPr
                 outline="none"
                 p="24px"
                 {...(isDrawer
-                    ? {top: "0", right: "0", bottom: "0", w: {base: "100%", md: "420px"}, borderLeftWidth: "1px", borderStyle: "solid", borderColor: ts.border}
+                    ? {
+                        top: "0", right: "0", bottom: "0", w: {base: "100%", md: "420px"},
+                        borderLeftWidth: "1px", borderStyle: "solid", borderColor: ts.border,
+                        borderRadius: {base: "0", md: "16px 0 0 16px"},
+                        boxShadow: "-30px 0 80px -40px rgba(0, 0, 0, 0.6)",
+                    }
                     : {
                         top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-                        w: "calc(100% - 40px)", maxW: "480px", maxH: "calc(100% - 40px)", borderRadius: "20px",
+                        w: "calc(100% - 32px)", maxW: "480px", maxH: "calc(100% - 32px)", borderRadius: "20px",
+                        borderWidth: "1px", borderStyle: "solid", borderColor: ts.border,
+                        gap: "14px",
+                        boxShadow: "0 40px 100px -40px rgba(0, 0, 0, 0.7)",
                     })}
             >
                 <Flex align="center" justify="space-between" gap="12px">
                     <Flex align="center" gap="10px" minW="0">
                         {icon}
-                        <chakra.h2 m="0" fontSize={{base: "17px", md: "20px"}} fontWeight={700}>{title}</chakra.h2>
+                        <chakra.h2 m="0" fontSize={{base: "18px", md: "20px"}} fontWeight={700}>{title}</chakra.h2>
                     </Flex>
                     <chakra.button
                         type="button"
@@ -121,7 +129,8 @@ function OverlayLayer({open, onClose, title, icon, children, placement}: LayerPr
                         justifyContent="center"
                         w="44px"
                         h="44px"
-                        borderRadius="999px"
+                        flexShrink={0}
+                        borderRadius="12px"
                         borderWidth="1px"
                         borderStyle="solid"
                         borderColor={tsMix(ts.fg, 18)}

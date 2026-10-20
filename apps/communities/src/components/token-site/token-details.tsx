@@ -4,7 +4,7 @@ import React, {useCallback, useEffect, useState} from "react";
 import {chakra, Flex} from "@chakra-ui/react";
 import {type Asset, getFactoryDenomAdmin, truncateAddress} from "@bze/bze-ui-kit";
 
-import {TsCard, TsChip, TsSection, TsStat, ts} from "./kit";
+import {TsCard, TsChip, TsSection, TsStat, ts, tsLabel} from "./kit";
 
 interface AdminState {
     denom: string;
@@ -55,8 +55,8 @@ export function TokenDetails({asset}: { asset: Asset }) {
         supplyControl = adminState.admin === "" ? "Admin renounced" : `Admin ${truncateAddress(adminState.admin)}`;
     }
 
-    const cell = {px: {base: "18px", md: "28px"}, py: {base: "18px", md: "24px"}} as const;
-    const small = {fontSize: "16px", fontWeight: 600} as const;
+    const cell = {px: {base: "18px", md: "24px"}, py: {base: "18px", md: "22px"}} as const;
+    const small = {fontSize: "18px", fontWeight: 700} as const;
 
     return (
         <TsSection id="details" eyebrow="Token" title="Token details">
@@ -66,11 +66,11 @@ export function TokenDetails({asset}: { asset: Asset }) {
                 {supplyControl && (
                     <TsStat label="Supply control" value={<chakra.span {...small} data-testid="supply-control">{supplyControl}</chakra.span>} {...cell}/>
                 )}
-                {creator && <TsStat label="Creator" value={<chakra.span {...small}>{truncateAddress(creator)}</chakra.span>} {...cell}/>}
+                {creator && <TsStat label="Creator" value={<chakra.span fontFamily="mono" fontSize="14px" fontWeight={500}>{truncateAddress(creator)}</chakra.span>} {...cell}/>}
                 <Flex direction="column" gap="8px" gridColumn="1 / -1" borderTopWidth="1px" borderStyle="solid" borderColor={ts.border} {...cell}>
-                    <chakra.span fontSize="12px" letterSpacing="0.08em" textTransform="uppercase" fontWeight={600} color={ts.muted}>Denom</chakra.span>
+                    <chakra.span {...tsLabel}>Denom</chakra.span>
                     <Flex wrap="wrap" align="center" gap="12px">
-                        <chakra.code fontFamily="'JetBrains Mono', monospace" fontSize="14px" wordBreak="break-all" bg="transparent" color={ts.fg}>
+                        <chakra.code fontFamily="mono" fontSize="13px" wordBreak="break-all" bg={ts.inset} color={ts.fg} px="12px" py="8px" borderRadius="10px">
                             {asset.denom}
                         </chakra.code>
                         <CopyDenom denom={asset.denom}/>

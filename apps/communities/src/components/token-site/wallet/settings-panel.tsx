@@ -22,15 +22,16 @@ import {useFeeMode} from "@/hooks/token-site/useTokenFeeMode";
 
 import {TsButton, TsCard, TsField, ts, tsLabel, tsMix} from "../kit";
 
+// Connection health is a status, so it takes the shared status colours, never the kit's.
 const STATUS: Record<ConnectionType, { label: string; color: string }> = {
-    [CONNECTION_TYPE_WS]: {label: "Connected", color: ts.sec},
-    [CONNECTION_TYPE_POLLING]: {label: "Polling", color: tsMix(ts.sec, 45, ts.pri)},
-    [CONNECTION_TYPE_NONE]: {label: "Failed", color: ts.pri},
+    [CONNECTION_TYPE_WS]: {label: "Connected", color: "hg.success"},
+    [CONNECTION_TYPE_POLLING]: {label: "Polling", color: "hg.warning"},
+    [CONNECTION_TYPE_NONE]: {label: "Failed", color: ts.danger},
 };
 
 function Group({title, aside, children}: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
     return (
-        <TsCard as="section" aria-label={title} px="18px" py="16px" borderRadius="16px" display="flex" flexDirection="column" gap="14px">
+        <TsCard as="section" aria-label={title} px="18px" py="16px" borderRadius="14px" display="flex" flexDirection="column" gap="14px">
             <Flex align="center" justify="space-between" gap="12px">
                 <chakra.h3 m="0" {...tsLabel}>{title}</chakra.h3>
                 {aside}
@@ -69,7 +70,7 @@ function SwitchRow({id, label, hint, checked, onChange}: {
                 border="0"
                 borderRadius="999px"
                 cursor="pointer"
-                bg={checked ? ts.pri : tsMix(ts.fg, 18)}
+                bg={checked ? ts.gradient : tsMix(ts.fg, 18)}
                 _focusVisible={{outline: `2px solid ${ts.fg}`, outlineOffset: "2px"}}
             >
                 <chakra.span
@@ -124,7 +125,7 @@ function EndpointResult({id, kind, result}: { id: string; kind: string; result: 
             role={result.isValid ? "status" : "alert"}
             fontSize="13px"
             px="4px"
-            color={result.isValid ? ts.fg : ts.pri}
+            color={result.isValid ? ts.fg : ts.danger}
         >
             {result.isValid ? `${kind} endpoint is valid` : (result.error || `${kind} endpoint is not valid`)}
         </chakra.span>

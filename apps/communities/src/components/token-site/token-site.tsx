@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, {useState} from "react";
 import {Box, chakra, Flex, Skeleton} from "@chakra-ui/react";
 import {DEFAULT_DENOM_BRANDING, isFactoryDenom, useAsset, useLiquidityPools} from "@bze/bze-ui-kit";
 
@@ -46,7 +46,7 @@ function NotFound() {
 function Loading() {
     return (
         <Box {...tsContainer} py={{base: "72px", md: "120px"}} data-testid="token-site-loading">
-            <Skeleton height="320px" borderRadius="20px"/>
+            <Skeleton height="320px" borderRadius="16px"/>
         </Box>
     );
 }
@@ -63,6 +63,8 @@ export function TokenSite({denom}: { denom: string }) {
     const kit = useTokenBrandKit(resolved?.denom);
     const {pools} = useLiquidityPools();
     const {opportunities} = useEarnOpportunities(resolved?.denom);
+    // Undefined until the holders pool has loaded; the first Earn card is featured only without one.
+    const [hasHoldersPool, setHasHoldersPool] = useState<boolean>();
 
     if (isLoading || (resolved && !kit)) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><Loading/></TokenSiteTheme>;
@@ -85,13 +87,23 @@ export function TokenSite({denom}: { denom: string }) {
         <TokenSiteTheme kit={kit}>
             <TokenFeeModeProvider denom={resolved.denom}>
                 <TokenWalletProvider>
-                    <Box pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
+                    <Box position="relative" pb={{base: PHONE_ACTION_BAR_SPACE, md: "0"}}>
+                        <Box
+                            aria-hidden="true"
+                            data-testid="token-site-glow"
+                            position="absolute"
+                            insetX="0"
+                            top="0"
+                            h={{base: "520px", md: "760px"}}
+                            bgImage={ts.glow}
+                            pointerEvents="none"
+                        />
                         <SiteHeader asset={resolved} sections={sections}/>
-                        <chakra.main>
+                        <chakra.main position="relative">
                             <Hero asset={resolved} hasStake={true}/>
                             <KeyNumbers denom={resolved.denom}/>
-                            <StakeSection asset={resolved}/>
-                            <EarnSection asset={resolved} opportunities={opportunities}/>
+                            <StakeSection asset={resolved} onPoolKnown={setHasHoldersPool}/>
+                            <EarnSection asset={resolved} opportunities={opportunities} featureFirst={hasHoldersPool === false}/>
                             <TradeSection asset={resolved}/>
                             <BurnSection asset={resolved} raffle={<BurnRaffle asset={resolved}/>}/>
                             <TokenDetails asset={resolved}/>

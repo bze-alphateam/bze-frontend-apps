@@ -7,7 +7,7 @@ import {type Asset, uAmountToBigNumberAmount, useAssetPrice, useBalance} from "@
 
 import {type TokenWalletPositions, walletAmount, walletUsd} from "@/lib/token-site/wallet";
 
-import {TsInvertedCard, ts, tsMix} from "../kit";
+import {TsFeaturedCard, ts, tsLabel} from "../kit";
 
 const shortAddress = (address: string) => `${address.slice(0, 7)}…${address.slice(-4)}`;
 
@@ -31,12 +31,12 @@ function CopyAddress({address}: { address: string }) {
             aria-label="Copy address"
             title={address}
             font="inherit"
-            fontSize="13px"
+            fontFamily="mono"
+            fontSize="12px"
             fontVariantNumeric="tabular-nums"
             bg="transparent"
             border="0"
-            color="inherit"
-            opacity={0.8}
+            color={ts.muted}
             cursor="pointer"
             minH="32px"
         >
@@ -48,13 +48,13 @@ function CopyAddress({address}: { address: string }) {
 function Position({label, value, testId}: { label: string; value: string; testId: string }) {
     return (
         <Flex direction="column" gap="2px" minW="0">
-            <chakra.span fontSize="13px" opacity={0.72}>{label}</chakra.span>
+            <chakra.span fontSize="13px" color={ts.muted}>{label}</chakra.span>
             <chakra.span data-testid={testId} fontWeight={600} fontVariantNumeric="tabular-nums" overflowWrap="anywhere">{value}</chakra.span>
         </Flex>
     );
 }
 
-/** The inverted balance card (Business Logic R4): T balance, its USD value, the address and T positions. */
+/** The balance card, the drawer's featured card (Business Logic R4): T balance, its USD value, the address and T positions. */
 export function BalanceCard({asset, address, positions}: { asset: Asset; address: string; positions: TokenWalletPositions }) {
     const {balance} = useBalance(asset.denom);
     const {price, hasPrice} = useAssetPrice(asset.denom);
@@ -62,9 +62,9 @@ export function BalanceCard({asset, address, positions}: { asset: Asset; address
     const amount = uAmountToBigNumberAmount(balance.amount, asset.decimals);
 
     return (
-        <TsInvertedCard p="24px" display="flex" flexDirection="column" gap="16px">
+        <TsFeaturedCard p="20px" display="flex" flexDirection="column" gap="14px" flexShrink={0}>
             <Flex justify="space-between" align="center" gap="8px" wrap="wrap">
-                <chakra.span fontSize="12px" letterSpacing="0.08em" textTransform="uppercase" fontWeight={600} opacity={0.72}>
+                <chakra.span {...tsLabel}>
                     {asset.ticker} balance
                 </chakra.span>
                 <CopyAddress address={address}/>
@@ -82,7 +82,7 @@ export function BalanceCard({asset, address, positions}: { asset: Asset; address
                     {walletAmount(amount)}
                 </chakra.span>
                 {hasPrice && (
-                    <chakra.span data-testid="wallet-balance-usd" opacity={0.78} fontVariantNumeric="tabular-nums">
+                    <chakra.span data-testid="wallet-balance-usd" color={ts.muted} fontVariantNumeric="tabular-nums">
                         ≈ {walletUsd(amount.multipliedBy(price))}
                     </chakra.span>
                 )}
@@ -93,12 +93,12 @@ export function BalanceCard({asset, address, positions}: { asset: Asset; address
                 pt="14px"
                 borderTopWidth="1px"
                 borderStyle="solid"
-                borderColor={tsMix(ts.bg, 22, ts.fg)}
+                borderColor={ts.border}
             >
                 <Position label="Holders pool" value={display(positions.holdersPool)} testId="wallet-holders-pool"/>
                 <Position label="Programs" value={display(positions.programs)} testId="wallet-programs"/>
                 <Position label="Unlocking" value={display(positions.unlocking)} testId="wallet-unlocking"/>
             </Grid>
-        </TsInvertedCard>
+        </TsFeaturedCard>
     );
 }

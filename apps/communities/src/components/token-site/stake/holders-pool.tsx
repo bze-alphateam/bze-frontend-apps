@@ -1,7 +1,8 @@
 'use client';
 
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Box, chakra, Flex, Grid, Skeleton} from "@chakra-ui/react";
+import {LuArrowUpRight} from "react-icons/lu";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {
@@ -23,7 +24,7 @@ import {factoryDenomRewardLink, factoryDenomRewardScheduleLink} from "@/lib/deno
 import {formatApr, formatDays, formatShare, type HoldersPoolPrize, poolShare} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsCard, TsLinkButton, TsNotice, ts, tsLabel, tsMix} from "../kit";
+import {TsButton, TsCard, TsFeaturedCard, TsInset, TsLinkButton, TsNotice, ts, tsLabel} from "../kit";
 import {type StakeAction, StakeDialog} from "./stake-dialog";
 
 // The prize dots cycle through the kit's colours.
@@ -33,10 +34,10 @@ const PRIZE_COLUMNS = "minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr)";
 
 function Stat({label, children}: { label: string; children: React.ReactNode }) {
     return (
-        <Flex direction="column" gap="6px" minW="0">
+        <TsInset display="flex" flexDirection="column" gap="6px" minW="0" px="16px" py="14px">
             <chakra.span {...tsLabel}>{label}</chakra.span>
             <chakra.span fontVariantNumeric="tabular-nums" fontSize="20px" fontWeight={600} overflowWrap="anywhere">{children}</chakra.span>
-        </Flex>
+        </TsInset>
     );
 }
 
@@ -215,13 +216,20 @@ function EmptyState({asset}: { asset: Asset }) {
  * when every reward has a price, the pool's terms, and the viewer's position with the holder
  * actions; "No holders pool yet" when T has none.
  */
-export function HoldersPool({asset}: { asset: Asset }) {
+export function HoldersPool({asset, onPoolKnown}: { asset: Asset; onPoolKnown?: (hasPool: boolean) => void }) {
     const {status, address} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
     const {item, prizes, apr, isLoading, hasError, reload} = useHoldersPool(asset.denom, connected ? address : undefined);
     const [action, setAction] = useState<StakeAction>();
 
-    if (isLoading) return <Skeleton height="360px" borderRadius="20px" data-testid="holders-pool-loading"/>;
+    // The page features this card, or the first Earn card when T has no pool.
+    const hasPool = Boolean(item);
+    const known = !isLoading && !hasError;
+    useEffect(() => {
+        if (known) onPoolKnown?.(hasPool);
+    }, [known, hasPool, onPoolKnown]);
+
+    if (isLoading) return <Skeleton height="360px" borderRadius="16px" data-testid="holders-pool-loading"/>;
 
     if (hasError) {
         return (
@@ -242,11 +250,11 @@ export function HoldersPool({asset}: { asset: Asset }) {
     const showPosition = connected && (Boolean(position) || unlocks.length > 0);
 
     return (
-        <TsCard p="0" overflow="hidden" display="flex" flexWrap="wrap" data-testid="holders-pool">
-            <Flex flex="999 1 560px" minW="0" p={{base: "24px", md: "36px"}} direction="column" gap="28px">
+        <TsFeaturedCard p="0" overflow="hidden" display="flex" flexWrap="wrap" data-testid="holders-pool">
+            <Flex flex="999 1 560px" minW="0" p={{base: "20px", md: "32px"}} direction="column" gap="26px">
                 <Flex wrap="wrap" align="flex-start" justify="space-between" gap="16px">
                     <Flex direction="column" gap="8px">
-                        <chakra.h3 m="0" fontSize="26px" fontWeight={700}>Holders pool</chakra.h3>
+                        <chakra.h3 m="0" fontSize="24px" fontWeight={700}>Holders pool</chakra.h3>
                         <chakra.span color={ts.muted} fontSize="15px">Pays several rewards at once. Anyone can add more.</chakra.span>
                     </Flex>
                     {apr && (
@@ -256,7 +264,6 @@ export function HoldersPool({asset}: { asset: Asset }) {
                                 fontSize="36px"
                                 fontWeight={800}
                                 letterSpacing="-0.02em"
-                                color={tsMix(ts.pri, 80, ts.fg)}
                             >
                                 {formatApr(apr)}
                             </chakra.span>
@@ -267,19 +274,21 @@ export function HoldersPool({asset}: { asset: Asset }) {
 
                 <PrizeTable prizes={prizes}/>
 
-                <Grid templateColumns="repeat(auto-fit, minmax(min(150px, 100%), 1fr))" gap="20px">
+                <Grid templateColumns="repeat(auto-fit, minmax(min(150px, 100%), 1fr))" gap="12px">
                     <Stat label="Total staked">{amount(denomReward.staked_amount)}</Stat>
                     <Stat label="Unlock time">{denomReward.lock > 0 ? formatDays(denomReward.lock) : "Instant"}</Stat>
                     <Stat label="Minimum stake">{amount(denomReward.min_stake)}</Stat>
                 </Grid>
                 {addRewards && (
                     <Box>
-                        <TsLinkButton variant="ghost" href={addRewards} target="_blank" rel="noopener noreferrer">Add rewards to the pool</TsLinkButton>
+                        <TsLinkButton variant="ghost" href={addRewards} target="_blank" rel="noopener noreferrer" borderRadius="12px">
+                            Add rewards to the pool<LuArrowUpRight aria-hidden="true"/>
+                        </TsLinkButton>
                     </Box>
                 )}
             </Flex>
 
-            <Flex flex="1 1 340px" minW="0" p={{base: "24px", md: "36px"}} direction="column" bg={tsMix(ts.fg, 6)}>
+            <Flex flex="1 1 340px" minW="0" p={{base: "20px", md: "32px"}} direction="column" bg={ts.inset}>
                 {showPosition
                     ? <YourPosition asset={asset} item={item} onAction={setAction}/>
                     : <JoinPanel asset={asset} item={item} connected={connected} onAction={setAction}/>}
@@ -294,6 +303,6 @@ export function HoldersPool({asset}: { asset: Asset }) {
                     onDone={() => void reload()}
                 />
             )}
-        </TsCard>
+        </TsFeaturedCard>
     );
 }

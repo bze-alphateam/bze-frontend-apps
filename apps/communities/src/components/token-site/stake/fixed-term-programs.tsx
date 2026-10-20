@@ -26,7 +26,7 @@ import {
 import {formatDays} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsCard, ts, tsLabel, tsMix} from "../kit";
+import {TsButton, TsCard, ts, tsLabel} from "../kit";
 import {type StakeAction, StakeDialog} from "./stake-dialog";
 
 function Term({label, children}: { label: string; children: React.ReactNode }) {
@@ -76,15 +76,15 @@ function ProgramCard({asset, item, connected, onAction}: ProgramCardProps) {
     const currentHour = hourEpochInfo ? Number(hourEpochInfo.current_epoch) : undefined;
 
     return (
-        <TsCard p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="22px" data-testid={`program-${program.reward_id}`}>
+        <TsCard p={{base: "20px", md: "28px"}} display="flex" flexDirection="column" gap="22px" data-testid={`program-${program.reward_id}`}>
             <Flex justify="space-between" align="flex-start" gap="12px">
                 <Flex direction="column" gap="6px" minW="0">
                     <chakra.span color={ts.muted} fontSize="14px">Pays in</chakra.span>
-                    <chakra.h4 m="0" fontSize="26px" fontWeight={700} overflowWrap="anywhere">{prizeTicker}</chakra.h4>
+                    <chakra.h4 m="0" fontSize="24px" fontWeight={700} overflowWrap="anywhere">{prizeTicker}</chakra.h4>
                 </Flex>
                 {apr && (
                     <Flex direction="column" align="flex-end" gap="4px" data-testid="program-apr">
-                        <chakra.span fontVariantNumeric="tabular-nums" fontSize="30px" fontWeight={800} color={tsMix(ts.pri, 80, ts.fg)}>
+                        <chakra.span fontVariantNumeric="tabular-nums" fontSize="30px" fontWeight={800}>
                             {apr.toFormat()}%
                         </chakra.span>
                         <chakra.span {...tsLabel}>APR</chakra.span>
@@ -108,7 +108,7 @@ function ProgramCard({asset, item, connected, onAction}: ProgramCardProps) {
                     borderRadius="14px"
                     px="18px"
                     py="16px"
-                    bg={tsMix(ts.fg, 6)}
+                    bg={ts.inset}
                     data-testid="program-position"
                 >
                     {stake && <Mine label="You stake" testId="program-stake">{tAmount(stake.amount)}</Mine>}
