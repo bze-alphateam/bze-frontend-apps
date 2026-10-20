@@ -4,7 +4,6 @@ import {
     Box,
     Button,
     Field,
-    Group,
     HStack,
     Input,
     Text,
@@ -22,6 +21,7 @@ import type {UseSkipTxTrackerReturn} from '../../hooks/useSkipTxTracker';
 import {LoadingRow, StatusPill} from '../hive-glow/status';
 import {hgVariant} from '../../theme/variants';
 import {DrawerChosenRow, DrawerInset, DrawerKV, DrawerMono, DrawerPickList, DrawerPickRow, DrawerRoute, DrawerViewHeader} from './drawer-kit';
+import {MaxInputGroup} from '../max-input-group';
 
 /** A route or lookup error: red text with its icon. */
 const ErrorText = ({children}: { children: ReactNode }) => (
@@ -138,13 +138,10 @@ export const BuyForm = ({onClose, addTransaction}: BuyFormProps) => {
                 <Box>
                     <Field.Root invalid={amountError !== ''}>
                         <Field.Label>You pay</Field.Label>
-                        <Group attached w="full">
+                        <MaxInputGroup w="full" onMax={setMaxAmount} maxDisabled={!assetBalances.get(selectedAsset.denom)}>
                             <Input size="sm" fontFamily="mono" placeholder="0.00" value={amount}
                                    onChange={(e) => onAmountChange(e.target.value)}/>
-                            {assetBalances.get(selectedAsset.denom) && (
-                                <Button variant="outline" size="sm" color="hg.accent" borderColor="app.border" bg="app.subtle" fontWeight="700" onClick={setMaxAmount}>Max</Button>
-                            )}
-                        </Group>
+                        </MaxInputGroup>
                         <Field.ErrorText>{amountError}</Field.ErrorText>
                     </Field.Root>
 

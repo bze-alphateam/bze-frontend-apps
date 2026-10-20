@@ -1,6 +1,6 @@
 'use client'
 
-import {Box, Button, chakra, Field, Group, HStack, Input, Text, VStack} from '@chakra-ui/react';
+import {Box, Button, chakra, Field, HStack, Input, Text, VStack} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import BigNumber from 'bignumber.js';
 import {type ReactNode, useMemo, useState} from 'react';
@@ -25,6 +25,7 @@ import {
     sumClaimableCoins,
     validateDenomRewardStake,
 } from '../utils/denom_rewards';
+import {MaxInputGroup} from './max-input-group';
 
 /**
  * The bodies of the holder actions on a denom reward — stake / add, claim, claim all, exit. Each
@@ -152,7 +153,7 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
                 {' · '}Minimum stake: {minStake}{isTopUp ? ' (for your whole position)' : ''}
             </Text>
             <Field.Root invalid={message !== ''}>
-                <Group attached w="full">
+                <MaxInputGroup w="full" onMax={() => setInput(maxSpendable.inputValue)} maxDisabled={!maxSpendable.amount.gt(0) || isSubmitting}>
                     <Input
                         autoComplete="off"
                         placeholder={`Amount of ${ticker} to ${isTopUp ? 'add' : 'stake'}`}
@@ -163,19 +164,7 @@ export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => 
                         fontFamily="mono"
                         data-testid="denom-reward-stake-input"
                     />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        color="hg.accent"
-                        borderColor="app.border"
-                        bg="app.subtle"
-                        fontWeight="700"
-                        onClick={() => setInput(maxSpendable.inputValue)}
-                        disabled={!maxSpendable.amount.gt(0) || isSubmitting}
-                    >
-                        Max
-                    </Button>
-                </Group>
+                </MaxInputGroup>
                 <Field.ErrorText data-testid="denom-reward-stake-error">{message}</Field.ErrorText>
             </Field.Root>
 

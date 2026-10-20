@@ -9,7 +9,6 @@ import {
     createListCollection,
     Field,
     Flex,
-    Group,
     HStack,
     IconButton,
     Image,
@@ -52,6 +51,7 @@ import {StatusPill, type NoticeStatus} from '../hive-glow/status';
 import {hgVariant} from '../../theme/variants';
 import {DrawerInset, DrawerMono, DrawerQuickAction, DrawerSectionTitle, DrawerViewHeader} from './drawer-kit';
 import {isCrossChainEnabled, isSkipEnabled} from '../../constants/cross_chain';
+import {MaxInputGroup} from '../max-input-group';
 
 type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
 
@@ -376,7 +376,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFo
             <Box>
                 <Field.Root invalid={amountErrorText !== ""}>
                     <Field.Label>Amount</Field.Label>
-                    <Group attached w="full" maxW="sm">
+                    <MaxInputGroup w="full" maxW="sm" onMax={setMaxAmount} maxDisabled={isLoading}>
                         <Input
                             size="sm"
                             fontFamily="mono"
@@ -385,11 +385,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFo
                             onChange={(e) => onAmountChange(e.target.value)}
                             onBlur={() => validateAmount(sendAmount, selectedCoin, setSendAmountError)}
                         />
-                        <Button variant="outline" size="sm" color="hg.accent" borderColor="app.border" bg="app.subtle"
-                                fontWeight="700" letterSpacing="0.04em" onClick={setMaxAmount} disabled={isLoading}>
-                            Max
-                        </Button>
-                    </Group>
+                    </MaxInputGroup>
                     <Field.ErrorText>{amountErrorText}</Field.ErrorText>
                     {maxSpendable.isReserving && amountErrorText === "" && (
                         <Field.HelperText>

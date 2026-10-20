@@ -6,7 +6,6 @@ import {
     Button,
     createListCollection,
     Field,
-    Group,
     HStack,
     Input,
     Portal,
@@ -31,6 +30,7 @@ import {sanitizeNumberInput} from '../../utils/number';
 import {amountToUAmount, prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {formatDuration} from '../../utils/cross_chain';
 import {getChainName} from '../../constants/chain';
+import {MaxInputGroup} from '../max-input-group';
 
 /**
  * Withdraw flow: send an asset from BeeZee to another chain.
@@ -327,7 +327,7 @@ export const WithdrawForm = () => {
                 <Box>
                     <Field.Root invalid={amountErrorText !== ''}>
                         <Field.Label>Amount to send</Field.Label>
-                        <Group attached w="full">
+                        <MaxInputGroup w="full" onMax={setMaxAmount}>
                             <Input
                                 size="sm"
                                 fontFamily="mono"
@@ -336,10 +336,7 @@ export const WithdrawForm = () => {
                                 onChange={(e) => onAmountChange(e.target.value)}
                                 onBlur={validateAmount}
                             />
-                            <Button variant="outline" size="sm" color="hg.accent" borderColor="app.border" bg="app.subtle" fontWeight="700" onClick={setMaxAmount}>
-                                Max
-                            </Button>
-                        </Group>
+                        </MaxInputGroup>
                         <Field.ErrorText>{amountErrorText}</Field.ErrorText>
                         {maxSpendable.isReserving && amountErrorText === '' && (
                             <Field.HelperText>
