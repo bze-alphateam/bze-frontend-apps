@@ -44,13 +44,14 @@ import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
 import {useChain} from "@interchain-kit/react";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
-import {RewardsStakingUnlockAlerts, TYPE_REWARDS} from "@/components/ui/staking/rewards-staking-alerts";
+import {RewardsStakingUnlockAlerts} from "@/components/ui/staking/rewards-staking-alerts";
 import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
 import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import {RewardsStakingPendingRewardsModal} from "@/components/ui/staking/rewards-staking-modals";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
 import {useLockedLiquidity} from "@/hooks/useLockedLiquidity";
 import {AprChip} from "@/components/ui/pools/apr-chip";
+import {BoostRewardsTile} from "@/components/ui/pools/boost-rewards-tile";
 import {
     AmountField, AprMove, FormColumn, FormTitle, InsetTile, PillTabs, PresetChip, SlippageRow, SubmitButton,
     SummaryBox, SummaryLine,
@@ -991,12 +992,7 @@ const UserPosition = ({
                             <HighlightText fontSize="14px" fontWeight="700">{prettyAmount(uAmountToAmount(userReserveQuote, quoteAsset?.decimals ?? 0))} {quoteAsset?.ticker}</HighlightText>
                         </Flex>
                     </InsetTile>
-                    <InsetTile label="Boost Rewards" align="start">
-                        <HighlightText fontSize="18px" fontWeight="700" color="hg.link">${extraRewardsInUsd}</HighlightText>
-                        <RewardsStakingButton buttonType={TYPE_REWARDS} flex={0} onClick={() => setShowRewardsModal(true)}>
-                            Claim
-                        </RewardsStakingButton>
-                    </InsetTile>
+                    <BoostRewardsTile rewards={extraRewards} usdValue={extraRewardsInUsd} onClaim={() => setShowRewardsModal(true)}/>
                 </Grid>
 
                 {lockedLpShares && lockedLpShares.length > 0 && lockedLpShares.map((item, index) => (
