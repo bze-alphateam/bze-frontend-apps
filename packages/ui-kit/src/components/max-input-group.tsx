@@ -1,10 +1,8 @@
 'use client';
 
-import {ReactElement} from 'react';
 import {Button, InputGroup, InputGroupProps} from '@chakra-ui/react';
 
-export interface MaxInputGroupProps extends Omit<InputGroupProps, 'endElement' | 'endElementProps' | 'endOffset' | 'children'> {
-    children: ReactElement;
+export interface MaxInputGroupProps extends Omit<InputGroupProps, 'endElement' | 'endElementProps' | 'endOffset'> {
     onMax: () => void;
     maxDisabled?: boolean;
 }

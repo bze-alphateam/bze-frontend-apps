@@ -34,6 +34,6 @@ describe('MaxInputGroup', () => {
 
     it('disables Max when asked', () => {
         renderGroup(vi.fn(), true);
-        expect(screen.getByRole('button', {name: 'Max'})).toBeDisabled();
+        expect((screen.getByRole('button', {name: 'Max'}) as HTMLButtonElement).disabled).toBe(true);
     });
 });
