@@ -6,7 +6,6 @@ import {
     Button,
     createListCollection,
     Field,
-    Group,
     HStack,
     Input,
     Portal,
@@ -28,6 +27,7 @@ import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {getChainName} from '../../constants/chain';
 import {LEGACY_ASSET_NOTICES} from '../../constants/assets';
 import {LegacyAssetNoticeBox} from '../legacy-asset-notice';
+import {MaxInputGroup} from '../max-input-group';
 
 /**
  * Deposit flow: move an asset from a foreign chain onto BeeZee.
@@ -281,7 +281,7 @@ export const DepositForm = () => {
                 <Box>
                     <Field.Root invalid={amountError !== ''}>
                         <Field.Label>Amount to deposit</Field.Label>
-                        <Group attached w="full">
+                        <MaxInputGroup w="full" onMax={setMaxAmount} maxDisabled={!sourceBalance || sourceBalance.status !== 'ready'}>
                             <Input
                                 size="sm"
                                 fontFamily="mono"
@@ -290,19 +290,7 @@ export const DepositForm = () => {
                                 onChange={(e) => onAmountChange(e.target.value)}
                                 onBlur={validateAmount}
                             />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                color="hg.accent"
-                                borderColor="app.border"
-                                bg="app.subtle"
-                                fontWeight="700"
-                                onClick={setMaxAmount}
-                                disabled={!sourceBalance || sourceBalance.status !== 'ready'}
-                            >
-                                Max
-                            </Button>
-                        </Group>
+                        </MaxInputGroup>
                         <Field.ErrorText>{amountError}</Field.ErrorText>
                     </Field.Root>
 

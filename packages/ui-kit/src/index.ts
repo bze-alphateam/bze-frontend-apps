@@ -336,6 +336,8 @@ export {
 export type { DenomRewardPanelProps } from './components/denom-reward-panels';
 export type { LPTokenLogoProps } from './components/lp-token-logo';
 export { LPTokenLogo } from './components/lp-token-logo';
+export { MaxInputGroup } from './components/max-input-group';
+export type { MaxInputGroupProps } from './components/max-input-group';
 export { Sidebar } from './components/sidebar/sidebar';
 export { SettingsSidebarContent } from './components/sidebar/settings-sidebar';
 export { WalletSidebarContent, WalletSendForm } from './components/sidebar/wallet-sidebar';
