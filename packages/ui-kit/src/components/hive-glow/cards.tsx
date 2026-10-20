@@ -76,16 +76,19 @@ export interface StatCardProps {
     loading?: boolean;
 }
 
-/** A label and a number in a plain card. Numbers stay neutral; only the change takes a colour. */
+/**
+ * A label and a number in a plain card. Numbers stay neutral; only the change takes a colour.
+ * Below md it shrinks (11 px label, 16 px value, 12 px padding) so three fit in a phone row.
+ */
 export const StatCard = ({ label, value, change, changeFormat, icon, loading }: StatCardProps) => (
     <Flex
         bg="hg.card"
         borderWidth="1px"
         borderColor="hg.hairline"
-        borderRadius="hg.lg"
+        borderRadius={{ base: '14px', md: 'hg.lg' }}
         boxShadow="hg.card"
-        px="18px"
-        py="16px"
+        px={{ base: '12px', md: '18px' }}
+        py={{ base: '12px', md: '16px' }}
         gap="14px"
         align="center"
         minW="0"
@@ -94,7 +97,7 @@ export const StatCard = ({ label, value, change, changeFormat, icon, loading }: 
     >
         {icon && <IconTile icon={icon} variant="outline" />}
         <Flex direction="column" gap="4px" minW="0">
-            <chakra.span fontSize="13px" color="hg.text.faint">{label}</chakra.span>
+            <chakra.span fontSize={{ base: '11px', md: '13px' }} color="hg.text.faint">{label}</chakra.span>
             {loading ? (
                 <>
                     <Shimmer w="60%" h="22px" />
@@ -102,7 +105,7 @@ export const StatCard = ({ label, value, change, changeFormat, icon, loading }: 
                 </>
             ) : (
                 <>
-                    <chakra.span fontSize="22px" fontWeight="700" color="fg" data-testid="stat-value">{value}</chakra.span>
+                    <chakra.span fontSize={{ base: '16px', md: '22px' }} fontWeight="700" color="fg" data-testid="stat-value">{value}</chakra.span>
                     {change !== undefined && <Change value={change} format={changeFormat} />}
                 </>
             )}

@@ -26,7 +26,6 @@ import type { HiveGlowAppKey } from '../../theme/hive-glow-tokens';
 import { hgVariant } from '../../theme/variants';
 import { AppsMenu } from '../app-identity/apps-menu';
 import { Sidebar } from '../sidebar/sidebar';
-import { PageContainer } from './layout';
 import { navItemStyle } from './nav-item';
 
 export interface AppHeaderBadge {
@@ -319,7 +318,7 @@ export const AppHeader = ({ app, appName, items, walletLabel, walletContent, set
             borderBottomWidth="1px"
             borderColor="hg.divider"
         >
-            <PageContainer>
+            <Box px={{ base: '16px', md: '32px' }}>
                 <Flex
                     h={{ base: `${HIVE_GLOW_LAYOUT.headerPhone}px`, md: `${HIVE_GLOW_LAYOUT.header}px` }}
                     align="center"
@@ -372,7 +371,7 @@ export const AppHeader = ({ app, appName, items, walletLabel, walletContent, set
                         <PhoneMenu items={items} linkAs={linkAs} apps={apps} />
                     </Flex>
                 </Flex>
-            </PageContainer>
+            </Box>
         </chakra.header>
     );
 };

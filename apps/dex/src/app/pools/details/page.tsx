@@ -1169,7 +1169,7 @@ const PoolDetailsPageContent = () => {
                     <HgCard as="section" aria-label="Pool overview" borderRadius="22px" p={{base: '18px', md: '24px'}}>
                         <Flex direction="column" gap="18px">
                             {/* Assets Display */}
-                            <Grid templateColumns={{base: '1fr', sm: 'minmax(0, 1fr) 40px minmax(0, 1fr)'}} alignItems="center" gap="8px">
+                            <Grid data-testid="pool-reserves" templateColumns={{base: '1fr', sm: 'minmax(0, 1fr) 40px minmax(0, 1fr)'}} alignItems="stretch" gap="8px">
                                 <Skeleton asChild loading={isLoadingBaseAsset || baseAssetPriceLoading}>
                                     <AssetDisplay
                                         asset={baseAsset}
@@ -1177,7 +1177,7 @@ const PoolDetailsPageContent = () => {
                                         usdValue={poolBaseReservesUsdValue}
                                     />
                                 </Skeleton>
-                                <chakra.span textAlign="center" fontSize="28px" color="hg.text.faint" aria-hidden="true">+</chakra.span>
+                                <chakra.span alignSelf="center" textAlign="center" fontSize="28px" color="hg.text.faint" aria-hidden="true">+</chakra.span>
                                 <Skeleton asChild loading={isLoadingQuoteAsset || quoteAssetPriceLoading}>
                                     <AssetDisplay
                                         asset={quoteAsset}

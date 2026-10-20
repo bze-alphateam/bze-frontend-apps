@@ -65,6 +65,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     };
 });
 
+import { rulesFor } from "@/test-support/css-rules";
 import TradingPage from "./page";
 
 const ORDER = {
@@ -117,5 +118,17 @@ describe("trading page on a governance-halted market", () => {
         expect(screen.getByRole("button", { name: "Sell HALT" })).toBeInTheDocument();
         expect(screen.queryByText("Trading halted")).toBeNull();
         expect(screen.queryByText(/no longer tradeable/)).toBeNull();
+    });
+});
+
+describe("market header", () => {
+    it("keeps the back button, the pair logo and the pair on one row on phones", async () => {
+        renderPage();
+
+        const title = await screen.findByTestId("market-title");
+        const row = rulesFor(title.parentElement as HTMLElement);
+
+        expect(row).toMatch(/flex-wrap:\s*nowrap/);
+        expect(rulesFor(screen.getByRole("heading", { level: 1 }))).toMatch(/font-size:\s*18px/);
     });
 });

@@ -756,7 +756,11 @@ export default function SwapPage() {
                     loading={bzePriceLoading}
                   />
                   <StatCard label="24h volume" value={`$${shortNumberFormat(poolsVolume)}`} loading={isLoading} />
-                  <StatCard label="Liquidity pools" value={tradeablePools.length} loading={isLoading} />
+                  <StatCard
+                    label={<><chakra.span hideBelow="md">Liquidity pools</chakra.span><chakra.span hideFrom="md">Pools</chakra.span></>}
+                    value={tradeablePools.length}
+                    loading={isLoading}
+                  />
                 </StatStrip>
               </GridItem>
 
