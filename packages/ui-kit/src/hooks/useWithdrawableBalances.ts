@@ -176,7 +176,9 @@ export function useWithdrawableBalances(): UseWithdrawableBalancesResult {
                 continue;
             }
 
-            // Case 2: native or factory — destination is user's choice.
+            // Case 2: native or factory — destination is user's choice, so it needs at least
+            // one reachable chain (none on a network whose IBC counterparties the registry lacks).
+            if (openDestinations.length === 0) continue;
             const kind: WithdrawableAssetKind = isFactoryDenom(bal.denom) ? 'factory' : 'native';
             result.push({
                 balance: bal,
