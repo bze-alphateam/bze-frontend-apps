@@ -40,14 +40,15 @@ export const Sidebar = ({ children, trigger, ariaLabel, isOpen: controlledOpen, 
                 {trigger}
             </div>
 
-            {/* Sidebar Overlay (CompOverlays): the backdrop, then the drawer docked right; full width on phones */}
+            {/* Sidebar Overlay (CompOverlays): the backdrop, then the drawer docked right; full width on phones.
+                Both sit above the sticky header and below popovers, so selects and dialogs opened inside still show. */}
             {isOpen && (
                 <Portal>
                     <Box
                         position="fixed"
                         inset="0"
                         bg="hg.backdrop"
-                        zIndex="3"
+                        zIndex="overlay"
                         data-testid="sidebar-backdrop"
                         onClick={(e) => {
                             // Only close if clicking the backdrop itself, not child elements
@@ -70,7 +71,7 @@ export const Sidebar = ({ children, trigger, ariaLabel, isOpen: controlledOpen, 
                         borderLeftWidth={{ base: '0', md: '1px' }}
                         borderColor="hg.hairline"
                         boxShadow={{ base: 'none', md: 'hg.drawer' }}
-                        zIndex="99"
+                        zIndex="modal"
                         direction="column"
                         overflow="hidden"
                         color="fg"

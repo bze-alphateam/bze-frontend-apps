@@ -82,21 +82,9 @@ const PoolName = ({baseTicker, quoteTicker, baseLogo, quoteLogo, isHalted}: {
     </Flex>
 )
 
-/** The connected user's share of a pool, in the DEX tint. */
+/** The connected user's share of a pool: plain text in the DEX link colour, no chip around it. */
 const MyLiquidity = ({children}: { children: ReactNode }) => (
-    <HighlightText
-        as="span"
-        display="inline-block"
-        fontSize="13px"
-        fontWeight="600"
-        px="10px"
-        py="4px"
-        borderRadius="8px"
-        color="hg.link"
-        bg="app.subtle"
-        borderWidth="1px"
-        borderColor="app.border"
-    >
+    <HighlightText as="span" data-testid="my-liquidity" fontSize="14px" fontWeight="600" color="hg.link">
         {children}
     </HighlightText>
 )
