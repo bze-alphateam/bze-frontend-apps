@@ -35,7 +35,7 @@ interface StatTileData {
     note?: string;
 }
 
-const SUBTITLE = 'Stake BZE and earn rewards. Delegate your BZE tokens to validators and earn staking rewards.';
+const SUBTITLE = 'Stake BZE with a validator and earn staking rewards.';
 
 function StatTile({icon, label, value, hint, note}: StatTileData) {
     return (

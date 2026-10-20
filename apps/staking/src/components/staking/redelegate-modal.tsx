@@ -70,7 +70,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
         const uAmount = amountToUAmount(amount, decimals);
         if (new BigNumber(uAmount).gt(delegatedAmount)) {
-            toast.error('Exceeds delegation', 'Amount exceeds your delegated balance');
+            toast.error('Exceeds your stake', 'Amount exceeds what you have staked with this validator');
             return;
         }
         if (!feeCheck.canAfford) {
@@ -93,12 +93,12 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
             const success = await tx([msg]);
             if (success) {
-                toast.success('Redelegation started', `Redelegated ${amount} ${nativeAsset?.ticker} to ${destValidator.description?.moniker}`);
+                toast.success('Stake moved', `Moved ${amount} ${nativeAsset?.ticker} to ${destValidator.description?.moniker}`);
                 onSuccess();
             }
         } catch (e) {
             console.error('Redelegate failed:', e);
-            toast.error('Redelegation failed', 'Transaction failed. Please try again.');
+            toast.error('Move failed', 'Transaction failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -115,7 +115,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
             onClose={onClose}
             busy={isSubmitting}
             width="512px"
-            title={`Redelegate from ${sourceValidator?.description?.moniker ?? ''}`}
+            title={`Move stake from ${sourceValidator?.description?.moniker ?? ''}`}
         >
             {/* Destination Validator Selection */}
             <Flex direction="column" gap="8px">
@@ -194,7 +194,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
             <AmountField
                 value={amount}
                 onChange={(value) => setAmount(sanitizeNumberInput(value))}
-                aside={`Delegated: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
+                aside={`Staked: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
                 ticker={nativeAsset?.ticker}
                 disabled={!isConnected}
             >
@@ -225,7 +225,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                     disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator || !feeCheck.canAfford}
                     w="full"
                 >
-                    Redelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Move {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>

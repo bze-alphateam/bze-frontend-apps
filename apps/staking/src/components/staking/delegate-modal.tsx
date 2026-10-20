@@ -68,7 +68,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
 
     const handleDelegate = async () => {
         if (!address || !validator) {
-            toast.error('Invalid amount', 'Please enter a valid amount to delegate');
+            toast.error('Invalid amount', 'Please enter a valid amount to stake');
             return;
         }
 
@@ -79,7 +79,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
             } else if (amountError === 'no-fee-reserve') {
                 toast.error('Not enough left for fees', `Keep ≈ ${prettyAmount(maxSpendable.gasFee.displayAmount)} ${maxSpendable.gasFee.ticker} for the network fee.`);
             } else {
-                toast.error('Invalid amount', 'Please enter a valid amount to delegate');
+                toast.error('Invalid amount', 'Please enter a valid amount to stake');
             }
             return;
         }
@@ -100,12 +100,12 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
 
             const success = await tx([msg]);
             if (success) {
-                toast.success('Delegation successful', `Delegated ${amount} ${nativeAsset?.ticker} to ${validator.description?.moniker}`);
+                toast.success('Staked', `Staked ${amount} ${nativeAsset?.ticker} to ${validator.description?.moniker}`);
                 onSuccess();
             }
         } catch (e) {
             console.error('Delegate failed:', e);
-            toast.error('Delegation failed', 'Transaction failed. Please try again.');
+            toast.error('Staking failed', 'Transaction failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -139,7 +139,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
             busy={isSubmitting}
             contentRef={contentRef}
             initialFocusEl={initialFocusEl}
-            title={`Delegate to ${validator?.description?.moniker ?? ''}`}
+            title={`Stake with ${validator?.description?.moniker ?? ''}`}
             titleAside={validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
         >
             <InsetRow label="Commission">{commission}%</InsetRow>
@@ -180,7 +180,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                             _hover={{bg: 'hg.warning/12'}}
                             onClick={useSpendableMax}
                         >
-                            Delegate {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
+                            Stake {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
                         </Button>
                     )}
                 </Notice>
@@ -206,7 +206,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                     disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
                     w="full"
                 >
-                    Delegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Stake {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>

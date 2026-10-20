@@ -68,7 +68,7 @@ describe("StakingOverview", () => {
 
         const callout = screen.getByTestId("callout");
         expect(screen.getByText("10% APR")).toBeInTheDocument();
-        expect(screen.getByText(/^Stake BZE and earn rewards\./)).toBeInTheDocument();
+        expect(screen.getByText(/^Stake BZE with a validator and earn staking rewards\./)).toBeInTheDocument();
         expect(follows(screen.getByTestId("home-hero"), callout)).toBe(true);
         expect(follows(callout, screen.getByText("Staking APR"))).toBe(true);
     });

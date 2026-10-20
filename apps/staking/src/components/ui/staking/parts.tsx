@@ -3,7 +3,7 @@
 import {chakra, Flex} from '@chakra-ui/react';
 import type {ReactNode} from 'react';
 
-/** The Staking soft button (Stake, Delegate, Claim): app tint, app edge, link text. */
+/** The Staking soft button (Stake, Claim): app tint, app edge, link text. */
 export const softButton = {
     variant: 'outline' as const,
     color: 'hg.link',
@@ -15,7 +15,7 @@ export const softButton = {
     _disabled: {opacity: 0.5},
 };
 
-/** The neutral outline (Undelegate, Redelegate): no app colour. */
+/** The neutral outline (Unstake, Move): no app colour. */
 export const neutralButton = {
     variant: 'outline' as const,
     color: 'fg',
