@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
     pools: [] as unknown[],
     halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
+    // A plain number: BigNumber is not imported yet when vi.hoisted runs.
+    bzePrice: 0,
 }));
 
 vi.mock("@interchain-kit/react", () => ({
@@ -73,7 +75,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         getAddressSwapHistory: async () => [],
         // The home page's market list and BZE price; empty here, the swap card is under test.
         useMarkets: () => ({ markets: [], getMarketData: () => undefined, isLoading: false }),
-        useAssetPrice: () => ({ price: new BigNumber(0), hasPrice: false, isLoading: false }),
+        useAssetPrice: () => ({ price: new BigNumber(mocks.bzePrice), hasPrice: mocks.bzePrice > 0, isLoading: false }),
         FeeEstimateRow: () => null,
     };
 });
@@ -164,6 +166,7 @@ beforeEach(() => {
     mocks.balances.clear();
     mocks.pools = [];
     mocks.halted = new Set();
+    mocks.bzePrice = 0;
     localStorage.clear();
 });
 
@@ -477,5 +480,14 @@ describe("Swap page slippage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Close" }));
         expect(screen.queryByRole("group", { name: "Max slippage" })).toBeNull();
+    });
+});
+
+describe("Swap page BZE price tile", () => {
+    it("shows the full price from md and 4 significant digits on a phone, so it fits one line", () => {
+        mocks.bzePrice = 0.764577;
+        renderSwap();
+        const value = screen.getAllByTestId("stat-value")[0];
+        expect(value.textContent).toBe("$0.764577$0.7646");
     });
 });

@@ -1,31 +1,10 @@
-import {Badge, Box, Button, chakra, Flex, Input} from "@chakra-ui/react";
+import {Badge, Box, Button, chakra, Flex, Input, Skeleton} from "@chakra-ui/react";
 import type BigNumber from "bignumber.js";
-import {hgVariant, sanitizeNumberInput} from "@bze/bze-ui-kit";
-import {LuSettings} from "react-icons/lu";
+import {hgVariant, MaxInputGroup, sanitizeNumberInput, Tooltip} from "@bze/bze-ui-kit";
+import {LuInfo, LuSettings} from "react-icons/lu";
 import {type ComponentProps, type ReactNode, useId} from "react";
 
 // The pieces of the pool page's three forms (add, remove, boost) and its overview tiles.
-
-/** The DEX soft MAX button next to an amount field. */
-export const MaxButton = ({onClick, disabled}: { onClick: () => void; disabled?: boolean }) => (
-    <Button
-        type="button"
-        variant="outline"
-        h="46px"
-        px="14px"
-        borderRadius="12px"
-        borderColor="app.border"
-        bg="app.subtle"
-        color="hg.link"
-        fontSize="13px"
-        fontWeight="700"
-        _hover={{bg: 'app.muted'}}
-        onClick={onClick}
-        disabled={disabled}
-    >
-        MAX
-    </Button>
-);
 
 interface AmountFieldProps {
     label: string;
@@ -37,7 +16,7 @@ interface AmountFieldProps {
     maxDisabled?: boolean;
 }
 
-/** A labelled amount with its available balance and MAX. */
+/** A labelled amount with its available balance, Max inside the field like every other amount. */
 export const AmountField = ({label, available, value, onChange, onMax, disabled, maxDisabled}: AmountFieldProps) => {
     const id = useId();
 
@@ -47,13 +26,12 @@ export const AmountField = ({label, available, value, onChange, onMax, disabled,
                 <chakra.label htmlFor={id} color="hg.text.secondary">{label}</chakra.label>
                 <chakra.span color="hg.text.faint">Available: {available}</chakra.span>
             </Flex>
-            <Flex gap="8px">
+            <MaxInputGroup onMax={onMax} maxDisabled={maxDisabled ?? disabled}>
                 <Input
                     id={id}
                     placeholder="0.0"
                     value={value}
                     onChange={(e) => onChange(sanitizeNumberInput(e.target.value))}
-                    flex="1"
                     h="46px"
                     borderRadius="12px"
                     bg="hg.inset"
@@ -63,8 +41,7 @@ export const AmountField = ({label, available, value, onChange, onMax, disabled,
                     autoComplete="off"
                     disabled={disabled}
                 />
-                <MaxButton onClick={onMax} disabled={maxDisabled ?? disabled}/>
-            </Flex>
+            </MaxInputGroup>
         </Flex>
     );
 };
@@ -231,10 +208,13 @@ export const InsetTile = ({label, children, align = 'center'}: { label: ReactNod
 export interface PillTab<T extends string> {
     value: T;
     label: ReactNode;
+    /** The label on phones, where the tabs share one row ("Add" for "Add Liquidity"). */
+    short?: ReactNode;
     icon?: ReactNode;
 }
 
-/** The pool form tabs: an inset track whose picked tab takes the DEX gradient. */
+/** The pool form tabs: an inset track whose picked tab takes the DEX gradient. On a phone the
+ * track spans the card and the tabs share its row equally, with their short labels. */
 export function PillTabs<T extends string>({tabs, value, onChange, 'aria-label': ariaLabel}: {
     tabs: PillTab<T>[];
     value: T;
@@ -242,7 +222,7 @@ export function PillTabs<T extends string>({tabs, value, onChange, 'aria-label':
     'aria-label': string;
 }) {
     return (
-        <Flex role="tablist" aria-label={ariaLabel} alignSelf="center" gap="4px" p="4px" borderRadius="12px" bg="hg.inset" wrap="wrap" justify="center" maxW="full">
+        <Flex role="tablist" aria-label={ariaLabel} alignSelf={{base: 'stretch', md: 'center'}} gap="4px" p="4px" borderRadius="12px" bg="hg.inset" wrap={{base: 'nowrap', md: 'wrap'}} justify="center" maxW="full" data-testid="pill-tabs">
             {tabs.map((tab) => {
                 const selected = tab.value === value;
                 return (
@@ -253,11 +233,15 @@ export function PillTabs<T extends string>({tabs, value, onChange, 'aria-label':
                         aria-selected={selected}
                         onClick={() => onChange(tab.value)}
                         h="36px"
-                        px="14px"
+                        px={{base: '8px', md: '14px'}}
+                        flex={{base: '1', md: 'none'}}
+                        minW="0"
                         border="0"
                         borderRadius="9px"
                         display="inline-flex"
                         alignItems="center"
+                        justifyContent="center"
+                        whiteSpace="nowrap"
                         gap="6px"
                         fontSize="14px"
                         fontWeight={selected ? '700' : '600'}
@@ -269,7 +253,12 @@ export function PillTabs<T extends string>({tabs, value, onChange, 'aria-label':
                         _hover={selected ? undefined : {color: 'fg'}}
                     >
                         {tab.icon && <Box as="span" display="inline-flex" aria-hidden>{tab.icon}</Box>}
-                        {tab.label}
+                        {tab.short ? (
+                            <>
+                                <chakra.span hideBelow="md">{tab.label}</chakra.span>
+                                <chakra.span hideFrom="md">{tab.short}</chakra.span>
+                            </>
+                        ) : tab.label}
                     </chakra.button>
                 );
             })}
@@ -291,4 +280,20 @@ export const AprMove = ({current, next, change}: { current: BigNumber; next: Big
             <chakra.span color="fg" fontWeight="700">New: {next.toFixed(2)}%</chakra.span>
         </Flex>
     </Flex>
+);
+
+/** One share of the trading fee, with its explanation on hover. */
+export const FeeShare = ({label, hint, loading, children}: { label: string; hint: string; loading: boolean; children: ReactNode }) => (
+    <Tooltip content={hint}>
+        {/* A label that wraps ("Buyback & Burn" on a phone) must not lift its number above the
+            others: the share fills its grid cell and its number sits on the bottom edge. */}
+        <Flex direction="column" justify="space-between" h="full" gap="4px" cursor="help" tabIndex={0} aria-label={`${label}: ${hint}`} data-testid="fee-share">
+            <chakra.span fontSize="12px" color="hg.text.faint" display="inline-flex" alignItems="center" justifyContent="center" gap="4px">
+                {label}<LuInfo size={12} aria-hidden="true"/>
+            </chakra.span>
+            <Skeleton asChild loading={loading}>
+                <chakra.strong fontSize="16px">{children}</chakra.strong>
+            </Skeleton>
+        </Flex>
+    </Tooltip>
 );

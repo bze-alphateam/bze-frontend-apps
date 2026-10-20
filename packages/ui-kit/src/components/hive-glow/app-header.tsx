@@ -78,10 +78,13 @@ const LOCKUP = {
  */
 const Lockup = ({ kind, alt }: { kind: keyof typeof LOCKUP; alt: string }) => {
     const { h, files } = LOCKUP[kind];
+    // A long name (Communities) would push the TESTNET pill under the wallet button on a phone:
+    // the lockup may narrow to what is left, and the drawing scales down inside its box.
+    const fit = { h, w: 'auto', maxW: '100%', objectFit: 'contain', objectPosition: 'left center' } as const;
     return (
         <>
-            <Image src={`/images/${files[0]}`} alt={alt} h={h} w="auto" display="block" _dark={{ display: 'none' }} data-lockup={kind} />
-            <Image src={`/images/${files[1]}`} alt={alt} h={h} w="auto" display="none" _dark={{ display: 'block' }} data-lockup={kind} />
+            <Image src={`/images/${files[0]}`} alt={alt} {...fit} display="block" _dark={{ display: 'none' }} data-lockup={kind} />
+            <Image src={`/images/${files[1]}`} alt={alt} {...fit} display="none" _dark={{ display: 'block' }} data-lockup={kind} />
         </>
     );
 };
@@ -326,11 +329,11 @@ export const AppHeader = ({ app, appName, items, walletLabel, walletContent, set
                     gap={{ base: '8px', md: '24px' }}
                 >
                     <Flex align="center" gap={{ base: '8px', md: '12px' }} minW={{ base: '0', lg: '220px' }}>
-                        <Link as={linkAs} href="/" flex="none" _focusVisible={{ outline: '2px solid', outlineColor: 'app.focusRing' }}>
+                        <Link as={linkAs} href="/" flex="0 1 auto" minW="0" _focusVisible={{ outline: '2px solid', outlineColor: 'app.focusRing' }}>
                             <Box hideBelow="md">
                                 <Lockup kind="landscape" alt={appName} />
                             </Box>
-                            <Box hideFrom="md">
+                            <Box hideFrom="md" minW="0">
                                 <Lockup kind="compact" alt={appName} />
                             </Box>
                         </Link>

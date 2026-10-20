@@ -38,6 +38,7 @@ vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
 
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "./kit";
+import {rulesFor} from "@/test-support/css-rules";
 import {SiteHeader} from "./site-header";
 import {WalletDrawer} from "./wallet";
 
@@ -82,6 +83,12 @@ describe("SiteHeader", () => {
     });
 
     // jsdom matches no media query, so the phone layout is the one rendered: links sit in the menu.
+    it("keeps the name, wallet and menu on one row on a phone", () => {
+        const {container} = renderHeader();
+        const row = container.querySelector('a[href="#top"]')!.parentElement as HTMLElement;
+        expect(rulesFor(row)).toMatch(/flex-wrap:\s*nowrap/);
+    });
+
     it("links to the sections on the page and nowhere else", async () => {
         const user = userEvent.setup();
         renderHeader();

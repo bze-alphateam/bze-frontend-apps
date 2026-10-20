@@ -79,6 +79,7 @@ export interface StatCardProps {
 /**
  * A label and a number in a plain card. Numbers stay neutral; only the change takes a colour.
  * Below md it shrinks (11 px label, 16 px value, 12 px padding) so three fit in a phone row.
+ * The value stays on one line; a caller with a long number passes a shorter form for phones.
  */
 export const StatCard = ({ label, value, change, changeFormat, icon, loading }: StatCardProps) => (
     <Flex
@@ -105,7 +106,7 @@ export const StatCard = ({ label, value, change, changeFormat, icon, loading }: 
                 </>
             ) : (
                 <>
-                    <chakra.span fontSize={{ base: '16px', md: '22px' }} fontWeight="700" color="fg" data-testid="stat-value">{value}</chakra.span>
+                    <chakra.span fontSize={{ base: '16px', md: '22px' }} fontWeight="700" color="fg" truncate data-testid="stat-value">{value}</chakra.span>
                     {change !== undefined && <Change value={change} format={changeFormat} />}
                 </>
             )}

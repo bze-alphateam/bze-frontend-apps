@@ -43,8 +43,9 @@ export function ValidatorsList({validators, onStake, logos, highlightedOperator,
             <SectionHeader
                 title={`All Validators (${validators.length})`}
                 actions={
-                    <>
-                        <InputGroup startElement={<LuSearch size={16} />} w={{base: 'full', sm: '320px'}}>
+                    // The search and its buttons share one row, on a phone too.
+                    <Flex gap="8px" align="center" w={{base: 'full', sm: 'auto'}}>
+                        <InputGroup startElement={<LuSearch size={16} />} flex={{base: '1', sm: 'none'}} w={{base: 'auto', sm: '320px'}}>
                             <Input
                                 placeholder="Search validators..."
                                 aria-label="Search validators"
@@ -55,7 +56,7 @@ export function ValidatorsList({validators, onStake, logos, highlightedOperator,
                             />
                         </InputGroup>
                         {actions}
-                    </>
+                    </Flex>
                 }
             />
 

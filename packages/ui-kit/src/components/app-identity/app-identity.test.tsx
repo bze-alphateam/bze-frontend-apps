@@ -7,6 +7,7 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import type { EcosystemApp } from '../../constants/ecosystem';
 import { ECOSYSTEM_MENU_LABEL } from '../../constants/ecosystem';
 import { appIdentity, type BrandedAppKey } from '../../constants/app-identity';
+import { rulesFor } from '../../test-support/css-rules';
 import { AppIconButton, AppLink } from './app-button';
 import { AppIcon } from './app-icon';
 import { AppsMenu } from './apps-menu';
@@ -84,6 +85,14 @@ describe('AppIconButton', () => {
 });
 
 describe('AppLink', () => {
+    it('flush pulls its padding into the margin, so the icon lines up with the text above', () => {
+        render(<AppLink app="explorer" href="https://explorer.getbze.com" flush>Explorer</AppLink>, { wrapper });
+        expect(rulesFor(screen.getByRole('link', { name: 'Explorer' }))).toMatch(/margin-inline-start:\s*calc\(var\(--chakra-spacing-1\\?\.5\) \* -1\)/);
+        cleanup();
+        render(<AppLink app="explorer" href="https://explorer.getbze.com">Explorer</AppLink>, { wrapper });
+        expect(rulesFor(screen.getByRole('link', { name: 'Explorer' }))).not.toMatch(/margin-inline-start/);
+    });
+
     it('is the app icon, the app name and an external mark, opening in a new tab', () => {
         render(<AppLink app="explorer" href="https://explorer.getbze.com/txs/ABC">Explorer</AppLink>, { wrapper });
         const link = screen.getByRole('link', { name: 'Explorer' });

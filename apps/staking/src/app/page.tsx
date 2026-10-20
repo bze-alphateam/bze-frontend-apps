@@ -1,6 +1,6 @@
 'use client';
 
-import {Box, Button} from '@chakra-ui/react';
+import {Box, Button, chakra} from '@chakra-ui/react';
 import {LuRefreshCw, LuWallet} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {getChainName, HeroGlow, hgVariant, PageContainer, Sidebar, WalletSidebarContent, useValidatorLogos, useToast} from '@bze/bze-ui-kit';
@@ -98,8 +98,9 @@ export default function StakingPage() {
     const showMyValidators = isConnected && !!fullData && fullData.myValidators.length > 0;
 
     const refreshButton = (
-        <Button size="md" {...quietButton} onClick={handleRefresh} loading={isRefreshing}>
-            <LuRefreshCw /> Refresh
+        // Icon-only on a phone, where it sits beside the validator search.
+        <Button size="md" {...quietButton} px={{base: '0', sm: '4'}} minW="10" aria-label="Refresh" onClick={handleRefresh} loading={isRefreshing}>
+            <LuRefreshCw /><chakra.span hideBelow="sm">Refresh</chakra.span>
         </Button>
     );
 

@@ -36,11 +36,11 @@ const HISTORY_ID = "history";
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** One countdown box: the number on the inset, the unit under it. */
+/** One countdown box: the number on the inset, the unit under it. Sized so four fit a phone row. */
 const TimerBox = ({value, unit}: { value: number; unit: string }) => (
-    <Flex direction="column" align="center" gap="8px">
+    <Flex direction="column" align="center" gap="8px" data-testid="timer-box">
         <Flex
-            boxSize={{base: '68px', md: '96px'}}
+            boxSize={{base: '56px', md: '96px'}}
             align="center"
             justify="center"
             borderRadius={{base: '14px', md: '18px'}}
@@ -49,12 +49,12 @@ const TimerBox = ({value, unit}: { value: number; unit: string }) => (
             borderColor="app.border"
             fontFamily="mono"
             fontWeight="700"
-            fontSize={{base: '28px', md: '40px'}}
+            fontSize={{base: '24px', md: '40px'}}
             color="fg"
         >
             {pad(value)}
         </Flex>
-        <chakra.span fontSize="12px" letterSpacing="0.1em" textTransform="uppercase" color="hg.text.faint">{unit}</chakra.span>
+        <chakra.span fontSize={{base: '10px', md: '12px'}} letterSpacing="0.1em" textTransform="uppercase" color="hg.text.faint">{unit}</chakra.span>
     </Flex>
 );
 
@@ -77,7 +77,9 @@ const CountdownTimer = ({targetDate}: { targetDate: Date }) => {
     const {days, hours, minutes, seconds} = breakdownDuration(timeLeft);
 
     return (
-        <Flex role="timer" gap={{base: '10px', md: '14px'}} align="flex-start" wrap="wrap" justify="center">
+        // Days, hours, minutes and seconds always share one row: a lone Seconds box on a second line
+        // read as a separate number.
+        <Flex role="timer" gap={{base: '8px', md: '14px'}} align="flex-start" wrap="nowrap" justify="center">
             {days > 0 && <TimerBox value={days} unit="Days"/>}
             <TimerBox value={hours} unit="Hours"/>
             <TimerBox value={minutes} unit="Minutes"/>

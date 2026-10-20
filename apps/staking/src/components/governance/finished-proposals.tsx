@@ -53,7 +53,10 @@ function FinishedRow({proposal}: {proposal: ListedProposal}) {
         <Link
             asChild
             display="grid"
-            gridTemplateColumns={{base: 'auto auto 1fr', md: COLUMNS}}
+            // Phone: two equal side columns around the pill, so the pill sits in the same place on
+            // every card whatever the id, the proposal type or the date (auto columns followed the
+            // type label's width).
+            gridTemplateColumns={{base: 'minmax(0, 1fr) auto minmax(0, 1fr)', md: COLUMNS}}
             gridTemplateAreas={rowAreas}
             gap={{base: '6px 8px', md: '16px'}}
             alignItems="center"
@@ -74,7 +77,7 @@ function FinishedRow({proposal}: {proposal: ListedProposal}) {
                     {proposalTitle(proposal)}
                 </chakra.span>
                 <chakra.span gridArea="type" fontSize={{base: '12px', md: '14px'}} color="hg.text.secondary">{kindLabel(proposalKind(proposal))}</chakra.span>
-                <Box gridArea="result">
+                <Box gridArea="result" data-testid="finished-result">
                     <ProposalStatusPill tone={status.tone}>{status.text}</ProposalStatusPill>
                 </Box>
                 <chakra.span gridArea="ended" fontSize={{base: '12px', md: '14px'}} color="hg.text.secondary" justifySelf={{base: 'end', md: 'start'}}>

@@ -86,8 +86,9 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
 
     return (
         <Box as="header" position="relative" {...tsContainer} py={{base: "12px", md: "18px"}}>
-            <Flex align="center" gap={{base: "12px", md: "32px"}} wrap="wrap">
-                <chakra.a href="#top" display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0">
+            {/* One row on a phone: the name truncates so the wallet and menu stay beside it. */}
+            <Flex align="center" gap={{base: "12px", md: "32px"}} wrap={{base: "nowrap", md: "wrap"}}>
+                <chakra.a href="#top" display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0" flex={{base: "0 1 auto", md: "none"}}>
                     <TokenMark asset={asset} size={40}/>
                     <chakra.span fontWeight={700} fontSize={{base: "18px", md: "20px"}} letterSpacing="-0.01em" truncate>
                         {asset.name}
@@ -100,7 +101,7 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
                     ))}
                 </Flex>
 
-                <Flex align="center" gap="10px" ml={{base: "auto", md: "0"}}>
+                <Flex align="center" gap="10px" ml={{base: "auto", md: "0"}} flex="none">
                     <Box display={{base: "none", md: "block"}}><ModeButton/></Box>
                     <WalletButton asset={asset}/>
                     <TsChip

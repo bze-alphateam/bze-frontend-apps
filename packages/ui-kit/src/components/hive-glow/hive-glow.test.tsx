@@ -66,6 +66,11 @@ describe('heroes', () => {
         expect(eyebrow.textContent).toBe('BeeZee DEX');
     });
 
+    it('Eyebrow keeps a wrapped label beside its icon, even in a centred hero', () => {
+        ui(<Eyebrow app="communities">BeeZee Communities · Token directory</Eyebrow>);
+        expect(rulesFor(screen.getByText('BeeZee Communities · Token directory'))).toMatch(/text-align:\s*start/);
+    });
+
     it('Eyebrow uses the small icon on inner pages', () => {
         ui(<Eyebrow app="burner" iconSize={24}>Burner</Eyebrow>);
         expect(screen.getByTestId('app-icon').getAttribute('data-cut')).toBe('small');
@@ -148,6 +153,11 @@ describe('cards', () => {
         expect(screen.getByTestId('stat-value').textContent).toBe('$1,200');
         expect(screen.getByTestId('change').getAttribute('data-direction')).toBe('up');
         expect(screen.queryByTestId('icon-tile')).toBeNull();
+    });
+
+    it('StatCard keeps its value on one line', () => {
+        ui(<StatCard label="BZE price" value="$0.764577" />);
+        expect(rulesFor(screen.getByTestId('stat-value'))).toMatch(/white-space:\s*nowrap/);
     });
 
     it('StatCard shrinks on phones so three fit in a row', () => {

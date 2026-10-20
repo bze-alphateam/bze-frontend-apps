@@ -749,11 +749,16 @@ const TradingPageContent = () => {
                 >
                     <Box aria-hidden position="absolute" inset="0" bgImage="heroGlowInner" bgRepeat="no-repeat" pointerEvents="none" />
                     <Flex position="relative" align="center" gap={{ base: '10px', md: '18px' }} wrap={{ base: 'nowrap', md: 'wrap' }} minW="0" flex={{ base: '1', lg: 'initial' }}>
+                        {/* On a phone the back arrow is icon-only and flush with the card edge, so the
+                            price keeps its room and stays on one line. */}
                         <Button
                             size="md"
                             variant="ghost"
                             color="hg.text.secondary"
-                            px="12px"
+                            px={{ base: '0', md: '12px' }}
+                            minW={{ base: '24px', md: '10' }}
+                            aria-label="Back to markets"
+                            data-testid="market-back"
                             onClick={() => toExchangePage()}
                         >
                             <LuArrowLeft />
