@@ -1,9 +1,12 @@
-import {describe, expect, it, vi} from 'vitest';
-import {fireEvent, render, screen} from '@testing-library/react';
+// @vitest-environment jsdom
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {ChakraProvider, Input} from '@chakra-ui/react';
 import {createHiveGlowSystem} from '../theme';
 import {rulesFor} from '../test-support/css-rules';
 import {MaxInputGroup} from './max-input-group';
+
+afterEach(cleanup);
 
 const renderGroup = (onMax = vi.fn(), maxDisabled = false) => render(
     <ChakraProvider value={createHiveGlowSystem('dex')}>
