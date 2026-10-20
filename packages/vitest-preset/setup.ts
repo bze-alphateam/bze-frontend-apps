@@ -6,7 +6,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+
+// findBy* / waitFor default to 1 s, too tight for async renders on a loaded CI runner.
+configure({ asyncUtilTimeout: 5000 });
 
 // Unmount rendered trees between tests so the jsdom DOM never leaks state.
 afterEach(() => {

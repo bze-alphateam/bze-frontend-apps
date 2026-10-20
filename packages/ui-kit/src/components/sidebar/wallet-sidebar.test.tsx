@@ -9,9 +9,11 @@ import type { CrossChainTxRecord } from '../../types/cross_chain';
 
 // The wallet connection, balances and the Latest Buy tracker are fed directly; the buy and
 // bridge flows have their own hooks and are not under test here.
-const { wallet, tracker } = vi.hoisted(() => ({
+const { wallet, tracker, bridge, held } = vi.hoisted(() => ({
     wallet: { status: 'Disconnected' as string },
     tracker: { transactions: [] as CrossChainTxRecord[], addTransaction: () => {}, dismissTransaction: () => {} },
+    bridge: { isAvailable: false },
+    held: { balances: [] as unknown[] },
 }));
 
 vi.mock('@interchain-kit/react', () => ({
@@ -24,7 +26,10 @@ vi.mock('@interchain-kit/react', () => ({
         connect: vi.fn(),
     }),
 }));
-vi.mock('../../hooks/useBalances', () => ({ useBalances: () => ({ assetsBalances: [], isLoading: false }) }));
+vi.mock('../../hooks/useBalances', () => ({ useBalances: () => ({ assetsBalances: held.balances, isLoading: false }) }));
+vi.mock('../../hooks/useBridgeAvailability', () => ({
+    useBridgeAvailability: () => ({ canDeposit: false, canWithdraw: false, canUseSkip: false, isLoading: false, ...bridge }),
+}));
 vi.mock('../../hooks/useAssets', async (importActual) => ({
     ...(await importActual<typeof import('../../hooks/useAssets')>()),
     useAsset: () => ({ asset: undefined }),
@@ -38,7 +43,9 @@ vi.mock('../../constants/cross_chain', async (importActual) => ({
 vi.mock('./buy-form', () => ({ BuyForm: () => null }));
 vi.mock('./bridge-form', () => ({ BridgeForm: () => null }));
 
+import BigNumber from 'bignumber.js';
 import { createHiveGlowSystem } from '../../theme';
+import { rulesFor } from '../../test-support/css-rules';
 import { WalletSidebarContent } from './wallet-sidebar';
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -63,6 +70,8 @@ const statusPill = () => screen.getByTestId('status-pill');
 beforeEach(() => {
     wallet.status = WalletState.Disconnected;
     tracker.transactions = [];
+    bridge.isAvailable = false;
+    held.balances = [];
 });
 
 afterEach(() => {
@@ -140,5 +149,45 @@ describe('Latest Buy', () => {
         expect(pill.textContent).toBe('Completed');
         expect(pill.getAttribute('data-tone')).toBe('success');
         expect(within(pill).queryByTestId('live-dot')).toBeNull();
+    });
+});
+
+describe('Deposit / Withdraw entry', () => {
+    beforeEach(() => {
+        wallet.status = WalletState.Connected;
+    });
+
+    it('is hidden when there is nothing to deposit, withdraw or bring in through Skip', () => {
+        render(<WalletSidebarContent />, { wrapper });
+        expect(screen.getByRole('button', { name: /^Send/ })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Deposit \/ Withdraw/ })).toBeNull();
+    });
+
+    it('shows when a transfer is possible', () => {
+        bridge.isAvailable = true;
+        render(<WalletSidebarContent />, { wrapper });
+        expect(screen.getByRole('button', { name: /Deposit \/ Withdraw/ })).toBeTruthy();
+    });
+});
+
+describe('Balance row Send', () => {
+    beforeEach(() => {
+        wallet.status = WalletState.Connected;
+        held.balances = [{
+            denom: 'uvdl', ticker: 'VDL', name: 'Vidulum', logo: '', decimals: 6, verified: true, type: 'factory',
+            amount: new BigNumber(5_000_000), USDValue: new BigNumber(0),
+        }];
+    });
+
+    it('carries the send icon and stays visible on phones, revealed on hover from md up', () => {
+        render(<WalletSidebarContent />, { wrapper });
+        const send = within(screen.getByTestId('balance-row')).getByTestId('balance-row-send');
+        expect(send.textContent).toBe('Send');
+        expect(send.querySelector('svg')).toBeTruthy();
+
+        const rules = rulesFor(send);
+        expect(rules).toMatch(/opacity:\s*1/);
+        expect(rules).toMatch(/@media[^{]*min-width[^{]*\{[^}]*opacity:\s*0/);
+        expect(rules).toMatch(/\.group:is\(:hover/);
     });
 });

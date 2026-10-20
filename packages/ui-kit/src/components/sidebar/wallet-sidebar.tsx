@@ -51,6 +51,7 @@ import {StatusPill, type NoticeStatus} from '../hive-glow/status';
 import {hgVariant} from '../../theme/variants';
 import {DrawerInset, DrawerMono, DrawerQuickAction, DrawerSectionTitle, DrawerViewHeader} from './drawer-kit';
 import {isCrossChainEnabled, isSkipEnabled} from '../../constants/cross_chain';
+import {useBridgeAvailability} from '../../hooks/useBridgeAvailability';
 import {MaxInputGroup} from '../max-input-group';
 
 type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
@@ -87,7 +88,6 @@ const validateAmount = (amount: string, coin: AssetBalance|undefined, onError:(m
 }
 
 const BalanceItem = ({asset, onClick}: BalanceItemProps) => {
-    const [showSendButton, setShowSendButton] = useState(false)
     const formattedBalanceAmount = useMemo(() => {
         return prettyAmount(uAmountToBigNumberAmount(asset.amount, asset.decimals ?? 0))
     }, [asset.amount, asset.decimals])
@@ -109,8 +109,7 @@ const BalanceItem = ({asset, onClick}: BalanceItemProps) => {
             _hover={{borderColor: 'app.border'}}
             transition="border-color 0.2s"
             data-testid="balance-row"
-            onMouseLeave={() => setShowSendButton(false)}
-            onMouseEnter={() => setShowSendButton(true)}
+            className="group"
         >
             <HStack justify="space-between" gap="8px" minH="26px">
                 <HStack gap="8px" minW="0">
@@ -135,9 +134,23 @@ const BalanceItem = ({asset, onClick}: BalanceItemProps) => {
                         </chakra.span>
                     )}
                 </HStack>
-                {showSendButton && (
-                    <Button size="xs" h="26px" variant={hgVariant('secondary')} borderRadius="8px" onClick={onClick}>Send</Button>
-                )}
+                {/* Always shown on phones (no hover); revealed on hover or keyboard focus from md up. */}
+                <Button
+                    size="xs"
+                    h="26px"
+                    variant={hgVariant('secondary')}
+                    borderRadius="8px"
+                    gap="6px"
+                    onClick={onClick}
+                    opacity={{base: 1, md: 0}}
+                    _groupHover={{opacity: 1}}
+                    _groupFocusWithin={{opacity: 1}}
+                    transition="opacity 0.15s"
+                    data-testid="balance-row-send"
+                >
+                    <LuSend aria-hidden="true"/>
+                    Send
+                </Button>
             </HStack>
             <HStack justify="space-between" align="baseline">
                 <HighlightText fontSize="14px" fontFamily="mono">
@@ -468,6 +481,7 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
     const [showCopiedTooltip, setShowCopiedTooltip] = useState(false)
     const [clickedBalance, setClickedBalance] = useState('')
     const crossChainEnabled = useMemo(() => isCrossChainEnabled(), []);
+    const {isAvailable: bridgeAvailable} = useBridgeAvailability();
     const skipEnabled = useMemo(() => isSkipEnabled(), []);
 
     const {
@@ -594,7 +608,7 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
                 <DrawerQuickAction icon={<LuSend/>} onClick={() => setViewState('send')} disabled={assetsLoading}>
                     Send
                 </DrawerQuickAction>
-                {crossChainEnabled && (
+                {bridgeAvailable && (
                     <DrawerQuickAction icon={<LuArrowRightLeft/>} onClick={() => setViewState('transfer')}>
                         Deposit / Withdraw
                     </DrawerQuickAction>
