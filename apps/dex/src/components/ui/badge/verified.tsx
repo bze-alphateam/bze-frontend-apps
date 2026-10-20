@@ -1,5 +1,5 @@
 import {chakra} from "@chakra-ui/react";
-import {LuShield} from "react-icons/lu";
+import {LuCheck} from "react-icons/lu";
 import React from "react";
 
 /** The verified mark next to an asset or market name, in the DEX accent. */
@@ -20,7 +20,7 @@ export const VerifiedBadge = () => {
           borderWidth="1px"
           borderColor="app.border"
       >
-          <LuShield size={11} aria-hidden="true"/>
+          <LuCheck size={10} strokeWidth={3} aria-hidden="true"/>
           Verified
       </chakra.span>
   )

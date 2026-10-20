@@ -748,7 +748,7 @@ const TradingPageContent = () => {
                     flexWrap="wrap"
                 >
                     <Box aria-hidden position="absolute" inset="0" bgImage="heroGlowInner" bgRepeat="no-repeat" pointerEvents="none" />
-                    <Flex position="relative" align="center" gap={{ base: '12px', md: '18px' }} wrap="wrap" minW="0">
+                    <Flex position="relative" align="center" gap={{ base: '10px', md: '18px' }} wrap={{ base: 'nowrap', md: 'wrap' }} minW="0" flex={{ base: '1', lg: 'initial' }}>
                         <Button
                             size="md"
                             variant="ghost"
@@ -761,7 +761,7 @@ const TradingPageContent = () => {
                         </Button>
                         <Box h="40px" w="1px" bg="hg.hairline" hideBelow="md" />
                         <Flex
-                            boxSize="44px"
+                            boxSize={{ base: '40px', md: '44px' }}
                             flex="none"
                             align="center"
                             justify="center"
@@ -778,16 +778,16 @@ const TradingPageContent = () => {
                                 size="5"
                             />
                         </Flex>
-                        <Flex direction="column" gap="4px" minW="0">
-                            <Flex align="center" gap="8px" wrap="wrap">
-                                <chakra.h1 m="0" fontSize="22px" fontWeight="800" letterSpacing="-0.01em">
+                        <Flex direction="column" gap="4px" minW="0" data-testid="market-title">
+                            <Flex align="center" gap={{ base: '6px', md: '8px' }} wrap="wrap">
+                                <chakra.h1 m="0" fontSize={{ base: '18px', md: '22px' }} fontWeight="800" letterSpacing="-0.01em">
                                     {marketTicker}
                                 </chakra.h1>
                                 <VenueTag venue="orderbook" size="sm" />
                                 {isHalted && <HaltedBadge />}
                                 <ChangePill change={marketData?.change} />
                             </Flex>
-                            <HighlightText fontSize="26px" fontWeight="800" letterSpacing="-0.01em" color={priceColor}>
+                            <HighlightText fontSize={{ base: '20px', md: '26px' }} fontWeight="800" letterSpacing="-0.01em" color={priceColor}>
                                 {lastPrice} {quoteAsset?.ticker}
                             </HighlightText>
                             {shouldShowUsdValues && (

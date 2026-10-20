@@ -16,6 +16,7 @@ import {marketPagePath} from "@/hooks/useNavigation";
 import {VenueTag, VENUE_SUBTITLE} from "@/components/ui/trading/venue";
 import {ChangePill} from "@/components/ui/trading/badges";
 import {sortMarkets} from "@/lib/market-list";
+import {marketPriceLabel} from "@/lib/market-price";
 
 const DESKTOP_COLUMNS = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 140px'
 
@@ -56,7 +57,7 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
     const {asset: quoteAsset} = useAsset(market.quote)
     const {totalUsdValue: quoteUsdValue, isUSDC: quoteIsUSDC} = useAssetPrice(market.quote)
 
-    const displayPrice = marketData?.last_price
+    const priceLabel = marketPriceLabel(marketData?.last_price, quoteAsset?.ticker)
     const displayVolume = marketData?.quote_volume || 0
     const displayUsdVolume = useMemo(() => formatUsdAmount(quoteUsdValue(new BigNumber(displayVolume))), [displayVolume, quoteUsdValue])
     const isVerifiedMarket = !!baseAsset?.verified && !!quoteAsset?.verified
@@ -109,7 +110,7 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
 
                     <Flex direction="column" align="flex-end" gap="4px">
                         <HighlightText fontWeight="700" fontSize="15px">
-                            {displayPrice} {quoteAsset?.ticker}
+                            {priceLabel}
                         </HighlightText>
                         <ChangePill change={marketData?.change}/>
                     </Flex>
@@ -147,7 +148,7 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
                     <Grid templateColumns="1fr 1fr" gap="10px">
                         <Flex direction="column" gap="4px" bg="hg.inset" borderRadius="12px" px="12px" py="10px" align="flex-start">
                             <chakra.span fontSize="12px" color="hg.text.faint">24h Price</chakra.span>
-                            <chakra.span fontWeight="700" fontSize="14px">{displayPrice} {quoteAsset?.ticker}</chakra.span>
+                            <chakra.span fontWeight="700" fontSize="14px">{priceLabel}</chakra.span>
                             <ChangePill change={marketData?.change}/>
                         </Flex>
                         <Flex direction="column" gap="4px" bg="hg.inset" borderRadius="12px" px="12px" py="10px" align="flex-start">

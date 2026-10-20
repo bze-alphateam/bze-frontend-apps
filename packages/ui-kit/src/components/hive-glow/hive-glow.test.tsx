@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
 
+import { rulesFor } from '../../test-support/css-rules';
 import { createHiveGlowSystem } from '../../theme';
 import {
     Change,
@@ -147,6 +148,17 @@ describe('cards', () => {
         expect(screen.getByTestId('stat-value').textContent).toBe('$1,200');
         expect(screen.getByTestId('change').getAttribute('data-direction')).toBe('up');
         expect(screen.queryByTestId('icon-tile')).toBeNull();
+    });
+
+    it('StatCard shrinks on phones so three fit in a row', () => {
+        ui(<StatCard label="Pools" value="12" />);
+        const value = rulesFor(screen.getByTestId('stat-value'));
+        const card = rulesFor(screen.getByTestId('stat-card'));
+
+        expect(value).toMatch(/font-size:\s*16px/);
+        expect(value).toMatch(/font-size:\s*22px/);
+        expect(card).toMatch(/padding-inline:\s*12px/);
+        expect(card).toMatch(/padding-inline:\s*18px/);
     });
 
     it('StatCard puts its icon on an outlined tile', () => {

@@ -10,6 +10,7 @@ vi.mock('../../constants/chain', async (importActual) => ({
     isTestnetChain: () => chain.testnet,
 }));
 
+import { rulesFor } from '../../test-support/css-rules';
 import { createHiveGlowSystem } from '../../theme';
 import type { EcosystemApp } from '../../constants/ecosystem';
 import { AppHeader, type AppHeaderNavItem, type AppHeaderProps } from './index';
@@ -70,6 +71,16 @@ describe('AppHeader', () => {
         expect(within(nav).getByRole('link', { name: /^Governance/ }).getAttribute('aria-current')).toBe('page');
         expect(within(nav).getByRole('link', { name: 'Dashboard' }).hasAttribute('aria-current')).toBe(false);
         expect(within(nav).getByRole('button', { name: 'Apps' })).toBeTruthy();
+    });
+
+    it('spans the full width with 32 px sides, never the 1200 px page container', () => {
+        header();
+
+        const row = screen.getByTestId('app-header').firstElementChild as HTMLElement;
+        const css = rulesFor(row);
+
+        expect(css).not.toMatch(/max-width/);
+        expect(css).toMatch(/padding-inline:\s*32px/);
     });
 
     it('shows the badge count with its accessible label', () => {
