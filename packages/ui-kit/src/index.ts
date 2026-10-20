@@ -316,6 +316,8 @@ export { useBridgeableAssets } from './hooks/useBridgeableAssets';
 export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';
 export type { BridgeableAsset, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
 export { useWithdrawableBalances } from './hooks/useWithdrawableBalances';
+export { useBridgeAvailability } from './hooks/useBridgeAvailability';
+export type { BridgeAvailability } from './hooks/useBridgeAvailability';
 export type { WithdrawableAsset, WithdrawableAssetKind, WithdrawDestinationChain, UseWithdrawableBalancesResult } from './hooks/useWithdrawableBalances';
 
 // === Components ===
