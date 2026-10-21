@@ -1,6 +1,7 @@
 'use client';
 
 import NextLink from 'next/link'
+import {type ComponentProps, forwardRef} from 'react'
 import {AppHeader, AppHeaderNavItem, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {PendingTx, usePendingTx} from "@/contexts/pending-tx";
@@ -32,6 +33,15 @@ const navSubitems: { [key: string]: string } = {
     '/denom-reward/schedule': '/rewards',
     '/denom-reward/airdrop': '/rewards',
 }
+
+/**
+ * Nav links without prefetch. The Tokens and Rewards items point at pages that read their view from
+ * the query; prefetching the bare path of the page being shown stopped its own `router.replace`
+ * of the query (the /rewards filters) from landing (BFE-260 e2e).
+ */
+const NavLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof NextLink>>(function NavLink(props, ref) {
+    return <NextLink ref={ref} prefetch={false} {...props} />
+})
 
 /** The nav item a wizard page belongs to. */
 const ownerOf = (href: string) => {
@@ -69,7 +79,7 @@ export const TopNavBar = () => {
         <AppHeader
             app="factory"
             appName="BeeZee Factory"
-            linkAs={NextLink}
+            linkAs={NavLink}
             items={withPendingBadges(navItems.map((item) => ({
                 ...item,
                 active: currentPathName === item.href || item.href === navSubitems[currentPathName],
