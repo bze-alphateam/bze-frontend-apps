@@ -53,6 +53,8 @@ export interface DoneScreenProps {
     /** A value worth keeping (denom, pool id) with Copy; no value yet shows a skeleton. */
     code?: { label: string; value?: string };
     links?: DoneLink[];
+    /** Many links of one kind (e.g. one per transaction), folded under `summary` below `links`. */
+    linkList?: { summary: string; links: DoneLink[] };
     /** For the "What's next for <subject>" heading, e.g. "HONEY" or "HONEY/BZE". */
     subject: string;
     /** An amber note between the hero and the next steps, e.g. "No prizes funded yet." */
@@ -302,6 +304,7 @@ export function DoneScreen({
     text,
     code,
     links = [],
+    linkList,
     subject,
     notice,
     recommended,
@@ -387,6 +390,18 @@ export function DoneScreen({
                                 </Button>
                             ))}
                         </Flex>
+                    )}
+                    {linkList && linkList.links.length > 0 && (
+                        <Box as="details" fontSize="14px" maxW="100%" data-testid="done-link-list">
+                            <Box as="summary" cursor="pointer" color="hg.link" fontWeight="600">{linkList.summary}</Box>
+                            <Flex as="ul" direction="column" align="center" gap="4px" mt="8px" mb="0" p="0" listStyleType="none">
+                                {linkList.links.map(l => (
+                                    <chakra.li key={l.href}>
+                                        <AppLink app={l.app ?? 'explorer'} href={l.href}>{l.label}</AppLink>
+                                    </chakra.li>
+                                ))}
+                            </Flex>
+                        </Box>
                     )}
                 </VStack>
 

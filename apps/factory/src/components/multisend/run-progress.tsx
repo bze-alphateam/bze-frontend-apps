@@ -21,6 +21,8 @@ interface RunProgressProps {
     /** Why the next batch can't be sent (wallet, balance), or ''. */
     blocker: string;
     reportHref?: string;
+    /** Off while the current batch's transaction panel shows its own actions. Default true. */
+    actions?: boolean;
     onSendNext: () => void;
     onStop: () => void;
     onContinue: () => void;
@@ -55,7 +57,7 @@ function BatchStatus({ batch, checkError, onCheckAgain }: { batch: RunBatch; che
 
 /** "Transaction i of k": one row per batch, one signature per click, stop and resume. */
 export function RunProgress({
-    run, decimals, ticker, paused, checkErrors, sendingId, blocker, reportHref,
+    run, decimals, ticker, paused, checkErrors, sendingId, blocker, reportHref, actions = true,
     onSendNext, onStop, onContinue, onCheckAgain, onSendAgain,
 }: RunProgressProps) {
     const k = run.batches.length
@@ -65,7 +67,16 @@ export function RunProgress({
     const busy = sendingId !== undefined
 
     return (
-        <Box as="section" aria-label="Sending progress" p="18px" borderRadius="hg.lg" borderWidth="1px" borderColor="hg.hairline" bg="hg.card">
+        <Box
+            as="section"
+            aria-label="Sending progress"
+            p={{ base: '16px', md: '22px' }}
+            borderRadius="hg.lg"
+            borderWidth="1px"
+            borderColor={sent === k ? 'hg.success/45' : 'app.solid/60'}
+            bg="hg.card"
+            boxShadow="hg.featured"
+        >
             <VStack align="stretch" gap="12px">
                 <chakra.h3 m="0" fontSize="14px" fontWeight="700">{`Transaction ${Math.min(sent + 1, k)} of ${k}`}</chakra.h3>
                 <Box
@@ -109,7 +120,7 @@ export function RunProgress({
                     </WarningNote>
                 ))}
 
-                {paused ? (
+                {!actions ? null : paused ? (
                     <Button variant={hgVariant('primary')} size="xl" onClick={onContinue}>Continue</Button>
                 ) : next && (
                     <HStack gap="8px" wrap="wrap">
@@ -127,7 +138,7 @@ export function RunProgress({
                         <Button {...softButton} size="lg" onClick={onStop} disabled={busy}>Stop for now</Button>
                     </HStack>
                 )}
-                {!paused && blocker && <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center">{blocker}</Text>}
+                {actions && !paused && blocker && <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center">{blocker}</Text>}
 
                 {reportHref && sent > 0 && (
                     <Button asChild size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} alignSelf="center">
