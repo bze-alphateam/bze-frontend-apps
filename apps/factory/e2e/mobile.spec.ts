@@ -22,7 +22,9 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/market/new", ready: heading("Create an order-book market")},
     {path: `/pool/new?base=${VDL}`, ready: heading("Create a liquidity pool")},
     // /pool/add is only a notice that moves on to the DEX after 1.5 s (BFE-262): no phone layout to check.
-    {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Run a campaign with an end date/)},
+    {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Create a simple reward/)},
+    // testnet's one simple reward (#000000000000) has finished: it can still be extended.
+    {path: "/reward/extend?id=000000000000", ready: (page) => page.getByTestId("extend-terms")},
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},

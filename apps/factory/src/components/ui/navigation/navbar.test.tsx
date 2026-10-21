@@ -31,7 +31,7 @@ const renderNav = () => render(
 
 const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/multisend", "/reach", "/raffle/new"];
 const TOKENS = ["/tokens", "/tokens/token", "/official"];
-const REWARDS = ["/rewards", "/denom-reward/token", "/denom-reward/schedule", "/denom-reward/airdrop"];
+const REWARDS = ["/rewards", "/reward/extend", "/denom-reward/token", "/denom-reward/schedule", "/denom-reward/airdrop"];
 
 // The desktop nav's links (the logo links home too).
 const active = () => within(screen.getAllByRole("navigation", { name: "Main" })[0]).getAllByRole("link").filter(l => l.getAttribute("aria-current") === "page").map(l => l.textContent);
@@ -54,7 +54,7 @@ describe("TopNavBar", () => {
         expect(active()).toEqual(["Tokens"]);
     });
 
-    it.each([...REWARDS, "/reward/extend"])("%s lights up Rewards", (path) => {
+    it.each(REWARDS)("%s lights up Rewards", (path) => {
         m.path = path;
         renderNav();
         expect(active()).toEqual(["Rewards"]);

@@ -70,7 +70,7 @@ describe("Choose staking rewards", () => {
     it("lists the three ways to add to any existing reward", () => {
         renderPage();
         expect(existing().getByText("Anyone can do these on any reward. Funding one doesn't make you its owner.")).toBeInTheDocument();
-        expect(existing().getByRole("link", { name: /Extend a simple reward/ })).toHaveAttribute("href", expect.stringMatching(/^\/rewards\?tab=programs/));
+        expect(existing().getByRole("link", { name: /Extend a simple reward/ })).toHaveAttribute("href", "/reward/extend");
         expect(existing().getByRole("link", { name: /Add a daily prize/ })).toHaveAttribute("href", "/denom-reward/schedule");
         expect(existing().getByRole("link", { name: /Airdrop to stakers, once/ })).toHaveAttribute("href", "/denom-reward/airdrop");
     });
