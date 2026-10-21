@@ -1,381 +1,439 @@
 "use client"
 
-import React, { useMemo, useState } from 'react'
-import { Box, HStack, Text, VStack, chakra } from '@chakra-ui/react'
+import React, { useState } from 'react'
+import { Box, chakra, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import {
     GradientText,
     Shimmer,
-    TokenLogo,
-    amountToUAmount,
-    getExplorerTxURL,
     getChainName,
-    getCommunitiesApp,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
     useBalance,
+    useCreationFees,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
-import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { schedulePayRows, useScheduleGift } from '@/hooks/useScheduleGift'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
+import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import { Notice, TextField } from '@/components/manage/denom-reward-form-parts'
-import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
+import { PrizeDone } from '@/components/reward-wizard/prize-done'
+import { PrizeSlotNote } from '@/components/reward-wizard/prize-slot-note'
+import { StakedTokenStep } from '@/components/reward-wizard/staked-token-step'
 import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
-import { validateAmount } from '@/components/token-wizard/validation'
+import { AssetPicker } from '@/components/ui/asset-picker'
 import {
-    BlockerNote,
-    ContinueRow,
     FormFrame,
     FormPage,
     GuidedForm,
+    Hint,
     OutcomePanel,
     PayPanel,
     Question,
-    SubmitBlock,
+    ReviewStep,
     SubmitNote,
-    SuccessPanel,
+    TipNote,
+    TxPanel,
     useGuidedSteps,
     useReturnTo,
 } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
-import {
-    MAX_SCHEDULE_DAYS,
-    MIN_SCHEDULE_DAYS,
-    scheduleDaysLeft,
-    denomRewardHref,
-    validateScheduleDays,
-} from '@/lib/denom-reward'
+import { checkDailyPrize, dailyPrizeSummary } from '@/lib/daily-prize'
+import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, prizeSlot } from '@/lib/denom-reward'
+import { type PrizeDoneInput, scheduleExtendFacts, stakedTokenOk } from '@/lib/prize-wizard'
 
-const ADD_STEPS = ['prize', 'daily', 'days'] as const
-const EXTEND_STEPS = ['more'] as const
+const ADD_STEPS = ['token', 'prize', 'review'] as const
+const EXTEND_STEPS = ['schedule', 'days', 'review'] as const
 type Step = typeof ADD_STEPS[number] | typeof EXTEND_STEPS[number]
+type FormStep = Exclude<Step, 'review'>
 
-const fmtDays = (n: number) => n.toLocaleString('en-US')
+const fmtDays = (n: number) => `${n.toLocaleString('en-US')} day${n === 1 ? '' : 's'}`
+const moreDays = (n: number) => `${n.toLocaleString('en-US')} more day${n === 1 ? '' : 's'}`
+
+function TermRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <HStack justify="space-between" align="start" gap="12px">
+            <Text fontSize="14px" color="fg.muted">{label}</Text>
+            <Text fontSize="14px" fontWeight="600" textAlign="right">{value}</Text>
+        </HStack>
+    )
+}
 
 function ScheduleFormContent() {
     const { denomParam, getQueryParam, navigate } = useNavigationWithParams()
     const returnTo = useReturnTo()
-    const denom = denomParam ?? ''
     const scheduleId = getQueryParam('schedule') ?? undefined
     const isExtend = scheduleId !== undefined
 
     const { address } = useChain(getChainName())
-    const { tx } = useFactoryTx()
-    const { asset: stakingAsset } = useAsset(denom)
-    const { denomReward, schedules, prizes, isLoading, hasError } = useDenomReward(denom)
+    const connected = Boolean(address)
 
-    const schedule = isExtend ? schedules.find(s => s.schedule_id === scheduleId) : undefined
-
+    // Add: step 1 picks whose stakers get it, answered by ?denom=. Extend: the link names both.
+    const [denom, setDenom] = useState(() => denomParam ?? '')
     const [pickedPrize, setPickedPrize] = useState('')
     const [dailyInput, setDailyInput] = useState('')
     const [daysInput, setDaysInput] = useState('')
-    const [answered, setAnswered] = useState<Step[]>([])
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [doneTx, setDoneTx] = useState<{ txHash: string; escrowLabel: string; days: string } | undefined>(undefined)
+    const [answered, setAnswered] = useState<FormStep[]>(() => (isExtend ? ['schedule'] : denomParam ? ['token'] : []))
+    const [done, setDone] = useState<{ input: PrizeDoneInput; hash: string } | undefined>(undefined)
+    // Today, for the days-left and end dates.
+    const [now] = useState(() => new Date())
 
-    // Extend mode: prize and daily amount are the schedule's own; only extra days are entered.
+    const { asset: stakingAsset } = useAsset(denom)
+    const dr = useDenomReward(denom)
+    const { denomReward, schedules, prizes } = dr
+    const schedule = isExtend ? schedules.find(s => s.schedule_id === scheduleId) : undefined
+
     const prizeDenom = schedule ? schedule.prize_denom : pickedPrize
     const { asset: prizeAsset } = useAsset(prizeDenom)
     const { balance: prizeBalance } = useBalance(prizeDenom)
 
-    const dailyError = schedule || !prizeAsset ? '' : validateAmount(dailyInput, prizeAsset.decimals)
-    const daysError = validateScheduleDays(daysInput, schedule?.duration)
-    const extendRoom = schedule ? Math.max(0, MAX_SCHEDULE_DAYS - schedule.duration) : undefined
+    const tokenOk = stakedTokenOk('dailyPrize', dr)
+    const ticker = stakingAsset?.ticker ?? ''
+    // Until the asset list loads, plain words stand in for the tickers: a raw factory denom is one
+    // long unbreakable word that would push the page wider than a phone.
+    const stakedName = ticker || 'the token'
+    const prizeTicker = prizeAsset?.ticker ?? ''
+    const display = (amount: { toString(): string }) => prizeAsset
+        ? prettyAmount(uAmountToBigNumberAmount(amount.toString(), prizeAsset.decimals))
+        : amount.toString()
 
-    const dailyUAmount = useMemo(() => {
-        if (schedule) return schedule.daily_amount
-        if (!prizeAsset || dailyError !== '') return undefined
-        return amountToUAmount(dailyInput, prizeAsset.decimals)
-    }, [schedule, prizeAsset, dailyError, dailyInput])
-
-    const gift = useScheduleGift({
-        denom,
-        prizes,
-        prizeDenom,
-        dailyUAmount,
-        days: daysError === '' ? Number(daysInput.trim()) : undefined,
-        scheduleId: schedule?.schedule_id,
-    })
-    const { slot, costs, afford } = gift
-
-    const steps = useGuidedSteps<Step>(isExtend ? EXTEND_STEPS : ADD_STEPS, {
-        prize: answered.includes('prize') && Boolean(prizeAsset) && !slot.capReached,
-        daily: answered.includes('daily') && dailyError === '' && dailyUAmount !== undefined,
-        days: answered.includes('days') && daysError === '',
-        more: answered.includes('more') && daysError === '',
+    // Add: the shared daily prize checks (BFE-265).
+    const { fees, denomRewardLimits } = useCreationFees()
+    const maxPrizes = denomRewardLimits.maxPrizeDenomsPerDr
+    const prizeFee = fees.createDenomRewardPrizeFee
+    const slot = prizeSlot(prizes, pickedPrize, maxPrizes)
+    const check = checkDailyPrize({
+        prizeDenom: pickedPrize,
+        prizeDecimals: prizeAsset?.decimals,
+        dailyInput,
+        daysInput,
+        slot,
+        feesKnown: Boolean(prizeFee),
+        prizeBalance: connected ? prizeBalance.amount : undefined,
     })
 
-    const answer = (key: Step) => {
+    // Extend: the extra days under the 36,500 cap.
+    const ext = schedule ? scheduleExtendFacts(schedule, daysInput, now) : undefined
+    const extendShort = Boolean(ext?.escrow) && connected && prizeBalance.amount.lt(ext?.escrow ?? 0)
+
+    const gift = useScheduleGift(isExtend
+        ? { denom, prizes, prizeDenom, dailyUAmount: schedule?.daily_amount, days: ext?.extra, scheduleId: schedule?.schedule_id }
+        : { denom, prizes, prizeDenom: pickedPrize, dailyUAmount: check.dailyUAmount, days: check.days })
+
+    const stepKeys: readonly Step[] = isExtend ? EXTEND_STEPS : ADD_STEPS
+    const steps = useGuidedSteps<Step>(stepKeys, {
+        token: answered.includes('token') && tokenOk,
+        prize: answered.includes('prize') && check.valid,
+        schedule: answered.includes('schedule') && Boolean(schedule),
+        days: answered.includes('days') && ext?.extra !== undefined && !extendShort,
+        review: false,
+    })
+
+    const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))
         steps.close()
     }
 
-    const allAnswered = (isExtend ? EXTEND_STEPS : ADD_STEPS).every(k => steps.state[k] === 'done')
-    const isComplete = allAnswered && Boolean(prizeDenom) && dailyError === '' && daysError === '' && costs.escrow !== undefined
-    const canConfirm = isComplete && Boolean(address) && gift.canSign
+    const perDay = schedule ? display(schedule.daily_amount) : check.dailyUAmount !== undefined ? display(check.dailyUAmount) : ''
+    const totalText = gift.costs.escrow ? `${display(gift.costs.escrow.amount)} ${prizeTicker}` : ''
+    const prize = !isExtend && perDay && check.days !== undefined ? dailyPrizeSummary(perDay, prizeTicker, check.days) : ''
 
-    const back = () => navigate(denomRewardHref(denom))
+    const buildMsgs = () => {
+        const msg = address ? gift.message(address) : undefined
+        return msg ? [msg] : undefined
+    }
+    const onDone = ({ input, hash }: WizardTxDone<PrizeDoneInput>) => {
+        void dr.refresh()
+        if (input) setDone({ input, hash })
+    }
+    const { submit, panelProps } = useWizardTx<PrizeDoneInput>(buildMsgs, {
+        title: isExtend ? `Extend a daily prize for ${stakedName} stakers` : `Daily prize for ${stakedName} stakers`,
+        onDone,
+    })
 
-    // Until the asset list loads, plain words stand in for the tickers: a raw factory denom is
-    // one long unbreakable word that would push the page wider than a phone.
-    const stakingTicker = stakingAsset?.ticker ?? 'the token'
-    const stakingPossessive = stakingAsset ? `${stakingAsset.ticker}'s` : "the token's"
-    const prizeTicker = prizeAsset?.ticker ?? ''
-    const escrowDisplay = costs.escrow && prizeAsset
-        ? uAmountToBigNumberAmount(costs.escrow.amount, prizeAsset.decimals)
-        : undefined
-    const escrowText = escrowDisplay ? `${prettyAmount(escrowDisplay)} ${prizeTicker}` : ''
-    const dailyText = dailyUAmount !== undefined && prizeAsset
-        ? `${prettyAmount(uAmountToBigNumberAmount(dailyUAmount, prizeAsset.decimals))} ${prizeTicker}`
-        : ''
+    if (done) return <PrizeDone input={done.input} hash={done.hash} />
 
-    const submit = async () => {
-        const msg = address && canConfirm ? gift.message(address) : undefined
-        if (!address || !msg) return
-        const days = daysInput.trim()
+    const back = () => navigate(returnTo?.href ?? '/rewards')
 
-        setIsSubmitting(true)
-        try {
-            await tx([msg], { onSuccess: (res) => setDoneTx({ txHash: res.txhash, escrowLabel: escrowText, days }) })
-        } finally {
-            setIsSubmitting(false)
+    // Extend needs the reward and the schedule the link names.
+    if (isExtend && !panelProps) {
+        if (!denom) {
+            return <Notice title="No token selected" onBack={back}>Open this form from a daily prize to extend it.</Notice>
+        }
+        if (dr.isLoading) {
+            return (
+                <FormFrame>
+                    <VStack align="stretch" gap="16px">
+                        <Shimmer h="40px" w="256px" />
+                        <Shimmer h="256px" borderRadius="hg.lg" />
+                    </VStack>
+                </FormFrame>
+            )
+        }
+        if (dr.hasError) {
+            return (
+                <Notice title="Couldn't load the compounded reward" onBack={back}>
+                    The chain query failed. The node may be down. Try again later.
+                </Notice>
+            )
+        }
+        if (!denomReward) {
+            return (
+                <Notice title="No compounded reward yet" onBack={back}>
+                    {`${ticker || 'This token'} has no compounded reward. Make it stakable first, then start a daily prize.`}
+                </Notice>
+            )
+        }
+        if (!schedule) {
+            return (
+                <Notice title="Schedule not found" onBack={back}>
+                    This daily prize no longer runs. It may have paid its last day. Add a new one instead.
+                </Notice>
+            )
         }
     }
 
-    if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s compounded reward.</Notice>
+    const isComplete = stepKeys.every(k => k === 'review' || steps.state[k] === 'done')
+    const canSign = isComplete && connected && gift.canSign && !extendShort
+
+    const sign = () => {
+        if (!canSign) return
+        const names = { stakedDenom: denom, stakedTicker: ticker, prizeDenom, prizeTicker, perDay }
+        submit(isExtend
+            ? { ...names, kind: 'extend', days: ext?.extra, scheduleId: schedule?.schedule_id, newEnd: ext?.newEnd }
+            : { ...names, kind: 'add', dailyAmount: check.dailyUAmount?.toFixed(0), days: check.days })
     }
 
-    if (isLoading) {
-        return (
-            <FormFrame>
-                <VStack align="stretch" gap="16px">
-                    <Shimmer h="40px" w="256px" />
-                    <Shimmer h="256px" borderRadius="hg.lg" />
-                </VStack>
-            </FormFrame>
-        )
-    }
-
-    if (hasError) {
-        return (
-            <Notice title="Couldn't load the compounded reward" onBack={back}>
-                The chain query failed — the node may be down, or not run chain v8.2.0 yet. Try again later.
-            </Notice>
-        )
-    }
-
-    if (!denomReward) {
-        return (
-            <Notice title="No compounded reward yet" onBack={back}>
-                {`${stakingAsset?.ticker ?? 'This token'} has no compounded reward. Make it stakable first, then start a daily prize.`}
-            </Notice>
-        )
-    }
-
-    if (isExtend && !schedule) {
-        return (
-            <Notice title="Schedule not found" onBack={back}>
-                This schedule no longer runs — it may have paid its last day. Add a new schedule instead.
-            </Notice>
-        )
-    }
-
-    const holderRewardsLabel = `${stakingPossessive} compounded reward`
-
-    if (doneTx) {
-        return (
-            <SuccessPanel
-                title={isExtend ? 'Daily prize extended' : 'Daily prize started'}
-                text={isExtend
-                    ? `${doneTx.escrowLabel} was locked for ${doneTx.days} more days of prizes for everyone staking ${stakingTicker}.`
-                    : `${doneTx.escrowLabel} was locked. Everyone staking ${stakingTicker} now shares ${dailyText} a day.`}
-                links={[
-                    { label: 'Explorer', href: getExplorerTxURL(doneTx.txHash), app: 'explorer' },
-                    {
-                        label: 'Communities',
-                        href: `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(denom)}`,
-                        app: 'communities',
-                    },
-                ]}
-                primary={returnTo
-                    ? { label: `Back to ${returnTo.label}`, href: returnTo.href }
-                    : { label: `Back to ${holderRewardsLabel}`, href: denomRewardHref(denom) }}
-            />
-        )
-    }
-
-    const escrowLine = (
-        <Box fontSize="14px">
-            <Text color="fg.muted">
-                Locked now:{' '}
-                <Text as="span" fontWeight="600" color="fg" data-testid="escrow-amount">
-                    {escrowText || `— ${prizeTicker}`.trim()}
-                </Text>{' '}
-                (daily prize × {isExtend ? 'extra days' : 'days'}), taken from your wallet in full when you sign.
-                It can&apos;t be cancelled or withdrawn.
-            </Text>
-        </Box>
-    )
-
-    const daysHelper = isExtend && schedule
-        ? `Added to the schedule's ${fmtDays(schedule.duration)} days (at most ${fmtDays(MAX_SCHEDULE_DAYS)} in total). Days with nobody staking are skipped.`
-        : `${MIN_SCHEDULE_DAYS}–${fmtDays(MAX_SCHEDULE_DAYS)} payout days. Days with nobody staking are skipped, so it can run longer than this in calendar days.`
+    const payRows = schedulePayRows(gift, { stakingTicker: stakedName, stakingPossessive: ticker ? `${ticker}'s` : "the token's", prizeTicker })
+    const extraDays = ext?.extra ?? 0
 
     const aside = (
         <>
             <OutcomePanel>
-                {escrowText && dailyText ? (
-                    <Text>
-                        <Text as="span" fontWeight="600">{escrowText}</Text> leaves your wallet now and is paid
-                        as {dailyText} a day{isExtend ? ` for ${daysInput.trim()} more days` : ''} to everyone
-                        staking {stakingTicker}, split by stake. It can&apos;t be cancelled or withdrawn.
+                {totalText ? (
+                    <Text data-testid="outcome">
+                        <chakra.span fontWeight="600">{totalText}</chakra.span>
+                        {isExtend
+                            ? ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day for ${fmtDays(extraDays)} more to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`
+                            : ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
                     </Text>
                 ) : (
                     <Text color="fg.muted">
                         {isExtend
                             ? 'Enter how many more days to see what leaves your wallet.'
-                            : 'Pick the prize, the daily amount and the days to see what leaves your wallet.'}
+                            : 'Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.'}
                     </Text>
                 )}
             </OutcomePanel>
-
             <PayPanel
-                rows={schedulePayRows(gift)}
+                rows={payRows}
                 moduleFee={isExtend ? undefined : gift.mainFee}
                 txKind={gift.txKind}
                 isLoading={!isExtend && gift.isFeeLoading}
                 feeUnknown={gift.feeUnknown}
             />
-
-            <SubmitBlock label={<>{isExtend ? 'Extend' : 'Start the daily prize'}</>} onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
-                {!address ? (
-                    <SubmitNote>Connect your wallet to fund this schedule.</SubmitNote>
-                ) : costs.escrow && !afford.isLoading && !afford.canAfford && afford.message && (
-                    <Text fontSize="14px" lineHeight="1.5" color="hg.danger.text" textAlign="center" role="alert">{afford.message}</Text>
-                )}
-            </SubmitBlock>
         </>
+    )
+
+    const review = panelProps ? (
+        <TxPanel {...panelProps} />
+    ) : (
+        <ReviewStep
+            {...steps.step('review')}
+            question="Everything right?"
+            leaves={payRows}
+            moduleFee={isExtend ? undefined : gift.mainFee}
+            txKind={gift.txKind}
+            isLoading={!isExtend && gift.isFeeLoading}
+            feeUnknown={gift.feeUnknown}
+            gets={isExtend
+                ? [{ label: 'Extension', value: `${moreDays(extraDays)} for everyone staking ${stakedName}` }]
+                : [{ label: VOCABULARY.dailyPrize.name, value: `A daily prize for ${stakedName} stakers` }]}
+            extra={isExtend
+                ? (ext?.newEnd ? [{ label: 'New end', value: `About ${ext.newEnd}` }] : [])
+                : (prize ? [{ label: 'Prize', value: prize }] : [])}
+            permanent={isExtend
+                ? ['Extra tokens are committed to stakers. The daily amount can\'t change']
+                : ['Committed tokens are paid out to stakers; the daily amount can\'t change']}
+            submitLabel={isExtend ? 'Extend daily prize' : 'Start daily prize'}
+            onSubmit={sign}
+            disabled={!canSign}
+            onBack={steps.back}
+        >
+            <Hint>Funding a prize doesn&apos;t make you the reward&apos;s owner.</Hint>
+            {!address ? (
+                <SubmitNote>Connect your wallet to fund this daily prize.</SubmitNote>
+            ) : isComplete && gift.costs.escrow && !gift.afford.isLoading && !gift.afford.canAfford && gift.afford.message && (
+                <SubmitNote tone="error">{gift.afford.message}</SubmitNote>
+            )}
+        </ReviewStep>
     )
 
     return (
         <GuidedForm
+            parent={returnTo ?? { href: '/rewards', label: 'Rewards' }}
+            crumb={VOCABULARY.dailyPrize.name}
             title={
                 <>
-                    {isExtend ? <>Extend a <GradientText>daily prize</GradientText></> : <>Give a little <GradientText>every day</GradientText></>}
+                    {isExtend ? <>Extend a <GradientText>daily prize</GradientText></> : <>Add a <GradientText>daily prize</GradientText></>}
                     <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
             subtitle={isExtend
-                ? `Fund more days of this ${stakingAsset ? `${stakingAsset.ticker} ` : ''}daily prize.`
-                : `Pay a daily prize to everyone staking ${stakingTicker}.`}
+                ? `Pay for more days of this daily prize for ${stakedName} stakers. Anyone can, on any token.`
+                : "Pay a prize every day to everyone staking a token. Any token's stakers, yours or not."}
             techTag={VOCABULARY.dailyPrize.tech}
-            parent={returnTo ?? { href: denomRewardHref(denom), label: holderRewardsLabel }}
-            crumb="Daily prize"
             aside={aside}
         >
-            {schedule ? (
+            {isExtend ? schedule && ext && (
                 <>
-                    <HStack gap="12px" px="14px" py="14px" borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.lg" bg="hg.card">
-                        <TokenLogo src={prizeAsset?.logo} symbol={prizeTicker} size="9" circular={true} />
-                        <VStack align="start" gap="2px">
-                            <Text fontSize="14px" fontWeight="600">{dailyText} / day</Text>
-                            <Text fontSize="12px" color="hg.text.faint">
-                                Runs {fmtDays(schedule.duration)} days, {fmtDays(schedule.payouts)} paid,{' '}
-                                {fmtDays(scheduleDaysLeft(schedule))} left
-                            </Text>
+                    <Question
+                        title="Daily prize"
+                        question="This daily prize"
+                        {...steps.step('schedule')}
+                        summary={`${perDay} ${prizeTicker} a day for ${stakedName} stakers · ${ext.daysLeft.toLocaleString('en-US')} days left`}
+                        action={{ label: 'Continue', onClick: () => answer('schedule') }}
+                    >
+                        <VStack as="section" aria-label="This daily prize" align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="schedule-terms">
+                            <Text fontSize="13px" fontWeight="700" color="fg.muted">Stays as it is</Text>
+                            <TermRow label="People stake" value={stakedName} />
+                            <TermRow label="Prize" value={prizeTicker} />
+                            <TermRow label="Shared every day" value={`${perDay} ${prizeTicker}`} />
+                            <TermRow label="Days left" value={`${ext.daysLeft.toLocaleString('en-US')} of ${schedule.duration.toLocaleString('en-US')}`} />
+                            <TermRow label="Ends" value={`About ${ext.end}`} />
                         </VStack>
-                    </HStack>
+                    </Question>
 
                     <Question
-                        title="How many more days?"
-                        {...steps.step('more')}
-                        summary={`${daysInput.trim()} more days`}
+                        title="Extra days"
+                        question="How many more days?"
+                        {...steps.step('days')}
+                        summary={ext.newEnd && `${moreDays(extraDays)} · new end about ${ext.newEnd}`}
+                        onBack={steps.back}
+                        action={{ label: 'Review extension', onClick: () => answer('days'), disabled: ext.extra === undefined || extendShort }}
                     >
                         <VStack align="stretch" gap="16px">
-                            {extendRoom === 0 && (
-                                <BlockerNote>
-                                    This schedule already runs the maximum of {fmtDays(MAX_SCHEDULE_DAYS)} days.
-                                </BlockerNote>
+                            <Text fontSize="14px" color="fg.muted">The daily amount can&apos;t change. You pay for the extra days up front.</Text>
+                            <Field.Root invalid={daysInput !== '' && ext.error !== ''} disabled={ext.room === 0}>
+                                <Field.Label>Extra days</Field.Label>
+                                <Input
+                                    placeholder="e.g. 30"
+                                    inputMode="numeric"
+                                    value={daysInput}
+                                    onChange={(e) => setDaysInput(e.target.value)}
+                                    maxW="200px"
+                                />
+                                <Field.HelperText>
+                                    {ext.room === 0
+                                        ? `This daily prize already runs the maximum of ${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} days.`
+                                        : `1–${ext.room.toLocaleString('en-US')} days. Days with nobody staking are skipped.`}
+                                </Field.HelperText>
+                                <Field.ErrorText>{ext.error}</Field.ErrorText>
+                            </Field.Root>
+
+                            {ext.escrow && (
+                                <Box p="14px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border" fontSize="14px" data-testid="extend-cost">
+                                    <Text fontFamily="mono" fontSize="13px">{`${perDay} ${prizeTicker}/day × ${fmtDays(extraDays)} = ${totalText}`}</Text>
+                                    <Text mt="6px" data-testid="extend-new-end">
+                                        {'New end: about '}
+                                        <chakra.strong>{ext.newEnd}</chakra.strong>
+                                        {` instead of ${ext.end}.`}
+                                    </Text>
+                                    {extendShort && (
+                                        <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
+                                            {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
+                                        </Text>
+                                    )}
+                                </Box>
                             )}
-                            <TextField
-                                label="Extra days"
-                                helper={daysHelper}
-                                error={extendRoom === 0 ? '' : daysError}
-                                value={daysInput}
-                                onChange={setDaysInput}
-                                placeholder="e.g. 30"
-                                inputMode="numeric"
-                                disabled={extendRoom === 0}
-                            />
-                            {escrowLine}
-                            <ContinueRow disabled={daysError !== ''} onContinue={() => answer('more')} />
+
+                            <TipNote lead="No fee:">extending only locks the extra days.</TipNote>
+                            <Hint>Anyone can extend any daily prize. Paying for days doesn&apos;t make you its owner.</Hint>
                         </VStack>
                     </Question>
                 </>
             ) : (
                 <>
                     <Question
-                        title="What do you give?"
+                        title="Staked token"
+                        question="Whose stakers get it?"
+                        {...steps.step('token')}
+                        summary={ticker && `${ticker} stakers`}
+                        action={{ label: 'Continue', onClick: () => answer('token'), disabled: !tokenOk }}
+                    >
+                        <StakedTokenStep
+                            flow="dailyPrize"
+                            value={denom}
+                            onChange={(asset) => setDenom(asset.denom)}
+                            ticker={ticker}
+                            denomReward={denomReward}
+                            isLoading={dr.isLoading}
+                            hasError={dr.hasError}
+                            onRetry={() => void dr.refresh()}
+                        />
+                    </Question>
+
+                    <Question
+                        title="Prize"
+                        question="What do they get every day?"
                         {...steps.step('prize')}
-                        summary={prizeTicker}
+                        summary={prize}
+                        onBack={steps.back}
+                        action={{ label: 'Continue', onClick: () => answer('prize'), disabled: !check.valid }}
                     >
                         <VStack align="stretch" gap="16px">
-                            <PrizeTokenQuestion
-                                denomReward={denomReward}
-                                prizes={prizes}
-                                maxPrizeDenoms={gift.maxPrizes}
-                                prizeFee={gift.prizeFee}
-                                value={pickedPrize}
-                                onSelect={(asset) => setPickedPrize(asset.denom)}
-                            />
-                            <ContinueRow disabled={!prizeAsset || slot.capReached} onContinue={() => answer('prize')} />
-                        </VStack>
-                    </Question>
-
-                    <Question
-                        title="How much a day?"
-                        {...steps.step('daily')}
-                        summary={dailyText ? `${dailyText} a day` : ''}
-                    >
-                        <VStack align="stretch" gap="16px">
+                            <AssetPicker label="Prize token (paid from your wallet)" value={pickedPrize} onSelect={(asset) => setPickedPrize(asset.denom)} />
                             {prizeAsset && (
-                                <TextField
-                                    label={`Prize per day (${prizeTicker})`}
-                                    helper={`of ${prettyAmount(uAmountToBigNumberAmount(prizeBalance.amount, prizeAsset.decimals))} ${prizeTicker}`}
-                                    error={dailyError}
-                                    value={dailyInput}
-                                    onChange={setDailyInput}
-                                    placeholder="e.g. 1000"
-                                />
+                                <PrizeSlotNote stakedTicker={stakedName} prizeTicker={prizeTicker} slot={slot} max={maxPrizes} prizeFee={prizeFee} />
                             )}
-                            <ContinueRow disabled={dailyError !== '' || dailyUAmount === undefined} onContinue={() => answer('daily')} />
-                        </VStack>
-                    </Question>
-
-                    <Question
-                        title="For how many days?"
-                        {...steps.step('days')}
-                        summary={`${daysInput.trim()} payout days`}
-                    >
-                        <VStack align="stretch" gap="16px">
-                            <TextField
-                                label="Payout days"
-                                helper={daysHelper}
-                                error={daysError}
-                                value={daysInput}
-                                onChange={setDaysInput}
-                                placeholder="e.g. 30"
-                                inputMode="numeric"
-                            />
-                            {escrowLine}
-                            <ContinueRow disabled={daysError !== ''} onContinue={() => answer('days')} />
+                            {prizeAsset && (
+                                <>
+                                    <TextField
+                                        label={`Prize per day (${prizeTicker})`}
+                                        helper={connected ? `You hold ${display(prizeBalance.amount)} ${prizeTicker}.` : 'Shared by everyone staking, by how much each stakes.'}
+                                        error={check.dailyError}
+                                        value={dailyInput}
+                                        onChange={setDailyInput}
+                                        placeholder="e.g. 50"
+                                    />
+                                    <TextField
+                                        label="Payout days"
+                                        helper={`${MIN_SCHEDULE_DAYS}–${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} payout days. Days with nobody staking are skipped.`}
+                                        error={check.daysError}
+                                        value={daysInput}
+                                        onChange={setDaysInput}
+                                        placeholder="e.g. 30"
+                                        inputMode="numeric"
+                                    />
+                                </>
+                            )}
+                            {check.escrow !== undefined && check.days !== undefined && (
+                                <Box fontSize="14px" data-testid="prize-sentence">
+                                    <Text>
+                                        {`Everyone staking ${stakedName} shares `}
+                                        <chakra.strong>{`${perDay} ${prizeTicker} a day`}</chakra.strong>
+                                        {' for '}
+                                        <chakra.strong>{fmtDays(check.days)}</chakra.strong>
+                                        {'.'}
+                                    </Text>
+                                    <Text mt="6px" fontFamily="mono" fontSize="13px" color="fg.muted">
+                                        {`${perDay} ${prizeTicker}/day × ${fmtDays(check.days)} = `}
+                                        <chakra.span color="fg" fontWeight="600" data-testid="escrow-amount">{totalText}</chakra.span>
+                                    </Text>
+                                    {check.short && (
+                                        <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
+                                            {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
+                                        </Text>
+                                    )}
+                                </Box>
+                            )}
                         </VStack>
                     </Question>
                 </>
             )}
+
+            {review}
         </GuidedForm>
     )
 }

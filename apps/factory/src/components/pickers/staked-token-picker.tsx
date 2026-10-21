@@ -35,6 +35,8 @@ import {
 export interface TokenState {
     text: string;
     tone: 'good' | 'muted' | 'warn';
+    /** The row can't be picked (e.g. an airdrop to a token nobody stakes); the text says why. */
+    disabled?: boolean;
 }
 
 const TONE_COLOR: Record<TokenState['tone'], string> = {
@@ -82,11 +84,13 @@ function TokenOption({ row, line, state, selected, onPick }: {
     onPick: () => void;
 }) {
     const { asset } = row
+    const disabled = Boolean(state?.disabled)
     return (
         <chakra.button
             type="button"
             role="radio"
             aria-checked={selected}
+            disabled={disabled}
             aria-label={`${asset.name} · ${asset.ticker}`}
             display="flex"
             alignItems="center"
@@ -102,6 +106,7 @@ function TokenOption({ row, line, state, selected, onPick }: {
             bg={selected ? 'app.subtle' : 'transparent'}
             cursor="pointer"
             _hover={{ bg: selected ? 'app.subtle' : 'hg.inset' }}
+            _disabled={{ cursor: 'not-allowed', opacity: 0.7, _hover: { bg: 'transparent' } }}
             focusVisibleRing="outside"
             onClick={onPick}
             data-testid="picker-row"

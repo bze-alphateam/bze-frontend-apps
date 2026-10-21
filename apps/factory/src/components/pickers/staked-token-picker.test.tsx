@@ -176,6 +176,20 @@ describe("StakedTokenPicker", () => {
         expect(screen.getByRole("link", { name: "Airdrop to stakers" })).toHaveAttribute("href", `/denom-reward/airdrop?denom=${enc}`);
     });
 
+    it("a row whose state is disabled can't be picked, and says why", async () => {
+        const airdropState = (_a: Asset, d?: DenomReward) => d && d.staked_amount === "0"
+            ? { text: "Nothing staked · airdrop waits", tone: "warn" as const, disabled: true }
+            : { text: "staked", tone: "good" as const };
+        renderPicker({ mode: "hasCompounded", stateOf: airdropState });
+        const lp = group("All tokens").getByRole("radio", { name: /pool shares/ });
+        expect(lp).toBeDisabled();
+        expect(within(lp).getByText("Nothing staked · airdrop waits")).toBeInTheDocument();
+        await userEvent.click(lp);
+        expect(onChange).not.toHaveBeenCalled();
+        await userEvent.click(group("All tokens").getByRole("radio", { name: "BeeZee · BZE" }));
+        expect(onChange).toHaveBeenCalledWith(BZE);
+    });
+
     it("a failed list says so and retries", async () => {
         data.drs = { list: undefined, isLoading: false, hasError: true, retry: vi.fn() };
         renderPicker();

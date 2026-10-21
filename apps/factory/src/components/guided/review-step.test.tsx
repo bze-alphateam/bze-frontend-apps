@@ -99,6 +99,12 @@ describe("ReviewStep", () => {
         expect(screen.queryByText("Factory fee")).not.toBeInTheDocument();
     });
 
+    it("a blocker replaces the final button", () => {
+        renderReview({ blocker: <p>Nobody is staking any more.</p> });
+        expect(screen.getByText("Nobody is staking any more.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create token" })).not.toBeInTheDocument();
+    });
+
     it("is a quiet row until the earlier steps are done", () => {
         renderReview({ state: "todo" });
         expect(screen.getByRole("region", { name: "Review" })).toHaveAttribute("data-state", "todo");
