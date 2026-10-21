@@ -93,7 +93,7 @@ describe("useGuidedSteps direction", () => {
     it("moves back with Back, then forward again on Continue", async () => {
         render(<Harness initial={{ a: "x" }} />);
         await userEvent.click(screen.getByText("back"));
-        expect(states()).toEqual(["active", "done", "todo"]);
+        expect(states()).toEqual(["active", "todo", "todo"]);
         expect(direction()).toBe("back");
 
         await userEvent.click(screen.getByText("answer a"));

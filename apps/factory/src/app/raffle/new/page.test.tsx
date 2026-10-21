@@ -126,7 +126,9 @@ describe("/raffle/new", () => {
     it("asks the six questions and shows the warnings, no Factory fee and the gas kind", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Run a burning raffle" })).toBeInTheDocument();
-        expect(screen.getByText("Burning raffle")).toBeInTheDocument();
+        // Once in the breadcrumb ("Create / Burning raffle"), once as the tool's tech tag.
+        expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Burning raffle")).toBeInTheDocument();
+        expect(screen.getAllByText("Burning raffle")).toHaveLength(2);
         for (const title of Object.values(Q)) expect(question(title)).toBeInTheDocument();
         expect(screen.getByText("The pot leaves your wallet now and can't be taken back.")).toBeInTheDocument();
         expect(screen.getByText("Once started, a raffle can't be stopped or changed.")).toBeInTheDocument();
