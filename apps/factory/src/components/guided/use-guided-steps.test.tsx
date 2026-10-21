@@ -20,8 +20,12 @@ function Harness({ initial = {} }: { initial?: Partial<Record<(typeof KEYS)[numb
                     <button onClick={() => { setAnswers(s => ({ ...s, [k]: `${k}-answer` })); steps.close(); }}>answer {k}</button>
                     <button onClick={() => setAnswers(s => ({ ...s, [k]: "bad" }))}>break {k}</button>
                     <button onClick={() => steps.open(k)}>open {k}</button>
+                    <button onClick={steps.step(k).onEdit}>edit {k}</button>
+                    <span data-testid={`number-${k}`}>{steps.step(k).number}/{steps.step(k).total}</span>
                 </div>
             ))}
+            <span data-testid="direction">{steps.direction}</span>
+            <button onClick={steps.back}>back</button>
         </div>
     );
 }
@@ -67,5 +71,47 @@ describe("useGuidedSteps", () => {
         await userEvent.click(screen.getByText("open c"));
         await userEvent.click(screen.getByText("break a"));
         expect(states()).toEqual(["active", "done", "done"]);
+    });
+});
+
+describe("useGuidedSteps direction", () => {
+    const direction = () => screen.getByTestId("direction").textContent;
+
+    it("numbers each step out of the total", () => {
+        render(<Harness />);
+        expect(screen.getByTestId("number-b").textContent).toBe("2/3");
+    });
+
+    it("moves forward when a step is answered", async () => {
+        render(<Harness />);
+        expect(direction()).toBe("forward");
+        await userEvent.click(screen.getByText("answer a"));
+        expect(states()).toEqual(["done", "active", "todo"]);
+        expect(direction()).toBe("forward");
+    });
+
+    it("moves back with Back, then forward again on Continue", async () => {
+        render(<Harness initial={{ a: "x" }} />);
+        await userEvent.click(screen.getByText("back"));
+        expect(states()).toEqual(["active", "done", "todo"]);
+        expect(direction()).toBe("back");
+
+        await userEvent.click(screen.getByText("answer a"));
+        expect(states()).toEqual(["done", "active", "todo"]);
+        expect(direction()).toBe("forward");
+    });
+
+    it("moves back when an earlier step is edited", async () => {
+        render(<Harness initial={{ a: "x", b: "y" }} />);
+        await userEvent.click(screen.getByText("edit a"));
+        expect(states()).toEqual(["active", "done", "todo"]);
+        expect(direction()).toBe("back");
+    });
+
+    it("Back on the first step does nothing", async () => {
+        render(<Harness />);
+        await userEvent.click(screen.getByText("back"));
+        expect(states()).toEqual(["active", "todo", "todo"]);
+        expect(direction()).toBe("forward");
     });
 });

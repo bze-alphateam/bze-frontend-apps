@@ -272,8 +272,8 @@ function ScheduleFormContent() {
                 ? `Fund more days of this ${stakingAsset ? `${stakingAsset.ticker} ` : ''}daily prize.`
                 : `Pay a daily prize to everyone staking ${stakingTicker}.`}
             techTag={VOCABULARY.dailyPrize.tech}
-            backHref={returnTo?.href ?? denomRewardHref(denom)}
-            backLabel={returnTo ? `Back to ${returnTo.label}` : `Back to ${holderRewardsLabel}`}
+            parent={returnTo ?? { href: denomRewardHref(denom), label: holderRewardsLabel }}
+            crumb="Daily prize"
             aside={aside}
         >
             {schedule ? (
@@ -290,11 +290,9 @@ function ScheduleFormContent() {
                     </HStack>
 
                     <Question
-                        number={1}
                         title="How many more days?"
-                        state={steps.state.more}
+                        {...steps.step('more')}
                         summary={`${daysInput.trim()} more days`}
-                        onChange={() => steps.open('more')}
                     >
                         <VStack align="stretch" gap="16px">
                             {extendRoom === 0 && (
@@ -320,11 +318,9 @@ function ScheduleFormContent() {
             ) : (
                 <>
                     <Question
-                        number={1}
                         title="What do you give?"
-                        state={steps.state.prize}
+                        {...steps.step('prize')}
                         summary={prizeTicker}
-                        onChange={() => steps.open('prize')}
                     >
                         <VStack align="stretch" gap="16px">
                             <PrizeTokenQuestion
@@ -340,11 +336,9 @@ function ScheduleFormContent() {
                     </Question>
 
                     <Question
-                        number={2}
                         title="How much a day?"
-                        state={steps.state.daily}
+                        {...steps.step('daily')}
                         summary={dailyText ? `${dailyText} a day` : ''}
-                        onChange={() => steps.open('daily')}
                     >
                         <VStack align="stretch" gap="16px">
                             {prizeAsset && (
@@ -362,11 +356,9 @@ function ScheduleFormContent() {
                     </Question>
 
                     <Question
-                        number={3}
                         title="For how many days?"
-                        state={steps.state.days}
+                        {...steps.step('days')}
                         summary={`${daysInput.trim()} payout days`}
-                        onChange={() => steps.open('days')}
                     >
                         <VStack align="stretch" gap="16px">
                             <TextField

@@ -266,6 +266,7 @@ function RewardNewContent() {
 
     return (
         <GuidedForm
+            crumb="Simple reward"
             title={
                 <>
                     Run a campaign with an <GradientText>end date</GradientText>
@@ -277,11 +278,9 @@ function RewardNewContent() {
             aside={aside}
         >
             <Question
-                number={1}
                 title="What do people stake?"
-                state={steps.state.stake}
+                {...steps.step('stake')}
                 summary={stakeTicker}
-                onChange={() => steps.open('stake')}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -298,11 +297,9 @@ function RewardNewContent() {
             </Question>
 
             <Question
-                number={2}
                 title="What do they earn, and for how long?"
-                state={steps.state.prize}
+                {...steps.step('prize')}
                 summary={prizeSummary}
-                onChange={() => steps.open('prize')}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -351,11 +348,9 @@ function RewardNewContent() {
             </Question>
 
             <Question
-                number={3}
                 title="Rules for stakers"
-                state={steps.state.rules}
+                {...steps.step('rules')}
                 summary={rulesSummary}
-                onChange={() => steps.open('rules')}
             >
                 <VStack align="stretch" gap="16px">
                     <FieldWithError

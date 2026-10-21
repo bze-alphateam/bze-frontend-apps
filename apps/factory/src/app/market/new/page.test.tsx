@@ -144,10 +144,10 @@ describe("Allow limit orders (/market/new)", () => {
         expect(createButton()).toBeDisabled();
     });
 
-    it("reopens question 1 with Change, keeping the quote", async () => {
+    it("reopens question 1 with Edit, keeping the quote", async () => {
         renderPage();
         await pickPair("utok", "ubze");
-        await userEvent.click(screen.getByRole("button", { name: "Change What is being traded?" }));
+        await userEvent.click(screen.getByRole("button", { name: "Edit What is being traded?" }));
         expect(question("What is being traded?")).toHaveAttribute("data-state", "active");
         expect(question("What is it priced in?")).toHaveAttribute("data-state", "done");
 

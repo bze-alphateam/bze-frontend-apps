@@ -181,17 +181,16 @@ function MarketNewContent() {
 
     return (
         <GuidedForm
+            crumb="Order-book market"
             title={<>Allow <GradientText>limit orders</GradientText></>}
             subtitle="Open an order book on the DEX so traders can buy and sell at the price they name."
             techTag="tradebin · order-book market"
             aside={aside}
         >
             <Question
-                number={1}
                 title="What is being traded?"
-                state={steps.state.base}
+                {...steps.step('base')}
                 summary={baseTicker}
-                onChange={() => steps.open('base')}
             >
                 <AssetPicker
                     label="Base asset — the one being traded"
@@ -206,11 +205,9 @@ function MarketNewContent() {
             </Question>
 
             <Question
-                number={2}
                 title="What is it priced in?"
-                state={steps.state.quote}
+                {...steps.step('quote')}
                 summary={quoteTicker}
-                onChange={() => steps.open('quote')}
             >
                 <VStack align="stretch" gap="12px">
                     <AssetPicker

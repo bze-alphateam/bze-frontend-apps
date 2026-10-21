@@ -191,7 +191,7 @@ function OfficialContent() {
                             <StatusBanner status={listing.status} ticker={ticker} logo={listing.logo} onRetry={listing.retry} />
                             <Text fontSize="14px" color="fg.muted" data-testid="official-progress">{`Your progress: ${doneCount} of 5 steps`}</Text>
 
-                            <Question number={1} title="Prepare your logo" state={steps.state.logo} summary={fileName} onChange={() => steps.open('logo')}>
+                            <Question title="Prepare your logo" {...steps.step('logo')} summary={fileName}>
                                 <LogoStep
                                     display={metadata?.display ?? ticker}
                                     initial={{ format: progress.format, fileName: progress.fileName }}
@@ -200,11 +200,9 @@ function OfficialContent() {
                             </Question>
 
                             <Question
-                                number={2}
                                 title="Add your links (optional)"
-                                state={steps.state.links}
+                                {...steps.step('links')}
                                 summary={[progress.socials?.website && 'Website', progress.socials?.x && 'X'].filter(Boolean).join(', ') || 'Skipped'}
-                                onChange={() => steps.open('links')}
                             >
                                 <VStack align="stretch" gap="16px">
                                     <Field.Root invalid={websiteError}>
@@ -233,7 +231,7 @@ function OfficialContent() {
                                 </VStack>
                             </Question>
 
-                            <Question number={3} title="Copy your registry entry" state={steps.state.entry} summary="Copied" onChange={() => steps.open('entry')}>
+                            <Question title="Copy your registry entry" {...steps.step('entry')} summary="Copied">
                                 <VStack align="stretch" gap="12px">
                                     <Text fontSize="14px" color="fg.muted">{`We wrote it for you from ${ticker}'s on-chain details. You won't need to edit it.`}</Text>
                                     {metadata && !metadata.description.trim() && (
@@ -284,11 +282,9 @@ function OfficialContent() {
                             </Question>
 
                             <Question
-                                number={4}
                                 title="Send it to the registry"
-                                state={steps.state.submit}
+                                {...steps.step('submit')}
                                 summary={progress.prUrl ? `Your request #${progress.prUrl.split('/').pop()}` : ''}
-                                onChange={() => steps.open('submit')}
                             >
                                 <VStack align="stretch" gap="12px">
                                     <Text fontSize="14px" color="fg.muted">You need a free GitHub account. Everything happens in the browser, no coding.</Text>
@@ -330,7 +326,7 @@ function OfficialContent() {
                                 </VStack>
                             </Question>
 
-                            <Question number={5} title="Wait for the review" state={steps.state.review} summary={`${ticker} is listed`}>
+                            <Question title="Wait for the review" {...steps.step('review')} onEdit={undefined} summary={`${ticker} is listed`}>
                                 <VStack align="stretch" gap="8px">
                                     {progress.prUrl && (
                                         <Link href={progress.prUrl} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">

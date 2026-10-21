@@ -294,17 +294,16 @@ function RaffleFormContent() {
 
     return (
         <GuidedForm
+            crumb="Burning raffle"
             title={<>Run a burning <GradientText>raffle</GradientText></>}
             subtitle="Fund a prize pot. People buy tickets for a chance to win part of it. Losing tickets make the pot bigger, and whatever is left at the end is burned."
             techTag="Burning raffle"
             aside={aside}
         >
             <Question
-                number={1}
                 title="Which token?"
-                state={steps.state.token}
+                {...steps.step('token')}
                 summary={ticker ? <>Raffle {ticker}</> : ''}
-                onChange={() => steps.open('token')}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -346,11 +345,9 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                number={2}
                 title="How big is the prize pot?"
-                state={steps.state.pot}
+                {...steps.step('pot')}
                 summary={potText}
-                onChange={() => steps.open('pot')}
             >
                 <VStack align="stretch" gap="12px">
                     <TextField
@@ -371,11 +368,9 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                number={3}
                 title="How long should it run?"
-                state={steps.state.days}
+                {...steps.step('days')}
                 summary={days !== undefined ? `${fmt(days)} ${days === 1 ? 'day' : 'days'}, ends around ${endText}` : ''}
-                onChange={() => steps.open('days')}
             >
                 <VStack align="stretch" gap="12px">
                     <Presets values={DAY_PRESETS} current={daysInput} label={n => `${n} days`} onPick={n => setDaysInput(String(n))} />
@@ -393,11 +388,9 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                number={4}
                 title="What does a ticket cost?"
-                state={steps.state.ticket}
+                {...steps.step('ticket')}
                 summary={ticketText}
-                onChange={() => steps.open('ticket')}
             >
                 <VStack align="stretch" gap="12px">
                     <TextField
@@ -413,11 +406,9 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                number={5}
                 title="How often does a ticket win?"
-                state={steps.state.chance}
+                {...steps.step('chance')}
                 summary={chances !== undefined ? `1 in ${fmt(Number(oneInInput.trim()))} tickets` : ''}
-                onChange={() => steps.open('chance')}
             >
                 <VStack align="stretch" gap="12px">
                     <Presets values={ONE_IN_PRESETS} current={oneInInput} label={n => `1 in ${fmt(n)}`} onPick={n => setOneInInput(String(n))} />
@@ -437,11 +428,9 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                number={6}
                 title="How much does a winner get?"
-                state={steps.state.prize}
+                {...steps.step('prize')}
                 summary={percent !== undefined ? `${percent} % of the pot` : ''}
-                onChange={() => steps.open('prize')}
             >
                 <VStack align="stretch" gap="12px">
                     <Presets values={PERCENT_PRESETS} current={percentInput} label={n => `${n} %`} onPick={n => setPercentInput(String(n))} />

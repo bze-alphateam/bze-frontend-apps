@@ -26,7 +26,7 @@ test("shows the deep-linked pool's facts, the three questions and the connect me
     await expect(page.getByRole("region", {name: "How much to add?"})).toHaveAttribute("data-state", "active");
     await expect(page.getByRole("region", {name: "Price protection"})).toHaveAttribute("data-state", "todo");
 
-    await q1.getByRole("button", {name: "Change Which pool?"}).click();
+    await q1.getByRole("button", {name: "Edit Which pool?"}).click();
     const facts = q1.getByRole("group", {name: "Pool facts"});
     await expect(facts).toContainText("10 NOAD + 1 TUSDC");
     await expect(facts).toContainText("1 NOAD = 0.100000 TUSDC");

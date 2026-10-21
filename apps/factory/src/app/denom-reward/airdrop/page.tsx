@@ -222,8 +222,8 @@ function AirdropFormContent() {
             }
             subtitle={`Split an amount between everyone staking ${stakingTicker} right now.`}
             techTag={VOCABULARY.airdropToStakers.tech}
-            backHref={returnTo?.href ?? holderRewardsHref}
-            backLabel={returnTo ? `Back to ${returnTo.label}` : `Back to ${holderRewardsLabel}`}
+            parent={returnTo ?? { href: holderRewardsHref, label: holderRewardsLabel }}
+            crumb="Airdrop to stakers"
             aside={aside}
         >
             {blocker !== '' && (
@@ -233,11 +233,9 @@ function AirdropFormContent() {
             )}
 
             <Question
-                number={1}
                 title="What do you give?"
-                state={steps.state.prize}
+                {...steps.step('prize')}
                 summary={prizeTicker}
-                onChange={() => steps.open('prize')}
             >
                 <VStack align="stretch" gap="16px">
                     <PrizeTokenQuestion
@@ -253,11 +251,9 @@ function AirdropFormContent() {
             </Question>
 
             <Question
-                number={2}
                 title="How much?"
-                state={steps.state.amount}
+                {...steps.step('amount')}
                 summary={giftText}
-                onChange={() => steps.open('amount')}
             >
                 <VStack align="stretch" gap="16px">
                     {prizeAsset && (

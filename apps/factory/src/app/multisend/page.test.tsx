@@ -405,7 +405,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         renderPage();
         await screen.findByText(/1 of 3 transactions sent/);
 
-        await userEvent.click(within(question(LIST)).getByRole("button", { name: /^Change/ }));
+        await userEvent.click(within(question(LIST)).getByRole("button", { name: /^Edit/ }));
         await pasteList(`\n${A}`);
         await continueIn(LIST);
         expect(await screen.findByText(/This list changed since your last run\./)).toBeInTheDocument();

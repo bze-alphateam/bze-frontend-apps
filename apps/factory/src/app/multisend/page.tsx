@@ -493,6 +493,7 @@ function MultiSendContent() {
 
     return (
         <GuidedForm
+            crumb="Send to a list of wallets"
             title={<>{titleLead} <GradientText>{titleLast}</GradientText></>}
             subtitle="Paste addresses, or upload a file from a contest, a snapshot or a spreadsheet. Everyone on the list gets the token straight in their wallet."
             techTag={VOCABULARY.multiSend.tech}
@@ -500,11 +501,9 @@ function MultiSendContent() {
             aside={aside}
         >
             <Question
-                number={1}
                 title="What do you send?"
-                state={steps.state.token}
+                {...steps.step('token')}
                 summary={asset ? `${ticker} · you have ${toDisplay(balance.amount)}` : ''}
-                onChange={() => steps.open('token')}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -522,11 +521,9 @@ function MultiSendContent() {
             </Question>
 
             <Question
-                number={2}
                 title="Who gets it, and how much?"
-                state={steps.state.list}
+                {...steps.step('list')}
                 summary={listValid ? `${count} wallets · ${totalLabel}` : ''}
-                onChange={() => steps.open('list')}
             >
                 <VStack align="stretch" gap="16px">
                     <Segmented

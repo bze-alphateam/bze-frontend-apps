@@ -320,17 +320,16 @@ function PoolAddContent() {
 
     return (
         <GuidedForm
+            crumb="Add liquidity"
             title={<>Make trading <GradientText>smoother</GradientText></>}
             subtitle="Add to a pool so big trades move the price less. You get LP tokens you can withdraw later on the DEX."
             techTag="tradebin · add liquidity"
             aside={aside}
         >
             <Question
-                number={1}
                 title="Which pool?"
-                state={steps.state.pool}
+                {...steps.step('pool')}
                 summary={pairLabel}
-                onChange={() => steps.open('pool')}
             >
                 <VStack align="stretch" gap="16px">
                     {noPools ? (
@@ -392,11 +391,9 @@ function PoolAddContent() {
             {!isHalted && (
                 <>
                     <Question
-                        number={2}
                         title="How much to add?"
-                        state={steps.state.amounts}
+                        {...steps.step('amounts')}
                         summary={depositSummary}
-                        onChange={() => steps.open('amounts')}
                     >
                         <VStack align="stretch" gap="16px">
                             <Text fontSize="14px" color="fg.muted">
@@ -414,11 +411,9 @@ function PoolAddContent() {
                     </Question>
 
                     <Question
-                        number={3}
                         title="Price protection"
-                        state={steps.state.protection}
+                        {...steps.step('protection')}
                         summary={`${slippage}%`}
-                        onChange={() => steps.open('protection')}
                     >
                         <VStack align="stretch" gap="16px">
                             <HStack gap="6px" flexWrap="wrap">
