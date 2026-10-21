@@ -7,6 +7,7 @@ import {
     MAX_SYMBOL_LENGTH,
     MIN_SUBDENOM_LENGTH,
     suggestSubdenom,
+    validateAdminAddress,
     validateAmount,
     validateDescription,
     validateInitialSupply,
@@ -188,5 +189,29 @@ describe("validateInitialSupply", () => {
 
     it("leaves messages without the word 'Amount' unchanged", () => {
         expect(validateInitialSupply("abc", 6)).toBe("Enter a valid positive number.");
+    });
+});
+
+describe("validateAdminAddress", () => {
+    const OWN = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
+    const OTHER = "bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk";
+
+    it("accepts another BZE address, trimmed", () => {
+        expect(validateAdminAddress(OTHER, OWN)).toBe("");
+        expect(validateAdminAddress(`  ${OTHER} `, OWN)).toBe("");
+        expect(validateAdminAddress(OTHER, undefined)).toBe("");
+    });
+
+    it("requires an address", () => {
+        expect(validateAdminAddress("  ", OWN)).toBe("Enter the address that becomes the admin.");
+    });
+
+    it("rejects malformed and foreign addresses", () => {
+        expect(validateAdminAddress("bze1nope", OWN)).toBe("Invalid address");
+        expect(validateAdminAddress("cosmos1z3mkcr2jz424w6m49frgjmy9uhlrx69ptcgwkr", OWN)).not.toBe("");
+    });
+
+    it("refuses the connected wallet", () => {
+        expect(validateAdminAddress(OWN, OWN)).toBe("That's your own wallet. Pick My wallet instead.");
     });
 });

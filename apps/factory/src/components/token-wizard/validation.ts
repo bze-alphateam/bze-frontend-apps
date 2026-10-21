@@ -1,3 +1,5 @@
+import { validateBZEBech32Address } from '@bze/bze-ui-kit'
+
 // Chain rules verified against x/tokenfactory (2026-07-07): subdenom ≤ 44 chars,
 // no `_` or `/`. Name/symbol limits are UX choices for sane wallet/explorer display,
 // except the symbol minimum: the lowercased symbol becomes the bank metadata's
@@ -86,6 +88,19 @@ export function validateAmount(amount: string, decimals: number): string {
     if (fraction && fraction.length > decimals) {
         return `At most ${decimals} decimal places (the token's decimals).`
     }
+    return ''
+}
+
+/**
+ * The admin picked in the Permissions step when it isn't the creator. `own` is the connected
+ * address: choosing it here would only repeat the "My wallet" choice.
+ */
+export function validateAdminAddress(address: string, own: string | undefined): string {
+    const trimmed = address.trim()
+    if (!trimmed) return 'Enter the address that becomes the admin.'
+    const result = validateBZEBech32Address(trimmed)
+    if (!result.isValid) return result.message
+    if (own && trimmed === own) return "That's your own wallet. Pick My wallet instead."
     return ''
 }
 

@@ -1,32 +1,32 @@
 "use client"
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Button, chakra, Circle, Field, Grid, HStack, IconButton, Input, Text, Textarea, VStack } from '@chakra-ui/react'
-import { LuCopy } from 'react-icons/lu'
-import { GradientText, type TxSpec, getChainName, prettyAmount, toBigNumber, useCreationFees, useToast } from '@bze/bze-ui-kit'
+import { Button, chakra, Circle, Field, Grid, HStack, Input, Text, Textarea, VStack } from '@chakra-ui/react'
+import { GradientText, type TxSpec, getChainName, prettyAmount, toBigNumber, truncateAddress, useCreationFees } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import {
     AnswerChip,
     AnswerChips,
-    ContinueRow,
     FormPage,
     GuidedForm,
     Hint,
     Optional,
+    OutcomePanel,
     PayPanel,
     Question,
-    SubmitBlock,
+    ReviewStep,
     SubmitNote,
-    TipNote,
+    TxPanel,
     useGuidedSteps,
-    useReturnTo,
 } from '@/components/guided'
-import { LaunchNextSteps } from '@/components/launch/launch-next-steps'
-import { useCreateTokenTx } from '@/components/token-wizard/useCreateTokenTx'
+import { createTokenMsgs, createdDenom } from '@/components/token-wizard/create-token-msgs'
+import { TokenDone, type TokenDoneInput } from '@/components/token-wizard/token-done'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { MAX_DESCRIPTION_LENGTH, TOKEN_DECIMALS } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
+import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import {
+    type AdminChoice,
     EMPTY_TOKEN_FORM,
     TOKEN_FORM_KEYS,
     type TokenForm,
@@ -37,120 +37,109 @@ import {
     saveTokenDraft,
 } from '@/lib/token-draft'
 
-const TX_KIND: TxSpec = ['create-denom', 'mint', 'set-denom-metadata']
+const CREATE_KINDS: TxSpec = ['create-denom', 'mint', 'set-denom-metadata']
+const CREATE_AND_HAND_OVER_KINDS: TxSpec = ['create-denom', 'mint', 'set-denom-metadata', 'change-admin']
 
-const SUPPLY_PRESETS = [
-    { label: '100,000', value: '100000' },
-    { label: '1 million', value: '1000000' },
-    { label: '100 million', value: '100000000' },
-    { label: '1 billion', value: '1000000000' },
-]
+const STEP_KEYS = [...TOKEN_FORM_KEYS, 'review'] as const
 
-const SUMMARY_LENGTH = 80
+const SUPPLY_PRESETS = ['100000', '1000000', '21000000']
 
-type Touched = Partial<Record<'name' | 'symbol' | 'description' | 'initialSupply', boolean>>
+const ADMIN_POWERS = 'can mint more and edit details'
 
-function initials(name: string, symbol: string): string {
-    const words = name.trim().split(/\s+/).filter(Boolean)
-    const fromName = words.slice(0, 2).map(w => w[0]).join('')
-    return (fromName || symbol.slice(0, 2) || '?').toUpperCase()
+type Touched = Partial<Record<'name' | 'symbol' | 'description' | 'initialSupply' | 'adminAddress', boolean>>
+
+function initial(name: string, symbol: string): string {
+    return (name.trim()[0] ?? symbol[0] ?? '?').toUpperCase()
 }
 
-function TokenPreview({ form, ticker, supplyText, tokenId }: {
-    form: TokenForm;
-    ticker: string;
-    supplyText: string;
-    tokenId: string;
-}) {
-    const { toast } = useToast()
-    // The address and the subdenom are both in: the ID is the one the chain will create.
-    const tokenIdKnown = !tokenId.includes('<')
-    const copyTokenId = async () => {
-        await navigator.clipboard.writeText(tokenId)
-        toast.success('Copied', 'Token ID copied to clipboard.')
-    }
-
+/** The token as it will look, for "What will happen". */
+function TokenPreview({ name, ticker }: { name: string; ticker: string }) {
     return (
-        <VStack
-            as="section"
-            aria-label="Preview"
-            align="stretch"
-            gap="12px"
-            p="18px"
-            borderRadius="hg.lg"
-            borderWidth="1px"
-            borderColor="hg.hairline"
-            bg="hg.card"
-        >
-            <chakra.h3 m="0" fontSize="14px" fontWeight="700">Preview</chakra.h3>
-            <HStack gap="12px" minW={0}>
-                <Circle
-                    size="40px"
-                    bg="app.subtle"
-                    boxShadow="0 0 0 2px {colors.app.border}"
-                    color="hg.link"
-                    fontWeight="800"
-                    fontSize="13px"
-                    flexShrink={0}
-                >
-                    {initials(form.name, form.symbol)}
-                </Circle>
-                <VStack align="start" gap="2px" minW={0}>
-                    <Text fontWeight="700" wordBreak="break-word" data-testid="preview-name">
-                        {form.name.trim() || 'Your token'}
-                    </Text>
-                    <Text fontSize="12px" color="hg.text.faint">{ticker} · Mintable</Text>
-                </VStack>
-            </HStack>
-            {form.description.trim() && (
-                <Text fontSize="14px" lineHeight="1.5" color="fg.muted" wordBreak="break-word" lineClamp={4}>
-                    {form.description.trim()}
-                </Text>
-            )}
-            <VStack align="stretch" gap="10px">
-                <HStack justify="space-between" gap="12px">
-                    <Text fontSize="14px" color="fg.muted">In your wallet</Text>
-                    <Text fontSize="14px" fontWeight="600" textAlign="right" data-testid="preview-supply">
-                        {supplyText} {ticker}
-                    </Text>
-                </HStack>
-                <HStack justify="space-between" gap="12px">
-                    <Text fontSize="14px" color="fg.muted">Decimals</Text>
-                    <Text fontSize="14px" fontWeight="600" data-testid="preview-decimals">{TOKEN_DECIMALS}</Text>
-                </HStack>
+        <HStack gap="12px" minW={0} mb="10px">
+            <Circle
+                size="40px"
+                bg="app.subtle"
+                boxShadow="0 0 0 2px {colors.app.border}"
+                color="hg.link"
+                fontWeight="800"
+                fontSize="15px"
+                flexShrink={0}
+                aria-hidden
+            >
+                {initial(name, ticker)}
+            </Circle>
+            <VStack align="start" gap="0" minW={0}>
+                <Text fontWeight="700" wordBreak="break-word" data-testid="preview-name">{name.trim() || 'Your token'}</Text>
+                <Text fontSize="12px" color="hg.text.faint" data-testid="preview-ticker">{ticker}</Text>
             </VStack>
-            <HStack gap="4px" align="center">
-                <Text flex="1" minW={0} fontSize="12px" color="hg.text.faint" fontFamily="mono" wordBreak="break-all">{tokenId}</Text>
-                {tokenIdKnown && (
-                    <IconButton aria-label="Copy token ID" size="2xs" variant="ghost" color="hg.link" onClick={() => void copyTokenId()}>
-                        <LuCopy />
-                    </IconButton>
-                )}
-            </HStack>
-        </VStack>
+        </HStack>
+    )
+}
+
+/** One of the two Permissions choices, as a radio card. */
+function AdminOption({ selected, title, text, onSelect }: { selected: boolean; title: string; text: string; onSelect: () => void }) {
+    return (
+        <chakra.button
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={onSelect}
+            display="flex"
+            alignItems="start"
+            gap="12px"
+            w="full"
+            p="14px"
+            textAlign="left"
+            borderRadius="hg.md"
+            borderWidth="1px"
+            borderColor={selected ? 'app.solid/60' : 'hg.hairline'}
+            bg={selected ? 'app.subtle' : 'hg.inset'}
+            cursor="pointer"
+            focusVisibleRing="outside"
+        >
+            <chakra.span
+                aria-hidden
+                mt="2px"
+                boxSize="18px"
+                flexShrink={0}
+                display="inline-flex"
+                alignItems="center"
+                justifyContent="center"
+                borderRadius="full"
+                borderWidth="2px"
+                borderColor={selected ? 'app.solid' : 'hg.hairline'}
+            >
+                {selected && <chakra.span boxSize="8px" borderRadius="full" bg="app.solid" />}
+            </chakra.span>
+            <VStack as="span" align="start" gap="2px" minW={0}>
+                <chakra.span fontSize="15px" fontWeight="700">{title}</chakra.span>
+                <chakra.span fontSize="14px" lineHeight="1.5" color="fg.muted">{text}</chakra.span>
+            </VStack>
+        </chakra.button>
     )
 }
 
 function TokenNewContent() {
     const { address } = useChain(getChainName())
     const { fees, isLoading: isFeeLoading } = useCreationFees()
-    const returnTo = useReturnTo()
 
     // The page renders on the client only (search params under a Suspense boundary),
-    // so the browser draft can seed the first render.
+    // so the browser draft can seed the first render: the finished steps come back collapsed
+    // and the first unfinished one opens.
     const [draft] = useState(loadTokenDraft)
     const [form, setForm] = useState<TokenForm>(draft?.form ?? EMPTY_TOKEN_FORM)
     const [answered, setAnswered] = useState<TokenFormStep[]>(draft?.answered ?? [])
     const [touched, setTouched] = useState<Touched>({})
-    const [created, setCreated] = useState<{ denom: string; txHash: string } | undefined>(undefined)
+    const [done, setDone] = useState<{ input: TokenDoneInput; hash: string } | undefined>(undefined)
 
     const validation = useTokenWizardValidation(form)
-    const { errors, subdenom, isIdentityValid, isDescriptionValid, isSupplyValid } = validation
+    const { errors, isDetailsValid, isSupplyValid, isPermissionsValid } = validation
 
-    const steps = useGuidedSteps(TOKEN_FORM_KEYS, {
-        identity: answered.includes('identity') && isIdentityValid,
-        description: answered.includes('description') && isDescriptionValid,
+    const steps = useGuidedSteps(STEP_KEYS, {
+        details: answered.includes('details') && isDetailsValid,
         supply: answered.includes('supply') && isSupplyValid,
+        permissions: answered.includes('permissions') && isPermissionsValid,
+        review: false,
     })
 
     useEffect(() => {
@@ -158,13 +147,23 @@ function TokenNewContent() {
     }, [form, answered])
 
     const fee = fees.createDenomFee
-    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, TX_KIND)
+    const txKind = form.adminChoice === 'other' ? CREATE_AND_HAND_OVER_KINDS : CREATE_KINDS
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, txKind)
 
-    const onCreated = useCallback((denom: string, txHash: string) => {
+    const buildMsgs = useCallback(() => (address ? createTokenMsgs(form, address) : undefined), [address, form])
+    const onDone = useCallback(({ input, hash }: WizardTxDone<TokenDoneInput>) => {
         clearTokenDraft()
-        setCreated({ denom, txHash })
+        setForm(EMPTY_TOKEN_FORM)
+        setAnswered([])
+        if (input) setDone({ input, hash })
     }, [])
-    const { submit, isSubmitting } = useCreateTokenTx(form, onCreated)
+    const { submit, panelProps } = useWizardTx<TokenDoneInput>(buildMsgs, { title: `Create token ${form.symbol}`, onDone })
+
+    // The token exists once the tx is confirmed: a draft left behind would only create it twice.
+    const confirmed = panelProps?.status === 'confirmed'
+    useEffect(() => {
+        if (confirmed) clearTokenDraft()
+    }, [confirmed])
 
     const update = (patch: Partial<TokenForm>) => setForm(prev => ({ ...prev, ...patch }))
     const touch = (field: keyof Touched) => setTouched(prev => ({ ...prev, [field]: true }))
@@ -183,80 +182,75 @@ function TokenNewContent() {
         steps.close()
     }
 
+    if (done) return <TokenDone input={done.input} hash={done.hash} />
+
     const ticker = form.symbol || 'TICKER'
-    const tokenId = `factory/${address ?? '<your address>'}/${subdenom || '<subdenom>'}`
-    const supplyText = isSupplyValid ? prettyAmount(toBigNumber(form.initialSupply)) : '0'
-    const description = form.description.trim()
+    const denomPreview = form.symbol ? createdDenom(address ?? '<you>', form.symbol) : `factory/${address ?? '<you>'}/u<ticker>`
+    const supplyText = isSupplyValid ? prettyAmount(toBigNumber(form.initialSupply)) : ''
+    const otherAdmin = form.adminAddress.trim()
+    const handsOver = form.adminChoice === 'other'
 
     const isComplete = TOKEN_FORM_KEYS.every(k => steps.state[k] === 'done') && validation.isValid
-    const canConfirm = isComplete && Boolean(address) && Boolean(fee) && !isBalanceLoading && canPayFee
 
-    if (created) {
-        return (
-            <LaunchNextSteps
-                name={form.name}
-                symbol={form.symbol}
-                supply={form.initialSupply}
-                denom={created.denom}
-                txHash={created.txHash}
-                returnTo={returnTo}
-                reset={() => {
-                    setCreated(undefined)
-                    startOver()
-                }}
-            />
-        )
+    const create = () => {
+        if (!address) return
+        submit({
+            denom: createdDenom(address, form.symbol),
+            ticker: form.symbol,
+            name: form.name.trim(),
+            supply: form.initialSupply,
+            admin: handsOver ? otherAdmin : address,
+        })
     }
+
+    const chooseAdmin = (adminChoice: AdminChoice) => update({ adminChoice })
 
     const aside = (
         <>
-            <TokenPreview form={form} ticker={ticker} supplyText={supplyText} tokenId={tokenId} />
+            <OutcomePanel>
+                <TokenPreview name={form.name} ticker={ticker} />
+                <Text data-testid="outcome">
+                    You receive {supplyText ? `${supplyText} ${ticker}` : ticker}.{' '}
+                    {handsOver
+                        ? 'The address you choose gets permission to mint more and update its details.'
+                        : 'Your wallet keeps permission to mint more and update its details.'}
+                </Text>
+            </OutcomePanel>
 
             <PayPanel
                 rows={[{ label: 'Token creation fee', coin: fee }]}
                 moduleFee={fee}
-                txKind={TX_KIND}
+                txKind={txKind}
                 isLoading={isFeeLoading}
                 feeUnknown={!fee}
             />
 
-            <SubmitBlock label={`Create ${form.symbol || 'token'}`} onClick={submit} disabled={!canConfirm} loading={isSubmitting}>
-                {!address ? (
-                    <SubmitNote>Connect your wallet to create this token.</SubmitNote>
-                ) : isComplete && !isBalanceLoading && !canPayFee && (
-                    <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
-                )}
-            </SubmitBlock>
+            <Hint>Click a finished step to change it. Scrolling only scrolls.</Hint>
         </>
     )
 
     return (
         <GuidedForm
             crumb="Token"
-            title={<>Create my <GradientText>token</GradientText></>}
-            subtitle="Name it, pick a ticker and choose how many to create. Everything is shown before you sign."
+            title={<>Create a <GradientText>token</GradientText></>}
+            subtitle="Name it, choose how many to start with and who can change it later. Everything is shown before you sign."
             techTag="tokenfactory · create denom"
-            status={!isEmptyTokenForm(form) && (
-                <>
-                    <Text as="span">Draft saved in this browser</Text>
-                    <Button variant="ghost" size="xs" h="28px" px="8px" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={startOver}>
-                        Start over
-                    </Button>
-                </>
-            )}
+            status={!isEmptyTokenForm(form) && <Text as="span">Draft saved in this browser</Text>}
             aside={aside}
         >
             <Question
-                title="Name and ticker"
-                {...steps.step('identity')}
-                summary={`${form.name.trim()} (${form.symbol})`}
+                title="Details"
+                question="What is it called?"
+                {...steps.step('details')}
+                summary={`${form.name.trim()} · ${form.symbol}`}
+                action={{ label: 'Continue', onClick: () => answer('details'), disabled: !isDetailsValid }}
             >
                 <VStack align="stretch" gap="16px">
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
                         <Field.Root invalid={errorFor('name') !== ''}>
-                            <Field.Label>Token name</Field.Label>
+                            <Field.Label>Name</Field.Label>
                             <Input
-                                placeholder="e.g. Honey Coin"
+                                placeholder="e.g. Honey"
                                 value={form.name}
                                 onChange={(e) => update({ name: e.target.value })}
                                 onBlur={() => touch('name')}
@@ -272,28 +266,14 @@ function TokenNewContent() {
                                 onBlur={() => touch('symbol')}
                             />
                             <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
+                            <Field.HelperText>The ticker is permanent.</Field.HelperText>
                         </Field.Root>
                     </Grid>
-                    <VStack align="stretch" gap="4px">
-                        <Hint mono>Token ID: {tokenId}</Hint>
-                        <Hint>{TOKEN_DECIMALS} decimals: 1 {ticker} = 1,000,000 base units</Hint>
-                    </VStack>
-                    <ContinueRow disabled={!isIdentityValid} onContinue={() => answer('identity')} />
-                </VStack>
-            </Question>
-
-            <Question
-                title="Describe it"
-                {...steps.step('description')}
-                summary={description
-                    ? description.length > SUMMARY_LENGTH ? `${description.slice(0, SUMMARY_LENGTH)}…` : description
-                    : 'No description'}
-            >
-                <VStack align="stretch" gap="16px">
+                    <Hint mono>{denomPreview}</Hint>
                     <Field.Root invalid={errorFor('description') !== ''}>
                         <Field.Label>Description <Optional /></Field.Label>
                         <Textarea
-                            rows={4}
+                            rows={3}
                             placeholder="What is it for? Shown in wallets."
                             value={form.description}
                             onChange={(e) => update({ description: e.target.value })}
@@ -302,28 +282,31 @@ function TokenNewContent() {
                         <Field.HelperText alignSelf="flex-end" fontFamily="mono" fontSize="12px">{form.description.length} / {MAX_DESCRIPTION_LENGTH}</Field.HelperText>
                         <Field.ErrorText>{errorFor('description')}</Field.ErrorText>
                     </Field.Root>
-                    <ContinueRow
-                        disabled={!isDescriptionValid}
-                        onContinue={() => answer('description')}
-                        onSkip={() => {
-                            update({ description: '' })
-                            answer('description')
-                        }}
-                    />
                 </VStack>
             </Question>
 
             <Question
-                title={`How many ${form.symbol || 'tokens'} to create?`}
+                title="Supply"
+                question="How many to start with?"
                 {...steps.step('supply')}
                 summary={`${supplyText} ${ticker} to your wallet`}
+                onBack={steps.back}
+                action={{ label: 'Continue', onClick: () => answer('supply'), disabled: !isSupplyValid }}
             >
                 <VStack align="stretch" gap="16px">
-                    <Hint>
-                        All of it goes to your wallet when the token is created. You decide later how much to sell, pool or give away.
-                    </Hint>
+                    <AnswerChips>
+                        {SUPPLY_PRESETS.map(value => (
+                            <AnswerChip
+                                key={value}
+                                selected={form.initialSupply === value}
+                                onClick={() => update({ initialSupply: value })}
+                            >
+                                {prettyAmount(toBigNumber(value))}
+                            </AnswerChip>
+                        ))}
+                    </AnswerChips>
                     <Field.Root invalid={errorFor('initialSupply') !== ''}>
-                        <Field.Label>Amount</Field.Label>
+                        <Field.Label>Initial supply</Field.Label>
                         <Input
                             placeholder="e.g. 1000000"
                             inputMode="decimal"
@@ -333,25 +316,89 @@ function TokenNewContent() {
                         />
                         <Field.ErrorText>{errorFor('initialSupply')}</Field.ErrorText>
                     </Field.Root>
-                    <AnswerChips>
-                        {SUPPLY_PRESETS.map(p => (
-                            <AnswerChip
-                                key={p.value}
-                                selected={form.initialSupply === p.value}
-                                onClick={() => update({ initialSupply: p.value })}
-                            >
-                                {p.label}
-                            </AnswerChip>
-                        ))}
-                    </AnswerChips>
-                    <ContinueRow disabled={!isSupplyValid} onContinue={() => answer('supply')} />
+                    <Hint>Minted to your wallet. {TOKEN_DECIMALS} decimals.</Hint>
                 </VStack>
             </Question>
 
-            <TipNote lead={`You keep control of ${form.symbol || 'your token'}:`}>
-                you can mint more, edit the description and set the brand kit. When your setup is done, you can
-                renounce admin from the token&apos;s page. Buyers will see Mintable until then.
-            </TipNote>
+            <Question
+                title="Permissions"
+                question="Who can change it later?"
+                {...steps.step('permissions')}
+                summary={handsOver ? `Admin: ${truncateAddress(otherAdmin)}` : 'Admin: your wallet'}
+                onBack={steps.back}
+                action={{ label: 'Review token', onClick: () => answer('permissions'), disabled: !isPermissionsValid }}
+            >
+                <VStack align="stretch" gap="16px">
+                    <Grid role="radiogroup" aria-label="Admin" templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="12px">
+                        <AdminOption
+                            selected={!handsOver}
+                            title="My wallet"
+                            text="Mint more and edit details. Best while the project is young."
+                            onSelect={() => chooseAdmin('mine')}
+                        />
+                        <AdminOption
+                            selected={handsOver}
+                            title="Another address"
+                            text="A team or multisig wallet becomes the admin from the start."
+                            onSelect={() => chooseAdmin('other')}
+                        />
+                    </Grid>
+                    {handsOver && (
+                        <Field.Root invalid={errorFor('adminAddress') !== ''}>
+                            <Field.Label>Admin address</Field.Label>
+                            <Input
+                                placeholder="bze1…"
+                                fontFamily="mono"
+                                value={form.adminAddress}
+                                onChange={(e) => update({ adminAddress: e.target.value })}
+                                onBlur={() => touch('adminAddress')}
+                            />
+                            <Field.ErrorText>{errorFor('adminAddress')}</Field.ErrorText>
+                        </Field.Root>
+                    )}
+                    <Hint>You can transfer or renounce admin later on the token&apos;s page, under Permissions.</Hint>
+                </VStack>
+            </Question>
+
+            {panelProps ? (
+                <TxPanel {...panelProps} />
+            ) : (
+                <ReviewStep
+                    {...steps.step('review')}
+                    question="Everything right?"
+                    leaves={[{ label: 'Creation fee', coin: fee }]}
+                    moduleFee={fee}
+                    txKind={txKind}
+                    isLoading={isFeeLoading}
+                    feeUnknown={!fee}
+                    gets={[{ label: 'In your wallet', value: `${supplyText} ${ticker}` }]}
+                    extra={[{
+                        label: 'Admin',
+                        value: handsOver
+                            ? <><chakra.span fontFamily="mono" overflowWrap="anywhere">{otherAdmin}</chakra.span> · {ADMIN_POWERS}</>
+                            : `your wallet · ${ADMIN_POWERS}`,
+                    }]}
+                    permanent={['The ticker in its address']}
+                    submitLabel="Create token"
+                    onSubmit={create}
+                    disabled={!address || !isComplete}
+                    onBack={steps.back}
+                >
+                    {!address ? (
+                        <SubmitNote>Connect your wallet to create this token.</SubmitNote>
+                    ) : !isBalanceLoading && !canPayFee && (
+                        <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
+                    )}
+                </ReviewStep>
+            )}
+
+            {!isEmptyTokenForm(form) && (
+                <HStack justify="center">
+                    <Button variant="ghost" size="xs" h="28px" px="8px" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={startOver}>
+                        Start over
+                    </Button>
+                </HStack>
+            )}
         </GuidedForm>
     )
 }
