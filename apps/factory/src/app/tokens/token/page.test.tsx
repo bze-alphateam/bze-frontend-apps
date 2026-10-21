@@ -208,7 +208,7 @@ describe("token workspace", () => {
             renderPage();
             await userEvent.click(screen.getByRole("button", { name: "Airdrop to stakers" }));
             expect(m.navigate).toHaveBeenCalledWith(
-                `/denom-reward/airdrop?denom=${ENCODED}&return=%2Fmanage%2Ftoken%3Fdenom%3D${encodeURIComponent(ENCODED)}%26tab%3Drewards&returnLabel=TOK`,
+                `/denom-reward/airdrop?denom=${ENCODED}&return=%2Ftokens%2Ftoken%3Fdenom%3D${encodeURIComponent(ENCODED)}%26tab%3Drewards&returnLabel=TOK`,
             );
         });
 
@@ -306,7 +306,7 @@ describe("token workspace", () => {
             expect(list).toHaveAttribute("data-involving", DENOM);
             expect(list).toHaveAttribute(
                 "data-new-href",
-                `/reward/new?staking=${ENCODED}&return=%2Fmanage%2Ftoken%3Fdenom%3D${encodeURIComponent(ENCODED)}%26tab%3Drewards&returnLabel=TOK`,
+                `/reward/new?staking=${ENCODED}&return=%2Ftokens%2Ftoken%3Fdenom%3D${encodeURIComponent(ENCODED)}%26tab%3Drewards&returnLabel=TOK`,
             );
         });
 

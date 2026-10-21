@@ -349,8 +349,8 @@ function TokenNewContent() {
             </Question>
 
             <TipNote lead={`You keep control of ${form.symbol || 'your token'}:`}>
-                you can mint more, edit the description and set the brand kit. When your setup is done, you can lock
-                the supply forever from the token&apos;s page. Buyers will see Mintable until then.
+                you can mint more, edit the description and set the brand kit. When your setup is done, you can
+                renounce admin from the token&apos;s page. Buyers will see Mintable until then.
             </TipNote>
         </GuidedForm>
     )

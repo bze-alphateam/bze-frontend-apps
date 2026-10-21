@@ -131,7 +131,7 @@ describe("useTokenSetup", () => {
         expect(stateOf(result, "pool")).toBe("todo");
         expect(stateOf(result, "market")).toBe("todo");
         expect(result.items.find(i => i.key === "pool")?.href).toBe(
-            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Fmanage%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok%26tab%3Dtrading&returnLabel=TOK",
+            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Ftokens%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok%26tab%3Dtrading&returnLabel=TOK",
         );
     });
 

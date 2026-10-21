@@ -260,7 +260,7 @@ describe("StakingProgramsList", () => {
 
         expect(screen.getByTestId("staking-programs-empty")).toHaveTextContent("No simple rewards yet.");
         await userEvent.click(screen.getByRole("button", { name: "Run a campaign" }));
-        expect(m.navigate).toHaveBeenLastCalledWith("/reward/new?return=%2Fmanage&returnLabel=Manage");
+        expect(m.navigate).toHaveBeenLastCalledWith("/reward/new?return=%2Ftokens&returnLabel=Tokens");
 
         await userEvent.click(screen.getByRole("button", { name: "New program" }));
         expect(m.navigate).toHaveBeenCalledTimes(2);
