@@ -303,7 +303,7 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
             {
                 key: 'openMarket',
                 icon: 'market',
-                title: 'Open the market',
+                title: 'Open the market on DEX',
                 text: 'Place the first orders so traders see a price.',
                 cta: 'Open market on DEX',
                 target: { app: 'dex', href: marketUrl },
