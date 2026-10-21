@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
@@ -7,6 +7,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
 import { createAmmRouter, setInLocalStorage } from "@bze/bze-ui-kit";
 import { quoteExactInput } from "@/lib/swap-quote";
+import { rulesFor } from "@/test-support/css-rules";
 
 // The swap page reads its assets, balances and the shared gas engine through ui-kit hooks.
 // We mock those to feed state directly (no wallet / chain providers) and keep the rest of
@@ -525,3 +526,88 @@ describe("Swap page USD values", () => {
         expect(usdLines()).toHaveLength(0);
     });
 });
+
+/** Chakra's rules for `el`, one per line (each ends where its declarations end). */
+const ruleLines = (el: HTMLElement) => rulesFor(el).split("\n").map((rule) => rule.trim()).filter(Boolean);
+
+/** The declarations Chakra emitted for `el` while `layout` is on <html>, inside the lg media query. */
+function lgRulesIn(el: HTMLElement, layout: string): string {
+    const pattern = new RegExp(String.raw`@media[^{]*min-width:\s*64rem[^{]*\{[^{]*html\[data-swap-layout="?${layout}"?\][^{]*\{(.*)$`);
+    return ruleLines(el).map((rule) => pattern.exec(rule)?.[1]).filter(Boolean).join(";");
+}
+
+/** The element's own rules outside any media query or <html> attribute: what B and phones get. */
+const defaultRules = (el: HTMLElement) =>
+    ruleLines(el).filter((rule) => !rule.includes("@media") && !rule.includes("data-swap-layout")).join(";");
+
+describe("Swap page top layouts", () => {
+    afterEach(() => {
+        delete document.documentElement.dataset.swapLayout;
+    });
+
+    it("is B by default: one column, and no lg column rule without the <html> attribute", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const top = screen.getByTestId("swap-top");
+        expect(defaultRules(top)).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+        expect(defaultRules(top)).toMatch(/align-items:\s*start/);
+        const unconditionalLg = ruleLines(top).filter((rule) => rule.includes("@media") && !rule.includes("data-swap-layout") && rule.includes("grid-template-columns"));
+        expect(unconditionalLg).toEqual([]);
+    });
+
+    it("lays A out as two stretched columns, the card on the right, from lg up only", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const css = lgRulesIn(screen.getByTestId("swap-top"), "aligned");
+        expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\) 460px/);
+        expect(css).toMatch(/grid-template-areas:\s*"hero card" "stats card" "history history"/);
+        expect(css).toMatch(/align-items:\s*stretch/);
+    });
+
+    it("lays C-3 out as the card on the left and the activity on the right, from lg up only", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const css = lgRulesIn(screen.getByTestId("swap-top"), "split");
+        expect(css).toMatch(/grid-template-columns:\s*460px minmax\(0,\s*1fr\)/);
+        expect(css).toMatch(/grid-template-areas:\s*"hero hero" "card stats" "card history"/);
+        expect(css).toMatch(/align-items:\s*stretch/);
+    });
+
+    it("frames the swap card with the featured edge, 1.5 px wide in C-3", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const edge = screen.getByTestId("swap-card-edge");
+        expect(defaultRules(edge)).toMatch(/background-image:[^;]*featured-?edge/i);
+        expect(defaultRules(edge)).toMatch(/padding:\s*1px/);
+        const split = lgRulesIn(edge, "split");
+        expect(split).toMatch(/padding:\s*1\.5px/);
+        expect(split).toMatch(/border-radius:\s*22px/);
+        expect(lgRulesIn(edge, "aligned")).toBe("");
+    });
+
+    it("renders the swap card once and keeps the typed amount across layout switches", () => {
+        setupBzeUsdc();
+        renderSwap();
+        expect(screen.getAllByPlaceholderText("0.0")).toHaveLength(2);
+
+        fireEvent.change(fromInput(), { target: { value: "12" } });
+        fireEvent.click(screen.getByRole("radio", { name: "Layout: swap left, activity right" }));
+        expect(document.documentElement.getAttribute("data-swap-layout")).toBe("split");
+        expect(localStorage.getItem("dex:swap-layout")).toBe("split");
+        fireEvent.click(screen.getByRole("radio", { name: "Layout: swap centre stage" }));
+        expect(document.documentElement.hasAttribute("data-swap-layout")).toBe(false);
+
+        expect(screen.getAllByPlaceholderText("0.0")).toHaveLength(2);
+        expect(fromInput().value).toBe("12");
+    });
+
+    it("shows B's stats as one figure box with the phone price, beside the stat cards", () => {
+        mocks.bzePrice = 0.764577;
+        renderSwap();
+        expect(screen.getAllByTestId("stat-card")).toHaveLength(3);
+        const figures = screen.getAllByTestId("figure-value");
+        expect(figures).toHaveLength(3);
+        expect(figures[0].textContent).toBe("$0.764577$0.7646");
+    });
+});
+
