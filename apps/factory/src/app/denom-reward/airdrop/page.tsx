@@ -74,11 +74,12 @@ function AirdropFormContent() {
     const { slot, isNewPrize, costs, afford } = gift
     const short = connected && costs.escrow !== undefined && spendable.balance.lt(costs.escrow.amount)
 
-    // Step 1 needs something staked to continue. Once answered it stays answered while the reward
-    // exists: if the stake drops to 0 later, Review shows why instead of jumping back.
+    // Step 1 needs something staked, also when ?denom= answers it. Only when the check right before
+    // signing finds the stake gone does it stay answered, so Review shows why instead of jumping back.
     const canPickToken = stakedTokenOk('airdrop', dr)
+    const lastCheck = recheck?.denom === denom ? recheck.result : undefined
     const steps = useGuidedSteps(STEPS, {
-        token: answered.includes('token') && stakedTokenOk('dailyPrize', dr),
+        token: answered.includes('token') && (canPickToken || (lastCheck === 'empty' && stakedTokenOk('dailyPrize', dr))),
         prize: answered.includes('prize') && Boolean(prizeAsset) && !slot.capReached && costs.escrow !== undefined && !short,
         review: false,
     })
@@ -117,7 +118,6 @@ function AirdropFormContent() {
     if (done) return <PrizeDone input={done.input} hash={done.hash} />
 
     const isComplete = steps.state.token === 'done' && steps.state.prize === 'done'
-    const lastCheck = recheck?.denom === denom ? recheck.result : undefined
     const stakedNow = denomReward !== undefined && new BigNumber(denomReward.staked_amount || 0).gt(0)
     const nobodyStakes = isComplete && (lastCheck === 'empty' || (denomReward !== undefined && !stakedNow))
     const canSign = isComplete && connected && gift.canSign && !short && !checking

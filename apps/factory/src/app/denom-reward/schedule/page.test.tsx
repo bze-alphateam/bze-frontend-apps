@@ -267,7 +267,8 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
         it("caps the days at 36,500", async () => {
             renderPage();
             await pickToken();
-            await fillPrize("50", "36501");
+            // 0.001 BZE a day: the balance covers the full 36,500 days.
+            await fillPrize("0.001", "36501");
             expect(button(step("Prize"), "Continue")).toBeDisabled();
             await userEvent.clear(within(step("Prize")).getByLabelText(/Payout days/));
             await userEvent.type(within(step("Prize")).getByLabelText(/Payout days/), "36500");
