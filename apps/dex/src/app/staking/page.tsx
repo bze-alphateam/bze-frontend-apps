@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState, useSyncExternalStore} from 'react';
 import {Box, chakra, Flex, Input, InputGroup, SimpleGrid} from '@chakra-ui/react';
 import {LuSearch} from 'react-icons/lu';
 import {useNativeStakingData} from "@/hooks/useNativeStakingData";
@@ -20,8 +20,16 @@ import {StakingSection} from "@/components/ui/staking/staking-card-parts";
 //150 seconds
 const STAKING_DATA_RELOAD_INTERVAL = 150_000;
 
+// `?search=` prefills the search (the Factory links here with a token's ticker). Read from the URL
+// on the client only (the server snapshot is empty); once the user types, the typed value wins.
+const noSubscribe = () => () => {};
+const readSearchParam = () => new URLSearchParams(window.location.search).get('search') ?? '';
+const noSearchParam = () => '';
+
 const StakingPage = () => {
-    const [searchTerm, setSearchTerm] = useState('');
+    const urlSearch = useSyncExternalStore(noSubscribe, readSearchParam, noSearchParam);
+    const [typedSearch, setSearchTerm] = useState<string | undefined>();
+    const searchTerm = typedSearch ?? urlSearch;
     const [selectedStaking, setSelectedStaking] = useState<StakingRewardSDKType | undefined>();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
