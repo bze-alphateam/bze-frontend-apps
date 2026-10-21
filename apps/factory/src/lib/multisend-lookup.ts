@@ -1,4 +1,5 @@
 import { Recipient } from '@/lib/multisend'
+import { ChainTxResult, FetchFn, restTxReader } from '@/lib/tx-lookup'
 
 const MULTI_SEND = '/cosmos.bank.v1beta1.MsgMultiSend'
 /** Recent multi-sends of the sender searched when the hash is unknown or not found. */
@@ -21,44 +22,25 @@ export interface TxLookup {
     recentMultiSends(sender: string): Promise<ChainTx[]>;
 }
 
-type FetchFn = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>
-
-function toChainTx(tx: unknown, response: unknown): ChainTx | undefined {
-    const r = response as { txhash?: unknown; code?: unknown } | undefined
-    if (!r || typeof r.txhash !== 'string') return undefined
-    const messages = (tx as { body?: { messages?: unknown[] } } | undefined)?.body?.messages ?? []
-    const multiSends = messages
+function toChainTx(tx: ChainTxResult): ChainTx {
+    const multiSends = tx.messages
         .filter((m): m is { '@type': string; outputs?: ChainTx['multiSends'][number] } =>
             (m as { '@type'?: unknown })?.['@type'] === MULTI_SEND)
         .map(m => m.outputs ?? [])
-    return { txhash: r.txhash, code: Number(r.code ?? 0), multiSends }
+    return { txhash: tx.txhash, code: tx.code, multiSends }
 }
 
-/**
- * Cosmos REST (SDK 0.50). Checked on the BZE testnet node 2026-10-14: the search takes
- * `query=` (`events=` answers 500 "query cannot be empty") and `limit=` (`pagination.limit`
- * is ignored); an unknown hash answers 404.
- */
-export function restTxLookup(restUrl: string, fetchFn: FetchFn = (url) => fetch(url)): TxLookup {
-    const base = restUrl.replace(/\/+$/, '')
+/** The multi-send view of the shared REST reader (lib/tx-lookup). */
+export function restTxLookup(restUrl: string, fetchFn?: FetchFn): TxLookup {
+    const reader = restTxReader(restUrl, fetchFn)
     return {
         async getTx(hash) {
-            const res = await fetchFn(`${base}/cosmos/tx/v1beta1/txs/${encodeURIComponent(hash)}`)
-            if (res.status === 404) return null
-            if (!res.ok) throw new Error(`tx lookup failed: HTTP ${res.status}`)
-            const body = await res.json() as { tx?: unknown; tx_response?: unknown }
-            return toChainTx(body.tx, body.tx_response) ?? null
+            const tx = await reader.getTx(hash)
+            return tx ? toChainTx(tx) : null
         },
         async recentMultiSends(sender) {
             const query = `message.sender='${sender}' AND message.action='${MULTI_SEND}'`
-            const params = new URLSearchParams({ query, order_by: '2', limit: String(SEARCH_LIMIT) })
-            const res = await fetchFn(`${base}/cosmos/tx/v1beta1/txs?${params.toString()}`)
-            if (!res.ok) throw new Error(`tx search failed: HTTP ${res.status}`)
-            const body = await res.json() as { txs?: unknown[]; tx_responses?: unknown[] }
-            const responses = body.tx_responses ?? []
-            return responses
-                .map((r, i) => toChainTx(body.txs?.[i], r))
-                .filter((t): t is ChainTx => t !== undefined)
+            return (await reader.searchTxs(query, SEARCH_LIMIT)).map(toChainTx)
         },
     }
 }
