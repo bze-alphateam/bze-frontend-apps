@@ -73,3 +73,67 @@ describe('useTx success toast', () => {
         expect(toastMock.clickableSuccess).not.toHaveBeenCalled()
     })
 })
+
+describe('useTx toasts and failure details', () => {
+    beforeEach(() => {
+        Object.values(toastMock).forEach(m => m.mockClear())
+        signAndBroadcastMock.mockReset()
+    })
+
+    it('keeps today\'s toasts when the new options are not set', async () => {
+        signAndBroadcastMock.mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 5, txhash: 'HASH', rawLog: 'insufficient funds', height: 10 }),
+        })
+        const onFailure = vi.fn()
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure }) })
+
+        expect(toastMock.loading).toHaveBeenCalledTimes(1)
+        expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, 'insufficient funds')
+        expect(toastMock.dismiss).toHaveBeenCalledWith('toast-id')
+        // The first argument is unchanged; the details are an extra, optional argument.
+        expect(onFailure).toHaveBeenCalledWith('insufficient funds', { stage: 'chain', txHash: 'HASH', rawLog: 'insufficient funds', code: 5 })
+    })
+
+    it('fires no toast at all with toasts: false', async () => {
+        signAndBroadcastMock.mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 0, txhash: 'HASH', height: 10 }),
+        })
+        const onSuccess = vi.fn()
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onSuccess, toasts: false }) })
+
+        expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ txhash: 'HASH', height: 10 }))
+        Object.values(toastMock).forEach(m => expect(m).not.toHaveBeenCalled())
+    })
+
+    it('reports a wallet that never broadcast as the sign stage', async () => {
+        signAndBroadcastMock.mockRejectedValue(new Error('Request rejected'))
+        const onFailure = vi.fn()
+        const onBroadcast = vi.fn()
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure, onBroadcast, toasts: false }) })
+
+        expect(onBroadcast).not.toHaveBeenCalled()
+        expect(onFailure).toHaveBeenCalledWith('Request rejected', { stage: 'sign', txHash: undefined, rawLog: 'Request rejected' })
+        expect(toastMock.error).not.toHaveBeenCalled()
+    })
+
+    it('reports a wait that gave up after broadcast as the timeout stage', async () => {
+        signAndBroadcastMock.mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => { throw new Error('Transaction HASH not found within timeout period') },
+        })
+        const onFailure = vi.fn()
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure, toasts: false }) })
+
+        expect(onFailure).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ stage: 'timeout', txHash: 'HASH' }))
+    })
+})
