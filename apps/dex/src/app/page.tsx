@@ -661,7 +661,8 @@ export default function SwapPage() {
   const calculateUSDValue = (amount: string, asset: typeof assetsWithBalanceInfo[0] | null) => {
     if (!asset || !amount) return null;
 
-    const usdValue = denomUsdValue(asset.denom, toBigNumber(amount));
+    // The fields hold display amounts; denomUsdValue takes base (micro) units.
+    const usdValue = denomUsdValue(asset.denom, amountToBigNumberUAmount(amount, asset.decimals));
 
     if (!usdValue || usdValue.lte(0)) return null;
 
