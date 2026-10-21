@@ -128,7 +128,8 @@ describe("paging", () => {
         expect(pageLinks(1, 3)).toEqual([1, 2, 3]);
         expect(pageLinks(1, 8)).toEqual([1, 2, 3, "…", 8]);
         expect(pageLinks(5, 8)).toEqual([1, "…", 4, 5, 6, 7, 8]);
-        expect(pageLinks(4, 10)).toEqual([1, "…", 3, 4, 5, "…", 10]);
+        expect(pageLinks(4, 10)).toEqual([1, 2, 3, 4, 5, "…", 10]);
+        expect(pageLinks(6, 12)).toEqual([1, "…", 5, 6, 7, "…", 12]);
         expect(pageLinks(10, 10)).toEqual([1, "…", 8, 9, 10]);
     });
 });

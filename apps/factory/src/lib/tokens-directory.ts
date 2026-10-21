@@ -118,15 +118,17 @@ export const pageCount = (total: number) => Math.max(1, Math.ceil(total / TOKENS
 export const clampPage = (page: number, total: number) => Math.min(Math.max(1, page), pageCount(total))
 
 /**
- * Numbered page links: the first, the last, and the current one with its neighbours; `'…'` marks a gap.
- * 1 2 3 … 8 on page 1, 1 … 4 5 6 … 8 on page 5.
+ * Numbered page links: the first, the last, and the current one with its neighbours; `'…'` marks a gap of
+ * two or more pages (a gap of one shows that page). 1 2 3 … 8 on page 1, 1 … 4 5 6 7 8 on page 5.
  */
 export function pageLinks(current: number, count: number): (number | '…')[] {
     const wanted = new Set([1, count, current - 1, current, current + 1, ...(current <= 3 ? [2, 3] : []), ...(current >= count - 2 ? [count - 1, count - 2] : [])])
     const pages = Array.from(wanted).filter(p => p >= 1 && p <= count).sort((a, b) => a - b)
     const out: (number | '…')[] = []
     pages.forEach((p, i) => {
-        if (i > 0 && p - pages[i - 1] > 1) out.push('…')
+        const gap = i > 0 ? p - pages[i - 1] - 1 : 0
+        if (gap === 1) out.push(p - 1)
+        else if (gap > 1) out.push('…')
         out.push(p)
     })
     return out
