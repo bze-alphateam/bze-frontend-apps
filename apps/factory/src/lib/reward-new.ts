@@ -90,3 +90,53 @@ export function extractRewardId(res: { [key: string]: unknown }): string | undef
     const raw = event?.attributes.find(a => a.key === 'reward_id')?.value
     return raw ? raw.replace(/^"|"$/g, '') : undefined
 }
+
+/** Quick answers under "For how many days". */
+export const DURATION_PRESETS = ['7', '30', '90', '180'] as const
+
+const days = (n: number | string) => `${Number(n).toLocaleString('en-US')} day${Number(n) === 1 ? '' : 's'}`
+
+/** "100 HONEY a day for 30 days": the budget step's summary and the announcement number. */
+export const prizeSummary = (perDay: string, ticker: string, duration: string) =>
+    `${perDay} ${ticker} a day for ${days(duration.trim())}`
+
+/** The mono budget line: "100 HONEY/day × 30 days = 3,000 HONEY committed now". */
+export const budgetLine = (perDay: string, ticker: string, duration: string, total: string) =>
+    `${perDay} ${ticker}/day × ${days(duration.trim())} = ${total} ${ticker} committed now`
+
+/** The rules step's summary: "No lock · no minimum", "7-day lock · min 100 TOK". */
+export function rulesSummary(lock: string, minStake?: string): string {
+    const n = Number(lock.trim() || '0')
+    const lockText = n > 0 ? `${n.toLocaleString('en-US')}-day lock` : 'No lock'
+    return `${lockText} · ${minStake ? `min ${minStake}` : 'no minimum'}`
+}
+
+/** What the lock means for stakers, under its field. */
+export function lockMeaning(lock: string): string {
+    const n = Number(lock.trim() || '0')
+    if (!Number.isFinite(n) || n <= 0) return 'Stakers can leave any time.'
+    return `Stakers get their tokens back ${days(n)} after they unstake.`
+}
+
+/** The REST shape of a tx's events (SDK 0.50 `tx_response.events`). */
+type TxEvents = { events?: { type: string; attributes: { key: string; value: string }[] }[] }
+
+/**
+ * The id of the reward a confirmed tx created, read back from the chain's REST: the wizard's
+ * transaction hook keeps only the hash, and the id exists only in the tx's event. Undefined when
+ * the node doesn't know the tx (yet) or can't be reached.
+ */
+export async function fetchRewardId(
+    restUrl: string,
+    hash: string,
+    fetchFn: (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }> = (url) => fetch(url),
+): Promise<string | undefined> {
+    try {
+        const res = await fetchFn(`${restUrl.replace(/\/+$/, '')}/cosmos/tx/v1beta1/txs/${encodeURIComponent(hash)}`)
+        if (!res.ok) return undefined
+        const body = await res.json() as { tx_response?: TxEvents }
+        return extractRewardId({ events: body.tx_response?.events })
+    } catch {
+        return undefined
+    }
+}

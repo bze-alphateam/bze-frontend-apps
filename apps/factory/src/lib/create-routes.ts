@@ -1,5 +1,5 @@
 import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
-import { rewardsHref } from '@/lib/rewards-directory'
+import { extendHref } from '@/lib/reward-extend'
 
 // The Create side of the Factory (BFE-260): the home's starting points, the three Choose
 // screens between a starting point and its wizard, and the query each Choose screen hands on.
@@ -46,7 +46,7 @@ export function rewardTargets(query: QueryReader) {
         // BFE-265 moves creating a compounded reward to /denom-reward/new; until then the token's
         // compounded reward page creates it.
         compounded: staked ? denomRewardHref(staked) : '/denom-reward/token',
-        extendSimple: rewardsHref({ tab: 'programs' }),
+        extendSimple: extendHref(),
         dailyPrize: staked ? scheduleFormHref(staked) : '/denom-reward/schedule',
         airdrop: staked ? airdropFormHref(staked) : '/denom-reward/airdrop',
     }
@@ -69,6 +69,10 @@ export const dexPoolHref = (dexHref: string, poolId?: string | null) =>
 /** An order-book market's page on the DEX; `marketId` is `<base>/<quote>` in the market's stored direction. */
 export const dexMarketHref = (dexHref: string, marketId: string) =>
     `${dexHref.replace(/\/$/, '')}/exchange/market?id=${encodeURIComponent(marketId)}`
+
+/** The DEX staking page, searched for the staked token: simple rewards are staked there. */
+export const dexStakingHref = (dexHref: string, ticker: string) =>
+    `${dexHref.replace(/\/$/, '')}/staking?search=${encodeURIComponent(ticker)}`
 
 export const DOCS_HREF = 'https://docs.getbze.com'
 

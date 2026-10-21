@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { act, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { Asset } from "@bze/bze-ui-kit";
@@ -156,42 +156,12 @@ describe("StakingProgramsList", () => {
         expect(m.refresh).toHaveBeenCalledTimes(2);
     });
 
-    it("extends by escrowing prize × days, with no fee, then clears and refreshes", async () => {
-        m.balance = "50000000";
-        renderList([reward("1", 3, 30)]);
+    it("opens the Extend wizard for the program: extending is permissionless, on every row", async () => {
+        renderList([reward("0000000000000007", 3, 30)]);
         await userEvent.click(screen.getByRole("button", { name: /Extend/ }));
-
-        const panel = screen.getByTestId("staking-program-extend-panel");
-        const days = within(panel).getByRole("textbox", { name: "How many more days?" });
-        await userEvent.type(days, "12");
-        expect(panel).toHaveTextContent("12 BZE leaves your wallet now — you have 50 BZE.");
-
-        await userEvent.click(within(panel).getByRole("button", { name: "Extend program" }));
-        const [msgs, options] = m.tx.mock.calls[0];
-        expect(msgs).toEqual([{
-            typeUrl: "/bze.rewards.MsgUpdateStakingReward",
-            value: expect.objectContaining({ creator: "bze1someone", rewardId: "1", duration: "12" }),
-        }]);
-        act(() => options.onSuccess());
-        expect(m.refresh).toHaveBeenCalledTimes(1);
-        expect(days).toHaveValue("");
-    });
-
-    it("refuses an extension past 36,500 days or beyond the balance", async () => {
-        m.balance = "5000000";
-        renderList([reward("1", 3, 36000)]);
-        await userEvent.click(screen.getByRole("button", { name: /Extend/ }));
-        const panel = screen.getByTestId("staking-program-extend-panel");
-        const days = within(panel).getByRole("textbox", { name: "How many more days?" });
-
-        await userEvent.type(days, "501");
-        expect(panel).toHaveTextContent("Total duration cannot exceed 36,500 days.");
-        expect(within(panel).getByRole("button", { name: "Extend program" })).toBeDisabled();
-
-        await userEvent.clear(days);
-        await userEvent.type(days, "6");
-        expect(panel).toHaveTextContent("Not enough BZE to escrow this extension.");
-        expect(within(panel).getByRole("button", { name: "Extend program" })).toBeDisabled();
+        expect(m.navigate).toHaveBeenCalledWith("/reward/extend?id=0000000000000007");
+        expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+        expect(m.tx).not.toHaveBeenCalled();
     });
 
     it("shows only the programs involving a token, LP programs of its pools included", () => {

@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import BigNumber from "bignumber.js";
 import {
     MAX_DURATION_DAYS,
     MAX_LOCK_DAYS,
     MIN_DURATION_DAYS,
+    budgetLine,
     escrowAmount,
+    fetchRewardId,
+    lockMeaning,
+    prizeSummary,
+    rulesSummary,
     extractRewardId,
     minStakeToChain,
     programBalances,
@@ -130,5 +135,51 @@ describe("extractRewardId", () => {
     it("is undefined without the event", () => {
         expect(extractRewardId({ events: [] })).toBeUndefined();
         expect(extractRewardId({})).toBeUndefined();
+    });
+});
+
+describe("budget wording", () => {
+    it("summarises the daily amount and the days", () => {
+        expect(prizeSummary("100", "HONEY", "30")).toBe("100 HONEY a day for 30 days");
+        expect(prizeSummary("1.5", "TOK", " 1 ")).toBe("1.5 TOK a day for 1 day");
+    });
+
+    it("writes the mono total line", () => {
+        expect(budgetLine("100", "HONEY", "30", "3,000")).toBe("100 HONEY/day × 30 days = 3,000 HONEY committed now");
+        expect(budgetLine("5", "BZE", "1000", "5,000")).toBe("5 BZE/day × 1,000 days = 5,000 BZE committed now");
+    });
+});
+
+describe("rules wording", () => {
+    it.each([
+        ["0", undefined, "No lock · no minimum"],
+        ["", undefined, "No lock · no minimum"],
+        ["7", "100 TOK", "7-day lock · min 100 TOK"],
+        ["0", "2.5 LP", "No lock · min 2.5 LP"],
+        ["1000", undefined, "1,000-day lock · no minimum"],
+    ])("lock %j, min %j → %j", (lock, min, text) => {
+        expect(rulesSummary(lock, min)).toBe(text);
+    });
+
+    it("says what the lock means for stakers", () => {
+        expect(lockMeaning("0")).toBe("Stakers can leave any time.");
+        expect(lockMeaning("1")).toBe("Stakers get their tokens back 1 day after they unstake.");
+        expect(lockMeaning("7")).toBe("Stakers get their tokens back 7 days after they unstake.");
+    });
+});
+
+describe("fetchRewardId", () => {
+    const event = { type: "bze.rewards.StakingRewardCreateEvent", attributes: [{ key: "reward_id", value: "\"0000000000000007\"" }] };
+
+    it("reads the id from the confirmed tx's event on the chain's REST", async () => {
+        const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ tx_response: { events: [{ type: "message", attributes: [] }, event] } }) }));
+        await expect(fetchRewardId("https://rest.test/", "AB CD", fetchFn)).resolves.toBe("0000000000000007");
+        expect(fetchFn).toHaveBeenCalledWith("https://rest.test/cosmos/tx/v1beta1/txs/AB%20CD");
+    });
+
+    it("gives up quietly when the node doesn't know the tx or can't be reached", async () => {
+        await expect(fetchRewardId("https://rest.test", "H", async () => ({ ok: false, json: async () => ({}) }))).resolves.toBeUndefined();
+        await expect(fetchRewardId("https://rest.test", "H", async () => { throw new Error("offline"); })).resolves.toBeUndefined();
+        await expect(fetchRewardId("https://rest.test", "H", async () => ({ ok: true, json: async () => ({ tx_response: { events: [] } }) }))).resolves.toBeUndefined();
     });
 });

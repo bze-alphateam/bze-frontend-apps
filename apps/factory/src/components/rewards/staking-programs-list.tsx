@@ -5,9 +5,7 @@ import {
     Box,
     Button,
     chakra,
-    Field,
     HStack,
-    Input,
     Separator,
     Text,
     VStack,
@@ -28,7 +26,6 @@ import {
     uAmountToBigNumberAmount,
     useAsset,
     useAssets,
-    useBalance,
     useLiquidityPools,
 } from '@bze/bze-ui-kit'
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
@@ -42,12 +39,10 @@ import { InfoBox } from '@/components/ui/info-box'
 import { softButton } from '@/components/ui/soft-button'
 import { filterMyTokens } from '@/lib/my-tokens'
 import { ProgramStatus } from '@/lib/rewards-directory'
+import { extendHref } from '@/lib/reward-extend'
 import { programInvolves, splitStakingRewards, stakingRewardDeletion } from '@/lib/staking-rewards'
 
-const { updateStakingReward, deleteStakingReward } = bze.rewards.MessageComposer.withTypeUrl
-
-// Same chain limit as creation: total duration can never exceed 36,500 days.
-const MAX_DURATION_DAYS = 36500
+const { deleteStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
 const STATUSES: { value: ProgramStatus; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -59,119 +54,6 @@ const formatDays = (days: number) => `${days.toLocaleString('en-US')} day${days 
 
 function Fact({ children }: { children: React.ReactNode }) {
     return <Text as="span" fontSize="12px" fontFamily="mono" color="fg.muted">{children}</Text>
-}
-
-// Extending is permissionless on-chain: anyone willing to escrow the extra
-// prize can add days to any program — not just its original creator.
-function ExtendPanel({
-    reward,
-    onExtended,
-}: {
-    reward: StakingRewardSDKType;
-    onExtended: () => void;
-}) {
-    const { address } = useChain(getChainName())
-    const { asset: prizeAsset } = useAsset(reward.prize_denom)
-    const { balance } = useBalance(reward.prize_denom)
-    const { tx } = useFactoryTx()
-
-    const [extraDays, setExtraDays] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-
-    const error = useMemo(() => {
-        const trimmed = extraDays.trim()
-        if (!trimmed) return 'Required.'
-        if (!/^[1-9]\d*$/.test(trimmed)) return 'Enter a whole number of days.'
-        if (reward.duration + Number(trimmed) > MAX_DURATION_DAYS) {
-            return `Total duration cannot exceed ${MAX_DURATION_DAYS.toLocaleString()} days.`
-        }
-        return ''
-    }, [extraDays, reward.duration])
-
-    // The top-up escrow: the program's fixed daily prize × the extra days.
-    const topUpUAmount = useMemo(() => {
-        if (error !== '') return undefined
-        return new BigNumber(reward.prize_amount).multipliedBy(extraDays.trim())
-    }, [error, reward.prize_amount, extraDays])
-
-    const hasEnough = useMemo(() => {
-        if (!topUpUAmount) return false
-        return balance.amount.gte(topUpUAmount)
-    }, [topUpUAmount, balance])
-
-    const canConfirm = Boolean(address) && error === '' && hasEnough
-
-    const submit = async () => {
-        if (!address || !canConfirm) return
-
-        const msg = updateStakingReward({
-            creator: address,
-            rewardId: reward.reward_id,
-            duration: extraDays.trim(),
-        })
-
-        setIsSubmitting(true)
-        try {
-            await tx([msg], {
-                onSuccess: () => {
-                    setExtraDays('')
-                    onExtended()
-                },
-            })
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
-    if (!prizeAsset) return null
-
-    const display = (amount: string | number | BigNumber) => prettyAmount(uAmountToBigNumberAmount(amount, prizeAsset.decimals))
-
-    return (
-        <VStack align="stretch" gap="10px" pt="4px" data-testid="staking-program-extend-panel">
-            <Separator borderColor="hg.divider" mb="4px" />
-            <Field.Root invalid={extraDays !== '' && error !== ''}>
-                <Field.Label fontSize="14px" fontWeight="600">How many more days?</Field.Label>
-                <Input
-                    placeholder="e.g. 30"
-                    inputMode="numeric"
-                    value={extraDays}
-                    onChange={(e) => setExtraDays(e.target.value)}
-                    maxW="160px"
-                    h="42px"
-                    borderRadius="10px"
-                />
-                <Field.HelperText fontSize="12px" color="fg.muted">
-                    Anyone can add days to a program, not only the one who started it. No fee.
-                </Field.HelperText>
-                <Field.ErrorText>{error}</Field.ErrorText>
-            </Field.Root>
-
-            {topUpUAmount && (
-                <Text fontSize="14px">
-                    {`${display(topUpUAmount)} ${prizeAsset.ticker} leaves your wallet now — you have ${display(balance.amount)} ${prizeAsset.ticker}.`}
-                </Text>
-            )}
-            {topUpUAmount && address && !hasEnough && (
-                <Text fontSize="14px" color="fg.error">
-                    Not enough {prizeAsset.ticker} to escrow this extension.
-                </Text>
-            )}
-
-            <Box>
-                <Button
-                    variant={hgVariant('primary')}
-                    size="md"
-                    onClick={submit}
-                    disabled={!canConfirm}
-                    loading={isSubmitting}
-                    loadingText="Waiting for signature..."
-                >
-                    Extend program
-                </Button>
-            </Box>
-        </VStack>
-    )
 }
 
 // MsgDeleteStakingReward (chain v8.2.0) is permissionless too: once a program has paid every day
@@ -232,8 +114,8 @@ function ProgramRow({
 }) {
     const { asset: stakingAsset } = useAsset(reward.staking_denom)
     const { asset: prizeAsset } = useAsset(reward.prize_denom)
-    const [openPanel, setOpenPanel] = useState<'extend' | 'delete' | undefined>()
-    const togglePanel = (panel: 'extend' | 'delete') => setOpenPanel(open => (open === panel ? undefined : panel))
+    const { navigate } = useNavigation()
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
     const stakeTicker = stakingAsset?.ticker ?? reward.staking_denom
     const prizeTicker = prizeAsset?.ticker ?? reward.prize_denom
@@ -278,13 +160,13 @@ function ProgramRow({
                     </HStack>
 
                     <HStack gap="8px" flexWrap="wrap">
+                        {/* Extending is permissionless: anyone can pay for more days, in its own wizard (BFE-264). */}
                         <Button
-                            {...(openPanel === 'extend' ? { variant: hgVariant('primary'), borderRadius: '10px' } : softButton)}
+                            {...softButton}
                             size="sm"
                             h="32px"
                             fontSize="13px"
-                            onClick={() => togglePanel('extend')}
-                            aria-expanded={openPanel === 'extend'}
+                            onClick={() => navigate(extendHref(reward.reward_id))}
                         >
                             <LuPlus />
                             Extend
@@ -295,10 +177,10 @@ function ProgramRow({
                                 h="32px"
                                 fontSize="13px"
                                 variant={hgVariant('danger')}
-                                {...(openPanel === 'delete' ? { bg: 'hg.danger.solid', color: 'white' } : {})}
+                                {...(isDeleteOpen ? { bg: 'hg.danger.solid', color: 'white' } : {})}
                                 disabled={deletion.kind !== 'deletable'}
-                                onClick={() => togglePanel('delete')}
-                                aria-expanded={openPanel === 'delete'}
+                                onClick={() => setIsDeleteOpen(open => !open)}
+                                aria-expanded={isDeleteOpen}
                             >
                                 <LuTrash2 />
                                 Delete
@@ -322,8 +204,7 @@ function ProgramRow({
                     </Text>
                 )}
 
-                {openPanel === 'extend' && <ExtendPanel reward={reward} onExtended={onChanged} />}
-                {openPanel === 'delete' && deletion.kind === 'deletable' && <DeletePanel reward={reward} onDeleted={onChanged} />}
+                {isDeleteOpen && deletion.kind === 'deletable' && <DeletePanel reward={reward} onDeleted={onChanged} />}
             </VStack>
         </HgCard>
     )
