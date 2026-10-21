@@ -143,7 +143,8 @@ beforeEach(() => {
     queryParams.current = new URLSearchParams();
     wallet.address = "bze1me";
     feeState.fee = { denom: "ubze", amount: "25000000" };
-    balances.current = { utok: "1000000000", ubze: "1000000000" };
+    // 1,000,000 TOK and 1,000 BZE.
+    balances.current = { utok: "1000000000000", ubze: "1000000000" };
     payment.paysWithAlt = false;
     payment.canPayFee = true;
     navigateMock.mockReset();

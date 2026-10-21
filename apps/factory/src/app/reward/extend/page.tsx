@@ -202,14 +202,11 @@ function ExtendContent() {
     const daysCount = Number(extraDays.trim())
     const daysText = `${daysCount.toLocaleString('en-US')} day${daysCount === 1 ? '' : 's'}`
 
-    // Primitives only: the reward object is looked up in the list on every render.
-    const foundId = reward?.reward_id
-    const foundDuration = reward?.duration
-    const buildMsgs = useCallback(() => {
-        if (!address || !foundId || foundDuration === undefined) return undefined
-        if (validateExtraDays(extraDays, { duration: foundDuration }) !== '') return undefined
-        return [updateStakingReward(extendMsgValue({ creator: address, rewardId: foundId, days: extraDays }))]
-    }, [address, foundId, foundDuration, extraDays])
+    // Not wrapped in useCallback: the React Compiler memoizes it (the reward is looked up in the list each render).
+    const buildMsgs = () => {
+        if (!address || !reward || validateExtraDays(extraDays, reward) !== '') return undefined
+        return [updateStakingReward(extendMsgValue({ creator: address, rewardId: reward.reward_id, days: extraDays }))]
+    }
 
     const onDone = useCallback(({ input, hash }: WizardTxDone<ExtendDoneInput>) => {
         refresh()
