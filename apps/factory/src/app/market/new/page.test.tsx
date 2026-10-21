@@ -308,7 +308,8 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("The TOK/BZE market is open.");
             expect(screen.getByText("Anyone can place buy and sell orders for TOK priced in BZE.")).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "Copy market link" })).toBeInTheDocument();
+            // Once among the hero links, once as the "Share the market" card's button.
+            expect(screen.getAllByRole("button", { name: "Copy market link" })).toHaveLength(2);
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             expect(updateMarketsMock).toHaveBeenCalled();
 
@@ -322,7 +323,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
 
             const contest = screen.getByRole("article", { name: "Trading contest" });
             expect(within(contest).getByRole("button", { name: "Coming soon" })).toBeDisabled();
-            expect(screen.getByRole("article", { name: "Share the market" })).toBeInTheDocument();
+            expect(within(screen.getByRole("article", { name: "Share the market" })).getByRole("button", { name: "Copy market link" })).toBeInTheDocument();
         });
 
         it("skips creating a pool when the pair already has one", async () => {
