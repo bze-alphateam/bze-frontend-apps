@@ -186,6 +186,12 @@ const StakingPage = () => {
         closeModal()
     }, [reloadRewardsStaking, closeModal]);
 
+    // `?search=` prefills the search once (the Factory links here with a token's ticker); after that it is local.
+    useEffect(() => {
+        const fromUrl = new URLSearchParams(window.location.search).get('search')
+        if (fromUrl) setSearchTerm(fromUrl)
+    }, [])
+
     useEffect(() => {
         const reloadInterval = setInterval(() => {
             reload()
