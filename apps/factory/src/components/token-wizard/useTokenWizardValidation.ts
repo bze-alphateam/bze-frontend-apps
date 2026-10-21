@@ -7,6 +7,7 @@ import type { TokenForm } from '@/lib/token-draft'
 import {
     TOKEN_DECIMALS,
     suggestSubdenom,
+    validateAdminAddress,
     validateDescription,
     validateInitialSupply,
     validateName,
@@ -19,11 +20,12 @@ export interface TokenFormErrors {
     symbol: string;
     description: string;
     initialSupply: string;
+    adminAddress: string;
 }
 
 /**
  * Single source of truth for the token form's validation: the questions show the field
- * errors, the page gates each question and the Create button on the validity flags.
+ * errors, the page gates each step and the Create button on the validity flags.
  */
 export function useTokenWizardValidation(form: TokenForm) {
     const { assets } = useAssets()
@@ -49,19 +51,20 @@ export function useTokenWizardValidation(form: TokenForm) {
             (isDuplicateDenom ? 'A token with this symbol already exists in your account — pick another one.' : ''),
         description: validateDescription(form.description),
         initialSupply: validateInitialSupply(form.initialSupply, TOKEN_DECIMALS),
+        adminAddress: form.adminChoice === 'other' ? validateAdminAddress(form.adminAddress, address) : '',
     }
 
-    const isIdentityValid = errors.name === '' && errors.symbol === ''
-    const isDescriptionValid = errors.description === ''
+    const isDetailsValid = errors.name === '' && errors.symbol === '' && errors.description === ''
     const isSupplyValid = errors.initialSupply === ''
+    const isPermissionsValid = errors.adminAddress === ''
 
     return {
         errors,
         subdenom,
         resultingDenom,
-        isIdentityValid,
-        isDescriptionValid,
+        isDetailsValid,
         isSupplyValid,
-        isValid: isIdentityValid && isDescriptionValid && isSupplyValid,
+        isPermissionsValid,
+        isValid: isDetailsValid && isSupplyValid && isPermissionsValid,
     }
 }

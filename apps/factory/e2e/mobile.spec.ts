@@ -18,7 +18,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/create/market", ready: heading("How should people trade it?")},
     {path: "/create/rewards", ready: heading("Which kind of reward?")},
     {path: "/create/grow", ready: heading("Who do you want to reach?")},
-    {path: "/token/new", ready: heading("Create my token")},
+    {path: "/token/new", ready: heading("Create a token")},
     {path: "/market/new", ready: heading("Allow limit orders")},
     {path: `/pool/new?base=${VDL}`, ready: heading("Let people buy and sell VDL")},
     {path: "/pool/add", ready: heading("Make trading smoother")},
