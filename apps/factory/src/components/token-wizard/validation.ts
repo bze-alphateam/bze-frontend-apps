@@ -2,11 +2,14 @@
 // no `_` or `/`. Name/symbol limits are UX choices for sane wallet/explorer display,
 // except the symbol minimum: the lowercased symbol becomes the bank metadata's
 // display denom, which must pass sdk.ValidateDenom (3–128 chars) — verified
-// 2026-09-09, a 2-char symbol makes the whole creation tx fail.
+// 2026-09-09, a 2-char symbol makes the whole creation tx fail. From bze v8.3.0
+// (BZE-215) the subdenom itself must also pass sdk.ValidateDenom: a letter first
+// and at least 3 characters.
 export const MIN_NAME_LENGTH = 2
 export const MAX_NAME_LENGTH = 64
 export const MIN_SYMBOL_LENGTH = 3
 export const MAX_SYMBOL_LENGTH = 12
+export const MIN_SUBDENOM_LENGTH = 3
 export const MAX_SUBDENOM_LENGTH = 44
 
 /**
@@ -17,7 +20,9 @@ export const TOKEN_DECIMALS = 6
 
 /**
  * The subdenom is always derived from the symbol, following the ecosystem's
- * micro-unit convention (ubze, uvdl, ...): "u" + lowercased symbol.
+ * micro-unit convention (ubze, uvdl, ...): "u" + lowercased symbol. The "u"
+ * prefix makes it start with a letter, and any symbol validateSymbol accepts
+ * yields at least MIN_SUBDENOM_LENGTH characters, so validateSubdenom accepts it.
  */
 export function suggestSubdenom(symbol: string): string {
     const sanitized = symbol.toLowerCase().replace(/[^a-z0-9.-]/g, '')
@@ -55,6 +60,10 @@ export function validateSubdenom(subdenom: string): string {
     if (!/^[A-Za-z0-9.-]+$/.test(subdenom)) {
         return 'Subdenom can only contain letters, digits, dots, and dashes.'
     }
+    if (subdenom.length < MIN_SUBDENOM_LENGTH) {
+        return `Subdenom must be at least ${MIN_SUBDENOM_LENGTH} characters.`
+    }
+    if (!/^[A-Za-z]/.test(subdenom)) return 'Subdenom must start with a letter.'
     return ''
 }
 
