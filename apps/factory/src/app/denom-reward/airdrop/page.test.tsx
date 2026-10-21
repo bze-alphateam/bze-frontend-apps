@@ -146,13 +146,13 @@ async function answerAll(prize: "BZE" | "ATOM", amount: string) {
 }
 
 describe("Gift stakers, once", { timeout: 20_000 }, () => {
-    it("shows the goal title, the tech tag and the back link to the holder rewards", async () => {
+    it("shows the goal title, the tech tag and the back link to the compounded reward", async () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Gift TOK stakers, once/ })).toBeInTheDocument();
         expect(screen.getByText("Split an amount between everyone staking TOK right now.")).toBeInTheDocument();
         expect(screen.getByText("rewards · distribute denom rewards")).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: "Back to TOK's holder rewards" }));
+        await userEvent.click(screen.getByRole("button", { name: "Back to TOK's compounded reward" }));
         expect(navigateMock).toHaveBeenCalledWith(HOLDER_REWARDS);
     });
 
@@ -261,10 +261,10 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
         useDenomRewardMock.mockReturnValue(drState({ denomReward: undefined, prizes: [] }));
         renderPage();
 
-        expect(screen.getByText("No holder rewards yet")).toBeInTheDocument();
+        expect(screen.getByText("No compounded reward yet")).toBeInTheDocument();
     });
 
-    it("on success says what was sent, links the tx and the Communities page, and ends on the holder rewards", async () => {
+    it("on success says what was sent, links the tx and the Communities page, and ends on the compounded reward", async () => {
         renderPage();
         await answerAll("BZE", "12.5");
         await userEvent.click(submitButton());
@@ -275,7 +275,7 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
         expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
         expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("href", `https://communities.test/token?denom=${encodeURIComponent(STAKING)}`);
 
-        await userEvent.click(screen.getByRole("button", { name: "Back to TOK's holder rewards" }));
+        await userEvent.click(screen.getByRole("button", { name: "Back to TOK's compounded reward" }));
         expect(navigateMock).toHaveBeenCalledWith(HOLDER_REWARDS);
     });
 
@@ -290,7 +290,7 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
     });
 
     it("on success the primary button goes to the return path when one is given", async () => {
-        setParams({ return: "/manage/token?denom=x&tab=rewards", returnLabel: "the token" });
+        setParams({ return: "/tokens/token?denom=x&tab=rewards", returnLabel: "the token" });
         renderPage();
         expect(screen.getByRole("button", { name: "Back to the token" })).toBeInTheDocument();
 
@@ -298,6 +298,6 @@ describe("Gift stakers, once", { timeout: 20_000 }, () => {
         await userEvent.click(submitButton());
 
         await userEvent.click(screen.getByRole("button", { name: "Back to the token" }));
-        expect(navigateMock).toHaveBeenCalledWith("/manage/token?denom=x&tab=rewards");
+        expect(navigateMock).toHaveBeenCalledWith("/tokens/token?denom=x&tab=rewards");
     });
 });

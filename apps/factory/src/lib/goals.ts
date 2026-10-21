@@ -84,13 +84,13 @@ export const GOALS: Goal[] = [
     {
         id: 'stakable', group: 'community', title: 'Make my token stakable', badge: 'Start here',
         description: 'Holders stake it and share daily prizes you fund.',
-        techTag: 'Holder rewards', feeKey: 'createDenomRewardFee', needsToken: 'any', includeLP: true,
+        techTag: 'Compounded rewards', feeKey: 'createDenomRewardFee', needsToken: 'any', includeLP: true,
         href: (denom = '') => denomRewardHref(denom), synonyms: ['stake', 'stakable', 'staking', 'yield', 'apr', 'apy', 'earn', 'hold', 'holders', 'rewards', 'passive', 'farm'],
     },
     {
         id: 'giftStakers', group: 'community', title: 'Gift my stakers, once',
         description: 'Split an amount between everyone staking today.',
-        techTag: 'Holder rewards · airdrop', needsToken: 'any', includeLP: true,
+        techTag: 'Compounded reward · airdrop', needsToken: 'any', includeLP: true,
         href: (denom = '') => airdropFormHref(denom), synonyms: ['airdrop', 'giveaway', 'gift', 'drop', 'bonus', 'reward stakers', 'thank', 'distribute'],
     },
     {
@@ -106,12 +106,12 @@ export const GOALS: Goal[] = [
     {
         id: 'campaign', group: 'community', title: 'Run a campaign with an end date',
         description: 'e.g. stake HONEY/BZE LP for 30 days, earn HONEY.',
-        techTag: 'Staking program', feeKey: 'createStakingRewardFee', href: () => '/reward/new', synonyms: ['campaign', 'farm', 'farming', 'lp rewards', 'promotion', 'season', 'end date', 'lock', 'incentive'],
+        techTag: 'Simple reward', feeKey: 'createStakingRewardFee', href: () => '/reward/new', synonyms: ['campaign', 'farm', 'farming', 'lp rewards', 'promotion', 'season', 'end date', 'lock', 'incentive'],
     },
     {
         id: 'dailyPrize', group: 'community', title: 'Give a little every day',
         description: 'Keeps people staking longer than a one-off gift.',
-        techTag: 'Holder rewards · daily prize', feeKey: 'addDenomRewardScheduleFee', needsToken: 'any', includeLP: true,
+        techTag: 'Compounded reward · daily prize', feeKey: 'addDenomRewardScheduleFee', needsToken: 'any', includeLP: true,
         href: (denom = '') => scheduleFormHref(denom), synonyms: ['daily', 'every day', 'drip', 'ongoing', 'schedule', 'prize', 'top up'],
     },
     {
@@ -152,11 +152,11 @@ export const SEARCH_TOOLS: Goal[] = [
         id: 'mintMore', group: 'tool', title: 'Mint more',
         description: 'Add to the supply of a token you control.',
         techTag: 'Token factory · mint', needsToken: 'mine',
-        href: (denom) => (denom ? workspaceHref(denom, 'supply') : '/manage'),
+        href: (denom) => (denom ? workspaceHref(denom, 'supply') : '/tokens'),
         synonyms: ['mint more', 'increase supply', 'inflation'],
     },
     {
-        id: 'handOver', group: 'tool', title: 'Hand over control',
+        id: 'handOver', group: 'tool', title: 'Transfer admin',
         description: 'Give the token to a team wallet or a DAO.',
         techTag: 'Change admin', needsToken: 'mine',
         href: (denom = '') => workspaceHref(denom, 'control'),
@@ -186,12 +186,12 @@ export const ALL_TOOLS: ToolLink[] = [
     { label: 'Create pool', goal: 'pool' },
     { label: 'Add liquidity', goal: 'addLiquidity' },
     { label: 'Create market', goal: 'market' },
-    { label: 'Holder rewards', href: rewardsHref() },
+    { label: 'Compounded rewards', href: rewardsHref() },
     { label: 'Airdrop', goal: 'giftStakers' },
     { label: 'Multi-send', goal: 'multisend' },
-    { label: 'Staking program', goal: 'campaign' },
+    { label: 'Simple reward', goal: 'campaign' },
     { label: 'Brand kit', goal: 'brandKit' },
     { label: 'Chain registry', goal: 'registry' },
     { label: 'Burner', external: 'burner' },
-    { label: 'My creations', href: '/manage' },
+    { label: 'My creations', href: '/tokens' },
 ]

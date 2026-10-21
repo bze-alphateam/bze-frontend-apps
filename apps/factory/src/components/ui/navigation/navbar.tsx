@@ -7,11 +7,16 @@ import {PendingTx, usePendingTx} from "@/contexts/pending-tx";
 
 const navItems = [
     { label: 'Create', href: '/' },
-    { label: 'Manage', href: '/manage' },
+    { label: 'Tokens', href: '/tokens' },
+    { label: 'Rewards', href: '/rewards' },
 ]
 
-// Every other page lights up the item it belongs to.
+// Every other page lights up the item it belongs to: wizards and Choose screens are Create, the
+// token page and the registry guide are Tokens, every reward page is Rewards.
 const navSubitems: { [key: string]: string } = {
+    '/create/market': '/',
+    '/create/rewards': '/',
+    '/create/grow': '/',
     '/token/new': '/',
     '/market/new': '/',
     '/pool/new': '/',
@@ -19,14 +24,13 @@ const navSubitems: { [key: string]: string } = {
     '/reward/new': '/',
     '/multisend': '/',
     '/reach': '/',
-    '/playbooks': '/',
     '/raffle/new': '/',
-    '/manage/token': '/manage',
-    '/rewards': '/manage',
-    '/denom-reward/schedule': '/manage',
-    '/denom-reward/airdrop': '/manage',
-    '/denom-reward/token': '/manage',
-    '/official': '/manage',
+    '/tokens/token': '/tokens',
+    '/official': '/tokens',
+    '/reward/extend': '/rewards',
+    '/denom-reward/token': '/rewards',
+    '/denom-reward/schedule': '/rewards',
+    '/denom-reward/airdrop': '/rewards',
 }
 
 /** The nav item a wizard page belongs to. */

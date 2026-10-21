@@ -95,7 +95,7 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         expect(question("Describe it")).toHaveAttribute("data-state", "todo");
         expect(question("How many tokens to create?")).toHaveAttribute("data-state", "todo");
         expect(screen.getByTestId("pay-panel")).toHaveTextContent("Token creation fee: 25000000000 | create-denom,mint,set-denom-metadata");
-        expect(screen.getByText(/lock the supply forever from the token's page/)).toBeInTheDocument();
+        expect(screen.getByText(/renounce admin from the token's page/)).toBeInTheDocument();
         expect(createButton()).toBeDisabled();
     });
 

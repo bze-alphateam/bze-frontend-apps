@@ -43,9 +43,9 @@ function CardTitle({ icon, children, success = false }: { icon: React.ReactNode;
 
 function LockCard({ ticker, onOpen }: { ticker: string; onOpen: () => void }) {
     return (
-        <HgCard as="section" aria-label="Lock the supply" p="22px">
+        <HgCard as="section" aria-label="Renounce admin" p="22px">
             <VStack align="stretch" gap="16px">
-                <CardTitle icon={<LuLock />}>Lock the supply</CardTitle>
+                <CardTitle icon={<LuLock />}>Renounce admin</CardTitle>
                 <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
                     The strongest trust signal a token can have. Do it last, when your setup is done.
                 </Text>
@@ -90,9 +90,9 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
     }
 
     return (
-        <HgCard as="section" aria-label="Hand over control" p="22px">
+        <HgCard as="section" aria-label="Transfer admin" p="22px">
             <VStack align="stretch" gap="16px">
-                <CardTitle icon={<LuKeyRound />}>Hand over control</CardTitle>
+                <CardTitle icon={<LuKeyRound />}>Transfer admin</CardTitle>
 
                 <Field.Root invalid={touched && error !== ''}>
                     <Field.Label fontSize="14px" fontWeight="600">Hand control to (address)</Field.Label>
@@ -134,7 +134,7 @@ function HandOverCard({ asset, onChanged }: { asset: Asset; onChanged: () => voi
                         loading={isSubmitting}
                         loadingText="Waiting for signature..."
                     >
-                        Hand over control
+                        Transfer admin
                     </Button>
                 </Box>
             </VStack>

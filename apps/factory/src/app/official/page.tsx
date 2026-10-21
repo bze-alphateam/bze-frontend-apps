@@ -151,7 +151,7 @@ function OfficialContent() {
                         kind="not-found"
                         title="Open this guide from your token's page"
                         description="It works for tokens made in the Factory: the link needs the token ID."
-                        action={<Button {...softButton} size="lg" onClick={() => navigate('/manage')}>Your tokens</Button>}
+                        action={<Button {...softButton} size="lg" onClick={() => navigate('/tokens')}>Your tokens</Button>}
                     />
                 </HgCard>
             </PageContainer>

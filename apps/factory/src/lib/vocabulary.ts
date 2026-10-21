@@ -10,13 +10,14 @@ export interface Term {
 }
 
 export const VOCABULARY = {
-    holderRewards: { name: 'Holder rewards', tech: 'rewards · denom reward' },
-    stakingProgram: { name: 'Staking program', tech: 'rewards · staking reward' },
+    holderRewards: { name: 'Compounded reward', tech: 'rewards · denom reward' },
+    stakingProgram: { name: 'Simple reward', tech: 'rewards · staking reward' },
     airdropToStakers: { name: 'Airdrop to stakers', tech: 'rewards · distribute denom rewards' },
     dailyPrize: { name: 'Daily prize', tech: 'rewards · denom reward schedule' },
     multiSend: { name: 'Send to a list of wallets', tech: 'bank · multi-send' },
-    control: { name: 'Control', tech: 'tokenfactory · admin' },
-    lockSupply: { name: 'Lock the supply', tech: 'tokenfactory · renounce admin' },
+    control: { name: 'Permissions', tech: 'tokenfactory · admin' },
+    transferAdmin: { name: 'Transfer admin', tech: 'tokenfactory · change admin' },
+    lockSupply: { name: 'Renounce admin', tech: 'tokenfactory · renounce admin' },
     brandKit: { name: 'Brand kit', tech: 'tokenfactory · denom branding' },
     pool: { name: 'Liquidity pool', tech: 'tradebin · liquidity pool' },
     market: { name: 'Order-book market', tech: 'tradebin · market' },

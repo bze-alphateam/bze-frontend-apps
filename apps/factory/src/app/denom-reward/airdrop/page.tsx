@@ -21,7 +21,7 @@ import { AIRDROP_TX_KIND, airdropPayRows, useAirdropGift } from '@/hooks/useAird
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { Notice } from '@/components/manage/denom-reward-form-parts'
 import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
-import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
     BlockerNote,
@@ -102,7 +102,7 @@ function AirdropFormContent() {
         : ''
 
     const holderRewardsHref = denomRewardHref(denom)
-    const holderRewardsLabel = `${stakingPossessive} holder rewards`
+    const holderRewardsLabel = `${stakingPossessive} compounded reward`
     const back = () => navigate(returnTo?.href ?? holderRewardsHref)
 
     const reset = () => {
@@ -128,7 +128,7 @@ function AirdropFormContent() {
     }
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate(returnTo?.href ?? '/rewards')}>Open this form from a token&apos;s holder rewards.</Notice>
+        return <Notice title="No token selected" onBack={() => navigate(returnTo?.href ?? '/rewards')}>Open this form from a token&apos;s compounded reward.</Notice>
     }
 
     if (isLoading) {
@@ -144,7 +144,7 @@ function AirdropFormContent() {
 
     if (hasError) {
         return (
-            <Notice title="Couldn't load the holder rewards" onBack={back}>
+            <Notice title="Couldn't load the compounded reward" onBack={back}>
                 The chain query failed — the node may be down, or not run chain v8.2.0 yet. Try again later.
             </Notice>
         )
@@ -152,8 +152,8 @@ function AirdropFormContent() {
 
     if (!denomReward) {
         return (
-            <Notice title="No holder rewards yet" onBack={back}>
-                {`${stakingAsset?.ticker ?? 'This token'} has no holder rewards. Make it stakable first.`}
+            <Notice title="No compounded reward yet" onBack={back}>
+                {`${stakingAsset?.ticker ?? 'This token'} has no compounded reward. Make it stakable first.`}
             </Notice>
         )
     }
@@ -217,7 +217,7 @@ function AirdropFormContent() {
             title={
                 <>
                     {`Gift ${stakingTicker} stakers, `}<GradientText>once</GradientText>
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton denom={denom} /></chakra.span>
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink denom={denom} /></chakra.span>
                 </>
             }
             subtitle={`Split an amount between everyone staking ${stakingTicker} right now.`}

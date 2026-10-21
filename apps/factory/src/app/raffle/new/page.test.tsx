@@ -266,7 +266,7 @@ describe("/raffle/new", () => {
         });
 
         it("offers Back to TOK when opened from the workspace", async () => {
-            const back = "/manage/token?denom=utok&tab=supply";
+            const back = "/tokens/token?denom=utok&tab=supply";
             m.queryParams = new URLSearchParams({ denom: "utok", return: back, returnLabel: "TOK" });
             succeed();
             renderPage();

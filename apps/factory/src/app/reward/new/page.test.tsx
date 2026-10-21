@@ -145,7 +145,7 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
             "45 TOK leaves your wallet now and is paid out as 1.5 TOK a day for 30 days to everyone staking TOK/BZE LP. It can't be withdrawn. Anyone can add more days later.",
         );
         expect(screen.getByTestId("pay-panel")).toHaveTextContent(
-            "Locked upfront for prizes: 45000000 utok, Staking program fee: 25000000 ubze",
+            "Locked upfront for prizes: 45000000 utok, Simple reward fee: 25000000 ubze",
         );
 
         await userEvent.click(startButton());
@@ -231,10 +231,9 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         expect(startButton()).toBeDisabled();
     });
 
-    it("opens the reward guide from ⓘ", async () => {
+    it("links ⓘ to the reward kinds compared", () => {
         renderPage();
-        await userEvent.click(screen.getByRole("button", { name: "Which reward fits?" }));
-        expect(await screen.findByRole("dialog", { name: "Which reward fits?" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Compare the kinds of reward" })).toHaveAttribute("href", "/create/rewards");
     });
 
     it("shows the program id and links on success, and starts another from scratch", async () => {
@@ -245,7 +244,7 @@ describe("Run a campaign with an end date (/reward/new)", { timeout: 20_000 }, (
         await answerRules("3", "");
         await userEvent.click(startButton());
 
-        expect(screen.getByRole("heading", { name: "Your staking program is live!" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Your simple reward is live!" })).toBeInTheDocument();
         expect(screen.getByText(/10 TOK was locked for prizes/)).toBeInTheDocument();
         expect(screen.getByText("0000000000000007")).toBeInTheDocument();
 

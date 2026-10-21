@@ -199,13 +199,13 @@ export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: Ai
 }
 
 /**
- * Why the chain would refuse this prize token on a holder reward, or '': the cap is reached, or the
+ * Why the chain would refuse this prize token on a compounded reward, or '': the cap is reached, or the
  * new prize fee is unknown. The part of `airdropBlocker` that a daily prize shares.
  */
 export function prizeBlocker({ prizeDenom, slot, feesKnown }: Omit<AirdropGuardInput, 'stakedAmount'>): string {
     if (!prizeDenom) return ''
     if (slot.capReached) {
-        return 'These holder rewards already pay the maximum number of prize tokens. Pick a prize token they already pay.'
+        return 'This compounded reward already pays the maximum number of prize tokens. Pick a prize token they already pay.'
     }
     if (slot.isNewPrize && !feesKnown) {
         return "The new prize token fee couldn't be read from the chain. Try again later."

@@ -21,7 +21,7 @@ const STAKING_REWARDS = lcd("rewards.all_staking_rewards.json");
 
 // The wide-screen table; phones get the stacked cards instead.
 const tableRows = (page: import("@playwright/test").Page) =>
-    page.getByRole("table", {name: "Holder rewards"}).getByTestId("denom-reward-row");
+    page.getByRole("table", {name: "Compounded rewards"}).getByTestId("denom-reward-row");
 
 test("lists one row per denom reward on the chain", async ({page}) => {
     await page.goto("/rewards");
@@ -31,7 +31,7 @@ test("lists one row per denom reward on the chain", async ({page}) => {
     // testnet's one denom reward stakes noadmin, whose metadata names it NoAdminToken.
     await expect(rows.first().getByText("NoAdminToken")).toBeVisible();
     await expect(page.getByRole("columnheader", {name: "Paying"})).toBeVisible();
-    await expect(page.getByRole("tab", {name: /Holder rewards/})).toContainText(String(ALL_DENOM_REWARDS.body.list.length));
+    await expect(page.getByRole("tab", {name: /Compounded rewards/})).toContainText(String(ALL_DENOM_REWARDS.body.list.length));
     await expect(page.getByTestId("denom-reward-empty")).toHaveCount(0);
 });
 
@@ -69,19 +69,16 @@ test("shows the empty state when the chain has no denom reward", async ({page, n
     network.use("lcd", {...ALL_DENOM_REWARDS, body: {list: [], pagination: {next_key: null, total: "0"}}});
     await page.goto("/rewards");
 
-    await expect(page.getByTestId("denom-reward-empty")).toHaveText(/No token has holder rewards yet/);
+    await expect(page.getByTestId("denom-reward-empty")).toHaveText(/No token has a compounded reward yet/);
     await expect(page.getByTestId("denom-reward-row")).toHaveCount(0);
 });
 
-test("opens the Which reward fits? guide from the header", async ({page}) => {
+test("Which one? in the header opens the reward kinds compared", async ({page}) => {
     await page.goto("/rewards");
 
-    await page.getByRole("button", {name: "Which reward fits?"}).click();
-    const dialog = page.getByRole("dialog", {name: "Which reward fits?"});
-    await expect(dialog.getByText("Most creators start here")).toBeVisible();
-
-    await page.keyboard.press("Escape");
-    await expect(dialog).toHaveCount(0);
+    await page.getByRole("link", {name: "Which one?"}).click();
+    await expect(page).toHaveURL(/\/create\/rewards$/);
+    await expect(page.getByRole("heading", {level: 1, name: "Which kind of reward?"})).toBeVisible();
 });
 
 test("fits a phone screen: stacked cards, wrapping filters, no sideways scrolling", async ({page}) => {
@@ -89,32 +86,20 @@ test("fits a phone screen: stacked cards, wrapping filters, no sideways scrollin
     await page.goto("/rewards");
 
     await expect(page.getByTestId("denom-reward-card")).toHaveCount(ALL_DENOM_REWARDS.body.list.length);
-    await expect(page.getByRole("table", {name: "Holder rewards"})).toBeHidden();
+    await expect(page.getByRole("table", {name: "Compounded rewards"})).toBeHidden();
     await expect(page.getByRole("button", {name: "Paying now"})).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("the guide fits a phone screen without sideways scrolling", async ({page}) => {
-    await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/rewards");
-
-    await page.getByRole("button", {name: "Which reward fits?"}).click();
-    const dialog = page.getByRole("dialog", {name: "Which reward fits?"});
-    await expect(dialog.getByTestId("reward-comparison-stacked")).toBeVisible();
-    await expect(dialog.getByRole("table", {name: "Rewards compared"})).toBeHidden();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
-});
-
-test("Staking programs: running first, finished folded away", async ({page, network}) => {
+test("Simple rewards: running first, finished folded away", async ({page, network}) => {
     // testnet's one program has paid all its days; add a running one after it in chain order.
     const [finished] = STAKING_REWARDS.body.list;
     const running = {...finished, reward_id: "000000000001", payouts: 3, duration: 30};
     network.use("lcd", {...STAKING_REWARDS, body: {...STAKING_REWARDS.body, list: [finished, running]}});
     await page.goto("/rewards?tab=programs");
 
-    await expect(page.getByRole("tab", {name: /Staking programs/})).toContainText("1 running");
+    await expect(page.getByRole("tab", {name: /Simple rewards/})).toContainText("1 running");
     const rows = page.getByTestId("staking-program-row");
     await expect(rows).toHaveCount(1);
     await expect(rows.first().getByText("#000000000001")).toBeVisible();
@@ -133,7 +118,7 @@ test("Staking programs: running first, finished folded away", async ({page, netw
     await expect(rows).toHaveCount(1);
 });
 
-test("Staking programs fit a phone screen", async ({page}) => {
+test("Simple rewards fit a phone screen", async ({page}) => {
     await page.setViewportSize({width: 390, height: 844});
     await page.goto("/rewards?tab=programs&status=finished");
 

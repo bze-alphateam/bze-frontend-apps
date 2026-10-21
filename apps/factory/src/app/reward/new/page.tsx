@@ -19,7 +19,7 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
-import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
@@ -203,7 +203,7 @@ function RewardNewContent() {
     if (created) {
         return (
             <SuccessPanel
-                title="Your staking program is live!"
+                title="Your simple reward is live!"
                 text={`${created.escrowLabel} was locked for prizes. Anyone staking ${stakeTicker || 'the staking token'} now shares the daily prize.`}
                 code={created.rewardId ? { label: 'Your program id', value: created.rewardId } : undefined}
                 links={[
@@ -270,7 +270,7 @@ function RewardNewContent() {
             title={
                 <>
                     Run a campaign with an <GradientText>end date</GradientText>
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton /></chakra.span>
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
             subtitle="People stake one token for a set number of days and earn a daily prize you fund upfront."

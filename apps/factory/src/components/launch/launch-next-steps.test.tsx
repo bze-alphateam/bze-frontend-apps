@@ -30,7 +30,7 @@ import { LaunchNextSteps } from "./launch-next-steps";
 
 const DENOM = "factory/bze1me/uhoney";
 const ENC = encodeURIComponent(DENOM);
-const WORKSPACE = `/manage/token?denom=${ENC}&tab=overview`;
+const WORKSPACE = `/tokens/token?denom=${ENC}&tab=overview`;
 const RETURN = new URLSearchParams({ return: WORKSPACE, returnLabel: "HONEY" }).toString();
 
 const BZE = { denom: "ubze", ticker: "BZE", name: "BeeZee", decimals: 6 };
@@ -71,7 +71,7 @@ describe("LaunchNextSteps", () => {
         expect(steps().map(li => li.querySelector("[data-testid]")?.getAttribute("data-testid"))).toEqual([
             "launch-step-look", "launch-step-pool", "launch-step-rewards", "launch-step-lock",
         ]);
-        expect(within(step("lock")).getByText("Last: lock the supply (optional)")).toBeInTheDocument();
+        expect(within(step("lock")).getByText("Last: renounce admin (optional)")).toBeInTheDocument();
         expect(step("look")).toHaveTextContent("About 2 min");
     });
 
@@ -112,11 +112,11 @@ describe("LaunchNextSteps", () => {
             await userEvent.click(within(step(key)).getByRole("button", { name }));
             return m.navigate.mock.lastCall?.[0];
         };
-        expect(await go("look", "Set brand kit")).toBe(`/manage/token?denom=${ENC}&tab=profile`);
+        expect(await go("look", "Set brand kit")).toBe(`/tokens/token?denom=${ENC}&tab=profile`);
         expect(await go("pool", "Create pool")).toBe(`/pool/new?base=${ENC}&${RETURN}`);
-        expect(await go("rewards", "Set up rewards")).toBe(`/manage/token?denom=${ENC}&tab=rewards`);
+        expect(await go("rewards", "Set up rewards")).toBe(`/tokens/token?denom=${ENC}&tab=rewards`);
         expect(await go("registry", "Open the guide")).toBe(`/official?denom=${ENC}`);
-        expect(await go("lock", "Review and lock")).toBe(`/manage/token?denom=${ENC}&tab=control&lock=1`);
+        expect(await go("lock", "Review and renounce")).toBe(`/tokens/token?denom=${ENC}&tab=control&lock=1`);
 
         await userEvent.click(screen.getByRole("button", { name: "Go to HONEY's page" }));
         expect(m.navigate).toHaveBeenLastCalledWith(WORKSPACE);
@@ -130,10 +130,10 @@ describe("LaunchNextSteps", () => {
         expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
     });
 
-    it("shows the pool and holder rewards fees from the creation fees", () => {
+    it("shows the pool and compounded reward fees from the creation fees", () => {
         renderScreen();
         expect(step("pool")).toHaveTextContent("Pool creation fee: 1,000 BZE");
-        expect(step("rewards")).toHaveTextContent("Holder rewards fee: 5,000 BZE");
+        expect(step("rewards")).toHaveTextContent("Compounded reward fee: 5,000 BZE");
     });
 
     it("leaves the fee hints out while the fees are unknown", () => {

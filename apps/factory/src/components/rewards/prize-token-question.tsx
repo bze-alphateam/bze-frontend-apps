@@ -19,11 +19,11 @@ import { prizeSlot } from '@/lib/denom-reward'
 
 interface PrizeTokenQuestionProps {
     denomReward: Pick<DenomReward, 'staking_denom'>;
-    /** Every prize denom the holder reward has used — what the cap counts. */
+    /** Every prize denom the compounded reward has used — what the cap counts. */
     prizes: ReadonlyArray<Pick<DenomRewardPrize, 'prize_denom'>>;
     /** `max_prize_denoms_per_dr`; undefined while unknown (no cap warning then). */
     maxPrizeDenoms?: number;
-    /** `createDenomRewardPrizeFee`, charged once for a prize denom new to the holder reward. */
+    /** `createDenomRewardPrizeFee`, charged once for a prize denom new to the compounded reward. */
     prizeFee?: FeeCoin;
     value: string;
     onSelect: (asset: Asset) => void;
@@ -41,8 +41,8 @@ function Line({ tone, icon, children }: { tone: 'muted' | 'good'; icon: React.Re
 }
 
 /**
- * The content of a "What do you give?" question of the holder rewards forms: picks the prize
- * token and says what it costs against the holder reward's prize entries and cap.
+ * The content of a "What do you give?" question of the compounded reward forms: picks the prize
+ * token and says what it costs against the compounded reward's prize entries and cap.
  */
 export function PrizeTokenQuestion({
     denomReward,
@@ -75,13 +75,13 @@ export function PrizeTokenQuestion({
 
             {value && slot.capReached && (
                 <BlockerNote>
-                    This holder reward already uses {slot.used} prize tokens, the maximum of {maxPrizeDenoms}.
+                    This compounded reward already uses {slot.used} prize tokens, the maximum of {maxPrizeDenoms}.
                     Pick a prize token it already pays.
                 </BlockerNote>
             )}
             {value && slot.isNewPrize && !slot.capReached && (
                 <Line tone="muted" icon={<LuInfo size={16} />}>
-                    {prizeTicker} is new to {stakeTicker}&apos;s holder rewards, so the one-time new prize
+                    {prizeTicker} is new to {stakeTicker}&apos;s compounded reward, so the one-time new prize
                     fee{feeText} applies. It takes {slotText} for good. Paying {prizeTicker} here again later is free.
                 </Line>
             )}

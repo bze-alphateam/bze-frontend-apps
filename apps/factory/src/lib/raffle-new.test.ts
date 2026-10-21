@@ -170,7 +170,7 @@ describe("links and texts", () => {
     it("raffleHref adds the token and the way back", () => {
         expect(raffleHref()).toBe("/raffle/new");
         expect(raffleHref(DENOM)).toBe(`/raffle/new?denom=${encodeURIComponent(DENOM)}`);
-        const ws = `/manage/token?denom=${encodeURIComponent(DENOM)}&tab=supply`;
+        const ws = `/tokens/token?denom=${encodeURIComponent(DENOM)}&tab=supply`;
         const href = raffleHref(DENOM, { href: ws, label: "TOK" });
         const params = new URLSearchParams(href.split("?")[1]);
         expect(params.get("denom")).toBe(DENOM);

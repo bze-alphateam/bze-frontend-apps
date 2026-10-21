@@ -10,7 +10,7 @@ import { StatusPill } from '@bze/bze-ui-kit'
 // (undefined) gets a neutral badge — it must never read as "fixed supply".
 export function TrustBadge({ admin }: { admin: string | undefined }) {
     const [tone, icon, label] = admin === undefined
-        ? ['neutral', <LuCircleHelp key="i" />, 'Control unknown'] as const
+        ? ['neutral', <LuCircleHelp key="i" />, 'Admin unknown'] as const
         : admin === ''
             ? ['success', <LuLock key="i" />, 'Fixed supply'] as const
             : ['warning', <LuTriangleAlert key="i" />, 'Mintable'] as const

@@ -85,12 +85,12 @@ beforeEach(() => {
     m.markets = [];
 });
 
-describe("Your tokens (/manage)", () => {
-    it("points to the staking programs on /rewards", () => {
+describe("Your tokens (/tokens)", () => {
+    it("points to the simple rewards on /rewards", () => {
         m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
         renderPage();
 
-        expect(screen.getByRole("link", { name: "Looking for staking programs? They're under Rewards →" }))
+        expect(screen.getByRole("link", { name: "Looking for simple rewards? They're under Rewards →" }))
             .toHaveAttribute("href", "/rewards?tab=programs&filter=all&sort=staked&status=all");
     });
 
@@ -138,7 +138,7 @@ describe("Your tokens (/manage)", () => {
         m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", undefined)], isLoading: false });
         renderPage();
 
-        expect(screen.getByText("Control unknown")).toBeInTheDocument();
+        expect(screen.getByText("Admin unknown")).toBeInTheDocument();
         expect(screen.queryByText("Fixed supply")).not.toBeInTheDocument();
         expect(screen.queryByText("Mintable")).not.toBeInTheDocument();
     });
@@ -159,7 +159,7 @@ describe("Your tokens (/manage)", () => {
         await userEvent.click(screen.getByRole("button", { name: /New token/ }));
         expect(m.navigate).toHaveBeenCalledWith("/token/new");
         await userEvent.click(screen.getByRole("button", { name: "Open" }));
-        expect(m.navigate).toHaveBeenCalledWith(`/manage/token?denom=${encodeURIComponent("factory/bze1owner/uhoney")}&tab=overview`);
+        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${encodeURIComponent("factory/bze1owner/uhoney")}&tab=overview`);
     });
 
     it("shows each token's setup progress and its first unfinished item", () => {

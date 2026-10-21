@@ -41,7 +41,7 @@ vi.mock("@/hooks/useRegistryListing", () => ({ useRegistryListing: () => ({ stat
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
-vi.mock("@/components/rewards/holder-rewards-panel", () => ({ HolderRewardsPanel: () => <div>holder rewards panel</div> }));
+vi.mock("@/components/rewards/holder-rewards-panel", () => ({ HolderRewardsPanel: () => <div>compounded reward panel</div> }));
 vi.mock("@/components/rewards/staking-programs-list", () => ({
     StakingProgramsList: ({ involving, newProgramHref }: { involving?: string; newProgramHref?: string }) => (
         <div data-testid="staking-programs" data-involving={involving} data-new-href={newProgramHref} />
@@ -94,7 +94,7 @@ const setup = (overrides: Record<string, unknown> = {}) => ({
         },
         {
             key: "description", title: "Description", detail: "", state: "todo", optional: false, href: "",
-            action: { label: "Add", href: `/manage/token?denom=${ENCODED}&tab=profile` },
+            action: { label: "Add", href: `/tokens/token?denom=${ENCODED}&tab=profile` },
         },
     ],
     doneCount: 1,
@@ -147,11 +147,11 @@ describe("token workspace", () => {
     it("opens the tab in ?tab= and switches tabs with replace", async () => {
         m.query.tab = "control";
         renderPage();
-        expect(await screen.findByRole("region", { name: "Lock the supply" })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: "Renounce admin" })).toBeInTheDocument();
         expect(screen.queryByTestId("setup-progress")).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("tab", { name: "Supply" }));
-        expect(m.replace).toHaveBeenCalledWith(`/manage/token?denom=${ENCODED}&tab=supply`);
+        expect(m.replace).toHaveBeenCalledWith(`/tokens/token?denom=${ENCODED}&tab=supply`);
         expect(m.navigate).not.toHaveBeenCalled();
     });
 
@@ -169,9 +169,9 @@ describe("token workspace", () => {
 
     it.each([
         ["bze1owner", "You control this token", "Mintable"],
-        ["bze1newadmin000000000000000000000", "Control was handed to", "Mintable"],
+        ["bze1newadmin000000000000000000000", "Admin transferred to", "Mintable"],
         ["", "Locked forever", "Fixed supply"],
-        [undefined, "Couldn't check who controls it", "Control unknown"],
+        [undefined, "Couldn't check who controls it", "Admin unknown"],
     ])("shows the status line for admin %s", (admin, status, badge) => {
         m.tokens.mockReturnValue([token(admin)]);
         renderPage();
@@ -182,7 +182,7 @@ describe("token workspace", () => {
     it("checklist actions: a workspace link switches the tab, any other link navigates", async () => {
         renderPage();
         await userEvent.click(within(screen.getByTestId("setup-item-description")).getByRole("button", { name: "Add" }));
-        expect(m.replace).toHaveBeenCalledWith(`/manage/token?denom=${ENCODED}&tab=profile`);
+        expect(m.replace).toHaveBeenCalledWith(`/tokens/token?denom=${ENCODED}&tab=profile`);
         await userEvent.click(within(screen.getByTestId("setup-item-pool")).getByRole("button", { name: "Create" }));
         expect(m.navigate).toHaveBeenCalledWith("/pool/new?base=x");
     });
@@ -192,7 +192,7 @@ describe("token workspace", () => {
             renderPage();
             expect(screen.getByRole("button", { name: "Mint more TOK" })).toBeInTheDocument();
             expect(screen.getByRole("button", { name: "Burn TOK" })).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "Start a staking program" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Start a simple reward" })).toBeInTheDocument();
             expect(screen.queryByRole("button", { name: "Airdrop to stakers" })).not.toBeInTheDocument();
         });
 
@@ -212,9 +212,9 @@ describe("token workspace", () => {
             );
         });
 
-        it("starts a staking program for the token", async () => {
+        it("starts a simple reward for the token", async () => {
             renderPage();
-            await userEvent.click(screen.getByRole("button", { name: "Start a staking program" }));
+            await userEvent.click(screen.getByRole("button", { name: "Start a simple reward" }));
             expect(m.navigate.mock.calls[0][0]).toMatch(new RegExp(`^/reward/new\\?staking=${ENCODED}&return=`));
         });
     });
@@ -225,8 +225,8 @@ describe("token workspace", () => {
             const callout = screen.getByTestId("control-callout");
             expect(callout).toHaveTextContent("Buyers see TOK as Mintable. You can still mint more.");
             expect(callout).toHaveTextContent("It can't be undone.");
-            await userEvent.click(within(callout).getByRole("button", { name: "Open Control →" }));
-            expect(m.replace).toHaveBeenCalledWith(`/manage/token?denom=${ENCODED}&tab=control`);
+            await userEvent.click(within(callout).getByRole("button", { name: "Open Permissions →" }));
+            expect(m.replace).toHaveBeenCalledWith(`/tokens/token?denom=${ENCODED}&tab=control`);
         });
 
         it("locked: supply provably fixed", () => {
@@ -289,18 +289,18 @@ describe("token workspace", () => {
             expect(within(logo).queryByRole("button")).not.toBeInTheDocument();
         });
 
-        it("rewards: the holder rewards panel in every state", () => {
+        it("rewards: the compounded reward panel in every state", () => {
             m.query.tab = "rewards";
             m.tokens.mockReturnValue([token("bze1other")]);
             renderPage();
-            expect(screen.getByText("holder rewards panel")).toBeInTheDocument();
+            expect(screen.getByText("compounded reward panel")).toBeInTheDocument();
         });
 
-        it("rewards: the staking programs with the token, whose New program comes back here", () => {
+        it("rewards: the simple rewards with the token, whose New program comes back here", () => {
             m.query.tab = "rewards";
             m.tokens.mockReturnValue([token("bze1other")]);
             renderPage();
-            const section = screen.getByRole("region", { name: "Staking programs with TOK" });
+            const section = screen.getByRole("region", { name: "Simple rewards with TOK" });
             expect(within(section).getByText("Programs where people stake TOK or a TOK LP token, or earn TOK.")).toBeInTheDocument();
             const list = within(section).getByTestId("staking-programs");
             expect(list).toHaveAttribute("data-involving", DENOM);
@@ -319,7 +319,7 @@ describe("token workspace", () => {
             m.tokens.mockReturnValue([token(admin)]);
             renderPage();
             expect(screen.getByText(new RegExp(text))).toBeInTheDocument();
-            expect(screen.queryByRole("region", { name: "Lock the supply" })).not.toBeInTheDocument();
+            expect(screen.queryByRole("region", { name: "Renounce admin" })).not.toBeInTheDocument();
             if (admin === undefined) {
                 await userEvent.click(screen.getByRole("button", { name: "Retry" }));
                 expect(m.refreshAdmins).toHaveBeenCalled();

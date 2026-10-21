@@ -11,11 +11,11 @@ const { distributeDenomRewards } = bze.rewards.MessageComposer.withTypeUrl
 export const AIRDROP_TX_KIND: TxSpec = 'distribute-denom-rewards'
 
 interface AirdropGiftInput {
-    /** The holder reward's staking denom (the community). */
+    /** The compounded reward's staking denom (the community). */
     denom: string;
-    /** Its live staked total; undefined while the holder reward isn't loaded (no blocker then). */
+    /** Its live staked total; undefined while the compounded reward isn't loaded (no blocker then). */
     stakedAmount?: string;
-    /** Every prize denom the holder reward has used, what the cap counts. */
+    /** Every prize denom the compounded reward has used, what the cap counts. */
     prizes: ReadonlyArray<Pick<DenomRewardPrize, 'prize_denom'>>;
     prizeDenom: string;
     /** The gift in prize base units; undefined while the input is invalid. */
@@ -23,7 +23,7 @@ interface AirdropGiftInput {
 }
 
 /**
- * A one-off airdrop on a holder reward (`MsgDistributeDenomRewards`): the costs, the blocker, the
+ * A one-off airdrop on a compounded reward (`MsgDistributeDenomRewards`): the costs, the blocker, the
  * affordability check and the message. Shared by the airdrop form and "Reach another community".
  */
 export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmount }: AirdropGiftInput) {

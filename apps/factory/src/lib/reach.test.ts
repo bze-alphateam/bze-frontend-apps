@@ -13,7 +13,7 @@ const info = (denom: string) => ASSETS[denom]
 describe('communityOptions', () => {
     const list = [dr('uatom', '1000000'), dr('ucold', '0'), dr('ubze', '50000000'), dr('factory/bze1me/mine', '9000000')]
 
-    it('keeps only the holder rewards with stakers, by raw staked amount without prices', () => {
+    it('keeps only the compounded reward with stakers, by raw staked amount without prices', () => {
         const options = communityOptions(list, info, new Map(), 'bze1me')
         expect(options.map(o => o.ticker)).toEqual(['BZE', 'MINE', 'ATOM'])
         expect(options.map(o => o.isMine)).toEqual([false, true, false])

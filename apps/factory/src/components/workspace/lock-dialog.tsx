@@ -35,7 +35,7 @@ export const frozenForever = (ticker: string) => [
 /** What a locked token can still do. */
 export const keepsWorking = (ticker: string) => [
     'Trading, pools and markets',
-    'Holder rewards, airdrops, staking programs',
+    'Compounded rewards, airdrops, simple rewards',
     `Anyone burning their own ${ticker}`,
     'Getting listed in the registry',
 ]

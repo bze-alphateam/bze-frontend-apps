@@ -148,7 +148,7 @@ interface ViewRow extends HolderRow {
 function HolderTable({ rows, onOpen }: { rows: ViewRow[]; onOpen: (denom: string) => void }) {
     return (
         <Table.ScrollArea borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.lg" hideBelow="md" bg="hg.card">
-            <Table.Root size="sm" aria-label="Holder rewards" bg="transparent">
+            <Table.Root size="sm" aria-label="Compounded rewards" bg="transparent">
                 <Table.Header>
                     <Table.Row bg="hg.cardHeader">
                         <Table.ColumnHeader {...headerCell}>Token</Table.ColumnHeader>
@@ -287,7 +287,7 @@ export interface HolderRewardsTabProps {
     onRetry: () => void;
 }
 
-/** Every token's holder rewards (denom rewards), the wallet's own tokens first. No wallet needed. */
+/** Every token's compounded reward (denom rewards), the wallet's own tokens first. No wallet needed. */
 export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetry }: HolderRewardsTabProps) {
     const { navigate } = useNavigation()
     const { getAsset, denomTicker } = useAssets()
@@ -321,7 +321,7 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
 
             <HgCard px="18px" py="16px">
                 <AssetPicker
-                    label="Open the holder rewards of any token"
+                    label="Open the compounded reward of any token"
                     includeLP={true}
                     onSelect={(asset) => navigate(denomRewardHref(asset.denom))}
                 />
@@ -334,7 +334,7 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
                 </VStack>
             ) : state.status === 'error' ? (
                 <VStack align="stretch" gap="12px">
-                    <InfoBox title="Couldn't load the holder rewards">
+                    <InfoBox title="Couldn't load the compounded rewards">
                         The chain query failed. The node may be down, or not run chain v8.2.0 yet.
                     </InfoBox>
                     <Box>
@@ -351,7 +351,7 @@ export function HolderRewardsTab({ state, filter, sort, onFilter, onSort, onRetr
                         <Text as="h2" fontSize="18px" fontWeight="700">Every token</Text>
                         {list.length === 0 ? (
                             <Text fontSize="14px" color="fg.muted" data-testid="denom-reward-empty">
-                                No token has holder rewards yet. Pick a token above to make it stakable.
+                                No token has a compounded reward yet. Pick a token above to make it stakable.
                             </Text>
                         ) : (
                             <>

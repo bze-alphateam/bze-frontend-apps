@@ -136,7 +136,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
             const href = workspaceHref(f.denom, 'rewards')
             const title = VOCABULARY.holderRewards.name
             if (f.denomReward === 'error') {
-                return { title, detail: "Couldn't check the holder rewards.", state: 'unknown', href }
+                return { title, detail: "Couldn't check the compounded reward.", state: 'unknown', href }
             }
             if (f.denomReward === 'none') {
                 return {
@@ -222,7 +222,7 @@ export function computeTokenSetup(facts: TokenSetupFacts, definitions: SetupItem
     }
 }
 
-// Short hints for token lists (/manage and the home strip), by item key and state.
+// Short hints for token lists (/tokens and the home strip), by item key and state.
 const HINTS: Record<string, Partial<Record<SetupState, string>>> = {
     description: { todo: 'no description yet' },
     brandKit: { todo: 'no brand kit yet' },

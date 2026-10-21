@@ -90,7 +90,7 @@ describe("useTokenSetup", () => {
         expect(result.items.find(i => i.key === "description")?.action?.label).toBe("Edit");
     });
 
-    it("holder rewards: partial without a running schedule, unknown on error", () => {
+    it("compounded reward: partial without a running schedule, unknown on error", () => {
         setFacts({ denomReward: { denomReward: { staked_amount: "0" }, schedules: [schedule(10, 10)], hasError: false } });
         let result = run();
         expect(result.items.find(i => i.key === "holderRewards")).toMatchObject({

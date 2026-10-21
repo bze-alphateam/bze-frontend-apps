@@ -236,12 +236,12 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
 
     it("offers to create the first pool when there are none, carrying the return path", async () => {
         poolList.current = [];
-        queryParams.current = new URLSearchParams({ return: "/manage/token?denom=utok", returnLabel: "TOK" });
+        queryParams.current = new URLSearchParams({ return: "/tokens/token?denom=utok", returnLabel: "TOK" });
         renderPage();
         expect(screen.getByText("No pools yet — create the first one.")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Create a pool" }));
         expect(navigateMock).toHaveBeenCalledWith(
-            `/pool/new?${new URLSearchParams({ return: "/manage/token?denom=utok", returnLabel: "TOK" })}`,
+            `/pool/new?${new URLSearchParams({ return: "/tokens/token?denom=utok", returnLabel: "TOK" })}`,
         );
     });
 
@@ -257,7 +257,7 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
     });
 
     it("links the success panel onwards and keeps the pool for Add more liquidity", async () => {
-        queryParams.current = new URLSearchParams({ pool: "utok_ubze", return: "/manage/token?denom=utok", returnLabel: "TOK" });
+        queryParams.current = new URLSearchParams({ pool: "utok_ubze", return: "/tokens/token?denom=utok", returnLabel: "TOK" });
         renderPage();
         await userEvent.type(baseInput(), "100");
         await continueIn(AMOUNTS);
@@ -269,7 +269,7 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
         expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
         await userEvent.click(screen.getByRole("button", { name: /Reward liquidity providers/ }));
         expect(navigateMock).toHaveBeenCalledWith(
-            `/reward/new?staking=ulp%2Ftokbze&${new URLSearchParams({ return: "/manage/token?denom=utok", returnLabel: "TOK" })}`,
+            `/reward/new?staking=ulp%2Ftokbze&${new URLSearchParams({ return: "/tokens/token?denom=utok", returnLabel: "TOK" })}`,
         );
 
         await userEvent.click(screen.getByRole("button", { name: /Add more liquidity/ }));

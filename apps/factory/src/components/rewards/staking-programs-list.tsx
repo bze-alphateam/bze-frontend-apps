@@ -400,7 +400,7 @@ export interface StakingProgramsListProps {
 }
 
 /**
- * Staking programs on the chain, running first and finished ones folded away (where an emptied
+ * Simple rewards on the chain, running first and finished ones folded away (where an emptied
  * one can be deleted). The chain stores no creator on a program, so "yours" means "involves one
  * of your tokens", and extensions are open to anyone willing to escrow the extra prize.
  */
@@ -439,8 +439,8 @@ export function StakingProgramsList({
     }, [scoped, myDenoms, pools])
 
     const emptyText = involving
-        ? `No staking programs with ${involvedAsset?.ticker ?? involving} yet.`
-        : 'No staking programs yet.'
+        ? `No simple rewards with ${involvedAsset?.ticker ?? involving} yet.`
+        : 'No simple rewards yet.'
 
     let body: React.ReactNode
     if (isLoading) {
@@ -453,7 +453,7 @@ export function StakingProgramsList({
     } else if (hasError) {
         body = (
             <VStack align="stretch" gap={3}>
-                <InfoBox title="Couldn't load the staking programs">
+                <InfoBox title="Couldn't load the simple rewards">
                     The chain query failed. The node may be down; try again in a moment.
                 </InfoBox>
                 <Box>

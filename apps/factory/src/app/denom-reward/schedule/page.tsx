@@ -22,7 +22,7 @@ import { schedulePayRows, useScheduleGift } from '@/hooks/useScheduleGift'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { Notice, TextField } from '@/components/manage/denom-reward-form-parts'
 import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
-import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
     BlockerNote,
@@ -145,7 +145,7 @@ function ScheduleFormContent() {
     }
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s holder rewards.</Notice>
+        return <Notice title="No token selected" onBack={() => navigate('/rewards')}>Open this form from a token&apos;s compounded reward.</Notice>
     }
 
     if (isLoading) {
@@ -161,7 +161,7 @@ function ScheduleFormContent() {
 
     if (hasError) {
         return (
-            <Notice title="Couldn't load the holder rewards" onBack={back}>
+            <Notice title="Couldn't load the compounded reward" onBack={back}>
                 The chain query failed — the node may be down, or not run chain v8.2.0 yet. Try again later.
             </Notice>
         )
@@ -169,8 +169,8 @@ function ScheduleFormContent() {
 
     if (!denomReward) {
         return (
-            <Notice title="No holder rewards yet" onBack={back}>
-                {`${stakingAsset?.ticker ?? 'This token'} has no holder rewards. Make it stakable first, then start a daily prize.`}
+            <Notice title="No compounded reward yet" onBack={back}>
+                {`${stakingAsset?.ticker ?? 'This token'} has no compounded reward. Make it stakable first, then start a daily prize.`}
             </Notice>
         )
     }
@@ -183,7 +183,7 @@ function ScheduleFormContent() {
         )
     }
 
-    const holderRewardsLabel = `${stakingPossessive} holder rewards`
+    const holderRewardsLabel = `${stakingPossessive} compounded reward`
 
     if (doneTx) {
         return (
@@ -265,7 +265,7 @@ function ScheduleFormContent() {
             title={
                 <>
                     {isExtend ? <>Extend a <GradientText>daily prize</GradientText></> : <>Give a little <GradientText>every day</GradientText></>}
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardInfoButton /></chakra.span>
+                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
             subtitle={isExtend

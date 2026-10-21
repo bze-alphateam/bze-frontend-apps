@@ -114,7 +114,7 @@ function BadgesNote() {
                     <chakra.span>
                         <chakra.b color="fg">Mintable</chakra.b>{': you still control the token, so you can mint more, burn, and update metadata. '}
                         <chakra.b color="fg">Fixed supply</chakra.b>{': the supply was locked, so nobody can ever change the supply or metadata again. '}
-                        <chakra.b color="fg">Control unknown</chakra.b>{": the chain couldn't be asked right now. Open a token to mint, burn, edit its profile, hand over control, or lock it for good."}
+                        <chakra.b color="fg">Admin unknown</chakra.b>{": the chain couldn't be asked right now. Open a token to mint, burn, edit its profile, transfer admin, or renounce admin for good."}
                     </chakra.span>
                 </HgCard>
             </Collapsible.Content>
@@ -194,7 +194,7 @@ export default function ManagePage() {
                     <Text fontSize="14px" data-testid="staking-programs-moved">
                         <chakra.a asChild color="hg.link" fontWeight="600" _hover={{ color: 'hg.link.hover' }}>
                             <NextLink href={rewardsHref({ tab: 'programs' })}>
-                                {"Looking for staking programs? They're under Rewards →"}
+                                {"Looking for simple rewards? They're under Rewards →"}
                             </NextLink>
                         </chakra.a>
                     </Text>

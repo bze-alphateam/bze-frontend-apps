@@ -17,7 +17,7 @@ const FEE_LABELS: Record<string, string> = {
 }
 
 interface ScheduleGiftInput {
-    /** The holder reward's staking denom. */
+    /** The compounded reward's staking denom. */
     denom: string;
     prizes: ReadonlyArray<Pick<DenomRewardPrize, 'prize_denom'>>;
     prizeDenom: string;
@@ -30,7 +30,7 @@ interface ScheduleGiftInput {
 }
 
 /**
- * A daily prize on a holder reward, new (`MsgCreateDenomRewardSchedule`) or extended
+ * A daily prize on a compounded reward, new (`MsgCreateDenomRewardSchedule`) or extended
  * (`MsgUpdateDenomRewardSchedule`): the costs, the affordability check and the message. Shared by
  * the daily-prize form and "Reach another community".
  */

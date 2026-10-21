@@ -37,7 +37,7 @@ type PoolSides = { lp_denom: string; base: string; quote: string }
 
 /**
  * Whether a program concerns `denom`: people stake it, earn it, or stake the LP token of a pool
- * that trades it (on either side). Drives the workspace's "Staking programs with <TICKER>" and
+ * that trades it (on either side). Drives the workspace's "Simple rewards with <TICKER>" and
  * the directory's "Programs with your tokens".
  */
 export function programInvolves(

@@ -8,7 +8,7 @@ type State =
     | { status: 'error' }
     | { status: 'ready'; list: DenomReward[] }
 
-/** Every holder reward on the chain, with a `retry` after a failed load. */
+/** Every compounded reward on the chain, with a `retry` after a failed load. */
 export function useAllDenomRewards() {
     const [state, setState] = useState<State>({ status: 'loading' })
     const [reload, setReload] = useState(0)

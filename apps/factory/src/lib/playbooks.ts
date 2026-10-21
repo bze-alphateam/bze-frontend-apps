@@ -27,7 +27,7 @@ export interface PlaybookFacts {
     admin?: string;
     /** LP token of the token's first pool, for the LP campaign. */
     lpDenom?: string;
-    /** A running staking program pays people staking an LP token of the token's pools. */
+    /** A running simple reward pays people staking an LP token of the token's pools. */
     lpCampaign: boolean;
 }
 
@@ -79,7 +79,7 @@ const STAKABLE_STEP: PlaybookStep = {
     goalId: 'stakable', short: 'Stakable', title: 'Make it stakable',
     why: 'Holders stake it and share a daily prize you fund, so they keep it longer.',
     doneText: 'Holders can stake it and a daily prize is running.',
-    action: 'Set up holder rewards',
+    action: 'Set up compounded reward',
     detect: itemDone('holderRewards'),
     href: f => denomRewardHref(f.denom ?? ''),
 }
@@ -102,7 +102,7 @@ export const PLAYBOOKS: Playbook[] = [
                 href: () => '/token/new',
             },
             POOL_STEP,
-            { ...STAKABLE_STEP, why: 'Holders stake it and share a daily prize: create the holder rewards, then start a daily prize.' },
+            { ...STAKABLE_STEP, why: 'Holders stake it and share a daily prize: create the compounded reward, then start a daily prize.' },
             {
                 goalId: 'registry', short: 'Logo', title: 'Get my logo in every wallet',
                 why: 'Without the Cosmos Chain Registry, wallets show a long factory/… code and no logo.',
@@ -213,7 +213,7 @@ export function stepStatuses(playbook: Playbook, facts: PlaybookFacts, manualDon
     })
 }
 
-/** True when a running staking program pays people staking an LP token of `denom`'s pools. */
+/** True when a running simple reward pays people staking an LP token of `denom`'s pools. */
 export function hasRunningLpCampaign(
     programs: ReadonlyArray<Pick<StakingRewardSDKType, 'staking_denom' | 'prize_denom' | 'payouts' | 'duration'>>,
     denom: string,

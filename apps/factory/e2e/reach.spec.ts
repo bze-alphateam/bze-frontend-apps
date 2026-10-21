@@ -3,7 +3,7 @@ import {join} from "node:path";
 import {expect, test} from "./support/mock-network";
 
 // "Reach another community" (/reach, BFE-163) without a wallet, against the testnet fixtures: every
-// holder reward (fixtures/lcd/rewards.all_denom_rewards.json, only noadmin, with 20 NOAD staked) and
+// compounded reward (fixtures/lcd/rewards.all_denom_rewards.json, only noadmin, with 20 NOAD staked) and
 // the noadmin denom reward and prizes. The filter case adds testusd with nothing staked through
 // network.use.
 
@@ -29,7 +29,7 @@ test("lists the communities with stakers and asks to connect after picking one",
     await expect(page.getByText("Connect your wallet to send the gift.")).toBeVisible();
 });
 
-test("leaves out a holder reward nobody is staking", async ({page, network}) => {
+test("leaves out a compounded reward nobody is staking", async ({page, network}) => {
     network.use("lcd", {
         ...ALL,
         body: {
