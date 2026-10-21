@@ -136,6 +136,10 @@ export function summarizeScheduleCosts(input: ScheduleCostInput): ScheduleCostSu
     return { escrow, fees, feeTotals: sumByDenom(charged), feesKnown }
 }
 
+/** The Compounded reward wizard, with the token to make stakable when known. */
+export const compoundedNewHref = (denom?: string) =>
+    denom ? `/denom-reward/new?denom=${encodeURIComponent(denom)}` : '/denom-reward/new'
+
 /** Deep link to the airdrop form of the DR of `denom`. */
 export const airdropFormHref = (denom: string) => `/denom-reward/airdrop?denom=${encodeURIComponent(denom)}`
 

@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState } from 'react'
+import React from 'react'
+import NextLink from 'next/link'
 import { Box, Button, Grid, HStack, Table, Text, VStack } from '@chakra-ui/react'
 import { LuCalendarPlus, LuPlus, LuRefreshCw, LuSend, LuSprout } from 'react-icons/lu'
-import { bze } from '@bze/bzejs'
 import {
     Asset,
     DenomRewardPrize,
@@ -13,7 +13,6 @@ import {
     Shimmer,
     StatusPill,
     TokenLogo,
-    getChainName,
     hgVariant,
     prettyAmount,
     uAmountToBigNumberAmount,
@@ -21,26 +20,21 @@ import {
     useCreationFees,
     useEpochs,
 } from '@bze/bze-ui-kit'
-import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
-import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigation } from '@/hooks/useNavigation'
-import { PayPanel } from '@/components/guided/pay-panel'
-import { TipNote } from '@/components/guided/notes'
 import { withReturn, type ReturnTo } from '@/components/guided/return-to'
 import { InfoBox } from '@/components/ui/info-box'
 import { softButton } from '@/components/ui/soft-button'
 import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import {
     airdropFormHref,
+    compoundedNewHref,
+    denomRewardHref,
     formatLastPaid,
     scheduleDaysLeft,
     scheduleFormHref,
     scheduleRemainingBudget,
 } from '@/lib/denom-reward'
-
-const { createDenomReward } = bze.rewards.MessageComposer.withTypeUrl
 
 // A schedule this close to its end gets "ends in N payout days".
 const ENDS_SOON_DAYS = 7
@@ -216,35 +210,14 @@ export interface HolderRewardsPanelProps {
  */
 export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps) {
     const ticker = asset.ticker
-    const { address } = useChain(getChainName())
     const { navigate } = useNavigation()
-    const { tx } = useFactoryTx()
     const { denomReward, schedules, prizes, isLoading, hasError, refresh } = useDenomReward(asset.denom)
     const { dayEpochInfo } = useEpochs()
     const currentDayEpoch = dayEpochInfo?.current_epoch?.toString()
-    const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
-    const fee = fees.createDenomRewardFee
-    const feePayment = useFeePayment(fee, 'create-denom-reward')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [justCreated, setJustCreated] = useState(false)
+    const { denomRewardLimits } = useCreationFees()
 
     const go = (href: string) => navigate(withReturn(href, returnTo))
     const addDailyPrize = () => go(scheduleFormHref(asset.denom))
-
-    const create = async () => {
-        if (!address) return
-        setIsSubmitting(true)
-        try {
-            await tx([createDenomReward({ creator: address, denom: asset.denom })], {
-                onSuccess: () => {
-                    setJustCreated(true)
-                    void refresh()
-                },
-            })
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
 
     const minStakeLabel = (uAmount?: string) => {
         if (uAmount === undefined) return 'Unknown'
@@ -302,45 +275,14 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
                             <Text fontSize="12px" color="hg.text.faint">Set by the chain and fixed when created.</Text>
                         </VStack>
 
-                        <PayPanel
-                            rows={fee ? [{ label: 'Compounded reward fee', coin: fee }] : []}
-                            moduleFee={fee}
-                            txKind="create-denom-reward"
-                            isLoading={isFeeLoading}
-                            feeUnknown={!isFeeLoading && !fee}
-                        />
-
-                        <VStack align="stretch" gap="8px">
-                            <Button
-                                variant={hgVariant('primary')}
-                                size="lg"
-                                onClick={create}
-                                disabled={!address || !fee || !feePayment.canPayFee}
-                                loading={isSubmitting}
-                                loadingText="Waiting for signature..."
-                            >
+                        <Button asChild variant={hgVariant('primary')} size="lg">
+                            <NextLink href={withReturn(compoundedNewHref(asset.denom), returnTo ?? { href: denomRewardHref(asset.denom), label: ticker })}>
                                 <LuSprout /> {`Make ${ticker} stakable`}
-                            </Button>
-                            {!address && (
-                                <Text fontSize="14px" color="fg.muted" textAlign="center">
-                                    Connect your wallet to make it stakable.
-                                </Text>
-                            )}
-                        </VStack>
+                            </NextLink>
+                        </Button>
                     </VStack>
                 ) : (
                     <VStack align="stretch" gap="20px">
-                        {justCreated && (
-                            <VStack align="stretch" gap="8px" data-testid="holder-rewards-next">
-                                <TipNote lead="Next:">add a daily prize so stakers earn something.</TipNote>
-                                <Box>
-                                    <Button variant={hgVariant('primary')} size="md" onClick={addDailyPrize}>
-                                        <LuPlus /> Add a daily prize
-                                    </Button>
-                                </Box>
-                            </VStack>
-                        )}
-
                         <Facts>
                             <Fact
                                 label="Staked by holders"

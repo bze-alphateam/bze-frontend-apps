@@ -34,6 +34,8 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
     // testnet's one simple reward has finished, and finished programs are folded away by default.
     {path: "/rewards?tab=programs&status=finished", ready: (page) => page.getByTestId("staking-program-row").first()},
+    // noadmin is already stakable: the picker stays open with its tip.
+    {path: `/denom-reward/new?denom=${NOADMIN}`, ready: heading(/Create a compounded reward/)},
     {path: `/denom-reward/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("holder-schedule-card").first()},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Give a little every day/)},
     {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Gift NOAD stakers, once/)},

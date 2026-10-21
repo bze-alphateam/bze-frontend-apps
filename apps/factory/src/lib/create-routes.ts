@@ -1,4 +1,4 @@
-import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
+import { airdropFormHref, compoundedNewHref, scheduleFormHref } from '@/lib/denom-reward'
 import { extendHref } from '@/lib/reward-extend'
 
 // The Create side of the Factory (BFE-260): the home's starting points, the three Choose
@@ -43,9 +43,7 @@ export function rewardTargets(query: QueryReader) {
     const staked = query.get('staking') || query.get('denom') || ''
     return {
         simple: withQuery('/reward/new', { staking: staked }),
-        // BFE-265 moves creating a compounded reward to /denom-reward/new; until then the token's
-        // compounded reward page creates it.
-        compounded: staked ? denomRewardHref(staked) : '/denom-reward/token',
+        compounded: compoundedNewHref(staked || undefined),
         extendSimple: extendHref(),
         dailyPrize: staked ? scheduleFormHref(staked) : '/denom-reward/schedule',
         airdrop: staked ? airdropFormHref(staked) : '/denom-reward/airdrop',
