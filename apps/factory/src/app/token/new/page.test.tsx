@@ -148,7 +148,7 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         expect(screen.getByText("A token with this symbol already exists in your account — pick another one.")).toBeInTheDocument();
     });
 
-    it("collapses answered questions to summaries and reopens them with Change", async () => {
+    it("collapses answered questions to summaries and reopens them with Edit", async () => {
         renderPage();
         await answerIdentity();
         expect(question("Name and ticker")).toHaveAttribute("data-state", "done");
@@ -159,7 +159,7 @@ describe("Create my token (/token/new)", { timeout: 20_000 }, () => {
         expect(question("Describe it")).toHaveTextContent("No description");
         expect(question("How many HONEY to create?")).toHaveAttribute("data-state", "active");
 
-        await userEvent.click(screen.getByRole("button", { name: "Change Name and ticker" }));
+        await userEvent.click(screen.getByRole("button", { name: "Edit Name and ticker" }));
         expect(question("Name and ticker")).toHaveAttribute("data-state", "active");
         expect(question("Describe it")).toHaveAttribute("data-state", "done");
     });

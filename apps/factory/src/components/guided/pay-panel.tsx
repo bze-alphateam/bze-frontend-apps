@@ -68,7 +68,7 @@ function PanelShell({ children }: { children: React.ReactNode }) {
     )
 }
 
-function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; altText?: string }) {
+export function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; altText?: string }) {
     const { asset } = useAsset(row.coin.denom)
     const price = useAssetPrice(row.coin.denom)
     const ticker = asset?.ticker ?? row.coin.denom
@@ -96,7 +96,7 @@ function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; altText?: 
     )
 }
 
-function TextRow({ label, value, info }: { label: string; value: React.ReactNode; info?: React.ReactNode }) {
+export function TextRow({ label, value, info }: { label: string; value: React.ReactNode; info?: React.ReactNode }) {
     return (
         <VStack align="stretch" gap="3px">
             <HStack justify="space-between" align="start" gap="12px">

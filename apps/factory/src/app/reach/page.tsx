@@ -275,6 +275,7 @@ function ReachContent() {
 
     return (
         <GuidedForm
+            crumb="Reach another community"
             title={<>Reach another <GradientText>community</GradientText></>}
             subtitle="Gift your token to the people who stake another token. They see it in their wallet, and your token shows up as a prize on that token's Communities page."
             aside={aside}
@@ -286,11 +287,9 @@ function ReachContent() {
             )}
 
             <Question
-                number={1}
                 title="Which community?"
-                state={steps.state.community}
+                {...steps.step('community')}
                 summary={communitySummary}
-                onChange={() => steps.open('community')}
             >
                 <VStack align="stretch" gap="16px">
                     {all.isLoading ? (
@@ -326,11 +325,9 @@ function ReachContent() {
             </Question>
 
             <Question
-                number={2}
                 title="What do you give them?"
-                state={steps.state.gift}
+                {...steps.step('gift')}
                 summary={amountText ? `${amountText}${mode === 'daily' ? ' a day' : ''}` : ''}
-                onChange={() => steps.open('gift')}
             >
                 <VStack align="stretch" gap="16px">
                     <PrizeTokenQuestion
@@ -380,11 +377,9 @@ function ReachContent() {
             </Question>
 
             <Question
-                number={3}
                 title="All at once, or a little every day?"
-                state={steps.state.mode}
+                {...steps.step('mode')}
                 summary={mode === 'once' ? 'All at once' : `Every day for ${daysInput.trim()} days`}
-                onChange={() => steps.open('mode')}
             >
                 <VStack align="stretch" gap="12px" role="radiogroup" aria-label="How to send it">
                     <ModeCard

@@ -297,7 +297,7 @@ export type { UseCanAffordTxInput, UseCanAffordTxResult } from './hooks/useCanAf
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';
 export { useToast } from './hooks/useToast';
 export { useSDKTx, useBZETx, useIBCTx, TxStatus } from './hooks/useTx';
-export type { TxOptions, TxSuccessResponse } from './hooks/useTx';
+export type { TxOptions, TxSuccessResponse, TxFailureDetails, TxFailureStage } from './hooks/useTx';
 export { useValidatorLogos } from './hooks/useValidatorLogos';
 export { useBridgeRoute } from './hooks/useBridgeRoute';
 export { useBridgeTransfer } from './hooks/useBridgeTransfer';

@@ -59,7 +59,8 @@ export function txKindsOf(msgs: ReadonlyArray<{ typeUrl: string; value?: unknown
  * The factory's tx layer: `useBZETx` plus a pre-flight gas check shared by every form. Before
  * the wallet opens, the gas fee of the exact message list is estimated (ui-kit's gas engine)
  * and compared with the wallet balance of the fee denom; a short balance toasts a clear reason
- * and resolves `false` instead of letting the ante handler reject the transaction.
+ * and resolves `false` instead of letting the ante handler reject the transaction. With
+ * `toasts: false` (the wizard's own transaction panel), the refusal goes to `onFailure` instead.
  */
 export function useFactoryTx() {
     const { tx: bzeTx, progressTrack } = useBZETx()
@@ -75,10 +76,16 @@ export function useFactoryTx() {
                 const gasFee = estimateGasFee(kinds)
                 const check = canAffordTx({ gasFee, balanceOf: denom => getBalanceByDenom(denom).amount })
                 if (!check.canAfford) {
+                    const ticker = denomTicker(gasFee.denom)
+                    if (options?.toasts === false) {
+                        // A page with its own transaction panel shows the refusal there.
+                        options.onFailure?.(`Not enough ${ticker} for the network fee`, { stage: 'prepare' })
+                        return false
+                    }
                     const feeDisplay = uAmountToBigNumberAmount(gasFee.amount, denomDecimals(gasFee.denom))
                     toast.error(
                         'Not enough for the network fee',
-                        `This transaction needs ≈ ${prettyAmount(feeDisplay)} ${denomTicker(gasFee.denom)} for gas.`,
+                        `This transaction needs ≈ ${prettyAmount(feeDisplay)} ${ticker} for gas.`,
                     )
                     return false
                 }

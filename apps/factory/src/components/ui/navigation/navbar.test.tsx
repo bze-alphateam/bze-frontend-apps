@@ -15,9 +15,19 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 }));
 
 import { createHiveGlowSystem } from "@bze/bze-ui-kit";
+import { PendingTxProvider, PendingTxStore, createPendingTxStore } from "@/contexts/pending-tx";
 import { TopNavBar } from "./navbar";
 
 const system = createHiveGlowSystem("factory");
+
+let store: PendingTxStore;
+function memoryStore(): PendingTxStore {
+    let value: string | null = null;
+    return createPendingTxStore({ read: () => value, write: (v) => { value = v; } });
+}
+const renderNav = () => render(
+    <ChakraProvider value={system}><PendingTxProvider store={store}><TopNavBar /></PendingTxProvider></ChakraProvider>,
+);
 
 const CREATE = ["/", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/multisend", "/reach", "/playbooks", "/raffle/new"];
 const MANAGE = ["/manage", "/manage/token", "/rewards", "/denom-reward/token", "/denom-reward/schedule", "/denom-reward/airdrop", "/official"];
@@ -27,18 +37,19 @@ const active = () => within(screen.getAllByRole("navigation", { name: "Main" })[
 
 beforeEach(() => {
     m.path = "/";
+    store = memoryStore();
 });
 
 describe("TopNavBar", () => {
     it.each(CREATE)("%s lights up Create", (path) => {
         m.path = path;
-        render(<ChakraProvider value={system}><TopNavBar /></ChakraProvider>);
+        renderNav();
         expect(active()).toEqual(["Create"]);
     });
 
     it.each(MANAGE)("%s lights up Manage", (path) => {
         m.path = path;
-        render(<ChakraProvider value={system}><TopNavBar /></ChakraProvider>);
+        renderNav();
         expect(active()).toEqual(["Manage"]);
     });
 
@@ -49,5 +60,24 @@ describe("TopNavBar", () => {
             .map(f => `/${relative(".", f).split(sep).slice(0, -1).join("/")}`);
         expect(routes.length).toBeGreaterThan(10);
         expect([...routes].sort()).toEqual([...CREATE, ...MANAGE].sort());
+    });
+
+    it("shows the in-progress pill on the item owning a pending wizard, leading back to it", () => {
+        m.path = "/manage";
+        store.add({ href: "/token/new?return=%2Fmanage", hash: "H1", title: "Create token HONEY", startedAt: Date.now() });
+        renderNav();
+
+        const nav = within(screen.getAllByRole("navigation", { name: "Main" })[0]);
+        expect(nav.getByLabelText("1 transaction in progress")).toBeInTheDocument();
+        expect(nav.getByRole("link", { name: /Create/ })).toHaveAttribute("href", "/token/new?return=%2Fmanage");
+        expect(nav.getByRole("link", { name: /Manage/ })).toHaveAttribute("href", "/manage");
+    });
+
+    it("drops the pill once the result is known", () => {
+        store.add({ href: "/token/new", hash: "H1", title: "Create token HONEY", startedAt: Date.now() });
+        store.resolve("H1", { status: "confirmed", height: 5 });
+        renderNav();
+
+        expect(screen.queryByLabelText(/in progress/)).not.toBeInTheDocument();
     });
 });

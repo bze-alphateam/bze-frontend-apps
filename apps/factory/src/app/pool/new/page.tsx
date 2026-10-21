@@ -399,17 +399,16 @@ function PoolNewContent() {
 
     return (
         <GuidedForm
+            crumb="Liquidity pool"
             title={<>Let people buy and sell <GradientText>{baseTicker || 'your token'}</GradientText></>}
             subtitle="Pair it with another token. What you put in sets the starting price."
             techTag="tradebin · liquidity pool"
             aside={aside}
         >
             <Question
-                number={1}
                 title="Which pair?"
-                state={steps.state.pair}
+                {...steps.step('pair')}
                 summary={pairSummary}
-                onChange={() => steps.open('pair')}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -459,11 +458,9 @@ function PoolNewContent() {
             </Question>
 
             <Question
-                number={2}
                 title="How much to put in?"
-                state={steps.state.deposit}
+                {...steps.step('deposit')}
                 summary={depositSummary}
-                onChange={() => steps.open('deposit')}
             >
                 <VStack align="stretch" gap="16px">
                     <Text fontSize="14px" color="fg.muted">
@@ -491,11 +488,9 @@ function PoolNewContent() {
             </Question>
 
             <Question
-                number={3}
                 title="Swap fee and where it goes"
-                state={steps.state.fee}
+                {...steps.step('fee')}
                 summary={swapFeeSummary(swapFee, feeSplit)}
-                onChange={() => steps.open('fee')}
             >
                 <VStack align="stretch" gap="16px">
                     <VStack align="stretch" gap="8px">

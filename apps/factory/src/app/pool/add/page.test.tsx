@@ -213,7 +213,7 @@ describe("Make trading smoother (/pool/add)", { timeout: 20_000 }, () => {
         queryParams.current = new URLSearchParams({ pool: "utok_ubze" });
         renderPage();
         await userEvent.type(baseInput(), "100");
-        await userEvent.click(within(question(POOL)).getByRole("button", { name: `Change ${POOL}` }));
+        await userEvent.click(within(question(POOL)).getByRole("button", { name: `Edit ${POOL}` }));
         await userEvent.click(screen.getByText("Pool: uoth_ubze"));
         await continueIn(POOL);
         expect(baseInput()).toHaveValue("");

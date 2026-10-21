@@ -232,6 +232,7 @@ function TokenNewContent() {
 
     return (
         <GuidedForm
+            crumb="Token"
             title={<>Create my <GradientText>token</GradientText></>}
             subtitle="Name it, pick a ticker and choose how many to create. Everything is shown before you sign."
             techTag="tokenfactory · create denom"
@@ -246,11 +247,9 @@ function TokenNewContent() {
             aside={aside}
         >
             <Question
-                number={1}
                 title="Name and ticker"
-                state={steps.state.identity}
+                {...steps.step('identity')}
                 summary={`${form.name.trim()} (${form.symbol})`}
-                onChange={() => steps.open('identity')}
             >
                 <VStack align="stretch" gap="16px">
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
@@ -284,13 +283,11 @@ function TokenNewContent() {
             </Question>
 
             <Question
-                number={2}
                 title="Describe it"
-                state={steps.state.description}
+                {...steps.step('description')}
                 summary={description
                     ? description.length > SUMMARY_LENGTH ? `${description.slice(0, SUMMARY_LENGTH)}…` : description
                     : 'No description'}
-                onChange={() => steps.open('description')}
             >
                 <VStack align="stretch" gap="16px">
                     <Field.Root invalid={errorFor('description') !== ''}>
@@ -317,11 +314,9 @@ function TokenNewContent() {
             </Question>
 
             <Question
-                number={3}
                 title={`How many ${form.symbol || 'tokens'} to create?`}
-                state={steps.state.supply}
+                {...steps.step('supply')}
                 summary={`${supplyText} ${ticker} to your wallet`}
-                onChange={() => steps.open('supply')}
             >
                 <VStack align="stretch" gap="16px">
                     <Hint>
