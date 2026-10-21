@@ -415,7 +415,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(savedDraft()).toBeNull();
 
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
-            expect(screen.getByRole("heading", { name: /HONEY is live\./ })).toBeInTheDocument();
+            expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is live.");
             expect(screen.getByText("1,000,000 HONEY just landed in your wallet. Nice work.")).toBeInTheDocument();
             expect(screen.getByText(DENOM)).toBeInTheDocument();
             expect(screen.getByTestId("done-confetti")).toBeInTheDocument();
