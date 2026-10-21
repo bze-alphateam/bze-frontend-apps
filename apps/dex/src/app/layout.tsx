@@ -2,6 +2,7 @@ import type {Metadata, Viewport} from "next";
 import {Inter, JetBrains_Mono} from "next/font/google"
 
 import {Providers} from "./providers";
+import {SWAP_LAYOUT_SCRIPT} from "@/components/swap-layout/swap-layout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -62,6 +63,10 @@ export const viewport: Viewport = {
 export default function RootLayout({children}: { children: React.ReactNode }) {
     return (
       <html className={`${inter.className} ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+          <head>
+            {/* Puts the stored swap-page layout on <html> before the first paint (no flash of the default). */}
+            <script dangerouslySetInnerHTML={{__html: SWAP_LAYOUT_SCRIPT}} />
+          </head>
           <body suppressHydrationWarning>
             <Providers>{children}</Providers>
           </body>
