@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Badge,
-    Box,
     Button,
     Field,
     HStack,
@@ -20,7 +19,6 @@ import { cosmos } from '@bze/bzejs'
 import {
     GradientText,
     TxKindSpec,
-    getExplorerTxURL,
     hgVariant,
     getChainName,
     getSettings,
@@ -30,26 +28,29 @@ import {
     useBalance,
     useCanAffordTx,
 } from '@bze/bze-ui-kit'
+import type { TxFailureDetails } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
+import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
-    ContinueRow,
-    Segmented,
-    SubmitBlock,
-    SubmitNote,
     FormPage,
     GuidedForm,
+    Hint,
     OutcomePanel,
     PayPanel,
     Question,
-    SuccessPanel,
+    ReviewStep,
+    Segmented,
+    SubmitNote,
     TipNote,
+    TxPanel,
     WarningNote,
     useGuidedSteps,
 } from '@/components/guided'
+import type { TxPanelError, TxPanelStatus } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
 import {
     MULTISEND_BATCH_SIZE,
@@ -63,6 +64,7 @@ import {
 } from '@/lib/multisend'
 import {
     MultiSendRun,
+    RunBatch,
     canSendBatch,
     clearMultiSendRun,
     isRunDone,
@@ -83,12 +85,14 @@ import {
 } from '@/lib/multisend-run'
 import { checkBatchOnChain, restTxLookup } from '@/lib/multisend-lookup'
 import { RunProgress } from '@/components/multisend/run-progress'
+import { MultisendDone } from '@/components/multisend/multisend-done'
 import { softButton } from '@/components/ui/soft-button'
 
 const { multiSend } = cosmos.bank.v1beta1.MessageComposer.withTypeUrl
 
-const STEPS = ['token', 'list'] as const
-type Step = typeof STEPS[number]
+const FORM_STEPS = ['token', 'list'] as const
+type FormStep = typeof FORM_STEPS[number]
+const STEP_KEYS = [...FORM_STEPS, 'review'] as const
 
 const MAX_FILE_BYTES = 1024 * 1024
 const SHOWN_PROBLEMS = 50
@@ -98,7 +102,39 @@ const PLACEHOLDERS: Record<RecipientMode, string> = {
     perWallet: 'bze1…, 100\nbze1…, 250\nbze1…, 50',
 }
 
-function Counter({ tone, children }: { tone: 'success' | 'warning' | 'danger'; children: React.ReactNode }) {
+const FORMAT_HINT: Record<RecipientMode, string> = {
+    same: 'One wallet per line. A CSV with an "address" column works too.',
+    perWallet: 'One wallet and its amount per line: bze1…, 100. A CSV with "address,amount" columns works too.',
+}
+
+/** What the single-transaction send hands its Done screen (kept in the pending-tx store, so serialisable). */
+interface SentInput {
+    denom: string;
+    ticker: string;
+    count: number;
+    totalLabel: string;
+}
+
+/** The current batch of a batched run, as the transaction panel shows it. */
+interface BatchPanel {
+    id: number;
+    phase: 'confirm' | 'submitted' | 'declined' | 'failed' | 'slow';
+    hash?: string;
+    error?: TxPanelError;
+}
+
+/**
+ * The panel state of the current batch, after what the run record says about it: a batch found
+ * sent hides the panel (its row says so), except the last one, which ends on Confirmed.
+ */
+function batchPanelStatus(panel: BatchPanel, batch: RunBatch | undefined, runDone: boolean): TxPanelStatus | undefined {
+    if (batch?.status === 'sent') return runDone ? 'confirmed' : undefined
+    if (panel.phase !== 'slow') return panel.phase
+    // Slow: only while the chain check hasn't settled it.
+    return batch?.status === 'unknown' && !batch.notFound ? 'slow' : undefined
+}
+
+function Counter({ tone, children }: { tone: 'success' | 'warning' | 'danger' | 'neutral'; children: React.ReactNode }) {
     return (
         <Badge variant={hgVariant(tone)} size="md" borderRadius="hg.pill" fontSize="12px" fontWeight="600" data-tone={tone}>
             {children}
@@ -124,14 +160,15 @@ function MultiSendContent() {
         return stored ? settleInterrupted(stored) : undefined
     })
     const runRef = useRef(run)
-    const [answered, setAnswered] = useState<Step[]>(() => (denom ? (run ? ['token', 'list'] : ['token']) : []))
+    const [answered, setAnswered] = useState<FormStep[]>(() => (denom ? (run ? ['token', 'list'] : ['token']) : []))
     const [sameTouched, setSameTouched] = useState(false)
     const [fileError, setFileError] = useState('')
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [sent, setSent] = useState<{ txHash: string; count: number; totalLabel: string } | undefined>(undefined)
+    const [sent, setSent] = useState<{ input: SentInput; hash: string } | undefined>(undefined)
     const [paused, setPaused] = useState(run !== undefined)
     const [confirmNewRun, setConfirmNewRun] = useState(false)
     const [sendingId, setSendingId] = useState<number | undefined>(undefined)
+    const [batchPanel, setBatchPanel] = useState<BatchPanel | undefined>(undefined)
+    const [checkingId, setCheckingId] = useState<number | undefined>(undefined)
     const [checkErrors, setCheckErrors] = useState<number[]>([])
     const [fingerprint, setFingerprint] = useState<{ key: string; value: string } | undefined>(undefined)
     const inFlight = useRef(new Set<number>())
@@ -185,9 +222,10 @@ function MultiSendContent() {
         else clearMultiSendRun()
     }, [])
 
-    const steps = useGuidedSteps(STEPS, {
+    const steps = useGuidedSteps(STEP_KEYS, {
         token: answered.includes('token') && Boolean(asset),
         list: answered.includes('list') && listValid,
+        review: false,
     })
 
     // The network fee of the whole list: one estimate per transaction.
@@ -200,17 +238,36 @@ function MultiSendContent() {
         spend: !listValid ? undefined : { denom, amount: next ? next.total : parsed.total },
     })
 
-    const answer = (key: Step) => {
+    const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))
         steps.close()
     }
 
-    const isComplete = STEPS.every(k => steps.state[k] === 'done')
-    const canSend = isComplete && Boolean(address) && listValid && !afford.isLoading && afford.canAfford
-        && resume === 'none' && (k === 1 || currentFingerprint !== undefined)
-
     const toDisplay = (uAmount: BigNumber | string) => prettyAmount(uAmountToBigNumberAmount(uAmount, decimals))
     const totalLabel = `${toDisplay(total)} ${ticker}`
+
+    // Up to 100 wallets: one transaction through the wizard's transaction panel.
+    const buildMsgs = useCallback(() => {
+        if (!address || k !== 1) return undefined
+        return [multiSend(multiSendValue(address, denom, parsed.ready))]
+    }, [address, k, denom, parsed.ready])
+    const onDone = useCallback(({ input, hash }: WizardTxDone<SentInput>) => {
+        clearMultiSendDraft()
+        if (input) setSent({ input, hash })
+    }, [])
+    const wizard = useWizardTx<SentInput>(buildMsgs, {
+        title: ticker ? `Send ${ticker} to ${count} wallets` : 'Send to a list of wallets',
+        onDone,
+    })
+    const panelStatus = wizard.panelProps?.status
+    // Confirmed on chain: the list is spent, even if the Done screen is never opened.
+    useEffect(() => {
+        if (panelStatus === 'confirmed') clearMultiSendDraft()
+    }, [panelStatus])
+
+    const isComplete = FORM_STEPS.every(key => steps.state[key] === 'done')
+    const canSend = isComplete && Boolean(address) && listValid && !afford.isLoading && afford.canAfford
+        && resume === 'none' && (k === 1 || currentFingerprint !== undefined)
 
     const readFile = (file: File | undefined) => {
         if (!file) return
@@ -230,28 +287,6 @@ function MultiSendContent() {
         reader.readAsText(file)
     }
 
-    const submit = async () => {
-        if (!address || !canSend) return
-        if (k > 1) {
-            await startSending()
-            return
-        }
-        const msg = multiSend(multiSendValue(address, denom, parsed.ready))
-        const result = { count, totalLabel }
-
-        setIsSubmitting(true)
-        try {
-            await tx([msg], {
-                onSuccess: (res) => {
-                    clearMultiSendDraft()
-                    setSent({ txHash: res.txhash, ...result })
-                },
-            })
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
     /** Signs one batch. Its status is saved before the wallet opens, so a closed page can't hide it. */
     const sendBatch = async (id: number) => {
         const current = runRef.current
@@ -260,25 +295,43 @@ function MultiSendContent() {
         if (!address || !current || !planned || !state || !canSendBatch(state)) return
 
         setSendingId(id)
+        setBatchPanel({ id, phase: 'confirm' })
         setCheckErrors(prev => prev.filter(e => e !== id))
         commit(markSending(current, id, address))
-        let broadcast = false
+        // Filled by the callbacks (an object, so the checks below read what they wrote).
+        const outcome: { broadcast?: string; failure?: { reason: string; details?: TxFailureDetails } } = {}
         try {
             await tx([multiSend(multiSendValue(address, current.denom, planned.outputs))], {
+                toasts: false,
                 onBroadcast: (hash) => {
-                    broadcast = true
+                    outcome.broadcast = hash
+                    setBatchPanel({ id, phase: 'submitted', hash })
                     if (runRef.current) commit(markBroadcast(runRef.current, id, hash))
                 },
                 onSuccess: (res) => {
                     if (runRef.current) commit(markSent(runRef.current, id, res.txhash))
                 },
+                onFailure: (reason, details) => {
+                    outcome.failure = { reason, details }
+                },
             })
         } finally {
             const after = runRef.current
             if (after?.batches.find(b => b.id === id)?.status === 'sending') {
-                // Never broadcast (rejected in the wallet): nobody was paid. Broadcast but not
-                // confirmed: unclear until the chain check (which also catches a failed result).
-                commit(broadcast ? markUnknown(after, id) : markPending(after, id))
+                const { failure } = outcome
+                const hash = outcome.broadcast ?? failure?.details?.txHash
+                // Executed in a block with an error code: nobody was paid, the batch waits again.
+                const refused = failure?.details?.code !== undefined
+                if (!hash || refused) {
+                    commit(markPending(after, id))
+                    setBatchPanel(!failure || failure.details?.stage === 'sign'
+                        ? { id, phase: 'declined' }
+                        : { id, phase: 'failed', hash, error: { reason: failure.reason, details: failure.details?.rawLog, feeSpent: refused } })
+                } else {
+                    // Broadcast but not confirmed: unclear until the chain check.
+                    commit(markUnknown(after, id))
+                    setBatchPanel({ id, phase: 'slow', hash })
+                }
             }
             setSendingId(undefined)
         }
@@ -294,6 +347,15 @@ function MultiSendContent() {
     const sendNext = async () => {
         const target = runRef.current ? nextBatch(runRef.current) : undefined
         if (target) await sendBatch(target.id)
+    }
+
+    const submit = () => {
+        if (!address || !canSend) return
+        if (k > 1) {
+            void startSending()
+            return
+        }
+        wizard.submit({ denom, ticker, count, totalLabel })
     }
 
     // Unclear batches are looked up on the chain (by hash, else among the sender's recent
@@ -330,6 +392,15 @@ function MultiSendContent() {
 
     const checkAgain = (id: number) => setCheckErrors(prev => prev.filter(e => e !== id))
 
+    const checkNow = async (id: number) => {
+        setCheckingId(id)
+        try {
+            await verify(id)
+        } finally {
+            setCheckingId(undefined)
+        }
+    }
+
     const startNewRun = () => {
         commit(undefined)
         setConfirmNewRun(false)
@@ -350,6 +421,7 @@ function MultiSendContent() {
         setSameAmount('')
         setSameTouched(false)
         setPaused(false)
+        setBatchPanel(undefined)
         setCheckErrors([])
         setAnswered(denom ? ['token'] : [])
         steps.close()
@@ -357,29 +429,38 @@ function MultiSendContent() {
 
     if (sent) {
         return (
-            <SuccessPanel
-                title={`Sent to ${sent.count} wallets`}
-                text={`${sent.totalLabel} is now in their wallets.`}
-                links={[{ label: 'Explorer', href: getExplorerTxURL(sent.txHash), app: 'explorer' }]}
-                again={{ label: 'Send another list', onClick: sendAnother }}
+            <MultisendDone
+                denom={sent.input.denom}
+                ticker={sent.input.ticker}
+                count={sent.input.count}
+                totalLabel={sent.input.totalLabel}
+                hashes={[sent.hash]}
+                onSendAnother={sendAnother}
             />
         )
     }
 
-    if (activeRun && isRunDone(activeRun)) {
+    const runDone = activeRun !== undefined && isRunDone(activeRun)
+    const panelBatch = batchPanel && activeRun?.batches.find(b => b.id === batchPanel.id)
+    const batchStatus = batchPanel ? batchPanelStatus(batchPanel, panelBatch, runDone) : undefined
+
+    // A finished run ends on the Done screen once its last Confirmed panel is passed (or right away after a reload).
+    if (activeRun && runDone && batchStatus !== 'confirmed') {
         return (
-            <SuccessPanel
-                title={`Sent to ${count} wallets in ${activeRun.batches.length} transactions`}
-                text={`${totalLabel} is now in their wallets.`}
-                again={{ label: 'Send another list', onClick: sendAnother }}
-                after={reportHref && (
-                    <Button asChild {...softButton} alignSelf="center">
-                        <a href={reportHref} download="multisend-report.csv"><LuDownload /> Download report (CSV)</a>
-                    </Button>
-                )}
+            <MultisendDone
+                denom={denom}
+                ticker={ticker}
+                count={count}
+                totalLabel={totalLabel}
+                hashes={activeRun.batches.map(b => b.txHash ?? '')}
+                reportHref={reportHref}
+                onSendAnother={sendAnother}
             />
         )
     }
+
+    // Derived from state only: the panel's callbacks read refs, so render never branches on them.
+    const showBatchPanel = batchPanel !== undefined && batchStatus !== undefined
 
     const balanceText = asset ? `${toDisplay(balance.amount)} ${ticker}` : ''
     // The network fee comes out of the same balance when it is paid in the sent token.
@@ -419,61 +500,6 @@ function MultiSendContent() {
                 Tokens sent to a wrong address can&apos;t be recovered.
             </WarningNote>
 
-            {listValid && k > 1 && (
-                <Text fontSize="13px" lineHeight="1.5" color="hg.text.faint">
-                    {`It's sent in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets each, so you'll approve ${k} times in your wallet. If you stop halfway, the wallets already paid are marked and won't be paid twice.`}
-                </Text>
-            )}
-
-            {resume === 'changed' && (
-                <WarningNote
-                    lead="This list changed since your last run."
-                    action={confirmNewRun ? (
-                        <HStack gap="8px" wrap="wrap">
-                            <Button variant={hgVariant('danger')} size="sm" onClick={startNewRun}>Yes, forget the old run</Button>
-                            <Button size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => setConfirmNewRun(false)}>Cancel</Button>
-                        </HStack>
-                    ) : (
-                        <Button {...softButton} size="sm" onClick={() => setConfirmNewRun(true)}>
-                            Start new run
-                        </Button>
-                    )}
-                >
-                    Start a new run? Wallets from the old run may be paid again.
-                </WarningNote>
-            )}
-
-            {activeRun ? (
-                <RunProgress
-                    run={activeRun}
-                    decimals={decimals}
-                    ticker={ticker}
-                    paused={paused}
-                    checkErrors={checkErrors}
-                    sendingId={sendingId}
-                    blocker={!address ? 'Connect your wallet to send.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
-                    reportHref={reportHref}
-                    onSendNext={sendNext}
-                    onStop={() => setPaused(true)}
-                    onContinue={() => setPaused(false)}
-                    onCheckAgain={checkAgain}
-                    onSendAgain={sendBatch}
-                />
-            ) : (
-                <SubmitBlock
-                    label={k > 1 ? `Start sending (${k} transactions)` : `Send to ${count} wallets`}
-                    onClick={submit}
-                    disabled={!canSend}
-                    loading={isSubmitting || sendingId !== undefined}
-                >
-                    {!address ? (
-                        <SubmitNote>Connect your wallet to send.</SubmitNote>
-                    ) : listValid && !afford.isLoading && !afford.canAfford && (
-                        <SubmitNote tone="error">{afford.message}</SubmitNote>
-                    )}
-                </SubmitBlock>
-            )}
-
             <TipNote lead="Want to reach people who are already active?">
                 Gifting the stakers of a token goes only to wallets that hold and stake it.{' '}
                 <Link asChild color="hg.link" fontWeight="600" _hover={{ color: 'hg.link.hover' }}>
@@ -491,6 +517,90 @@ function MultiSendContent() {
     const problemsShown = parsed.problems.slice(0, SHOWN_PROBLEMS)
     const hiddenProblems = parsed.problems.length - problemsShown.length
 
+    const finalStep = activeRun ? (
+        <VStack align="stretch" gap="12px">
+            {showBatchPanel && batchPanel && batchStatus && (
+                <TxPanel
+                    status={batchStatus}
+                    hash={batchPanel.hash ?? panelBatch?.txHash}
+                    error={batchPanel.error}
+                    checking={checkingId === batchPanel.id}
+                    // Only the batch that failed is signed again.
+                    onRetry={() => void sendBatch(batchPanel.id)}
+                    onEdit={() => {
+                        setBatchPanel(undefined)
+                        setPaused(true)
+                    }}
+                    onContinue={() => setBatchPanel(undefined)}
+                    onCheckStatus={() => void checkNow(batchPanel.id)}
+                    onKeepWaiting={() => setBatchPanel(undefined)}
+                />
+            )}
+            <RunProgress
+                run={activeRun}
+                decimals={decimals}
+                ticker={ticker}
+                paused={paused}
+                checkErrors={checkErrors}
+                sendingId={sendingId}
+                blocker={!address ? 'Connect your wallet to send.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
+                reportHref={reportHref}
+                actions={!showBatchPanel}
+                onSendNext={sendNext}
+                onStop={() => setPaused(true)}
+                onContinue={() => setPaused(false)}
+                onCheckAgain={checkAgain}
+                onSendAgain={sendBatch}
+            />
+        </VStack>
+    ) : wizard.panelProps ? (
+        <TxPanel {...wizard.panelProps} />
+    ) : (
+        <ReviewStep
+            {...steps.step('review')}
+            question="Everything right?"
+            leaves={[
+                ...(listValid ? [{ label: `Sent to ${count} wallets`, coin: { denom, amount: parsed.total } }] : []),
+                ...(k > 1 ? [{ label: 'Transactions', text: `${k}, one network fee each` }] : []),
+            ]}
+            txKind={spec}
+            gets={[{ label: 'Wallets', value: `${count} wallets receive ${ticker}` }]}
+            permanent={["Sent tokens can't be taken back"]}
+            submitLabel={`Send to ${count} wallets`}
+            onSubmit={submit}
+            disabled={!canSend}
+            onBack={steps.back}
+        >
+            {k > 1 && (
+                <Text fontSize="14px" lineHeight="1.5" color="fg.muted" data-testid="batch-note">
+                    {`We send it in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets. Your wallet asks you to approve each one. If you close the page, you can resume where it stopped.`}
+                </Text>
+            )}
+            {resume === 'changed' && (
+                <WarningNote
+                    lead="This list changed since your last run."
+                    action={confirmNewRun ? (
+                        <HStack gap="8px" wrap="wrap">
+                            <Button variant={hgVariant('danger')} size="sm" onClick={startNewRun}>Yes, forget the old run</Button>
+                            <Button size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => setConfirmNewRun(false)}>Cancel</Button>
+                        </HStack>
+                    ) : (
+                        <Button {...softButton} size="sm" onClick={() => setConfirmNewRun(true)}>
+                            Start new run
+                        </Button>
+                    )}
+                >
+                    Start a new run? Wallets from the old run may be paid again.
+                </WarningNote>
+            )}
+            {!address ? (
+                <SubmitNote>Connect your wallet to send.</SubmitNote>
+            ) : listValid && !afford.isLoading && !afford.canAfford && (
+                <SubmitNote tone="error">{afford.message}</SubmitNote>
+            )}
+        </ReviewStep>
+    )
+
     return (
         <GuidedForm
             crumb="Send to a list of wallets"
@@ -501,9 +611,11 @@ function MultiSendContent() {
             aside={aside}
         >
             <Question
-                title="What do you send?"
+                title="Token"
+                question="What are you sending?"
                 {...steps.step('token')}
-                summary={asset ? `${ticker} · you have ${toDisplay(balance.amount)}` : ''}
+                summary={asset ? (address ? `${ticker} · you hold ${toDisplay(balance.amount)}` : ticker) : ''}
+                action={{ label: 'Continue', onClick: () => answer('token'), disabled: !asset }}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
@@ -511,26 +623,31 @@ function MultiSendContent() {
                         value={denom}
                         includeLP={true}
                         ownFirst={true}
+                        heldOnly={true}
                         onSelect={(a) => setDenom(a.denom)}
                     />
-                    {asset && address && (
-                        <Text fontSize="14px" color="fg.muted">You have {balanceText}.</Text>
+                    {asset && address ? (
+                        <Text fontSize="14px" color="fg.muted">You hold {balanceText}.</Text>
+                    ) : (
+                        <Hint>You can only send a token your wallet holds.</Hint>
                     )}
-                    <ContinueRow disabled={!asset} onContinue={() => answer('token')} />
                 </VStack>
             </Question>
 
             <Question
-                title="Who gets it, and how much?"
+                title="List"
+                question="Who gets it?"
                 {...steps.step('list')}
-                summary={listValid ? `${count} wallets · ${totalLabel}` : ''}
+                summary={listValid ? `${count} wallets · ${totalLabel} in total` : ''}
+                onBack={steps.back}
+                action={{ label: 'Review', onClick: () => answer('list'), disabled: !listValid }}
             >
                 <VStack align="stretch" gap="16px">
                     <Segmented
                         label="How much each wallet gets"
                         value={mode}
                         onChange={setMode}
-                        options={[{ value: 'same', label: 'Same for everyone' }, { value: 'perWallet', label: 'Amount per wallet' }]}
+                        options={[{ value: 'same', label: 'Same amount for everyone' }, { value: 'perWallet', label: 'Amount per wallet' }]}
                     />
 
                     {mode === 'same' && (
@@ -558,7 +675,8 @@ function MultiSendContent() {
                             onChange={(e) => setText(e.target.value)}
                         />
                         <Field.HelperText>
-                            Commas, semicolons, tabs or spaces between fields. Lines starting with # are skipped.
+                            {FORMAT_HINT[mode]} Commas, semicolons, tabs or spaces between fields; lines starting with # are skipped.
+                            Up to 5,000 wallets. The file is read in this browser and never uploaded.
                         </Field.HelperText>
                     </Field.Root>
 
@@ -575,7 +693,7 @@ function MultiSendContent() {
                             }}
                         />
                         <Button {...softButton} size="sm" onClick={() => fileInput.current?.click()}>
-                            <LuUpload /> Upload CSV or TXT
+                            <LuUpload /> Upload CSV
                         </Button>
                         <Button asChild size="sm" variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}>
                             <a
@@ -589,7 +707,7 @@ function MultiSendContent() {
                     {fileError && <Text fontSize="14px" color="hg.danger.text" role="alert">{fileError}</Text>}
 
                     {text.trim() !== '' && (
-                        <VStack align="stretch" gap="8px">
+                        <VStack as="section" aria-label="List check" align="stretch" gap="8px">
                             <HStack gap="6px" wrap="wrap">
                                 <Counter tone="success">{count} wallets ready</Counter>
                                 {parsed.duplicates > 0 && (
@@ -598,6 +716,7 @@ function MultiSendContent() {
                                 {parsed.problems.length > 0 && (
                                     <Counter tone="danger">{parsed.problems.length} lines to fix, left out</Counter>
                                 )}
+                                {listValid && <Counter tone="neutral">{`Total ${totalLabel}`}</Counter>}
                             </HStack>
                             {parsed.notes.length > 0 && (
                                 <Text fontSize="12px" color="hg.text.faint">
@@ -605,26 +724,23 @@ function MultiSendContent() {
                                 </Text>
                             )}
                             {parsed.problems.length > 0 && (
-                                <Box as="details" fontSize="14px">
-                                    <Box as="summary" cursor="pointer" color="hg.link" fontWeight="600">Show the lines to fix</Box>
-                                    <VStack as="ul" align="stretch" gap="4px" mt="8px" listStyleType="none">
-                                        {problemsShown.map(p => (
-                                            <Text as="li" key={`${p.line}-${p.text}`} fontSize="13px" color="hg.text.secondary" wordBreak="break-all">
-                                                Line {p.line}: <Text as="span" fontFamily="mono" color="fg">{p.text}</Text> <Text as="span" color="hg.danger.text">{p.reason}</Text>
-                                            </Text>
-                                        ))}
-                                        {hiddenProblems > 0 && (
-                                            <Text as="li" fontSize="13px" color="hg.text.faint">and {hiddenProblems} more</Text>
-                                        )}
-                                    </VStack>
-                                </Box>
+                                <VStack as="ul" aria-label="Lines to fix" align="stretch" gap="4px" m="0" p="0" listStyleType="none">
+                                    {problemsShown.map(p => (
+                                        <Text as="li" key={`${p.line}-${p.text}`} fontSize="13px" color="hg.text.secondary" wordBreak="break-all">
+                                            Line {p.line}: <Text as="span" fontFamily="mono" color="fg">{p.text}</Text> <Text as="span" color="hg.danger.text">{p.reason}</Text>
+                                        </Text>
+                                    ))}
+                                    {hiddenProblems > 0 && (
+                                        <Text as="li" fontSize="13px" color="hg.text.faint">and {hiddenProblems} more</Text>
+                                    )}
+                                </VStack>
                             )}
                         </VStack>
                     )}
-
-                    <ContinueRow disabled={!listValid} onContinue={() => answer('list')} />
                 </VStack>
             </Question>
+
+            {finalStep}
         </GuidedForm>
     )
 }
