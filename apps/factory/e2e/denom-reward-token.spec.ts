@@ -27,7 +27,7 @@ test("a live denom reward: Live badge, its daily prizes and Airdrop now", async 
     await expect(page.getByRole("button", {name: "Rewards", exact: true})).toBeVisible();
 });
 
-test("a token without one: Make it stakable, with the fee", async ({page, network}) => {
+test("a token without one: Make it stakable links to the wizard", async ({page, network}) => {
     network.use("lcd", {
         ...DENOM_REWARD,
         query: {denom: TESTUSD},
@@ -39,11 +39,9 @@ test("a token without one: Make it stakable, with the fee", async ({page, networ
     const panel = page.getByRole("region", {name: "Compounded reward"});
     await expect(panel.getByText(/Holders have no reason to stake TUSDC yet/)).toBeVisible();
     await expect(panel.getByText("Live", {exact: true})).toHaveCount(0);
-    const pay = panel.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Compounded reward fee")).toBeVisible();
-    await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
-    await expect(panel.getByRole("button", {name: "Make TUSDC stakable"})).toBeDisabled();
-    await expect(panel.getByText("Connect your wallet to make it stakable.")).toBeVisible();
+    // The fee and the signing moved to /denom-reward/new (BFE-265).
+    await expect(panel.getByRole("link", {name: "Make TUSDC stakable"}))
+        .toHaveAttribute("href", new RegExp(`^/denom-reward/new\\?denom=${encodeURIComponent(TESTUSD)}&return=`));
 });
 
 test("fits a 390 px phone: daily prizes as cards, no horizontal scroll", async ({page}) => {

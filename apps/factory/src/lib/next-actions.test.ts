@@ -25,7 +25,7 @@ describe("nextActions", () => {
             expect(keys(r)).toEqual({ recommended: "pool", more: ["makeStakable", "registry", "brandKit"] });
             expect(r.recommended?.title).toBe("Let people buy HONEY");
             expect(target(r.recommended)).toEqual({ href: `/pool/new?base=${encodeURIComponent(HONEY)}` });
-            expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/token?denom=${encodeURIComponent(HONEY)}` });
+            expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/new?denom=${encodeURIComponent(HONEY)}` });
             expect(target(byKey(r, "registry"))).toEqual({ href: `/official?denom=${encodeURIComponent(HONEY)}` });
             expect(target(byKey(r, "brandKit"))).toEqual({ href: `/tokens/token?denom=${encodeURIComponent(HONEY)}&tab=profile` });
         });
@@ -129,7 +129,7 @@ describe("nextActions", () => {
             expect(target(r.recommended)).toEqual({ copy: `Stake HONEY and earn 100 BZE a day on the BZE DEX: ${stakingUrl}`, copied: "Staking link" });
             expect(target(byKey(r, "stakeOnDex"))).toEqual({ app: "dex", href: stakingUrl });
             expect(byKey(r, "makeStakable")?.title).toBe("Make HONEY stakable for good");
-            expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/token?denom=${encodeURIComponent(HONEY)}` });
+            expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/new?denom=${encodeURIComponent(HONEY)}` });
         });
 
         it("skips making it stakable when the staked token already has a compounded reward", () => {
@@ -145,7 +145,7 @@ describe("nextActions", () => {
             expect(keys(r)).toEqual({ recommended: "dailyPrize", more: ["airdrop", "sendToStake", "invitePartner"] });
             expect(target(r.recommended)).toEqual({ href: `/denom-reward/schedule?denom=${encodeURIComponent(HONEY)}` });
             const airdrop = byKey(r, "airdrop");
-            expect(airdrop?.disabledReason).toBe("Available once someone is staking");
+            expect(airdrop?.disabledReason).toBe("Available once someone is staking. We check before you sign.");
             expect(target(airdrop)).toEqual({ href: `/denom-reward/airdrop?denom=${encodeURIComponent(HONEY)}` });
             expect(nextActions("compoundedCreated", ctx, { hasStakers: false }).more[0].disabledReason).toBeDefined();
         });

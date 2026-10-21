@@ -57,7 +57,7 @@ describe("Choose staking rewards", () => {
         const compounded = card("Compounded reward");
         expect(compounded.getByText("Only one. If it exists, you add prizes to it")).toBeInTheDocument();
         expect(compounded.getByTestId("fee-line")).toHaveTextContent("Creation fee 25,000 BZE + network fee");
-        expect(compounded.getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", "/denom-reward/token");
+        expect(compounded.getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", "/denom-reward/new");
     });
 
     it("says Fee unavailable for a fee the chain didn't give", () => {
@@ -79,7 +79,7 @@ describe("Choose staking rewards", () => {
         m.query = new URLSearchParams({ [param]: HONEY });
         renderPage();
         expect(card("Simple reward").getByRole("link", { name: /Create simple reward/ })).toHaveAttribute("href", `/reward/new?staking=${ENC}`);
-        expect(card("Compounded reward").getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", `/denom-reward/token?denom=${ENC}`);
+        expect(card("Compounded reward").getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", `/denom-reward/new?denom=${ENC}`);
         expect(existing().getByRole("link", { name: /Add a daily prize/ })).toHaveAttribute("href", `/denom-reward/schedule?denom=${ENC}`);
         expect(existing().getByRole("link", { name: /Airdrop to stakers, once/ })).toHaveAttribute("href", `/denom-reward/airdrop?denom=${ENC}`);
     });

@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("HolderRewardsPanel: no compounded reward yet", () => {
-    it("explains it, shows the values that will be frozen and the fee", () => {
+    it("explains it and shows the values that will be frozen", () => {
         useDenomRewardMock.mockReturnValue(state());
         renderPanel();
 
@@ -109,50 +109,23 @@ describe("HolderRewardsPanel: no compounded reward yet", () => {
         expect(screen.getByText("7 days")).toBeInTheDocument();
         expect(screen.getByText("No minimum")).toBeInTheDocument();
         expect(screen.getByText("Set by the chain and fixed when created.")).toBeInTheDocument();
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Compounded reward fee");
-        expect(screen.getByTestId("pay-panel")).toHaveAttribute("data-tx-kind", "create-denom-reward");
-        expect(screen.getByRole("button", { name: "Make TOK stakable" })).toBeEnabled();
     });
 
-    it("signs MsgCreateDenomReward for this denom from any wallet and refreshes", async () => {
-        const s = state();
-        useDenomRewardMock.mockReturnValue(s);
-        txMock.mockImplementation(async (_msgs, opts) => opts.onSuccess());
-        renderPanel();
-
-        await userEvent.click(screen.getByRole("button", { name: "Make TOK stakable" }));
-
-        expect(txMock).toHaveBeenCalledTimes(1);
-        const [msgs] = txMock.mock.calls[0];
-        expect(msgs[0].typeUrl).toBe("/bze.rewards.MsgCreateDenomReward");
-        expect(msgs[0].value).toMatchObject({ creator: "bze1someone", denom: TOKEN.denom });
-        expect(s.refresh).toHaveBeenCalled();
-    });
-
-    it("after creating, tips to add a daily prize", async () => {
-        let current = state();
-        useDenomRewardMock.mockImplementation(() => current);
-        txMock.mockImplementation(async (_msgs, opts) => {
-            current = state({ denomReward: { ...dr, staked_amount: "0" } });
-            opts.onSuccess();
-        });
+    it("links Make TOK stakable to the Compounded reward wizard, with the way back", () => {
+        useDenomRewardMock.mockReturnValue(state());
         renderPanel(BACK);
 
-        await userEvent.click(screen.getByRole("button", { name: "Make TOK stakable" }));
-
-        const tip = within(await screen.findByTestId("holder-rewards-next"));
-        expect(tip.getByText(/add a daily prize so stakers earn something/)).toBeInTheDocument();
-        await userEvent.click(tip.getByRole("button", { name: /Add a daily prize/ }));
-        expect(navigateMock).toHaveBeenCalledWith(`/denom-reward/schedule?denom=${ENC}&${RETURN}`);
+        expect(screen.getByRole("link", { name: "Make TOK stakable" }))
+            .toHaveAttribute("href", `/denom-reward/new?denom=${ENC}&${RETURN}`);
+        expect(txMock).not.toHaveBeenCalled();
     });
 
-    it("asks to connect a wallet instead of creating", () => {
-        useChainMock.mockReturnValue({ address: undefined });
+    it("on the public reward page, the way back is that page", () => {
         useDenomRewardMock.mockReturnValue(state());
         renderPanel();
 
-        expect(screen.getByRole("button", { name: "Make TOK stakable" })).toBeDisabled();
-        expect(screen.getByText("Connect your wallet to make it stakable.")).toBeInTheDocument();
+        const back = `return=${encodeURIComponent(`/denom-reward/token?denom=${ENC}`)}&returnLabel=TOK`;
+        expect(screen.getByRole("link", { name: "Make TOK stakable" })).toHaveAttribute("href", `/denom-reward/new?denom=${ENC}&${back}`);
     });
 });
 
@@ -175,7 +148,7 @@ describe("HolderRewardsPanel: live", () => {
         expect(row.getByText("40 BZE")).toBeInTheDocument();
         expect(screen.getByTestId("holder-schedule-card")).toHaveTextContent("2 BZE / day");
         expect(screen.getByText(/Payout days skip days with nobody staked/)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Make TOK stakable" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
     });
 
     it("says when a daily prize ends in 7 payout days or fewer", () => {
@@ -248,7 +221,7 @@ describe("HolderRewardsPanel: other states", () => {
         renderPanel();
 
         expect(screen.getByText(/Couldn't load the compounded reward/)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Make TOK stakable" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
         expect(s.refresh).toHaveBeenCalled();
     });
@@ -258,7 +231,7 @@ describe("HolderRewardsPanel: other states", () => {
         renderPanel();
 
         expect(screen.getByTestId("holder-rewards-loading")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Make TOK stakable" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
     });
 
     it("ⓘ links to the reward kinds compared, for this token", () => {

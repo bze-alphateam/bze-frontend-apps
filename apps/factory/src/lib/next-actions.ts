@@ -113,8 +113,7 @@ const q = encodeURIComponent
 const ROUTES = {
     newPool: (base: string, quote?: string) => `/pool/new?base=${q(base)}${quote ? `&quote=${q(quote)}` : ''}`,
     newMarket: (base: string, quote?: string) => `/market/new?base=${q(base)}${quote ? `&quote=${q(quote)}` : ''}`,
-    // BFE-265 moves this to /denom-reward/new?denom=.
-    makeStakable: (denom: string) => `/denom-reward/token?denom=${q(denom)}`,
+    makeStakable: (denom: string) => `/denom-reward/new?denom=${q(denom)}`,
     dailyPrize: (denom: string, scheduleId?: string) =>
         `/denom-reward/schedule?denom=${q(denom)}${scheduleId ? `&schedule=${q(scheduleId)}` : ''}`,
     airdrop: (denom: string) => `/denom-reward/airdrop?denom=${q(denom)}`,
@@ -132,7 +131,7 @@ const ROUTES = {
     burnerCoin: (denom: string) => burnerCoinHref(getBurnerApp().href, denom),
 }
 
-const NOT_STAKED_YET = 'Available once someone is staking'
+const NOT_STAKED_YET = 'Available once someone is staking. We check before you sign.'
 
 interface Candidate extends NextAction {
     /** The chain shows it is done already. */

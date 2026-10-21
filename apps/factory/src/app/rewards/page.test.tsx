@@ -207,7 +207,7 @@ describe("rewards directory", () => {
 
         expect(within(fresh).getByText("Not stakable yet. Holders have no reason to stake it.")).toBeInTheDocument();
         await userEvent.click(within(fresh).getByRole("button", { name: "Make NEW stakable" }));
-        expect(m.navigate).toHaveBeenLastCalledWith("/denom-reward/token?denom=factory%2Fbze1me%2Funew");
+        expect(m.navigate).toHaveBeenLastCalledWith("/denom-reward/new?denom=factory%2Fbze1me%2Funew");
 
         // Pinned above the directory, which still lists every DR.
         const every = screen.getByRole("region", { name: "Every token" });

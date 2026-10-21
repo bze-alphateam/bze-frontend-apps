@@ -22,7 +22,7 @@ import { AssetPicker } from '@/components/ui/asset-picker'
 import { InfoBox } from '@/components/ui/info-box'
 import { FilterChip } from '@/components/ui/filter-chip'
 import { softButton } from '@/components/ui/soft-button'
-import { airdropFormHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
+import { airdropFormHref, compoundedNewHref, denomRewardHref, scheduleFormHref } from '@/lib/denom-reward'
 import {
     DenomRewardCounts,
     HolderFilter,
@@ -234,7 +234,7 @@ function YourTokens({ list, counts }: { list: DenomReward[]; counts: CountsMap }
                             <VStack align="stretch" gap="12px">
                                 <TokenName denom={asset.denom} ticker={asset.ticker} name={asset.name} logo={asset.logo} />
                                 <Text fontSize="14px" color="fg.muted">Not stakable yet. Holders have no reason to stake it.</Text>
-                                <Button variant={hgVariant('primary')} size="md" alignSelf="start" onClick={() => navigate(denomRewardHref(asset.denom))}>
+                                <Button variant={hgVariant('primary')} size="md" alignSelf="start" onClick={() => navigate(compoundedNewHref(asset.denom))}>
                                     {`Make ${asset.ticker} stakable`}
                                 </Button>
                             </VStack>
