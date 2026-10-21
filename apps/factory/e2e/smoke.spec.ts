@@ -46,7 +46,7 @@ test("the staking rewards and community Choose screens render", async ({page}) =
 test("old URLs redirect: /manage to /tokens, /playbooks home", async ({page}) => {
     await page.goto("/manage");
     await expect(page).toHaveURL(/\/tokens$/);
-    await expect(page.getByRole("heading", {name: "Your tokens"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Tokens"})).toBeVisible();
 
     await page.goto("/playbooks?id=launch");
     await expect(page).toHaveURL(/\/\?id=launch$/);
@@ -61,13 +61,12 @@ test("the nav reads Create · Tokens · Rewards", async ({page}) => {
     await expect(nav.getByRole("link", {name: "Rewards", exact: true})).toHaveAttribute("href", "/rewards");
 });
 
-test("/tokens without a wallet shows the empty state", async ({page}) => {
+test("/tokens without a wallet lists every Factory token and no 'Created by you' group", async ({page}) => {
     await page.goto("/tokens");
 
-    await expect(page.getByRole("heading", {name: "Your tokens"})).toBeVisible();
-    await expect(page.getByText("No tokens yet.")).toBeVisible();
-    await expect(page.getByRole("button", {name: "Create your first token"})).toBeVisible();
-    await expect(page.getByText("You haven't created a market or pool yet.")).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Tokens"})).toBeVisible();
+    await expect(page.getByRole("region", {name: "All tokens"}).getByTestId("token-row")).toHaveCount(4);
+    await expect(page.getByRole("region", {name: "Created by you"})).toHaveCount(0);
 });
 
 test("the navbar's Apps menu lists the other BZE apps with their icons, Explorer on the testnet explorer", async ({page}) => {

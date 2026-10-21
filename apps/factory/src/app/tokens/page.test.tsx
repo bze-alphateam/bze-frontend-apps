@@ -2,238 +2,355 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import BigNumber from "bignumber.js";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import type { Asset } from "@bze/bze-ui-kit";
 import type { MyToken } from "@/lib/my-tokens";
 
-// Drive the page off mocked hooks: useMyTokens, useTokenSetup (records which denoms it was asked
-// for), the wallet address, and the chain's pools and markets. No wallet/chain providers.
+// The directory against mocked hooks: the asset list (useAssets), the wallet's own tokens with their
+// admins (useMyTokens), the denom reward list and the wallet address. No wallet/chain providers.
 const m = vi.hoisted(() => ({
-    useMyTokens: vi.fn(),
+    assets: [] as Asset[],
+    assetsLoading: false,
+    native: true,
+    updateAssets: vi.fn(),
+    prices: new Map<string, unknown>(),
+    mine: { tokens: [] as MyToken[], isLoading: false, refreshAdmins: vi.fn() },
+    drs: vi.fn(),
+    address: undefined as string | undefined,
+    query: "",
+    replace: vi.fn(),
     navigate: vi.fn(),
-    setupCalls: [] as string[],
-    setup: {} as Record<string, unknown>,
-    address: "bze1owner" as string | undefined,
-    pools: [] as Record<string, unknown>[],
-    markets: [] as Record<string, unknown>[],
-    toast: vi.fn(),
 }));
 
-vi.mock("@/hooks/useMyTokens", () => ({ useMyTokens: () => m.useMyTokens() }));
-vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: m.navigate }) }));
-vi.mock("@/hooks/useTokenSetup", () => ({
-    useTokenSetup: (denom: string) => {
-        m.setupCalls.push(denom);
-        return m.setup;
-    },
+vi.mock("@/hooks/useMyTokens", () => ({ useMyTokens: () => m.mine }));
+vi.mock("@/hooks/useNavigation", () => ({
+    useNavigation: () => ({ navigate: m.navigate, replace: m.replace }),
+    useNavigationWithParams: () => ({
+        navigate: m.navigate,
+        replace: m.replace,
+        getQueryParam: (k: string) => new URLSearchParams(m.query).get(k),
+        denomParam: null,
+    }),
 }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     return {
         ...actual,
-        useToast: () => ({ toast: { success: m.toast, error: vi.fn(), info: vi.fn() } }),
-        useLiquidityPools: () => ({ pools: m.pools, isLoading: false }),
-        useMarkets: () => ({ markets: m.markets, isLoading: false }),
-        useAsset: (denom: string) => ({ asset: denom === "ubze" ? { ticker: "BZE", logo: "" } : undefined, isLoading: false }),
+        useAssets: () => ({
+            assets: m.assets,
+            isLoading: m.assetsLoading,
+            nativeAsset: m.native ? { denom: "ubze", ticker: "BZE" } : undefined,
+        }),
+        useAssetsContext: () => ({ usdPricesMap: m.prices, updateAssets: m.updateAssets }),
+        useToast: () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }),
+        getAllDenomRewards: () => m.drs(),
     };
 });
 
-import ManagePage from "./page";
+import TokensPage from "./page";
 
-// `admin` is required on purpose: a default would swallow an explicit undefined
-// (the "lookup failed" state) and turn it into a renounced admin.
-function token(ticker: string, admin: string | undefined): MyToken {
-    const denom = `factory/bze1owner/u${ticker.toLowerCase()}`;
+const ME = "bze1me";
+const OTHER = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
+
+function asset(ticker: string, creator = OTHER, extra: Partial<Asset> = {}): Asset {
     return {
-        admin,
-        asset: {
-            denom,
-            ticker,
-            name: `${ticker} Token`,
-            type: "factory",
-            decimals: 6,
-            logo: "",
-            stable: false,
-            verified: false,
-            supply: 1000000n,
-        },
-    } as MyToken;
+        denom: `factory/${creator}/u${ticker.toLowerCase()}`,
+        type: "Factory",
+        ticker,
+        name: `${ticker} Token`,
+        decimals: 6,
+        logo: "",
+        stable: false,
+        verified: false,
+        supply: 1_000_000_000_000n,
+        ...extra,
+    };
 }
 
-const setupWith = (items: { key: string; state: string }[], isLoading = false) => ({
-    items,
-    doneCount: items.filter(i => i.state === "done").length,
-    totalCount: items.length,
-    isLoading,
-});
+const dr = (a: Asset, staked: string) => ({ staking_denom: a.denom, lock: 7, min_stake: "0", staked_amount: staked });
+
+const HONEY = asset("HONEY", ME);
+const WAX = asset("WAX", ME);
+const PAGE = asset("PAGE");
+const GUILD = asset("GUILD");
+const VDL = asset("VDL", OTHER, { name: "Vidulum", halted: true });
+const NOT_FACTORY = [
+    { ...asset("BZE"), denom: "ubze", type: "Native" },
+    { ...asset("ATOM"), denom: "ibc/ABC", type: "IBC" },
+    { ...asset("LP"), denom: `ulp_factory/${OTHER}/upage_ubze`, type: "LP" },
+] as Asset[];
 
 function renderPage() {
-    return render(<ManagePage />, {
+    return render(<TokensPage />, {
         wrapper: ({ children }: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
         ),
     });
 }
 
+const tickers = (testId: string) =>
+    screen.queryAllByTestId(testId).map(row => row.getAttribute("data-denom")!.split("/u").pop()!.toUpperCase());
+
 beforeEach(() => {
-    m.useMyTokens.mockReset();
+    m.assets = [HONEY, WAX, PAGE, GUILD, VDL, ...NOT_FACTORY];
+    m.assetsLoading = false;
+    m.native = true;
+    m.updateAssets.mockReset();
+    m.prices = new Map();
+    m.mine = { tokens: [], isLoading: false, refreshAdmins: vi.fn() };
+    m.drs.mockReset();
+    m.drs.mockResolvedValue([dr(PAGE, "1230000000000"), dr(GUILD, "640000000")]);
+    m.address = undefined;
+    m.query = "";
+    m.replace.mockReset();
     m.navigate.mockReset();
-    m.setupCalls = [];
-    m.setup = setupWith([{ key: "created", state: "done" }, { key: "pool", state: "todo" }, { key: "holderRewards", state: "todo" }]);
-    m.address = "bze1owner";
-    m.pools = [];
-    m.markets = [];
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn(async () => {}) }, configurable: true });
 });
 
-describe("Your tokens (/tokens)", () => {
-    it("points to the simple rewards on /rewards", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
+describe("Tokens (/tokens)", () => {
+    it("shows the header and every Factory token, sorted by staked value then A–Z", async () => {
         renderPage();
 
-        expect(screen.getByRole("link", { name: "Looking for simple rewards? They're under Rewards →" }))
-            .toHaveAttribute("href", "/rewards?tab=programs&filter=all&sort=staked&status=all");
+        expect(screen.getByRole("heading", { level: 1, name: "Tokens" })).toBeInTheDocument();
+        expect(screen.getByText(/Every token made with Factory\. Open one to see what you can do with it\./)).toBeInTheDocument();
+
+        const all = await screen.findByRole("region", { name: "All tokens" });
+        expect(within(all).getByRole("heading", { name: "All tokens · 5" })).toBeInTheDocument();
+        // No LP share, IBC or native token; staked PAGE then GUILD, then A–Z.
+        expect(tickers("token-row")).toEqual(["PAGE", "GUILD", "HONEY", "VDL", "WAX"]);
     });
 
-    it("shows the header and no empty/loaded content while loading", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: true });
+    it("says what is staked, links each row to the token page, and tags a halted token", async () => {
         renderPage();
 
-        expect(screen.getByRole("heading", { name: "Your tokens" })).toBeInTheDocument();
-        expect(screen.getByText("Everything created by your connected address, straight from the chain.")).toBeInTheDocument();
-        expect(screen.queryByText("No tokens yet.")).not.toBeInTheDocument();
+        const page = (await screen.findAllByTestId("token-row"))[0];
+        expect(within(page).getByTestId("token-stake")).toHaveTextContent("Stakable · 1,230,000 staked");
+        expect(within(page).getByTestId("token-supply")).toHaveTextContent("1,000,000 PAGE");
+        expect(within(page).getByRole("link", { name: "PAGE Token · PAGE" }))
+            .toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(PAGE.denom)}&tab=overview`);
+        expect(within(page).getByText("factory/bze1z3…qwg3l/upage")).toBeInTheDocument();
+        expect(within(page).queryByText("Halted")).not.toBeInTheDocument();
+
+        const vdl = screen.getAllByTestId("token-row").find(r => r.getAttribute("data-denom") === VDL.denom)!;
+        expect(within(vdl).getByTestId("token-stake")).toHaveTextContent("Not stakable yet");
+        expect(within(vdl).getByText("Halted")).toBeInTheDocument();
     });
 
-    it("shows the empty state when the address owns no tokens", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
+    it("copies a denom", async () => {
         renderPage();
 
-        expect(screen.getByText("No tokens yet.")).toBeInTheDocument();
-        expect(screen.getByText("Connect your wallet if you haven't already.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Create your first token/ })).toBeInTheDocument();
+        await userEvent.click(await screen.findByRole("button", { name: "Copy the denom of PAGE" }));
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(PAGE.denom);
     });
 
-    it("lists a card per owned token once loaded, with the right trust badge", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin"), token("MILK", "")], isLoading: false });
+    it("sorts by USD value when the tokens are priced", async () => {
+        // 640 GUILD at $10 beats 1,230,000 PAGE at $0.000001.
+        m.prices = new Map([[PAGE.denom, new BigNumber("0.000001")], [GUILD.denom, new BigNumber("10")]]);
         renderPage();
 
-        expect(screen.getByText("HONEY Token")).toBeInTheDocument();
-        expect(screen.getByText("MILK Token")).toBeInTheDocument();
-        expect(screen.queryByText("No tokens yet.")).not.toBeInTheDocument();
-        // Active admin -> Mintable; renounced admin ('') -> Fixed supply.
-        expect(screen.getByText("Mintable")).toBeInTheDocument();
-        expect(screen.getByText("Fixed supply")).toBeInTheDocument();
-        expect(screen.getAllByText("Total supply")).toHaveLength(2);
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(tickers("token-row").slice(0, 2)).toEqual(["GUILD", "PAGE"]);
     });
 
-    it("a token card offers Open only, no Burner link", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin")], isLoading: false });
+    it("has no 'Created by you' group without a wallet", async () => {
         renderPage();
 
-        const card = screen.getByTestId("my-token");
-        expect(within(card).getByRole("button", { name: "Open" })).toBeInTheDocument();
-        expect(within(card).queryByRole("link", { name: /Burner/ })).not.toBeInTheDocument();
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(screen.queryByRole("region", { name: "Created by you" })).not.toBeInTheDocument();
+    });
+});
+
+describe("Created by you", () => {
+    const mine = (a: Asset, admin: string | undefined): MyToken => ({ asset: a, admin });
+
+    beforeEach(() => {
+        m.address = ME;
     });
 
-    it("shows a neutral badge when the admin lookup failed, never Fixed supply", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", undefined)], isLoading: false });
+    it("pins the wallet's tokens on top and leaves them out of All tokens", async () => {
+        m.mine.tokens = [mine(HONEY, ME), mine(WAX, "")];
         renderPage();
 
-        expect(screen.getByText("Admin unknown")).toBeInTheDocument();
-        expect(screen.queryByText("Fixed supply")).not.toBeInTheDocument();
-        expect(screen.queryByText("Mintable")).not.toBeInTheDocument();
+        const group = await screen.findByRole("region", { name: "Created by you" });
+        expect(within(group).getByRole("heading", { name: "Created by you · 2" })).toBeInTheDocument();
+        expect(tickers("my-token-row")).toEqual(["HONEY", "WAX"]);
+        expect(tickers("token-row")).toEqual(["PAGE", "GUILD", "VDL"]);
     });
 
-    it("explains the badges in a collapsible note", async () => {
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
+    it.each([
+        ["you", ME, false, "You are admin"],
+        ["renounced", "", false, "Admin given up"],
+        ["transferred", OTHER, false, "Admin is bze1z3…qwg3l"],
+        ["checking", undefined, true, "Checking admin…"],
+        ["error", undefined, false, "Couldn't check admin"],
+    ] as const)("badge %s", async (kind, admin, isLoading, label) => {
+        m.mine = { tokens: [mine(HONEY, admin)], isLoading, refreshAdmins: vi.fn() };
         renderPage();
 
-        expect(screen.queryByText(/nobody can ever change the supply/)).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: /What do the badges mean\?/ }));
-        expect(await screen.findByText(/nobody can ever change the supply/)).toBeInTheDocument();
+        const badge = within(await screen.findByTestId("my-token-row")).getByTestId("admin-badge");
+        expect(badge).toHaveAttribute("data-kind", kind);
+        expect(badge).toHaveTextContent(label);
     });
 
-    it("navigates to the token form from New token, and Open goes to the workspace", async () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin")], isLoading: false });
+    it("adds '· fixed' to the supply once the admin is given up", async () => {
+        m.mine.tokens = [mine(HONEY, "")];
         renderPage();
 
-        await userEvent.click(screen.getByRole("button", { name: /New token/ }));
+        expect(within(await screen.findByTestId("my-token-row")).getByTestId("token-supply")).toHaveTextContent("1,000,000 HONEY · fixed");
+    });
+
+    it("a failed admin lookup offers Retry, never 'Admin given up'", async () => {
+        m.mine.tokens = [mine(HONEY, undefined)];
+        renderPage();
+
+        const row = await screen.findByTestId("my-token-row");
+        expect(within(row).queryByText("Admin given up")).not.toBeInTheDocument();
+        await userEvent.click(within(row).getByRole("button", { name: "Retry" }));
+        expect(m.mine.refreshAdmins).toHaveBeenCalled();
+    });
+
+    it("the 'Created by you' filter shows only that group", async () => {
+        m.query = "filter=mine";
+        m.mine.tokens = [mine(HONEY, ME)];
+        renderPage();
+
+        await screen.findByRole("region", { name: "Created by you" });
+        expect(screen.queryByRole("region", { name: "All tokens" })).not.toBeInTheDocument();
+    });
+});
+
+describe("filters and search", () => {
+    it("the Stakable filter keeps the tokens with a compounded reward", async () => {
+        m.query = "filter=stakable";
+        renderPage();
+
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(tickers("token-row")).toEqual(["PAGE", "GUILD"]);
+        expect(screen.getByRole("button", { name: "Stakable" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("a chip writes the filter to the URL and goes back to page 1", async () => {
+        m.query = "q=gu&page=2";
+        renderPage();
+
+        await userEvent.click(screen.getByRole("button", { name: "Stakable" }));
+        expect(m.replace).toHaveBeenLastCalledWith("/tokens?filter=stakable&q=gu");
+    });
+
+    it("searches by name, ticker or denom, and keeps the search in the URL", async () => {
+        m.query = "q=vidul";
+        renderPage();
+
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(screen.getByRole("textbox", { name: "Search tokens" })).toHaveValue("vidul");
+        expect(tickers("token-row")).toEqual(["VDL"]);
+
+        await userEvent.clear(screen.getByRole("textbox", { name: "Search tokens" }));
+        await userEvent.type(screen.getByRole("textbox", { name: "Search tokens" }), "upa");
+        expect(tickers("token-row")).toEqual(["PAGE"]);
+        expect(m.replace).toHaveBeenLastCalledWith("/tokens?filter=all&q=upa");
+    });
+
+    it("says when nothing matches the search", async () => {
+        m.query = "q=nothing";
+        renderPage();
+
+        expect(await screen.findByTestId("tokens-no-match")).toHaveTextContent("No token matches 'nothing'.");
+    });
+
+    it("asks to connect a wallet for 'Created by you' without one", async () => {
+        m.query = "filter=mine";
+        renderPage();
+
+        expect(await screen.findByTestId("tokens-no-match")).toHaveTextContent("Connect your wallet to see the tokens you created.");
+    });
+});
+
+describe("paging", () => {
+    const many = Array.from({ length: 45 }, (_, i) => asset(`T${String(i).padStart(2, "0")}`));
+
+    beforeEach(() => {
+        m.assets = many;
+        m.drs.mockResolvedValue([]);
+    });
+
+    const desktopRows = () => screen.getAllByTestId("token-row").filter(r => !r.hasAttribute("data-phone-only"));
+
+    it("shows 20 rows a page with numbered pages, and writes the page to the URL", async () => {
+        renderPage();
+
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(screen.getAllByTestId("token-row")).toHaveLength(20);
+        const pages = screen.getByRole("navigation", { name: "Pages" });
+        expect(within(pages).getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+        expect(within(pages).getAllByRole("button").map(b => b.textContent)).toEqual(["1", "2", "3"]);
+
+        await userEvent.click(within(pages).getByRole("button", { name: "Page 3" }));
+        expect(m.replace).toHaveBeenLastCalledWith("/tokens?filter=all&page=3");
+    });
+
+    it("opens the page from the URL; phones keep the earlier rows, desktop shows that page alone", async () => {
+        m.query = "page=2";
+        renderPage();
+
+        await screen.findByRole("region", { name: "All tokens" });
+        expect(screen.getAllByTestId("token-row")).toHaveLength(40);
+        expect(desktopRows()).toHaveLength(20);
+        expect(desktopRows()[0]).toHaveAttribute("data-denom", many[20].denom);
+        expect(screen.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+    });
+
+    it("phones get 'Show 20 more', then the rest", async () => {
+        m.query = "page=2";
+        renderPage();
+
+        await userEvent.click(await screen.findByRole("button", { name: "Show 5 more" }));
+        expect(m.replace).toHaveBeenLastCalledWith("/tokens?filter=all&page=3");
+    });
+
+    it("the first page offers 'Show 20 more'", async () => {
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Show 20 more" })).toBeInTheDocument();
+    });
+});
+
+describe("states", () => {
+    it("a skeleton while the assets load", () => {
+        m.assetsLoading = true;
+        renderPage();
+
+        expect(screen.getByTestId("tokens-loading")).toBeInTheDocument();
+    });
+
+    it("no Factory token at all: an empty state with a Create a token CTA", async () => {
+        m.assets = NOT_FACTORY;
+        renderPage();
+
+        expect(await screen.findByText("No tokens yet.")).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: /Create a token/ }));
         expect(m.navigate).toHaveBeenCalledWith("/token/new");
-        await userEvent.click(screen.getByRole("button", { name: "Open" }));
-        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${encodeURIComponent("factory/bze1owner/uhoney")}&tab=overview`);
     });
 
-    it("shows each token's setup progress and its first unfinished item", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin")], isLoading: false });
+    it("the asset list failed: an error with Retry", async () => {
+        m.assets = [];
+        m.native = false;
         renderPage();
 
-        expect(screen.getByTestId("setup-progress")).toHaveTextContent("1 of 3 set up· no pool yet");
+        expect(screen.getByText("Couldn't load the tokens.")).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
+        expect(m.updateAssets).toHaveBeenCalled();
     });
 
-    it("a skeleton while the setup is read; no hint when everything is done", () => {
-        m.useMyTokens.mockReturnValue({ tokens: [token("HONEY", "bze1admin")], isLoading: false });
-        m.setup = setupWith([{ key: "created", state: "done" }], true);
-        const { unmount } = renderPage();
-        expect(screen.getByTestId("setup-progress-loading")).toBeInTheDocument();
-        unmount();
-
-        m.setup = setupWith([{ key: "created", state: "done" }, { key: "pool", state: "done" }]);
-        renderPage();
-        expect(screen.getByTestId("setup-progress")).toHaveTextContent(/^2 of 2 set up$/);
-    });
-
-    it("reads the setup of the first 10 tokens only, then 10 more on Show more", async () => {
-        const many = Array.from({ length: 12 }, (_, i) => token(`T${i}`, "bze1admin"));
-        m.useMyTokens.mockReturnValue({ tokens: many, isLoading: false });
+    it("the denom rewards failed: every token still lists, as not stakable, A–Z", async () => {
+        m.drs.mockRejectedValue(new Error("down"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
         renderPage();
 
-        expect(screen.getAllByTestId("my-token")).toHaveLength(10);
-        expect(new Set(m.setupCalls).size).toBe(10);
-        expect(m.setupCalls).not.toContain("factory/bze1owner/ut10");
-
-        await userEvent.click(screen.getByRole("button", { name: "Show more (2 left)" }));
-        expect(screen.getAllByTestId("my-token")).toHaveLength(12);
-        expect(new Set(m.setupCalls).size).toBe(12);
-        expect(screen.queryByRole("button", { name: /Show more/ })).not.toBeInTheDocument();
+        expect(await screen.findByTestId("tokens-stake-unknown")).toBeInTheDocument();
+        expect(tickers("token-row")).toEqual(["GUILD", "HONEY", "PAGE", "VDL", "WAX"]);
     });
 });
 
-describe("Markets and pools you created", () => {
-    const POOL = (id: string, creator: string) => ({ id, base: "factory/bze1owner/uhoney", quote: "ubze", lp_denom: `ulp_${id}`, fee: "0.003", creator });
-    const MARKET = (base: string, creator: string) => ({ base, quote: "ubze", creator });
-
-    it("lists only the pools and markets this address created", async () => {
-        Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn(async () => {}) }, configurable: true });
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
-        m.pools = [POOL("p1", "bze1owner"), POOL("p2", "bze1someone")];
-        m.markets = [MARKET("factory/bze1owner/uhoney", "bze1owner"), MARKET("factory/bze1x/umilk", "bze1someone")];
-        renderPage();
-
-        const pools = screen.getByTestId("created-pools");
-        expect(pools).toHaveTextContent("Pools (1)");
-        expect(within(pools).getByText("factory/bze1owner/uhoney/BZE")).toBeInTheDocument();
-        expect(within(pools).getByText("0.3% swap fee")).toBeInTheDocument();
-        expect(within(pools).queryByText("ulp_p2")).not.toBeInTheDocument();
-        await userEvent.click(within(pools).getByRole("button", { name: "Add liquidity" }));
-        expect(m.navigate).toHaveBeenCalledWith("/pool/add?pool=p1");
-        await userEvent.click(within(pools).getByRole("button", { name: "Copy LP denom" }));
-        expect(m.toast).toHaveBeenCalledWith("Copied", "LP denom copied to clipboard.");
-
-        const markets = screen.getByTestId("created-markets");
-        expect(markets).toHaveTextContent("Markets (1)");
-        expect(within(markets).queryByText(/umilk/)).not.toBeInTheDocument();
-    });
-
-    it("empty, or without a wallet: offers to create a pool or a market", async () => {
-        m.useMyTokens.mockReturnValue({ tokens: [], isLoading: false });
-        m.address = undefined;
-        m.pools = [POOL("p1", "bze1owner")];
-        renderPage();
-
-        const section = screen.getByRole("region", { name: "Markets and pools you created" });
-        expect(section).toHaveTextContent("You haven't created a market or pool yet.");
-        await userEvent.click(within(section).getByRole("button", { name: "Create a pool" }));
-        expect(m.navigate).toHaveBeenCalledWith("/pool/new");
-        await userEvent.click(within(section).getByRole("button", { name: "Create a market" }));
-        expect(m.navigate).toHaveBeenCalledWith("/market/new");
-    });
-});
