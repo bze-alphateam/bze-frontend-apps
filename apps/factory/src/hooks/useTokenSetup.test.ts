@@ -119,7 +119,8 @@ describe("useTokenSetup", () => {
         let result = run();
         expect(result.items.find(i => i.key === "pool")).toMatchObject({ state: "done", detail: "TOK / USDC" });
         expect(stateOf(result, "market")).toBe("done");
-        expect(result.items.find(i => i.key === "pool")?.action?.href).toMatch(/^\/pool\/add\?pool=p1&return=/);
+        // Adding liquidity lives on the DEX pool page (BFE-262).
+        expect(result.items.find(i => i.key === "pool")?.action).toMatchObject({ app: "dex", href: expect.stringMatching(/\/pools\/details\?id=p1$/) });
 
         setFacts({ pools: [pool("p2", "ubze", DENOM)], markets: [{ base: DENOM, quote: "uusdc" }] });
         result = run();

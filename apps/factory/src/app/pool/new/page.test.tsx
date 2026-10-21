@@ -343,9 +343,10 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
 
             const review = step("Review");
             const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
-            expect(leaves).toHaveTextContent("Pool creation fee25 BZE");
-            expect(leaves).toHaveTextContent("Starting TOK1,000 TOK");
-            expect(leaves).toHaveTextContent("Starting BZE50 BZE");
+            // Each coin row: label, logo (the mock prints the ticker), amount.
+            expect(leaves).toHaveTextContent(/Pool creation fee\s*BZE\s*25 BZE/);
+            expect(leaves).toHaveTextContent(/Starting TOK\s*TOK\s*1,000 TOK/);
+            expect(leaves).toHaveTextContent(/Starting BZE\s*BZE\s*50 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A TOK/BZE pool anyone can swap in");
             expect(review).toHaveTextContent("Swap fee0.2 % · 50 % to providers, 25 % burned, 25 % treasury");
