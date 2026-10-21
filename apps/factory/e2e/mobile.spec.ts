@@ -26,7 +26,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
-    {path: "/tokens", ready: heading("Your tokens")},
+    {path: "/tokens", ready: heading(/^Tokens$/)},
     {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},
     // Phones get cards, not the (hidden) table.
     {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
