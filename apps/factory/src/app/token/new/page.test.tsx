@@ -32,7 +32,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/hooks/useNavigation", () => ({ useNavigation: () => ({ navigate: navigateMock }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock, progressTrack: "" }) }));
 vi.mock("@/hooks/useTokenSetup", () => ({
-    useTokenSetup: () => ({ isLoading: false, items: [], pools: setupState.pools, hasMarket: false, hasStakers: false }),
+    // Mainnet facts: the registry item exists (testnet has none, so the registry step is skipped there).
+    useTokenSetup: () => ({ isLoading: false, items: [{ key: "registry", state: "todo" }], pools: setupState.pools, hasMarket: false, hasStakers: false }),
 }));
 vi.mock("@/hooks/useFeePayment", () => ({
     useFeePayment: () => ({
@@ -427,6 +428,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByText("Make HONEY stakable")).toBeInTheDocument();
             expect(screen.getByText("Get your logo in every wallet")).toBeInTheDocument();
             expect(screen.getByText("Give it a look")).toBeInTheDocument();
+            expect(screen.queryByText("Allow limit orders too")).not.toBeInTheDocument();
             expect(screen.getByText(/Not now\? Every one of these waits for you on/)).toBeInTheDocument();
             expect(screen.getByText("HONEY's token page")).toBeInTheDocument();
             expect(savedDraft()).toBeNull();
