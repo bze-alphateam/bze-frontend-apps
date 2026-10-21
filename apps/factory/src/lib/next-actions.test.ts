@@ -103,6 +103,7 @@ describe("nextActions", () => {
         it("recommends opening the market on the DEX; the trading contest is shown disabled", () => {
             const r = nextActions("marketCreated", ctx);
             expect(keys(r)).toEqual({ recommended: "openMarket", more: ["pool", "contest", "copyMarket"] });
+            expect(r.recommended?.title).toBe("Open the market on DEX");
             expect(target(r.recommended)).toEqual({ app: "dex", href: marketUrl });
             expect(target(byKey(r, "pool"))).toEqual({ href: `/pool/new?base=${encodeURIComponent(HONEY)}&quote=ubze` });
             expect(byKey(r, "contest")?.disabledReason).toBe("Coming soon");

@@ -66,6 +66,10 @@ export const dexPoolsHref = (dexHref: string) => `${dexHref.replace(/\/$/, '')}/
 export const dexPoolHref = (dexHref: string, poolId?: string | null) =>
     poolId ? `${dexPoolsHref(dexHref)}/details?id=${encodeURIComponent(poolId)}` : dexPoolsHref(dexHref)
 
+/** An order-book market's page on the DEX; `marketId` is `<base>/<quote>` in the market's stored direction. */
+export const dexMarketHref = (dexHref: string, marketId: string) =>
+    `${dexHref.replace(/\/$/, '')}/exchange/market?id=${encodeURIComponent(marketId)}`
+
 export const DOCS_HREF = 'https://docs.getbze.com'
 
 export interface StartingPoint {
