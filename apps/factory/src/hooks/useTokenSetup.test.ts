@@ -132,7 +132,7 @@ describe("useTokenSetup", () => {
         expect(stateOf(result, "pool")).toBe("todo");
         expect(stateOf(result, "market")).toBe("todo");
         expect(result.items.find(i => i.key === "pool")?.href).toBe(
-            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Ftokens%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok%26tab%3Dtrading&returnLabel=TOK",
+            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Ftokens%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok&returnLabel=TOK",
         );
     });
 
@@ -141,7 +141,7 @@ describe("useTokenSetup", () => {
         expect(stateOf(result, "description")).toBe("impossible");
         expect(stateOf(result, "brandKit")).toBe("impossible");
         expect(result.items.find(i => i.key === "description")).toMatchObject({
-            detail: "Can't be added after the supply was locked",
+            detail: "Can't be added once the admin is given up",
             action: undefined,
         });
         expect(result.totalCount).toBe(4);

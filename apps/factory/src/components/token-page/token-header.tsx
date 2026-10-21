@@ -54,7 +54,7 @@ export function TokenHeader({ asset, admin, isAdminLoading, badge, stats }: {
     }
 
     return (
-        <Box position="relative" overflow="hidden" borderBottomWidth="1px" borderColor="hg.divider">
+        <Box position="relative" overflow="hidden" borderBottomWidth="1px" borderColor="hg.divider" data-testid="token-header">
             <HeroGlow strength="inner" />
             <PageContainer position="relative" pt="24px" pb="28px">
                 <VStack align="stretch" gap="18px">

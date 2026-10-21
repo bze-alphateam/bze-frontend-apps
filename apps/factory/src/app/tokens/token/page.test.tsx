@@ -161,7 +161,7 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
         expect(within(screen.getByTestId("permissions-section")).getByRole("region", { name: "Renounce admin" })).toBeInTheDocument();
         expect(within(screen.getByTestId("permissions-section")).getByRole("region", { name: "Transfer admin" })).toBeInTheDocument();
-        expect(screen.getByText("You hold")).toBeInTheDocument();
+        expect(within(screen.getByTestId("token-stats")).getByText("You hold")).toBeInTheDocument();
         expect(screen.queryByTestId("admin-unknown")).not.toBeInTheDocument();
         expectBurnOnBurner();
     });
@@ -170,7 +170,7 @@ describe("token page: the seven admin states", () => {
         m.admin.mockResolvedValue("");
         await renderSettled();
         expect(screen.getByTestId("owner-badge")).toHaveTextContent("Created by you · admin given up");
-        expect(screen.getByText("Fixed supply")).toBeInTheDocument();
+        expect(within(screen.getByTestId("token-header")).getByText("Fixed supply")).toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
         expect(screen.getByText(/Frozen: the admin was given up/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
@@ -217,7 +217,7 @@ describe("token page: the seven admin states", () => {
         m.address = undefined;
         await renderSettled();
         expect(screen.queryByText("You hold")).not.toBeInTheDocument();
-        expect(screen.getByText("Supply")).toBeInTheDocument();
+        expect(within(screen.getByTestId("token-stats")).getByText("Supply")).toBeInTheDocument();
         expect(screen.queryByTestId("owner-badge")).not.toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
@@ -231,7 +231,7 @@ describe("token page: the seven admin states", () => {
         );
         expect(screen.queryByTestId("owner-badge")).not.toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
-        expect(screen.getByText("Admin unknown")).toBeInTheDocument();
+        expect(within(screen.getByTestId("token-header")).getByText("Admin unknown")).toBeInTheDocument();
         expectBurnOnBurner();
 
         m.admin.mockResolvedValue(OWNER);
