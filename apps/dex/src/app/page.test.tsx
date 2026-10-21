@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     pools: [] as unknown[],
     halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
+    usdPrices: new Map<string, BigNumber>(),
     // A plain number: BigNumber is not imported yet when vi.hoisted runs.
     bzePrice: 0,
 }));
@@ -61,7 +62,11 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         }),
         useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
         useBZETx: () => ({ tx: mocks.tx, progressTrack: "" }),
-        useAssetsValue: () => ({ denomUsdValue: () => new BigNumber(0) }),
+        // Same contract as the real hook: USD price per whole token, amount in base (micro) units.
+        useAssetsValue: () => ({
+            denomUsdValue: (denom: string, uAmount: BigNumber) =>
+                (mocks.usdPrices.get(denom) ?? new BigNumber(0)).multipliedBy(uAmount.shiftedBy(-6)),
+        }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
         useMaxSpendable: (denom: string, spec: unknown) => mocks.useMaxSpendable(denom, spec),
         useGasFeeEstimate: () => zeroGas,
@@ -164,6 +169,7 @@ beforeEach(() => {
     mocks.useMaxSpendable.mockReset();
     mocks.tx.mockReset();
     mocks.balances.clear();
+    mocks.usdPrices.clear();
     mocks.pools = [];
     mocks.halted = new Set();
     mocks.bzePrice = 0;
@@ -489,5 +495,33 @@ describe("Swap page BZE price tile", () => {
         renderSwap();
         const value = screen.getAllByTestId("stat-value")[0];
         expect(value.textContent).toBe("$0.764577$0.7646");
+    });
+});
+
+describe("Swap page USD values", () => {
+    const usdLines = () => screen.queryAllByText((_, el) => el?.tagName === "SPAN" && /^≈ \$.* USD$/.test(el.textContent ?? ""));
+
+    it("prices the typed amounts as whole tokens, not as base units", () => {
+        setupBzeUsdc();
+        mocks.usdPrices.set("ubze", new BigNumber("0.0002"));
+        mocks.usdPrices.set("uusdc", new BigNumber(1));
+        renderSwap();
+
+        fireEvent.change(fromInput(), { target: { value: "847" } });
+
+        // 847 BZE at $0.0002 is $0.1694; the bug priced it as 0.000847 BZE ($0.000000).
+        const [fromUsd, toUsd] = usdLines();
+        expect(fromUsd.textContent).toBe("≈ $0.169400 USD");
+        // At $1 per USDC the bought side is worth exactly its displayed amount.
+        expect(toUsd.textContent).toBe(`≈ $${new BigNumber(toInput().value).toFixed(6)} USD`);
+    });
+
+    it("shows no USD value for an asset without a price", () => {
+        setupBzeUsdc();
+        renderSwap();
+
+        fireEvent.change(fromInput(), { target: { value: "847" } });
+
+        expect(usdLines()).toHaveLength(0);
     });
 });
