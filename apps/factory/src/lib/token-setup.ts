@@ -3,10 +3,11 @@ import { withReturn } from '@/components/guided/return-to'
 import { dexPoolHref } from '@/lib/create-routes'
 import { officialHref } from '@/lib/registry-entry'
 import { VOCABULARY } from '@/lib/vocabulary'
-import { workspaceHref } from '@/lib/workspace'
+import { workspaceHref, type TokenSection } from '@/lib/workspace'
 
-// The "Set up <TICKER>" checklist of the token workspace (BFE-146). Every item is computed from
-// chain data on each render, never stored. A new item is one more entry in SETUP_ITEMS.
+// The token's setup checklist (BFE-146), drawn as the token page's setup chips since BFE-271.
+// Every item is computed from chain data on each render, never stored. A new item is one more
+// entry in SETUP_ITEMS.
 
 export type SetupState = 'done' | 'todo' | 'partial' | 'unknown' | 'impossible'
 
@@ -35,7 +36,7 @@ export interface TokenSetupFacts {
     ticker: string;
     /** Total supply, already formatted for display. */
     supplyLabel: string;
-    /** Admin renounced: nothing that needs the admin can be added any more. */
+    /** Admin given up (renounced): nothing that needs the admin can be added any more. */
     isLocked: boolean;
     /** On-chain metadata description; undefined when there is no metadata. */
     description?: string;
@@ -58,12 +59,9 @@ interface SetupItemDefinition {
     build: (facts: TokenSetupFacts) => Omit<SetupItem, 'key' | 'optional'>;
 }
 
-const LOCKED_DETAIL = "Can't be added after the supply was locked"
+const LOCKED_DETAIL = "Can't be added once the admin is given up"
 
-const backTo = (facts: TokenSetupFacts, tab: 'trading' | 'rewards') => ({
-    href: workspaceHref(facts.denom, tab),
-    label: facts.ticker,
-})
+const backTo = (facts: TokenSetupFacts) => ({ href: workspaceHref(facts.denom), label: facts.ticker })
 
 export const SETUP_ITEMS: SetupItemDefinition[] = [
     {
@@ -79,7 +77,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
         key: 'description',
         needsAdmin: true,
         build: f => {
-            const href = workspaceHref(f.denom, 'profile')
+            const href = workspaceHref(f.denom, 'details')
             const done = Boolean(f.description?.trim())
             return {
                 title: 'Description · shown in wallets',
@@ -94,7 +92,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
         key: 'brandKit',
         needsAdmin: true,
         build: f => {
-            const href = workspaceHref(f.denom, 'profile')
+            const href = workspaceHref(f.denom, 'details')
             const title = `${VOCABULARY.brandKit.name} · colours and a font for ${f.ticker}'s Communities page`
             if (f.brandKit === 'error') {
                 return { title, detail: "Couldn't check the brand kit.", state: 'unknown', href }
@@ -112,7 +110,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
     {
         key: 'pool',
         build: f => {
-            const href = withReturn(`/pool/new?base=${encodeURIComponent(f.denom)}`, backTo(f, 'trading'))
+            const href = withReturn(`/pool/new?base=${encodeURIComponent(f.denom)}`, backTo(f))
             if (f.pools.length === 0) {
                 return {
                     title: VOCABULARY.pool.name,
@@ -186,7 +184,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
         key: 'market',
         optional: true,
         build: f => {
-            const href = withReturn(`/market/new?base=${encodeURIComponent(f.denom)}`, backTo(f, 'trading'))
+            const href = withReturn(`/market/new?base=${encodeURIComponent(f.denom)}`, backTo(f))
             return f.hasMarket
                 ? { title: VOCABULARY.market.name, detail: 'Open on the DEX', state: 'done', href }
                 : {
@@ -241,4 +239,44 @@ export function setupHint(setup: Pick<TokenSetup, 'items'>): string | undefined 
         if (hint) return hint
     }
     return undefined
+}
+
+/** The chips of the token page, in order, with their short names (canvas D2). */
+const CHIPS: { key: string; label: string; section: TokenSection; needsAdmin?: boolean }[] = [
+    { key: 'created', label: 'Created', section: 'supply' },
+    { key: 'pool', label: 'Pool', section: 'trading' },
+    { key: 'holderRewards', label: 'Stakable', section: 'rewards' },
+    { key: 'registry', label: 'Logo in wallets', section: 'details' },
+    { key: 'brandKit', label: 'Brand kit', section: 'details', needsAdmin: true },
+]
+
+export interface SetupChip {
+    key: string;
+    label: string;
+    /** done ✓, todo ○ (partial counts as todo), unknown (the check failed), impossible (admin given up). */
+    state: 'done' | 'todo' | 'unknown' | 'impossible';
+    /** The page section that holds the chip's action. */
+    section: TokenSection;
+    /** Shown after the label: "Admin only" for an admin item the wallet can't do, "admin given up". */
+    note?: string;
+}
+
+/**
+ * The setup chips: "Getting there · 3 of 5". Shown to everyone (the facts are public); an admin-only
+ * item still to do says "Admin only" unless the wallet is the admin. Items left out by the checklist
+ * (the registry on testnet) are left out here too, and impossible ones don't count.
+ */
+export function setupChips(items: ReadonlyArray<SetupItem>, isAdmin: boolean) {
+    const chips = CHIPS.flatMap((chip): SetupChip[] => {
+        const item = items.find(i => i.key === chip.key)
+        if (!item) return []
+        const state = item.state === 'partial' ? 'todo' : item.state
+        const note = state === 'impossible'
+            ? 'admin given up'
+            : state === 'todo' && chip.needsAdmin && !isAdmin ? 'Admin only' : undefined
+        return [{ key: chip.key, label: chip.label, state, section: chip.section, note }]
+    })
+    const counted = chips.filter(c => c.state !== 'impossible')
+    const doneCount = counted.filter(c => c.state === 'done').length
+    return { chips, doneCount, totalCount: counted.length }
 }

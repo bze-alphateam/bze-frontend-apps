@@ -67,8 +67,8 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Get HONEY's logo into every wallet" })).toBeInTheDocument();
         const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
-        await userEvent.click(within(crumbs).getByRole("link", { name: "Profile" }));
-        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${ENC}&tab=profile`);
+        await userEvent.click(within(crumbs).getByRole("link", { name: "Details and look" }));
+        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${ENC}#details`);
         expect(within(crumbs).getByRole("link", { name: "Honey Coin" })).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Registry status" })).toHaveTextContent("Not in the registry yet.");
         expect(progressText()).toBe("Your progress: 0 of 5 steps");
@@ -193,8 +193,8 @@ describe("Make it official (/official)", { timeout: 20_000 }, () => {
         renderPage();
         const warning = screen.getByTestId("official-no-description");
         expect(warning).toHaveTextContent("Add a description first, it's shown in wallets.");
-        await userEvent.click(within(warning).getByRole("link", { name: "Open Profile" }));
-        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${ENC}&tab=profile`);
+        await userEvent.click(within(warning).getByRole("link", { name: "Open Details and look" }));
+        expect(m.navigate).toHaveBeenCalledWith(`/tokens/token?denom=${ENC}#details`);
         expect(within(step("Copy your registry entry")).getByRole("button", { name: "Copy" })).toBeEnabled();
     });
 

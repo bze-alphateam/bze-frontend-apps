@@ -20,8 +20,8 @@ describe("goal catalogue", () => {
         ["giftStakers", DENOM, `/denom-reward/airdrop?denom=${ENC}`],
         ["dailyPrize", DENOM, `/denom-reward/schedule?denom=${ENC}`],
         ["registry", DENOM, `/official?denom=${ENC}`],
-        ["brandKit", DENOM, `/tokens/token?denom=${ENC}&tab=profile`],
-        ["lock", DENOM, `/tokens/token?denom=${ENC}&tab=control&lock=1`],
+        ["brandKit", DENOM, `/tokens/token?denom=${ENC}#details`],
+        ["lock", DENOM, `/tokens/token?denom=${ENC}&lock=1`],
         ["multisend", undefined, "/multisend"],
         ["campaign", undefined, "/reward/new"],
         ["raffle", undefined, "/raffle/new"],
@@ -59,7 +59,7 @@ describe("search entries", () => {
         expect(SEARCH_TOOLS.every(t => t.group === "tool")).toBe(true);
         expect(tool("burn")?.external).toBe(true);
         expect(tool("mintMore")?.href?.()).toBe("/tokens");
-        expect(tool("mintMore")?.href?.(DENOM)).toBe(`/tokens/token?denom=${ENC}&tab=supply`);
-        expect(tool("handOver")?.href?.(DENOM)).toBe(`/tokens/token?denom=${ENC}&tab=control`);
+        expect(tool("mintMore")?.href?.(DENOM)).toBe(`/tokens/token?denom=${ENC}#supply`);
+        expect(tool("handOver")?.href?.(DENOM)).toBe(`/tokens/token?denom=${ENC}#permissions`);
     });
 });

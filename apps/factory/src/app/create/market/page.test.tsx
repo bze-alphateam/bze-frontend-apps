@@ -75,6 +75,17 @@ describe("Choose a DEX market", () => {
         expect(card("Order-book market").getByRole("link", { name: /Create order-book market/ })).toHaveAttribute("href", `/market/new?${q}`);
     });
 
+    it("hands the way back to a token page on as well", () => {
+        m.query = new URLSearchParams({ base: "factory/bze1x/uhoney", return: "/tokens/token?denom=factory%2Fbze1x%2Fuhoney", returnLabel: "HONEY" });
+        renderPage();
+        const href = card("Liquidity pool").getByRole("link", { name: /Create liquidity pool/ }).getAttribute("href") ?? "";
+        const params = new URLSearchParams(href.split("?")[1]);
+        expect(href.startsWith("/pool/new?")).toBe(true);
+        expect(params.get("base")).toBe("factory/bze1x/uhoney");
+        expect(params.get("return")).toBe("/tokens/token?denom=factory%2Fbze1x%2Fuhoney");
+        expect(params.get("returnLabel")).toBe("HONEY");
+    });
+
     it("sends existing pools to the DEX", () => {
         renderPage();
         expect(screen.getByText("Want to add to a pool that already exists, or take your liquidity out?")).toBeInTheDocument();

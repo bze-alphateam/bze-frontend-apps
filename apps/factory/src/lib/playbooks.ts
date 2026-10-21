@@ -117,7 +117,7 @@ export const PLAYBOOKS: Playbook[] = [
                 doneText: 'The supply is locked for good.',
                 action: 'Review and lock',
                 detect: f => f.admin === '',
-                href: f => `${workspaceHref(f.denom ?? '', 'control')}&lock=1`,
+                href: f => `${workspaceHref(f.denom ?? '')}&lock=1`,
             },
         ],
     },

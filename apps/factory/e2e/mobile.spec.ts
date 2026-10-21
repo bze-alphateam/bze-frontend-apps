@@ -29,7 +29,9 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/reach", ready: heading("Reach another community")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
     {path: "/tokens", ready: heading(/^Tokens$/)},
-    {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},
+    // The token page stacks its groups; the setup chips scroll in their own row (BFE-271).
+    {path: `/tokens/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("burn-item")},
+    {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("We couldn't find this token.")},
     // Phones get cards, not the (hidden) table.
     {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
     // testnet's one simple reward has finished, and finished programs are folded away by default.

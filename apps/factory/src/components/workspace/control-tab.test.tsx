@@ -201,7 +201,7 @@ describe("Lock dialog", () => {
         renderTab(p);
         const dialog = within(await screen.findByRole("dialog", { name: "Lock HONEY forever?" }));
         await userEvent.click(dialog.getByRole("button", { name: "Not now, keep control" }));
-        expect(p.goTo).toHaveBeenCalledWith(`/tokens/token?denom=${encodeURIComponent(DENOM)}&tab=control`);
+        expect(p.goTo).toHaveBeenCalledWith(`/tokens/token?denom=${encodeURIComponent(DENOM)}`);
     });
 
     it.each([

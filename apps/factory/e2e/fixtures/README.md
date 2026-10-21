@@ -35,7 +35,11 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/bank.denom_metadata.vidulum.json` | VDL bank metadata (query-string route) | the registry entry `/official` generates (`official.spec.ts`). Recorded 2026-10-14 |
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | |
 | `lcd/burner.params.json` | burner params | |
-| `lcd/burner.raffles.json` | running burning raffles (`/raffle/new`, Supply tab card) | recorded 2026-10-15; testnet has none running |
+| `lcd/tokenfactory.denom_authority.noadmin.json` | NOAD's admin (`DenomAuthority`) | the token page's live admin check (`token-page.spec.ts`); still its creator on testnet, despite the name. Recorded 2026-10-21 |
+| `lcd/tokenfactory.denom_branding.noadmin.json` | NOAD's brand kit | the token page's Brand kit chip. Recorded 2026-10-21 |
+| `lcd/bank.supply_by_denom.noadmin.json` | NOAD's live total supply | the token page's Supply stat. Recorded 2026-10-21 |
+| `lcd/bank.denom_metadata.noadmin.json` | NOAD bank metadata (query-string route) | the token page's details. Recorded 2026-10-21 |
+| `lcd/burner.raffles.json` | running burning raffles (`/raffle/new`, the token page's Supply group) | recorded 2026-10-15; testnet has none running |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
 | `lcd/epochs.epochs.json` | epochs | |
 | `lcd/tokenfactory.params.json` | tokenfactory params | `create_denom_fee`: the "Create Token" card's fee line and the `/token/new` fee (`token-new.spec.ts`). Recorded 2026-10-12 |
@@ -46,7 +50,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (ULMN/TUSDC), limit 50, reversed | **trimmed** to the latest trade; the price calculation reads it when a token has no pool or ticker price, so whether it is requested depends on timing |
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
-| `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | the Staking programs tab of `/rewards` and the workspace Rewards tab (`rewards.spec.ts` adds a running program) |
+| `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | the Staking programs tab of `/rewards` and the token page's Rewards group (`rewards.spec.ts` adds a running program) |
 | `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards`; the communities of `/reach` (`reach.spec.ts`, which also adds a zero-staked one through `network.use`) |
 | `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`), the community picked on `/reach`, the airdrop form (`denom-reward-airdrop.spec.ts`, which also answers it with nothing staked through `network.use`) and the holder rewards panel (`denom-reward-token.spec.ts`, which also answers a 404 for `testusd` through `network.use`). Recorded 2026-10-14 |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule and airdrop forms' new-prize check |

@@ -1,26 +1,20 @@
 import { describe, it, expect } from "vitest";
 import BigNumber from "bignumber.js";
-import { BURN_OVER_BALANCE, newTotalSupply, shareOfSupply, supplyAmountError, supplyCoins } from "./supply";
+import { mintAmountError, newTotalSupply, shareOfSupply, supplyCoins } from "./supply";
 
-describe("supplyAmountError", () => {
-    it("uses the shared amount validation for both actions", () => {
-        expect(supplyAmountError("", 6, "mint", new BigNumber(0))).toBe("Amount is required.");
-        expect(supplyAmountError("abc", 6, "burn", new BigNumber(0))).toBe("Enter a valid positive number.");
-        expect(supplyAmountError("0", 6, "mint", new BigNumber(0))).toBe("Amount must be greater than zero.");
-        expect(supplyAmountError("1.1234567", 6, "mint", new BigNumber(0))).toMatch(/At most 6 decimal places/);
-    });
-
-    it("mint ignores the balance, burn is capped by it (base units)", () => {
-        expect(supplyAmountError("5", 6, "mint", new BigNumber(0))).toBe("");
-        expect(supplyAmountError("2", 6, "burn", new BigNumber(2_000_000))).toBe("");
-        expect(supplyAmountError("2.000001", 6, "burn", new BigNumber(2_000_000))).toBe(BURN_OVER_BALANCE);
+describe("mintAmountError", () => {
+    it("uses the shared amount validation", () => {
+        expect(mintAmountError("", 6)).toBe("Amount is required.");
+        expect(mintAmountError("abc", 6)).toBe("Enter a valid positive number.");
+        expect(mintAmountError("0", 6)).toBe("Amount must be greater than zero.");
+        expect(mintAmountError("1.1234567", 6)).toMatch(/At most 6 decimal places/);
+        expect(mintAmountError("5", 6)).toBe("");
     });
 });
 
 describe("newTotalSupply", () => {
-    it("adds a mint and subtracts a burn", () => {
-        expect(newTotalSupply(new BigNumber("1000"), "250.5", "mint").toString()).toBe("1250.5");
-        expect(newTotalSupply(new BigNumber("1000"), "250.5", "burn").toString()).toBe("749.5");
+    it("adds the minted amount", () => {
+        expect(newTotalSupply(new BigNumber("1000"), "250.5").toString()).toBe("1250.5");
     });
 });
 

@@ -21,7 +21,6 @@ type BzeTx = ReturnType<typeof useBZETx>['tx']
 const TYPE_URL_KINDS: Record<string, TxKind> = {
     '/bze.tokenfactory.MsgCreateDenom': 'create-denom',
     '/bze.tokenfactory.MsgMint': 'mint',
-    '/bze.tokenfactory.MsgBurn': 'burn-tokens',
     '/bze.tokenfactory.MsgSetDenomMetadata': 'set-denom-metadata',
     '/bze.tokenfactory.MsgChangeAdmin': 'change-admin',
     '/bze.tokenfactory.MsgSetDenomBranding': 'set-denom-branding',

@@ -164,7 +164,7 @@ function LockedCard({ ticker }: { ticker: string }) {
 
 /**
  * Who controls the token. The admin hands control over or locks the supply forever (the lock
- * dialog, also opened by `?tab=control&lock=1`); everyone else sees who holds control now.
+ * dialog, also opened by `&lock=1` on the token page); everyone else sees who holds control now.
  */
 export function ControlTab({ asset, admin, adminState, supply, supplyDisplay, refreshAdmins, goTo }: WorkspaceTabProps) {
     const ticker = asset.ticker
@@ -175,7 +175,7 @@ export function ControlTab({ asset, admin, adminState, supply, supplyDisplay, re
     const closeLock = () => {
         setIsLockOpen(false)
         // Drop ?lock=1 so a reload doesn't open the dialog again.
-        if (linkedLock) goTo(workspaceHref(asset.denom, 'control'))
+        if (linkedLock) goTo(workspaceHref(asset.denom))
     }
 
     return (

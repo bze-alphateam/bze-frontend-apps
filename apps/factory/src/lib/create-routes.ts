@@ -26,9 +26,17 @@ function withQuery(path: string, query: Record<string, string | undefined>): str
 /** /create/rewards, optionally for one staked token. */
 export const chooseRewardsHref = ({ denom }: { denom?: string } = {}) => withQuery(CHOOSE_REWARDS_PATH, { denom })
 
-/** Where the two DEX market options go; a pair already picked (`?base=&quote=`) is handed on. */
+/**
+ * Where the two DEX market options go; a pair already picked (`?base=&quote=`) is handed on, and
+ * so is the way back to a token page (`?return=&returnLabel=`).
+ */
 export function marketTargets(query: QueryReader) {
-    const pair = { base: query.get('base') ?? undefined, quote: query.get('quote') ?? undefined }
+    const pair = {
+        base: query.get('base') ?? undefined,
+        quote: query.get('quote') ?? undefined,
+        return: query.get('return') ?? undefined,
+        returnLabel: query.get('returnLabel') ?? undefined,
+    }
     return {
         pool: withQuery('/pool/new', pair),
         market: withQuery('/market/new', pair),

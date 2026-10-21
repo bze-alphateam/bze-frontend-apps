@@ -51,7 +51,7 @@ test("a row opens the token page", async ({page}) => {
 
     await expect(page.getByRole("link", {name: "Vidulum · VDL"})).toHaveAttribute(
         "href",
-        `/tokens/token?denom=${encodeURIComponent(`${ISSUER}/vidulum`)}&tab=overview`,
+        `/tokens/token?denom=${encodeURIComponent(`${ISSUER}/vidulum`)}`,
     );
 });
 

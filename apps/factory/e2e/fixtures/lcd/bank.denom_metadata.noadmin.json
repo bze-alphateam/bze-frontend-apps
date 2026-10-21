@@ -1,0 +1,33 @@
+{
+  "source": "https://testnet.getbze.com/cosmos/bank/v1beta1/denoms_metadata_by_query_string?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-10-21",
+  "method": "GET",
+  "path": "/cosmos/bank/v1beta1/denoms_metadata_by_query_string",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "metadata": {
+      "description": "no admin test token yes yes",
+      "denom_units": [
+        {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+          "exponent": 0,
+          "aliases": []
+        },
+        {
+          "denom": "NOAD",
+          "exponent": 6,
+          "aliases": []
+        }
+      ],
+      "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+      "display": "NOAD",
+      "name": "NoAdminToken",
+      "symbol": "NOAD",
+      "uri": "",
+      "uri_hash": ""
+    }
+  }
+}
