@@ -29,6 +29,7 @@ import { withReturn, type ReturnTo } from '@/components/guided/return-to'
 import { softButton } from '@/components/ui/soft-button'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
+import { dexPoolHref } from '@/lib/create-routes'
 import type { WorkspaceTabProps } from './types'
 
 
@@ -100,15 +101,6 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
                 </HStack>
 
                 <HStack gap="8px" flexWrap="wrap" flexShrink={0} css={{ '& button svg': { color: 'var(--chakra-colors-hg-link)' } }}>
-                    {!pairHalted && (
-                        <Button
-                            {...softButton}
-                            fontSize="13px"
-                            onClick={() => goTo(withReturn(`/pool/add?pool=${encodeURIComponent(pool.id)}`, back))}
-                        >
-                            <LuPlus /> Add liquidity
-                        </Button>
-                    )}
                     <Button
                         {...softButton}
                         fontSize="13px"
@@ -116,7 +108,10 @@ function PoolCard({ pool, address, back, isHalted, goTo }: RowProps & { pool: Li
                     >
                         <LuSprout /> Reward liquidity providers
                     </Button>
-                    <AppLink app="dex" href={`${getDexApp().href}/pools/details?id=${encodeURIComponent(pool.id)}`}>DEX</AppLink>
+                    {/* Adding and removing liquidity live on the DEX pool page (BFE-262). */}
+                    <AppLink app="dex" href={dexPoolHref(getDexApp().href, pool.id)}>
+                        {pairHalted ? 'DEX' : 'Add liquidity on DEX'}
+                    </AppLink>
                 </HStack>
             </Stack>
         </HgCard>

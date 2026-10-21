@@ -45,6 +45,8 @@ export interface NextAction {
     alsoApp?: { app: AppKey; href: string; label: string };
     /** Why it can't be done yet; the action shows disabled with this text. */
     disabledReason?: string;
+    /** Disabled only until a chain read finishes (e.g. the new pool's LP denom): shows a shimmer. */
+    pending?: boolean;
 }
 
 /** What was just created. Only the fields the kind needs are read. */
@@ -266,6 +268,8 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 text: `Pay people who stake ${pair} pool shares, so the pool keeps its depth.`,
                 cta: 'Create simple reward',
                 target: { href: ROUTES.newSimpleReward(ctx.lpDenom ?? '') },
+                // The LP denom is read from the stored pool after the tx: until then there is nothing to stake.
+                ...(ctx.lpDenom ? {} : { disabledReason: 'Waiting for the pool share token…', pending: true }),
             },
             {
                 key: 'market',

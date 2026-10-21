@@ -1,4 +1,6 @@
+import { type AppKey, getDexApp } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
+import { dexPoolHref } from '@/lib/create-routes'
 import { officialHref } from '@/lib/registry-entry'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
@@ -11,6 +13,8 @@ export type SetupState = 'done' | 'todo' | 'partial' | 'unknown' | 'impossible'
 export interface SetupAction {
     label: string;
     href: string;
+    /** A page of another BZE app (full URL), shown as that app's AppLink. */
+    app?: AppKey;
 }
 
 export interface SetupItem {
@@ -123,10 +127,8 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
                 detail: f.pools.map(p => p.label).join(', '),
                 state: 'done',
                 href,
-                action: {
-                    label: 'Add liquidity',
-                    href: withReturn(`/pool/add?pool=${encodeURIComponent(f.pools[0].id)}`, backTo(f, 'trading')),
-                },
+                // Adding liquidity lives on the DEX pool page (BFE-262).
+                action: { label: 'Add liquidity on DEX', href: dexPoolHref(getDexApp().href, f.pools[0].id), app: 'dex' },
             }
         },
     },

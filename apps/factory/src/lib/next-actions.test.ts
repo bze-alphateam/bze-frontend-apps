@@ -81,6 +81,15 @@ describe("nextActions", () => {
             });
         });
 
+        it("keeps Reward liquidity providers disabled and pending until the LP denom is known", () => {
+            const pending = byKey(nextActions("poolCreated", { ...ctx, lpDenom: undefined }), "rewardLps");
+            expect(pending?.disabledReason).toBe("Waiting for the pool share token…");
+            expect(pending?.pending).toBe(true);
+            const known = byKey(nextActions("poolCreated", ctx), "rewardLps");
+            expect(known?.disabledReason).toBeUndefined();
+            expect(known?.pending).toBeUndefined();
+        });
+
         it("skips the order book when the pair already has a market", () => {
             const r = nextActions("poolCreated", ctx, { markets: [{ base: "ubze", quote: HONEY }] });
             expect(keys(r).more).toEqual(["rewardLps", "announce"]);

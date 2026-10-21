@@ -41,7 +41,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tokenfactory.params.json` | tokenfactory params | `create_denom_fee`: the "Create Token" card's fee line and the `/token/new` fee (`token-new.spec.ts`). Recorded 2026-10-12 |
 | `lcd/tradebin.params.json` | tradebin params | market / pool creation fee (`market-new.spec.ts`, `pool-new.spec.ts`), fee-token eligibility |
 | `lcd/rewards.params.json` | rewards params | staking reward and denom reward fees and limits (the staking program fee of `reward-new.spec.ts`, the daily prize fee of `denom-reward-schedule.spec.ts`). Recorded 2026-10-12 |
-| `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | the NOAD/TUSDC pool of `pool-add.spec.ts`, which also empties the list with `network.use`; the TUSDC/TBZE LP token of `reward-new.spec.ts` |
+| `lcd/tradebin.all_liquidity_pools.json` | pools, limit 1000 | the TUSDC/TBZE pool `pool-new.spec.ts` blocks as already existing; the TUSDC/TBZE LP token of `reward-new.spec.ts` |
 | `lcd/tradebin.all_markets.json` | order-book markets, limit 1000 | |
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (ULMN/TUSDC), limit 50, reversed | **trimmed** to the latest trade; the price calculation reads it when a token has no pool or ticker price, so whether it is requested depends on timing |
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |

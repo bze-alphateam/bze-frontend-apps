@@ -3,7 +3,7 @@
 import React from 'react'
 import { Badge, Box, Button, Grid, HStack, Text, VStack } from '@chakra-ui/react'
 import { LuCheck, LuCircle, LuCircleDashed, LuCircleHelp, LuFlame, LuLock, LuPlus, LuRefreshCw, LuSend, LuSprout, LuTriangleAlert } from 'react-icons/lu'
-import { FeaturedCard, Shimmer, hgVariant, prettyAmount, uAmountToBigNumberAmount } from '@bze/bze-ui-kit'
+import { AppLink, FeaturedCard, Shimmer, hgVariant, prettyAmount, uAmountToBigNumberAmount } from '@bze/bze-ui-kit'
 import { softButton } from '@/components/ui/soft-button'
 import { withReturn } from '@/components/guided/return-to'
 import { useTokenSetup } from '@/hooks/useTokenSetup'
@@ -82,6 +82,8 @@ function SetupRow({ item, onGo, onRetry }: { item: SetupItem; onGo: (href: strin
                     <Button size="sm" variant="ghost" color="hg.link" fontWeight="600" fontSize="13px" onClick={onRetry}>
                         <LuRefreshCw /> Retry
                     </Button>
+                ) : item.action?.app ? (
+                    <AppLink app={item.action.app} href={item.action.href}>{item.action.label}</AppLink>
                 ) : item.action ? (
                     <Button
                         size="sm"
