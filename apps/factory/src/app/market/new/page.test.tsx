@@ -79,9 +79,16 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ubze: { denom: "ubze", ticker: "BZE", decimals: 6, logo: "" },
         uhalt: { denom: "uhalt", ticker: "HALT", decimals: 6, logo: "", halted: true },
     };
+    const { default: BN } = await import("bignumber.js");
     return {
         ...actual,
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
+        useBalance: (denom: string) => ({ balance: { denom, amount: new BN("1000000000") }, isLoading: false }),
+        useAssetPrice: () => ({
+            hasPrice: false,
+            totalUsdValue: () => new BN(0),
+            uAmountUsdValue: () => new BN(0),
+        }),
         useMarkets: () => ({
             marketExists: (id: string) => existingMarkets.current.has(id),
             updateMarkets: updateMarketsMock,
