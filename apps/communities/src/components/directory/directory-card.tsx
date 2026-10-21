@@ -77,6 +77,8 @@ export function DirectoryCard({asset, kit, price, change, holdersPool, rewardPro
             rel="noopener noreferrer"
             display="flex"
             flexDirection="column"
+            // Link centres its content by default; in a column that shrinks every row to its text.
+            alignItems="stretch"
             bg="hg.card"
             borderWidth="1px"
             borderColor="hg.hairline"

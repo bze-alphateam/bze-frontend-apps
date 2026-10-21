@@ -82,7 +82,7 @@ export function ProposalTimeline({proposal, tally, params, now, resolve}: Propos
                 <chakra.dd m="0" textAlign="right" data-testid="deposit">{deposit}</chakra.dd>
             </Grid>
             <Box hideFrom="md" fontSize="13px">
-                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)} flush>Explorer</AppLink>
             </Box>
         </Panel>
     );

@@ -87,7 +87,7 @@ function ActionText({action, proposal, resolve}: {action: Action; proposal: GovP
                     </Text>
                     {isOpen(proposal) && (
                         <Box fontSize="13px">
-                            <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                            <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)} flush>Explorer</AppLink>
                         </Box>
                     )}
                 </>

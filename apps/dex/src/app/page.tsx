@@ -752,7 +752,13 @@ export default function SwapPage() {
                 <StatStrip columns={3}>
                   <StatCard
                     label="BZE price"
-                    value={hasBzePrice ? `$${formatUsdAmount(bzePrice)}` : '—'}
+                    value={hasBzePrice ? (
+                      // Three tiles share a phone row: the price keeps 4 significant digits there.
+                      <>
+                        <chakra.span hideBelow="md">${formatUsdAmount(bzePrice)}</chakra.span>
+                        <chakra.span hideFrom="md">${formatUsdAmount(bzePrice.precision(4))}</chakra.span>
+                      </>
+                    ) : '—'}
                     loading={bzePriceLoading}
                   />
                   <StatCard label="24h volume" value={`$${shortNumberFormat(poolsVolume)}`} loading={isLoading} />

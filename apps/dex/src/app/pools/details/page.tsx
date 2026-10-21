@@ -35,7 +35,6 @@ import {
     isPoolSupportedByValidator, getValidatorPageUrl,
     useLiquidityPool,
     TokenLogo, LPTokenLogo,
-    Tooltip,
     getBurnerApp, AppLink,
     HaltedBadge, HaltedNotice, useHaltedDenoms,
     hgVariant, HgCard, FeaturedCard, HeroGlow, Notice, StatusPill,
@@ -53,7 +52,7 @@ import {useLockedLiquidity} from "@/hooks/useLockedLiquidity";
 import {AprChip} from "@/components/ui/pools/apr-chip";
 import {BoostRewardsTile} from "@/components/ui/pools/boost-rewards-tile";
 import {
-    AmountField, AprMove, FormColumn, FormTitle, InsetTile, PillTabs, PresetChip, SlippageRow, SubmitButton,
+    AmountField, AprMove, FeeShare, FormColumn, FormTitle, InsetTile, PillTabs, PresetChip, SlippageRow, SubmitButton,
     SummaryBox, SummaryLine,
 } from "@/components/ui/pools/pool-parts";
 import {VenueTag} from "@/components/ui/trading/venue";
@@ -1321,9 +1320,9 @@ const PoolDetailsPageContent = () => {
                                 value={activeTab}
                                 onChange={setActiveTab}
                                 tabs={[
-                                    {value: 'add', label: 'Add Liquidity', icon: <LuPlus size={16}/>},
-                                    {value: 'remove', label: 'Remove Liquidity', icon: <LuMinus size={16}/>},
-                                    {value: 'lock', label: 'Boost Rewards', icon: <LuLock size={16}/>},
+                                    {value: 'add', label: 'Add Liquidity', short: 'Add', icon: <LuPlus size={16}/>},
+                                    {value: 'remove', label: 'Remove Liquidity', short: 'Remove', icon: <LuMinus size={16}/>},
+                                    {value: 'lock', label: 'Boost Rewards', short: 'Boost', icon: <LuLock size={16}/>},
                                 ]}
                             />
 
@@ -1393,20 +1392,6 @@ const RateCell = ({from, to, value, loading, divider}: { from?: string; to?: str
             </Skeleton>
         </chakra.span>
     </Flex>
-)
-
-/** One share of the trading fee, with its explanation on hover. */
-const FeeShare = ({label, hint, loading, children}: { label: string; hint: string; loading: boolean; children: React.ReactNode }) => (
-    <Tooltip content={hint}>
-        <Flex direction="column" gap="4px" cursor="help" tabIndex={0} aria-label={`${label}: ${hint}`}>
-            <chakra.span fontSize="12px" color="hg.text.faint" display="inline-flex" alignItems="center" justifyContent="center" gap="4px">
-                {label}<LuInfo size={12} aria-hidden="true"/>
-            </chakra.span>
-            <Skeleton asChild loading={loading}>
-                <chakra.strong fontSize="16px">{children}</chakra.strong>
-            </Skeleton>
-        </Flex>
-    </Tooltip>
 )
 
 const PoolDetailsPage = () => {

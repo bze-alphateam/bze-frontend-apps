@@ -131,4 +131,15 @@ describe("market header", () => {
         expect(row).toMatch(/flex-wrap:\s*nowrap/);
         expect(rulesFor(screen.getByRole("heading", { level: 1 }))).toMatch(/font-size:\s*18px/);
     });
+
+    it("draws the back arrow icon-only and flush on phones, leaving the price its room", async () => {
+        renderPage();
+
+        const back = await screen.findByTestId("market-back");
+        const css = rulesFor(back);
+
+        expect(back.getAttribute("aria-label")).toBe("Back to markets");
+        expect(css).toMatch(/padding-inline:\s*0(px)?[;\s}]/);
+        expect(css).toMatch(/min-width:\s*24px/);
+    });
 });

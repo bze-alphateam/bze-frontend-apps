@@ -11,26 +11,12 @@ vi.mock("@/components/ui/color-mode", () => ({
     useColorMode: () => ({colorMode, setColorMode: vi.fn(), toggleColorMode: vi.fn()}),
 }));
 
+import {rulesFor} from "@/test-support/css-rules";
 import {DirectoryCard, type DirectoryCardProps} from "./directory-card";
 
 forbidNetwork();
 
 const system = createHiveGlowSystem("communities");
-
-/** The CSS rules aimed at an element's classes, from the styles Chakra injected. */
-function rulesFor(el: HTMLElement): string {
-    const text = Array.from(document.querySelectorAll("style")).map((s) => s.textContent ?? "").join("\n");
-    const inserted = Array.from(document.styleSheets).flatMap((sheet) => {
-        try {
-            return Array.from(sheet.cssRules).map((rule) => rule.cssText);
-        } catch {
-            return [];
-        }
-    });
-    return [...text.split("}"), ...inserted]
-        .filter((rule) => Array.from(el.classList).some((cls) => rule.includes(`.${cls}`)))
-        .join("\n");
-}
 
 const KIT: DenomBranding = {
     font: "poppins",
@@ -64,6 +50,11 @@ beforeEach(() => {
 });
 
 describe("DirectoryCard", () => {
+    it("stretches its rows to the card's width, so every card's stats box lines up", () => {
+        renderCard();
+        expect(rulesFor(screen.getByTestId("directory-card"))).toMatch(/align-items:\s*stretch/);
+    });
+
     it("draws the strip and the logo ring in the kit's light primary", () => {
         renderCard();
         expect(screen.getByTestId("directory-card-strip")).toHaveStyle({background: "#BE1981"});

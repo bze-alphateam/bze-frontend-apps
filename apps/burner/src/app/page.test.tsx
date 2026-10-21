@@ -43,6 +43,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     };
 });
 
+import { rulesFor } from "@/test-support/css-rules";
 import BurnerHomePage from "./page";
 
 function burn(denom: string, amount: number) {
@@ -105,5 +106,21 @@ describe("Burner home, stat tiles", () => {
 
         expect(screen.getByRole("heading", { name: "Next burn in" })).toBeInTheDocument();
         expect(screen.getByText("No burning scheduled")).toBeInTheDocument();
+    });
+});
+
+describe("Burner home, countdown", () => {
+    it("keeps days, hours, minutes and seconds on one row, sized so four fit a phone", () => {
+        nextBurnMock.mockReturnValue({
+            nextBurn: { date: new Date(Date.now() + 5 * 86_400_000), coins: [] },
+            isLoading: false,
+        });
+        renderPage();
+
+        const timer = screen.getByRole("timer");
+        const boxes = within(timer).getAllByTestId("timer-box");
+        expect(boxes).toHaveLength(4);
+        expect(rulesFor(timer)).toMatch(/flex-wrap:\s*nowrap/);
+        expect(rulesFor(boxes[0].firstElementChild as HTMLElement)).toMatch(/width:\s*56px/);
     });
 });

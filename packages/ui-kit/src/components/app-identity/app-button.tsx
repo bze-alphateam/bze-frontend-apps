@@ -13,6 +13,11 @@ export interface AppLinkProps {
     href: string;
     /** The app's name: "Explorer", "DEX", "Burner"… */
     children: ReactNode;
+    /**
+     * The link starts a line under left-aligned text: its padding moves into the margin so the
+     * icon lines up with the text's edge, while the hover fill keeps its size.
+     */
+    flush?: boolean;
 }
 
 /**
@@ -20,7 +25,7 @@ export interface AppLinkProps {
  * with the app's icon, its name in the app's accent and an external-link mark,
  * opening in a new tab. It stays quiet next to the page's own actions.
  */
-export const AppLink = ({ app, href, children }: AppLinkProps) => (
+export const AppLink = ({ app, href, children, flush }: AppLinkProps) => (
     <Link
         href={href}
         target="_blank"
@@ -34,6 +39,7 @@ export const AppLink = ({ app, href, children }: AppLinkProps) => (
         gap="1.5"
         px="1.5"
         py="1"
+        ms={flush ? '-1.5' : undefined}
         borderRadius="md"
         verticalAlign="middle"
         whiteSpace="nowrap"

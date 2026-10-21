@@ -108,7 +108,7 @@ function Header({proposal, now}: {proposal: GovProposal; now: Date}) {
                 )}
             </Flex>
             <Box hideBelow="md" fontSize="14px">
-                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)} flush>Explorer</AppLink>
             </Box>
         </Flex>
     );

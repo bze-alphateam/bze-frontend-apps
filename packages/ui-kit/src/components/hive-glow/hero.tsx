@@ -18,7 +18,7 @@ export interface EyebrowProps {
 export const Eyebrow = ({ app, children, iconSize = 32 }: EyebrowProps) => (
     <Flex align="center" gap={iconSize > 24 ? '10px' : '8px'} data-testid="eyebrow">
         <AppIcon app={app} size={iconSize} />
-        <chakra.span textStyle="eyebrow" color="hg.eyebrow">{children}</chakra.span>
+        <chakra.span textStyle="eyebrow" color="hg.eyebrow" textAlign="start">{children}</chakra.span>
     </Flex>
 );
 

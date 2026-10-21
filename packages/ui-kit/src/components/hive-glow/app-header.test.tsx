@@ -114,6 +114,17 @@ describe('AppHeader', () => {
         ]);
     });
 
+    it('lets the lockup narrow so a long name leaves room for the TESTNET pill on a phone', () => {
+        chain.testnet = true;
+        header();
+        const compact = screen.getAllByAltText('BeeZee Staking').find((l) => l.getAttribute('data-lockup') === 'compact')!;
+        const css = rulesFor(compact);
+        expect(css).toMatch(/max-width:\s*100%/);
+        expect(css).toMatch(/object-fit:\s*contain/);
+        expect(rulesFor(compact.closest('a')!)).toMatch(/min-width:\s*0/);
+        chain.testnet = false;
+    });
+
     it('has a TESTNET pill only on testnet', () => {
         header();
         expect(screen.queryByTestId('testnet-pill')).toBeNull();
