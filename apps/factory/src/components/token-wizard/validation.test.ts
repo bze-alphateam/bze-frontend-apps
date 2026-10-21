@@ -5,6 +5,7 @@ import {
     MAX_NAME_LENGTH,
     MAX_SUBDENOM_LENGTH,
     MAX_SYMBOL_LENGTH,
+    MIN_SUBDENOM_LENGTH,
     suggestSubdenom,
     validateAmount,
     validateDescription,
@@ -27,6 +28,13 @@ describe("suggestSubdenom", () => {
     it("is empty when nothing survives sanitisation", () => {
         expect(suggestSubdenom("$$$")).toBe("");
         expect(suggestSubdenom("")).toBe("");
+    });
+
+    it("always yields a subdenom the chain accepts for any valid symbol", () => {
+        for (const symbol of ["ABC", "abc", "Z99", "Bze2", "A".repeat(MAX_SYMBOL_LENGTH)]) {
+            expect(validateSymbol(symbol)).toBe("");
+            expect(validateSubdenom(suggestSubdenom(symbol))).toBe("");
+        }
     });
 });
 
@@ -83,6 +91,7 @@ describe("validateSubdenom", () => {
     it("accepts a valid subdenom", () => {
         expect(validateSubdenom("uhoney")).toBe("");
         expect(validateSubdenom("u.token-1")).toBe("");
+        expect(validateSubdenom("abc")).toBe("");
     });
 
     it("requires a subdenom", () => {
@@ -104,6 +113,19 @@ describe("validateSubdenom", () => {
         expect(validateSubdenom("u token")).toBe(
             "Subdenom can only contain letters, digits, dots, and dashes.",
         );
+    });
+
+    // bze v8.3.0 (BZE-215) runs sdk.ValidateDenom on the subdenom in CheckTx.
+    it("enforces the chain's minimum length", () => {
+        expect(validateSubdenom("ab")).toBe(
+            `Subdenom must be at least ${MIN_SUBDENOM_LENGTH} characters.`,
+        );
+    });
+
+    it("must start with a letter", () => {
+        for (const subdenom of ["2mars", "1000000000", ".abc", "-abc"]) {
+            expect(validateSubdenom(subdenom)).toBe("Subdenom must start with a letter.");
+        }
     });
 });
 
