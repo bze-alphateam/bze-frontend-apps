@@ -50,7 +50,7 @@ import {
     WarningNote,
     useGuidedSteps,
 } from '@/components/guided'
-import type { TxPanelError, TxPanelProps, TxPanelStatus } from '@/components/guided'
+import type { TxPanelError, TxPanelStatus } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
 import {
     MULTISEND_BATCH_SIZE,
@@ -459,21 +459,8 @@ function MultiSendContent() {
         )
     }
 
-    const batchPanelProps: TxPanelProps | undefined = batchPanel && batchStatus ? {
-        status: batchStatus,
-        hash: batchPanel.hash ?? panelBatch?.txHash,
-        error: batchPanel.error,
-        checking: checkingId === batchPanel.id,
-        // Only the batch that failed is signed again.
-        onRetry: () => void sendBatch(batchPanel.id),
-        onEdit: () => {
-            setBatchPanel(undefined)
-            setPaused(true)
-        },
-        onContinue: () => setBatchPanel(undefined),
-        onCheckStatus: () => void checkNow(batchPanel.id),
-        onKeepWaiting: () => setBatchPanel(undefined),
-    } : undefined
+    // Derived from state only: the panel's callbacks read refs, so render never branches on them.
+    const showBatchPanel = batchPanel !== undefined && batchStatus !== undefined
 
     const balanceText = asset ? `${toDisplay(balance.amount)} ${ticker}` : ''
     // The network fee comes out of the same balance when it is paid in the sent token.
@@ -532,7 +519,23 @@ function MultiSendContent() {
 
     const finalStep = activeRun ? (
         <VStack align="stretch" gap="12px">
-            {batchPanelProps && <TxPanel {...batchPanelProps} />}
+            {showBatchPanel && batchPanel && batchStatus && (
+                <TxPanel
+                    status={batchStatus}
+                    hash={batchPanel.hash ?? panelBatch?.txHash}
+                    error={batchPanel.error}
+                    checking={checkingId === batchPanel.id}
+                    // Only the batch that failed is signed again.
+                    onRetry={() => void sendBatch(batchPanel.id)}
+                    onEdit={() => {
+                        setBatchPanel(undefined)
+                        setPaused(true)
+                    }}
+                    onContinue={() => setBatchPanel(undefined)}
+                    onCheckStatus={() => void checkNow(batchPanel.id)}
+                    onKeepWaiting={() => setBatchPanel(undefined)}
+                />
+            )}
             <RunProgress
                 run={activeRun}
                 decimals={decimals}
@@ -542,7 +545,7 @@ function MultiSendContent() {
                 sendingId={sendingId}
                 blocker={!address ? 'Connect your wallet to send.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
                 reportHref={reportHref}
-                actions={!batchPanelProps}
+                actions={!showBatchPanel}
                 onSendNext={sendNext}
                 onStop={() => setPaused(true)}
                 onContinue={() => setPaused(false)}
