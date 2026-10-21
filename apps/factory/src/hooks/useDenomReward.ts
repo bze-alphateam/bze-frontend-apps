@@ -38,12 +38,13 @@ async function loadDenomReward(denom: string): Promise<DenomRewardState> {
 
 /**
  * The denom reward of `denom` with its schedules and prize entries, read straight from the chain
- * (`refresh` after every create/schedule/extend tx). An error is reported as `hasError`, never as
- * "no denom reward", so the UI never offers to create a DR that may already exist.
+ * (`refresh` after every create/schedule/extend tx, and right before signing where the state
+ * matters; it also returns what it read). An error is reported as `hasError`, never as
+ * "no denom reward", so the UI never offers to create a DR that may already exist. A picked
+ * denom that changes is loading until its own answer arrives: the previous one's never shows.
  */
 export function useDenomReward(denom: string) {
-    const [state, setState] = useState<DenomRewardState>(EMPTY)
-    const [isLoading, setIsLoading] = useState(true)
+    const [loaded, setLoaded] = useState<DenomRewardState & { denom: string }>({ ...EMPTY, denom: '' })
 
     useEffect(() => {
         if (!denom) return
@@ -51,17 +52,20 @@ export function useDenomReward(denom: string) {
 
         loadDenomReward(denom).then(result => {
             if (cancelled) return
-            setState(result)
-            setIsLoading(false)
+            setLoaded({ ...result, denom })
         })
 
         return () => { cancelled = true }
     }, [denom])
 
-    const refresh = useCallback(async () => {
-        if (!denom) return
-        setState(await loadDenomReward(denom))
+    const refresh = useCallback(async (): Promise<DenomRewardState | undefined> => {
+        if (!denom) return undefined
+        const result = await loadDenomReward(denom)
+        setLoaded({ ...result, denom })
+        return result
     }, [denom])
 
-    return { ...state, isLoading: Boolean(denom) && isLoading, refresh }
+    const isCurrent = loaded.denom === denom
+    const { denomReward, schedules, prizes, hasError } = isCurrent ? loaded : EMPTY
+    return { denomReward, schedules, prizes, hasError, isLoading: Boolean(denom) && !isCurrent, refresh }
 }

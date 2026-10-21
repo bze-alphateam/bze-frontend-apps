@@ -49,6 +49,8 @@ interface ReviewStepProps {
     /** The page's own conditions (missing answer, wallet not connected…). */
     disabled?: boolean;
     onBack?: () => void;
+    /** Shown instead of the final button when a last check refused it (e.g. nobody stakes any more). */
+    blocker?: React.ReactNode;
     /** Lines under the rows, e.g. why the button is disabled. */
     children?: React.ReactNode;
 }
@@ -71,7 +73,7 @@ function Group({ label, children, tone }: { label: string; children: React.React
 export function ReviewStep({
     number, total, state, direction, title = 'Review', question = 'Check everything before you sign',
     leaves, moduleFee, txKind, isLoading, feeUnknown, gets, extra = [], permanent = [],
-    submitLabel, onSubmit, disabled, onBack, children,
+    submitLabel, onSubmit, disabled, onBack, blocker, children,
 }: ReviewStepProps) {
     const payment = useFeePayment(moduleFee, txKind)
     const cantPay = Boolean(moduleFee) && !payment.isLoading && payment.method === 'insufficient'
@@ -86,7 +88,7 @@ export function ReviewStep({
             title={title}
             question={question}
             onBack={onBack}
-            action={{ label: submitLabel, onClick: onSubmit, disabled: Boolean(disabled || isLoading || feeUnknown || cantPay) }}
+            action={blocker ? undefined : { label: submitLabel, onClick: onSubmit, disabled: Boolean(disabled || isLoading || feeUnknown || cantPay) }}
         >
             <VStack align="stretch" gap="12px">
                 <Group label="Leaves your wallet">
@@ -134,6 +136,7 @@ export function ReviewStep({
                 )}
 
                 {children}
+                {blocker}
             </VStack>
         </Question>
     )

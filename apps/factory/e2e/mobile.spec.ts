@@ -37,8 +37,9 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     // noadmin is already stakable: the picker stays open with its tip.
     {path: `/denom-reward/new?denom=${NOADMIN}`, ready: heading(/Create a compounded reward/)},
     {path: `/denom-reward/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("holder-schedule-card").first()},
-    {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Give a little every day/)},
-    {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Gift NOAD stakers, once/)},
+    {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Add a daily prize/)},
+    {path: `/denom-reward/schedule?denom=${NOADMIN}&schedule=000000000000`, ready: heading(/Extend a daily prize/)},
+    {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Airdrop to stakers/)},
     {path: `/official?denom=${VDL}`, ready: heading("Get VDL's logo into every wallet")},
 ];
 
