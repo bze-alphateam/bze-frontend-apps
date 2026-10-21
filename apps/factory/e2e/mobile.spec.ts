@@ -20,8 +20,8 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/create/grow", ready: heading("Who do you want to reach?")},
     {path: "/token/new", ready: heading("Create a token")},
     {path: "/market/new", ready: heading("Allow limit orders")},
-    {path: `/pool/new?base=${VDL}`, ready: heading("Let people buy and sell VDL")},
-    {path: "/pool/add", ready: heading("Make trading smoother")},
+    {path: `/pool/new?base=${VDL}`, ready: heading("Create a liquidity pool")},
+    // /pool/add is only a notice that moves on to the DEX after 1.5 s (BFE-262): no phone layout to check.
     {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Run a campaign with an end date/)},
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},

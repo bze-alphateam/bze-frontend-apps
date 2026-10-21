@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,9 +6,15 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 
-// The page runs on mocked hooks: query params, wallet, pools, fees, balances, the fee
-// engine and the tx hook. The asset picker becomes a plain button per denom; PayPanel and
-// the fee split slider have their own coverage.
+// The page runs on mocked hooks: query params, wallet, pools, fees, balances, the fee engine and
+// the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store, the Review
+// step and the Done screen are real. The asset picker becomes a plain button per denom; PayPanel
+// and the fee split slider have their own coverage.
+type TxOpts = {
+    onBroadcast?: (hash: string) => void;
+    onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
+    onFailure?: (reason: string, details?: { stage: string }) => void;
+};
 const {
     queryParams, wallet, existingPools, feeState, balances, maxSpendable, payment,
     navigateMock, txMock, updatePoolsMock, getLiquidityPoolMock,
@@ -19,14 +25,17 @@ const {
     feeState: { fee: { denom: "ubze", amount: "25000000" } as { denom: string; amount: string } | undefined, isLoading: false },
     balances: { current: {} as Record<string, string> },
     maxSpendable: { current: {} as Record<string, string> },
-    payment: { paysWithAlt: false, gasDenom: "ubze", gasAmount: "0" },
+    payment: { paysWithAlt: false, gasAmount: "0" },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
     updatePoolsMock: vi.fn(),
     getLiquidityPoolMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => queryParams.current }));
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/pool/new",
+    useSearchParams: () => queryParams.current,
+}));
 vi.mock("@/hooks/useNavigation", () => ({
     useNavigation: () => ({ navigate: navigateMock }),
     useNavigationWithParams: () => ({
@@ -34,15 +43,24 @@ vi.mock("@/hooks/useNavigation", () => ({
         navigate: navigateMock,
     }),
 }));
-vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock }) }));
+vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock, progressTrack: "" }) }));
 vi.mock("@/hooks/useFeePayment", () => ({
     useFeePayment: () => ({
         paysWithAlt: payment.paysWithAlt,
+        canPayFee: true,
         isLoading: false,
-        gasFee: { denom: payment.gasDenom, amount: new BigNumber(payment.gasAmount) },
+        method: "native",
+        gasFee: {
+            denom: "ubze",
+            amount: new BigNumber(payment.gasAmount),
+            displayAmount: new BigNumber(payment.gasAmount).div(1e6),
+            ticker: "BZE",
+            isLoading: false,
+        },
     }),
 }));
-vi.mock("@/components/guided/pay-panel", () => ({
+vi.mock("@/components/guided/pay-panel", async (importActual) => ({
+    ...await importActual<typeof import("@/components/guided/pay-panel")>(),
     PayPanel: ({ rows, footer }: { rows: { label: string; coin?: { amount: string } }[]; footer?: ReactNode }) => (
         <div data-testid="pay-panel">
             {rows.map(r => `${r.label}: ${r.coin?.amount}`).join(", ")}
@@ -53,7 +71,7 @@ vi.mock("@/components/guided/pay-panel", () => ({
 vi.mock("@/components/pool-form/fee-split-slider", async (importActual) => ({
     ...(await importActual<typeof import("@/components/pool-form/fee-split-slider")>()),
     FeeSplitSlider: ({ onChange }: { onChange: (s: { providers: number; burner: number; treasury: number }) => void }) => (
-        <button onClick={() => onChange({ providers: 50, burner: 30, treasury: 20 })}>split 50/30/20</button>
+        <button onClick={() => onChange({ providers: 50, burner: 25, treasury: 25 })}>split 50/25/25</button>
     ),
 }));
 vi.mock("@/components/ui/asset-picker", () => ({
@@ -82,6 +100,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssetPrice: (denom: string) => ({
             hasPrice: denom === "ubze",
             totalUsdValue: (x: BigNumber) => x.times(2),
+            uAmountUsdValue: () => new BN(0),
         }),
         useLiquidityPools: () => ({
             getDenomsPool: (a: string, b: string) => existingPools.current.get(actual.createPoolId(a, b)),
@@ -93,32 +112,50 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         getDexApp: () => ({ href: "https://dex.test" }),
         getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
+        TokenLogo: ({ symbol }: { symbol: string }) => <span>{symbol}</span>,
     };
 });
 
 import PoolNewPage from "./page";
+import { PendingTxProvider, createPendingTxStore } from "@/contexts/pending-tx";
 
-const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
-const renderPage = () => render(<PoolNewPage />, { wrapper });
-const createButton = () => screen.getByRole("button", { name: "Create pool" });
-const question = (title: string) => screen.getByRole("region", { name: title });
-const PAIR = "Which pair?";
-const DEPOSIT = "How much to put in?";
-const FEE = "Swap fee and where it goes";
-
-const continueIn = (title: string) => userEvent.click(within(question(title)).getByRole("button", { name: "Continue" }));
+const renderPage = () => {
+    let value: string | null = null;
+    const store = createPendingTxStore({ read: () => value, write: (v) => { value = v; } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+        <ChakraProvider value={defaultSystem}>
+            <PendingTxProvider store={store}>{children}</PendingTxProvider>
+        </ChakraProvider>
+    );
+    return render(<PoolNewPage />, { wrapper });
+};
+const step = (title: string) => screen.getByRole("region", { name: title });
+const button = (region: HTMLElement, name: string | RegExp) => within(region).getByRole("button", { name });
+const createButton = () => button(step("Review"), "Create pool");
+const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Record<string, unknown> }[];
 
 async function answerPair(base = "utok", quote = "ubze") {
-    await userEvent.click(within(question(PAIR)).getByText(`Your token: ${base}`));
-    await userEvent.click(within(question(PAIR)).getByText(`Paired with: ${quote}`));
-    await continueIn(PAIR);
+    await userEvent.click(within(step("Pair")).getByText(`Your token: ${base}`));
+    await userEvent.click(within(step("Pair")).getByText(`Paired with: ${quote}`));
+    await userEvent.click(button(step("Pair"), "Continue"));
 }
 
-async function answerDeposit(base: string, quote: string) {
-    const q = question(DEPOSIT);
-    await userEvent.type(within(q).getByLabelText(/Your token/), base);
-    await userEvent.type(within(q).getByLabelText(/Paired with/), quote);
-    await continueIn(DEPOSIT);
+async function answerAmounts(base: string, quote: string, baseTicker = "TOK", quoteTicker = "BZE") {
+    const q = step("Starting amounts");
+    await userEvent.type(within(q).getByLabelText(baseTicker), base);
+    await userEvent.type(within(q).getByLabelText(quoteTicker), quote);
+    await userEvent.click(button(q, "Continue to fees"));
+}
+
+const answerFees = () => userEvent.click(button(step("Fees"), "Review pool"));
+
+/** The wallet signs and the chain includes the tx. */
+function txSucceeds() {
+    txMock.mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+        opts.onBroadcast?.("HASH1");
+        opts.onSuccess?.({ txhash: "HASH1", height: 1234, code: 0 });
+        return true;
+    });
 }
 
 beforeEach(() => {
@@ -130,255 +167,314 @@ beforeEach(() => {
     balances.current = { utok: "1000000000", ubze: "1000000000" };
     maxSpendable.current = { utok: "1000000000", ubze: "999000000" };
     payment.paysWithAlt = false;
-    payment.gasDenom = "ubze";
     payment.gasAmount = "0";
     navigateMock.mockReset();
     updatePoolsMock.mockReset();
     getLiquidityPoolMock.mockReset().mockResolvedValue({ lp_denom: "ulp/abc" });
-    txMock.mockReset().mockImplementation(async (_msgs: unknown, opts: { onSuccess: (r: { txhash: string }) => void }) => {
-        opts.onSuccess({ txhash: "HASH1" });
-    });
+    txMock.mockReset();
+    txSucceeds();
+    // A pending hash is looked up on the chain's REST: never reach the network.
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
 });
 
-describe("Let people buy and sell it (/pool/new)", { timeout: 20_000 }, () => {
-    it("asks the three questions in order and signs the pre-sorted pair with swapped amounts", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok" });
+afterEach(() => vi.unstubAllGlobals());
+
+// Each test types through several steps; CI runners need more than the 5 s default.
+describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
+    it("shows the four steps with Pair open, and the pool fee", () => {
         renderPage();
-        expect(screen.getByRole("heading", { name: "Let people buy and sell TOK" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Create a liquidity pool" })).toBeInTheDocument();
         expect(screen.getByText("tradebin · liquidity pool")).toBeInTheDocument();
-        expect(question(PAIR)).toHaveAttribute("data-state", "active");
-        expect(question(DEPOSIT)).toHaveAttribute("data-state", "todo");
-        expect(question(FEE)).toHaveAttribute("data-state", "todo");
+        expect(step("Pair")).toHaveAttribute("data-state", "active");
+        expect(within(step("Pair")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
+        expect(within(step("Pair")).getByRole("heading", { name: "Which two tokens?" })).toBeInTheDocument();
+        expect(step("Starting amounts")).toHaveAttribute("data-state", "todo");
+        expect(step("Fees")).toHaveAttribute("data-state", "todo");
+        expect(step("Review")).toHaveAttribute("data-state", "todo");
         expect(screen.getByTestId("pay-panel")).toHaveTextContent("Pool creation fee: 25000000");
-
-        await userEvent.click(within(question(PAIR)).getByText("Paired with: ubze"));
-        // ubze < utok: the chain stores BZE/TOK.
-        expect(within(question(PAIR)).getByText(/Stored on-chain as/)).toHaveTextContent(
-            "Stored on-chain as BZE/TOK — the chain orders every pair alphabetically.",
-        );
-        await continueIn(PAIR);
-        expect(question(PAIR)).toHaveAttribute("data-state", "done");
-        expect(question(PAIR)).toHaveTextContent("TOK / BZE");
-
-        await answerDeposit("1000", "50");
-        expect(question(DEPOSIT)).toHaveTextContent("1,000 TOK + 50 BZE · 1 TOK = 0.050000 BZE");
-
-        expect(within(question(FEE)).getByRole("button", { name: "0.2%" })).toBeInTheDocument();
-        await userEvent.click(within(question(FEE)).getByRole("button", { name: "0.3%" }));
-        await userEvent.click(within(question(FEE)).getByText("split 50/30/20"));
-        expect(within(question(FEE)).getByText(/No market needed/)).toBeInTheDocument();
-        await continueIn(FEE);
-        expect(question(FEE)).toHaveTextContent("0.3% · providers 50% · burner 30% · treasury 20%");
-
-        const outcome = screen.getByRole("region", { name: "What will happen" });
-        expect(outcome).toHaveTextContent("BZE/TOK");
-        expect(outcome).toHaveTextContent("1 TOK = 0.050000 BZE");
-        expect(outcome).toHaveTextContent("0.3%");
-        expect(outcome).toHaveTextContent("BZE/TOK opens for swaps. Your deposit becomes its permanent floor.");
-
-        expect(createButton()).toBeEnabled();
-        await userEvent.click(createButton());
-
-        const [msgs] = txMock.mock.calls[0];
-        expect(msgs).toEqual([{
-            typeUrl: "/bze.tradebin.MsgCreateLiquidityPool",
-            value: {
-                creator: "bze1me",
-                base: "ubze",
-                quote: "utok",
-                initialBase: "50000000",
-                initialQuote: "1000000000",
-                fee: "0.003",
-                feeDest: JSON.stringify({ providers: "0.50", burner: "0.30", treasury: "0.20" }),
-                stable: false,
-            },
-        }]);
-        expect(updatePoolsMock).toHaveBeenCalled();
-        expect(getLiquidityPoolMock).toHaveBeenCalledWith("ubze_utok");
     });
 
-    it("keeps the canonical order unswapped", async () => {
-        renderPage();
-        expect(screen.getByRole("heading", { name: "Let people buy and sell your token" })).toBeInTheDocument();
-        await answerPair("ubze", "utok");
-        expect(screen.getByRole("region", { name: "What will happen" })).toHaveTextContent("BZE/TOK");
-        await answerDeposit("10", "200");
-        await continueIn(FEE);
-        await userEvent.click(createButton());
-        expect(txMock.mock.calls[0][0][0].value).toMatchObject({
-            base: "ubze", quote: "utok", initialBase: "10000000", initialQuote: "200000000", fee: "0.002",
+    describe("Pair", () => {
+        it("summarises the pair in the order picked and notes the chain's alphabetical order", async () => {
+            renderPage();
+            await userEvent.click(within(step("Pair")).getByText("Your token: utok"));
+            await userEvent.click(within(step("Pair")).getByText("Paired with: ubze"));
+            expect(within(step("Pair")).getByText("Stored on chain as BZE/TOK: the chain orders every pair alphabetically.")).toBeInTheDocument();
+            await userEvent.click(button(step("Pair"), "Continue"));
+            expect(step("Pair")).toHaveAttribute("data-state", "done");
+            expect(step("Pair")).toHaveTextContent("TOK / BZE");
+            expect(step("Starting amounts")).toHaveAttribute("data-state", "active");
+        });
+
+        it("rejects the same token on both sides of a deep link and keeps the step open", () => {
+            queryParams.current = new URLSearchParams({ base: "ubze", quote: "ubze" });
+            renderPage();
+            expect(step("Pair")).toHaveAttribute("data-state", "active");
+            expect(screen.getByRole("alert")).toHaveTextContent("Pick two different tokens.");
+            expect(button(step("Pair"), "Continue")).toBeDisabled();
+        });
+
+        it("rejects a halted token", () => {
+            queryParams.current = new URLSearchParams({ base: "uhalt", quote: "ubze" });
+            renderPage();
+            expect(screen.getByRole("alert")).toHaveTextContent(/HALT is no longer tradeable on BZE/);
+            expect(button(step("Pair"), "Continue")).toBeDisabled();
+        });
+
+        it("blocks an existing pair with a DEX link to add liquidity to it", () => {
+            existingPools.current = new Map([["ubze_utok", { id: "ubze_utok" }]]);
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            expect(step("Pair")).toHaveAttribute("data-state", "active");
+            expect(screen.getByRole("alert")).toHaveTextContent("This pair already has a pool. Each pair gets exactly one.");
+            const link = screen.getByRole("link", { name: /Add liquidity to it on the DEX/ });
+            expect(link).toHaveAttribute("href", "https://dex.test/pools/details?id=ubze_utok");
+            expect(link).toHaveAttribute("data-app", "dex");
+            expect(button(step("Pair"), "Continue")).toBeDisabled();
+        });
+
+        it("lands on Starting amounts when the deep link names a valid pair", () => {
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            expect(step("Pair")).toHaveAttribute("data-state", "done");
+            expect(step("Starting amounts")).toHaveAttribute("data-state", "active");
         });
     });
 
-    it("rejects the same asset on both sides of a deep link and keeps question 1 open", () => {
-        queryParams.current = new URLSearchParams({ base: "ubze", quote: "ubze" });
-        renderPage();
-        expect(question(PAIR)).toHaveAttribute("data-state", "active");
-        expect(screen.getByRole("alert")).toHaveTextContent("Base and quote must be different assets.");
-        expect(within(question(PAIR)).getByRole("button", { name: "Continue" })).toBeDisabled();
+    describe("Starting amounts", () => {
+        beforeEach(() => {
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+        });
+
+        it("shows the live starting price, the amber permanent-deposit note and the summary", async () => {
+            renderPage();
+            const q = step("Starting amounts");
+            expect(within(q).getByRole("heading", { name: "How much goes in first?" })).toBeInTheDocument();
+            expect(within(q).getByText("This first deposit stays in the pool forever.")).toBeInTheDocument();
+            expect(within(q).getByText(/You get no withdrawable share for it, nobody can take it out, you\s+included/)).toBeInTheDocument();
+            expect(within(q).getByText("Balance 1,000 TOK")).toBeInTheDocument();
+            await userEvent.type(within(q).getByLabelText("TOK"), "100");
+            await userEvent.type(within(q).getByLabelText("BZE"), "50");
+            // 1 TOK = 0.5 BZE, 1 BZE = $2 in the mock.
+            expect(within(q).getByTestId("starting-price")).toHaveTextContent("Starting price: 1 TOK = 0.500000 BZE ≈ $1");
+            await userEvent.click(button(q, "Continue to fees"));
+            expect(step("Starting amounts")).toHaveTextContent("100 TOK + 50 BZE · 0.500000 BZE per TOK");
+        });
+
+        it("Max leaves the creation fee when the amount is in the fee denom", async () => {
+            renderPage();
+            await userEvent.click(screen.getByRole("button", { name: "Max TOK" }));
+            await userEvent.click(screen.getByRole("button", { name: "Max BZE" }));
+            const q = step("Starting amounts");
+            expect(within(q).getByLabelText("TOK")).toHaveValue("1000");
+            // 999 BZE spendable after gas, minus the 25 BZE creation fee.
+            expect(within(q).getByLabelText("BZE")).toHaveValue("974");
+        });
+
+        it("rejects an amount above the balance after blur", async () => {
+            renderPage();
+            const input = within(step("Starting amounts")).getByLabelText("TOK");
+            await userEvent.type(input, "5000");
+            await userEvent.tab();
+            expect(within(step("Starting amounts")).getByText("Amount exceeds your balance.")).toBeInTheDocument();
+            expect(button(step("Starting amounts"), "Continue to fees")).toBeDisabled();
+        });
+
+        it("without a wallet, takes any amount and leaves Max and the balance out", async () => {
+            wallet.address = undefined;
+            balances.current = {};
+            renderPage();
+            const q = step("Starting amounts");
+            expect(within(q).queryByRole("button", { name: "Max TOK" })).not.toBeInTheDocument();
+            await userEvent.type(within(q).getByLabelText("TOK"), "5000");
+            await userEvent.type(within(q).getByLabelText("BZE"), "10");
+            expect(button(q, "Continue to fees")).toBeEnabled();
+        });
     });
 
-    it("rejects a halted asset", () => {
-        queryParams.current = new URLSearchParams({ base: "uhalt", quote: "ubze" });
-        renderPage();
-        expect(screen.getByRole("alert")).toHaveTextContent(/HALT is no longer tradeable on BZE/);
-        expect(createButton()).toBeDisabled();
+    describe("Fees", () => {
+        beforeEach(() => {
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+        });
+
+        it("summarises the swap fee and the split", async () => {
+            renderPage();
+            await answerAmounts("10", "10");
+            const q = step("Fees");
+            expect(within(q).getByRole("heading", { name: "What do swappers pay?" })).toBeInTheDocument();
+            await userEvent.click(button(q, "0.3%"));
+            await userEvent.click(within(q).getByText("split 50/25/25"));
+            await answerFees();
+            expect(step("Fees")).toHaveTextContent("0.3 % · 50 % to providers, 25 % burned, 25 % treasury");
+        });
+
+        it.each([
+            ["0.09", "Swap fee must be between 0.1% and 5%."],
+            ["0.1", ""],
+            ["5", ""],
+            ["5.01", "Swap fee must be between 0.1% and 5%."],
+            ["0.123", "At most 2 decimal places."],
+            ["", "Swap fee is required."],
+            ["abc", "Enter a valid percentage."],
+        ])("validates a custom swap fee of %j", async (value, error) => {
+            renderPage();
+            await answerAmounts("10", "10");
+            const input = within(step("Fees")).getByRole("textbox", { name: "Custom swap fee (%)" });
+            await userEvent.clear(input);
+            if (value) await userEvent.type(input, value);
+            const cont = button(step("Fees"), "Review pool");
+            if (error) {
+                expect(within(step("Fees")).getByText(error)).toBeInTheDocument();
+                expect(cont).toBeDisabled();
+            } else {
+                expect(cont).toBeEnabled();
+            }
+        });
     });
 
-    it("sends an existing pair to Add liquidity, carrying the return path", async () => {
-        existingPools.current = new Map([["ubze_utok", { id: "ubze_utok" }]]);
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze", return: "/tokens/token?denom=utok", returnLabel: "TOK" });
-        renderPage();
-        expect(question(PAIR)).toHaveAttribute("data-state", "active");
-        expect(screen.getByRole("alert")).toHaveTextContent(
-            "A pool for this pair already exists — add liquidity to it instead of creating a new one.",
-        );
-        await userEvent.click(screen.getByRole("button", { name: "Add liquidity to it" }));
-        expect(navigateMock).toHaveBeenCalledWith(
-            `/pool/add?pool=ubze_utok&${new URLSearchParams({ return: "/tokens/token?denom=utok", returnLabel: "TOK" })}`,
-        );
+    describe("Review", () => {
+        it("lists what leaves the wallet, the pool, the swap fee and what is permanent, then signs the sorted pair", async () => {
+            payment.gasAmount = "4000";
+            renderPage();
+            await answerPair("utok", "ubze");
+            await answerAmounts("1000", "50");
+            await userEvent.click(within(step("Fees")).getByText("split 50/25/25"));
+            await answerFees();
+
+            const review = step("Review");
+            const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
+            expect(leaves).toHaveTextContent("Pool creation fee25 BZE");
+            expect(leaves).toHaveTextContent("Starting TOK1,000 TOK");
+            expect(leaves).toHaveTextContent("Starting BZE50 BZE");
+            expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A TOK/BZE pool anyone can swap in");
+            expect(review).toHaveTextContent("Swap fee0.2 % · 50 % to providers, 25 % burned, 25 % treasury");
+            const permanent = within(review).getByRole("region", { name: "Permanent" });
+            expect(permanent).toHaveTextContent("The first deposit (1,000 TOK + 50 BZE)");
+            expect(permanent).toHaveTextContent("The pair");
+
+            expect(screen.getByTestId("outcome")).toHaveTextContent(
+                "A TOK/BZE pool opens on the DEX at 0.050000 BZE per TOK. Anyone can swap and add liquidity right away. 1,000 TOK + 50 BZE stay in it forever.",
+            );
+
+            await userEvent.click(createButton());
+            // ubze < utok: the chain stores BZE/TOK and the amounts swap with it.
+            expect(sentMsgs()).toEqual([{
+                typeUrl: "/bze.tradebin.MsgCreateLiquidityPool",
+                value: {
+                    creator: "bze1me",
+                    base: "ubze",
+                    quote: "utok",
+                    initialBase: "50000000",
+                    initialQuote: "1000000000",
+                    fee: "0.002",
+                    feeDest: JSON.stringify({ providers: "0.50", burner: "0.25", treasury: "0.25" }),
+                    stable: false,
+                },
+            }]);
+        });
+
+        it("keeps an alphabetical pair as it is", async () => {
+            renderPage();
+            await answerPair("ubze", "utok");
+            await answerAmounts("10", "200", "BZE", "TOK");
+            await answerFees();
+            await userEvent.click(createButton());
+            expect(sentMsgs()[0].value).toMatchObject({
+                base: "ubze", quote: "utok", initialBase: "10000000", initialQuote: "200000000", fee: "0.002",
+                feeDest: JSON.stringify({ providers: "1.00", burner: "0.00", treasury: "0.00" }),
+            });
+        });
+
+        it("needs the fee on top of a starting amount in the fee denom, unless the fee token pays it", async () => {
+            balances.current = { utok: "1000000000", ubze: "100000000" };
+            payment.gasAmount = "1000000";
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            const { unmount } = renderPage();
+            // 80 BZE + 25 BZE fee + 1 BZE gas > 100 BZE.
+            await answerAmounts("10", "80");
+            await answerFees();
+            expect(screen.getByTestId("pay-panel")).toHaveTextContent("BZE needed in total: 105 BZE");
+            expect(createButton()).toBeDisabled();
+            expect(screen.getByText("Not enough balance to cover the creation fee on top of the starting amounts.")).toBeInTheDocument();
+            unmount();
+
+            payment.paysWithAlt = true;
+            renderPage();
+            await answerAmounts("10", "80");
+            await answerFees();
+            expect(createButton()).toBeEnabled();
+        });
+
+        it("explains a missing wallet", async () => {
+            wallet.address = undefined;
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("10", "10");
+            await answerFees();
+            expect(createButton()).toBeDisabled();
+            expect(screen.getByText("Connect your wallet to create this pool.")).toBeInTheDocument();
+        });
+
+        it("keeps the answers when the wallet declines", async () => {
+            txMock.mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+                opts.onFailure?.("Request rejected", { stage: "sign" });
+                return false;
+            });
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("10", "20");
+            await answerFees();
+            await userEvent.click(createButton());
+            expect(screen.getByRole("heading", { name: "You declined in the wallet" })).toBeInTheDocument();
+            await userEvent.click(screen.getByRole("button", { name: "Edit answers" }));
+            expect(step("Starting amounts")).toHaveTextContent("10 TOK + 20 BZE");
+            expect(createButton()).toBeEnabled();
+        });
     });
 
-    it("lands on question 2 when the deep link names a valid pair, and always shows the permanent-floor warning", () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        expect(question(PAIR)).toHaveAttribute("data-state", "done");
-        expect(question(DEPOSIT)).toHaveAttribute("data-state", "active");
-        const q = question(DEPOSIT);
-        expect(within(q).getByText("This first deposit stays in the pool for good.")).toBeInTheDocument();
-        expect(within(q).getByText(/nobody can withdraw it, you included. You get no LP tokens for it./)).toBeInTheDocument();
-        expect(within(q).getByText("The ratio of the two amounts sets TOK's starting price.")).toBeInTheDocument();
-    });
-
-    it("shows the starting price in USD from the quote's price", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        const q = question(DEPOSIT);
-        await userEvent.type(within(q).getByLabelText(/Your token/), "100");
-        await userEvent.type(within(q).getByLabelText(/Paired with/), "50");
-        // 1 TOK = 0.5 BZE, 1 BZE = $2 in the mock.
-        expect(within(q).getByText(/Starting price/)).toHaveTextContent("Starting price 1 TOK = 0.500000 BZE ≈ $1");
-    });
-
-    it("Max leaves the creation fee when the reserve is in the fee denom", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await userEvent.click(screen.getByRole("button", { name: "Max TOK" }));
-        await userEvent.click(screen.getByRole("button", { name: "Max BZE" }));
-        const q = question(DEPOSIT);
-        expect(within(q).getByLabelText(/Your token/)).toHaveValue("1000");
-        // 999 BZE spendable after gas, minus the 25 BZE creation fee.
-        expect(within(q).getByLabelText(/Paired with/)).toHaveValue("974");
-    });
-
-    it("rejects a reserve above the balance after blur", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        const input = within(question(DEPOSIT)).getByLabelText(/Your token/);
-        await userEvent.type(input, "5000");
-        await userEvent.tab();
-        expect(within(question(DEPOSIT)).getByText("Amount exceeds your balance.")).toBeInTheDocument();
-        expect(within(question(DEPOSIT)).getByRole("button", { name: "Continue" })).toBeDisabled();
-    });
-
-    it.each([
-        ["0.09", "Swap fee must be between 0.1% and 5%."],
-        ["0.1", ""],
-        ["5", ""],
-        ["5.01", "Swap fee must be between 0.1% and 5%."],
-        ["0.123", "At most 2 decimal places."],
-        ["", "Swap fee is required."],
-        ["abc", "Enter a valid percentage."],
-    ])("validates a custom swap fee of %j", async (value, error) => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await answerDeposit("10", "10");
-        const input = within(question(FEE)).getByRole("textbox", { name: "Custom swap fee (%)" });
-        await userEvent.clear(input);
-        if (value) await userEvent.type(input, value);
-        const cont = within(question(FEE)).getByRole("button", { name: "Continue" });
-        if (error) {
-            expect(within(question(FEE)).getByText(error)).toBeInTheDocument();
-            expect(cont).toBeDisabled();
-        } else {
-            expect(cont).toBeEnabled();
+    describe("Done", () => {
+        async function createPool() {
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("1000", "2");
+            await answerFees();
+            await userEvent.click(createButton());
+            expect(screen.getByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            await userEvent.click(screen.getByRole("button", { name: "Continue" }));
         }
-    });
 
-    it("needs the fee on top of a reserve in the fee denom, unless the fee token pays it", async () => {
-        balances.current = { utok: "1000000000", ubze: "100000000" };
-        payment.gasAmount = "1000000";
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        const { unmount } = renderPage();
-        // 80 BZE reserve + 25 BZE fee + 1 BZE gas > 100 BZE.
-        await answerDeposit("10", "80");
-        await continueIn(FEE);
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("BZE needed in total: 105 BZE");
-        expect(createButton()).toBeDisabled();
-        expect(screen.getByText("Not enough balance to cover the creation fee on top of the reserves.")).toBeInTheDocument();
-        unmount();
+        it("shows the open pool, its links and the next steps; rewarding LPs waits for the LP denom", async () => {
+            let resolvePool: (p: { lp_denom: string }) => void = () => {};
+            getLiquidityPoolMock.mockReturnValue(new Promise(r => { resolvePool = r; }));
+            await createPool();
 
-        payment.paysWithAlt = true;
-        renderPage();
-        await answerDeposit("10", "80");
-        await continueIn(FEE);
-        expect(createButton()).toBeEnabled();
-    });
+            expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("The TOK/BZE pool is open.");
+            expect(screen.getByText("People can swap TOK for BZE right now, starting at 0.002000 BZE per TOK.")).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Copy pool link" })).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
+            expect(getLiquidityPoolMock).toHaveBeenCalledWith("ubze_utok");
+            expect(updatePoolsMock).toHaveBeenCalled();
 
-    it("explains a missing wallet", async () => {
-        wallet.address = undefined;
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await answerDeposit("10", "10");
-        await continueIn(FEE);
-        expect(createButton()).toBeDisabled();
-        expect(screen.getByText("Connect your wallet to create this pool.")).toBeInTheDocument();
-    });
+            const recommended = screen.getByTestId("done-recommended");
+            expect(recommended).toHaveTextContent("Add liquidity you can withdraw");
+            expect(within(recommended).getByRole("link", { name: /Add liquidity on DEX/ }))
+                .toHaveAttribute("href", "https://dex.test/pools/details?id=ubze_utok");
+            expect(screen.getByText("Allow limit orders too")).toBeInTheDocument();
+            expect(screen.getByText("Tell people about it")).toBeInTheDocument();
 
-    it("waits for the LP denom before offering to reward its holders", async () => {
-        let resolvePool: (p: { lp_denom: string }) => void = () => {};
-        getLiquidityPoolMock.mockReturnValue(new Promise(r => { resolvePool = r; }));
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await answerDeposit("10", "10");
-        await continueIn(FEE);
-        await userEvent.click(createButton());
+            // Pending: disabled with a shimmer, the code skeleton stands in for the LP denom.
+            const reward = screen.getByRole("article", { name: "Reward liquidity providers" });
+            expect(within(reward).getByRole("button", { name: "Create simple reward" })).toBeDisabled();
+            expect(within(reward).getByTestId("pending-rewardLps")).toBeInTheDocument();
+            expect(screen.getByTestId("code-loading")).toBeInTheDocument();
 
-        expect(screen.getByRole("heading", { name: "The BZE/TOK pool is live!" })).toBeInTheDocument();
-        expect(screen.getByTestId("code-loading")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reward liquidity providers" })).toBeDisabled();
-
-        resolvePool({ lp_denom: "ulp/abc" });
-        expect(await screen.findByText("ulp/abc")).toBeInTheDocument();
-        const reward = screen.getByRole("button", { name: "Reward liquidity providers" });
-        expect(reward).toBeEnabled();
-        await userEvent.click(reward);
-        expect(navigateMock).toHaveBeenCalledWith("/reward/new?staking=ulp%2Fabc");
-    });
-
-    it("starts over with Create another pool", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await answerDeposit("10", "10");
-        await userEvent.click(within(question(FEE)).getByRole("button", { name: "1%" }));
-        await continueIn(FEE);
-        await userEvent.click(createButton());
-        await screen.findByText("ulp/abc");
-
-        await userEvent.click(screen.getByRole("button", { name: "Create another pool" }));
-        expect(question(PAIR)).toHaveAttribute("data-state", "active");
-        expect(question(DEPOSIT)).toHaveAttribute("data-state", "todo");
-        expect(screen.getByRole("heading", { name: "Let people buy and sell your token" })).toBeInTheDocument();
-    });
-
-    it("keeps the answers when the tx fails", async () => {
-        txMock.mockImplementation(async () => {});
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
-        renderPage();
-        await answerDeposit("10", "20");
-        await continueIn(FEE);
-        await userEvent.click(createButton());
-        expect(question(DEPOSIT)).toHaveTextContent("10 TOK + 20 BZE");
-        expect(createButton()).toBeEnabled();
+            resolvePool({ lp_denom: "ulp/abc" });
+            expect(await screen.findByText("ulp/abc")).toBeInTheDocument();
+            const known = screen.getByRole("article", { name: "Reward liquidity providers" });
+            expect(within(known).queryByTestId("pending-rewardLps")).not.toBeInTheDocument();
+            await userEvent.click(within(known).getByRole("button", { name: "Create simple reward" }));
+            expect(navigateMock).toHaveBeenCalledWith("/reward/new?staking=ulp%2Fabc");
+        });
     });
 });

@@ -62,6 +62,10 @@ export const GROW_TARGETS = {
 /** The DEX's pools page: adding and removing liquidity live there (BFE-257 decision 9). */
 export const dexPoolsHref = (dexHref: string) => `${dexHref.replace(/\/$/, '')}/pools`
 
+/** A pool's page on the DEX (its Add and Remove liquidity tabs); the DEX pool list without an id. */
+export const dexPoolHref = (dexHref: string, poolId?: string | null) =>
+    poolId ? `${dexPoolsHref(dexHref)}/details?id=${encodeURIComponent(poolId)}` : dexPoolsHref(dexHref)
+
 export const DOCS_HREF = 'https://docs.getbze.com'
 
 export interface StartingPoint {

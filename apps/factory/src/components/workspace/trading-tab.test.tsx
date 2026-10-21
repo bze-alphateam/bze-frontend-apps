@@ -108,21 +108,19 @@ describe("TradingTab pools", () => {
         expect(within(screen.getByTestId("trading-pool-2")).queryByText("You created it")).not.toBeInTheDocument();
     });
 
-    it("links add liquidity, reward LPs and create another pool with the return path", async () => {
+    it("links reward LPs and create another pool with the return path", async () => {
         const p = props();
         renderTab(p);
         const row = within(screen.getByTestId("trading-pool-2"));
-        await userEvent.click(row.getByRole("button", { name: "Add liquidity" }));
         await userEvent.click(row.getByRole("button", { name: "Reward liquidity providers" }));
         await userEvent.click(screen.getByRole("button", { name: "Create another pool" }));
-        expect(p.goTo).toHaveBeenNthCalledWith(1, `/pool/add?pool=2&${RETURN}`);
-        expect(p.goTo).toHaveBeenNthCalledWith(2, `/reward/new?staking=ulp_2&${RETURN}`);
-        expect(p.goTo).toHaveBeenNthCalledWith(3, `/pool/new?base=${ENC}&${RETURN}`);
+        expect(p.goTo).toHaveBeenNthCalledWith(1, `/reward/new?staking=ulp_2&${RETURN}`);
+        expect(p.goTo).toHaveBeenNthCalledWith(2, `/pool/new?base=${ENC}&${RETURN}`);
     });
 
-    it("opens the pool on the DEX", () => {
+    it("adds liquidity on the DEX pool page", () => {
         renderTab(props());
-        const link = within(screen.getByTestId("trading-pool-1")).getByRole("link", { name: "DEX" });
+        const link = within(screen.getByTestId("trading-pool-1")).getByRole("link", { name: /Add liquidity on DEX/ });
         expect(link).toHaveAttribute("href", "https://dex.example/pools/details?id=1");
         expect(link).toHaveAttribute("target", "_blank");
         expect(link).toHaveAttribute("data-app", "dex");
@@ -132,7 +130,8 @@ describe("TradingTab pools", () => {
         m.pools = [pool("9", DENOM, "uhalt")];
         renderTab(props());
         const row = within(screen.getByTestId("trading-pool-9"));
-        expect(row.queryByRole("button", { name: "Add liquidity" })).not.toBeInTheDocument();
+        expect(row.queryByRole("link", { name: /Add liquidity/ })).not.toBeInTheDocument();
+        expect(row.getByRole("link", { name: /^DEX/ })).toHaveAttribute("href", "https://dex.example/pools/details?id=9");
         expect(row.getByRole("button", { name: "Reward liquidity providers" })).toBeInTheDocument();
     });
 
@@ -195,9 +194,9 @@ describe("TradingTab halted token", () => {
         renderTab(props({}, true));
         expect(screen.getByRole("note")).toHaveTextContent("TOK is no longer tradeable on BZE");
         expect(screen.queryByRole("button", { name: "Create another pool" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Add liquidity" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /Add liquidity/ })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create a market" })).not.toBeInTheDocument();
-        expect(screen.getAllByRole("link", { name: "DEX" }).length).toBeGreaterThan(0);
+        expect(screen.getAllByRole("link", { name: /^DEX/ }).length).toBeGreaterThan(0);
     });
 
     it("empty pools: no create button either", () => {

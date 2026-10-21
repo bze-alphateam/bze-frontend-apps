@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { getDexApp } from "@bze/bze-ui-kit";
 import { computeTokenSetup, setupHint, type TokenSetupFacts } from "./token-setup";
 
 const FACTS: TokenSetupFacts = {
@@ -32,5 +33,17 @@ describe("setupHint", () => {
     it("skips items that are unknown or impossible", () => {
         expect(hint({ brandKit: "error", registry: "error" })).toBeUndefined();
         expect(hint({ isLocked: true, description: "" })).toBeUndefined();
+    });
+});
+
+describe("the pool item", () => {
+    it("adds liquidity on the DEX pool page once a pool exists", () => {
+        const pool = computeTokenSetup(FACTS).items.find(item => item.key === "pool");
+        expect(pool?.state).toBe("done");
+        expect(pool?.action).toEqual({
+            label: "Add liquidity on DEX",
+            href: `${getDexApp().href.replace(/\/$/, "")}/pools/details?id=p1`,
+            app: "dex",
+        });
     });
 });

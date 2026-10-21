@@ -188,6 +188,32 @@ describe("DoneScreen", () => {
         expect(within(card).getByRole("button", { name: "Airdrop" })).toBeDisabled();
     });
 
+    it("a pending action is disabled with a shimmer until its chain read finishes", () => {
+        const pending: NextAction = {
+            key: "rewardLps", icon: "reward", title: "Reward liquidity providers", text: "Pay LP stakers.", cta: "Create simple reward",
+            target: { href: "/reward/new?staking=" }, disabledReason: "Waiting for the pool share token…", pending: true,
+        };
+        const { rerender } = render(<DoneScreen {...BASE} more={[pending]} />, { wrapper });
+        let card = screen.getByRole("article", { name: "Reward liquidity providers" });
+        expect(within(card).getByTestId("pending-rewardLps")).toBeInTheDocument();
+        expect(within(card).getByRole("button", { name: "Create simple reward" })).toBeDisabled();
+
+        rerender(<DoneScreen {...BASE} more={[{ ...pending, target: { href: "/reward/new?staking=ulp" }, disabledReason: undefined, pending: undefined }]} />);
+        card = screen.getByRole("article", { name: "Reward liquidity providers" });
+        expect(within(card).queryByTestId("pending-rewardLps")).not.toBeInTheDocument();
+        expect(within(card).getByRole("button", { name: "Create simple reward" })).toBeEnabled();
+    });
+
+    it("a copy link copies its URL instead of opening it", async () => {
+        const user = userEvent.setup();
+        const writeText = vi.spyOn(navigator.clipboard, "writeText");
+        render(<DoneScreen {...BASE} links={[{ label: "Copy pool link", href: "https://dex/pools/details?id=12", copy: { copied: "Pool link" } }]} />, { wrapper });
+        await user.click(screen.getByRole("button", { name: "Copy pool link" }));
+        expect(writeText).toHaveBeenCalledWith("https://dex/pools/details?id=12");
+        expect(toastSuccess).toHaveBeenCalledWith("Copied", "Pool link copied to clipboard.");
+        expect(navigateMock).not.toHaveBeenCalled();
+    });
+
     it("shows Back to <label> with a return path, and nothing without one", async () => {
         const { unmount } = render(<DoneScreen {...BASE} back={{ label: "HONEY", href: "/manage/token?denom=x&tab=trading" }} />, { wrapper });
         await userEvent.click(screen.getByRole("button", { name: "Back to HONEY" }));

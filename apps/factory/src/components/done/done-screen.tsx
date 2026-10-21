@@ -40,6 +40,8 @@ export interface DoneLink {
     href: string;
     /** A BZE app's page: rendered as that app's ghost AppLink (new tab). Without it, a Factory route. */
     app?: AppKey;
+    /** Copies `href` instead of opening it ("Copy pool link"); `copied` names it in the toast. */
+    copy?: { copied: string };
 }
 
 export interface DoneScreenProps {
@@ -279,6 +281,7 @@ function MoreCard({ action }: { action: NextAction }) {
             </Circle>
             <chakra.h3 m="0" fontSize="16px" fontWeight="700">{action.title}</chakra.h3>
             <Text fontSize="14px" lineHeight="1.45" color="fg.muted" flex="1">{action.disabledReason ?? action.text}</Text>
+            {action.pending && <Shimmer h="8px" w="120px" borderRadius="full" data-testid={`pending-${action.key}`} />}
             <HStack gap="4px" wrap="wrap">
                 <ActionButton action={action} />
                 {action.alsoApp && <AppLink app={action.alsoApp.app} href={action.alsoApp.href}>{action.alsoApp.label}</AppLink>}
@@ -315,10 +318,12 @@ export function DoneScreen({
         headingRef.current?.focus()
     }, [])
 
+    const copy = async (value: string, what: string) => {
+        await navigator.clipboard.writeText(value)
+        toast.success('Copied', `${what} copied to clipboard.`)
+    }
     const copyCode = async () => {
-        if (!code?.value) return
-        await navigator.clipboard.writeText(code.value)
-        toast.success('Copied', `${code.label} copied to clipboard.`)
+        if (code?.value) await copy(code.value, code.label)
     }
 
     const hasNext = Boolean(recommended) || more.length > 0
@@ -369,7 +374,12 @@ export function DoneScreen({
                             ) : (
                                 <Shimmer h="36px" w="240px" maxW="100%" borderRadius="10px" data-testid="code-loading" />
                             ))}
-                            {links.map(l => l.app ? (
+                            {links.map(l => l.copy ? (
+                                <Button key={l.href} variant="ghost" size="sm" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => copy(l.href, l.copy!.copied)}>
+                                    <LuCopy />
+                                    {l.label}
+                                </Button>
+                            ) : l.app ? (
                                 <AppLink key={l.href} app={l.app} href={l.href}>{l.label}</AppLink>
                             ) : (
                                 <Button key={l.href} variant="ghost" size="sm" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={() => navigate(l.href)}>
