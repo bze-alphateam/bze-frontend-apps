@@ -33,7 +33,7 @@ vi.mock("@/hooks/useStakingRewards", () => ({ useStakingRewards: () => m.program
 vi.mock("@/components/rewards/staking-programs-list", () => ({
     StakingProgramsList: (p: { pinMine?: boolean; status?: string; onStatus?: (s: string) => void; programs?: unknown }) => (
         <div data-testid="staking-programs" data-pin-mine={String(p.pinMine)} data-status={p.status}>
-            {p.programs === m.programs && "staking programs list"}
+            {p.programs === m.programs && "simple rewards list"}
             <button onClick={() => p.onStatus?.("finished")}>show finished</button>
         </div>
     ),
@@ -86,7 +86,7 @@ function renderPage() {
     });
 }
 
-const tableRows = async () => within(await screen.findByRole("table", { name: "Holder rewards" })).findAllByTestId("denom-reward-row");
+const tableRows = async () => within(await screen.findByRole("table", { name: "Compounded rewards" })).findAllByTestId("denom-reward-row");
 const rowTickers = async () => (await tableRows()).map(r => within(r).getAllByText(/^[A-Z]+$/)[0].textContent);
 
 beforeEach(async () => {
@@ -127,7 +127,7 @@ describe("rewards directory", () => {
         expect(tok.getByText("0")).toBeInTheDocument();
 
         // The tab shows the count, and both layouts carry the rows.
-        expect(screen.getByRole("tab", { name: /Holder rewards/ })).toHaveTextContent("2");
+        expect(screen.getByRole("tab", { name: /Compounded rewards/ })).toHaveTextContent("2");
         expect(screen.getAllByTestId("denom-reward-card")).toHaveLength(2);
     });
 
@@ -161,7 +161,7 @@ describe("rewards directory", () => {
         m.getAll.mockResolvedValue([]);
         renderPage();
 
-        expect(await screen.findByTestId("denom-reward-empty")).toHaveTextContent("No token has holder rewards yet. Pick a token above to make it stakable.");
+        expect(await screen.findByTestId("denom-reward-empty")).toHaveTextContent("No token has a compounded reward yet. Pick a token above to make it stakable.");
         await userEvent.click(screen.getByRole("button", { name: "pick ATOM" }));
         expect(m.navigate).toHaveBeenLastCalledWith("/denom-reward/token?denom=uatom");
     });
@@ -181,7 +181,7 @@ describe("rewards directory", () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
         renderPage();
 
-        expect(await screen.findByText("Couldn't load the holder rewards")).toBeInTheDocument();
+        expect(await screen.findByText("Couldn't load the compounded rewards")).toBeInTheDocument();
         expect(screen.getByText(/node may be down, or not run chain v8.2.0 yet/)).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
         expect(await tableRows()).toHaveLength(1);
@@ -284,42 +284,41 @@ describe("rewards directory", () => {
         await userEvent.selectOptions(screen.getByRole("combobox", { name: "Sort" }), "prizes");
         expect(m.replace).toHaveBeenLastCalledWith("/rewards?tab=holder&filter=all&sort=prizes&status=all");
 
-        await userEvent.click(screen.getByRole("tab", { name: /Staking programs/ }));
+        await userEvent.click(screen.getByRole("tab", { name: /Simple rewards/ }));
         expect(m.replace).toHaveBeenLastCalledWith("/rewards?tab=programs&filter=all&sort=name&status=all");
     });
 
-    it("opens the Staking programs tab from the URL: the page's list, yours pinned, status in the URL", async () => {
+    it("opens the Simple rewards tab from the URL: the page's list, yours pinned, status in the URL", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.query = "tab=programs&status=running";
         renderPage();
 
         const list = await screen.findByTestId("staking-programs");
-        expect(list).toHaveTextContent("staking programs list");
+        expect(list).toHaveTextContent("simple rewards list");
         expect(list).toHaveAttribute("data-pin-mine", "true");
         expect(list).toHaveAttribute("data-status", "running");
-        expect(screen.queryByRole("table", { name: "Holder rewards" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("table", { name: "Compounded rewards" })).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "show finished" }));
         expect(m.replace).toHaveBeenLastCalledWith("/rewards?tab=programs&filter=all&sort=staked&status=finished");
     });
 
-    it("counts the running staking programs on the tab once they load", async () => {
+    it("counts the running simple rewards on the tab once they load", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.programs = { ...m.programs, rewards: [{ payouts: 1, duration: 10 }, { payouts: 10, duration: 10 }, { payouts: 0, duration: 5 }] };
         const { unmount } = renderPage();
-        expect(screen.getByRole("tab", { name: /Staking programs/ })).toHaveTextContent("Staking programs2 running");
+        expect(screen.getByRole("tab", { name: /Simple rewards/ })).toHaveTextContent("Simple rewards2 running");
         unmount();
 
         m.programs = { ...m.programs, isLoading: true };
         renderPage();
-        expect(screen.getByRole("tab", { name: /Staking programs/ })).not.toHaveTextContent("running");
+        expect(screen.getByRole("tab", { name: /Simple rewards/ })).not.toHaveTextContent("running");
     });
 
-    it("opens Which reward fits? from the header", async () => {
+    it("links Which one? in the header to the reward kinds compared", () => {
         m.getAll.mockResolvedValue([]);
         renderPage();
 
-        await userEvent.click(screen.getByRole("button", { name: "Which reward fits?" }));
-        expect(await screen.findByRole("dialog", { name: "Which reward fits?" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Which one?" })).toHaveAttribute("href", "/create/rewards");
     });
 });

@@ -26,7 +26,7 @@ const tickers = (rows: HolderRow[]) => rows.map(r => r.ticker);
 const query = (q: string) => { const p = new URLSearchParams(q); return (k: string) => p.get(k); };
 
 describe("URL state", () => {
-    it("defaults to holder rewards, all, most staked, every program", () => {
+    it("defaults to compounded reward, all, most staked, every program", () => {
         expect(parseRewardsView(query(""))).toEqual({ tab: "holder", filter: "all", sort: "staked", status: "all" });
         expect(parseRewardsView(query("tab=x&filter=y&sort=z&status=w"))).toEqual(DEFAULT_REWARDS_VIEW);
     });

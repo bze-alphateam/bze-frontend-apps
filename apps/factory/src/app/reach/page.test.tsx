@@ -6,7 +6,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 
-// "Reach another community" off mocked hooks: every holder reward on the chain, the picked one's
+// "Reach another community" off mocked hooks: every compounded reward on the chain, the picked one's
 // prizes, chain params, wallet and the affordability engine. The gift picker becomes a plain
 // button per denom; PayPanel has its own coverage and prints its rows here.
 const { AAA, MINE, GIFT, COLD, m, navigateMock, txMock, affordMock } = vi.hoisted(() => ({
@@ -190,7 +190,7 @@ describe("Reach another community", { timeout: 20_000 }, () => {
         expect(screen.getByTestId("reach-outcome")).toHaveTextContent(
             "200 BZE leaves your wallet now and is split between everyone staking AAA, based on how much each one stakes. It can't be taken back. You don't need to own AAA or ask its creator.",
         );
-        expect(screen.getByText("Holder rewards · airdrop on AAA")).toBeInTheDocument();
+        expect(screen.getByText("Compounded reward · airdrop on AAA")).toBeInTheDocument();
         expect(payPanel()).toHaveTextContent("The gift: 200000000 ubze, Prize fee: None | distribute-denom-rewards");
 
         await userEvent.click(screen.getByRole("button", { name: "Send the gift" }));
@@ -219,7 +219,7 @@ describe("Reach another community", { timeout: 20_000 }, () => {
         expect(screen.getByTestId("reach-outcome")).toHaveTextContent(
             "20 BZE leaves your wallet now and is paid as 2 BZE a day for 10 payout days to everyone staking AAA. It can't be cancelled.",
         );
-        expect(screen.getByText("Holder rewards · daily prize on AAA")).toBeInTheDocument();
+        expect(screen.getByText("Compounded reward · daily prize on AAA")).toBeInTheDocument();
         expect(payPanel()).toHaveTextContent("Locked for prizes: 20000000 ubze, Daily prize fee: 25000000000 ubze | module 25000000000 | create-denom-reward-schedule");
 
         await userEvent.click(screen.getByRole("button", { name: "Start the daily gift" }));
@@ -252,7 +252,7 @@ describe("Reach another community", { timeout: 20_000 }, () => {
         expect(screen.getByRole("button", { name: "Send the gift" })).toBeDisabled();
     });
 
-    it("tips to make your own gift stakable only when it has no holder rewards", async () => {
+    it("tips to make your own gift stakable only when it has no compounded reward", async () => {
         renderPage();
         await pickCommunity();
 

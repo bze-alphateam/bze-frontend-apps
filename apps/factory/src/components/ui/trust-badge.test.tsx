@@ -13,7 +13,7 @@ describe("TrustBadge", () => {
     it.each([
         ["an active admin", "bze1owner", "Mintable", "warning"],
         ["a renounced admin", "", "Fixed supply", "success"],
-        ["an unknown admin", undefined, "Control unknown", "neutral"],
+        ["an unknown admin", undefined, "Admin unknown", "neutral"],
     ] as const)("%s reads %s in the %s tone", (_, admin, label, tone) => {
         render(<TrustBadge admin={admin} />, { wrapper });
         const pill = screen.getByTestId("status-pill");

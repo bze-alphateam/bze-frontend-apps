@@ -227,7 +227,7 @@ describe("Let people buy and sell it (/pool/new)", { timeout: 20_000 }, () => {
 
     it("sends an existing pair to Add liquidity, carrying the return path", async () => {
         existingPools.current = new Map([["ubze_utok", { id: "ubze_utok" }]]);
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze", return: "/manage/token?denom=utok", returnLabel: "TOK" });
+        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze", return: "/tokens/token?denom=utok", returnLabel: "TOK" });
         renderPage();
         expect(question(PAIR)).toHaveAttribute("data-state", "active");
         expect(screen.getByRole("alert")).toHaveTextContent(
@@ -235,7 +235,7 @@ describe("Let people buy and sell it (/pool/new)", { timeout: 20_000 }, () => {
         );
         await userEvent.click(screen.getByRole("button", { name: "Add liquidity to it" }));
         expect(navigateMock).toHaveBeenCalledWith(
-            `/pool/add?pool=ubze_utok&${new URLSearchParams({ return: "/manage/token?denom=utok", returnLabel: "TOK" })}`,
+            `/pool/add?pool=ubze_utok&${new URLSearchParams({ return: "/tokens/token?denom=utok", returnLabel: "TOK" })}`,
         );
     });
 

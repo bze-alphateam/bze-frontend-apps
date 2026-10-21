@@ -31,7 +31,7 @@ import { TipNote } from '@/components/guided/notes'
 import { withReturn, type ReturnTo } from '@/components/guided/return-to'
 import { InfoBox } from '@/components/ui/info-box'
 import { softButton } from '@/components/ui/soft-button'
-import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import {
     airdropFormHref,
     formatLastPaid,
@@ -210,7 +210,7 @@ export interface HolderRewardsPanelProps {
 }
 
 /**
- * Holder rewards (the chain's denom reward): one open-ended staking pool per token where anyone
+ * Compounded rewards (the chain's denom reward): one open-ended staking pool per token where anyone
  * funds daily prizes or airdrops and anyone who stakes the token shares them. Shown to every
  * wallet: creating or funding it grants no rights, so it is not an admin action.
  */
@@ -259,8 +259,8 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
         <VStack align="stretch" gap="20px">
             <VStack align="stretch" gap="6px">
                 <HStack gap="8px" flexWrap="wrap">
-                    <Text as="h2" fontWeight="700" fontSize="20px">Holder rewards</Text>
-                    <RewardInfoButton denom={asset.denom} />
+                    <Text as="h2" fontWeight="700" fontSize="20px">Compounded reward</Text>
+                    <RewardKindsLink denom={asset.denom} />
                     {denomReward && <StatusPill tone="success">Live</StatusPill>}
                 </HStack>
                 <Text fontSize="14px" lineHeight="1.5" color="fg.muted">
@@ -276,8 +276,8 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
                     </VStack>
                 ) : hasError ? (
                     <VStack align="stretch" gap="12px">
-                        <InfoBox title="Couldn't load the holder rewards">
-                            {`The chain query failed, so we can't tell whether ${ticker} has holder rewards. The node may be down, or not run chain v8.2.0 yet.`}
+                        <InfoBox title="Couldn't load the compounded reward">
+                            {`The chain query failed, so we can't tell whether ${ticker} has a compounded reward. The node may be down, or not run chain v8.2.0 yet.`}
                         </InfoBox>
                         <Box>
                             <Button {...softButton} size="sm" onClick={() => void refresh()}>
@@ -288,7 +288,7 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
                 ) : !denomReward ? (
                     <VStack align="stretch" gap="14px">
                         <Text fontSize="14px" lineHeight="1.55">
-                            {`Holders have no reason to stake ${ticker} yet. Turn on holder rewards and anyone who stakes it shares the daily prizes you, or anyone, fund. You don't need to own ${ticker}: it's open to everyone, and creating it gives no special rights.`}
+                            {`Holders have no reason to stake ${ticker} yet. Turn on a compounded reward and anyone who stakes it shares the daily prizes you, or anyone, fund. You don't need to own ${ticker}: it's open to everyone, and creating it gives no special rights.`}
                         </Text>
 
                         <VStack align="stretch" gap="8px">
@@ -303,7 +303,7 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
                         </VStack>
 
                         <PayPanel
-                            rows={fee ? [{ label: 'Holder rewards fee', coin: fee }] : []}
+                            rows={fee ? [{ label: 'Compounded reward fee', coin: fee }] : []}
                             moduleFee={fee}
                             txKind="create-denom-reward"
                             isLoading={isFeeLoading}
@@ -393,7 +393,7 @@ export function HolderRewardsPanel({ asset, returnTo }: HolderRewardsPanelProps)
 
     // A running holder-rewards pool is the page's featured card; before it exists it is a plain card.
     return (
-        <Box as="section" aria-label="Holder rewards" data-testid="holder-rewards-panel">
+        <Box as="section" aria-label="Compounded reward" data-testid="holder-rewards-panel">
             {live
                 ? <FeaturedCard p={{ base: '18px', md: '24px' }}>{content}</FeaturedCard>
                 : <HgCard p={{ base: '18px', md: '22px' }}>{content}</HgCard>}

@@ -45,7 +45,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 import { TradingTab } from "./trading-tab";
 import type { WorkspaceTabProps } from "./types";
 
-const RETURN = `return=${encodeURIComponent(`/manage/token?denom=${ENC}&tab=trading`)}&returnLabel=TOK`;
+const RETURN = `return=${encodeURIComponent(`/tokens/token?denom=${ENC}&tab=trading`)}&returnLabel=TOK`;
 
 const props = (over: Partial<WorkspaceTabProps> = {}, halted = false): WorkspaceTabProps => ({
     asset: { denom: DENOM, ticker: "TOK", name: "Tok", decimals: 6, logo: "", supply: 1n, halted } as unknown as WorkspaceTabProps["asset"],

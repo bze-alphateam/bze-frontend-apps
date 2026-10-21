@@ -31,7 +31,7 @@ const TABS: { value: WorkspaceTab; label: string; Content: React.ComponentType<W
     { value: 'profile', label: 'Profile', Content: ProfileTab },
     { value: 'trading', label: 'Trading', Content: TradingTab },
     { value: 'rewards', label: 'Rewards', Content: RewardsTab },
-    { value: 'control', label: 'Control', Content: ControlTab },
+    { value: 'control', label: 'Permissions', Content: ControlTab },
 ]
 
 function TokenWorkspaceContent() {
@@ -72,7 +72,7 @@ function TokenWorkspaceContent() {
                             </>
                         )}
                         action={(
-                            <Button variant={hgVariant('secondary')} size="lg" onClick={() => navigate('/manage')}>
+                            <Button variant={hgVariant('secondary')} size="lg" onClick={() => navigate('/tokens')}>
                                 <LuArrowLeft />
                                 Back to Your tokens
                             </Button>
@@ -114,7 +114,7 @@ function TokenWorkspaceContent() {
                 asset={asset}
                 admin={token.admin}
                 adminState={state}
-                onBack={() => navigate('/manage')}
+                onBack={() => navigate('/tokens')}
                 tabs={(
                     <BandTabList label="Workspace">
                         {TABS.map(t => <BandTab key={t.value} value={t.value}>{t.label}</BandTab>)}

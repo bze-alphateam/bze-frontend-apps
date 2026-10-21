@@ -14,7 +14,10 @@ const MISSING_TOKEN = "factory%2Fbze1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq%2Fut
 const heading = (name: string | RegExp) => (page: Page) => page.getByRole("heading", {name}).first();
 
 const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
-    {path: "/", ready: heading("What do you want to build?")},
+    {path: "/", ready: heading("What are you building today?")},
+    {path: "/create/market", ready: heading("How should people trade it?")},
+    {path: "/create/rewards", ready: heading("Which kind of reward?")},
+    {path: "/create/grow", ready: heading("Who do you want to reach?")},
     {path: "/token/new", ready: heading("Create my token")},
     {path: "/market/new", ready: heading("Allow limit orders")},
     {path: `/pool/new?base=${VDL}`, ready: heading("Let people buy and sell VDL")},
@@ -23,12 +26,11 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
-    {path: "/playbooks?id=launch", ready: heading("Launch a community token")},
-    {path: "/manage", ready: heading("Your tokens")},
-    {path: `/manage/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},
+    {path: "/tokens", ready: heading("Your tokens")},
+    {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("Token not found")},
     // Phones get cards, not the (hidden) table.
     {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
-    // testnet's one staking program has finished, and finished programs are folded away by default.
+    // testnet's one simple reward has finished, and finished programs are folded away by default.
     {path: "/rewards?tab=programs&status=finished", ready: (page) => page.getByTestId("staking-program-row").first()},
     {path: `/denom-reward/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("holder-schedule-card").first()},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Give a little every day/)},

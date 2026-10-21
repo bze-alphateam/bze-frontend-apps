@@ -10,8 +10,8 @@ import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { FormFrame, FormPage } from '@/components/guided'
 
 /**
- * The holder rewards (denom reward) of any token, for any wallet: the panel with create, daily
- * prizes and airdrops. Holder rewards are permissionless, so unlike the token workspace this page
+ * The compounded reward (denom reward) of any token, for any wallet: the panel with create, daily
+ * prizes and airdrops. Compounded rewards are permissionless, so unlike the token workspace this page
  * is not limited to the connected wallet's own tokens.
  */
 function DenomRewardTokenContent() {
@@ -21,7 +21,7 @@ function DenomRewardTokenContent() {
     const toDirectory = () => navigate('/rewards')
 
     if (!denom) {
-        return <Notice title="No token selected" onBack={toDirectory}>Pick a holder reward from the list.</Notice>
+        return <Notice title="No token selected" onBack={toDirectory}>Pick a compounded reward from the list.</Notice>
     }
 
     if (isLoading) {
@@ -38,7 +38,7 @@ function DenomRewardTokenContent() {
     if (!asset) {
         return (
             <Notice title="Token not found" onBack={toDirectory}>
-                {`This token isn't in the asset list, so its holder rewards can't be shown here.`}
+                {`This token isn't in the asset list, so its compounded reward can't be shown here.`}
             </Notice>
         )
     }

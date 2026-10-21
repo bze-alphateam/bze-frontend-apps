@@ -1,88 +1,73 @@
 import {expect, test} from "./support/mock-network";
 
-// Smoke spec for the goal-first home (BFE-167), its search (BFE-168) and /manage (BFE-165) without a wallet, against
-// the testnet fixtures in e2e/fixtures/.
+// Smoke spec for the starting-point home and the Choose screens (BFE-260) and /tokens without a
+// wallet, against the testnet fixtures in e2e/fixtures/.
 
-test("the home starts from goals, with their live fees and the All tools row", async ({page}) => {
+test("the home starts from six starting points, two of them coming soon", async ({page}) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", {name: "What do you want to build?"})).toBeVisible();
-    for (const group of ["1 · Start", "2 · Get it traded", "3 · Grow the community", "4 · Make it official"]) {
-        await expect(page.getByRole("heading", {name: group})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "What are you building today?"})).toBeVisible();
+    for (const id of ["token", "market", "rewards", "grow"]) {
+        await expect(page.getByTestId(`start-${id}`)).toHaveAttribute("href", /\//);
     }
-
-    // The fees come from fixtures/lcd/tokenfactory.params.json, tradebin.params.json and
-    // rewards.params.json (25,000 TBZE each, testnet's native ticker).
-    await expect(page.getByTestId("goal-createToken")).toContainText("Token factory · 25,000 TBZE");
-    await expect(page.getByTestId("goal-pool")).toContainText("Liquidity pool · 25,000 TBZE");
-    await expect(page.getByTestId("goal-stakable")).toContainText("Holder rewards · 25,000 TBZE");
-    await expect(page.getByTestId("goal-multisend")).not.toContainText("TBZE");
-
-    const tools = page.getByRole("region", {name: "All tools"});
-    await expect(tools.getByRole("button", {name: "Create token"})).toBeVisible();
-    await expect(tools.getByRole("button", {name: "My creations"})).toBeVisible();
-    // No wallet: no Your tokens strip.
-    await expect(page.getByRole("region", {name: "Your tokens"})).toHaveCount(0);
+    for (const id of ["dao", "contest"]) {
+        await expect(page.getByTestId(`start-${id}`)).toContainText("Coming soon");
+        await expect(page.getByTestId(`start-${id}`).getByRole("link")).toHaveCount(0);
+    }
+    await expect(page.getByRole("region", {name: "Work on something that exists"})).toBeVisible();
+    await expect(page.getByRole("link", {name: /Guides and strategies on docs\.getbze\.com/})).toHaveAttribute("href", "https://docs.getbze.com");
 });
 
-test("the search finds goals in everyday words: / focuses it, Enter opens the active row", async ({page}) => {
+test("home → Create a DEX market → Liquidity pool lands on the pool wizard", async ({page}) => {
     await page.goto("/");
-    await expect(page.getByTestId("goal-createToken")).toBeVisible();
 
-    await page.keyboard.press("/");
-    const box = page.getByRole("combobox", {name: "What do you want to do?"});
-    await expect(box).toBeFocused();
-    await page.keyboard.type("airdrop");
+    await page.getByTestId("start-market").click();
+    await expect(page).toHaveURL(/\/create\/market$/);
+    await expect(page.getByRole("heading", {level: 1, name: "How should people trade it?"})).toBeVisible();
+    // Pools and markets pay the same tradebin fee: fixtures/lcd/tradebin.params.json (25,000 TBZE).
+    await expect(page.getByRole("region", {name: "Liquidity pool"}).getByTestId("fee-line")).toHaveText("Creation fee 25,000 TBZE + network fee");
 
-    const options = page.getByRole("listbox", {name: "Search results"}).getByRole("option");
-    await expect(options.nth(0)).toContainText("Gift my stakers, once");
-    await expect(options.nth(1)).toContainText("Reach another community");
-    await expect(options.nth(2)).toContainText("Send to a list of wallets");
-
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/multisend$/);
+    await page.getByRole("link", {name: /Create liquidity pool/}).click();
+    await expect(page).toHaveURL(/\/pool\/new$/);
 });
 
-test("the search panel is full width on a 390 px phone", async ({page}) => {
-    await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/");
-    await page.getByRole("combobox", {name: "What do you want to do?"}).fill("logo");
-    const panel = page.getByTestId("goal-search-panel");
-    await expect(panel).toContainText("Get my logo in every wallet");
+test("the staking rewards and community Choose screens render", async ({page}) => {
+    await page.goto("/create/rewards");
+    await expect(page.getByRole("heading", {level: 1, name: "Which kind of reward?"})).toBeVisible();
+    await expect(page.getByRole("region", {name: "Simple reward"}).getByTestId("fee-line")).toContainText("TBZE");
+    await expect(page.getByRole("region", {name: "Compounded reward"}).getByTestId("fee-line")).toContainText("TBZE");
+    await expect(page.getByTestId("existing-reward-row")).toHaveCount(3);
 
-    const box = await panel.boundingBox();
-    expect(box?.width).toBeGreaterThan(300);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
+    await page.goto("/create/grow");
+    await expect(page.getByRole("heading", {level: 1, name: "Who do you want to reach?"})).toBeVisible();
+    await expect(page.getByRole("link", {name: /Send to a list of wallets/})).toHaveAttribute("href", "/multisend");
 });
 
-test("the home fits a 390 px phone", async ({page}) => {
-    await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/");
-    await expect(page.getByTestId("goal-createToken")).toContainText("25,000 TBZE");
-
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
-});
-
-test("/manage without a wallet shows the empty state", async ({page}) => {
+test("old URLs redirect: /manage to /tokens, /playbooks home", async ({page}) => {
     await page.goto("/manage");
+    await expect(page).toHaveURL(/\/tokens$/);
+    await expect(page.getByRole("heading", {name: "Your tokens"})).toBeVisible();
+
+    await page.goto("/playbooks?id=launch");
+    await expect(page).toHaveURL(/\/\?id=launch$/);
+    await expect(page.getByRole("heading", {level: 1, name: "What are you building today?"})).toBeVisible();
+});
+
+test("the nav reads Create · Tokens · Rewards", async ({page}) => {
+    await page.goto("/create/rewards");
+    const nav = page.getByRole("navigation", {name: "Main"}).first();
+    await expect(nav.getByRole("link", {name: "Create", exact: true})).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", {name: "Tokens", exact: true})).toHaveAttribute("href", "/tokens");
+    await expect(nav.getByRole("link", {name: "Rewards", exact: true})).toHaveAttribute("href", "/rewards");
+});
+
+test("/tokens without a wallet shows the empty state", async ({page}) => {
+    await page.goto("/tokens");
 
     await expect(page.getByRole("heading", {name: "Your tokens"})).toBeVisible();
     await expect(page.getByText("No tokens yet.")).toBeVisible();
     await expect(page.getByRole("button", {name: "Create your first token"})).toBeVisible();
     await expect(page.getByText("You haven't created a market or pool yet.")).toBeVisible();
-});
-
-test("/manage fits a 390 px phone", async ({page}) => {
-    await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/manage");
-    await expect(page.getByRole("button", {name: "Create your first token"})).toBeVisible();
-
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test("the navbar's Apps menu lists the other BZE apps with their icons, Explorer on the testnet explorer", async ({page}) => {

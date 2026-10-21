@@ -4,21 +4,13 @@ import {expect, test} from "./support/mock-network";
 // fixtures/lcd/burner.raffles.json has no raffle running, so `?denom=ubze` answers question 1
 // with the native TBZE.
 
-test("the home offers Run a burning raffle under Grow the community", async ({page}) => {
-    await page.goto("/");
+test("Grow a community offers Run a burning raffle", async ({page}) => {
+    await page.goto("/create/grow");
 
-    const card = page.getByTestId("goal-raffle");
-    await expect(card).toContainText("Run a burning raffle");
-    await expect(card).toContainText("Burning raffle · no fee");
-});
-
-test("the search finds it in everyday words", async ({page}) => {
-    await page.goto("/");
-    await expect(page.getByTestId("goal-createToken")).toBeVisible();
-
-    await page.getByRole("combobox", {name: "What do you want to do?"}).fill("lottery");
-    const options = page.getByRole("listbox", {name: "Search results"}).getByRole("option");
-    await expect(options.nth(0)).toContainText("Run a burning raffle");
+    const card = page.getByRole("link", {name: /Run a burning raffle/});
+    await expect(card).toContainText("Burner raffle");
+    await expect(card).toContainText("No fee");
+    await expect(card).toHaveAttribute("href", "/raffle/new");
 });
 
 test("asks six questions, shows the warnings, and asks to connect before signing", async ({page}) => {

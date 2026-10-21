@@ -27,7 +27,7 @@ describe("nextActions", () => {
             expect(target(r.recommended)).toEqual({ href: `/pool/new?base=${encodeURIComponent(HONEY)}` });
             expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/token?denom=${encodeURIComponent(HONEY)}` });
             expect(target(byKey(r, "registry"))).toEqual({ href: `/official?denom=${encodeURIComponent(HONEY)}` });
-            expect(target(byKey(r, "brandKit"))).toEqual({ href: `/manage/token?denom=${encodeURIComponent(HONEY)}&tab=profile` });
+            expect(target(byKey(r, "brandKit"))).toEqual({ href: `/tokens/token?denom=${encodeURIComponent(HONEY)}&tab=profile` });
         });
 
         it("skips a pool that already exists (either side) and promotes the first remaining step; the market fills the fourth slot", () => {

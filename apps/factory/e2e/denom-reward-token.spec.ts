@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {expect, test} from "./support/mock-network";
 
-// The holder rewards panel on /denom-reward/token (BFE-158) without a wallet, against the testnet
+// The compounded reward panel on /denom-reward/token (BFE-158) without a wallet, against the testnet
 // fixtures: the noadmin denom reward with its two daily prizes, and testusd, which has none (the
 // chain answers 404, given here with network.use), with the fee from fixtures/lcd/rewards.params.json.
 
@@ -14,8 +14,8 @@ const DENOM_REWARD = JSON.parse(readFileSync(join(__dirname, "fixtures", "lcd", 
 test("a live denom reward: Live badge, its daily prizes and Airdrop now", async ({page}) => {
     await page.goto(`/denom-reward/token?denom=${NOADMIN}`);
 
-    const panel = page.getByRole("region", {name: "Holder rewards"});
-    await expect(panel.getByText("Holder rewards", {exact: true})).toBeVisible();
+    const panel = page.getByRole("region", {name: "Compounded reward"});
+    await expect(panel.getByText("Compounded reward", {exact: true})).toBeVisible();
     await expect(panel.getByText("Live", {exact: true})).toBeVisible();
 
     const rows = panel.getByRole("table", {name: "Daily prizes"}).getByTestId("holder-schedule-row");
@@ -36,11 +36,11 @@ test("a token without one: Make it stakable, with the fee", async ({page, networ
     });
     await page.goto(`/denom-reward/token?denom=${encodeURIComponent(TESTUSD)}`);
 
-    const panel = page.getByRole("region", {name: "Holder rewards"});
+    const panel = page.getByRole("region", {name: "Compounded reward"});
     await expect(panel.getByText(/Holders have no reason to stake TUSDC yet/)).toBeVisible();
     await expect(panel.getByText("Live", {exact: true})).toHaveCount(0);
     const pay = panel.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Holder rewards fee")).toBeVisible();
+    await expect(pay.getByText("Compounded reward fee")).toBeVisible();
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
     await expect(panel.getByRole("button", {name: "Make TUSDC stakable"})).toBeDisabled();
     await expect(panel.getByText("Connect your wallet to make it stakable.")).toBeVisible();

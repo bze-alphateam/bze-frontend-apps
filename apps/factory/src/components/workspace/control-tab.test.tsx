@@ -201,7 +201,7 @@ describe("Lock dialog", () => {
         renderTab(p);
         const dialog = within(await screen.findByRole("dialog", { name: "Lock HONEY forever?" }));
         await userEvent.click(dialog.getByRole("button", { name: "Not now, keep control" }));
-        expect(p.goTo).toHaveBeenCalledWith(`/manage/token?denom=${encodeURIComponent(DENOM)}&tab=control`);
+        expect(p.goTo).toHaveBeenCalledWith(`/tokens/token?denom=${encodeURIComponent(DENOM)}&tab=control`);
     });
 
     it.each([
@@ -216,8 +216,8 @@ describe("Lock dialog", () => {
     });
 });
 
-describe("Hand over control", () => {
-    const card = () => within(screen.getByRole("region", { name: "Hand over control" }));
+describe("Transfer admin", () => {
+    const card = () => within(screen.getByRole("region", { name: "Transfer admin" }));
 
     it.each([
         ["", "Recipient address is required."],
@@ -229,7 +229,7 @@ describe("Hand over control", () => {
         if (value) await userEvent.type(input, value);
         await userEvent.click(input);
         await userEvent.tab();
-        expect(card().getByRole("button", { name: "Hand over control" })).toBeDisabled();
+        expect(card().getByRole("button", { name: "Transfer admin" })).toBeDisabled();
         expect(input).toHaveAttribute("aria-invalid", "true");
         if (message) expect(card().getByText(message)).toBeInTheDocument();
     });
@@ -238,7 +238,7 @@ describe("Hand over control", () => {
         const p = props();
         renderTab(p);
         await userEvent.type(card().getByPlaceholderText("bze1…"), `  ${OTHER} `);
-        await userEvent.click(card().getByRole("button", { name: "Hand over control" }));
+        await userEvent.click(card().getByRole("button", { name: "Transfer admin" }));
         const [msgs] = m.tx.mock.calls[0];
         expect(msgs[0].typeUrl).toBe("/bze.tokenfactory.MsgChangeAdmin");
         expect(msgs[0].value).toEqual({ creator: OWNER, denom: DENOM, newAdmin: OTHER });
@@ -258,13 +258,13 @@ describe("ControlTab states", () => {
         expect(locked).toHaveTextContent("Supply provably fixed");
         expect(locked).toHaveTextContent("Nobody can ever mint, edit or brand HONEY again.");
         expect(locked).toHaveTextContent("Trading, pools and markets");
-        expect(screen.queryByRole("region", { name: "Hand over control" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Transfer admin" })).not.toBeInTheDocument();
     });
 
     it("not admin: who controls the token now", () => {
         renderTab(props({ adminState: "not-admin", admin: OTHER }));
         expect(screen.getByTestId("control-not-admin")).toHaveTextContent(`${OTHER} controls HONEY now.`);
-        expect(screen.queryByRole("region", { name: "Lock the supply" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Renounce admin" })).not.toBeInTheDocument();
     });
 
     it("unknown: Retry reloads the admins", async () => {

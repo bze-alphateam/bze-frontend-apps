@@ -6,7 +6,7 @@ import {expect, test} from "./support/mock-network";
 
 const TUSDC_TBZE_LP = encodeURIComponent("ulp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze");
 
-test("shows the preselected LP token, the staking program fee and the connect message", async ({page}) => {
+test("shows the preselected LP token, the simple reward fee and the connect message", async ({page}) => {
     await page.goto(`/reward/new?staking=${TUSDC_TBZE_LP}`);
 
     await expect(page.getByRole("heading", {name: /Run a campaign with an end date/})).toBeVisible();
@@ -20,14 +20,13 @@ test("shows the preselected LP token, the staking program fee and the connect me
     await expect(page.getByRole("region", {name: "Rules for stakers"})).toHaveAttribute("data-state", "todo");
 
     const pay = page.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Staking program fee")).toBeVisible();
+    await expect(pay.getByText("Simple reward fee")).toBeVisible();
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await expect(page.getByRole("button", {name: "Start the program"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet to create this reward.")).toBeVisible();
 
-    await page.getByRole("button", {name: "Which reward fits?"}).click();
-    await expect(page.getByRole("dialog", {name: "Which reward fits?"})).toBeVisible();
+    await expect(page.getByRole("link", {name: "Compare the kinds of reward"})).toHaveAttribute("href", "/create/rewards");
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {

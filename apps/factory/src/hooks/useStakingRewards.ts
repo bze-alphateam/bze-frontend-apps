@@ -13,7 +13,7 @@ export interface StakingRewardsState {
 }
 
 // ui-kit's getStakingRewards() turns a failed query into an empty list, which would show
-// "No staking programs yet" while the node is down. Same request (newest first, limit 1000),
+// "No simple rewards yet" while the node is down. Same request (newest first, limit 1000),
 // but the error reaches the caller.
 async function fetchStakingRewards(): Promise<StakingRewardSDKType[]> {
     const client = await getRestClient()

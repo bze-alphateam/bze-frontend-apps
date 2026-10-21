@@ -71,7 +71,7 @@ export function useTokenSetup(denom: string, { admin, supply }: TokenSetupOption
         denomReward,
         pools,
         hasMarket,
-        /** Something is staked in the token's holder rewards: airdrops have someone to reach. */
+        /** Something is staked in the token's compounded reward: airdrops have someone to reach. */
         hasStakers: Boolean(denomReward && new BigNumber(denomReward.staked_amount || 0).gt(0)),
     }
 }

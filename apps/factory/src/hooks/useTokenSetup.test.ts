@@ -90,7 +90,7 @@ describe("useTokenSetup", () => {
         expect(result.items.find(i => i.key === "description")?.action?.label).toBe("Edit");
     });
 
-    it("holder rewards: partial without a running schedule, unknown on error", () => {
+    it("compounded reward: partial without a running schedule, unknown on error", () => {
         setFacts({ denomReward: { denomReward: { staked_amount: "0" }, schedules: [schedule(10, 10)], hasError: false } });
         let result = run();
         expect(result.items.find(i => i.key === "holderRewards")).toMatchObject({
@@ -131,7 +131,7 @@ describe("useTokenSetup", () => {
         expect(stateOf(result, "pool")).toBe("todo");
         expect(stateOf(result, "market")).toBe("todo");
         expect(result.items.find(i => i.key === "pool")?.href).toBe(
-            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Fmanage%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok%26tab%3Dtrading&returnLabel=TOK",
+            "/pool/new?base=factory%2Fbze1owner%2Futok&return=%2Ftokens%2Ftoken%3Fdenom%3Dfactory%252Fbze1owner%252Futok%26tab%3Dtrading&returnLabel=TOK",
         );
     });
 

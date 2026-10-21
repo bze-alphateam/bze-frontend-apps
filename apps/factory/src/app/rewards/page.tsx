@@ -6,7 +6,7 @@ import { GradientText, PageContainer, Shimmer, getAllDenomRewards } from '@bze/b
 import { BandTab, BandTabList } from '@/components/ui/band-tabs'
 import { InnerHero } from '@/components/ui/inner-hero'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { RewardInfoButton } from '@/components/rewards/reward-info-button'
+import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { HolderListState, HolderRewardsTab } from '@/components/rewards/holder-rewards-tab'
 import { StakingProgramsList } from '@/components/rewards/staking-programs-list'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
@@ -54,15 +54,15 @@ function RewardsDirectory() {
             <InnerHero
                 title={<>Rewards on <GradientText>BeeZee</GradientText></>}
                 subtitle="Anyone can add prizes or airdrop to any of these."
-                actions={<RewardInfoButton withLabel={true} />}
+                actions={<RewardKindsLink withLabel={true} />}
             >
                 <BandTabList label="Rewards">
                     <BandTab value="holder">
-                        Holder rewards
+                        Compounded rewards
                         {state.status === 'ready' && <CountPill active={view.tab === 'holder'}>{state.list.length}</CountPill>}
                     </BandTab>
                     <BandTab value="programs">
-                        Staking programs
+                        Simple rewards
                         {!programs.isLoading && !programs.hasError && (
                             // Phones get just the count: both labels must fit 390 px, or the selected
                             // second tab pushes the whole page sideways.

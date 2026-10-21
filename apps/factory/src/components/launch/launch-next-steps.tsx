@@ -151,7 +151,7 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
     const registry = setup.items.find(item => item.key === 'registry')
 
     const poolFeeHint = useFeeHint('Pool creation fee', fees.createMarketFee)
-    const rewardsFeeHint = useFeeHint('Holder rewards fee', fees.createDenomRewardFee)
+    const rewardsFeeHint = useFeeHint('Compounded reward fee', fees.createDenomRewardFee)
 
     const steps: NextStep[] = [
         {
@@ -173,7 +173,7 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
         {
             key: 'rewards',
             title: 'Reward the people who hold it',
-            why: `Turn on holder rewards so anyone who stakes ${ticker} shares daily prizes. You fund the prizes, in ${ticker} or any token you hold.`,
+            why: `Turn on a compounded reward so anyone who stakes ${ticker} shares daily prizes. You fund the prizes, in ${ticker} or any token you hold.`,
             hint: rewardsFeeHint,
             action: { label: 'Set up rewards', href: workspaceHref(denom, 'rewards') },
             done: doneOf('holderRewards'),
@@ -187,9 +187,9 @@ export function LaunchNextSteps({ denom, txHash, name, symbol, supply, reset, re
         }] : []),
         {
             key: 'lock',
-            title: 'Last: lock the supply (optional)',
+            title: 'Last: renounce admin (optional)',
             why: `When everything above is done, lock ${ticker} so buyers see Fixed supply. It can never be undone.`,
-            action: { label: 'Review and lock', href: `${workspaceHref(denom, 'control')}&lock=1` },
+            action: { label: 'Review and renounce', href: `${workspaceHref(denom, 'control')}&lock=1` },
             done: isReading ? undefined : false,
         },
     ]

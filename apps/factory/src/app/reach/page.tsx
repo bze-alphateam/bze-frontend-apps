@@ -217,7 +217,7 @@ function ReachContent() {
     const aside = (
         <>
             <OutcomePanel
-                techTag={`Holder rewards · ${mode === 'once' ? 'airdrop' : 'daily prize'} on ${communityTicker}`}
+                techTag={`Compounded reward · ${mode === 'once' ? 'airdrop' : 'daily prize'} on ${communityTicker}`}
             >
                 {mode === 'once' && amountText ? (
                     <Text data-testid="reach-outcome">

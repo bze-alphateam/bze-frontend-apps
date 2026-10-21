@@ -208,7 +208,7 @@ describe("Allow limit orders (/market/new)", () => {
     });
 
     it("carries the return path to the next step and back", async () => {
-        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze", return: "/manage/token?denom=utok&tab=trading", returnLabel: "TOK" });
+        queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze", return: "/tokens/token?denom=utok&tab=trading", returnLabel: "TOK" });
         renderPage();
         expect(screen.getByRole("button", { name: /Back to TOK/ })).toBeInTheDocument();
         await userEvent.click(createButton());
@@ -217,9 +217,9 @@ describe("Allow limit orders (/market/new)", () => {
         const href = navigateMock.mock.calls[0][0] as string;
         const params = new URLSearchParams(href.split("?")[1]);
         expect(params.get("base")).toBe("utok");
-        expect(params.get("return")).toBe("/manage/token?denom=utok&tab=trading");
+        expect(params.get("return")).toBe("/tokens/token?denom=utok&tab=trading");
 
         await userEvent.click(screen.getByRole("button", { name: "Back to TOK" }));
-        expect(navigateMock).toHaveBeenLastCalledWith("/manage/token?denom=utok&tab=trading");
+        expect(navigateMock).toHaveBeenLastCalledWith("/tokens/token?denom=utok&tab=trading");
     });
 });

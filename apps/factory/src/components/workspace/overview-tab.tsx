@@ -208,11 +208,11 @@ export function OverviewTab({ asset, admin, adminState, supply, supplyDisplay, i
                         <Box color="hg.warning" mt="2px" flexShrink={0} aria-hidden><LuTriangleAlert size={18} /></Box>
                         <Text fontSize="14px" lineHeight="1.55" color="fg">
                             Buyers see {ticker} as Mintable. You can still mint more. When the setup is done,
-                            locking the supply under Control shows Fixed supply everywhere. It can&apos;t be undone.
+                            locking the supply under Permissions shows Fixed supply everywhere. It can&apos;t be undone.
                         </Text>
                     </HStack>
                     <Button size="md" variant="ghost" color="hg.warning.text" fontWeight="600" onClick={() => goTo(workspaceHref(asset.denom, 'control'))}>
-                        Open Control →
+                        Open Permissions →
                     </Button>
                 </HStack>
             )}

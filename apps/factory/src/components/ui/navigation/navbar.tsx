@@ -1,17 +1,23 @@
 'use client';
 
 import NextLink from 'next/link'
+import {type ComponentProps, forwardRef} from 'react'
 import {AppHeader, AppHeaderNavItem, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {PendingTx, usePendingTx} from "@/contexts/pending-tx";
 
 const navItems = [
     { label: 'Create', href: '/' },
-    { label: 'Manage', href: '/manage' },
+    { label: 'Tokens', href: '/tokens' },
+    { label: 'Rewards', href: '/rewards' },
 ]
 
-// Every other page lights up the item it belongs to.
+// Every other page lights up the item it belongs to: wizards and Choose screens are Create, the
+// token page and the registry guide are Tokens, every reward page is Rewards.
 const navSubitems: { [key: string]: string } = {
+    '/create/market': '/',
+    '/create/rewards': '/',
+    '/create/grow': '/',
     '/token/new': '/',
     '/market/new': '/',
     '/pool/new': '/',
@@ -19,15 +25,23 @@ const navSubitems: { [key: string]: string } = {
     '/reward/new': '/',
     '/multisend': '/',
     '/reach': '/',
-    '/playbooks': '/',
     '/raffle/new': '/',
-    '/manage/token': '/manage',
-    '/rewards': '/manage',
-    '/denom-reward/schedule': '/manage',
-    '/denom-reward/airdrop': '/manage',
-    '/denom-reward/token': '/manage',
-    '/official': '/manage',
+    '/tokens/token': '/tokens',
+    '/official': '/tokens',
+    '/reward/extend': '/rewards',
+    '/denom-reward/token': '/rewards',
+    '/denom-reward/schedule': '/rewards',
+    '/denom-reward/airdrop': '/rewards',
 }
+
+/**
+ * Nav links without prefetch. The Tokens and Rewards items point at pages that read their view from
+ * the query; prefetching the bare path of the page being shown stopped its own `router.replace`
+ * of the query (the /rewards filters) from landing (BFE-260 e2e).
+ */
+const NavLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof NextLink>>(function NavLink(props, ref) {
+    return <NextLink ref={ref} prefetch={false} {...props} />
+})
 
 /** The nav item a wizard page belongs to. */
 const ownerOf = (href: string) => {
@@ -65,7 +79,7 @@ export const TopNavBar = () => {
         <AppHeader
             app="factory"
             appName="BeeZee Factory"
-            linkAs={NextLink}
+            linkAs={NavLink}
             items={withPendingBadges(navItems.map((item) => ({
                 ...item,
                 active: currentPathName === item.href || item.href === navSubitems[currentPathName],

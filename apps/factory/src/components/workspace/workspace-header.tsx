@@ -16,7 +16,7 @@ function statusLine(state: AdminState, admin?: string): string {
         case 'unknown':
             return "Couldn't check who controls it"
         default:
-            return `Control was handed to ${truncateAddress(admin ?? '')}`
+            return `Admin transferred to ${truncateAddress(admin ?? '')}`
     }
 }
 

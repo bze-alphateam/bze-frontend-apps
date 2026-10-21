@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import type { DenomReward } from '@bze/bze-ui-kit'
 
 // The rewards directory (`/rewards?tab=…&filter=…&sort=…&status=…`, BFE-153 / BFE-161): its URL state and the
-// filter and sort of the Holder rewards rows. Pure, so the page stays a thin view over it.
+// filter and sort of the Compounded rewards rows. Pure, so the page stays a thin view over it.
 
 export const REWARDS_PATH = '/rewards'
 
@@ -20,7 +20,7 @@ export interface RewardsView {
     tab: RewardsTab;
     filter: HolderFilter;
     sort: HolderSort;
-    /** Staking programs tab: which programs to show. */
+    /** Simple rewards tab: which programs to show. */
     status: ProgramStatus;
 }
 

@@ -212,7 +212,7 @@ describe("SupplyTab burning raffle card", () => {
         const params = new URLSearchParams(href.split("?")[1]);
         expect(href.startsWith("/raffle/new?")).toBe(true);
         expect(params.get("denom")).toBe(DENOM);
-        expect(params.get("return")).toBe(`/manage/token?denom=${encodeURIComponent(DENOM)}&tab=supply`);
+        expect(params.get("return")).toBe(`/tokens/token?denom=${encodeURIComponent(DENOM)}&tab=supply`);
         expect(params.get("returnLabel")).toBe("TOK");
     });
 

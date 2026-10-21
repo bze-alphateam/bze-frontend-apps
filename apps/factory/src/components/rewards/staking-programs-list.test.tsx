@@ -249,18 +249,18 @@ describe("StakingProgramsList", () => {
         m.state = { rewards: [], isLoading: false, hasError: true };
         render(<ChakraProvider value={defaultSystem}><StakingProgramsList /></ChakraProvider>);
 
-        expect(screen.getByText("Couldn't load the staking programs")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load the simple rewards")).toBeInTheDocument();
         expect(screen.queryByTestId("staking-programs-empty")).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Retry" }));
         expect(m.refresh).toHaveBeenCalledTimes(1);
     });
 
     it("offers a campaign when there is none, and New program, both to the create form", async () => {
-        renderList([], { returnTo: { href: "/manage", label: "Manage" } });
+        renderList([], { returnTo: { href: "/tokens", label: "Tokens" } });
 
-        expect(screen.getByTestId("staking-programs-empty")).toHaveTextContent("No staking programs yet.");
+        expect(screen.getByTestId("staking-programs-empty")).toHaveTextContent("No simple rewards yet.");
         await userEvent.click(screen.getByRole("button", { name: "Run a campaign" }));
-        expect(m.navigate).toHaveBeenLastCalledWith("/reward/new?return=%2Fmanage&returnLabel=Manage");
+        expect(m.navigate).toHaveBeenLastCalledWith("/reward/new?return=%2Ftokens&returnLabel=Tokens");
 
         await userEvent.click(screen.getByRole("button", { name: "New program" }));
         expect(m.navigate).toHaveBeenCalledTimes(2);
@@ -272,7 +272,7 @@ describe("StakingProgramsList", () => {
             newProgramHref: "/reward/new?staking=x",
         });
 
-        expect(screen.getByTestId("staking-programs-empty")).toHaveTextContent("No staking programs with TOK yet.");
+        expect(screen.getByTestId("staking-programs-empty")).toHaveTextContent("No simple rewards with TOK yet.");
         await userEvent.click(screen.getByRole("button", { name: "New program" }));
         expect(m.navigate).toHaveBeenCalledWith("/reward/new?staking=x");
     });

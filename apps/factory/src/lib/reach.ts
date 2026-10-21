@@ -24,7 +24,7 @@ interface AssetInfo {
 }
 
 /**
- * The communities to offer: holder rewards with stakers only (an airdrop without stakers fails
+ * The communities to offer: compounded reward with stakers only (an airdrop without stakers fails
  * with 5018 and a daily prize pays nobody), most staked first by USD value when both prices are
  * known, else by display amount. The wallet's own tokens stay in, marked.
  */

@@ -6,7 +6,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { Asset } from "@bze/bze-ui-kit";
 
 // Drive the panel off its data hooks; the pay panel, tx layer and wallet are stubbed so the test
-// asserts the panel's states (no holder rewards / live / query error) and its links only.
+// asserts the panel's states (no compounded reward / live / query error) and its links only.
 const { useDenomRewardMock, navigateMock, txMock, useChainMock } = vi.hoisted(() => ({
     useDenomRewardMock: vi.fn(),
     navigateMock: vi.fn(),
@@ -57,7 +57,7 @@ const TOKEN = {
 } as unknown as Asset;
 const ENC = encodeURIComponent(TOKEN.denom);
 
-const BACK = { href: `/manage/token?denom=${ENC}&tab=rewards`, label: "TOK" };
+const BACK = { href: `/tokens/token?denom=${ENC}&tab=rewards`, label: "TOK" };
 const RETURN = `return=${encodeURIComponent(BACK.href)}&returnLabel=TOK`;
 
 function renderPanel(returnTo?: typeof BACK) {
@@ -98,18 +98,18 @@ beforeEach(() => {
     useChainMock.mockReset().mockReturnValue({ address: "bze1someone" });
 });
 
-describe("HolderRewardsPanel: no holder rewards yet", () => {
+describe("HolderRewardsPanel: no compounded reward yet", () => {
     it("explains it, shows the values that will be frozen and the fee", () => {
         useDenomRewardMock.mockReturnValue(state());
         renderPanel();
 
-        expect(screen.getByText("Holder rewards")).toBeInTheDocument();
+        expect(screen.getByText("Compounded reward")).toBeInTheDocument();
         expect(screen.queryByText("Live")).not.toBeInTheDocument();
         expect(screen.getByText(/Holders have no reason to stake TOK yet/)).toHaveTextContent("creating it gives no special rights");
         expect(screen.getByText("7 days")).toBeInTheDocument();
         expect(screen.getByText("No minimum")).toBeInTheDocument();
         expect(screen.getByText("Set by the chain and fixed when created.")).toBeInTheDocument();
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Holder rewards fee");
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Compounded reward fee");
         expect(screen.getByTestId("pay-panel")).toHaveAttribute("data-tx-kind", "create-denom-reward");
         expect(screen.getByRole("button", { name: "Make TOK stakable" })).toBeEnabled();
     });
@@ -242,12 +242,12 @@ describe("HolderRewardsPanel: live", () => {
 });
 
 describe("HolderRewardsPanel: other states", () => {
-    it("never offers to create holder rewards when the state is unknown", async () => {
+    it("never offers to create a compounded reward when the state is unknown", async () => {
         const s = state({ hasError: true });
         useDenomRewardMock.mockReturnValue(s);
         renderPanel();
 
-        expect(screen.getByText(/Couldn't load the holder rewards/)).toBeInTheDocument();
+        expect(screen.getByText(/Couldn't load the compounded reward/)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Make TOK stakable" })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
         expect(s.refresh).toHaveBeenCalled();
@@ -261,12 +261,11 @@ describe("HolderRewardsPanel: other states", () => {
         expect(screen.queryByRole("button", { name: "Make TOK stakable" })).not.toBeInTheDocument();
     });
 
-    it("ⓘ opens Which reward fits? for this token", async () => {
+    it("ⓘ links to the reward kinds compared, for this token", () => {
         useDenomRewardMock.mockReturnValue(state({ denomReward: dr }));
         renderPanel();
 
-        await userEvent.click(screen.getByRole("button", { name: "Which reward fits?" }));
-        const dialog = within(await screen.findByRole("dialog", { name: "Which reward fits?" }));
-        expect(dialog.getByText(/Make TOK stakable/)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Compare the kinds of reward" }))
+            .toHaveAttribute("href", `/create/rewards?denom=${ENC}`);
     });
 });
