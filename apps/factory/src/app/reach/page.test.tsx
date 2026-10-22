@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,10 +6,16 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 
-// "Reach another community" off mocked hooks: every compounded reward on the chain, the picked one's
-// prizes, chain params, wallet and the affordability engine. The gift picker becomes a plain
-// button per denom; PayPanel has its own coverage and prints its rows here.
-const { AAA, MINE, GIFT, COLD, m, navigateMock, txMock, affordMock } = vi.hoisted(() => ({
+// "Reach another community" on mocked hooks: every compounded reward on the chain, the picked one's
+// prizes (with its refresh, the pre-sign read), chain params, the wallet, the affordability and fee
+// engines and the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store,
+// the Review step and the Done screen are real. The staked-token picker becomes a button per token
+// showing the page's row state; the gift picker a button per denom.
+type TxOpts = {
+    onBroadcast?: (hash: string) => void;
+    onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
+};
+const { AAA, MINE, GIFT, COLD, m, navigateMock, txMock, affordMock, refreshMock } = vi.hoisted(() => ({
     AAA: "factory/bze1other/aaa",
     MINE: "factory/bze1me/mine",
     GIFT: "factory/bze1me/gift",
@@ -17,16 +23,17 @@ const { AAA, MINE, GIFT, COLD, m, navigateMock, txMock, affordMock } = vi.hoiste
     m: {
         params: new URLSearchParams(),
         address: "bze1me" as string | undefined,
-        list: undefined as unknown[] | undefined,
-        isLoading: false,
+        list: [] as { staking_denom: string; staked_amount: string }[],
         prizes: {} as Record<string, unknown[]>,
+        hasCompounded: false,
     },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
     affordMock: vi.fn(),
+    refreshMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => m.params }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/reach", useSearchParams: () => m.params }));
 vi.mock("@/hooks/useNavigation", () => ({
     useNavigation: () => ({ navigate: navigateMock }),
     useNavigationWithParams: () => ({
@@ -36,22 +43,40 @@ vi.mock("@/hooks/useNavigation", () => ({
     }),
 }));
 vi.mock("@/hooks/useAllDenomRewards", () => ({
-    useAllDenomRewards: () => ({ list: m.list, isLoading: m.isLoading, hasError: false, retry: vi.fn() }),
+    useAllDenomRewards: () => ({ list: m.list, isLoading: false, hasError: false, retry: vi.fn() }),
 }));
 vi.mock("@/hooks/useDenomReward", () => ({
-    useDenomReward: (denom: string) => {
-        const dr = (m.list ?? []).find(d => (d as { staking_denom: string }).staking_denom === denom);
-        return { denomReward: dr, schedules: [], prizes: m.prizes[denom] ?? [], isLoading: false, hasError: false, refresh: vi.fn() };
-    },
-}));
-vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock }) }));
-vi.mock("@/hooks/useFeePayment", () => ({
-    useFeePayment: (fee?: { denom: string; amount: string }) => ({
-        canPayFee: Boolean(fee),
-        estimate: { resolvedFee: fee },
+    useDenomReward: (denom: string) => ({
+        denomReward: m.list.find(d => d.staking_denom === denom),
+        schedules: [],
+        prizes: m.prizes[denom] ?? [],
+        isLoading: false,
+        hasError: false,
+        refresh: refreshMock,
     }),
 }));
-vi.mock("@/components/guided/pay-panel", () => ({
+vi.mock("@/hooks/useTokenSetup", () => ({
+    useTokenSetup: () => ({
+        isLoading: false,
+        items: [],
+        pools: [],
+        hasMarket: false,
+        denomReward: m.hasCompounded ? {} : undefined,
+        hasStakers: false,
+    }),
+}));
+vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock, progressTrack: "" }) }));
+vi.mock("@/hooks/useFeePayment", () => ({
+    useFeePayment: (fee?: { denom: string; amount: string }) => ({
+        canPayFee: true,
+        isLoading: false,
+        method: "native",
+        estimate: { resolvedFee: fee },
+        gasFee: { denom: "ubze", amount: new BigNumber(0), displayAmount: new BigNumber(0), ticker: "BZE", isLoading: false },
+    }),
+}));
+vi.mock("@/components/guided/pay-panel", async (importActual) => ({
+    ...await importActual<typeof import("@/components/guided/pay-panel")>(),
     PayPanel: ({ rows, moduleFee, txKind }: {
         rows: { label: string; coin?: { denom: string; amount: string }; text?: string; info?: ReactNode }[];
         moduleFee?: { amount: string };
@@ -62,6 +87,24 @@ vi.mock("@/components/guided/pay-panel", () => ({
             {moduleFee && ` | module ${moduleFee.amount}`}
             {` | ${txKind}`}
             {rows.map(r => r.info && <p key={r.label}>{r.info}</p>)}
+        </div>
+    ),
+}));
+vi.mock("@/components/pickers/staked-token-picker", () => ({
+    StakedTokenPicker: ({ mode, onChange, stateOf }: {
+        mode: string;
+        onChange: (a: { denom: string }) => void;
+        stateOf: (a: unknown, dr?: unknown) => { text: string; disabled?: boolean } | undefined;
+    }) => (
+        <div data-testid="staked-picker" data-mode={mode}>
+            {[AAA, COLD, MINE].map(d => {
+                const state = stateOf({ denom: d, decimals: 6 }, m.list.find(x => x.staking_denom === d));
+                return (
+                    <button key={d} disabled={state?.disabled} onClick={() => onChange({ denom: d })}>
+                        {`Stake ${d}${state ? ` · ${state.text}` : ""}`}
+                    </button>
+                );
+            })}
         </div>
     ),
 }));
@@ -87,215 +130,274 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         uatom: { denom: "uatom", ticker: "ATOM", decimals: 6, logo: "" },
     };
     const fee = { denom: "ubze", amount: "25000000000" };
+    const { default: BN } = await import("bignumber.js");
     return {
         ...actual,
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
-        useAssets: () => ({ getAsset: (denom: string) => assets[denom] }),
-        useAssetsContext: () => ({ usdPricesMap: new Map() }),
-        useMaxSpendable: () => ({ amount: new BigNumber(10_000_000), inputValue: "10", balance: new BigNumber(10_000_000) }),
+        useMaxSpendable: () => ({ amount: new BN(10_000_000), inputValue: "10", balance: new BN(10_000_000) }),
         useCanAffordTx: (input: unknown) => affordMock(input),
+        useAssetPrice: () => ({ hasPrice: false, totalUsdValue: () => new BN(0), uAmountUsdValue: () => new BN(0) }),
         useCreationFees: () => ({
             fees: { addDenomRewardScheduleFee: fee, createDenomRewardPrizeFee: fee },
             denomRewardLimits: { maxPrizeDenomsPerDr: 2 },
             isLoading: false,
         }),
+        getSettings: () => ({ endpoints: { restEndpoint: "https://rest.test" } }),
+        getDexApp: () => ({ href: "https://dex.test" }),
+        getFactoryApp: () => ({ href: "https://factory.test" }),
         getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         getCommunitiesApp: () => ({ href: "https://communities.test" }),
         useToast: () => ({ toast: { success: vi.fn() } }),
+        TokenLogo: ({ symbol }: { symbol: string }) => <span>{symbol}</span>,
     };
 });
 
 import ReachPage from "./page";
+import { PendingTxProvider, createPendingTxStore } from "@/contexts/pending-tx";
 
 const dr = (denom: string, staked: string) => ({ staking_denom: denom, lock: 7, min_stake: "0", staked_amount: staked });
 const prize = (stake: string, denom: string) => ({ staking_denom: stake, prize_denom: denom, distributed_stake: "0", last_distribution_epoch: "0" });
 
-function renderPage() {
-    return render(<ReachPage />, {
-        wrapper: ({ children }: { children: ReactNode }) => (
-            <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
-        ),
-    });
-}
+const renderPage = () => {
+    let value: string | null = null;
+    const store = createPendingTxStore({ read: () => value, write: (v) => { value = v; } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+        <ChakraProvider value={defaultSystem}>
+            <PendingTxProvider store={store}>{children}</PendingTxProvider>
+        </ChakraProvider>
+    );
+    return render(<ReachPage />, { wrapper });
+};
 
 beforeEach(() => {
     m.params = new URLSearchParams();
     m.address = "bze1me";
     m.list = [dr(AAA, "100000000"), dr(COLD, "0"), dr(MINE, "500000000")];
-    m.isLoading = false;
     m.prizes = { [AAA]: [prize(AAA, "ubze")], [MINE]: [] };
+    m.hasCompounded = false;
     navigateMock.mockReset();
-    txMock.mockReset().mockImplementation(async (_msgs: unknown, opts: { onSuccess: (r: unknown) => void }) => {
-        opts.onSuccess({ txhash: "HASH1" });
+    refreshMock.mockReset().mockImplementation(async () => ({ denomReward: dr(AAA, "100000000"), schedules: [], prizes: m.prizes[AAA], hasError: false }));
+    txMock.mockReset().mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+        opts.onBroadcast?.("HASH1");
+        opts.onSuccess?.({ txhash: "HASH1", height: 12, code: 0 });
+        return true;
     });
     affordMock.mockReset().mockReturnValue({ canAfford: true, isLoading: false, message: "", shortfalls: [] });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
 });
 
-const question = (title: string) => screen.getByRole("region", { name: title });
-const payPanel = () => screen.getByTestId("pay-panel");
-const COMMUNITY = "Which community?";
-const GIVE = "What do you give them?";
-const MODE = "All at once, or a little every day?";
-const continueIn = (title: string) => userEvent.click(within(question(title)).getByRole("button", { name: "Continue" }));
+afterEach(() => vi.unstubAllGlobals());
 
-async function pickCommunity(ticker = "AAA") {
-    await userEvent.click(screen.getByRole("radio", { name: ticker }));
-    await continueIn(COMMUNITY);
+const step = (title: string) => screen.getByRole("region", { name: title });
+const button = (region: HTMLElement, name: string | RegExp) => within(region).getByRole("button", { name });
+const payPanel = () => screen.getByTestId("pay-panel");
+const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Record<string, unknown> }[];
+
+async function pickCommunity(denom = AAA) {
+    await userEvent.click(within(step("Community")).getByText(new RegExp(`^Stake ${denom}`)));
+    await userEvent.click(button(step("Community"), "Continue"));
 }
 
 async function giveAmount(gift: "BZE" | "ATOM" | "GIFT" | "MINE", amount: string) {
     await userEvent.click(screen.getByText(`give ${gift}`));
-    await userEvent.type(screen.getByLabelText(/Amount|Per day/), amount);
-    await continueIn(GIVE);
+    await userEvent.type(within(step("Gift")).getByLabelText(/Amount/), amount);
+    await userEvent.click(button(step("Gift"), "Continue"));
 }
 
 describe("Reach another community", { timeout: 20_000 }, () => {
-    it("lists only the tokens with stakers, most staked first, with your own marked Yours", () => {
-        renderPage();
-        expect(screen.getByRole("heading", { name: "Reach another community" })).toBeInTheDocument();
+    describe("Community", () => {
+        it("the staked-token picker in hasCompounded mode; rows nobody stakes are disabled", () => {
+            renderPage();
+            expect(step("Community")).toHaveAttribute("data-state", "active");
+            expect(screen.getByText("Whose stakers do you want to reach?")).toBeInTheDocument();
+            expect(screen.getByTestId("staked-picker")).toHaveAttribute("data-mode", "hasCompounded");
+            expect(screen.getByText(`Stake ${AAA} · 100 staked`)).toBeEnabled();
+            expect(screen.getByText(`Stake ${COLD} · Nothing staked · airdrop waits`)).toBeDisabled();
+        });
 
-        const options = screen.getAllByTestId("community-option");
-        expect(options.map(o => o.getAttribute("aria-label"))).toEqual(["MINE", "AAA"]);
-        expect(options[0]).toHaveTextContent("Yours");
-        expect(options[0]).toHaveTextContent("500 MINE staked");
-        expect(options[1]).not.toHaveTextContent("Yours");
-        expect(options[1]).toHaveTextContent("Triple A");
+        it("summarises the stakers", async () => {
+            renderPage();
+            await pickCommunity();
+            expect(step("Community")).toHaveTextContent("AAA stakers · 100 staked");
+            expect(step("Gift")).toHaveAttribute("data-state", "active");
+        });
+
+        it("opened for a community nobody stakes (?community=): the reason, and no way on", () => {
+            m.params = new URLSearchParams({ community: COLD });
+            renderPage();
+            expect(step("Community")).toHaveAttribute("data-state", "active");
+            expect(screen.getByTestId("airdrop-blocker")).toHaveTextContent("Nobody is staking COLD yet");
+            expect(button(step("Community"), "Continue")).toBeDisabled();
+        });
+
+        it("preselects ?community= and ?gift=", () => {
+            m.params = new URLSearchParams({ community: AAA, gift: "uatom" });
+            renderPage();
+            expect(step("Community")).toHaveAttribute("data-state", "done");
+            expect(step("Community")).toHaveTextContent("AAA stakers · 100 staked");
+            expect(step("Gift")).toHaveAttribute("data-state", "active");
+            expect(screen.getByLabelText(/Amount \(ATOM\)/)).toBeInTheDocument();
+        });
     });
 
-    it("searches the communities", async () => {
-        renderPage();
-        await userEvent.type(screen.getByLabelText("Search communities"), "triple");
-        expect(screen.getAllByTestId("community-option").map(o => o.getAttribute("aria-label"))).toEqual(["AAA"]);
+    describe("Gift", () => {
+        it("a new prize token's fee and slot", async () => {
+            renderPage();
+            await pickCommunity();
+            await userEvent.click(screen.getByText("give ATOM"));
+            expect(screen.getByTestId("prize-slot-note")).toHaveTextContent("ATOM is a new prize token here: +25,000 BZE, uses 1 of the remaining 1 prize slots.");
+        });
+
+        it("blocks a new gift once the community's prize slots are full", async () => {
+            m.prizes[AAA] = [prize(AAA, "ubze"), prize(AAA, "ufoo")];
+            renderPage();
+            await pickCommunity();
+            await userEvent.click(screen.getByText("give ATOM"));
+            expect(within(step("Gift")).getByText(/already uses 2 prize tokens, the maximum of 2/)).toBeInTheDocument();
+            expect(button(step("Gift"), "Continue")).toBeDisabled();
+        });
+
+        it("warns when your own gift isn't stakable yet, with a link to make it stakable", async () => {
+            renderPage();
+            await pickCommunity();
+
+            await userEvent.click(screen.getByText("give BZE"));
+            expect(screen.queryByTestId("reach-stakable-tip")).not.toBeInTheDocument();
+            await userEvent.click(screen.getByText("give MINE"));
+            expect(screen.queryByTestId("reach-stakable-tip")).not.toBeInTheDocument();
+
+            await userEvent.click(screen.getByText("give GIFT"));
+            expect(screen.getByTestId("reach-stakable-tip")).toHaveTextContent("People who get GIFT can't stake it yet. Make GIFT stakable so they stay.");
+            expect(within(screen.getByTestId("reach-stakable-tip")).getByRole("link", { name: "Make GIFT stakable" }))
+                .toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(GIFT)}`);
+        });
     });
 
-    it("with nobody staking anywhere, points to multi-send", async () => {
-        m.list = [dr(COLD, "0")];
-        renderPage();
-        expect(screen.getByTestId("reach-empty")).toHaveTextContent("No token has stakers yet, so there is nobody to reach this way.");
-        await userEvent.click(screen.getByRole("button", { name: "Send to a list of wallets" }));
-        expect(navigateMock).toHaveBeenCalledWith("/multisend");
+    describe("How", () => {
+        it("once: the sentence, then Review signs MsgDistributeDenomRewards after rechecking the stake", async () => {
+            renderPage();
+            await pickCommunity();
+            await giveAmount("BZE", "200");
+            expect(screen.getByTestId("reach-sentence")).toHaveTextContent("200 BZE is split right now between everyone staking AAA, by how much each stakes.");
+            await userEvent.click(button(step("How"), "Continue"));
+            expect(step("How")).toHaveTextContent("Once, right now");
+
+            expect(screen.getByTestId("reach-outcome")).toHaveTextContent(
+                "200 BZE leaves your wallet now and is split between everyone staking AAA, based on how much each one stakes.",
+            );
+            expect(payPanel()).toHaveTextContent("The gift: 200000000 ubze, Prize fee: None | distribute-denom-rewards");
+            const review = step("Review");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("AAA stakers receive BZE");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Gifts can't be taken back");
+            expect(screen.getByTestId("reach-owner-note")).toHaveTextContent("This adds a prize to AAA's compounded reward. It doesn't make you its owner.");
+
+            await userEvent.click(button(review, "Send gift"));
+            expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            expect(refreshMock).toHaveBeenCalledOnce();
+            expect(sentMsgs().map(x => x.typeUrl)).toEqual(["/bze.rewards.MsgDistributeDenomRewards"]);
+            expect(sentMsgs()[0].value).toEqual({ creator: "bze1me", denom: AAA, prizeDenom: "ubze", amount: "200000000" });
+        });
+
+        it("every day: the sentence, the fee note, and MsgCreateDenomRewardSchedule for N days", async () => {
+            renderPage();
+            await pickCommunity();
+            await giveAmount("BZE", "2");
+            await userEvent.click(within(step("How")).getByRole("button", { name: /Every day for 30 days/ }));
+            const days = within(step("How")).getByLabelText("Days");
+            await userEvent.clear(days);
+            await userEvent.type(days, "10");
+            expect(screen.getByTestId("reach-sentence")).toHaveTextContent(
+                "2 BZE a day for 10 days (20 BZE in all), shared by everyone staking AAA that day. Days with nobody staking are skipped.",
+            );
+            expect(screen.getByTestId("reach-schedule-fee")).toBeInTheDocument();
+            await userEvent.click(button(step("How"), "Continue"));
+            expect(step("How")).toHaveTextContent("Every day for 10 days");
+
+            expect(payPanel()).toHaveTextContent("Locked for prizes: 20000000 ubze, Daily prize fee: 25000000000 ubze | module 25000000000 | create-denom-reward-schedule");
+            await userEvent.click(button(step("Review"), "Start daily gift"));
+            expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            expect(refreshMock).not.toHaveBeenCalled();
+            expect(sentMsgs()[0].typeUrl).toBe("/bze.rewards.MsgCreateDenomRewardSchedule");
+            expect(sentMsgs()[0].value).toEqual({ creator: "bze1me", denom: AAA, prizeDenom: "ubze", dailyAmount: "2000000", duration: "10" });
+        });
+
+        it("days out of range keep How open", async () => {
+            renderPage();
+            await pickCommunity();
+            await giveAmount("BZE", "2");
+            await userEvent.click(within(step("How")).getByRole("button", { name: /Every day/ }));
+            const days = within(step("How")).getByLabelText("Days");
+            await userEvent.clear(days);
+            await userEvent.type(days, "0");
+            expect(button(step("How"), "Continue")).toBeDisabled();
+        });
     });
 
-    it("all at once: airdrops the gift on the community, with the 1% example", async () => {
-        renderPage();
-        await pickCommunity();
-        expect(within(question(COMMUNITY)).getByText("AAA stakers · 100 AAA staked")).toBeInTheDocument();
+    describe("Review", () => {
+        async function toReview(gift: "BZE" | "ATOM" = "BZE") {
+            await pickCommunity();
+            await giveAmount(gift, "5");
+            await userEvent.click(button(step("How"), "Continue"));
+        }
 
-        await userEvent.click(screen.getByText("give BZE"));
-        await userEvent.type(screen.getByLabelText(/Amount/), "200");
-        expect(screen.getByTestId("reach-example")).toHaveTextContent("Split by stake: someone with 1% of the staked AAA gets 2 BZE.");
-        await continueIn(GIVE);
-        await continueIn(MODE);
+        it("charges the new prize fee, with the slot text, when the gift is new to the community", async () => {
+            renderPage();
+            await toReview("ATOM");
+            expect(payPanel()).toHaveTextContent("The gift: 5000000 uatom, New prize fee: 25000000000 ubze | module 25000000000");
+            expect(within(step("Review")).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("New prize fee");
+            expect(button(step("Review"), "Send gift")).toBeEnabled();
+        });
 
-        expect(screen.getByTestId("reach-outcome")).toHaveTextContent(
-            "200 BZE leaves your wallet now and is split between everyone staking AAA, based on how much each one stakes. It can't be taken back. You don't need to own AAA or ask its creator.",
-        );
-        expect(screen.getByText("Compounded reward · airdrop on AAA")).toBeInTheDocument();
-        expect(payPanel()).toHaveTextContent("The gift: 200000000 ubze, Prize fee: None | distribute-denom-rewards");
+        it("if the stake dropped to 0 right before an airdrop: the blocker instead of the button, nothing signed", async () => {
+            refreshMock.mockImplementation(async () => ({ denomReward: dr(AAA, "0"), schedules: [], prizes: [], hasError: false }));
+            renderPage();
+            await toReview();
+            await userEvent.click(button(step("Review"), "Send gift"));
+            expect(await screen.findByTestId("presign-blocker")).toHaveTextContent("Nobody is staking AAA yet");
+            expect(txMock).not.toHaveBeenCalled();
+        });
 
-        await userEvent.click(screen.getByRole("button", { name: "Send the gift" }));
-        const [msgs] = txMock.mock.calls[0];
-        expect(msgs[0].typeUrl).toBe("/bze.rewards.MsgDistributeDenomRewards");
-        expect(msgs[0].value).toEqual({ creator: "bze1me", denom: AAA, prizeDenom: "ubze", amount: "200000000" });
+        it("asks a wallet-less visitor to connect", async () => {
+            m.address = undefined;
+            renderPage();
+            await toReview();
+            expect(screen.getByText("Connect your wallet to send the gift.")).toBeInTheDocument();
+            expect(button(step("Review"), "Send gift")).toBeDisabled();
+        });
 
-        expect(screen.getByText("Your gift is on its way to AAA stakers")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
-        await userEvent.click(screen.getByRole("button", { name: "Reach another community" }));
-        expect(screen.getByRole("heading", { name: "Reach another community" })).toBeInTheDocument();
+        it("blocks when the wallet can't cover the gift + fees + gas", async () => {
+            affordMock.mockReturnValue({ canAfford: false, isLoading: false, message: "Not enough BZE", shortfalls: [] });
+            renderPage();
+            await toReview();
+            expect(screen.getByText("Not enough BZE")).toBeInTheDocument();
+            expect(button(step("Review"), "Send gift")).toBeDisabled();
+        });
     });
 
-    it("every day: starts a daily prize on the community for N days", async () => {
-        renderPage();
-        await pickCommunity();
-        await giveAmount("BZE", "2");
-        await userEvent.click(screen.getByRole("radio", { name: /Every day for 30 days/ }));
-        const days = screen.getByLabelText("Days");
-        await userEvent.clear(days);
-        await userEvent.type(days, "10");
-        await continueIn(MODE);
+    describe("Done", () => {
+        async function send(gift: "BZE" | "GIFT" = "GIFT") {
+            await pickCommunity();
+            await giveAmount(gift, "5");
+            await userEvent.click(button(step("How"), "Continue"));
+            await userEvent.click(button(step("Review"), "Send gift"));
+            expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        }
 
-        expect(within(question(MODE)).getByText("Every day for 10 days")).toBeInTheDocument();
-        expect(within(question(GIVE)).getByText("2 BZE a day")).toBeInTheDocument();
-        expect(screen.getByTestId("reach-outcome")).toHaveTextContent(
-            "20 BZE leaves your wallet now and is paid as 2 BZE a day for 10 payout days to everyone staking AAA. It can't be cancelled.",
-        );
-        expect(screen.getByText("Compounded reward · daily prize on AAA")).toBeInTheDocument();
-        expect(payPanel()).toHaveTextContent("Locked for prizes: 20000000 ubze, Daily prize fee: 25000000000 ubze | module 25000000000 | create-denom-reward-schedule");
+        it("the gift is on its way, with Make your token stakable recommended", async () => {
+            renderPage();
+            await send();
+            expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("GIFT is on its way to AAA stakers.");
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Make GIFT stakable");
+            expect(screen.getAllByRole("link", { name: /Communities/ })[0]).toHaveAttribute("href", `https://communities.test/token?denom=${encodeURIComponent(AAA)}`);
+        });
 
-        await userEvent.click(screen.getByRole("button", { name: "Start the daily gift" }));
-        const [msgs] = txMock.mock.calls[0];
-        expect(msgs[0].typeUrl).toBe("/bze.rewards.MsgCreateDenomRewardSchedule");
-        expect(msgs[0].value).toEqual({ creator: "bze1me", denom: AAA, prizeDenom: "ubze", dailyAmount: "2000000", duration: "10" });
-    });
-
-    it("charges the new prize fee, with the slot text, when the gift is new to the community", async () => {
-        renderPage();
-        await pickCommunity();
-        await giveAmount("ATOM", "5");
-        await continueIn(MODE);
-
-        expect(payPanel()).toHaveTextContent("The gift: 5000000 uatom, New prize fee: 25000000000 ubze | module 25000000000");
-        expect(within(payPanel()).getByText(
-            "The first time a token becomes a prize on AAA it takes one of AAA's 2 prize slots (2 of 2 after this), for good. Gifting ATOM to AAA again is free.",
-        )).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Send the gift" })).toBeEnabled();
-    });
-
-    it("blocks a new gift once the community's prize slots are full", async () => {
-        m.prizes[AAA] = [prize(AAA, "ubze"), prize(AAA, "ufoo")];
-        renderPage();
-        await pickCommunity();
-        await userEvent.click(screen.getByText("give ATOM"));
-
-        expect(screen.getByTestId("reach-blocker")).toHaveTextContent(/maximum number of prize tokens/);
-        expect(within(question(GIVE)).getByRole("button", { name: "Continue" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Send the gift" })).toBeDisabled();
-    });
-
-    it("tips to make your own gift stakable only when it has no compounded reward", async () => {
-        renderPage();
-        await pickCommunity();
-
-        await userEvent.click(screen.getByText("give BZE"));
-        expect(screen.queryByTestId("reach-stakable-tip")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByText("give MINE"));
-        expect(screen.queryByTestId("reach-stakable-tip")).not.toBeInTheDocument();
-
-        await userEvent.click(screen.getByText("give GIFT"));
-        expect(screen.getByTestId("reach-stakable-tip")).toHaveTextContent(
-            "Make GIFT stakable before you do this, so the people who receive it have a reason to keep it.",
-        );
-        await userEvent.click(screen.getByRole("button", { name: "Make GIFT stakable" }));
-        expect(navigateMock).toHaveBeenCalledWith(`/rewards?denom=${encodeURIComponent(GIFT)}`);
-    });
-
-    it("preselects ?community= and ?gift=", () => {
-        m.params = new URLSearchParams({ community: AAA, gift: "uatom" });
-        renderPage();
-
-        expect(question(COMMUNITY)).toHaveAttribute("data-state", "done");
-        expect(within(question(COMMUNITY)).getByText("AAA stakers · 100 AAA staked")).toBeInTheDocument();
-        expect(question(GIVE)).toHaveAttribute("data-state", "active");
-        expect(screen.getByLabelText(/Amount \(ATOM\)/)).toBeInTheDocument();
-    });
-
-    it("asks a wallet-less visitor to connect", async () => {
-        m.address = undefined;
-        renderPage();
-        await pickCommunity();
-
-        expect(screen.getByText("Connect your wallet to send the gift.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Send the gift" })).toBeDisabled();
-    });
-
-    it("blocks when the wallet can't cover the gift + fees + gas", async () => {
-        affordMock.mockReturnValue({ canAfford: false, isLoading: false, message: "Not enough BZE", shortfalls: [] });
-        renderPage();
-        await pickCommunity();
-        await giveAmount("BZE", "1");
-        await continueIn(MODE);
-
-        expect(screen.getByRole("alert")).toHaveTextContent("Not enough BZE");
-        expect(screen.getByRole("button", { name: "Send the gift" })).toBeDisabled();
+        it("skips Make stakable when the gift already is", async () => {
+            m.hasCompounded = true;
+            renderPage();
+            await send();
+            expect(screen.queryByText("Make GIFT stakable")).not.toBeInTheDocument();
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Let people buy GIFT");
+        });
     });
 });

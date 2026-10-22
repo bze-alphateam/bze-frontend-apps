@@ -1,44 +1,50 @@
 import { describe, expect, it } from 'vitest'
-import BigNumber from 'bignumber.js'
-import { communityOptions, reachHref, searchCommunities } from './reach'
+import { giftNeedsStakable, reachCommunitySummary, reachDoneText, reachDoneTitle, reachHref, reachSentence } from './reach'
 
-const dr = (denom: string, staked: string) => ({ staking_denom: denom, lock: 7, min_stake: '0', staked_amount: staked })
-const ASSETS: Record<string, { ticker: string; name?: string; decimals: number }> = {
-    'factory/bze1me/mine': { ticker: 'MINE', name: 'My token', decimals: 6 },
-    ubze: { ticker: 'BZE', name: 'BeeZee', decimals: 6 },
-    uatom: { ticker: 'ATOM', name: 'Cosmos Hub', decimals: 6 },
-}
-const info = (denom: string) => ASSETS[denom]
-
-describe('communityOptions', () => {
-    const list = [dr('uatom', '1000000'), dr('ucold', '0'), dr('ubze', '50000000'), dr('factory/bze1me/mine', '9000000')]
-
-    it('keeps only the compounded reward with stakers, by raw staked amount without prices', () => {
-        const options = communityOptions(list, info, new Map(), 'bze1me')
-        expect(options.map(o => o.ticker)).toEqual(['BZE', 'MINE', 'ATOM'])
-        expect(options.map(o => o.isMine)).toEqual([false, true, false])
-        expect(options[0].stakedDisplay.toString()).toBe('50')
-    })
-
-    it('sorts by staked USD value when the prices are known', () => {
-        const prices = new Map([['ubze', new BigNumber('0.001')], ['uatom', new BigNumber(5)], ['factory/bze1me/mine', new BigNumber('0.01')]])
-        expect(communityOptions(list, info, prices).map(o => o.ticker)).toEqual(['ATOM', 'MINE', 'BZE'])
-    })
-
-    it('marks nothing as yours without a wallet, and falls back to the denom without an asset', () => {
-        const options = communityOptions([dr('factory/bze1me/mine', '1'), dr('unknown', '5')], info, new Map())
-        expect(options.every(o => !o.isMine)).toBe(true)
-        expect(options.map(o => o.ticker)).toContain('unknown')
+describe('reachCommunitySummary', () => {
+    it('names the stakers and what they stake', () => {
+        expect(reachCommunitySummary('PAGE', '4,100,000')).toBe('PAGE stakers · 4,100,000 staked')
     })
 })
 
-describe('searchCommunities', () => {
-    const options = communityOptions([dr('uatom', '1'), dr('ubze', '2')], info, new Map())
+describe('reachSentence', () => {
+    it('once: split right now, by stake', () => {
+        expect(reachSentence('once', { amount: '200 HONEY', community: 'PAGE' }))
+            .toBe('200 HONEY is split right now between everyone staking PAGE, by how much each stakes.')
+    })
 
-    it('matches ticker, name or denom, case-insensitive; an empty term keeps all', () => {
-        expect(searchCommunities(options, 'cosmos').map(o => o.ticker)).toEqual(['ATOM'])
-        expect(searchCommunities(options, 'UBZE').map(o => o.ticker)).toEqual(['BZE'])
-        expect(searchCommunities(options, '  ')).toHaveLength(2)
+    it('daily: a day for N days, with the total once known', () => {
+        expect(reachSentence('daily', { amount: '2 HONEY', community: 'PAGE', days: 10, total: '20 HONEY' }))
+            .toBe('2 HONEY a day for 10 days (20 HONEY in all), shared by everyone staking PAGE that day. Days with nobody staking are skipped.')
+        expect(reachSentence('daily', { amount: '2 HONEY', community: 'PAGE' }))
+            .toBe('2 HONEY a day for N days, shared by everyone staking PAGE that day. Days with nobody staking are skipped.')
+    })
+})
+
+describe('giftNeedsStakable', () => {
+    const MINE = 'factory/bze1me/honey'
+
+    it('only your own factory token, once the stakable list is known, when nothing stakes it', () => {
+        expect(giftNeedsStakable(MINE, 'bze1me', [])).toBe(true)
+        expect(giftNeedsStakable(MINE, 'bze1me', [MINE])).toBe(false)
+        expect(giftNeedsStakable(MINE, 'bze1me', undefined)).toBe(false)
+        expect(giftNeedsStakable(MINE, undefined, [])).toBe(false)
+        expect(giftNeedsStakable('ubze', 'bze1me', [])).toBe(false)
+        expect(giftNeedsStakable('factory/bze1other/page', 'bze1me', [])).toBe(false)
+    })
+})
+
+describe('the Done screen', () => {
+    const base = { communityDenom: 'upage', communityTicker: 'PAGE', giftDenom: 'uhoney', giftTicker: 'HONEY', amount: '200 HONEY' }
+
+    it('the title stresses the gift', () => {
+        expect(reachDoneTitle(base)).toBe('**HONEY** is on its way to PAGE stakers.')
+    })
+
+    it('the text of each mode', () => {
+        expect(reachDoneText({ ...base, mode: 'once' })).toBe('200 HONEY was split between everyone staking PAGE. They can claim it right away.')
+        expect(reachDoneText({ ...base, mode: 'daily', days: 30 }))
+            .toBe("200 HONEY a day for 30 days, shared by everyone staking PAGE. Your token shows up as a prize on PAGE's Communities page.")
     })
 })
 

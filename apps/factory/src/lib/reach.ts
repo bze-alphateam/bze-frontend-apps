@@ -1,74 +1,58 @@
-import BigNumber from 'bignumber.js'
-import { DenomReward, uAmountToBigNumberAmount } from '@bze/bze-ui-kit'
-import { filterHolderRows, sortHolderRows } from '@/lib/rewards-directory'
-
 export const REACH_PATH = '/reach'
 
-/** A token whose stakers "Reach another community" can gift to. */
-export interface CommunityOption {
-    denom: string;
-    ticker: string;
-    name?: string;
-    logo?: string;
-    /** `staked_amount` in display units. */
-    stakedDisplay: BigNumber;
-    /** One of the connected wallet's own factory tokens. */
-    isMine: boolean;
+// "Reach another community" (/reach, BFE-270): give your token to the people staking someone
+// else's token, once (an airdrop) or every day for N days (a daily prize on its compounded reward).
+
+export type ReachMode = 'once' | 'daily'
+
+/** "PAGE stakers · 4,100,000 staked". */
+export const reachCommunitySummary = (ticker: string, staked: string) => `${ticker} stakers · ${staked} staked`
+
+export interface ReachGift {
+    /** "200 HONEY": the amount once, or a day. */
+    amount: string;
+    /** The community's ticker. */
+    community: string;
+    /** daily: the days and "2,000 HONEY" in all. */
+    days?: number;
+    total?: string;
 }
 
-interface AssetInfo {
-    ticker: string;
-    name?: string;
-    logo?: string;
-    decimals?: number;
+/** The sentence of each mode, under the How question. */
+export function reachSentence(mode: ReachMode, { amount, community, days, total }: ReachGift): string {
+    if (mode === 'once') {
+        return `${amount} is split right now between everyone staking ${community}, by how much each stakes.`
+    }
+    const length = days === undefined ? 'N days' : `${days.toLocaleString('en-US')} ${days === 1 ? 'day' : 'days'}`
+    return `${amount} a day for ${length}${total ? ` (${total} in all)` : ''}, shared by everyone staking ${community} that day. Days with nobody staking are skipped.`
 }
 
-/**
- * The communities to offer: compounded reward with stakers only (an airdrop without stakers fails
- * with 5018 and a daily prize pays nobody), most staked first by USD value when both prices are
- * known, else by display amount. The wallet's own tokens stay in, marked.
- */
-export function communityOptions(
-    list: ReadonlyArray<DenomReward>,
-    info: (denom: string) => AssetInfo | undefined,
-    usdPrices: ReadonlyMap<string, BigNumber>,
-    address?: string,
-): CommunityOption[] {
-    const own = address ? `factory/${address}/` : undefined
-    const rows = list.map(dr => {
-        const asset = info(dr.staking_denom)
-        return {
-            dr,
-            ticker: asset?.ticker ?? dr.staking_denom,
-            name: asset?.name,
-            logo: asset?.logo,
-            stakedDisplay: uAmountToBigNumberAmount(dr.staked_amount, asset?.decimals ?? 0),
-            usdPrice: usdPrices.get(dr.staking_denom),
-            counts: undefined,
-        }
-    })
-    return sortHolderRows(filterHolderRows(rows, 'stakers'), 'staked').map(row => {
-        const r = row as typeof rows[number]
-        return {
-            denom: r.dr.staking_denom,
-            ticker: r.ticker,
-            name: r.name,
-            logo: r.logo,
-            stakedDisplay: r.stakedDisplay,
-            isMine: Boolean(own && r.dr.staking_denom.startsWith(own)),
-        }
-    })
+/** The gift is the wallet's own factory token and nothing stakes it yet: its receivers have no reason to keep it. */
+export function giftNeedsStakable(giftDenom: string, address: string | undefined, stakableDenoms: ReadonlyArray<string> | undefined): boolean {
+    if (!address || !giftDenom.startsWith(`factory/${address}/`) || stakableDenoms === undefined) return false
+    return !stakableDenoms.includes(giftDenom)
 }
 
-/** The options matching a search on ticker, name or denom (case-insensitive). */
-export function searchCommunities(options: ReadonlyArray<CommunityOption>, term: string): CommunityOption[] {
-    const t = term.trim().toLowerCase()
-    if (!t) return [...options]
-    return options.filter(o =>
-        o.ticker.toLowerCase().includes(t) ||
-        (o.name ?? '').toLowerCase().includes(t) ||
-        o.denom.toLowerCase().includes(t),
-    )
+/** What the wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
+export interface ReachDoneInput {
+    mode: ReachMode;
+    communityDenom: string;
+    communityTicker: string;
+    giftDenom: string;
+    giftTicker: string;
+    /** "200 HONEY": once, or a day. */
+    amount: string;
+    days?: number;
+}
+
+/** "**HONEY** is on its way to PAGE stakers." */
+export const reachDoneTitle = (input: Pick<ReachDoneInput, 'giftTicker' | 'communityTicker'>) =>
+    `**${input.giftTicker}** is on its way to ${input.communityTicker} stakers.`
+
+export function reachDoneText({ mode, amount, communityTicker, days }: ReachDoneInput): string {
+    return mode === 'once'
+        ? `${amount} was split between everyone staking ${communityTicker}. They can claim it right away.`
+        : `${amount} a day for ${days ?? 'N'} days, shared by everyone staking ${communityTicker}. Your token shows up as a prize on ${communityTicker}'s Communities page.`
 }
 
 /** `/reach`, optionally with the community and the gift preselected. */
