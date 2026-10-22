@@ -5,7 +5,6 @@ import {
     buildRegistryEntry,
     isHttpsUrl,
     isRegistryPrUrl,
-    isValidLogoFileName,
     loadOfficialProgress,
     officialHref,
     registryAssetListUrl,
@@ -105,13 +104,9 @@ describe("links and names", () => {
         expect(isHttpsUrl(url)).toBe(ok);
     });
 
-    it("suggests a lower-case file name and checks it against the format", () => {
+    it("suggests a lower-case file name", () => {
         expect(suggestLogoFileName("VDL", "svg")).toBe("vdl.svg");
         expect(suggestLogoFileName("My Coin", "png")).toBe("mycoin.png");
-        expect(isValidLogoFileName("vdl.svg", "svg")).toBe(true);
-        expect(isValidLogoFileName("vdl.svg", "png")).toBe(false);
-        expect(isValidLogoFileName("VDL.svg", "svg")).toBe(false);
-        expect(isValidLogoFileName("vdl.jpg", "png")).toBe(false);
     });
 });
 

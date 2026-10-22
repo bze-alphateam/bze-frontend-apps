@@ -156,7 +156,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
                 detail: `${n} daily prize${n === 1 ? '' : 's'} running`,
                 state: 'done',
                 href,
-                action: { label: 'Manage', href },
+                action: { label: 'Open', href },
             }
         },
     },
@@ -223,24 +223,6 @@ export function computeTokenSetup(facts: TokenSetupFacts, definitions: SetupItem
 }
 
 // Short hints for token lists (/tokens and the home strip), by item key and state.
-const HINTS: Record<string, Partial<Record<SetupState, string>>> = {
-    description: { todo: 'no description yet' },
-    brandKit: { todo: 'no brand kit yet' },
-    pool: { todo: 'no pool yet' },
-    holderRewards: { todo: 'not stakable yet', partial: 'no daily prize running' },
-    registry: { todo: 'not in the registry yet' },
-    market: { todo: 'no market yet' },
-}
-
-/** The first unfinished item as a short hint ("no pool yet"); undefined when nothing is left to do. */
-export function setupHint(setup: Pick<TokenSetup, 'items'>): string | undefined {
-    for (const item of setup.items) {
-        const hint = HINTS[item.key]?.[item.state]
-        if (hint) return hint
-    }
-    return undefined
-}
-
 /** The chips of the token page, in order, with their short names (canvas D2). */
 const CHIPS: { key: string; label: string; section: TokenSection; needsAdmin?: boolean }[] = [
     { key: 'created', label: 'Created', section: 'supply' },

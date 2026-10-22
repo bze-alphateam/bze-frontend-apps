@@ -12,7 +12,6 @@ import {
     prizeSlot,
     scheduleDaysLeft,
     scheduleFormHref,
-    scheduleRemainingBudget,
     summarizeScheduleCosts,
     validateScheduleDays,
 } from './denom-reward'
@@ -51,17 +50,15 @@ describe('validateScheduleDays — extend (extra days on top of the current dura
     })
 })
 
-describe('schedule budget', () => {
+describe('scheduleDaysLeft', () => {
     const schedule = { daily_amount: '1000000', duration: 30, payouts: 4 }
 
-    it('remaining budget = daily × (duration − payouts)', () => {
+    it('is duration − payouts', () => {
         expect(scheduleDaysLeft(schedule)).toBe(26)
-        expect(scheduleRemainingBudget(schedule).toFixed()).toBe('26000000')
     })
 
     it('never goes negative', () => {
         expect(scheduleDaysLeft({ duration: 3, payouts: 5 })).toBe(0)
-        expect(scheduleRemainingBudget({ daily_amount: '7', duration: 3, payouts: 5 }).toFixed()).toBe('0')
     })
 })
 

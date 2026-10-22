@@ -18,10 +18,3 @@ export function newTotalSupply(current: BigNumber, amount: string): BigNumber {
 export function supplyCoins(amount: string, decimals: number, denom: string): string {
     return `${amountToUAmount(amount.trim(), decimals)}${denom}`
 }
-
-/** "12.5% of supply", or undefined when the supply is zero / unknown. */
-export function shareOfSupply(part: BigNumber, whole: BigNumber): string | undefined {
-    if (!whole.gt(0)) return undefined
-    const pct = part.dividedBy(whole).multipliedBy(100)
-    return `${pct.gt(0) && pct.lt(0.01) ? '<0.01' : pct.decimalPlaces(2).toString()}% of supply`
-}

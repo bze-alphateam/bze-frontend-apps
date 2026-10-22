@@ -47,11 +47,6 @@ export function scheduleDaysLeft(schedule: Pick<DenomRewardSchedule, 'duration' 
     return Math.max(0, schedule.duration - schedule.payouts)
 }
 
-/** Escrow still held for the schedule: daily × (duration − payouts), prize base units. */
-export function scheduleRemainingBudget(schedule: Pick<DenomRewardSchedule, 'daily_amount' | 'duration' | 'payouts'>): BigNumber {
-    return new BigNumber(schedule.daily_amount).multipliedBy(scheduleDaysLeft(schedule))
-}
-
 export interface PrizeSlot {
     /** The prize denom was never used on this DR → the prize-creation fee applies and it takes a slot. */
     isNewPrize: boolean;

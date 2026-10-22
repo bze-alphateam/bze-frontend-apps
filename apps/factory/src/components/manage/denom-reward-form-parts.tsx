@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Button, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { Button, Field, Input, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft, LuSearchX } from 'react-icons/lu'
-import { IconTile, prettyAmount, uAmountToBigNumberAmount, useAsset } from '@bze/bze-ui-kit'
+import { IconTile } from '@bze/bze-ui-kit'
 import { FormFrame } from '@/components/guided/guided-form'
 import { softButton } from '@/components/ui/soft-button'
 
@@ -59,17 +59,5 @@ export function Notice({ title, children, onBack }: { title: string; children: R
                 </Button>
             </VStack>
         </FormFrame>
-    )
-}
-
-export function FeeLine({ label, denom, amount }: { label: string; denom: string; amount: string }) {
-    const { asset } = useAsset(denom)
-    return (
-        <HStack justify="space-between">
-            <Text fontSize="14px" color="fg.muted">{label}</Text>
-            <Text fontSize="14px" fontWeight="600">
-                {prettyAmount(uAmountToBigNumberAmount(amount, asset?.decimals ?? 0))} {asset?.ticker ?? denom}
-            </Text>
-        </HStack>
     )
 }
