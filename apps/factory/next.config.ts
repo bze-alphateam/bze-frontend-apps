@@ -54,9 +54,11 @@ const nextConfig: NextConfig = {
     // Old URLs keep working; Next carries the query string over on every redirect.
     async redirects() {
         return [
-            // The compounded rewards directory moved to /rewards (BFE-153). Exact path only: the token
-            // page, schedule and airdrop forms keep their /denom-reward/* routes.
+            // The compounded rewards directory moved to /rewards (BFE-153), and so did the page of one
+            // token's compounded reward (BFE-272: `?denom=` carries over and opens its card). The
+            // schedule, airdrop and new forms keep their /denom-reward/* routes.
             { source: "/denom-reward", destination: "/rewards", permanent: false },
+            { source: "/denom-reward/token", destination: "/rewards", permanent: false },
             // The Manage area became Tokens (BFE-260).
             { source: "/manage", destination: "/tokens", permanent: true },
             { source: "/manage/token", destination: "/tokens/token", permanent: true },

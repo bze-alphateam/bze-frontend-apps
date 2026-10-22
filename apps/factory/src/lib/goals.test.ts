@@ -16,7 +16,7 @@ describe("goal catalogue", () => {
         ["createToken", undefined, "/token/new"],
         ["pool", undefined, "/pool/new"],
         ["pool", DENOM, `/pool/new?base=${ENC}`],
-        ["stakable", DENOM, `/denom-reward/token?denom=${ENC}`],
+        ["stakable", DENOM, `/rewards?denom=${ENC}`],
         ["giftStakers", DENOM, `/denom-reward/airdrop?denom=${ENC}`],
         ["dailyPrize", DENOM, `/denom-reward/schedule?denom=${ENC}`],
         ["registry", DENOM, `/official?denom=${ENC}`],

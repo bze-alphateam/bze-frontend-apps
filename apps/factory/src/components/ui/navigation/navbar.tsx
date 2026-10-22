@@ -30,7 +30,6 @@ const navSubitems: { [key: string]: string } = {
     '/tokens/token': '/tokens',
     '/official': '/tokens',
     '/reward/extend': '/rewards',
-    '/denom-reward/token': '/rewards',
     '/denom-reward/schedule': '/rewards',
     '/denom-reward/airdrop': '/rewards',
 }
