@@ -409,9 +409,18 @@ away from the bumped `devDependencies`.
 
 ### Patches to node_modules
 Handled natively by pnpm via `patchedDependencies:` in `pnpm-workspace.yaml` (we no longer use
-`patch-package`). There are no active patches: the `@interchain-kit/store` signOptions patch was
-dropped once the fix shipped upstream in 0.9.3. To add one, run `pnpm patch <pkg>@<version>`, edit,
-then `pnpm patch-commit`, which writes the file under `patches/` and the `patchedDependencies:` entry.
+`patch-package`). Active patches:
+
+- `@interchain-kit/store@0.9.3`: `restore()` turns a saved `NotExist` wallet state back into
+  `Disconnected`, and `ChainWalletStore`'s `walletState`/`errorMessage` getters pass
+  `getChainWalletState` its arguments in the right order. Without it, one page load where Keplr was
+  injected late left that browser on "Keplr not installed" for good, and Connect did nothing. Still
+  unfixed upstream as of store 0.10.0, so re-check (and re-create the patch) on every
+  `@interchain-kit/*` bump. Regression test: `packages/ui-kit/src/storage/interchain-kit-store.test.ts`.
+
+The earlier signOptions patch was dropped once that fix shipped upstream in 0.9.3. To add a patch,
+run `pnpm patch <pkg>@<version>`, edit, then `pnpm patch-commit`, which writes the file under
+`patches/` and the `patchedDependencies:` entry.
 
 ### Native build scripts (sharp, esbuild, secp256k1, …)
 pnpm 11 blocks postinstall build scripts until approved. Approved packages are listed under
