@@ -7,7 +7,6 @@ import { officialHref } from '@/lib/registry-entry'
 import { reachHref } from '@/lib/reach'
 import { isStakingRewardFinished, programInvolves } from '@/lib/staking-rewards'
 import type { SetupItem } from '@/lib/token-setup'
-import { workspaceHref } from '@/lib/workspace'
 
 // Playbooks for newcomers (BFE-169): proven recipes that chain goals step by step. Which steps are
 // done is read from the chain on every visit (useTokenSetup); only the steps the chain can't show
@@ -110,14 +109,6 @@ export const PLAYBOOKS: Playbook[] = [
                 action: 'Open the registry guide',
                 detect: itemDone('registry'),
                 href: f => officialHref(f.denom ?? ''),
-            },
-            {
-                goalId: 'lock', short: 'Lock', title: 'Prove the supply is fixed',
-                why: 'Locking the supply shows nobody can mint more. Do it last: it cannot be undone.',
-                doneText: 'The supply is locked for good.',
-                action: 'Review and lock',
-                detect: f => f.admin === '',
-                href: f => `${workspaceHref(f.denom ?? '')}&lock=1`,
             },
         ],
     },

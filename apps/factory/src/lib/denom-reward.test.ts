@@ -160,7 +160,7 @@ describe('scheduleFormHref', () => {
 describe('links', () => {
     it('deep-link the airdrop form and the public denom reward page with an encoded denom', () => {
         expect(airdropFormHref('factory/bze1x/utok')).toBe('/denom-reward/airdrop?denom=factory%2Fbze1x%2Futok')
-        expect(denomRewardHref('ibc/ABC')).toBe('/denom-reward/token?denom=ibc%2FABC')
+        expect(denomRewardHref('ibc/ABC')).toBe('/rewards?denom=ibc%2FABC')
         expect(compoundedNewHref('ulp_a/b')).toBe('/denom-reward/new?denom=ulp_a%2Fb')
         expect(compoundedNewHref()).toBe('/denom-reward/new')
     })

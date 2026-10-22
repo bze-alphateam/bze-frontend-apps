@@ -27,7 +27,7 @@ export const GOAL_GROUPS: GoalGroup[] = [
 export type GoalId =
     | 'createToken' | 'pool' | 'addLiquidity' | 'market'
     | 'stakable' | 'giftStakers' | 'reach' | 'multisend' | 'campaign' | 'dailyPrize' | 'raffle'
-    | 'registry' | 'brandKit' | 'lock'
+    | 'registry' | 'brandKit'
 
 /** Tools that are not goals on the home cards; only the search finds them. */
 export type ToolId = 'burn' | 'mintMore' | 'handOver'
@@ -131,12 +131,6 @@ export const GOALS: Goal[] = [
         description: 'Colours and a font for its Communities page.',
         techTag: 'Brand kit', needsToken: 'mine',
         href: (denom = '') => workspaceHref(denom, 'details'), synonyms: ['brand', 'colours', 'colors', 'font', 'theme', 'look', 'style', 'design'],
-    },
-    {
-        id: 'lock', group: 'official', title: 'Prove the supply is fixed',
-        description: 'Lock it forever. Do it last.',
-        techTag: 'Renounce admin', needsToken: 'mine',
-        href: (denom = '') => `${workspaceHref(denom)}&lock=1`, synonyms: ['lock', 'renounce', 'fixed supply', 'admin', 'freeze', 'trust', 'rug', 'safe', 'ownership'],
     },
 ]
 

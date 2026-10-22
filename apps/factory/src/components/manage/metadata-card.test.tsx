@@ -136,7 +136,7 @@ describe("MetadataCard", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
         if (access === "renounced") {
-            expect(screen.getByTestId("metadata-frozen")).toHaveTextContent("Frozen forever: the supply was locked.");
+            expect(screen.getByTestId("metadata-frozen")).toHaveTextContent("Frozen: the admin was given up.");
         } else {
             expect(screen.queryByTestId("metadata-frozen")).not.toBeInTheDocument();
         }

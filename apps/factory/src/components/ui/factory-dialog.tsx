@@ -19,6 +19,10 @@ interface FactoryDialogProps {
     /** 19 px title for small dialogs, 22 px for the large ones. */
     titleSize?: 'md' | 'lg';
     closeLabel?: string;
+    /** Phones get a full-screen sheet instead of a floating card. */
+    sheetOnPhones?: boolean;
+    /** What gets focus when it opens (a safe default, e.g. "Keep admin"); the first focusable otherwise. */
+    initialFocusEl?: () => HTMLElement | null;
     finalFocusEl?: () => HTMLElement | null;
 }
 
@@ -37,6 +41,8 @@ export function FactoryDialog({
     width = '440px',
     titleSize = 'md',
     closeLabel = 'Close',
+    sheetOnPhones = false,
+    initialFocusEl,
     finalFocusEl,
 }: FactoryDialogProps) {
     // Nothing renders while closed, and the body starts fresh on every open.
@@ -46,6 +52,7 @@ export function FactoryDialog({
             onOpenChange={(e) => { if (!e.open) onClose() }}
             placement="center"
             scrollBehavior="inside"
+            initialFocusEl={initialFocusEl}
             finalFocusEl={finalFocusEl}
             lazyMount
             unmountOnExit
@@ -54,11 +61,12 @@ export function FactoryDialog({
                 <Dialog.Backdrop />
                 <Dialog.Positioner>
                     <Dialog.Content
-                        maxW={{ base: 'calc(100vw - 32px)', md: width }}
+                        maxW={{ base: sheetOnPhones ? '100vw' : 'calc(100vw - 32px)', md: width }}
+                        {...(sheetOnPhones ? { w: { base: '100vw', md: '100%' }, minH: { base: '100dvh', md: 'auto' }, my: { base: '0', md: 'auto' } } : {})}
                         bg="hg.card"
                         borderWidth="1px"
                         borderColor="hg.hairline"
-                        borderRadius="20px"
+                        borderRadius={sheetOnPhones ? { base: '0', md: '20px' } : '20px'}
                         boxShadow="hg.popover"
                     >
                         <Dialog.Header flexDirection="column" alignItems="start" gap="6px" pt="24px" px="24px" pb="0" pe="64px">

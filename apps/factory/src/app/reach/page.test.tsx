@@ -266,7 +266,7 @@ describe("Reach another community", { timeout: 20_000 }, () => {
             "Make GIFT stakable before you do this, so the people who receive it have a reason to keep it.",
         );
         await userEvent.click(screen.getByRole("button", { name: "Make GIFT stakable" }));
-        expect(navigateMock).toHaveBeenCalledWith(`/denom-reward/token?denom=${encodeURIComponent(GIFT)}`);
+        expect(navigateMock).toHaveBeenCalledWith(`/rewards?denom=${encodeURIComponent(GIFT)}`);
     });
 
     it("preselects ?community= and ?gift=", () => {

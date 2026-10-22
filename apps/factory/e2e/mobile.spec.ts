@@ -32,13 +32,12 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     // The token page stacks its groups; the setup chips scroll in their own row (BFE-271).
     {path: `/tokens/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("burn-item")},
     {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("We couldn't find this token.")},
-    // Phones get cards, not the (hidden) table.
-    {path: "/rewards", ready: (page) => page.getByTestId("denom-reward-card").first()},
-    // testnet's one simple reward has finished, and finished programs are folded away by default.
-    {path: "/rewards?tab=programs&status=finished", ready: (page) => page.getByTestId("staking-program-row").first()},
+    // Both sections stacked, their actions in two columns (BFE-272).
+    {path: "/rewards", ready: (page) => page.getByTestId("compounded-reward-card").first()},
+    // testnet's one simple reward has finished.
+    {path: "/rewards?kind=simple&status=finished", ready: (page) => page.getByTestId("simple-reward-row").first()},
     // noadmin is already stakable: the picker stays open with its tip.
     {path: `/denom-reward/new?denom=${NOADMIN}`, ready: heading(/Create a compounded reward/)},
-    {path: `/denom-reward/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("holder-schedule-card").first()},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Add a daily prize/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}&schedule=000000000000`, ready: heading(/Extend a daily prize/)},
     {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Airdrop to stakers/)},

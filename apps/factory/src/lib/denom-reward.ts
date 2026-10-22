@@ -144,10 +144,10 @@ export const compoundedNewHref = (denom?: string) =>
 export const airdropFormHref = (denom: string) => `/denom-reward/airdrop?denom=${encodeURIComponent(denom)}`
 
 /**
- * The public denom reward page of a token: the DR card for any wallet and any token. The manage
- * token page only opens a wallet's own factory tokens, so the directory and the forms link here.
+ * The compounded reward of any token, for any wallet: its card in the rewards directory, which
+ * prefills the search with the token and scrolls to it (BFE-272; `/denom-reward/token` redirects here).
  */
-export const denomRewardHref = (denom: string) => `/denom-reward/token?denom=${encodeURIComponent(denom)}`
+export const denomRewardHref = (denom: string) => `/rewards?denom=${encodeURIComponent(denom)}`
 
 export interface AirdropCostInput {
     /** Airdrop amount in prize base units; undefined while the input is invalid. */
