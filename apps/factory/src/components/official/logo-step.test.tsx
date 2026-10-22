@@ -36,7 +36,7 @@ describe("LogoStep (logo checker)", () => {
         expect(screen.getByTestId("logo-check-name")).toHaveTextContent("Name it honey.svg when you upload it");
 
         await userEvent.click(screen.getByRole("button", { name: "Mark as done" }));
-        expect(onReady).toHaveBeenCalledWith({ format: "svg", fileName: "honey.svg" });
+        expect(onReady).toHaveBeenCalledWith({ format: "svg", fileName: "honey.svg", width: 10, height: 10, bytes: SQUARE_SVG.length });
     });
 
     it("previews through <img> only, never inline SVG", async () => {

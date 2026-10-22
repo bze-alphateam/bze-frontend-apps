@@ -181,8 +181,8 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
         renderPage();
         await pickToken();
         expect(step("Token")).toHaveTextContent("TOK");
-        await fillPot("500000");
-        expect(step("Prize pot")).toHaveTextContent("500,000 TOK in the pot");
+        await fillPot("5000");
+        expect(step("Prize pot")).toHaveTextContent("5,000 TOK in the pot");
         expect(step("How it plays")).toHaveAttribute("data-state", "active");
     });
 
