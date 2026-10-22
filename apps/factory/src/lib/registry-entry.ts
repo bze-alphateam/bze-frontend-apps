@@ -129,6 +129,10 @@ export type OfficialStep = typeof OFFICIAL_STEPS[number]
 export interface OfficialProgress {
     format?: LogoFormat;
     fileName?: string;
+    /** The checked logo's drawing size and file size, for the Logo summary. */
+    width?: number;
+    height?: number;
+    bytes?: number;
     socials?: RegistrySocials;
     prUrl?: string;
     done: OfficialStep[];
@@ -156,3 +160,30 @@ export function loadOfficialProgress(denom: string): OfficialProgress {
 export function saveOfficialProgress(denom: string, progress: OfficialProgress): void {
     setInLocalStorage(officialProgressKey(denom), JSON.stringify(progress), 0)
 }
+
+// The summaries of the guide's done steps (BFE-274).
+
+/** "honey.png · 512×512 · 84 KB ✓"; only the parts that were saved. */
+export function logoSummary({ fileName, width, height, bytes }: Pick<OfficialProgress, 'fileName' | 'width' | 'height' | 'bytes'>): string {
+    const parts = [
+        fileName,
+        width !== undefined && height !== undefined ? `${width}×${height}` : undefined,
+        bytes !== undefined ? `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('en-US')} KB` : undefined,
+    ].filter(Boolean)
+    return `${parts.join(' · ')} ✓`
+}
+
+/** "Website, X", or "Skipped". */
+export function linksSummary(socials?: RegistrySocials): string {
+    const names = [socials?.website && 'Website', socials?.x && 'X'].filter(Boolean)
+    return names.length > 0 ? names.join(', ') : 'Skipped'
+}
+
+/** "PR #1234 opened". */
+export function prSummary(prUrl?: string): string {
+    const number = prUrl?.trim().replace(/\/+$/, '').split('/').pop()
+    return number ? `PR #${number} opened` : ''
+}
+
+/** The file name the entry downloads as. */
+export const ENTRY_FILE_NAME = 'assetlist-entry.json'

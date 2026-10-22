@@ -18,6 +18,7 @@ export type NextActionKind =
     | 'reachedCommunity'
     | 'multisendFinished'
     | 'raffleStarted'
+    | 'listed'
 
 /** Icon names; DoneScreen maps them to icons. */
 export type NextIcon =
@@ -122,6 +123,7 @@ const ROUTES = {
     reachCommunity: (denom: string) => `/reach?community=${q(denom)}`,
     multisend: (denom: string) => `/multisend?denom=${q(denom)}`,
     registry: officialHref,
+    tokenPage: (denom: string) => workspaceHref(denom),
     // BFE-271 moves the brand kit to the token page's details.
     brandKit: (denom: string) => workspaceHref(denom, 'details'),
     factoryUrl: (path: string) => `${getFactoryApp().href}${path}`,
@@ -484,6 +486,29 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
             ...(facts?.hasCompoundedReward ? [airdropToStakers(denom, ticker, facts)] : []),
         ]
     }
+
+    // The registry guide's Done screen (BFE-274): back to the token, then its look and staking.
+    case 'listed':
+        return [
+            {
+                key: 'backToToken',
+                icon: 'registry',
+                title: `Back to ${name(ticker)}`,
+                text: 'See its logo and everything else on its token page.',
+                cta: `Back to ${name(ticker)}`,
+                target: { href: ROUTES.tokenPage(denom) },
+            },
+            {
+                key: 'brandKit',
+                icon: 'brand',
+                title: 'Brand kit',
+                text: 'Colours and a font for its Communities page.',
+                cta: 'Open brand kit',
+                target: { href: ROUTES.brandKit(denom) },
+                done: facts?.brandKitSet,
+            },
+            makeStakable(denom, ticker, facts, 'Make it stakable'),
+        ]
     }
 }
 

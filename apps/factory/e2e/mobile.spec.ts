@@ -41,7 +41,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Add a daily prize/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}&schedule=000000000000`, ready: heading(/Extend a daily prize/)},
     {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Airdrop to stakers/)},
-    {path: `/official?denom=${VDL}`, ready: heading("Get VDL's logo into every wallet")},
+    {path: `/official?denom=${VDL}`, ready: heading("Get VDL's logo in every wallet")},
 ];
 
 for (const route of ROUTES) {

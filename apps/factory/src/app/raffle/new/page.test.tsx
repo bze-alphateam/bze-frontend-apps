@@ -1,18 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 
-// jsdom has no PointerEvent; the Chakra checkbox (zag) constructs one on blur.
-if (!("PointerEvent" in window)) {
-    Object.defineProperty(window, "PointerEvent", { value: class PointerEvent extends MouseEvent {}, writable: true });
-}
-
-// The page runs on mocked hooks: query params, wallet, assets, the max/afford checks, the epoch
-// info, the raffle query and the tx hook. The asset picker becomes a plain button per denom;
-// PayPanel has its own coverage and is reduced to its rows.
+// The Burning raffle wizard on mocked hooks: query params, wallet, assets, the max/afford checks,
+// the epoch info, the raffle query, the fee engine and the wallet side of the tx (useFactoryTx).
+// The wizard's tx hook, the pending-tx store, the Review step and the Done screen are real. The
+// asset picker becomes a plain button per denom; PayPanel is reduced to its rows.
+type TxOpts = {
+    onBroadcast?: (hash: string) => void;
+    onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
+    onFailure?: (reason: string, details?: { stage?: string; txHash?: string; rawLog?: string; code?: number }) => void;
+};
 const m = vi.hoisted(() => ({
     queryParams: new URLSearchParams(),
     address: "bze1me" as string | undefined,
@@ -21,15 +23,36 @@ const m = vi.hoisted(() => ({
     navigate: vi.fn(),
     maxInputs: [] as unknown[],
     afford: { canAfford: true, message: "" },
+    stakedAmount: undefined as string | undefined,
 }));
 
-vi.mock("next/navigation", () => ({ useSearchParams: () => m.queryParams }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/raffle/new", useSearchParams: () => m.queryParams }));
 vi.mock("@/hooks/useNavigation", () => ({
     useNavigation: () => ({ navigate: m.navigate }),
     useNavigationWithParams: () => ({ getQueryParam: (p: string) => m.queryParams.get(p), navigate: m.navigate }),
 }));
-vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: m.tx }) }));
-vi.mock("@/components/guided/pay-panel", () => ({
+vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: m.tx, progressTrack: "" }) }));
+vi.mock("@/hooks/useFeePayment", () => ({
+    useFeePayment: (fee?: { denom: string; amount: string }) => ({
+        canPayFee: true,
+        isLoading: false,
+        method: "native",
+        estimate: { resolvedFee: fee },
+        gasFee: { denom: "ubze", amount: new BigNumber(0), displayAmount: new BigNumber(0), ticker: "BZE", isLoading: false },
+    }),
+}));
+vi.mock("@/hooks/useDenomReward", () => ({
+    useDenomReward: (denom: string) => ({
+        denomReward: m.stakedAmount !== undefined ? { staking_denom: denom, lock: 7, min_stake: "0", staked_amount: m.stakedAmount } : undefined,
+        schedules: [],
+        prizes: [],
+        hasError: false,
+        isLoading: false,
+        refresh: vi.fn(),
+    }),
+}));
+vi.mock("@/components/guided/pay-panel", async (importActual) => ({
+    ...await importActual<typeof import("@/components/guided/pay-panel")>(),
     PayPanel: ({ rows, txKind }: { rows: { label: string; coin?: { denom: string; amount: string }; text?: string }[]; txKind?: string }) => (
         <div data-testid="pay-panel">
             {rows.map(r => <p key={r.label}>{`${r.label}: ${r.coin ? `${r.coin.amount} ${r.coin.denom}` : r.text}`}</p>)}
@@ -65,217 +88,328 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             return { amount, balance, inputValue: amount.shiftedBy(-6).toFixed(), isLoading: false };
         },
         useCanAffordTx: () => ({ ...m.afford, isLoading: false, shortfalls: [], shortOnFees: false }),
+        useAssetPrice: () => ({ hasPrice: false, totalUsdValue: () => new BN(0), uAmountUsdValue: () => new BN(0) }),
         useEpochs: () => ({ hourEpochInfo: { current_epoch: 100n, current_epoch_start_time: "2026-10-15T10:00:00Z" } }),
         getRafflesOrThrow: () => m.raffles(),
+        getSettings: () => ({ endpoints: { restEndpoint: "https://rest.test" } }),
         getBurnerApp: () => ({ href: "https://burner.test" }),
+        getDexApp: () => ({ href: "https://dex.test" }),
+        getFactoryApp: () => ({ href: "https://factory.test" }),
         getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
+        TokenLogo: ({ symbol }: { symbol: string }) => <span>{symbol}</span>,
     };
 });
 
 import RaffleNewPage from "./page";
+import { PendingTxProvider, createPendingTxStore } from "@/contexts/pending-tx";
 
-const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
-const renderPage = () => render(<RaffleNewPage />, { wrapper });
-
-const Q = {
-    token: "Which token?",
-    pot: "How big is the prize pot?",
-    days: "How long should it run?",
-    ticket: "What does a ticket cost?",
-    chance: "How often does a ticket win?",
-    prize: "How much does a winner get?",
+const renderPage = () => {
+    let value: string | null = null;
+    const store = createPendingTxStore({ read: () => value, write: (v) => { value = v; } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+        <ChakraProvider value={defaultSystem}>
+            <PendingTxProvider store={store}>{children}</PendingTxProvider>
+        </ChakraProvider>
+    );
+    return render(<RaffleNewPage />, { wrapper });
 };
-const question = (title: string) => screen.getByRole("region", { name: title });
-const continueIn = (title: string) => userEvent.click(within(question(title)).getByRole("button", { name: "Continue" }));
-const startButton = () => screen.getByRole("button", { name: "Start the raffle" });
+
+const step = (title: string) => screen.getByRole("region", { name: title });
+const button = (region: HTMLElement, name: string | RegExp) => within(region).getByRole("button", { name });
+const startButton = () => button(step("Review"), "Start raffle");
 const RUNNING = { denom: "utok", pot: "5000000", ticket_price: "1000000", chances: 10000n, ratio: "0.25", end_at: 148n };
 
 async function pickToken(denom = "utok") {
-    await userEvent.click(within(question(Q.token)).getByText(`Token to raffle: ${denom}`));
-    await waitFor(() => expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeEnabled());
-    await continueIn(Q.token);
+    await userEvent.click(within(step("Token")).getByText(`Token to raffle: ${denom}`));
+    await waitFor(() => expect(button(step("Token"), "Continue")).toBeEnabled());
+    await userEvent.click(button(step("Token"), "Continue"));
 }
 
-async function answerAll() {
-    await userEvent.type(within(question(Q.pot)).getByLabelText(/Prize pot/), "1000");
-    await continueIn(Q.pot);
-    await userEvent.click(within(question(Q.days)).getByRole("button", { name: "14 days" }));
-    await continueIn(Q.days);
-    await userEvent.type(within(question(Q.ticket)).getByLabelText(/Ticket price/), "10");
-    await continueIn(Q.ticket);
-    await userEvent.click(within(question(Q.chance)).getByRole("button", { name: "1 in 100" }));
-    expect(within(question(Q.chance)).getByText("Each ticket wins with a chance of 1 %.")).toBeInTheDocument();
-    await continueIn(Q.chance);
-    await userEvent.click(within(question(Q.prize)).getByRole("button", { name: "25 %" }));
-    expect(within(question(Q.prize)).getByText(/25 % of the pot, 250 TOK right now\./)).toBeInTheDocument();
-    await continueIn(Q.prize);
+async function fillPot(amount = "1000") {
+    await userEvent.type(within(step("Prize pot")).getByLabelText(/Prize pot/), amount);
+    await userEvent.click(button(step("Prize pot"), "Continue"));
+}
+
+async function fillPlay() {
+    const q = within(step("How it plays"));
+    await userEvent.click(q.getByRole("button", { name: "14 days" }));
+    await userEvent.type(q.getByLabelText(/Ticket price/), "10");
+    await userEvent.click(q.getByRole("button", { name: "1 in 100" }));
+    await userEvent.click(q.getByRole("button", { name: "25 %" }));
+}
+
+async function toReview() {
+    await pickToken();
+    await fillPot();
+    await fillPlay();
+    await userEvent.click(button(step("How it plays"), "Continue"));
 }
 
 beforeEach(() => {
     m.queryParams = new URLSearchParams();
     m.address = "bze1me";
     m.raffles.mockReset().mockResolvedValue([]);
-    m.tx.mockReset().mockResolvedValue(true);
+    m.tx.mockReset().mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+        opts.onBroadcast?.("HASH");
+        opts.onSuccess?.({ txhash: "HASH", height: 10, code: 0 });
+        return true;
+    });
     m.navigate.mockReset();
     m.maxInputs.length = 0;
     m.afford = { canAfford: true, message: "" };
+    m.stakedAmount = undefined;
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
 });
 
-describe("/raffle/new", () => {
-    it("asks the six questions and shows the warnings, no Factory fee and the gas kind", () => {
+afterEach(() => vi.unstubAllGlobals());
+
+describe("/raffle/new", { timeout: 20_000 }, () => {
+    it("has four steps: Token, Prize pot, How it plays, Review", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Run a burning raffle" })).toBeInTheDocument();
-        // Once in the breadcrumb ("Create / Burning raffle"), once as the tool's tech tag.
         expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Burning raffle")).toBeInTheDocument();
-        expect(screen.getAllByText("Burning raffle")).toHaveLength(2);
-        for (const title of Object.values(Q)) expect(question(title)).toBeInTheDocument();
-        expect(screen.getByText("The pot leaves your wallet now and can't be taken back.")).toBeInTheDocument();
-        expect(screen.getByText("Once started, a raffle can't be stopped or changed.")).toBeInTheDocument();
-        expect(screen.getByText("Whatever is left in the pot when it ends is burned. Nothing comes back to you.")).toBeInTheDocument();
+        expect(step("Token")).toHaveAttribute("data-state", "active");
+        expect(screen.getByText("Which token is the raffle in?")).toBeInTheDocument();
+        for (const title of ["Prize pot", "How it plays", "Review"]) expect(step(title)).toHaveAttribute("data-state", "todo");
         expect(screen.getByText("Factory fee: None")).toBeInTheDocument();
         expect(screen.getByTestId("tx-kind")).toHaveTextContent("start-raffle");
         expect(screen.getByTestId("asset-picker")).toHaveAttribute("data-exclude-halted", "true");
     });
 
-    it("starts a raffle with one MsgStartRaffle once every answer is in and the risk is confirmed", async () => {
+    it("summarises the token and the pot", async () => {
         renderPage();
         await pickToken();
-        expect(question(Q.token)).toHaveTextContent("Raffle TOK");
-        await answerAll();
-
-        expect(screen.getByTestId("raffle-outcome")).toHaveTextContent(
-            "You put 1,000 TOK in the pot now. For 14 days, anyone can buy a ticket for 10 TOK. About 1 ticket in 100 wins 25 % of the pot at that moment. Losing tickets add their price to the pot.",
-        );
-        expect(screen.getByText("On average the pot grows as people play.")).toBeInTheDocument();
-        expect(screen.getByText("Prize pot: 1000000000 utok")).toBeInTheDocument();
-
-        expect(startButton()).toBeDisabled();
-        await userEvent.click(screen.getByText("I understand the pot can't be taken back and what's left at the end is burned."));
-        expect(startButton()).toBeEnabled();
-        await userEvent.click(startButton());
-
-        expect(m.tx).toHaveBeenCalledTimes(1);
-        expect(m.tx.mock.calls[0][0]).toEqual([{
-            typeUrl: "/bze.burner.MsgStartRaffle",
-            value: { creator: "bze1me", denom: "utok", pot: "1000000000", duration: "14", chances: "10000", ratio: "0.25", ticketPrice: "10000000" },
-        }]);
+        expect(step("Token")).toHaveTextContent("TOK");
+        await fillPot("5000");
+        expect(step("Prize pot")).toHaveTextContent("5,000 TOK in the pot");
+        expect(step("How it plays")).toHaveAttribute("data-state", "active");
     });
 
-    it("never signs an invalid answer: the pot below 0.1 keeps its question open", async () => {
-        renderPage();
-        await pickToken();
-        await userEvent.type(within(question(Q.pot)).getByLabelText(/Prize pot/), "0.09");
-        await userEvent.tab();
-        expect(within(question(Q.pot)).getByRole("button", { name: "Continue" })).toBeDisabled();
-        expect(question(Q.pot)).toHaveTextContent("The pot must be at least 0.1 TOK.");
-    });
-
-    it("stops at question 1 when the token already has a raffle running, with a Burner link", async () => {
-        m.raffles.mockResolvedValue([RUNNING]);
-        renderPage();
-        await userEvent.click(within(question(Q.token)).getByText("Token to raffle: utok"));
-
-        const running = await screen.findByTestId("raffle-running");
-        expect(running).toHaveTextContent("A raffle for TOK is already running. It ends in 2d 0h.");
-        expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
-        expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
-        expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeDisabled();
-    });
-
-    it("a failed lookup is never read as none running: it offers Retry", async () => {
-        m.raffles.mockRejectedValueOnce(new Error("node down"));
-        renderPage();
-        await userEvent.click(within(question(Q.token)).getByText("Token to raffle: utok"));
-
-        expect(await screen.findByText("Couldn't check whether TOK already has a raffle running.")).toBeInTheDocument();
-        expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeDisabled();
-        await userEvent.click(screen.getByRole("button", { name: "Retry" }));
-        await waitFor(() => expect(within(question(Q.token)).getByRole("button", { name: "Continue" })).toBeEnabled());
-    });
-
-    it("maps the chain's 'raffle already running' error to the running notice", async () => {
-        m.tx.mockImplementation(async (_msgs: unknown, opts: { onFailure: (e: string) => void }) => {
-            opts.onFailure("failed to execute message; message index: 0: raffle already running for this coin");
-            return false;
+    describe("Prize pot", () => {
+        it("never takes a pot below 0.1", async () => {
+            renderPage();
+            await pickToken();
+            await userEvent.type(within(step("Prize pot")).getByLabelText(/Prize pot/), "0.09");
+            await userEvent.tab();
+            expect(button(step("Prize pot"), "Continue")).toBeDisabled();
+            expect(step("Prize pot")).toHaveTextContent("The pot must be at least 0.1 TOK.");
         });
-        renderPage();
-        await pickToken();
-        await answerAll();
-        await userEvent.click(screen.getByText(/I understand the pot/));
-        await userEvent.click(startButton());
 
-        expect(await screen.findByTestId("raffle-running")).toHaveTextContent("A raffle for TOK is already running.");
-        expect(question(Q.token)).toHaveAttribute("data-state", "active");
-        expect(startButton()).toBeDisabled();
+        it("keeps the network fee out of MAX when the raffled token pays it", async () => {
+            renderPage();
+            await pickToken("ubze");
+            expect(m.maxInputs).toContainEqual(["ubze", "start-raffle"]);
+            const pot = within(step("Prize pot"));
+            await userEvent.click(pot.getByRole("button", { name: "MAX" }));
+            expect(pot.getByLabelText(/Prize pot/)).toHaveValue("9.995");
+            await userEvent.clear(pot.getByLabelText(/Prize pot/));
+            await userEvent.type(pot.getByLabelText(/Prize pot/), "10");
+            await userEvent.tab();
+            expect(step("Prize pot")).toHaveTextContent("You only have 9.995 BZE.");
+            expect(pot.getByRole("button", { name: "Continue" })).toBeDisabled();
+        });
     });
 
-    it("keeps the network fee out of MAX when the raffled token pays it", async () => {
-        renderPage();
-        await pickToken("ubze");
-        expect(m.maxInputs).toContainEqual(["ubze", "start-raffle"]);
-        const pot = within(question(Q.pot));
-        await userEvent.click(pot.getByRole("button", { name: "MAX" }));
-        expect(pot.getByLabelText(/Prize pot/)).toHaveValue("9.995");
-        await userEvent.clear(pot.getByLabelText(/Prize pot/));
-        await userEvent.type(pot.getByLabelText(/Prize pot/), "10");
-        await userEvent.tab();
-        expect(question(Q.pot)).toHaveTextContent("You only have 9.995 BZE.");
-        expect(pot.getByRole("button", { name: "Continue" })).toBeDisabled();
+    describe("How it plays", () => {
+        it("the four fields with their hints, the live sentence and the summary", async () => {
+            renderPage();
+            await pickToken();
+            await fillPot();
+            await fillPlay();
+            const q = within(step("How it plays"));
+            expect(q.getByText("Each ticket wins with a chance of 1 %.")).toBeInTheDocument();
+            expect(q.getByText(/25 % of the pot, 250 TOK right now\./)).toBeInTheDocument();
+            expect(q.getByTestId("raffle-sentence")).toHaveTextContent(
+                "For 14 days, anyone can pay 10 TOK for a ticket. Each ticket has a 1 in 100 chance to win 25 % of the pot.",
+            );
+            await userEvent.click(button(step("How it plays"), "Continue"));
+            expect(step("How it plays")).toHaveTextContent("14 days · 10 TOK a ticket · 1 in 100 · winner gets 25 %");
+            expect(step("Review")).toHaveAttribute("data-state", "active");
+        });
+
+        it.each([
+            ["Days", "181", "At most 180 days."],
+            ["Days", "0", "At least 1 day."],
+            ["1 ticket in how many wins?", "1000001", "Enter a number from 1 to 1,000,000."],
+            ["Share of the pot (%)", "101", "Enter a percent from 1 to 100."],
+            ["Share of the pot (%)", "0", "Enter a percent from 1 to 100."],
+        ])("%s %s: %s, and no way on", async (label, value, error) => {
+            renderPage();
+            await pickToken();
+            await fillPot();
+            await fillPlay();
+            const q = within(step("How it plays"));
+            await userEvent.clear(q.getByLabelText(label));
+            await userEvent.type(q.getByLabelText(label), value);
+            await userEvent.tab();
+            expect(step("How it plays")).toHaveTextContent(error);
+            expect(button(step("How it plays"), "Continue")).toBeDisabled();
+        });
+
+        it("a ticket price below one base unit", async () => {
+            renderPage();
+            await pickToken();
+            await fillPot();
+            await fillPlay();
+            const q = within(step("How it plays"));
+            await userEvent.clear(q.getByLabelText(/Ticket price/));
+            await userEvent.type(q.getByLabelText(/Ticket price/), "0.0000001");
+            await userEvent.tab();
+            expect(step("How it plays")).toHaveTextContent("The smallest ticket price is 0.000001 TOK.");
+            expect(button(step("How it plays"), "Continue")).toBeDisabled();
+        });
     });
 
-    it("without a wallet the questions work but signing asks to connect", async () => {
-        m.address = undefined;
-        renderPage();
-        await pickToken();
-        await answerAll();
-        await userEvent.click(screen.getByText(/I understand the pot/));
-        expect(startButton()).toBeDisabled();
-        expect(screen.getByText("Connect your wallet to start the raffle.")).toBeInTheDocument();
+    describe("the running raffle", () => {
+        it("stops at Token when the token already has a raffle running, with a Burner link", async () => {
+            m.raffles.mockResolvedValue([RUNNING]);
+            renderPage();
+            await userEvent.click(within(step("Token")).getByText("Token to raffle: utok"));
+
+            const running = await screen.findByTestId("raffle-running");
+            expect(running).toHaveTextContent("A raffle for TOK is already running. It ends in 2d 0h.");
+            expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+            expect(within(running).getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
+            expect(button(step("Token"), "Continue")).toBeDisabled();
+        });
+
+        it("a failed lookup is never read as none running: it offers Retry", async () => {
+            m.raffles.mockRejectedValueOnce(new Error("node down"));
+            renderPage();
+            await userEvent.click(within(step("Token")).getByText("Token to raffle: utok"));
+
+            expect(await screen.findByText("Couldn't check whether TOK already has a raffle running.")).toBeInTheDocument();
+            expect(button(step("Token"), "Continue")).toBeDisabled();
+            await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+            await waitFor(() => expect(button(step("Token"), "Continue")).toBeEnabled());
+        });
+
+        it("a raffle started meanwhile is caught right before signing: back to Token, nothing signed", async () => {
+            renderPage();
+            await toReview();
+            m.raffles.mockResolvedValue([RUNNING]);
+            await userEvent.click(startButton());
+
+            expect(await screen.findByTestId("raffle-running")).toHaveTextContent("A raffle for TOK is already running.");
+            expect(step("Token")).toHaveAttribute("data-state", "active");
+            expect(m.tx).not.toHaveBeenCalled();
+        });
+
+        it("a failed check right before signing says so and signs nothing", async () => {
+            renderPage();
+            await toReview();
+            m.raffles.mockRejectedValueOnce(new Error("node down"));
+            await userEvent.click(startButton());
+
+            expect(await screen.findByText("Couldn't check whether TOK already has a raffle running. Please try again.")).toBeInTheDocument();
+            expect(m.tx).not.toHaveBeenCalled();
+            expect(startButton()).toBeEnabled();
+        });
+
+        it("maps the chain's 'raffle already running' refusal to the running notice", async () => {
+            m.tx.mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
+                opts.onFailure?.("failed to execute message; message index: 0: raffle already running for this coin", { stage: "prepare" });
+                return false;
+            });
+            renderPage();
+            await toReview();
+            await userEvent.click(startButton());
+
+            expect(await screen.findByTestId("raffle-running")).toHaveTextContent("A raffle for TOK is already running.");
+            expect(within(screen.getByTestId("raffle-running")).getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+        });
+    });
+
+    describe("Review", () => {
+        it("the pot leaves, a raffle on Burner, what is permanent and the three Heads-up notes; signs one MsgStartRaffle", async () => {
+            renderPage();
+            await toReview();
+            const review = step("Review");
+            expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Prize pot");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A raffle on Burner");
+            const permanent = within(review).getByRole("region", { name: "Permanent" });
+            expect(permanent).toHaveTextContent("What's left in the pot at the end is burned");
+            expect(permanent).toHaveTextContent("Raffle settings can't change once started");
+            expect(review).toHaveTextContent("The pot leaves your wallet now and can't be taken back.");
+            expect(review).toHaveTextContent("Once started, a raffle can't be stopped or changed.");
+            expect(review).toHaveTextContent("Whatever is left in the pot when it ends is burned. Nothing comes back to you.");
+            expect(screen.getByTestId("raffle-outcome")).toHaveTextContent(
+                "You put 1,000 TOK in the pot now. For 14 days, anyone can pay 10 TOK for a ticket. Each ticket has a 1 in 100 chance to win 25 % of the pot. Losing tickets add their price to the pot.",
+            );
+            expect(screen.getByText("On average the pot grows as people play.")).toBeInTheDocument();
+
+            await userEvent.click(startButton());
+            expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            expect(m.tx).toHaveBeenCalledTimes(1);
+            expect(m.tx.mock.calls[0][0]).toEqual([{
+                typeUrl: "/bze.burner.MsgStartRaffle",
+                value: { creator: "bze1me", denom: "utok", pot: "1000000000", duration: "14", chances: "10000", ratio: "0.25", ticketPrice: "10000000" },
+            }]);
+        });
+
+        it("without a wallet the steps work but signing asks to connect", async () => {
+            m.address = undefined;
+            renderPage();
+            await toReview();
+            expect(startButton()).toBeDisabled();
+            expect(screen.getByText("Connect your wallet to start the raffle.")).toBeInTheDocument();
+        });
+
+        it("says what the wallet is short of", async () => {
+            m.afford = { canAfford: false, message: "Insufficient TOK balance" };
+            renderPage();
+            await toReview();
+            expect(startButton()).toBeDisabled();
+            expect(screen.getByText("Insufficient TOK balance")).toBeInTheDocument();
+        });
     });
 
     it("blocks a halted token opened by link", async () => {
         m.queryParams = new URLSearchParams("denom=uhalt");
         renderPage();
         expect(await screen.findByText("Halted tokens can't be raffled.")).toBeInTheDocument();
-        expect(question(Q.token)).toHaveAttribute("data-state", "active");
+        expect(step("Token")).toHaveAttribute("data-state", "active");
     });
 
-    describe("success", () => {
-        const succeed = () => m.tx.mockImplementation(async (_msgs: unknown, opts: { onSuccess: (r: { txhash: string }) => void }) => {
-            opts.onSuccess({ txhash: "HASH" });
-            return true;
-        });
-
-        it("says the raffle is live and links the Burner; Start another resets the form", async () => {
-            succeed();
-            renderPage();
-            await pickToken();
-            await answerAll();
-            await userEvent.click(screen.getByText(/I understand the pot/));
+    describe("Done", () => {
+        async function start() {
+            await toReview();
             await userEvent.click(startButton());
+            expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        }
 
-            expect(await screen.findByRole("heading", { name: "The TOK raffle is live" })).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "Back to the Factory" })).toBeInTheDocument();
-            expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("data-app", "explorer");
-            expect(screen.getByRole("link", { name: "Burner" })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
-            expect(screen.getByRole("link", { name: "Burner" })).toHaveAttribute("data-app", "burner");
-
-            await userEvent.click(screen.getByRole("button", { name: "Start another" }));
-            expect(question(Q.token)).toHaveAttribute("data-state", "active");
+        it("says the raffle is live and recommends opening it on Burner", async () => {
+            renderPage();
+            await start();
+            expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("The TOK raffle is live.");
+            const recommended = screen.getByTestId("done-recommended");
+            expect(recommended).toHaveTextContent("Open the raffle");
+            expect(within(recommended).getByRole("link", { name: /Open on Burner/ })).toHaveAttribute("href", "https://burner.test/coin?coin=utok");
+            expect(screen.getAllByRole("link", { name: /Explorer/ })[0]).toHaveAttribute("href", "https://explorer.test/txs/HASH");
+            expect(screen.queryByText("Airdrop to stakers, once")).not.toBeInTheDocument();
         });
 
-        it("offers Back to TOK when opened from the workspace", async () => {
-            const back = "/tokens/token?denom=utok&tab=supply";
+        it("offers an airdrop to the token's stakers when it is stakable", async () => {
+            m.stakedAmount = "5000000";
+            renderPage();
+            await start();
+            expect(screen.getByText("Airdrop to stakers, once")).toBeInTheDocument();
+        });
+
+        it("offers Back to TOK when opened from the token page", async () => {
+            const back = "/tokens/token?denom=utok";
             m.queryParams = new URLSearchParams({ denom: "utok", return: back, returnLabel: "TOK" });
-            succeed();
             renderPage();
-            await waitFor(() => expect(question(Q.token)).toHaveAttribute("data-state", "done"));
-            await answerAll();
-            await userEvent.click(screen.getByText(/I understand the pot/));
+            await waitFor(() => expect(step("Token")).toHaveAttribute("data-state", "done"));
+            await fillPot();
+            await fillPlay();
+            await userEvent.click(button(step("How it plays"), "Continue"));
             await userEvent.click(startButton());
+            await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
 
-            await userEvent.click(await screen.findByRole("button", { name: "Back to TOK" }));
+            await userEvent.click(screen.getByRole("button", { name: /Back to TOK/ }));
             expect(m.navigate).toHaveBeenCalledWith(back);
         });
     });

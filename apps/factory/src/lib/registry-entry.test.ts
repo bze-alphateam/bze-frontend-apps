@@ -12,6 +12,9 @@ import {
     registryEntryJson,
     saveOfficialProgress,
     suggestLogoFileName,
+    linksSummary,
+    logoSummary,
+    prSummary,
 } from "./registry-entry";
 
 // The VDL token as the chain holds it (bank metadata, with the alias the Factory sets).
@@ -132,5 +135,23 @@ describe("progress", () => {
     it("drops unknown steps and survives a broken entry", () => {
         saveOfficialProgress("factory/a/one", { done: ["logo", "nope" as never] });
         expect(loadOfficialProgress("factory/a/one").done).toEqual(["logo"]);
+    });
+});
+
+describe("the guide's step summaries (BFE-274)", () => {
+    it("logo: the name, size and file size that were saved", () => {
+        expect(logoSummary({ fileName: "honey.png", width: 512, height: 512, bytes: 86_000 })).toBe("honey.png · 512×512 · 84 KB ✓");
+        expect(logoSummary({ fileName: "honey.svg" })).toBe("honey.svg ✓");
+    });
+
+    it("links: the ones given, or Skipped", () => {
+        expect(linksSummary({ website: "https://a.example", x: "https://x.com/a" })).toBe("Website, X");
+        expect(linksSummary({ x: "https://x.com/a" })).toBe("X");
+        expect(linksSummary(undefined)).toBe("Skipped");
+    });
+
+    it("submit: the PR number", () => {
+        expect(prSummary("https://github.com/cosmos/chain-registry/pull/1234")).toBe("PR #1234 opened");
+        expect(prSummary(undefined)).toBe("");
     });
 });

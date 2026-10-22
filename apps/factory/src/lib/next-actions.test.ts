@@ -245,10 +245,28 @@ describe("nextActions", () => {
         });
     });
 
+    describe("listed", () => {
+        const ctx = { denom: HONEY, ticker: "HONEY" };
+
+        it("recommends Back to the token, then the brand kit and making it stakable", () => {
+            const r = nextActions("listed", ctx);
+            expect(keys(r)).toEqual({ recommended: "backToToken", more: ["brandKit", "makeStakable"] });
+            expect(r.recommended?.title).toBe("Back to HONEY");
+            expect(target(r.recommended)).toEqual({ href: `/tokens/token?denom=${encodeURIComponent(HONEY)}` });
+            expect(byKey(r, "makeStakable")?.title).toBe("Make it stakable");
+            expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/new?denom=${encodeURIComponent(HONEY)}` });
+        });
+
+        it("skips what the chain shows is done", () => {
+            expect(keys(nextActions("listed", ctx, { brandKitSet: true, hasCompoundedReward: true })))
+                .toEqual({ recommended: "backToToken", more: [] });
+        });
+    });
+
     it("never proposes renouncing or transferring the admin, or locking the supply", () => {
         const kinds: NextActionKind[] = [
             "tokenCreated", "poolCreated", "marketCreated", "simpleRewardCreated", "compoundedCreated",
-            "prizeAdded", "reachedCommunity", "multisendFinished", "raffleStarted",
+            "prizeAdded", "reachedCommunity", "multisendFinished", "raffleStarted", "listed",
         ];
         const ctx: NextActionContext = { denom: HONEY, ticker: "HONEY", base: HONEY, quote: "ubze", stakedDenom: HONEY, prizeDenom: GIFT, prizeKind: "daily" };
         for (const kind of kinds) {

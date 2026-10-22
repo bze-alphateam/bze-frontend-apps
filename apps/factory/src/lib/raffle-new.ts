@@ -197,3 +197,40 @@ export function raffleHref(denom?: string, returnTo?: { href: string; label: str
 /** The token's coin page in the Burner app, where a running raffle is shown and joined. */
 export const burnerCoinHref = (burnerHref: string, denom: string) =>
     `${burnerHref}/coin?coin=${encodeURIComponent(denom)}`
+
+/** The "How it plays" answers, once valid. */
+export interface RafflePlay {
+    days: number;
+    /** "10 HONEY". */
+    ticket: string;
+    /** The N of "1 in N". */
+    oneIn: number;
+    percent: number;
+}
+
+/** "500,000 HONEY in the pot". */
+export const potSummary = (pot: string) => `${pot} in the pot`
+
+/** "For 7 days, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 100 chance to win 50 % of the pot." */
+export function raffleSentence({ days, ticket, oneIn, percent }: RafflePlay): string {
+    return `For ${fmt(days)} ${days === 1 ? 'day' : 'days'}, anyone can pay ${ticket} for a ticket. ` +
+        `Each ticket has a 1 in ${fmt(oneIn)} chance to win ${percent} % of the pot.`
+}
+
+/** "7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50 %". */
+export function rafflePlaySummary({ days, ticket, oneIn, percent }: RafflePlay): string {
+    return `${fmt(days)} ${days === 1 ? 'day' : 'days'} · ${ticket} a ticket · 1 in ${fmt(oneIn)} · winner gets ${percent} %`
+}
+
+/** What the raffle wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
+export interface RaffleDoneInput {
+    denom: string;
+    ticker: string;
+    /** "14 Nov, 18:00"; '' when unknown. */
+    endsAt: string;
+}
+
+/** The Done screen's line under the title. */
+export const raffleDoneText = (endsAt: string) => endsAt
+    ? `It ends around ${endsAt}. Whatever is left in the pot then is burned.`
+    : 'Whatever is left in the pot when it ends is burned.'

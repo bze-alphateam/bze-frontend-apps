@@ -11,6 +11,10 @@ import { type LogoCheck, type LogoCheckResult, MAX_READ_BYTES, checkLogo, logoPa
 export interface LogoReady {
     format: LogoFormat;
     fileName: string;
+    /** For the step's summary: the drawing size and the file size in bytes. */
+    width?: number;
+    height?: number;
+    bytes?: number;
 }
 
 interface LogoStepProps {
@@ -167,7 +171,7 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
                             size="sm"
                             disabled={!passes}
                             onClick={() => {
-                                if (result.format) onReady({ format: result.format, fileName: result.suggestedFileName })
+                                if (result.format) onReady({ format: result.format, fileName: result.suggestedFileName, width: result.width, height: result.height, bytes: chosen?.size })
                             }}
                         >
                             Mark as done

@@ -20,6 +20,10 @@ import {
     validatePrizePercent,
     validateRaffleDays,
     validateTicketPrice,
+    potSummary,
+    raffleDoneText,
+    rafflePlaySummary,
+    raffleSentence,
 } from "./raffle-new";
 
 const DENOM = "factory/bze1owner/utok";
@@ -197,3 +201,22 @@ describe("links and texts", () => {
         expect(raffleRunningText("TOK", "3d 4h")).toBe("A raffle for TOK is already running. It ends in 3d 4h.");
     });
 });
+
+describe('the raffle wizard summaries (BFE-270)', () => {
+    const play = { days: 7, ticket: '10 HONEY', oneIn: 100, percent: 50 }
+
+    it('the live sentence of How it plays', () => {
+        expect(raffleSentence(play)).toBe('For 7 days, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 100 chance to win 50 % of the pot.')
+        expect(raffleSentence({ ...play, days: 1, oneIn: 1000 })).toBe('For 1 day, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 1,000 chance to win 50 % of the pot.')
+    })
+
+    it('the step summaries', () => {
+        expect(potSummary('500,000 HONEY')).toBe('500,000 HONEY in the pot')
+        expect(rafflePlaySummary(play)).toBe('7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50 %')
+    })
+
+    it('the Done text, with or without the end', () => {
+        expect(raffleDoneText('14 Nov, 18:00')).toBe('It ends around 14 Nov, 18:00. Whatever is left in the pot then is burned.')
+        expect(raffleDoneText('')).toBe('Whatever is left in the pot when it ends is burned.')
+    })
+})
