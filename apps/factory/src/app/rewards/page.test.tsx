@@ -395,7 +395,7 @@ describe("rewards directory: sorts", () => {
         ];
 
         m.query = "sort=staked";
-        let view = renderPage();
+        const view = renderPage();
         await waitFor(() => expect(simpleTitles()).toEqual(["Stake TOK · earn BZE", "Stake BZE · earn BZE", "Stake MINE · earn BZE"]));
         view.unmount();
 

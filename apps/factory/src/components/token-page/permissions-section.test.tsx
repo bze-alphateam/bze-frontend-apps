@@ -180,7 +180,7 @@ describe("Transfer admin dialog", () => {
         ]);
         expect(dialog.getByTestId("transfer-new-admin")).toHaveAttribute("title", OTHER);
         expect(dialog.getByText(/Triple-check the address/)).toBeInTheDocument();
-        expect(dialog.getByText("Network fee ≈ 0.02 TBZE")).toBeInTheDocument();
+        expect(dialog.getByText("Network fee ≈ 0.020000 TBZE")).toBeInTheDocument();
 
         await userEvent.click(dialog.getByRole("button", { name: "Transfer admin" }));
         expect(sentMsgs()).toEqual([{
@@ -245,7 +245,7 @@ describe("Renounce dialog", () => {
         expect(dialog.getByTestId("renounce-hint-description")).toHaveAttribute("data-ok", "false");
         expect(dialog.getByTestId("renounce-hint-brandKit")).toHaveTextContent("Brand kit is set.");
         expect(dialog.getByTestId("renounce-hint-registry")).toHaveTextContent("Listed in the Cosmos Chain Registry (not affected).");
-        expect(dialog.getByTestId("renounce-network-fee")).toHaveTextContent("Network fee ≈ 0.02 TBZE");
+        expect(dialog.getByTestId("renounce-network-fee")).toHaveTextContent("Network fee ≈ 0.020000 TBZE");
     });
 
     it("focuses Keep admin, which closes it without sending anything", async () => {
