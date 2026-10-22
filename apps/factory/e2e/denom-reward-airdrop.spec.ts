@@ -29,7 +29,7 @@ test("airdrops to NOAD stakers and reaches Review with the connect message", asy
     await page.getByPlaceholder("Search by name or ticker...").fill("VDL");
     await page.getByRole("option").filter({hasText: "VDL"}).first().click();
     await expect(prize.getByTestId("prize-slot-note")).toHaveText("No prize fee: NOAD already pays VDL.");
-    await prize.getByRole("textbox").fill("100");
+    await prize.getByLabel(/Amount/).fill("100");
     await expect(prize.getByTestId("airdrop-sentence")).toContainText("100 VDL is split right now between everyone staking NOAD (25 NOAD staked), pro rata.");
     await prize.getByRole("button", {name: "Continue"}).click();
 
