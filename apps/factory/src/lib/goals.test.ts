@@ -21,7 +21,6 @@ describe("goal catalogue", () => {
         ["dailyPrize", DENOM, `/denom-reward/schedule?denom=${ENC}`],
         ["registry", DENOM, `/official?denom=${ENC}`],
         ["brandKit", DENOM, `/tokens/token?denom=${ENC}#details`],
-        ["lock", DENOM, `/tokens/token?denom=${ENC}&lock=1`],
         ["multisend", undefined, "/multisend"],
         ["campaign", undefined, "/reward/new"],
         ["raffle", undefined, "/raffle/new"],

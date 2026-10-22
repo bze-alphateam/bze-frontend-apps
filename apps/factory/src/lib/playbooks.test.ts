@@ -34,12 +34,10 @@ beforeEach(() => localStorage.clear());
 
 describe("playbook steps", () => {
     it("launch: detected from the token, its checklist and its admin", () => {
-        expect(states(launch, { items: [], lpCampaign: false })).toEqual(["current", "later", "later", "later", "later"]);
-        expect(states(launch, facts())).toEqual(["done", "current", "later", "later", "later"]);
-        expect(states(launch, facts({}, ["pool", "holderRewards"]))).toEqual(["done", "done", "done", "current", "later"]);
-        expect(states(launch, facts({ admin: "" }, ["pool", "holderRewards", "registry"]))).toEqual(["done", "done", "done", "done", "done"]);
-        // A failed admin lookup is not a lock.
-        expect(states(launch, facts({ admin: undefined }, ["pool", "holderRewards", "registry"]))[4]).toBe("current");
+        expect(states(launch, { items: [], lpCampaign: false })).toEqual(["current", "later", "later", "later"]);
+        expect(states(launch, facts())).toEqual(["done", "current", "later", "later"]);
+        expect(states(launch, facts({}, ["pool", "holderRewards"]))).toEqual(["done", "done", "done", "current"]);
+        expect(states(launch, facts({}, ["pool", "holderRewards", "registry"]))).toEqual(["done", "done", "done", "done"]);
     });
 
     it("launch on testnet: no registry item, so the logo step is marked by hand", () => {

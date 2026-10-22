@@ -47,7 +47,6 @@ function useScrollToSection() {
 
 /** The page of one Factory token, for any wallet; admin actions only once the chain says so. */
 function TokenPageBody({ asset }: { asset: Asset }) {
-    const { replace } = useNavigationWithParams()
     const { address } = useChain(getChainName())
     const { admin, isLoading: isAdminLoading, refresh: refreshAdmin } = useDenomAdmin(asset.denom)
     const { supply, isLoading: isSupplyLoading, refresh: refreshSupply } = useTokenSupply(asset.denom)
@@ -109,11 +108,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                         adminState={state}
                         supplyDisplay={supplyDisplay}
                         supply={supply}
-                        isSupplyLoading={isSupplyLoading}
-                        balanceDisplay={uAmountToBigNumberAmount(balance.amount, asset.decimals)}
-                        refreshSupply={refreshSupply}
                         refreshAdmins={refreshAdmin}
-                        goTo={replace}
                     />
                 </VStack>
             </PageContainer>

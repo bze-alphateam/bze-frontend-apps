@@ -236,7 +236,7 @@ export function MetadataCard({
                         {access === 'renounced' && (
                             <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="metadata-frozen">
                                 <LuLock />
-                                <Text>Frozen forever: the supply was locked.</Text>
+                                <Text>Frozen: the admin was given up.</Text>
                             </HStack>
                         )}
 

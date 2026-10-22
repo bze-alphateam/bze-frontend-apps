@@ -38,8 +38,14 @@ test("a Factory token: header, setup chips and the groups, with no admin action"
 
     // Admin actions wait for a wallet that is the admin; ?tab= is ignored.
     await expect(page.getByRole("button", {name: "Mint"})).toHaveCount(0);
-    await expect(page.getByRole("region", {name: "Renounce admin"})).toHaveCount(0);
     await expect(page.getByRole("tablist")).toHaveCount(0);
+
+    // Permissions without a wallet: the status line only (BFE-273).
+    const permissions = page.getByTestId("permissions-section");
+    await expect(permissions.getByTestId("permissions-status")).toHaveText(/^Admin: bze1z3/);
+    await expect(permissions.getByTestId("transfer-admin-item")).toHaveCount(0);
+    await expect(permissions.getByTestId("renounce-admin-item")).toHaveCount(0);
+    await expect(permissions.getByRole("button")).toHaveCount(0);
     await expect(page.getByText(/How many to burn/)).toHaveCount(0);
 });
 

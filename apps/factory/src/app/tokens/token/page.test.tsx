@@ -48,10 +48,6 @@ vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
 vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: ({ access }: { access: string }) => <div>metadata {access}</div> }));
-vi.mock("@/components/workspace/lock-dialog", async (importActual) => ({
-    ...(await importActual<typeof import("@/components/workspace/lock-dialog")>()),
-    LockDialog: ({ open }: { open: boolean }) => (open ? <div>lock dialog</div> : null),
-}));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     const { default: BigNumber } = await import("bignumber.js");
@@ -159,8 +155,10 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByTestId("owner-badge")).toHaveTextContent("Created by you · you are admin");
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
-        expect(within(screen.getByTestId("permissions-section")).getByRole("region", { name: "Renounce admin" })).toBeInTheDocument();
-        expect(within(screen.getByTestId("permissions-section")).getByRole("region", { name: "Transfer admin" })).toBeInTheDocument();
+        const permissions = within(screen.getByTestId("permissions-section"));
+        expect(permissions.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet, .*Changes here can't be undone by you\.$/);
+        expect(permissions.getByTestId("transfer-admin-item")).toBeInTheDocument();
+        expect(permissions.getByRole("button", { name: "Renounce…" })).toBeInTheDocument();
         expect(within(screen.getByTestId("token-stats")).getByText("You hold")).toBeInTheDocument();
         expect(screen.queryByTestId("admin-unknown")).not.toBeInTheDocument();
         expectBurnOnBurner();
@@ -174,8 +172,8 @@ describe("token page: the seven admin states", () => {
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
         expect(screen.getByText(/Frozen: the admin was given up/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
-        expect(screen.getByTestId("control-locked")).toBeInTheDocument();
-        expect(screen.queryByRole("region", { name: "Renounce admin" })).not.toBeInTheDocument();
+        expect(screen.getByTestId("permissions-status")).toHaveTextContent("Admin given up. Nobody can mint or edit TOK any more.");
+        expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
     });
 
@@ -185,7 +183,9 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByTestId("owner-badge")).toHaveTextContent(/^Created by you · admin is bze1ne/);
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
-        expect(screen.getByTestId("control-not-admin")).toHaveTextContent(NEW_ADMIN);
+        expect(screen.getByTestId("permissions-status")).toHaveTextContent(/^Admin: bze1ne/);
+        expect(screen.getByTestId("permissions-status")).toHaveAttribute("title", NEW_ADMIN);
+        expect(screen.queryByTestId("transfer-admin-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
     });
 
@@ -194,7 +194,7 @@ describe("token page: the seven admin states", () => {
         await renderSettled();
         expect(screen.queryByTestId("owner-badge")).not.toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
-        expect(screen.queryByRole("region", { name: "Renounce admin" })).not.toBeInTheDocument();
+        expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         // Permissionless actions are offered to everyone.
         expect(screen.getByRole("link", { name: "Start raffle" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Make TOK stakable" })).toBeInTheDocument();
@@ -209,7 +209,7 @@ describe("token page: the seven admin states", () => {
         await renderSettled();
         expect(screen.getByTestId("owner-badge")).toHaveTextContent("You are admin");
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Renounce admin" })).toBeInTheDocument();
+        expect(screen.getByTestId("renounce-admin-item")).toBeInTheDocument();
         expectBurnOnBurner();
     });
 
@@ -220,6 +220,10 @@ describe("token page: the seven admin states", () => {
         expect(within(screen.getByTestId("token-stats")).getByText("Supply")).toBeInTheDocument();
         expect(screen.queryByTestId("owner-badge")).not.toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
+        // Permissions: the status line only.
+        expect(screen.getByTestId("permissions-status")).toHaveTextContent(`Admin: ${OWNER}`);
+        expect(screen.queryByTestId("transfer-admin-item")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
     });
 
