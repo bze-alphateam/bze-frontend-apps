@@ -130,13 +130,13 @@ export const GOALS: Goal[] = [
         id: 'brandKit', group: 'official', title: 'Give it a look',
         description: 'Colours and a font for its Communities page.',
         techTag: 'Brand kit', needsToken: 'mine',
-        href: (denom = '') => workspaceHref(denom, 'profile'), synonyms: ['brand', 'colours', 'colors', 'font', 'theme', 'look', 'style', 'design'],
+        href: (denom = '') => workspaceHref(denom, 'details'), synonyms: ['brand', 'colours', 'colors', 'font', 'theme', 'look', 'style', 'design'],
     },
     {
         id: 'lock', group: 'official', title: 'Prove the supply is fixed',
         description: 'Lock it forever. Do it last.',
         techTag: 'Renounce admin', needsToken: 'mine',
-        href: (denom = '') => `${workspaceHref(denom, 'control')}&lock=1`, synonyms: ['lock', 'renounce', 'fixed supply', 'admin', 'freeze', 'trust', 'rug', 'safe', 'ownership'],
+        href: (denom = '') => `${workspaceHref(denom)}&lock=1`, synonyms: ['lock', 'renounce', 'fixed supply', 'admin', 'freeze', 'trust', 'rug', 'safe', 'ownership'],
     },
 ]
 
@@ -159,7 +159,7 @@ export const SEARCH_TOOLS: Goal[] = [
         id: 'handOver', group: 'tool', title: 'Transfer admin',
         description: 'Give the token to a team wallet or a DAO.',
         techTag: 'Change admin', needsToken: 'mine',
-        href: (denom = '') => workspaceHref(denom, 'control'),
+        href: (denom = '') => workspaceHref(denom, 'permissions'),
         synonyms: ['transfer admin', 'change admin', 'dao', 'team wallet'],
     },
 ]

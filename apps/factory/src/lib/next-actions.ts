@@ -123,7 +123,7 @@ const ROUTES = {
     multisend: (denom: string) => `/multisend?denom=${q(denom)}`,
     registry: officialHref,
     // BFE-271 moves the brand kit to the token page's details.
-    brandKit: (denom: string) => workspaceHref(denom, 'profile'),
+    brandKit: (denom: string) => workspaceHref(denom, 'details'),
     factoryUrl: (path: string) => `${getFactoryApp().href}${path}`,
     dexPool: (poolId: string) => `${getDexApp().href}/pools/details?id=${q(poolId)}`,
     dexMarket: (base: string, quote: string) => `${getDexApp().href}/exchange/market?id=${q(createMarketId(base, quote))}`,

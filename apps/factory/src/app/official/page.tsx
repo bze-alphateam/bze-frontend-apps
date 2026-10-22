@@ -171,7 +171,7 @@ function OfficialContent() {
                         <HStack as="nav" aria-label="Breadcrumb" gap="6px" fontSize="14px" color="fg.muted" flexWrap="wrap">
                             {crumb(name, workspaceHref(denom))}
                             <LuChevronRight size={14} aria-hidden />
-                            {crumb('Profile', workspaceHref(denom, 'profile'))}
+                            {crumb('Details and look', workspaceHref(denom, 'details'))}
                             <LuChevronRight size={14} aria-hidden />
                             <Text as="span" color="fg">Make it official</Text>
                         </HStack>
@@ -239,12 +239,12 @@ function OfficialContent() {
                                             <Notice status="warning">
                                                 {"Add a description first, it's shown in wallets. "}
                                                 <Link
-                                                    href={workspaceHref(denom, 'profile')}
+                                                    href={workspaceHref(denom, 'details')}
                                                     color="hg.link"
                                                     fontWeight="600"
-                                                    onClick={(e) => { e.preventDefault(); navigate(workspaceHref(denom, 'profile')) }}
+                                                    onClick={(e) => { e.preventDefault(); navigate(workspaceHref(denom, 'details')) }}
                                                 >
-                                                    Open Profile
+                                                    Open Details and look
                                                 </Link>
                                             </Notice>
                                         </Box>

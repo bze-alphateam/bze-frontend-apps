@@ -129,7 +129,7 @@ describe("Tokens (/tokens)", () => {
         expect(within(page).getByTestId("token-stake")).toHaveTextContent("Stakable · 1,230,000 staked");
         expect(within(page).getByTestId("token-supply")).toHaveTextContent("1,000,000 PAGE");
         expect(within(page).getByRole("link", { name: "PAGE Token · PAGE" }))
-            .toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(PAGE.denom)}&tab=overview`);
+            .toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(PAGE.denom)}`);
         expect(within(page).getByText("factory/bze1z3…qwg3l/upage")).toBeInTheDocument();
         expect(within(page).queryByText("Halted")).not.toBeInTheDocument();
 

@@ -1,0 +1,16 @@
+{
+  "source": "https://testnet.getbze.com/cosmos/bank/v1beta1/supply/by_denom?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-10-21",
+  "method": "GET",
+  "path": "/cosmos/bank/v1beta1/supply/by_denom",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "amount": {
+      "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+      "amount": "1000881000000"
+    }
+  }
+}
