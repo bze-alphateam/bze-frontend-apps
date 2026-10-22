@@ -29,6 +29,12 @@ catalog:
   "@testing-library/jest-dom": "^6.6.3"
   "@testing-library/user-event": "^14.5.2"
 
+# BFE-284: restore() no longer brings back a saved "NotExist" (it left browsers stuck on
+# "Keplr not installed" and made connect() a no-op), plus the swapped getChainWalletState args
+# in ChainWalletStore's walletState/errorMessage getters. Still unfixed upstream in store 0.10.0.
+patchedDependencies:
+  "@interchain-kit/store@0.9.3": "patches/@interchain-kit__store@0.9.3.patch"
+
 # Native/postinstall build scripts we trust to run (all deps the apps already shipped).
 allowBuilds:
   "@reown/appkit": true
