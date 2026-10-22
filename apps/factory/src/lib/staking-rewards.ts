@@ -25,14 +25,6 @@ export function stakingRewardDeletion(reward: RewardProgress): StakingRewardDele
     return { kind: 'deletable' }
 }
 
-/** Splits the manage list into running and finished programs, keeping the chain's order in each. */
-export function splitStakingRewards<T extends Pick<RewardProgress, 'payouts' | 'duration'>>(rewards: T[]) {
-    const active: T[] = []
-    const finished: T[] = []
-    rewards.forEach(reward => (isStakingRewardFinished(reward) ? finished : active).push(reward))
-    return { active, finished }
-}
-
 type PoolSides = { lp_denom: string; base: string; quote: string }
 
 /**

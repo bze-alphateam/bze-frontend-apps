@@ -101,11 +101,6 @@ export function suggestLogoFileName(display: string, format: LogoFormat): string
     return `${name || 'logo'}.${format}`
 }
 
-/** Registry file names are lower case; the extension must match the format. */
-export function isValidLogoFileName(fileName: string, format: LogoFormat): boolean {
-    return new RegExp(`^[a-z0-9][a-z0-9._-]*\\.${format}$`).test(fileName)
-}
-
 const PR_URL = /^https:\/\/github\.com\/cosmos\/chain-registry\/pull\/\d+$/
 
 export function isRegistryPrUrl(url: string): boolean {

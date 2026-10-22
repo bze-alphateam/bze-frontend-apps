@@ -54,3 +54,23 @@ for (const route of ROUTES) {
         await expect.poll(overflow, {message: "horizontal page scroll", timeout: 5000}).toBeLessThanOrEqual(0);
     });
 }
+
+test("the phone menu opens with the nav and the Apps list, and closes again (BFE-277)", async ({page}) => {
+    await page.goto("/");
+    await expect(heading("What are you building today?")(page)).toBeVisible();
+
+    await page.getByRole("button", {name: "Open menu"}).click();
+    const sheet = page.getByRole("dialog", {name: "Menu"});
+    await expect(sheet).toBeVisible();
+    for (const name of ["Create", "Tokens", "Rewards"]) {
+        await expect(sheet.getByRole("link", {name, exact: true})).toBeVisible();
+    }
+    const apps = sheet.getByTestId("apps-menu-mobile");
+    await expect(apps.getByRole("link", {name: /DEX/})).toHaveAttribute("target", "_blank");
+
+    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    await expect.poll(overflow, {message: "horizontal page scroll"}).toBeLessThanOrEqual(0);
+
+    await page.getByRole("button", {name: "Close menu"}).first().click();
+    await expect(sheet).toBeHidden();
+});

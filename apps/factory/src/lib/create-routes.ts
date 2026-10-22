@@ -87,6 +87,8 @@ export interface StartingPoint {
     title: string;
     line: string;
     chips: string[];
+    /** The options in one line, for the connected home's compact list. */
+    options: string;
     /** Without it the tile is "Coming soon" and not a link. */
     href?: string;
     featured?: boolean;
@@ -94,10 +96,10 @@ export interface StartingPoint {
 
 /** The six tiles of the home page, in grid order. */
 export const STARTING_POINTS: StartingPoint[] = [
-    { id: 'token', title: 'Create a token', line: 'Name, ticker, logo and supply. Minted to your wallet.', chips: ['Token'], href: '/token/new', featured: true },
-    { id: 'market', title: 'Create a DEX market', line: 'Let people swap a pair instantly, or trade it with limit orders.', chips: ['Liquidity pool', 'Order book'], href: CHOOSE_MARKET_PATH },
-    { id: 'rewards', title: 'Create staking rewards', line: 'Pay people for staking a token, any token, not only yours.', chips: ['Simple reward', 'Compounded reward'], href: CHOOSE_REWARDS_PATH },
-    { id: 'grow', title: 'Grow a community', line: 'Airdrops, a list of wallets, raffles, or reaching another community.', chips: ['Airdrop', 'Multi-send', 'Raffle', '+1'], href: CHOOSE_GROW_PATH },
-    { id: 'dao', title: 'Create a DAO', line: 'Let holders decide together: proposals, votes and a shared treasury.', chips: [] },
-    { id: 'contest', title: 'Create a trading contest', line: 'Prizes for the top traders of a market over a set period.', chips: [] },
+    { id: 'token', title: 'Create a token', line: 'Name, ticker, logo and supply. Minted to your wallet.', chips: ['Token'], options: 'Token', href: '/token/new', featured: true },
+    { id: 'market', title: 'Create a DEX market', line: 'Let people swap a pair instantly, or trade it with limit orders.', chips: ['Liquidity pool', 'Order book'], options: 'Liquidity pool · Order book', href: CHOOSE_MARKET_PATH },
+    { id: 'rewards', title: 'Create staking rewards', line: 'Pay people for staking a token, any token, not only yours.', chips: ['Simple reward', 'Compounded reward'], options: 'Simple · Compounded', href: CHOOSE_REWARDS_PATH },
+    { id: 'grow', title: 'Grow a community', line: 'Airdrops, a list of wallets, raffles, or reaching another community.', chips: ['Airdrop', 'Multi-send', 'Raffle', '+1'], options: 'Airdrop · Multi-send · Raffle · Reach', href: CHOOSE_GROW_PATH },
+    { id: 'dao', title: 'Create a DAO', line: 'Let holders decide together: proposals, votes and a shared treasury.', chips: [], options: '' },
+    { id: 'contest', title: 'Create a trading contest', line: 'Prizes for the top traders of a market over a set period.', chips: [], options: '' },
 ]

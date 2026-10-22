@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isStakingRewardFinished, programInvolves, splitStakingRewards, stakingRewardDeletion } from './staking-rewards'
+import { programInvolves, stakingRewardDeletion } from './staking-rewards'
 
 const reward = (payouts: number, duration: number, staked_amount = '0') => ({ payouts, duration, staked_amount })
 
@@ -18,21 +18,6 @@ describe('stakingRewardDeletion', () => {
     it('is running while days are left, staked or not', () => {
         expect(stakingRewardDeletion(reward(29, 30))).toEqual({ kind: 'running' })
         expect(stakingRewardDeletion(reward(0, 30, '1000'))).toEqual({ kind: 'running' })
-    })
-})
-
-describe('splitStakingRewards', () => {
-    it('separates finished programs and keeps the order within each group', () => {
-        const a = { id: 'a', ...reward(1, 10) }
-        const b = { id: 'b', ...reward(10, 10) }
-        const c = { id: 'c', ...reward(5, 10) }
-        const d = { id: 'd', ...reward(12, 10, '5') }
-
-        const { active, finished } = splitStakingRewards([a, b, c, d])
-
-        expect(active.map(r => r.id)).toEqual(['a', 'c'])
-        expect(finished.map(r => r.id)).toEqual(['b', 'd'])
-        expect(isStakingRewardFinished(b)).toBe(true)
     })
 })
 
