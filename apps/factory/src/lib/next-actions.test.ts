@@ -185,6 +185,12 @@ describe("nextActions", () => {
             expect(target(byKey(r, "extend"))).toEqual({ href: `/denom-reward/schedule?denom=${encodeURIComponent(HONEY)}&schedule=4` });
         });
 
+        it("an extended simple reward: also a one-time distribution to its stakers", () => {
+            const r = nextActions("prizeAdded", { ...ctx, rewardId: "000000000007" });
+            expect(keys(r)).toEqual({ recommended: "tellStakers", more: ["reach", "distribute"] });
+            expect(target(byKey(r, "distribute"))).toEqual({ href: "/reward/distribute?id=000000000007" });
+        });
+
         it("airdrop: no extend", () => {
             expect(keys(nextActions("prizeAdded", { ...ctx, prizeKind: "airdrop" }))).toEqual({ recommended: "tellStakers", more: ["reach"] });
         });

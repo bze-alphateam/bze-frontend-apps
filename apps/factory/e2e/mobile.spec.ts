@@ -25,6 +25,8 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Create a simple reward/)},
     // testnet's one simple reward (#000000000000) has finished: it can still be extended.
     {path: "/reward/extend?id=000000000000", ready: (page) => page.getByTestId("extend-terms")},
+    // ...and, with 37 VDL staked, still take a one-time distribution.
+    {path: "/reward/distribute?id=000000000000", ready: (page) => page.getByTestId("distribute-terms")},
     {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
     {path: "/reach", ready: heading("Reach another community")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},

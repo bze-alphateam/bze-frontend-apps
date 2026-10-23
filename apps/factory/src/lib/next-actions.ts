@@ -118,6 +118,7 @@ const ROUTES = {
     dailyPrize: (denom: string, scheduleId?: string) =>
         `/denom-reward/schedule?denom=${q(denom)}${scheduleId ? `&schedule=${q(scheduleId)}` : ''}`,
     airdrop: (denom: string) => `/denom-reward/airdrop?denom=${q(denom)}`,
+    distribute: (rewardId: string) => `/reward/distribute?id=${q(rewardId)}`,
     newSimpleReward: (stakingDenom: string) => `/reward/new?staking=${q(stakingDenom)}`,
     reachWithGift: (gift: string) => `/reach?gift=${q(gift)}`,
     reachCommunity: (denom: string) => `/reach?community=${q(denom)}`,
@@ -416,6 +417,15 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 text: 'Pay for more days so stakers keep earning without a gap.',
                 cta: 'Extend daily prize',
                 target: { href: ROUTES.dailyPrize(ctx.stakedDenom ?? denom, ctx.scheduleId) },
+            }] : []),
+            // A simple reward that was just extended can also take a one-time amount.
+            ...(ctx.rewardId && ctx.prizeKind !== 'airdrop' ? [{
+                key: 'distribute',
+                icon: 'airdrop' as const,
+                title: 'Send a one-time bonus',
+                text: 'Split an extra amount between its stakers right now.',
+                cta: 'Distribute',
+                target: { href: ROUTES.distribute(ctx.rewardId) },
             }] : []),
         ]
 

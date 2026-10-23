@@ -32,6 +32,10 @@ describe("txKindsOf", () => {
         ])).toEqual(["mint"]);
     });
 
+    it("covers a one-time distribution to a simple reward", () => {
+        expect(txKindsOf([{ typeUrl: "/bze.rewards.MsgDistributeStakingRewards" }])).toEqual(["distribute-staking-rewards"]);
+    });
+
     it("covers the burning raffle start (BFE-208)", () => {
         expect(txKindsOf([{ typeUrl: "/bze.burner.MsgStartRaffle" }])).toEqual(["start-raffle"]);
     });
