@@ -335,7 +335,7 @@ export type { FeeEstimateRowProps } from './components/fee-estimate';
 export {
     DenomRewardCoinLine, DenomRewardStakePanel, DenomRewardClaimPanel, DenomRewardClaimAllPanel, DenomRewardExitPanel
 } from './components/denom-reward-panels';
-export type { DenomRewardPanelProps } from './components/denom-reward-panels';
+export type { DenomRewardPanelProps, DenomRewardStakePanelProps } from './components/denom-reward-panels';
 export type { LPTokenLogoProps } from './components/lp-token-logo';
 export { LPTokenLogo } from './components/lp-token-logo';
 export { MaxInputGroup } from './components/max-input-group';

@@ -1,6 +1,7 @@
 import {Box, Button, chakra, Flex, Input, InputGroup} from "@chakra-ui/react";
 import {LuCheck, LuChevronLeft, LuChevronRight, LuGift, LuSearch} from "react-icons/lu";
 import {type ReactNode, useMemo, useState} from "react";
+import Link from "next/link";
 import BigNumber from "bignumber.js";
 import {
     formatUnlockCountdown, getStakingApp, hgVariant, HgCard, LPTokenLogo, prettyAmount, Shimmer, shortNumberFormat,
@@ -8,6 +9,7 @@ import {
 } from "@bze/bze-ui-kit";
 import type {DenomRewardCoin} from "@bze/bze-ui-kit";
 import {softButtonStyle} from "@/components/ui/staking/rewards-staking-buttons";
+import {rewardPagePath} from "@/hooks/useNavigation";
 import {VerifiedPill} from "@/components/ui/staking/staking-card-parts";
 import {
     pageButtons, type RewardKind, type StakingFilters, type StakingKindFilter, type StakingPage, type StakingRow, sumCoins,
@@ -16,8 +18,8 @@ import {
 // The compact /staking tables: the viewer's positions and the explore list. One row per reward,
 // its facts compacted under the name; on phones each row folds into a small two-column card.
 
-const POSITIONS_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 0.7fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 110px';
-const EXPLORE_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 110px';
+const POSITIONS_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 0.7fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 160px';
+const EXPLORE_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 160px';
 
 const KIND_LABEL: Record<RewardKind, string> = {native: 'Native', simple: 'Simple', compounded: 'Compounded'};
 
@@ -56,7 +58,7 @@ export const RewardLogo = ({denom, size = '7'}: { denom: string; size?: string }
     return <TokenLogo src={asset?.logo} symbol={asset?.ticker ?? ''} size={size}/>;
 };
 
-const useCoinText = () => {
+export const useCoinText = () => {
     const {denomTicker, denomDecimals} = useAssets();
     return {
         pretty: (c: DenomRewardCoin) => `${prettyAmount(uAmountToBigNumberAmount(c.amount, denomDecimals(c.denom)))} ${denomTicker(c.denom)}`,
@@ -71,7 +73,7 @@ export const formatApr = (apr?: number) => {
     return `≈${apr < 1 ? apr.toFixed(4) : apr.toFixed(2)}%`;
 };
 
-const statusText = (row: StakingRow) => {
+export const statusText = (row: StakingRow) => {
     switch (row.status) {
         case 'running': return row.kind === 'native' ? 'From the Staking app' : 'Running';
         case 'waiting': return 'Waiting for stakers';
@@ -226,6 +228,13 @@ const RowActions = ({children}: { children: ReactNode }) => (
     <Flex gridColumn={{base: '1 / -1', lg: 'auto'}} justify="flex-end" gap="8px">{children}</Flex>
 );
 
+/** Opens the reward's shareable details page (native staking has none: it lives in the Staking app). */
+const ViewButton = ({row}: { row: StakingRow }) => row.kind === 'native' ? null : (
+    <Button asChild size="sm" variant="outline" color="hg.text.secondary" borderColor="hg.hairline" bg="hg.secondaryFill" borderRadius="hg.md" fontWeight="600" _hover={{bg: 'hg.hoverFill'}}>
+        <Link href={rewardPagePath(row.id)} aria-label={`View ${row.name}`}>View</Link>
+    </Button>
+);
+
 const LoadingRows = () => (
     <Flex direction="column" gap="10px" p="20px" aria-busy="true">
         <Shimmer h="44px"/>
@@ -300,6 +309,7 @@ export const PositionsCard = ({rows, nativeDenom, isLoading, onManage, onClaim}:
                             <Cell label="Unlocking"><UnlockText row={row}/></Cell>
                             <Cell label="Elapsed / Duration"><ProgressText row={row}/></Cell>
                             <RowActions>
+                                <ViewButton row={row}/>
                                 <Button size="sm" {...softButtonStyle} onClick={() => onManage(row)}>Manage</Button>
                             </RowActions>
                         </RowFrame>
@@ -414,6 +424,7 @@ const ExploreRow = ({row, onStake}: { row: StakingRow; onStake: (row: StakingRow
             </Cell>
             <Cell label="Elapsed / Duration"><ProgressText row={row}/></Cell>
             <RowActions>
+                <ViewButton row={row}/>
                 {row.kind === 'native' ? (
                     <Button asChild size="sm" {...softButtonStyle}>
                         <a href={getStakingApp().href} target="_blank" rel="noopener noreferrer">Stake</a>

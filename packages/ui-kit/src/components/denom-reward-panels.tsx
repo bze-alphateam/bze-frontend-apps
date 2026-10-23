@@ -91,11 +91,16 @@ export interface DenomRewardPanelProps {
     onDone?: () => void;
 }
 
+export interface DenomRewardStakePanelProps extends DenomRewardPanelProps {
+    /** Prefills the amount (in display units), e.g. one typed on a details page. */
+    initialAmount?: string;
+}
+
 /** Stake into a DR, or add to an existing position (which pays out the pending prizes first). */
-export const DenomRewardStakePanel = ({item, onDone}: DenomRewardPanelProps) => {
+export const DenomRewardStakePanel = ({item, initialAmount, onDone}: DenomRewardStakePanelProps) => {
     const {denomReward, position} = item;
     const denom = denomReward.staking_denom;
-    const [input, setInput] = useState('');
+    const [input, setInput] = useState(() => sanitizeNumberInput(initialAmount ?? ''));
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const {address} = useChain(getChainName());
