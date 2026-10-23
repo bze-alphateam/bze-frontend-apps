@@ -11,6 +11,7 @@ describe("isNavItemActive", () => {
         ["/exchange/market", "/exchange"],
         ["/pools/details", "/pools"],
         ["/assets/details", "/assets"],
+        ["/staking/details", "/staking"],
     ])("marks the parent item active on %s", (pathname, parent) => {
         expect(isNavItemActive(parent, pathname)).toBe(true);
         expect(isNavItemActive("/", pathname)).toBe(false);
