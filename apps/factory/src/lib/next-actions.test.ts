@@ -126,7 +126,7 @@ describe("nextActions", () => {
         it("recommends copying the DEX staking link, then Stake on DEX and making the token stakable for good", () => {
             const r = nextActions("simpleRewardCreated", ctx);
             expect(keys(r)).toEqual({ recommended: "shareStaking", more: ["stakeOnDex", "makeStakable"] });
-            expect(target(r.recommended)).toEqual({ copy: `Stake HONEY and earn 100 BZE a day on the BZE DEX: ${stakingUrl}`, copied: "Staking link" });
+            expect(target(r.recommended)).toEqual({ copy: stakingUrl, copied: "Staking link" });
             expect(target(byKey(r, "stakeOnDex"))).toEqual({ app: "dex", href: stakingUrl });
             expect(byKey(r, "makeStakable")?.title).toBe("Make HONEY stakable for good");
             expect(target(byKey(r, "makeStakable"))).toEqual({ href: `/denom-reward/new?denom=${encodeURIComponent(HONEY)}` });
@@ -157,7 +157,7 @@ describe("nextActions", () => {
         it("Send people to stake copies the link and shows the DEX AppLink; the partner invite links /reach?community=", () => {
             const r = nextActions("compoundedCreated", ctx);
             const send = byKey(r, "sendToStake");
-            expect(target(send)).toEqual({ copy: `HONEY is stakable on the BZE DEX. Stake it here: ${DEX}/staking?search=HONEY`, copied: "Staking link" });
+            expect(target(send)).toEqual({ copy: `${DEX}/staking?search=HONEY`, copied: "Staking link" });
             expect(send?.alsoApp).toEqual({ app: "dex", href: `${DEX}/staking?search=HONEY`, label: "DEX" });
             const invite = target(byKey(r, "invitePartner"));
             expect(invite).toMatchObject({ copied: "Invite" });

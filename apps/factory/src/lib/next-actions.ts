@@ -342,7 +342,6 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
         const staked = ctx.stakedDenom ?? ''
         const stakedTicker = name(ctx.stakedTicker)
         const stakingUrl = ROUTES.dexStaking(stakedTicker)
-        const prize = ctx.prize ? ` and earn ${ctx.prize}` : ctx.prizeTicker ? ` and earn ${ctx.prizeTicker}` : ''
         return [
             {
                 key: 'shareStaking',
@@ -350,7 +349,7 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 title: 'Share the staking link',
                 text: 'Staking happens on the DEX. Send your community straight to it.',
                 cta: 'Copy staking link',
-                target: { copy: `Stake ${stakedTicker}${prize} on the BZE DEX: ${stakingUrl}`, copied: 'Staking link' },
+                target: { copy: stakingUrl, copied: 'Staking link' },
             },
             {
                 key: 'stakeOnDex',
@@ -389,7 +388,7 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 title: 'Send people to stake',
                 text: 'Staking happens on the DEX. Share the link with your community.',
                 cta: 'Copy link',
-                target: { copy: `${name(ticker)} is stakable on the BZE DEX. Stake it here: ${stakingUrl}`, copied: 'Staking link' },
+                target: { copy: stakingUrl, copied: 'Staking link' },
                 alsoApp: { app: 'dex', href: stakingUrl, label: 'DEX' },
             },
             {
