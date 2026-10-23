@@ -18,12 +18,11 @@ test("the home starts from six starting points, two of them coming soon", async 
     await expect(page.getByRole("link", {name: /Guides and strategies on docs\.getbze\.com/})).toHaveAttribute("href", "https://docs.getbze.com");
 });
 
-test("without a wallet the home stays the starting-point home: no welcome, no pick-up cards (BFE-275)", async ({page}) => {
+test("with no drafts the home has no Continue line, just the starting points", async ({page}) => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", {level: 1, name: "What are you building today?"})).toBeVisible();
-    await expect(page.getByRole("heading", {name: /Welcome back/})).toHaveCount(0);
-    await expect(page.getByRole("region", {name: "Pick up where you left off"})).toHaveCount(0);
+    await expect(page.getByRole("complementary", {name: "Continue where you left off"})).toHaveCount(0);
     await expect(page.getByRole("region", {name: "Starting points"})).toBeVisible();
     await expect(page.getByRole("region", {name: "How it works"})).toBeVisible();
 });
