@@ -1,21 +1,25 @@
 'use client';
 
 import React, {useCallback, useEffect, useMemo, useState, useSyncExternalStore} from 'react';
-import {Box, chakra, Flex, Input, InputGroup, SimpleGrid} from '@chakra-ui/react';
-import {LuSearch} from 'react-icons/lu';
-import {useNativeStakingData} from "@/hooks/useNativeStakingData";
-import {NativeStakingCard} from "@/components/ui/staking/native-staking";
-import {RewardsStakingBox} from "@/components/ui/staking/rewards-staking";
-import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
-import {useAssets, prettyAmount, uAmountToBigNumberAmount, shortNumberFormat, calculateRewardsStakingPendingRewards, useAssetsValue, useDenomRewardsData, claimableCoins, getChainName, PageContainer, HgCard, Shimmer, AppLink, getStakingApp} from "@bze/bze-ui-kit";
-import {useChain} from "@interchain-kit/react";
-import {DenomRewardsSection} from "@/components/ui/staking/denom-rewards-section";
+import {Box, Button, chakra, Flex} from '@chakra-ui/react';
+import {LuRefreshCw} from 'react-icons/lu';
 import BigNumber from "bignumber.js";
-import {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
-import {PrettyBalance} from "@bze/bze-ui-kit";
+import {useChain} from "@interchain-kit/react";
+import {
+    getChainName, HgCard, hgVariant, isLpDenom, PageContainer, useAssets, useAssetsValue, useDenomRewardsData,
+} from "@bze/bze-ui-kit";
+import {useNativeStakingData} from "@/hooks/useNativeStakingData";
+import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
 import {InnerHero, CountPill} from "@/components/ui/layout/inner-hero";
-import {StakingSection} from "@/components/ui/staking/staking-card-parts";
+import {NativeStakingDialog} from "@/components/ui/staking/native-staking";
+import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
+import {DenomRewardActionModal} from "@/components/ui/staking/denom-reward-modals";
+import {ClaimPickerModal} from "@/components/ui/staking/claim-picker-modal";
+import {ExploreTable, ExploreToolbar, PositionsCard} from "@/components/ui/staking/staking-table";
+import {
+    buildStakingRows, DEFAULT_STAKING_FILTERS, filterStakingRows, paginate, positionRows, type StakingFilters,
+    type StakingLookups, type StakingRow,
+} from "@/lib/staking-list";
 
 //150 seconds
 const STAKING_DATA_RELOAD_INTERVAL = 150_000;
@@ -26,185 +30,72 @@ const noSubscribe = () => () => {};
 const readSearchParam = () => new URLSearchParams(window.location.search).get('search') ?? '';
 const noSearchParam = () => '';
 
+type OpenDialog = { type: 'manage' | 'stake'; rowId: string } | { type: 'claim' };
+
 const StakingPage = () => {
     const urlSearch = useSyncExternalStore(noSubscribe, readSearchParam, noSearchParam);
-    const [typedSearch, setSearchTerm] = useState<string | undefined>();
-    const searchTerm = typedSearch ?? urlSearch;
-    const [selectedStaking, setSelectedStaking] = useState<StakingRewardSDKType | undefined>();
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [typedSearch, setTypedSearch] = useState<string | undefined>();
+    const [chosen, setChosen] = useState<StakingFilters>(DEFAULT_STAKING_FILTERS);
+    const filters = useMemo(() => ({...chosen, search: typedSearch ?? urlSearch}), [chosen, typedSearch, urlSearch]);
+    const [pageNumber, setPageNumber] = useState(1);
+    const [dialog, setDialog] = useState<OpenDialog | undefined>();
 
-    const {stakingData, isLoading, reload} = useNativeStakingData()
+    const {stakingData, isLoading: isLoadingNative, reload: reloadNative} = useNativeStakingData()
     const {rewards: stakingRewards, isLoading: isLoadingStakingRewards, addressData, reload: reloadRewardsStaking} = useRewardsStakingData()
     const {address} = useChain(getChainName())
     const {items: denomRewards, isLoading: isLoadingDenomRewards, hasError: denomRewardsError, reload: reloadDenomRewards} = useDenomRewardsData(address)
-    const {isVerifiedAsset, denomTicker, nativeAsset, denomDecimals} = useAssets()
-    const {totalUsdValue} = useAssetsValue()
+    const {isVerifiedAsset, denomTicker, nativeAsset} = useAssets()
+    const {denomUsdValue} = useAssetsValue()
 
-    const allActiveStakingRewardsCount = useMemo(() => stakingRewards.filter(sr => sr.payouts < sr.duration).length + 1, [stakingRewards])
+    const lookups = useMemo<StakingLookups>(() => ({
+        ticker: denomTicker,
+        verified: isVerifiedAsset,
+        isLp: isLpDenom,
+        usdValue: (denom, uAmount) => denomUsdValue(denom, new BigNumber(uAmount)),
+    }), [denomTicker, isVerifiedAsset, denomUsdValue]);
 
-    const stakingCount = useMemo(() => {
-        let totalCount = 0
-        if (stakingData?.currentStaking?.staked.amount.gt(0)) {
-            totalCount += 1
-        }
+    const nativeDenom = nativeAsset?.denom ?? 'ubze';
+    const rows = useMemo(() => buildStakingRows({
+        native: stakingData,
+        nativeDenom,
+        simple: stakingRewards,
+        addressData,
+        compounded: denomRewards,
+    }, lookups), [stakingData, nativeDenom, stakingRewards, addressData, denomRewards, lookups]);
 
-        totalCount += denomRewards.filter(dr => dr.position).length
-        if (!addressData) return totalCount;
+    const positions = useMemo(() => positionRows(rows), [rows]);
+    const explore = useMemo(() => filterStakingRows(rows, filters), [rows, filters]);
+    const page = paginate(explore, pageNumber);
+    const isLoading = isLoadingNative || isLoadingStakingRewards || isLoadingDenomRewards;
 
-        return totalCount + addressData.active.size
-    }, [stakingData, addressData, denomRewards])
-    const filteredOpportunities = useMemo(() => {
-        return stakingRewards.filter(
-            sr =>
-                denomTicker(sr.staking_denom).toLowerCase().includes(searchTerm.toLowerCase()) ||
-                denomTicker(sr.prize_denom).toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => {
-            const aData = addressData?.active.get(a.reward_id)
-            const bData = addressData?.active.get(b.reward_id)
-            if (aData && !bData) return -1;
-            if (!aData && bData) return 1;
-
-            const aPending = addressData?.unlocking.get(a.reward_id)
-            const bPending = addressData?.unlocking.get(b.reward_id)
-            if (aPending && !bPending) return -1;
-            if (!aPending && bPending) return 1;
-
-            const aVerified = isVerifiedAsset(a.staking_denom) && isVerifiedAsset(a.prize_denom)
-            const bVerified = isVerifiedAsset(b.staking_denom) && isVerifiedAsset(b.prize_denom)
-            if (aVerified && !bVerified) return -1;
-            if (!aVerified && bVerified) return 1;
-
-            const stakedA = new BigNumber(a.staked_amount || 0)
-            const stakedB = new BigNumber(b.staked_amount || 0)
-            if (stakedA.gt(stakedB)) return -1;
-            if (stakedA.lt(stakedB)) return 1;
-
-            return 0
-        })
-    }, [stakingRewards, searchTerm, addressData, isVerifiedAsset, denomTicker]);
-
-    // summary, derived from the loaded data
-    const summary = useMemo(() => {
-        if (!stakingData || !stakingRewards || !nativeAsset) return undefined;
-
-        const totalStaked: PrettyBalance[] = []
-        const bzeAmount = uAmountToBigNumberAmount(stakingData.totalStaked.amount, nativeAsset.decimals ?? 6)
-        if (bzeAmount) {
-            totalStaked.push({
-                amount: bzeAmount,
-                denom: nativeAsset.denom
-            })
-        }
-
-        // initialize pending rewards in BZE to the native staking pending rewards
-        let pendingBzeAmount = uAmountToBigNumberAmount(stakingData.currentStaking?.pendingRewards.total.amount || new BigNumber(0), nativeAsset.decimals)
-        let pendingRewardsAssetsCount = 0;
-        const totalPending: Map<string, PrettyBalance> = new Map<string, PrettyBalance>();
-        stakingRewards.forEach(sr => {
-            const balance = {
-                amount: uAmountToBigNumberAmount(sr.staked_amount || 0, denomDecimals(sr.staking_denom)),
-                denom: sr.staking_denom
-            }
-
-            totalStaked.push(balance)
-            const userStake = addressData?.active.get(sr.reward_id)
-            if (!userStake) return;
-
-            const pendingRewards = calculateRewardsStakingPendingRewards(sr, userStake)
-            if (pendingRewards.isNaN() || pendingRewards.isZero()) return;
-
-            let pendingRewardsAmount = uAmountToBigNumberAmount(pendingRewards, denomDecimals(sr.prize_denom))
-            if (sr.prize_denom === nativeAsset.denom) {
-                pendingBzeAmount = pendingBzeAmount.plus(pendingRewardsAmount)
-                return
-            }
-
-            pendingRewardsAssetsCount += 1;
-            if (totalPending.has(sr.prize_denom)) {
-                const existingPending = totalPending.get(sr.prize_denom)
-                if (existingPending) {
-                    pendingRewardsAmount = pendingRewardsAmount.plus(existingPending.amount)
-                }
-            }
-
-            totalPending.set(
-                sr.prize_denom,
-                {
-                    amount: pendingRewardsAmount,
-                    denom: sr.prize_denom
-                }
-            )
-        })
-
-        // denom rewards: the pool totals, and my pending as the chain reports it
-        denomRewards.forEach(({denomReward, position}) => {
-            totalStaked.push({
-                amount: uAmountToBigNumberAmount(denomReward.staked_amount || 0, denomDecimals(denomReward.staking_denom)),
-                denom: denomReward.staking_denom
-            })
-            claimableCoins(position).forEach(coin => {
-                const amount = uAmountToBigNumberAmount(coin.amount, denomDecimals(coin.denom))
-                if (coin.denom === nativeAsset.denom) {
-                    pendingBzeAmount = pendingBzeAmount.plus(amount)
-                    return
-                }
-
-                pendingRewardsAssetsCount += 1;
-                const existing = totalPending.get(coin.denom)
-                totalPending.set(coin.denom, {amount: existing ? existing.amount.plus(amount) : amount, denom: coin.denom})
-            })
-        })
-
-        if (pendingBzeAmount.gt(0)) {
-            totalPending.set(
-                nativeAsset.denom,
-                {
-                    amount: pendingBzeAmount,
-                    denom: nativeAsset.denom
-                }
-            )
-        }
-
-        return {
-            stakedUsdValue: totalUsdValue(totalStaked),
-            //the total amount of BZE pending rewards (native staking, staking rewards, denom rewards)
-            pendingBzeRewards: pendingBzeAmount,
-            // the total value of the pending rewards in USDC (BZE + other rewards)
-            pendingUsdRewards: totalUsdValue(Array.from(totalPending.values())),
-            // the number of other pending reward entries
-            pendingOtherRewards: pendingRewardsAssetsCount,
-        }
-    }, [stakingData, stakingRewards, nativeAsset, denomDecimals, totalUsdValue, addressData, denomRewards])
-    const summaryLoading = !summary;
-    const stakedUsdValue = summary?.stakedUsdValue ?? new BigNumber(0);
-    const pendingBzeRedwards = summary?.pendingBzeRewards ?? new BigNumber(0);
-    const pendingUsdRewards = summary?.pendingUsdRewards ?? new BigNumber(0);
-    const pendingOtherRewards = summary?.pendingOtherRewards ?? 0;
-
-    const openModal = useCallback((staking: StakingRewardSDKType) => {
-        setSelectedStaking(staking);
-        setIsModalOpen(true);
+    const onFilters = useCallback((next: StakingFilters) => {
+        setChosen(next);
+        setTypedSearch(next.search);
+        setPageNumber(1);
     }, []);
-    const closeModal = useCallback(() => {
-        setIsModalOpen(false);
-        setSelectedStaking(undefined);
-    }, []);
-    const onModalAction = useCallback(() => {
+
+    const reloadAll = useCallback(() => {
+        reloadNative()
         reloadRewardsStaking()
-        closeModal()
-    }, [reloadRewardsStaking, closeModal]);
+        reloadDenomRewards()
+    }, [reloadNative, reloadRewardsStaking, reloadDenomRewards]);
+
+    const closeDialog = useCallback(() => setDialog(undefined), []);
+    const onDone = useCallback(() => {
+        setDialog(undefined)
+        reloadAll()
+    }, [reloadAll]);
 
     useEffect(() => {
-        const reloadInterval = setInterval(() => {
-            reload()
-            reloadRewardsStaking()
-            reloadDenomRewards()
-        }, STAKING_DATA_RELOAD_INTERVAL)
+        const reloadInterval = setInterval(reloadAll, STAKING_DATA_RELOAD_INTERVAL)
 
         return () => {
             clearInterval(reloadInterval)
         }
-    }, [reload, reloadRewardsStaking, reloadDenomRewards])
+    }, [reloadAll])
+
+    // dialogs read the row from the latest data, so a refresh while one is open shows fresh figures
+    const dialogRow = dialog && dialog.type !== 'claim' ? rows.find(r => r.id === dialog.rowId) : undefined;
 
     return (
         <Box minH="100vh">
@@ -215,108 +106,84 @@ const StakingPage = () => {
             />
 
             <PageContainer pt="32px" pb="80px">
-                <Flex direction="column" gap="24px">
-                    {/* Search */}
-                    <Flex justify="space-between" align="center" gap="16px" wrap="wrap">
-                        <InputGroup startElement={<LuSearch size={16}/>} w="460px" maxW="100%">
-                            <Input
-                                aria-label="Search staking opportunities"
-                                placeholder="Search staking opportunities..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                h="44px"
-                                borderRadius="12px"
-                                bg="hg.inset"
-                                borderColor="hg.hairline"
-                                fontSize="15px"
-                            />
-                        </InputGroup>
-                        <CountPill>{allActiveStakingRewardsCount} staking rewards</CountPill>
-                    </Flex>
-
-                    {/* Stats Overview */}
-                    <SimpleGrid columns={{base: 1, sm: 2, md: 3}} gap="16px">
-                        <SummaryCard label="Total Value Staked" loading={summaryLoading}>
-                            <chakra.strong fontSize="26px" letterSpacing="-0.01em">≈ ${shortNumberFormat(stakedUsdValue)}</chakra.strong>
-                        </SummaryCard>
-                        <SummaryCard label="Active Stakes" loading={summaryLoading} note="Earning rewards">
-                            <chakra.strong fontSize="26px" letterSpacing="-0.01em">{stakingCount}</chakra.strong>
-                        </SummaryCard>
-                        <SummaryCard label="Unclaimed Rewards" loading={summaryLoading} note={`≈ $${prettyAmount(pendingUsdRewards)}`}>
-                            <chakra.strong fontSize="24px" letterSpacing="-0.01em">
-                                {prettyAmount(pendingBzeRedwards)} {nativeAsset?.ticker}
-                                {pendingOtherRewards > 0 && (
-                                    <chakra.span fontSize="14px" fontWeight="500" color="hg.text.faint">{` + ${pendingOtherRewards}`}</chakra.span>
-                                )}
-                            </chakra.strong>
-                        </SummaryCard>
-                    </SimpleGrid>
-
-                    {/* Network staking: hidden while searching, so only the matching rewards show */}
-                    {!searchTerm && (
-                        <StakingSection
-                            title="Network staking"
-                            description="BZE’s own staking, run by the Staking app. Claim your rewards here; stake, unstake and pick validators in Staking."
-                            aside={<AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>}
-                        >
-                            <NativeStakingCard
-                                stakingData={stakingData}
-                                isLoading={isLoading}
-                                onClaimSuccess={reload}
-                            />
-                        </StakingSection>
+                <Flex direction="column" gap="28px">
+                    {(positions.length > 0 || (isLoading && Boolean(address))) && (
+                        <PositionsCard
+                            rows={positions}
+                            nativeDenom={nativeDenom}
+                            isLoading={isLoading && positions.length === 0}
+                            onManage={(row) => setDialog({type: 'manage', rowId: row.id})}
+                            onClaim={() => setDialog({type: 'claim'})}
+                        />
                     )}
 
-                    {/* Simple rewards */}
-                    <StakingSection
-                        title="Simple rewards"
-                        description="Stake one token, earn one token every day until the program ends."
-                    >
-                        {!isLoadingStakingRewards && filteredOpportunities.map((sr) => (
-                            <RewardsStakingBox
-                                key={sr.reward_id}
-                                stakingReward={sr}
-                                userStake={addressData?.active.get(sr.reward_id)}
-                                userUnlocking={addressData?.unlocking.get(sr.reward_id)}
-                                onClick={() => openModal(sr)}
-                            />
-                        ))}
-                    </StakingSection>
+                    <chakra.section display="flex" flexDirection="column" gap="14px" aria-label="Explore rewards">
+                        <Flex justify="space-between" align="flex-end" gap="12px" wrap="wrap">
+                            <Flex direction="column" gap="4px">
+                                <chakra.h2 m="0" fontSize="22px" fontWeight="700">Explore rewards</chakra.h2>
+                                <chakra.span fontSize="14px" color="fg.muted">Native staking first, then verified rewards by APR, then the rest.</chakra.span>
+                            </Flex>
+                            {!isLoading && <CountPill>{explore.length} reward{explore.length === 1 ? '' : 's'}</CountPill>}
+                        </Flex>
 
-                    {/* Compounded rewards */}
-                    <DenomRewardsSection
-                        items={denomRewards}
-                        isLoading={isLoadingDenomRewards}
-                        hasError={denomRewardsError}
-                        hasWallet={Boolean(address)}
-                        searchTerm={searchTerm}
-                        onReload={reloadDenomRewards}
-                    />
+                        <ExploreToolbar filters={filters} onChange={onFilters}/>
 
-                    {/* Action Modal */}
-                    {isModalOpen && (
-                        <RewardsStakingActionModal
-                            stakingReward={selectedStaking}
-                            userStake={addressData?.active.get(selectedStaking?.reward_id ?? '')}
-                            userUnlocking={addressData?.unlocking.get(selectedStaking?.reward_id ?? '')}
-                            onClose={closeModal}
-                            onActionPerformed={onModalAction}
-                        />)}
+                        {denomRewardsError && (
+                            <HgCard>
+                                <Flex align="center" gap="12px" wrap="wrap">
+                                    <chakra.span fontSize="14px" color="fg.muted" flex="1">
+                                        Couldn&apos;t load the compounded rewards — the node may be down, or not run chain v8.2.0 yet.
+                                    </chakra.span>
+                                    <Button size="md" variant={hgVariant('secondary')} gap="6px" onClick={reloadDenomRewards}><LuRefreshCw aria-hidden="true"/> Retry</Button>
+                                </Flex>
+                            </HgCard>
+                        )}
+
+                        <ExploreTable
+                            page={page}
+                            isLoading={isLoading}
+                            onStake={(row) => setDialog({type: 'stake', rowId: row.id})}
+                            onPage={setPageNumber}
+                        />
+                    </chakra.section>
+
+                    {dialog?.type === 'claim' && (
+                        <ClaimPickerModal rows={positions.filter(r => r.position?.claimable)} onClose={closeDialog} onDone={onDone}/>
+                    )}
+                    {dialog && dialogRow && (
+                        <RowDialog row={dialogRow} view={dialog.type === 'stake' ? 'stake' : 'manage'} hasWallet={Boolean(address)} onClose={closeDialog} onDone={onDone}/>
+                    )}
                 </Flex>
             </PageContainer>
         </Box>
     );
 };
 
-/** A summary figure: an uppercase label, the number, and a DEX-coloured note. */
-const SummaryCard = ({label, loading, note, children}: { label: string; loading: boolean; note?: string; children: React.ReactNode }) => (
-    <HgCard px="20px" py="18px">
-        <Flex direction="column" gap="8px">
-            <chakra.span fontSize="12px" fontWeight="600" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint">{label}</chakra.span>
-            {loading ? <Shimmer h="28px" w="60%"/> : children}
-            {note && (loading ? <Shimmer h="12px" w="35%"/> : <chakra.span fontSize="12px" color="hg.link">{note}</chakra.span>)}
-        </Flex>
-    </HgCard>
-);
+/** Manage or Stake on one row: the reward kind's own dialog. */
+const RowDialog = ({row, view, hasWallet, onClose, onDone}: {
+    row: StakingRow;
+    view: 'manage' | 'stake';
+    hasWallet: boolean;
+    onClose: () => void;
+    onDone: () => void;
+}) => {
+    switch (row.source.kind) {
+        case 'native':
+            return <NativeStakingDialog stakingData={row.source.data} onClose={onClose} onClaimSuccess={onDone}/>;
+        case 'simple':
+            return (
+                <RewardsStakingActionModal
+                    stakingReward={row.source.reward}
+                    userStake={row.source.stake}
+                    userUnlocking={row.source.unlocking}
+                    initialView={view === 'stake' ? 'stake' : 'actions'}
+                    onClose={onClose}
+                    onActionPerformed={onDone}
+                />
+            );
+        case 'compounded':
+            return <DenomRewardActionModal item={row.source.item} action={view === 'stake' ? 'stake' : undefined} hasWallet={hasWallet} onClose={onClose} onDone={onDone}/>;
+    }
+};
 
 export default StakingPage;
