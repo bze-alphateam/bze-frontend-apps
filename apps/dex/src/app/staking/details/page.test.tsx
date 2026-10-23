@@ -75,7 +75,7 @@ describe("Reward details page", () => {
         const facts = screen.getByTestId("reward-facts");
         expect(facts).toHaveTextContent("Day 90 of 100");
         expect(facts).toHaveTextContent("10 days left");
-        expect(facts).toHaveTextContent("7 days");
+        expect(facts).toHaveTextContent("7d");
     });
 
     it("estimates the income of a typed amount and stops at the reward's end", async () => {

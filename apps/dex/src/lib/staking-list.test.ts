@@ -6,6 +6,7 @@ import {
     buildStakingRows,
     DEFAULT_STAKING_FILTERS,
     filterStakingRows,
+    formatLockPeriod,
     pageButtons,
     paginate,
     positionRows,
@@ -202,5 +203,22 @@ describe("pageButtons", () => {
         expect(pageButtons(1, 42)).toEqual([1, 2, 3, 4, "…", 42]);
         expect(pageButtons(5, 42)).toEqual([1, "…", 4, 5, 6, "…", 42]);
         expect(pageButtons(42, 42)).toEqual([1, "…", 39, 40, 41, 42]);
+    });
+});
+
+describe("formatLockPeriod", () => {
+    it.each([[21, "21d"], [1, "1d"], [0.25, "6h"], [600 / 86_400, "10m"], [1 / 86_400, "1m"]])("shows %s days as %s", (days, text) => {
+        expect(formatLockPeriod(days)).toBe(text);
+    });
+
+    it("has nothing to show without a lock", () => {
+        expect(formatLockPeriod(0)).toBeUndefined();
+    });
+});
+
+describe("native staking's lock", () => {
+    it("keeps an unbonding under a day, which the whole-day figure rounds to 0", () => {
+        const rows = buildStakingRows({ native: { ...native(0, 0), unlockDuration: "0", unlockSeconds: 600 }, nativeDenom: "ubze", simple: [], compounded: [] }, lookups);
+        expect(formatLockPeriod(byId(rows, "native").lockDays)).toBe("10m");
     });
 });

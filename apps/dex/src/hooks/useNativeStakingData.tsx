@@ -39,6 +39,7 @@ export function useNativeStakingData() {
             const data: NativeStakingData = {
                 averageApr: apr,
                 unlockDuration: parseUnbondingDays(stakingParams.unbonding_time as string),
+                unlockSeconds: new BigNumber((stakingParams.unbonding_time as string).split("s")[0] || 0).toNumber(),
                 totalStaked: {
                     amount: new BigNumber(stakingPool.bonded_tokens),
                     denom: nativeAsset.denom
@@ -82,6 +83,8 @@ export function useNativeStakingData() {
     // Initial load when assets are ready
     useEffect(() => {
         if (!isLoadingAssets && nativeAsset) {
+            // load() is also the reload the page calls, so it stays outside the effect; its setState runs after the awaits
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             load()
         }
     }, [isLoadingAssets, nativeAsset, load])

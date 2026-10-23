@@ -12,7 +12,7 @@ import {softButtonStyle} from "@/components/ui/staking/rewards-staking-buttons";
 import {rewardPagePath} from "@/hooks/useNavigation";
 import {VerifiedPill} from "@/components/ui/staking/staking-card-parts";
 import {
-    pageButtons, type RewardKind, type StakingFilters, type StakingKindFilter, type StakingPage, type StakingRow, sumCoins,
+    formatLockPeriod, pageButtons, type RewardKind, type StakingFilters, type StakingKindFilter, type StakingPage, type StakingRow, sumCoins,
 } from "@/lib/staking-list";
 
 // The compact /staking tables: the viewer's positions and the explore list. One row per reward,
@@ -63,6 +63,7 @@ export const useCoinText = () => {
     return {
         pretty: (c: DenomRewardCoin) => `${prettyAmount(uAmountToBigNumberAmount(c.amount, denomDecimals(c.denom)))} ${denomTicker(c.denom)}`,
         short: (c: DenomRewardCoin) => `${shortNumberFormat(uAmountToBigNumberAmount(c.amount, denomDecimals(c.denom)))} ${denomTicker(c.denom)}`,
+        shortAmount: (c: DenomRewardCoin) => shortNumberFormat(uAmountToBigNumberAmount(c.amount, denomDecimals(c.denom))),
         ticker: denomTicker,
     };
 };
@@ -84,17 +85,17 @@ export const statusText = (row: StakingRow) => {
     }
 };
 
-/** "Unlock 7 days · Min 100 BZE · Running" — the same facts for every reward, under its name. */
+/** "Unlock 7d · Min 100 BZE · Running" — the same facts for every reward, under its name (no minimum, no "Min"). */
 const SpecLine = ({row, staked}: { row: StakingRow; staked?: boolean }) => {
     const {short} = useCoinText();
     const parts = [
-        row.lockDays > 0 ? `Unlock ${row.lockDays} day${row.lockDays === 1 ? '' : 's'}` : 'Unlock instant',
-        new BigNumber(row.minStake).gt(0) ? `Min ${short({denom: row.stakingDenom, amount: row.minStake})}` : 'No minimum',
+        `Unlock ${formatLockPeriod(row.lockDays) ?? 'instant'}`,
+        new BigNumber(row.minStake).gt(0) ? `Min ${short({denom: row.stakingDenom, amount: row.minStake})}` : '',
         statusText(row),
     ].filter(Boolean);
 
     return (
-        <chakra.span fontSize="12px" color="hg.text.faint" truncate data-testid="reward-spec">
+        <chakra.span fontSize="12px" lineHeight="1.4" color="hg.text.faint" lineClamp={2} data-testid="reward-spec">
             {parts.join(' · ')}
             {staked && <chakra.span color="hg.link" fontWeight="600"> · staked</chakra.span>}
         </chakra.span>
@@ -108,7 +109,7 @@ const RewardCell = ({row, staked}: { row: StakingRow; staked?: boolean }) => (
             : <RewardLogo denom={row.stakingDenom}/>}
         <Flex direction="column" gap="2px" minW="0">
             <Flex align="center" gap="6px" minW="0" wrap="wrap">
-                <chakra.strong fontSize="15px" truncate>{row.name}</chakra.strong>
+                <chakra.strong fontSize="14px" lineHeight="1.3" lineClamp={2} wordBreak="break-word">{row.name}</chakra.strong>
                 <RewardKindTag kind={row.kind}/>
                 {row.verified && row.kind !== 'native' && <VerifiedPill/>}
             </Flex>
@@ -125,17 +126,27 @@ const Cell = ({label, children, align = 'left'}: { label: string; children: Reac
     </Flex>
 );
 
-const Sub = ({children, tone}: { children: ReactNode; tone?: 'success' }) => (
-    <chakra.span fontSize="12px" color={tone === 'success' ? 'hg.success.text' : 'hg.text.faint'} truncate>{children}</chakra.span>
+const Sub = ({children}: { children: ReactNode }) => (
+    <chakra.span fontSize="12px" color="hg.text.faint" truncate>{children}</chakra.span>
 );
+
+/** A coin as two lines: the number, and its ticker under it, so long amounts and names fit the column. */
+const CoinAmount = ({coin, color, strong = true}: { coin: DenomRewardCoin; color?: string; strong?: boolean }) => {
+    const {shortAmount, ticker} = useCoinText();
+    return (
+        <>
+            <chakra.span fontSize="13px" fontWeight={strong ? '600' : '500'} color={color} lineHeight="1.3" truncate>{shortAmount(coin)}</chakra.span>
+            <chakra.span fontSize="11px" color="hg.text.faint" lineHeight="1.3" truncate>{ticker(coin.denom)}</chakra.span>
+        </>
+    );
+};
 
 /** The first coin, and "+ N tokens" for the others. */
 const CoinStack = ({coins, more = 'tokens', strong = true}: { coins?: DenomRewardCoin[]; more?: 'tokens' | 'more'; strong?: boolean }) => {
-    const {short} = useCoinText();
     if (!coins || coins.length === 0) return <chakra.span color="hg.text.faint">—</chakra.span>;
     return (
         <>
-            <chakra.span fontSize="14px" fontWeight={strong ? '600' : '500'} truncate>{short(coins[0])}</chakra.span>
+            <CoinAmount coin={coins[0]} strong={strong}/>
             {coins.length > 1 && <Sub>+ {coins.length - 1} {more === 'tokens' ? `token${coins.length === 2 ? '' : 's'}` : 'more'}</Sub>}
         </>
     );
@@ -148,7 +159,7 @@ const EarnCell = ({row}: { row: StakingRow }) => {
         <>
             <Flex align="center" gap="6px" minW="0">
                 <RewardLogo denom={row.earn[0]} size="5"/>
-                <chakra.span fontSize="14px" fontWeight="600" truncate>{ticker(row.earn[0])}</chakra.span>
+                <chakra.span fontSize="13px" fontWeight="600" truncate>{ticker(row.earn[0])}</chakra.span>
             </Flex>
             {row.earn.length > 1 && <Sub>+ {row.earn.length - 1} token{row.earn.length === 2 ? '' : 's'}</Sub>}
         </>
@@ -156,17 +167,17 @@ const EarnCell = ({row}: { row: StakingRow }) => {
 };
 
 const AprText = ({apr}: { apr?: number }) => (
-    <chakra.span fontSize="14px" fontWeight="700" color={apr === undefined ? 'hg.text.faint' : 'hg.success.text'}>{formatApr(apr)}</chakra.span>
+    <chakra.span fontSize="13px" fontWeight="700" color={apr === undefined ? 'hg.text.faint' : 'hg.success.text'}>{formatApr(apr)}</chakra.span>
 );
 
 /** "10 / 100 days" with a thin DEX bar; rewards with no end say "Ongoing". */
 const ProgressText = ({row}: { row: StakingRow }) => {
-    if (!row.progress) return <chakra.span fontSize="14px" color="hg.text.secondary">Ongoing</chakra.span>;
+    if (!row.progress) return <chakra.span fontSize="13px" color="hg.text.secondary">Ongoing</chakra.span>;
     const {done, duration} = row.progress;
     const pct = duration > 0 ? Math.min(100, (done / duration) * 100) : 0;
     return (
         <Flex direction="column" gap="5px" w="full" maxW="140px">
-            <chakra.span fontSize="13px" fontWeight="600">{done} / {duration} days</chakra.span>
+            <chakra.span fontSize="12px" fontWeight="600">{done} / {duration} days</chakra.span>
             <Box h="4px" borderRadius="2px" bg="hg.inset" overflow="hidden" role="progressbar" aria-label="Days paid out" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
                 <Box h="full" w={`${pct}%`} bgImage="app"/>
             </Box>
@@ -175,7 +186,6 @@ const ProgressText = ({row}: { row: StakingRow }) => {
 };
 
 const UnlockText = ({row}: { row: StakingRow }) => {
-    const {short} = useCoinText();
     const {hourEpochInfo} = useEpochs();
     const [now] = useState(() => Date.now());
     const unlocks = row.position?.unlocks ?? [];
@@ -192,7 +202,7 @@ const UnlockText = ({row}: { row: StakingRow }) => {
 
     return (
         <>
-            <chakra.span fontSize="14px" fontWeight="600" color="hg.warning.text" truncate>{short({denom: row.stakingDenom, amount: total.toFixed(0)})}</chakra.span>
+            <CoinAmount coin={{denom: row.stakingDenom, amount: total.toFixed(0)}} color="hg.warning.text"/>
             <Sub>{unlocks.length > 1 ? `${unlocks.length} unlocks, next ` : ''}{when !== undefined ? formatUnlockCountdown(when, 0) : 'soon'}</Sub>
         </>
     );
@@ -213,7 +223,7 @@ const RowFrame = ({columns, tinted, children, testId}: { columns: string; tinted
         gap={{base: '12px', lg: '14px'}}
         alignItems="center"
         px={{base: '16px', lg: '20px'}}
-        py="12px"
+        py="14px"
         bg={tinted ? 'app.subtle' : undefined}
         borderTopWidth="1px"
         borderColor="hg.divider"
@@ -295,14 +305,19 @@ export const PositionsCard = ({rows, nativeDenom, isLoading, onManage, onClaim}:
                     {isLoading ? <LoadingRows/> : rows.map(row => (
                         <RowFrame key={row.id} columns={POSITIONS_COLUMNS} testId="position-row">
                             <RewardCell row={row}/>
-                            <Cell label="APR"><AprText apr={row.apr}/></Cell>
-                            <Cell label="Your stake">
-                                <chakra.span fontSize="14px" fontWeight="600" color="hg.link" truncate>{short({denom: row.stakingDenom, amount: row.position?.stake ?? '0'})}</chakra.span>
-                                {row.position && row.position.sharePct > 0 && (
-                                    <Sub tone="success">
-                                        {row.position.sharePct < 0.01 ? '<0.01' : row.position.sharePct.toFixed(2)}%
-                                        {row.position.daily[0] && ` · ≈ ${short(row.position.daily[0])} / day`}
+                            <Cell label="APR">
+                                <AprText apr={row.apr}/>
+                                {row.position?.daily[0] && (
+                                    <Sub>
+                                        ≈ {short(row.position.daily[0])} / day
+                                        {row.position.daily.length > 1 && ` + ${row.position.daily.length - 1} more`}
                                     </Sub>
+                                )}
+                            </Cell>
+                            <Cell label="Your stake">
+                                <CoinAmount coin={{denom: row.stakingDenom, amount: row.position?.stake ?? '0'}} color="hg.link"/>
+                                {row.position && row.position.sharePct > 0 && (
+                                    <Sub>{row.position.sharePct < 0.01 ? '<0.01' : row.position.sharePct.toFixed(2)}%</Sub>
                                 )}
                             </Cell>
                             <Cell label="To claim"><CoinStack coins={row.position?.pending} more="tokens"/></Cell>
@@ -403,7 +418,6 @@ export const ExploreTable = ({page, isLoading, onStake, onPage}: ExploreTablePro
 );
 
 const ExploreRow = ({row, onStake}: { row: StakingRow; onStake: (row: StakingRow) => void }) => {
-    const {short} = useCoinText();
     const mine = new BigNumber(row.position?.stake ?? 0).gt(0);
 
     return (
@@ -415,11 +429,11 @@ const ExploreRow = ({row, onStake}: { row: StakingRow; onStake: (row: StakingRow
                 {row.daily === undefined
                     ? <chakra.span color="hg.text.faint">—</chakra.span>
                     : row.daily.length === 0
-                        ? <chakra.span fontSize="14px" color="hg.text.faint">Nothing scheduled</chakra.span>
+                        ? <chakra.span fontSize="13px" color="hg.text.faint">Nothing scheduled</chakra.span>
                         : <CoinStack coins={row.daily} more="more" strong={false}/>}
             </Cell>
             <Cell label="Total staked">
-                <chakra.span fontSize="14px" truncate>{short({denom: row.stakingDenom, amount: row.totalStaked})}</chakra.span>
+                <CoinAmount coin={{denom: row.stakingDenom, amount: row.totalStaked}} strong={false}/>
                 {row.totalStakedUsd.gt(0) && <Sub>≈ ${shortNumberFormat(row.totalStakedUsd)}</Sub>}
             </Cell>
             <Cell label="Elapsed / Duration"><ProgressText row={row}/></Cell>
