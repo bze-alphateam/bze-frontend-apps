@@ -35,7 +35,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     }),
     useAssetsValue: () => ({ totalUsdValue: () => new BigNumber(0) }),
 }));
-vi.mock("@/components/ui/staking/native-staking", () => ({ NativeStakingCard: () => null }));
+vi.mock("@/components/ui/staking/native-staking", () => ({ NativeStakingCard: () => <div data-testid="native-staking" /> }));
 vi.mock("@/components/ui/staking/rewards-staking", () => ({
     RewardsStakingBox: ({ stakingReward }: { stakingReward: StakingRewardSDKType }) => (
         <div data-testid="simple-reward">{TICKERS[stakingReward.staking_denom]}</div>
@@ -80,5 +80,20 @@ describe("Staking page search", () => {
         await userEvent.type(searchBox(), "wax");
         expect(shownRewards()).toEqual(["WAX"]);
         expect(window.location.search).toBe("?search=HONEY");
+    });
+
+    it("shows the Network staking box only while the search is empty", async () => {
+        window.history.replaceState({}, "", "/staking?search=HONEY");
+        render(<StakingPage />, { wrapper });
+        await waitFor(() => expect(searchBox()).toHaveValue("HONEY"));
+        expect(screen.queryByTestId("native-staking")).not.toBeInTheDocument();
+        expect(screen.queryByText("Network staking")).not.toBeInTheDocument();
+
+        await userEvent.clear(searchBox());
+        expect(screen.getByTestId("native-staking")).toBeInTheDocument();
+        expect(screen.getByText("Network staking")).toBeInTheDocument();
+
+        await userEvent.type(searchBox(), "wax");
+        expect(screen.queryByTestId("native-staking")).not.toBeInTheDocument();
     });
 });

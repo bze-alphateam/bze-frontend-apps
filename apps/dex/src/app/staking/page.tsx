@@ -252,18 +252,20 @@ const StakingPage = () => {
                         </SummaryCard>
                     </SimpleGrid>
 
-                    {/* Network staking */}
-                    <StakingSection
-                        title="Network staking"
-                        description="BZE’s own staking, run by the Staking app. Claim your rewards here; stake, unstake and pick validators in Staking."
-                        aside={<AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>}
-                    >
-                        <NativeStakingCard
-                            stakingData={stakingData}
-                            isLoading={isLoading}
-                            onClaimSuccess={reload}
-                        />
-                    </StakingSection>
+                    {/* Network staking: hidden while searching, so only the matching rewards show */}
+                    {!searchTerm && (
+                        <StakingSection
+                            title="Network staking"
+                            description="BZE’s own staking, run by the Staking app. Claim your rewards here; stake, unstake and pick validators in Staking."
+                            aside={<AppLink app="staking" href={getStakingApp().href}>Staking</AppLink>}
+                        >
+                            <NativeStakingCard
+                                stakingData={stakingData}
+                                isLoading={isLoading}
+                                onClaimSuccess={reload}
+                            />
+                        </StakingSection>
+                    )}
 
                     {/* Simple rewards */}
                     <StakingSection
