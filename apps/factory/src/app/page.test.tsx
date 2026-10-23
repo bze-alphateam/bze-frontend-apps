@@ -4,7 +4,7 @@ import { cleanup as cleanupAll, fireEvent, render, screen, within } from "@testi
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { setInLocalStorage } from "@bze/bze-ui-kit";
 
-// The home: six starting points, work on what exists, how it works and the docs footer (BFE-260).
+// The home: six starting points, work on what exists and the docs footer (BFE-260).
 // It looks the same whatever is stored; the drafts in localStorage only add the slim "Continue …"
 // line on top.
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
@@ -75,18 +75,19 @@ describe("Home: What are you building today?", () => {
         expect(dex).toHaveAttribute("href", "https://dex.example/pools");
     });
 
-    it("explains the four steps", () => {
+    it("ends on the docs link, in a new tab", () => {
         renderPage();
-        const steps = within(screen.getByRole("region", { name: "How it works" })).getAllByRole("heading", { level: 3 });
-        expect(steps.map(s => s.textContent)).toEqual(["Pick", "Fill in", "Review", "Done"]);
-    });
-
-    it("ends on the chain promise and the docs link, in a new tab", () => {
-        renderPage();
-        expect(screen.getByText("Everything here reads straight from the chain.")).toBeInTheDocument();
         const docs = screen.getByRole("link", { name: /Guides and strategies on docs\.getbze\.com/ });
         expect(docs).toHaveAttribute("href", "https://docs.getbze.com");
         expect(docs).toHaveAttribute("target", "_blank");
+    });
+
+    it("has no How it works section and no chain promise in the footer", () => {
+        const { container } = renderPage();
+        expect(screen.queryByRole("region", { name: "How it works" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/How it works/)).not.toBeInTheDocument();
+        expect(container.querySelector("footer")).not.toHaveTextContent("Everything here reads straight");
+        expect(screen.queryByText(/Everything here reads straight/)).not.toBeInTheDocument();
     });
 
     it("has no goal search, playbooks or tools list any more", () => {
