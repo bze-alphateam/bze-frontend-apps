@@ -51,6 +51,7 @@ test("lists every compounded and simple reward with the actions anyone can take"
     await expect(row.getByRole("heading", {name: "Stake VDL · earn VDL"})).toBeVisible();
     await expect(row.getByText("finished", {exact: true})).toBeVisible();
     await expect(row.getByRole("link", {name: "Extend"})).toHaveAttribute("href", "/reward/extend?id=000000000000");
+    await expect(row.getByRole("link", {name: "Distribute"})).toHaveAttribute("href", "/reward/distribute?id=000000000000");
     // 37 VDL staked: the finished reward can't be deleted yet, and says why.
     await expect(row.getByRole("button", {name: "Delete"})).toBeDisabled();
     await expect(row.getByTestId("staking-reward-delete-blocker")).toContainText("still staked");

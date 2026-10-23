@@ -54,6 +54,7 @@ export type TxKind =
     | 'create-trading-reward'
     | 'update-staking-reward'
     | 'delete-staking-reward'
+    | 'distribute-staking-rewards'
     | 'join-staking'
     | 'exit-staking'
     | 'claim-staking-reward'
@@ -118,6 +119,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'create-trading-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
     'update-staking-reward': {base: 160_000},                 // measured max 137k
     'delete-staking-reward': {base: 200_000},                 // no on-chain sample (chain v8.2.0) — one record removal + event; re-measure on bzetestnet-3
+    'distribute-staking-rewards': {base: 180_000},            // no on-chain sample — one capture + one record write, like update-staking-reward (137k)
     'join-staking': {base: 200_000},                          // measured p90 162k
     'exit-staking': {base: 1_200_000},                        // measured median 142k but up to 1.14M
     'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
