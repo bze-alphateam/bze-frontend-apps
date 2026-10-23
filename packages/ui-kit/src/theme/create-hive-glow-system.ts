@@ -123,6 +123,13 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
             body: {
                 colorPalette: 'app',
             },
+            // The interchain-kit wallet picker portals here with an inline z-index of 999, which put it
+            // under the wallet sidebar (overlay/modal tokens), so Connect from the sidebar was unclickable.
+            // Making the root its own stacking context lifts the whole picker above the drawer.
+            '#interchain-ui-overlays-manager': {
+                position: 'relative',
+                zIndex: 'popover',
+            },
         },
         theme: {
             keyframes: {

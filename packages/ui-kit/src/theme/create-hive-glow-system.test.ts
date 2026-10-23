@@ -81,6 +81,16 @@ describe('createHiveGlowSystem', () => {
         expect(system.tokens.getByName('fonts.mono')?.value).toMatch(/^var\(--font-mono\), 'JetBrains Mono'/);
     });
 
+    it('lifts the wallet picker above the sidebar drawer and its backdrop', () => {
+        const system = createHiveGlowSystem('dex');
+        const root = system._config.globalCss?.['#interchain-ui-overlays-manager'] as { position?: string; zIndex?: string };
+        const z = (name: string) => Number(system.tokens.getByName(`zIndex.${name}`)?.value);
+
+        expect(root?.position).toBe('relative');
+        expect(z(root?.zIndex ?? '')).toBeGreaterThan(z('modal'));
+        expect(z(root?.zIndex ?? '')).toBeGreaterThan(z('overlay'));
+    });
+
     it('keeps the l1/l2/l3 radii and adds the Hive Glow radii', () => {
         const system = createHiveGlowSystem('dex');
         expect(system.tokens.getByName('radii.l2')?.value).toBe('0.5rem');

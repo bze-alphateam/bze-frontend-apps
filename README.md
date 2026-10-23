@@ -433,18 +433,18 @@ away from the bumped `devDependencies`.
 
 ### Patches to node_modules
 Handled natively by pnpm via `patchedDependencies:` in `pnpm-workspace.yaml` (we no longer use
-`patch-package`). Active patches:
+`patch-package`). **No patches are active.** Both `@interchain-kit/store` fixes we used to patch
+locally are upstream:
 
-- `@interchain-kit/store@0.9.3`: `restore()` turns a saved `NotExist` wallet state back into
-  `Disconnected`, and `ChainWalletStore`'s `walletState`/`errorMessage` getters pass
-  `getChainWalletState` its arguments in the right order. Without it, one page load where Keplr was
-  injected late left that browser on "Keplr not installed" for good, and Connect did nothing. Still
-  unfixed upstream as of store 0.10.0, so re-check (and re-create the patch) on every
-  `@interchain-kit/*` bump. Regression test: `packages/ui-kit/src/storage/interchain-kit-store.test.ts`.
+- signOptions (`preferNoSetFee` kept, so Keplr no longer overrides fees paid in non-native denoms),
+  since store 0.9.3;
+- the stuck `NotExist` restore (one page load where Keplr was injected late left that browser on
+  "Keplr not installed" for good, and Connect did nothing), plus the swapped `getChainWalletState`
+  arguments in `ChainWalletStore`, since store 0.10.1. Keep store at 0.10.1 or later. Regression test:
+  `packages/ui-kit/src/storage/interchain-kit-store.test.ts`.
 
-The earlier signOptions patch was dropped once that fix shipped upstream in 0.9.3. To add a patch,
-run `pnpm patch <pkg>@<version>`, edit, then `pnpm patch-commit`, which writes the file under
-`patches/` and the `patchedDependencies:` entry.
+To add a patch, run `pnpm patch <pkg>@<version>`, edit, then `pnpm patch-commit`, which writes the
+file under `patches/` and the `patchedDependencies:` entry.
 
 ### Native build scripts (sharp, esbuild, secp256k1, …)
 pnpm 11 blocks postinstall build scripts until approved. Approved packages are listed under
