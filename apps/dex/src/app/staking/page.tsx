@@ -3,22 +3,14 @@
 import React, {useCallback, useEffect, useMemo, useState, useSyncExternalStore} from 'react';
 import {Box, Button, chakra, Flex} from '@chakra-ui/react';
 import {LuRefreshCw} from 'react-icons/lu';
-import BigNumber from "bignumber.js";
-import {useChain} from "@interchain-kit/react";
-import {
-    getChainName, HgCard, hgVariant, isLpDenom, PageContainer, useAssets, useAssetsValue, useDenomRewardsData,
-} from "@bze/bze-ui-kit";
-import {useNativeStakingData} from "@/hooks/useNativeStakingData";
-import {useRewardsStakingData} from "@/hooks/useRewardsStakingData";
+import {HgCard, hgVariant, PageContainer} from "@bze/bze-ui-kit";
+import {useStakingRows} from "@/hooks/useStakingRows";
 import {InnerHero, CountPill} from "@/components/ui/layout/inner-hero";
-import {NativeStakingDialog} from "@/components/ui/staking/native-staking";
-import {RewardsStakingActionModal} from "@/components/ui/staking/rewards-staking-modals";
-import {DenomRewardActionModal} from "@/components/ui/staking/denom-reward-modals";
 import {ClaimPickerModal} from "@/components/ui/staking/claim-picker-modal";
+import {RowDialog} from "@/components/ui/staking/row-dialog";
 import {ExploreTable, ExploreToolbar, PositionsCard} from "@/components/ui/staking/staking-table";
 import {
-    buildStakingRows, DEFAULT_STAKING_FILTERS, filterStakingRows, paginate, positionRows, type StakingFilters,
-    type StakingLookups, type StakingRow,
+    DEFAULT_STAKING_FILTERS, filterStakingRows, paginate, positionRows, type StakingFilters,
 } from "@/lib/staking-list";
 
 //150 seconds
@@ -40,45 +32,17 @@ const StakingPage = () => {
     const [pageNumber, setPageNumber] = useState(1);
     const [dialog, setDialog] = useState<OpenDialog | undefined>();
 
-    const {stakingData, isLoading: isLoadingNative, reload: reloadNative} = useNativeStakingData()
-    const {rewards: stakingRewards, isLoading: isLoadingStakingRewards, addressData, reload: reloadRewardsStaking} = useRewardsStakingData()
-    const {address} = useChain(getChainName())
-    const {items: denomRewards, isLoading: isLoadingDenomRewards, hasError: denomRewardsError, reload: reloadDenomRewards} = useDenomRewardsData(address)
-    const {isVerifiedAsset, denomTicker, nativeAsset} = useAssets()
-    const {denomUsdValue} = useAssetsValue()
-
-    const lookups = useMemo<StakingLookups>(() => ({
-        ticker: denomTicker,
-        verified: isVerifiedAsset,
-        isLp: isLpDenom,
-        usdValue: (denom, uAmount) => denomUsdValue(denom, new BigNumber(uAmount)),
-    }), [denomTicker, isVerifiedAsset, denomUsdValue]);
-
-    const nativeDenom = nativeAsset?.denom ?? 'ubze';
-    const rows = useMemo(() => buildStakingRows({
-        native: stakingData,
-        nativeDenom,
-        simple: stakingRewards,
-        addressData,
-        compounded: denomRewards,
-    }, lookups), [stakingData, nativeDenom, stakingRewards, addressData, denomRewards, lookups]);
+    const {rows, nativeDenom, address, isLoading, denomRewardsError, reloadDenomRewards, reload: reloadAll} = useStakingRows()
 
     const positions = useMemo(() => positionRows(rows), [rows]);
     const explore = useMemo(() => filterStakingRows(rows, filters), [rows, filters]);
     const page = paginate(explore, pageNumber);
-    const isLoading = isLoadingNative || isLoadingStakingRewards || isLoadingDenomRewards;
 
     const onFilters = useCallback((next: StakingFilters) => {
         setChosen(next);
         setTypedSearch(next.search);
         setPageNumber(1);
     }, []);
-
-    const reloadAll = useCallback(() => {
-        reloadNative()
-        reloadRewardsStaking()
-        reloadDenomRewards()
-    }, [reloadNative, reloadRewardsStaking, reloadDenomRewards]);
 
     const closeDialog = useCallback(() => setDialog(undefined), []);
     const onDone = useCallback(() => {
@@ -157,33 +121,6 @@ const StakingPage = () => {
             </PageContainer>
         </Box>
     );
-};
-
-/** Manage or Stake on one row: the reward kind's own dialog. */
-const RowDialog = ({row, view, hasWallet, onClose, onDone}: {
-    row: StakingRow;
-    view: 'manage' | 'stake';
-    hasWallet: boolean;
-    onClose: () => void;
-    onDone: () => void;
-}) => {
-    switch (row.source.kind) {
-        case 'native':
-            return <NativeStakingDialog stakingData={row.source.data} onClose={onClose} onClaimSuccess={onDone}/>;
-        case 'simple':
-            return (
-                <RewardsStakingActionModal
-                    stakingReward={row.source.reward}
-                    userStake={row.source.stake}
-                    userUnlocking={row.source.unlocking}
-                    initialView={view === 'stake' ? 'stake' : 'actions'}
-                    onClose={onClose}
-                    onActionPerformed={onDone}
-                />
-            );
-        case 'compounded':
-            return <DenomRewardActionModal item={row.source.item} action={view === 'stake' ? 'stake' : undefined} hasWallet={hasWallet} onClose={onClose} onDone={onDone}/>;
-    }
 };
 
 export default StakingPage;

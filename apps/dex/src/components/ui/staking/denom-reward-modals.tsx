@@ -25,6 +25,8 @@ interface DenomRewardActionModalProps {
     item: DenomRewardHolderItem;
     /** The step the dialog opens on; without one it opens on the overview with every action. */
     action?: DenomRewardAction;
+    /** Prefills the stake amount (in display units). */
+    initialAmount?: string;
     hasWallet?: boolean;
     onClose: () => void;
     onDone: () => void;
@@ -34,7 +36,7 @@ interface DenomRewardActionModalProps {
  * The DEX dialog around the shared ui-kit action panels (a compounded reward is the chain's denom
  * reward): Manage opens the overview, Stake / Add opens the stake panel straight away.
  */
-export const DenomRewardActionModal = ({item, action: initialAction, hasWallet = true, onClose, onDone}: DenomRewardActionModalProps) => {
+export const DenomRewardActionModal = ({item, action: initialAction, initialAmount, hasWallet = true, onClose, onDone}: DenomRewardActionModalProps) => {
     const [action, setAction] = useState<DenomRewardAction | undefined>(initialAction);
     const {asset} = useAsset(item.denomReward.staking_denom);
     const ticker = asset?.ticker ?? item.denomReward.staking_denom;
@@ -46,7 +48,7 @@ export const DenomRewardActionModal = ({item, action: initialAction, hasWallet =
     return (
         <DexDialog title={title} onClose={onClose}>
             {action === undefined && <DenomRewardOverview item={item} hasWallet={hasWallet} onAction={setAction}/>}
-            {action === 'stake' && <DenomRewardStakePanel item={item} onDone={onDone}/>}
+            {action === 'stake' && <DenomRewardStakePanel item={item} initialAmount={initialAmount} onDone={onDone}/>}
             {action === 'claim' && <DenomRewardClaimPanel item={item} onDone={onDone}/>}
             {action === 'exit' && <DenomRewardExitPanel item={item} onDone={onDone}/>}
         </DexDialog>

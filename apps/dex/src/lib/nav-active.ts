@@ -5,6 +5,7 @@ const NAV_PARENTS: Record<string, string> = {
     "/exchange/market": "/exchange",
     "/pools/details": "/pools",
     "/assets/details": "/assets",
+    "/staking/details": "/staking",
 };
 
 export function isNavItemActive(itemHref: string, pathname: string): boolean {
