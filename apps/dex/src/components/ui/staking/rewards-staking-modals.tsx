@@ -41,6 +41,8 @@ interface RewardsStakingActionModalProps {
     userStake?: StakingRewardParticipantSDKType;
     userUnlocking?: ExtendedPendingUnlockParticipantSDKType[];
     onActionPerformed?: () => void;
+    /** The step the dialog opens on: the overview (Manage) or straight on the stake form (Stake / Add). */
+    initialView?: 'actions' | 'stake';
 }
 
 export const RewardsStakingActionModal = ({
@@ -48,9 +50,10 @@ export const RewardsStakingActionModal = ({
                                               stakingReward,
                                               userStake,
                                               userUnlocking,
-                                              onActionPerformed
+                                              onActionPerformed,
+                                              initialView = MODAL_TYPE_ACTIONS,
                                           }: RewardsStakingActionModalProps) => {
-    const [modalType, setModalType] = useState(MODAL_TYPE_ACTIONS);
+    const [modalType, setModalType] = useState<string>(initialView);
     const [stakeAmount, setStakeAmount] = useState('');
     const [formError, setFormError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)

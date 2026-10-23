@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ChakraProvider } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import { createHiveGlowSystem, type NativeStakingData } from "@bze/bze-ui-kit";
-import { NativeStakingCard } from "@/components/ui/staking/native-staking";
+import { NativeStakingDialog } from "@/components/ui/staking/native-staking";
 
-// The card's data comes in through props; only the wallet, the assets and the tx hooks are faked.
+// The dialog's data comes in through props; only the wallet, the assets and the tx hooks are faked.
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1test" }) }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
@@ -37,14 +37,11 @@ function stakingData(staked: number, rewards: number): NativeStakingData {
     };
 }
 
-const openActions = () => fireEvent.click(screen.getByRole("button", { name: "BZE Native Staking" }));
-
 afterEach(cleanup);
 
-describe("NativeStakingCard actions dialog", () => {
+describe("NativeStakingDialog", () => {
     it("shows the stake and rewards, then the Staking link beside a compact Claim", () => {
-        render(<NativeStakingCard stakingData={stakingData(1_000, 3)} isLoading={false}/>, { wrapper });
-        openActions();
+        render(<NativeStakingDialog stakingData={stakingData(1_000, 3)} onClose={vi.fn()}/>, { wrapper });
 
         const dialog = screen.getByRole("dialog");
         const figures = within(dialog).getAllByTestId("staking-figure").map((el) => el.getAttribute("data-type"));
@@ -56,12 +53,22 @@ describe("NativeStakingCard actions dialog", () => {
     });
 
     it("points a wallet without a stake to the Staking app and offers no Claim", () => {
-        render(<NativeStakingCard stakingData={stakingData(0, 0)} isLoading={false}/>, { wrapper });
-        openActions();
+        render(<NativeStakingDialog stakingData={stakingData(0, 0)} onClose={vi.fn()}/>, { wrapper });
 
         const dialog = screen.getByRole("dialog");
         expect(within(dialog).getByText(/not staking BZE yet/)).toBeTruthy();
         expect(within(dialog).queryByRole("button", { name: "Claim" })).toBeNull();
         expect(within(dialog).getByRole("link", { name: /Staking/ })).toBeTruthy();
+    });
+
+    it("moves to the claim step from Claim, and closes through onClose", async () => {
+        const onClose = vi.fn();
+        render(<NativeStakingDialog stakingData={stakingData(1_000, 3)} onClose={onClose}/>, { wrapper });
+
+        fireEvent.click(within(screen.getByTestId("native-staking-actions")).getByRole("button", { name: "Claim" }));
+        expect(screen.getByRole("button", { name: /Claim Rewards/ })).toBeTruthy();
+
+        fireEvent.click(screen.getByRole("button", { name: /close/i }));
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
 });
