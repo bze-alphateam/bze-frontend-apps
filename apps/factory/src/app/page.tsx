@@ -24,8 +24,8 @@ import {
     getDexApp,
 } from '@bze/bze-ui-kit'
 import { Chip, ChipRow, LinkCard } from '@/components/create/choose-parts'
-import { PickUpSection, StartList } from '@/components/home/pick-up'
-import { useHomeSuggestions } from '@/hooks/useHomeSuggestions'
+import { ContinueHint } from '@/components/home/continue-hint'
+import { useLastWizard } from '@/hooks/useLastWizard'
 import { DOCS_HREF, STARTING_POINTS, type StartingPoint, dexPoolsHref } from '@/lib/create-routes'
 
 const ICONS: Record<StartingPoint['id'], React.ReactNode> = {
@@ -153,56 +153,35 @@ function Footer() {
 }
 
 /**
- * The Factory home (BFE-260, canvas A1 / E1): six starting points, then work on what exists. With a
- * wallet connected (BFE-275, canvas A2) it greets the user and, when there is something to pick up,
- * shows those cards above a compact list of the starting points.
+ * The Factory home (BFE-260, canvas A1 / E1): six starting points, then work on what exists. It looks
+ * the same whatever the user did before; the only extra is one slim line on top pointing back to the
+ * last wizard with a finished step.
  */
 export default function FactoryHomePage() {
-    const { cards, pending, isConnected } = useHomeSuggestions()
-    const hasPickUp = cards.length > 0 || pending > 0
+    const { hint, dismiss } = useLastWizard()
 
     return (
         <Box position="relative" minH="100vh">
             <HeroGlow />
             <PageContainer as="main" position="relative" pt={{ base: '40px', md: '72px' }} pb="64px">
                 <VStack align="stretch" gap={{ base: '36px', md: '48px' }}>
-                    {isConnected ? (
-                        <HomeHero
-                            align="center"
-                            eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
-                            title={<>{"Welcome back. What's "}<GradientText>next</GradientText>?</>}
-                            subtitle="Drafts from this browser, and suggestions for tokens you created, read from the chain."
-                        />
-                    ) : (
-                        <HomeHero
-                            align="center"
-                            eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
-                            title={<>What are you <GradientText>building</GradientText> today?</>}
-                            subtitle="Pick a starting point. We guide you step by step, show you exactly what happens before you sign, and suggest what to do next."
-                        />
-                    )}
-
-                    {hasPickUp ? (
-                        <>
-                            <PickUpSection cards={cards} pending={pending} />
-                            <StartList points={STARTING_POINTS} />
-                            <WorkOnExisting />
-                        </>
-                    ) : (
-                        <>
-                            <Grid
-                                as="section"
-                                aria-label="Starting points"
-                                templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }}
-                                gap="16px"
-                            >
-                                {STARTING_POINTS.map(point => <StartTile key={point.id} point={point} />)}
-                            </Grid>
-                            <WorkOnExisting />
-                            <HowItWorks />
-                        </>
-                    )}
-
+                    {hint && <ContinueHint hint={hint} onDismiss={dismiss} />}
+                    <HomeHero
+                        align="center"
+                        eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
+                        title={<>What are you <GradientText>building</GradientText> today?</>}
+                        subtitle="Pick a starting point. We guide you step by step, show you exactly what happens before you sign, and suggest what to do next."
+                    />
+                    <Grid
+                        as="section"
+                        aria-label="Starting points"
+                        templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }}
+                        gap="16px"
+                    >
+                        {STARTING_POINTS.map(point => <StartTile key={point.id} point={point} />)}
+                    </Grid>
+                    <WorkOnExisting />
+                    <HowItWorks />
                     <Footer />
                 </VStack>
             </PageContainer>
