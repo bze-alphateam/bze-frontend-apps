@@ -53,6 +53,7 @@ export function rewardTargets(query: QueryReader) {
         simple: withQuery('/reward/new', { staking: staked }),
         compounded: compoundedNewHref(staked || undefined),
         extendSimple: extendHref(),
+        distributeSimple: '/reward/distribute',
         dailyPrize: staked ? scheduleFormHref(staked) : '/denom-reward/schedule',
         airdrop: staked ? airdropFormHref(staked) : '/denom-reward/airdrop',
     }

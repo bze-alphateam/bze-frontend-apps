@@ -1,6 +1,6 @@
 "use client"
 
-import React, { Suspense } from 'react'
+import React, { Suspense, useMemo } from 'react'
 import NextLink from 'next/link'
 import { Box, Button, chakra, Flex, Grid, HStack, Link, Text, VStack } from '@chakra-ui/react'
 import { LuArrowRight, LuCheck, LuTriangleAlert } from 'react-icons/lu'
@@ -11,8 +11,10 @@ import {
     Shimmer,
     hgVariant,
     prettyAmount,
+    toBigNumber,
     uAmountToBigNumberAmount,
     useAsset,
+    useAssetPrice,
 } from '@bze/bze-ui-kit'
 
 // The building blocks of the three Choose screens (BFE-260, canvas A3–A5): the page frame with
@@ -65,6 +67,38 @@ export function CreationFeeLine({ fee, isLoading }: { fee?: FeeCoin; isLoading?:
         text = 'Fee unavailable'
     }
     return <Text fontSize="13px" color="fg.muted" data-testid="fee-line">{text}</Text>
+}
+
+/**
+ * The creation fee on its own row under a divider: "Creation fee **5,000 BZE** · ≈ $12 · + network
+ * fee". The USD part shows only when the token has a price; loading and a missing fee read as in
+ * `CreationFeeLine`.
+ */
+export function CreationFeeRow({ fee, isLoading }: { fee?: FeeCoin; isLoading?: boolean }) {
+    const { asset } = useAsset(fee?.denom ?? '')
+    const price = useAssetPrice(fee?.denom ?? '')
+    const usd = useMemo(() => {
+        if (!fee || !asset || !price.hasPrice) return undefined
+        return price.uAmountUsdValue(toBigNumber(fee.amount), asset.decimals)
+    }, [fee, asset, price])
+
+    let content: React.ReactNode
+    if (fee && asset) {
+        content = (
+            <Text fontSize="13px" color="fg.muted">
+                {'Creation fee '}
+                <chakra.strong color="fg" fontWeight="700">{`${prettyAmount(uAmountToBigNumberAmount(fee.amount, asset.decimals))} ${asset.ticker}`}</chakra.strong>
+                {usd && ` · ≈ $${prettyAmount(usd)}`}
+                {' · '}
+                <chakra.span fontSize="12px" color="hg.text.faint">+ network fee</chakra.span>
+            </Text>
+        )
+    } else if (isLoading) {
+        content = <Shimmer h="20px" w="220px" />
+    } else {
+        content = <Text fontSize="13px" color="fg.muted">Fee unavailable</Text>
+    }
+    return <Box borderTopWidth="1px" borderColor="hg.divider" pt="14px" data-testid="fee-line">{content}</Box>
 }
 
 /** The amber "needs care" line of an option. */
@@ -184,11 +218,11 @@ interface ChoosePageProps {
     /** The last breadcrumb: "DEX market", "Staking rewards", "Community". */
     crumb: string;
     title: React.ReactNode;
-    intro: string;
+    intro?: string;
     children: React.ReactNode;
 }
 
-/** A Choose screen: breadcrumb "Create / <Thing>", the question as h1, one sentence, the options. */
+/** A Choose screen: breadcrumb "Create / <Thing>", the question as h1, an optional sentence, the options. */
 export function ChoosePage({ crumb, title, intro, children }: ChoosePageProps) {
     return (
         <PageContainer as="main" pt={{ base: '16px', md: '28px' }} pb={{ base: '40px', md: '64px' }}>
@@ -208,7 +242,7 @@ export function ChoosePage({ crumb, title, intro, children }: ChoosePageProps) {
                         </chakra.ol>
                     </chakra.nav>
                     <Text as="h1" fontSize={{ base: '28px', md: '36px' }} fontWeight="800" lineHeight="1.15" letterSpacing="-0.02em">{title}</Text>
-                    <Text fontSize={{ base: '15px', md: '16px' }} lineHeight="1.55" color="fg.muted" maxW="720px">{intro}</Text>
+                    {intro && <Text fontSize={{ base: '15px', md: '16px' }} lineHeight="1.55" color="fg.muted" maxW="720px">{intro}</Text>}
                 </VStack>
                 {children}
             </VStack>
