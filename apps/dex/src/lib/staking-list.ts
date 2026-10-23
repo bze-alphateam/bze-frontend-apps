@@ -68,7 +68,7 @@ export interface StakingRow {
     daily?: DenomRewardCoin[];
     totalStaked: string;
     totalStakedUsd: BigNumber;
-    /** Days a stake stays locked after unstaking. */
+    /** Days a stake stays locked after unstaking (a fraction for native staking under a day). */
     lockDays: number;
     /** Base units; '0' = no minimum. */
     minStake: string;
@@ -117,6 +117,17 @@ const aprOf = (daily: BigNumber, staked: BigNumber): number | undefined => {
     return daily.dividedBy(staked).multipliedBy(36_500).toNumber();
 };
 
+const DAY_SECONDS = 86_400;
+
+/** A lock in days as "21d", or "6h" / "10m" under a day; undefined for no lock. */
+export const formatLockPeriod = (days: number): string | undefined => {
+    if (!(days > 0)) return undefined;
+    if (days >= 1) return `${Math.round(days)}d`;
+    const hours = days * 24;
+    if (hours >= 1) return `${Math.round(hours)}h`;
+    return `${Math.max(1, Math.round(hours * 60))}m`;
+};
+
 function nativeRow(data: NativeStakingData, denom: string, lk: StakingLookups): StakingRow {
     const total = data.totalStaked.amount;
     const cur = data.currentStaking;
@@ -151,7 +162,8 @@ function nativeRow(data: NativeStakingData, denom: string, lk: StakingLookups): 
         daily: [{denom, amount: data.averageDailyDistribution.amount.toFixed(0)}],
         totalStaked: total.toFixed(0),
         totalStakedUsd: lk.usdValue(denom, total),
-        lockDays: Number(data.unlockDuration) || 0,
+        // a testnet's unbonding can be minutes, which the whole-day `unlockDuration` rounds to 0
+        lockDays: data.unlockSeconds !== undefined ? data.unlockSeconds / DAY_SECONDS : Number(data.unlockDuration) || 0,
         minStake: '0',
         position,
         searchTerms: [lk.ticker(denom)],

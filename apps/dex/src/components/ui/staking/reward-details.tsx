@@ -14,7 +14,7 @@ import {formatApr, RewardKindTag, RewardLogo, statusText, useCoinText} from "@/c
 import type {RowDialogView} from "@/components/ui/staking/row-dialog";
 import {rewardPagePath} from "@/hooks/useNavigation";
 import {estimateRewardIncome, type RewardIncomeEstimate} from "@/lib/reward-estimate";
-import type {StakingRow, StakingRowStatus} from "@/lib/staking-list";
+import {formatLockPeriod, type StakingRow, type StakingRowStatus} from "@/lib/staking-list";
 
 // The reward details page (Details 2 on the design canvas): the reward's facts and prizes on the
 // left, and a rail with the viewer's position, the income estimate and the actions on the right.
@@ -154,7 +154,7 @@ export const RewardFacts = ({row}: { row: StakingRow }) => {
                     <chakra.span color={row.apr === undefined ? 'hg.text.faint' : 'hg.success.text'}>{formatApr(row.apr)}</chakra.span>
                 </Fact>
                 <Fact label="Unlock" sub={row.lockDays > 0 ? `After you ${row.kind === 'simple' ? 'unstake' : 'exit'}` : 'Exit any time'}>
-                    {row.lockDays > 0 ? `${row.lockDays} day${row.lockDays === 1 ? '' : 's'}` : 'Instant'}
+                    {formatLockPeriod(row.lockDays) ?? 'Instant'}
                 </Fact>
                 <Fact label="Minimum" sub={row.kind === 'compounded' && bn(row.minStake).gt(0) ? 'For your whole position' : undefined}>
                     {bn(row.minStake).gt(0) ? short({denom: row.stakingDenom, amount: row.minStake}) : 'None'}
