@@ -24,7 +24,7 @@ test("with no drafts the home has no Continue line, just the starting points", a
     await expect(page.getByRole("heading", {level: 1, name: "What are you building today?"})).toBeVisible();
     await expect(page.getByRole("complementary", {name: "Continue where you left off"})).toHaveCount(0);
     await expect(page.getByRole("region", {name: "Starting points"})).toBeVisible();
-    await expect(page.getByRole("region", {name: "How it works"})).toBeVisible();
+    await expect(page.getByRole("region", {name: "How it works"})).toHaveCount(0);
 });
 
 test("home → Create a DEX market → Liquidity pool lands on the pool wizard", async ({page}) => {

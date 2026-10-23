@@ -2,7 +2,7 @@
 
 import React from 'react'
 import NextLink from 'next/link'
-import { Box, chakra, Flex, Grid, HStack, Link, Text, VStack } from '@chakra-ui/react'
+import { Box, Flex, Grid, HStack, Link, Text, VStack } from '@chakra-ui/react'
 import {
     LuArrowLeftRight,
     LuCoins,
@@ -84,13 +84,6 @@ function StartTile({ point }: { point: StartingPoint }) {
     )
 }
 
-const HOW_IT_WORKS = [
-    { title: 'Pick', line: 'A starting point and, if asked, the option that fits.' },
-    { title: 'Fill in', line: 'A few short steps. No wallet needed yet.' },
-    { title: 'Review', line: 'What leaves your wallet, what you get, what is permanent.' },
-    { title: 'Done', line: 'Your new thing, with the next step ready to go.' },
-]
-
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
     return (
         <VStack align="stretch" gap="4px">
@@ -120,31 +113,9 @@ function WorkOnExisting() {
     )
 }
 
-function HowItWorks() {
-    return (
-        <VStack as="section" aria-label="How it works" align="stretch" gap="14px">
-            <SectionTitle title="How it works" />
-            <chakra.ol m="0" p="0" listStyleType="none" display="grid" gridTemplateColumns={{ base: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }} gap="12px">
-                {HOW_IT_WORKS.map((step, i) => (
-                    <chakra.li key={step.title} display="flex" gap="12px" alignItems="flex-start" p="14px" borderRadius="14px" bg="hg.inset" minW={0}>
-                        <Flex as="span" boxSize="28px" flex="none" align="center" justify="center" borderRadius="8px" bgImage="app" color="hg.buttonText" fontSize="13px" fontWeight="800" aria-hidden>
-                            {i + 1}
-                        </Flex>
-                        <VStack align="stretch" gap="2px" minW={0}>
-                            <Text as="h3" fontSize="15px" fontWeight="700">{step.title}</Text>
-                            <Text fontSize="13px" lineHeight="1.45" color="fg.muted">{step.line}</Text>
-                        </VStack>
-                    </chakra.li>
-                ))}
-            </chakra.ol>
-        </VStack>
-    )
-}
-
 function Footer() {
     return (
-        <Flex as="footer" direction={{ base: 'column', sm: 'row' }} align={{ base: 'flex-start', sm: 'center' }} justify="space-between" gap="8px" pt="20px" borderTopWidth="1px" borderColor="hg.divider" fontSize="14px">
-            <Text color="fg.muted">Everything here reads straight from the chain.</Text>
+        <Flex as="footer" align="center" pt="20px" borderTopWidth="1px" borderColor="hg.divider" fontSize="14px">
             <Link href={DOCS_HREF} target="_blank" rel="noopener noreferrer" color="hg.link" fontWeight="600" display="inline-flex" alignItems="center" gap="6px" _hover={{ color: 'hg.link.hover' }}>
                 Guides and strategies on docs.getbze.com <LuExternalLink size={12} aria-hidden />
             </Link>
@@ -181,7 +152,6 @@ export default function FactoryHomePage() {
                         {STARTING_POINTS.map(point => <StartTile key={point.id} point={point} />)}
                     </Grid>
                     <WorkOnExisting />
-                    <HowItWorks />
                     <Footer />
                 </VStack>
             </PageContainer>
