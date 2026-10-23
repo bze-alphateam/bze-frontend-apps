@@ -26,6 +26,7 @@ import { EncodeObject } from "interchainjs/types";
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
 import {DexDialog} from "@/components/ui/dialog";
 import {AprMove} from "@/components/ui/pools/pool-parts";
+import {estimateStakeDailyRewards} from "@/lib/stake-estimate";
 
 const MODAL_TYPE_ACTIONS = 'actions';
 const MODAL_TYPE_STAKE = 'stake';
@@ -105,31 +106,38 @@ export const RewardsStakingActionModal = ({
 
         return rewardsToClaim.gt(0)
     }, [stakingReward, userStake])
-    const inputEstimatedRewards = useMemo(() => {
-        if (!stakingReward || !stakeAmount || !stakingAsset) return '0';
+    // Daily reward of the user's whole position after the stake (the coins already staked here plus the input).
+    //the input the user provides is an AMOUNT, not a UAmount, so we need to convert it to a UAmount
+    const stakeEstimate = useMemo(() => {
+        if (!stakingReward || !stakeAmount || !stakingAsset) return null;
 
-        // (daily reward/(total staked + input)) * input
-        //the input the user provides is an AMOUNT, not a UAmount, so we need to convert it to a UAmount
         const stakedUAmount = amountToBigNumberUAmount(stakeAmount, stakingAsset.decimals)
-        const incomePerStakedCoin = new BigNumber(stakingReward.prize_amount).dividedBy(new BigNumber(stakingReward.staked_amount).plus(stakedUAmount))
-        const dailyReward = incomePerStakedCoin.multipliedBy(stakedUAmount)
+        return estimateStakeDailyRewards(stakingReward.prize_amount, stakingReward.staked_amount, userStake?.amount ?? 0, stakedUAmount)
+    }, [stakingReward, stakeAmount, stakingAsset, userStake])
 
-        return `${shortNumberFormat(uAmountToBigNumberAmount(dailyReward.integerValue(), prizeAsset?.decimals || 0))} ${prizeAsset?.ticker}`
-    }, [stakingReward, prizeAsset, stakeAmount, stakingAsset])
+    const inputEstimatedRewards = useMemo(() => {
+        if (!stakeEstimate) return '0';
+
+        return `${shortNumberFormat(uAmountToBigNumberAmount(stakeEstimate.daily.integerValue(), prizeAsset?.decimals || 0))} ${prizeAsset?.ticker}`
+    }, [stakeEstimate, prizeAsset])
+
+    // Shown only when the user already has coins staked here.
+    const inputEstimatedGain = useMemo(() => {
+        if (!stakeEstimate || !userStake) return undefined;
+
+        return `+${shortNumberFormat(uAmountToBigNumberAmount(stakeEstimate.gain.integerValue(), prizeAsset?.decimals || 0))} ${prizeAsset?.ticker} more than you earn now`
+    }, [stakeEstimate, userStake, prizeAsset])
 
     const { price: rewardTokenPrice } = useAssetPrice(stakingReward?.prize_denom || '');
     const { price: stakingTokenPrice } = useAssetPrice(stakingReward?.staking_denom || '');
 
     const estimatedDailyRewardsUsd = useMemo(() => {
-        if (!stakingReward || !stakeAmount || !stakingAsset || !prizeAsset || !rewardTokenPrice || rewardTokenPrice.lte(0)) return null;
+        if (!stakeEstimate || !prizeAsset || !rewardTokenPrice || rewardTokenPrice.lte(0)) return null;
 
-        const stakedUAmount = amountToBigNumberUAmount(stakeAmount, stakingAsset.decimals)
-        const incomePerStakedCoin = toBigNumber(stakingReward.prize_amount).dividedBy(toBigNumber(stakingReward.staked_amount).plus(stakedUAmount))
-        const dailyReward = incomePerStakedCoin.multipliedBy(stakedUAmount)
-        const dailyRewardAmount = uAmountToBigNumberAmount(dailyReward.integerValue(), prizeAsset.decimals)
+        const dailyRewardAmount = uAmountToBigNumberAmount(stakeEstimate.daily.integerValue(), prizeAsset.decimals)
 
         return dailyRewardAmount.multipliedBy(rewardTokenPrice);
-    }, [stakingReward, stakeAmount, stakingAsset, prizeAsset, rewardTokenPrice]);
+    }, [stakeEstimate, prizeAsset, rewardTokenPrice]);
 
     const stakingAPRData = useMemo(() => {
         if (!stakingReward || !stakingAsset || !prizeAsset || !stakingTokenPrice || stakingTokenPrice.lte(0) || !rewardTokenPrice || rewardTokenPrice.lte(0)) {
@@ -424,6 +432,9 @@ export const RewardsStakingActionModal = ({
                                         {estimatedDailyRewardsUsd && estimatedDailyRewardsUsd.gt(0) ? `≈ $${shortNumberFormat(estimatedDailyRewardsUsd)} · ` : ''}
                                         Unlock period: {stakingReward?.lock || 0} days
                                     </chakra.span>
+                                    {inputEstimatedGain && (
+                                        <chakra.span fontSize="12px" color="hg.text.faint">{inputEstimatedGain}</chakra.span>
+                                    )}
                                 </Flex>
 
                                 {/* Show new APR if it changes by more than 10% */}

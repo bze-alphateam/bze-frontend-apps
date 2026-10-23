@@ -50,6 +50,7 @@ import {RewardsStakingPendingRewardsModal} from "@/components/ui/staking/rewards
 import {RewardsStakingButton} from "@/components/ui/staking/rewards-staking-buttons";
 import {useLockedLiquidity} from "@/hooks/useLockedLiquidity";
 import {AprChip} from "@/components/ui/pools/apr-chip";
+import {estimateStakeDailyRewards} from "@/lib/stake-estimate";
 import {BoostRewardsTile} from "@/components/ui/pools/boost-rewards-tile";
 import {
     AmountField, AprMove, FeeShare, FormColumn, FormTitle, InsetTile, PillTabs, PresetChip, SlippageRow, SubmitButton,
@@ -553,23 +554,28 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
         return uAmountToAmount(userShares, LP_ASSETS_DECIMALS);
     }, [userShares]);
 
+    const userActiveStake = useMemo(() => {
+        if (!selectedRewardId || !addressData) return undefined;
+        return addressData.active.get(selectedRewardId);
+    }, [selectedRewardId, addressData]);
+
     const estimatedDailyRewards = useMemo(() => {
         if (!selectedReward || !lockAmount || lockAmount === '0') return null;
 
+        // The estimate covers the user's whole position: the shares already locked in this reward plus the new ones.
         const lockUAmount = amountToBigNumberUAmount(lockAmount, LP_ASSETS_DECIMALS);
-        const totalStaked = toBigNumber(selectedReward.staked_amount).plus(lockUAmount);
+        const estimate = estimateStakeDailyRewards(selectedReward.prize_amount, selectedReward.staked_amount, userActiveStake?.amount ?? 0, lockUAmount);
+        if (!estimate) return null;
 
-        if (totalStaked.lte(0)) return null;
-
-        const dailyPrize = toBigNumber(selectedReward.prize_amount);
-        const userShare = dailyPrize.multipliedBy(lockUAmount).dividedBy(totalStaked);
-
+        const decimals = denomDecimals(selectedReward.prize_denom);
         return {
-            amount: uAmountToAmount(userShare, denomDecimals(selectedReward.prize_denom)),
+            amount: uAmountToAmount(estimate.daily, decimals),
             ticker: denomTicker(selectedReward.prize_denom),
-            amountBN: uAmountToBigNumberAmount(userShare, denomDecimals(selectedReward.prize_denom)),
+            amountBN: uAmountToBigNumberAmount(estimate.daily, decimals),
+            // Only shown when the user already has shares locked here.
+            gain: userActiveStake ? uAmountToAmount(estimate.gain, decimals) : undefined,
         };
-    }, [selectedReward, lockAmount, denomDecimals, denomTicker]);
+    }, [selectedReward, lockAmount, userActiveStake, denomDecimals, denomTicker]);
 
     const { price: rewardTokenPrice } = useAssetPrice(selectedReward?.prize_denom || '');
     const { price: lpTokenPrice } = useAssetPrice(pool?.lp_denom || '');
@@ -622,11 +628,6 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
     const isRewardActive = useCallback((reward: StakingRewardSDKType) => {
         return remainingDays(reward) > 0;
     }, [remainingDays]);
-
-    const userActiveStake = useMemo(() => {
-        if (!selectedRewardId || !addressData) return undefined;
-        return addressData.active.get(selectedRewardId);
-    }, [selectedRewardId, addressData]);
 
     const handleLock = useCallback(async () => {
         if (!pool || !address || !selectedReward) {
@@ -805,6 +806,11 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
                             {estimatedDailyRewardsUsd && estimatedDailyRewardsUsd.gt(0) && (
                                 <chakra.span fontSize="13px" color="hg.text.faint">
                                     ≈ ${shortNumberFormat(estimatedDailyRewardsUsd)}
+                                </chakra.span>
+                            )}
+                            {estimatedDailyRewards.gain !== undefined && (
+                                <chakra.span fontSize="13px" color="hg.text.faint">
+                                    +{prettyAmount(estimatedDailyRewards.gain)} {estimatedDailyRewards.ticker} more than you earn now
                                 </chakra.span>
                             )}
                         </Flex>
