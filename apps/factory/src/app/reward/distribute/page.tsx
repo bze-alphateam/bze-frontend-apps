@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Box, Button, chakra, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import { LuArrowLeft, LuRefreshCw } from 'react-icons/lu'
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
@@ -216,10 +216,10 @@ function DistributeContent() {
         return [distributeStakingRewards(distributeMsgValue({ creator: address, rewardId: reward.reward_id, uAmount: amount.uAmount }))]
     }
 
-    const onDone = useCallback(({ input, hash }: WizardTxDone<DistributeDoneInput>) => {
+    const onDone = ({ input, hash }: WizardTxDone<DistributeDoneInput>) => {
         refresh()
         if (input) setDone({ input, hash })
-    }, [refresh])
+    }
     const { submit, panelProps } = useWizardTx<DistributeDoneInput>(buildMsgs, {
         title: rewardId ? `Distribute to reward #${rewardId}` : 'Distribute to a reward',
         onDone,
