@@ -45,7 +45,7 @@ test("the staking rewards and community Choose screens render", async ({page}) =
     await expect(page.getByRole("heading", {level: 1, name: "Which kind of reward?"})).toBeVisible();
     await expect(page.getByRole("region", {name: "Simple reward"}).getByTestId("fee-line")).toContainText("TBZE");
     await expect(page.getByRole("region", {name: "Compounded reward"}).getByTestId("fee-line")).toContainText("TBZE");
-    await expect(page.getByTestId("existing-reward-row")).toHaveCount(3);
+    await expect(page.getByTestId("existing-reward-row")).toHaveCount(4);
 
     await page.goto("/create/grow");
     await expect(page.getByRole("heading", {level: 1, name: "Who do you want to reach?"})).toBeVisible();
