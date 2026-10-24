@@ -1,11 +1,15 @@
-import { createMarketId, getBurnerApp, getDexApp, getFactoryApp, type AppKey } from '@bze/bze-ui-kit'
+import { createMarketId, getBurnerApp, getDexApp, type AppKey } from '@bze/bze-ui-kit'
+import { airdropHref } from '@/lib/airdrop'
+import { chooseRewardsHref } from '@/lib/create-routes'
+import { scheduleFormHref } from '@/lib/denom-reward'
 import { burnerCoinHref } from '@/lib/raffle-new'
 import { officialHref } from '@/lib/registry-entry'
 import { workspaceHref } from '@/lib/workspace'
 
 // What a Done screen proposes after each wizard (BFE-259, canvas D5): one recommended next step
-// that carries what was just created, plus up to three others. Steps the chain shows are already
-// done are skipped. Renounce admin, Transfer admin and "lock the supply" are never proposed.
+// that carries what was just created, plus a few others. Kept short on purpose: the place to use
+// the new thing (the DEX, Burner) and at most the one step that naturally follows. Steps the chain
+// shows are already done are skipped. Renounce admin and Transfer admin are never proposed.
 
 /** The completed action a Done screen is shown for. */
 export type NextActionKind =
@@ -15,7 +19,6 @@ export type NextActionKind =
     | 'simpleRewardCreated'
     | 'compoundedCreated'
     | 'prizeAdded'
-    | 'reachedCommunity'
     | 'multisendFinished'
     | 'raffleStarted'
     | 'listed'
@@ -52,31 +55,17 @@ export interface NextAction {
 
 /** What was just created. Only the fields the kind needs are read. */
 export interface NextActionContext {
-    /** The token the action was about (created, staked, gifted, sent, raffled). */
+    /** The token the action was about (created, staked, sent, raffled). */
     denom?: string;
     ticker?: string;
     poolId?: string;
-    lpDenom?: string;
     base?: string;
     quote?: string;
-    /** "HONEY/BZE". */
-    pairLabel?: string;
-    rewardId?: string;
     /** The staked token of a reward. */
     stakedDenom?: string;
     stakedTicker?: string;
-    prizeDenom?: string;
-    prizeTicker?: string;
-    /** The daily prize schedule that was added (prizeAdded, daily prize only). */
-    scheduleId?: string;
-    /** prizeAdded: a daily prize or a one-off airdrop. */
-    prizeKind?: 'daily' | 'airdrop';
-    /** compoundedCreated: a first daily prize was funded with it. */
-    withPrize?: boolean;
-    /** The key number for announcements, e.g. "50 BZE a day for 30 days". */
-    prize?: string;
-    /** poolCreated: "0.002 BZE per HONEY". */
-    startingPrice?: string;
+    /** prizeAdded: it went to a simple reward (extended, or airdropped through it). */
+    viaSimpleReward?: boolean;
     /** multisendFinished, when the run was batched: downloads the report. */
     downloadReport?: () => void;
 }
@@ -105,101 +94,54 @@ export interface NextActions {
     more: NextAction[];
 }
 
-const NATIVE_DENOM = 'ubze'
 const MAX_MORE = 3
 
 const q = encodeURIComponent
 
 // Every href in one place: later tickets change a route here in one line.
 const ROUTES = {
-    newPool: (base: string, quote?: string) => `/pool/new?base=${q(base)}${quote ? `&quote=${q(quote)}` : ''}`,
-    newMarket: (base: string, quote?: string) => `/market/new?base=${q(base)}${quote ? `&quote=${q(quote)}` : ''}`,
-    makeStakable: (denom: string) => `/denom-reward/new?denom=${q(denom)}`,
-    dailyPrize: (denom: string, scheduleId?: string) =>
-        `/denom-reward/schedule?denom=${q(denom)}${scheduleId ? `&schedule=${q(scheduleId)}` : ''}`,
-    airdrop: (denom: string) => `/denom-reward/airdrop?denom=${q(denom)}`,
-    distribute: (rewardId: string) => `/reward/distribute?id=${q(rewardId)}`,
-    newSimpleReward: (stakingDenom: string) => `/reward/new?staking=${q(stakingDenom)}`,
-    reachWithGift: (gift: string) => `/reach?gift=${q(gift)}`,
-    reachCommunity: (denom: string) => `/reach?community=${q(denom)}`,
-    multisend: (denom: string) => `/multisend?denom=${q(denom)}`,
+    chooseMarket: (base: string) => `/create/market?base=${q(base)}`,
+    chooseRewards: (denom: string) => chooseRewardsHref({ denom }),
+    dailyPrize: (denom: string) => scheduleFormHref(denom),
+    airdrop: (prize: string) => airdropHref({ prize }),
     registry: officialHref,
     tokenPage: (denom: string) => workspaceHref(denom),
     // BFE-271 moves the brand kit to the token page's details.
     brandKit: (denom: string) => workspaceHref(denom, 'details'),
-    factoryUrl: (path: string) => `${getFactoryApp().href}${path}`,
     dexPool: (poolId: string) => `${getDexApp().href}/pools/details?id=${q(poolId)}`,
     dexMarket: (base: string, quote: string) => `${getDexApp().href}/exchange/market?id=${q(createMarketId(base, quote))}`,
     dexStaking: (ticker: string) => `${getDexApp().href}/staking?search=${q(ticker)}`,
     burnerCoin: (denom: string) => burnerCoinHref(getBurnerApp().href, denom),
 }
 
-const NOT_STAKED_YET = 'Available once someone is staking. We check before you sign.'
+const name = (ticker: string | undefined, fallback = 'the token') => ticker || fallback
 
 interface Candidate extends NextAction {
     /** The chain shows it is done already. */
     done?: boolean;
 }
 
-const samePair = (a: { base: string; quote: string }, x: string, y: string) =>
-    (a.base === x && a.quote === y) || (a.base === y && a.quote === x)
-
-const hasPool = (facts: NextActionFacts | undefined, x: string, y: string) =>
-    Boolean(facts?.pools?.some(p => samePair(p, x, y)))
-
-const hasMarket = (facts: NextActionFacts | undefined, x: string, y: string) =>
-    Boolean(facts?.markets?.some(m => samePair(m, x, y)))
-
-const name = (ticker: string | undefined, fallback = 'the token') => ticker || fallback
-
-function makeStakable(denom: string, ticker: string | undefined, facts: NextActionFacts | undefined, title?: string): Candidate {
+function stakeOnDex(ticker: string | undefined): Candidate {
+    const stakingUrl = ROUTES.dexStaking(name(ticker))
     return {
-        key: 'makeStakable',
+        key: 'stakeOnDex',
         icon: 'stake',
-        title: title ?? `Make ${name(ticker)} stakable`,
-        text: 'People stake it and share prizes you or others add.',
-        cta: 'Create compounded reward',
-        target: { href: ROUTES.makeStakable(denom) },
-        done: facts?.hasCompoundedReward,
+        title: 'Stake on DEX',
+        text: `Staking happens on the DEX. See the reward live, stake ${name(ticker)} and share the link.`,
+        cta: 'Stake on DEX',
+        target: { app: 'dex', href: stakingUrl },
     }
 }
 
-function airdropToStakers(denom: string, ticker: string | undefined, facts: NextActionFacts | undefined): Candidate {
+/** A daily prize for a compounded reward's stakers: anyone can add one, in any coin. */
+function moreRewards(stakedDenom: string, ticker: string | undefined): Candidate {
     return {
-        key: 'airdrop',
-        icon: 'airdrop',
-        title: 'Airdrop to stakers, once',
-        text: `Send a one-off gift to everyone staking ${name(ticker)}, shared by stake.`,
-        cta: 'Airdrop',
-        target: { href: ROUTES.airdrop(denom) },
-        disabledReason: facts?.hasStakers ? undefined : NOT_STAKED_YET,
-    }
-}
-
-function tellStakers(ctx: NextActionContext): Candidate {
-    const ticker = name(ctx.stakedTicker ?? ctx.ticker)
-    const what = ctx.prize ? `${ctx.prize}, shared by everyone staking ${ticker}` : `a new prize for everyone staking ${ticker}`
-    return {
-        key: 'tellStakers',
-        icon: 'share',
-        title: 'Tell your stakers',
-        text: 'A ready post with the prize and the staking link.',
-        cta: 'Copy announcement',
-        target: {
-            copy: `New for ${ticker} stakers: ${what}. Stake ${ticker} on the BZE DEX: ${ROUTES.dexStaking(ticker)}`,
-            copied: 'Announcement',
-        },
-    }
-}
-
-function reachAnother(gift: string, ticker: string | undefined, title = 'Reach another community'): Candidate {
-    return {
-        key: 'reach',
-        icon: 'reach',
-        title,
-        text: `Put ${name(ticker)} in front of another token's stakers as a daily prize or an airdrop.`,
-        cta: 'Reach a community',
-        target: { href: ROUTES.reachWithGift(gift) },
+        key: 'moreRewards',
+        icon: 'prize',
+        title: 'Add more rewards',
+        text: `Another daily prize for everyone staking ${name(ticker)}, in any coin.`,
+        cta: 'Add daily prize',
+        target: { href: ROUTES.dailyPrize(stakedDenom) },
     }
 }
 
@@ -211,15 +153,29 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
     case 'tokenCreated':
         return [
             {
-                key: 'pool',
-                icon: 'pool',
-                title: `Let people buy ${name(ticker)}`,
-                text: `Create a ${name(ticker)}/BZE liquidity pool. ${name(ticker)} is already filled in.`,
-                cta: 'Create pool',
-                target: { href: ROUTES.newPool(denom) },
-                done: hasPool(facts, denom, NATIVE_DENOM),
+                key: 'market',
+                icon: 'market',
+                title: 'Create a DEX market',
+                text: `Let people buy and sell ${name(ticker)}: a liquidity pool, an order book, or both.`,
+                cta: 'Create a market',
+                target: { href: ROUTES.chooseMarket(denom) },
             },
-            makeStakable(denom, ticker, facts),
+            {
+                key: 'rewards',
+                icon: 'reward',
+                title: 'Create staking rewards',
+                text: `Pay people for staking ${name(ticker)}, so they hold it.`,
+                cta: 'Create staking rewards',
+                target: { href: ROUTES.chooseRewards(denom) },
+            },
+            {
+                key: 'airdrop',
+                icon: 'airdrop',
+                title: `Airdrop ${name(ticker)}`,
+                text: 'Send it to a list of wallets, or to the stakers of any token.',
+                cta: 'Airdrop coins',
+                target: { href: ROUTES.airdrop(denom) },
+            },
             {
                 key: 'registry',
                 icon: 'registry',
@@ -229,228 +185,40 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 target: { href: ROUTES.registry(denom) },
                 done: facts?.registry === 'listed' || facts?.registry === 'off',
             },
-            {
-                key: 'brandKit',
-                icon: 'brand',
-                title: 'Give it a look',
-                text: 'Colours and a font for its Communities page.',
-                cta: 'Open brand kit',
-                target: { href: ROUTES.brandKit(denom) },
-                done: facts?.brandKitSet,
-            },
-            {
-                key: 'market',
-                icon: 'market',
-                title: 'Allow limit orders too',
-                text: `Open an order book for ${name(ticker)} for traders who name their price.`,
-                cta: 'Create order-book market',
-                target: { href: ROUTES.newMarket(denom) },
-                done: Boolean(facts?.hasMarket || facts?.markets?.some(m => m.base === denom || m.quote === denom)),
-            },
         ]
 
-    case 'poolCreated': {
-        const base = ctx.base ?? ''
-        const quote = ctx.quote ?? ''
-        const pair = ctx.pairLabel ?? 'the'
-        const poolUrl = ROUTES.dexPool(ctx.poolId ?? '')
-        return [
-            {
-                key: 'addLiquidity',
-                icon: 'liquidity',
-                title: 'Add liquidity you can withdraw',
-                text: 'A deeper pool means big trades move the price less. You get pool shares for this part and can take it out any time.',
-                cta: 'Add liquidity on DEX',
-                target: { app: 'dex', href: poolUrl },
-            },
-            {
-                key: 'rewardLps',
-                icon: 'reward',
-                title: 'Reward liquidity providers',
-                text: `Pay people who stake ${pair} pool shares, so the pool keeps its depth.`,
-                cta: 'Create simple reward',
-                target: { href: ROUTES.newSimpleReward(ctx.lpDenom ?? '') },
-                // The LP denom is read from the stored pool after the tx: until then there is nothing to stake.
-                ...(ctx.lpDenom ? {} : { disabledReason: 'Waiting for the pool share token…', pending: true }),
-            },
-            {
-                key: 'market',
-                icon: 'market',
-                title: 'Allow limit orders too',
-                text: `Open a ${pair} order book next to the pool for traders who name their price.`,
-                cta: 'Create order-book market',
-                target: { href: ROUTES.newMarket(base, quote) },
-                done: hasMarket(facts, base, quote),
-            },
-            {
-                key: 'announce',
-                icon: 'share',
-                title: 'Tell people about it',
-                text: 'A ready post with the pool link and starting price.',
-                cta: 'Copy announcement',
-                target: {
-                    copy: `The ${pair} pool is open on the BZE DEX${ctx.startingPrice ? `, starting at ${ctx.startingPrice}` : ''}. Swap here: ${poolUrl}`,
-                    copied: 'Announcement',
-                },
-            },
-        ]
-    }
+    case 'poolCreated':
+        return [{
+            key: 'addLiquidity',
+            icon: 'liquidity',
+            title: 'Add liquidity on DEX',
+            text: 'A deeper pool means big trades move the price less. You can take your part out any time.',
+            cta: 'Add liquidity on DEX',
+            target: { app: 'dex', href: ROUTES.dexPool(ctx.poolId ?? '') },
+        }]
 
-    case 'marketCreated': {
-        const base = ctx.base ?? ''
-        const quote = ctx.quote ?? ''
-        const pair = ctx.pairLabel ?? 'The'
-        const marketUrl = ROUTES.dexMarket(base, quote)
-        return [
-            {
-                key: 'openMarket',
-                icon: 'market',
-                title: 'Open the market on DEX',
-                text: 'Place the first orders so traders see a price.',
-                cta: 'Open market on DEX',
-                target: { app: 'dex', href: marketUrl },
-            },
-            {
-                key: 'pool',
-                icon: 'pool',
-                title: 'Create a pool for the pair',
-                text: 'Swaps fill instantly from a pool, next to the order book.',
-                cta: 'Create pool',
-                target: { href: ROUTES.newPool(base, quote) },
-                done: hasPool(facts, base, quote),
-            },
-            {
-                key: 'contest',
-                icon: 'contest',
-                title: 'Trading contest',
-                text: 'Reward the best traders of the market.',
-                cta: 'Coming soon',
-                target: { href: '/' },
-                disabledReason: 'Coming soon',
-            },
-            {
-                key: 'copyMarket',
-                icon: 'share',
-                title: 'Share the market',
-                text: 'A ready post with the market link.',
-                cta: 'Copy market link',
-                target: { copy: `${pair} order book is open on the BZE DEX. Place limit orders: ${marketUrl}`, copied: 'Market link' },
-            },
-        ]
-    }
+    case 'marketCreated':
+        return [{
+            key: 'openMarket',
+            icon: 'market',
+            title: 'Open the market on DEX',
+            text: 'Place the first orders so traders see a price.',
+            cta: 'Open market on DEX',
+            target: { app: 'dex', href: ROUTES.dexMarket(ctx.base ?? '', ctx.quote ?? '') },
+        }]
 
-    case 'simpleRewardCreated': {
-        const staked = ctx.stakedDenom ?? ''
-        const stakedTicker = name(ctx.stakedTicker)
-        const stakingUrl = ROUTES.dexStaking(stakedTicker)
-        return [
-            {
-                key: 'shareStaking',
-                icon: 'share',
-                title: 'Share the staking link',
-                text: 'Staking happens on the DEX. Send your community straight to it.',
-                cta: 'Copy staking link',
-                target: { copy: stakingUrl, copied: 'Staking link' },
-            },
-            {
-                key: 'stakeOnDex',
-                icon: 'stake',
-                title: 'Stake on DEX',
-                text: `See the reward live and stake your own ${stakedTicker}.`,
-                cta: 'Stake on DEX',
-                target: { app: 'dex', href: stakingUrl },
-            },
-            makeStakable(staked, ctx.stakedTicker, facts, `Make ${stakedTicker} stakable for good`),
-        ]
-    }
+    case 'simpleRewardCreated':
+        return [stakeOnDex(ctx.stakedTicker)]
 
-    case 'compoundedCreated': {
-        if (ctx.withPrize) {
-            return [
-                tellStakers(ctx),
-                airdropToStakers(denom, ticker, facts),
-                reachAnother(ctx.prizeDenom ?? denom, ctx.prizeTicker ?? ticker),
-            ]
-        }
-        const stakingUrl = ROUTES.dexStaking(name(ticker))
-        return [
-            {
-                key: 'dailyPrize',
-                icon: 'prize',
-                title: 'Add a daily prize',
-                text: `Shared every day by everyone staking ${name(ticker)}. Any token can be the prize.`,
-                cta: 'Add daily prize',
-                target: { href: ROUTES.dailyPrize(denom) },
-            },
-            airdropToStakers(denom, ticker, facts),
-            {
-                key: 'sendToStake',
-                icon: 'stake',
-                title: 'Send people to stake',
-                text: 'Staking happens on the DEX. Share the link with your community.',
-                cta: 'Copy link',
-                target: { copy: stakingUrl, copied: 'Staking link' },
-                alsoApp: { app: 'dex', href: stakingUrl, label: 'DEX' },
-            },
-            {
-                key: 'invitePartner',
-                icon: 'partner',
-                title: 'Ask a partner to add prizes',
-                text: `Another community can put its token here to reach ${name(ticker)} stakers.`,
-                cta: 'Copy invite',
-                target: {
-                    copy: `${name(ticker)} stakers are open to new prizes. Put your token in front of them as a daily prize or an airdrop: ${ROUTES.factoryUrl(ROUTES.reachCommunity(denom))}`,
-                    copied: 'Invite',
-                },
-            },
-        ]
-    }
+    case 'compoundedCreated':
+        return [stakeOnDex(ticker), moreRewards(denom, ticker)]
 
+    // A prize on a compounded reward (daily, extended or airdropped) can take more; a simple reward can't.
     case 'prizeAdded':
         return [
-            tellStakers(ctx),
-            reachAnother(ctx.prizeDenom ?? '', ctx.prizeTicker),
-            ...(ctx.prizeKind === 'daily' ? [{
-                key: 'extend',
-                icon: 'extend' as const,
-                title: 'Extend before it ends',
-                text: 'Pay for more days so stakers keep earning without a gap.',
-                cta: 'Extend daily prize',
-                target: { href: ROUTES.dailyPrize(ctx.stakedDenom ?? denom, ctx.scheduleId) },
-            }] : []),
-            // A simple reward that was just extended can also take a one-time amount.
-            ...(ctx.rewardId && ctx.prizeKind !== 'airdrop' ? [{
-                key: 'distribute',
-                icon: 'airdrop' as const,
-                title: 'Send a one-time bonus',
-                text: 'Split an extra amount between its stakers right now.',
-                cta: 'Distribute',
-                target: { href: ROUTES.distribute(ctx.rewardId) },
-            }] : []),
+            stakeOnDex(ctx.stakedTicker),
+            ...(ctx.viaSimpleReward ? [] : [moreRewards(ctx.stakedDenom ?? denom, ctx.stakedTicker)]),
         ]
-
-    case 'reachedCommunity': {
-        const pool = facts?.pools?.find(p => samePair(p, denom, NATIVE_DENOM))
-        return [
-            makeStakable(denom, ticker, facts, `Make ${name(ticker, 'your token')} stakable`),
-            pool ? {
-                key: 'addLiquidity',
-                icon: 'liquidity',
-                title: 'Add liquidity on DEX',
-                text: `New holders can trade ${name(ticker)} more easily in a deeper pool.`,
-                cta: 'Add liquidity on DEX',
-                target: { app: 'dex', href: ROUTES.dexPool(pool.id) },
-            } : {
-                key: 'pool',
-                icon: 'pool',
-                title: `Let people buy ${name(ticker)}`,
-                text: `Create a ${name(ticker)}/BZE liquidity pool so new holders can trade it.`,
-                cta: 'Create pool',
-                target: { href: ROUTES.newPool(denom) },
-            },
-            reachAnother(denom, ticker, 'Airdrop to another token'),
-        ]
-    }
 
     case 'multisendFinished':
         return [
@@ -462,39 +230,25 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 cta: 'Download report',
                 target: { onClick: ctx.downloadReport },
             }] : []),
-            makeStakable(denom, ticker, facts),
             {
                 key: 'sendAgain',
                 icon: 'send',
                 title: 'Send to another list',
                 text: `Start a new list with ${name(ticker)} already picked.`,
                 cta: 'New list',
-                target: { href: ROUTES.multisend(denom) },
+                target: { href: airdropHref({ to: 'list', denom }) },
             },
         ]
 
-    case 'raffleStarted': {
-        const burnerUrl = ROUTES.burnerCoin(denom)
-        return [
-            {
-                key: 'openRaffle',
-                icon: 'raffle',
-                title: 'Open the raffle',
-                text: 'Players join it on Burner. Check it is live and try your luck.',
-                cta: 'Open on Burner',
-                target: { app: 'burner', href: burnerUrl },
-            },
-            {
-                key: 'copyRaffle',
-                icon: 'share',
-                title: 'Share the raffle',
-                text: 'A ready post with the raffle link.',
-                cta: 'Copy raffle link',
-                target: { copy: `A burning raffle for ${name(ticker)} is live on Burner. Join here: ${burnerUrl}`, copied: 'Raffle link' },
-            },
-            ...(facts?.hasCompoundedReward ? [airdropToStakers(denom, ticker, facts)] : []),
-        ]
-    }
+    case 'raffleStarted':
+        return [{
+            key: 'openRaffle',
+            icon: 'raffle',
+            title: 'Open the raffle',
+            text: 'Players join it on Burner. Check it is live and share it.',
+            cta: 'Open on Burner',
+            target: { app: 'burner', href: ROUTES.burnerCoin(denom) },
+        }]
 
     // The registry guide's Done screen (BFE-274): back to the token, then its look and staking.
     case 'listed':
@@ -516,7 +270,15 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 target: { href: ROUTES.brandKit(denom) },
                 done: facts?.brandKitSet,
             },
-            makeStakable(denom, ticker, facts, 'Make it stakable'),
+            {
+                key: 'rewards',
+                icon: 'stake',
+                title: 'Make it stakable',
+                text: 'Pay people for staking it, so they hold it.',
+                cta: 'Create staking rewards',
+                target: { href: ROUTES.chooseRewards(denom) },
+                done: facts?.hasCompoundedReward,
+            },
         ]
     }
 }

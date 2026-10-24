@@ -38,6 +38,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tokenfactory.denom_authority.noadmin.json` | NOAD's admin (`DenomAuthority`) | the token page's live admin check (`token-page.spec.ts`); still its creator on testnet, despite the name. Recorded 2026-10-21 |
 | `lcd/tokenfactory.denom_branding.noadmin.json` | NOAD's brand kit | the token page's Brand kit chip. Recorded 2026-10-21 |
 | `lcd/bank.supply_by_denom.noadmin.json` | NOAD's live total supply | the token page's Supply stat. Recorded 2026-10-21 |
+| `lcd/rewards.denom_reward.vidulum.json` | VDL's denom reward: 404 not found | VDL has only a simple reward, so the Airdrop wizard's stakers flow reads none (`airdrop.spec.ts`). Recorded 2026-10-24 |
 | `lcd/bank.denom_metadata.noadmin.json` | NOAD bank metadata (query-string route) | the token page's details. Recorded 2026-10-21 |
 | `lcd/burner.raffles.json` | running burning raffles (`/raffle/new`, the token page's Supply group) | recorded 2026-10-15; testnet has none running |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
@@ -51,8 +52,8 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/tradebin.halted_denoms.json` | halted denoms, limit 500 | empty on testnet |
 | `lcd/txfeecollector.params.json` | txfeecollector params | |
 | `lcd/rewards.all_staking_rewards.json` | staking rewards (SRs), limit 1000, reversed | the Staking programs tab of `/rewards` and the token page's Rewards group (`rewards.spec.ts` adds a running program) |
-| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards`; the communities of `/reach` (`reach.spec.ts`, which also adds a zero-staked one through `network.use`) |
-| `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`), the community picked on `/reach`, the airdrop form (`denom-reward-airdrop.spec.ts`, which also answers it with nothing staked through `network.use`) and the holder rewards panel (`denom-reward-token.spec.ts`, which also answers a 404 for `testusd` through `network.use`). Recorded 2026-10-14 |
+| `lcd/rewards.all_denom_rewards.json` | every denom reward, limit 500 | the rows of `/rewards`; the stakers' token picker of `/airdrop` (`airdrop.spec.ts`) |
+| `lcd/rewards.denom_reward.noadmin.json` | the `noadmin` denom reward | the schedule form (`denom-reward-schedule.spec.ts`), the stakers flow of `/airdrop` (`airdrop.spec.ts`, which also answers it with nothing staked through `network.use`) and the holder rewards panel (`denom-reward-token.spec.ts`, which also answers a 404 for `testusd` through `network.use`). Recorded 2026-10-14 |
 | `lcd/rewards.denom_reward_prizes.noadmin.json` | prizes of the `noadmin` denom reward | its "Prize tokens" count; the schedule and airdrop forms' new-prize check |
 | `lcd/rewards.denom_reward_schedules.noadmin.json` | schedules of the `noadmin` denom reward, limit 500 | its "Running schedules" count; the schedule form's extend mode (`000000000000`, 200 days) |
 | `lcd/ibc.denom_trace.ulmn.json`, `lcd/ibc.channel-0.json`, `lcd/ibc.connection-0.json`, `lcd/ibc.client_state.07-tendermint-0.json` | IBC trace of the testnet IBC token | the asset list resolves its origin chain |

@@ -238,7 +238,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
     });
 
     describe("Done", () => {
-        it("celebrates the extra days and proposes telling the stakers", async () => {
+        it("celebrates the extra days and sends people to stake on the DEX", async () => {
             renderPage();
             await enterDays("10");
             await userEvent.click(button(step("Extra days"), "Review extension"));
@@ -252,8 +252,8 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
 
             const recommended = screen.getByTestId("done-recommended");
-            expect(recommended).toHaveTextContent("Tell your stakers");
-            expect(screen.getByRole("article", { name: "Reach another community" })).toBeInTheDocument();
+            expect(recommended).toHaveTextContent("Stake on DEX");
+            expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
         });
     });
 

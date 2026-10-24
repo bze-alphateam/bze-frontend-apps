@@ -24,15 +24,12 @@ const navSubitems: { [key: string]: string } = {
     '/pool/add': '/',
     '/reward/new': '/',
     '/denom-reward/new': '/',
-    '/multisend': '/',
-    '/reach': '/',
+    '/airdrop': '/',
     '/raffle/new': '/',
     '/tokens/token': '/tokens',
     '/official': '/tokens',
     '/reward/extend': '/rewards',
-    '/reward/distribute': '/rewards',
     '/denom-reward/schedule': '/rewards',
-    '/denom-reward/airdrop': '/rewards',
 }
 
 /**

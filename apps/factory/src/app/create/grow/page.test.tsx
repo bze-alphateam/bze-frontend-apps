@@ -4,30 +4,25 @@ import { render, screen, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import ChooseGrowPage from "./page";
 
-// Choose how to grow a community (BFE-260): four cards, each a link with its chips.
+// Choose how to grow a community: two cards, Airdrop coins and the burning raffle.
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
 
 describe("Choose how to grow a community", () => {
-    it("asks who to reach, under Create / Community", () => {
+    it("asks how to grow, under Create / Community", () => {
         render(<ChooseGrowPage />, { wrapper });
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Who do you want to reach?");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("How do you want to grow?");
         expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Community")).toBeInTheDocument();
     });
 
-    it.each([
-        ["Airdrop to stakers", "/denom-reward/airdrop", ["Compounded reward", "Any token's stakers"]],
-        ["Send to a list of wallets", "/multisend", ["Multi-send", "No fee", "CSV"]],
-        ["Run a burning raffle", "/raffle/new", ["Burner raffle", "No fee"]],
-        ["Reach another community", "/reach", ["Airdrop or daily prize", "On their token"]],
-    ])("%s links to its form with its chips", (title, href, chips) => {
+    it("has exactly the two options, each with its button", () => {
         render(<ChooseGrowPage />, { wrapper });
-        const link = screen.getByRole("link", { name: new RegExp(title) });
-        expect(link).toHaveAttribute("href", href);
-        for (const chip of chips) expect(within(link).getByText(chip)).toBeInTheDocument();
+        expect(screen.getAllByTestId("option-card")).toHaveLength(2);
+        expect(within(screen.getByRole("region", { name: "Airdrop coins" })).getByRole("link", { name: /Airdrop coins/ })).toHaveAttribute("href", "/airdrop");
+        expect(within(screen.getByRole("region", { name: "Run a burning raffle" })).getByRole("link", { name: /Run a raffle/ })).toHaveAttribute("href", "/raffle/new");
     });
 
-    it("never promises a free airdrop: a new prize token may pay the prize fee", () => {
+    it("never promises a free airdrop: a new prize coin may pay the prize fee", () => {
         render(<ChooseGrowPage />, { wrapper });
-        expect(screen.queryByText("No extra fee")).not.toBeInTheDocument();
+        expect(screen.queryByText(/No fee|No extra fee/)).not.toBeInTheDocument();
     });
 });

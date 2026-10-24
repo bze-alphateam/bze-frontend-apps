@@ -7,10 +7,8 @@ import {expect, test} from "./support/mock-network";
 test("Grow a community offers Run a burning raffle", async ({page}) => {
     await page.goto("/create/grow");
 
-    const card = page.getByRole("link", {name: /Run a burning raffle/});
-    await expect(card).toContainText("Burner raffle");
-    await expect(card).toContainText("No fee");
-    await expect(card).toHaveAttribute("href", "/raffle/new");
+    const card = page.getByRole("region", {name: "Run a burning raffle"});
+    await expect(card.getByRole("link", {name: /Run a raffle/})).toHaveAttribute("href", "/raffle/new");
 });
 
 test("Token, Prize pot and How it plays, then Review with the connect message", async ({page}) => {

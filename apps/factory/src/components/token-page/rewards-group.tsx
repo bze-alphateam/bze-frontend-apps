@@ -20,7 +20,8 @@ import { withReturn } from '@/components/guided/return-to'
 import { softButton } from '@/components/ui/soft-button'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
-import { airdropFormHref, compoundedNewHref, formatLastPaid, scheduleDaysLeft, scheduleFormHref } from '@/lib/denom-reward'
+import { hasStaked, stakersAirdropHref } from '@/lib/airdrop'
+import { compoundedNewHref, formatLastPaid, scheduleDaysLeft, scheduleFormHref } from '@/lib/denom-reward'
 import { daysLeftText, extendHref } from '@/lib/reward-extend'
 import { dailyPrizeLine, stakesToken } from '@/lib/token-page'
 import { ActionGroup, ActionItem, ItemButton, ItemLink, type GroupProps } from './action-group'
@@ -124,8 +125,8 @@ function CompoundedItem({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
                 <HStack gap="8px" flexWrap="wrap" data-testid="compounded-actions">
                     <ItemLink href={withReturn(scheduleFormHref(asset.denom), back)} primary={running.length === 0}>Add daily prize</ItemLink>
                     {hasStakers
-                        ? <ItemLink href={withReturn(airdropFormHref(asset.denom), back)}>Airdrop to stakers</ItemLink>
-                        : <ItemButton onClick={() => undefined} disabled>Airdrop to stakers</ItemButton>}
+                        ? <ItemLink href={withReturn(stakersAirdropHref(asset.denom), back)}>Airdrop</ItemLink>
+                        : <ItemButton onClick={() => undefined} disabled>Airdrop</ItemButton>}
                 </HStack>
                 {!hasStakers && (
                     <Text fontSize="12px" color="fg.muted" data-testid="airdrop-disabled">
@@ -179,7 +180,14 @@ function SimpleRewardRow({ reward, now, back }: { reward: StakingRewardSDKType; 
             testId="simple-reward-row"
             title={`Simple reward · stake ${stakingAsset?.ticker ?? reward.staking_denom}`}
             line={`${perDay} a day · ${daysLeftText(reward, now)}`}
-            action={<ItemLink href={withReturn(extendHref(reward.reward_id), back)}>Extend</ItemLink>}
+            action={(
+                <HStack gap="8px">
+                    <ItemLink href={withReturn(extendHref(reward.reward_id), back)}>Extend</ItemLink>
+                    {hasStaked({ staked: reward.staked_amount }) && (
+                        <ItemLink href={withReturn(stakersAirdropHref(reward.staking_denom, reward.reward_id), back)}>Airdrop</ItemLink>
+                    )}
+                </HStack>
+            )}
         />
     )
 }

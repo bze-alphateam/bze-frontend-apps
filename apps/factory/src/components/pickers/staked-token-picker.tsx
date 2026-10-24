@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import NextLink from 'next/link'
-import { Box, Button, chakra, HStack, Input, InputGroup, Link, Text, VStack } from '@chakra-ui/react'
+import { Button, chakra, HStack, Input, InputGroup, Text, VStack } from '@chakra-ui/react'
 import { LuRefreshCw, LuSearch } from 'react-icons/lu'
 import {
     Shimmer,
@@ -14,14 +13,14 @@ import {
     type DenomReward,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { TipNote, WarningNote } from '@/components/guided/notes'
+import { WarningNote } from '@/components/guided/notes'
 import { FilterChip } from '@/components/ui/filter-chip'
 import { useAllDenomRewards } from '@/hooks/useAllDenomRewards'
 import { useMyTokens } from '@/hooks/useMyTokens'
-import { airdropFormHref, scheduleFormHref } from '@/lib/denom-reward'
 import {
     PICKER_PAGE_SIZE,
     type PickerChip,
+    type PickerOnly,
     type PickerRow,
     type StakedTokenPickerMode,
     pickerAdminLine,
@@ -48,9 +47,13 @@ const TONE_COLOR: Record<TokenState['tone'], string> = {
 export interface StakedTokenPickerProps {
     /**
      * `makeStakable` lists every token and marks those that already have a compounded reward;
-     * `hasCompounded` lists only those that have one.
+     * `hasCompounded` lists only those that have one; `hasRewards` also lists the `stakable` tokens.
      */
     mode: StakedTokenPickerMode;
+    /** hasRewards: tokens staked in a simple reward. */
+    stakable?: ReadonlySet<string>;
+    /** Pool shares only, or no pool shares. */
+    only?: PickerOnly;
     /** Hide governance-halted tokens. */
     excludeHalted?: boolean;
     /** List LP shares too (a "Pool shares" chip). Default true. */
@@ -130,7 +133,7 @@ function TokenOption({ row, line, state, selected, onPick }: {
  * their admin line, then every token: compounded rewards by staked USD value, then the rest A–Z.
  * Which tokens have a compounded reward, and what they stake, comes from the chain's list.
  */
-export function StakedTokenPicker({ mode, excludeHalted = false, includeLP = true, value, onChange, stateOf }: StakedTokenPickerProps) {
+export function StakedTokenPicker({ mode, stakable, only, excludeHalted = false, includeLP = true, value, onChange, stateOf }: StakedTokenPickerProps) {
     const { assets, isLoading: isAssetsLoading, nativeAsset } = useAssets()
     const { usdPricesMap } = useAssetsContext()
     const { address } = useChain(getChainName())
@@ -143,17 +146,15 @@ export function StakedTokenPicker({ mode, excludeHalted = false, includeLP = tru
     const drs = new Map((denomRewards.list ?? []).map(dr => [dr.staking_denom, dr]))
     const rowOf = (asset: Asset) => toPickerRow(asset, drs.get(asset.denom), usdPricesMap.get(asset.denom))
     const admins = new Map(myTokens.map(t => [t.asset.denom, t.admin]))
-    const filter = { mode, q, includeLP, excludeHalted }
+    const filter = { mode, q, includeLP, excludeHalted, stakable, only }
     const groups = pickerGroups(
         address ? myTokens.map(t => rowOf(t.asset)) : [],
         assets.filter(a => a.supply > BigInt(0)).map(rowOf),
         chip,
         filter,
     )
-    const chips = CHIPS.filter(c => (c.value !== 'mine' || address) && (c.value !== 'lp' || includeLP))
+    const chips = CHIPS.filter(c => (c.value !== 'mine' || (address && only !== 'lp')) && (c.value !== 'lp' || (includeLP && !only)))
 
-    const picked = value ? drs.get(value) : undefined
-    const pickedAsset = value ? assets.find(a => a.denom === value) : undefined
     const isLoading = isAssetsLoading || denomRewards.isLoading
 
     const search = (next: string) => {
@@ -166,7 +167,7 @@ export function StakedTokenPicker({ mode, excludeHalted = false, includeLP = tru
     }
 
     const stateFor = (row: PickerRow) =>
-        mode === 'makeStakable' && row.dr ? { text: 'Already stakable', tone: 'muted' as const } : stateOf(row.asset, row.dr)
+        mode === 'makeStakable' && row.dr ? { text: 'Stakable · add a prize', tone: 'muted' as const } : stateOf(row.asset, row.dr)
 
     const option = (row: PickerRow, line: string) => (
         <TokenOption
@@ -221,7 +222,7 @@ export function StakedTokenPicker({ mode, excludeHalted = false, includeLP = tru
                 <Text fontSize="14px" color="fg.muted" data-testid="picker-empty">
                     {q.trim() !== ''
                         ? `No token matches '${q.trim()}'.`
-                        : mode === 'hasCompounded' ? 'No token is stakable yet.' : 'No token to show.'}
+                        : mode === 'makeStakable' ? 'No token to show.' : only === 'lp' ? 'No pool share is staked in a reward yet.' : 'No token is stakable yet.'}
                 </Text>
             ) : (
                 <VStack align="stretch" gap="18px" role="radiogroup" aria-label="Token">
@@ -251,21 +252,6 @@ export function StakedTokenPicker({ mode, excludeHalted = false, includeLP = tru
                         </VStack>
                     )}
                 </VStack>
-            )}
-
-            {mode === 'makeStakable' && picked && (
-                <TipNote
-                    action={(
-                        <HStack gap="16px" wrap="wrap" fontSize="14px" fontWeight="600">
-                            <Link asChild color="hg.link"><NextLink href={scheduleFormHref(value)}>Add a daily prize</NextLink></Link>
-                            <Link asChild color="hg.link"><NextLink href={airdropFormHref(value)}>Airdrop to stakers</NextLink></Link>
-                        </HStack>
-                    )}
-                >
-                    <Box as="span" data-testid="already-stakable">
-                        {`${pickedAsset?.ticker ?? 'This token'} is already stakable. Add a prize to it instead.`}
-                    </Box>
-                </TipNote>
             )}
         </VStack>
     )

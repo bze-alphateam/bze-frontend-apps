@@ -174,7 +174,7 @@ describe("rewards directory: sections", () => {
 });
 
 describe("rewards directory: actions", () => {
-    it("compounded: Add daily prize, Airdrop once, Extend → per daily prize, Open token for Factory tokens only", async () => {
+    it("compounded: Add daily prize, Airdrop, Extend → per daily prize, Open token for Factory tokens only", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.getSchedules.mockImplementation(async (d: string) => (d === "ubze" ? [schedule("3", "ubze", "1000000", 10, 1), schedule("4", TOK, "1000000", 10, 1)] : []));
         renderPage();
@@ -182,7 +182,7 @@ describe("rewards directory: actions", () => {
         await waitFor(() => expect(within(card("Stake BZE")).getAllByRole("link", { name: "Extend →" })).toHaveLength(2));
         const bze = within(card("Stake BZE"));
         expect(bze.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", "/denom-reward/schedule?denom=ubze");
-        expect(bze.getByRole("link", { name: "Airdrop once" })).toHaveAttribute("href", "/denom-reward/airdrop?denom=ubze");
+        expect(bze.getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", "/airdrop?to=stakers&denom=ubze");
         expect(bze.getAllByRole("link", { name: "Extend →" }).map(l => l.getAttribute("href")))
             .toEqual(["/denom-reward/schedule?denom=ubze&schedule=3", "/denom-reward/schedule?denom=ubze&schedule=4"]);
         // ubze isn't a Factory token: it has no token page.
@@ -192,13 +192,13 @@ describe("rewards directory: actions", () => {
         expect(tok.getByRole("link", { name: "Open token" })).toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(TOK)}`);
     });
 
-    it("disables Airdrop once with the reason when nothing is staked", async () => {
+    it("disables Airdrop with the reason when nothing is staked", async () => {
         m.getAll.mockResolvedValue(DRS);
         renderPage();
 
         await waitFor(() => expect(cards()).toHaveLength(2));
         const tok = within(card("Stake TOK"));
-        expect(tok.getByRole("button", { name: "Airdrop once" })).toBeDisabled();
+        expect(tok.getByRole("button", { name: "Airdrop" })).toBeDisabled();
         expect(tok.getByTestId("airdrop-disabled")).toHaveTextContent("Nothing staked yet");
         expect(within(card("Stake BZE")).queryByTestId("airdrop-disabled")).not.toBeInTheDocument();
     });

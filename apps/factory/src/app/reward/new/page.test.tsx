@@ -370,7 +370,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
         }
 
-        it("shows the live reward with its id from the tx event, the links, and recommends sharing the staking link", async () => {
+        it("shows the live reward with its id from the tx event, the links, and only Stake on DEX next", async () => {
             await createReward();
 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your simple reward is live.");
@@ -379,17 +379,11 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
 
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             const stakingUrl = `https://dex.test/staking?search=${encodeURIComponent("TOK/BZE LP")}`;
-            // The hero link and the "Stake on DEX" card both open the DEX staking page.
-            const dexLinks = screen.getAllByRole("link", { name: /Stake on DEX/ });
-            expect(dexLinks.length).toBeGreaterThanOrEqual(1);
-            dexLinks.forEach(link => {
-                expect(link).toHaveAttribute("href", stakingUrl);
-                expect(link).toHaveAttribute("data-app", "dex");
-            });
-
             const recommended = screen.getByTestId("done-recommended");
-            expect(recommended).toHaveTextContent("Share the staking link");
-            expect(within(recommended).getByRole("button", { name: "Copy staking link" })).toBeInTheDocument();
+            const dexLink = within(recommended).getByRole("link", { name: /Stake on DEX/ });
+            expect(dexLink).toHaveAttribute("href", stakingUrl);
+            expect(dexLink).toHaveAttribute("data-app", "dex");
+            expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
         });
 
         it("keeps the id a skeleton when the tx can't be read back", async () => {

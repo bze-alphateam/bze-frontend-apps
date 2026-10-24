@@ -34,7 +34,7 @@ test("a Factory token: header, setup chips and the groups, with no admin action"
 
     const rewards = page.getByRole("region", {name: "Rewards on NOAD"});
     await expect(rewards.getByTestId("daily-prize-line")).toHaveCount(2);
-    await expect(rewards.getByRole("link", {name: "Airdrop to stakers"})).toBeVisible();
+    await expect(rewards.getByTestId("compounded-actions").getByRole("link", {name: "Airdrop", exact: true})).toBeVisible();
 
     // Admin actions wait for a wallet that is the admin; ?tab= is ignored.
     await expect(page.getByRole("button", {name: "Mint"})).toHaveCount(0);

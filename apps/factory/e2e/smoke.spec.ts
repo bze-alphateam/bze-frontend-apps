@@ -45,11 +45,12 @@ test("the staking rewards and community Choose screens render", async ({page}) =
     await expect(page.getByRole("heading", {level: 1, name: "Which kind of reward?"})).toBeVisible();
     await expect(page.getByRole("region", {name: "Simple reward"}).getByTestId("fee-line")).toContainText("TBZE");
     await expect(page.getByRole("region", {name: "Compounded reward"}).getByTestId("fee-line")).toContainText("TBZE");
-    await expect(page.getByTestId("existing-reward-row")).toHaveCount(4);
+    await expect(page.getByText("Already created a reward?")).toHaveCount(0);
 
     await page.goto("/create/grow");
-    await expect(page.getByRole("heading", {level: 1, name: "Who do you want to reach?"})).toBeVisible();
-    await expect(page.getByRole("link", {name: /Send to a list of wallets/})).toHaveAttribute("href", "/multisend");
+    await expect(page.getByRole("heading", {level: 1, name: "How do you want to grow?"})).toBeVisible();
+    await expect(page.getByTestId("option-card")).toHaveCount(2);
+    await expect(page.getByRole("link", {name: /Airdrop coins/})).toHaveAttribute("href", "/airdrop");
 });
 
 test("old URLs redirect: /manage to /tokens, /playbooks home", async ({page}) => {

@@ -77,7 +77,7 @@ export function TokenDirectoryRow({ row, admin, phoneOnly = false, isStakeLoadin
             display={phoneOnly ? { base: 'block', md: 'none' } : 'block'}
             bg="hg.card"
             borderWidth="1px"
-            borderColor={admin?.badge.kind === 'you' ? 'app.border' : 'hg.hairline'}
+            borderColor="hg.hairline"
             borderRadius="hg.lg"
             px={{ base: '16px', md: '20px' }}
             py="14px"

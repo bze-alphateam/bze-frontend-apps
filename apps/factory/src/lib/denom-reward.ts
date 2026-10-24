@@ -135,9 +135,6 @@ export function summarizeScheduleCosts(input: ScheduleCostInput): ScheduleCostSu
 export const compoundedNewHref = (denom?: string) =>
     denom ? `/denom-reward/new?denom=${encodeURIComponent(denom)}` : '/denom-reward/new'
 
-/** Deep link to the airdrop form of the DR of `denom`. */
-export const airdropFormHref = (denom: string) => `/denom-reward/airdrop?denom=${encodeURIComponent(denom)}`
-
 /**
  * The compounded reward of any token, for any wallet: its card in the rewards directory, which
  * prefills the search with the token and scrolls to it (BFE-272; `/denom-reward/token` redirects here).

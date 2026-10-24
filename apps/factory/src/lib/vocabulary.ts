@@ -12,7 +12,6 @@ export interface Term {
 export const VOCABULARY = {
     holderRewards: { name: 'Compounded reward', tech: 'rewards · denom reward' },
     stakingProgram: { name: 'Simple reward', tech: 'rewards · staking reward' },
-    airdropToStakers: { name: 'Airdrop to stakers', tech: 'rewards · distribute denom rewards' },
     dailyPrize: { name: 'Daily prize', tech: 'rewards · denom reward schedule' },
     multiSend: { name: 'Send to a list of wallets', tech: 'bank · multi-send' },
     control: { name: 'Permissions', tech: 'tokenfactory · admin' },

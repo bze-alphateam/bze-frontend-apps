@@ -29,9 +29,9 @@ const renderNav = () => render(
     <ChakraProvider value={system}><PendingTxProvider store={store}><TopNavBar /></PendingTxProvider></ChakraProvider>,
 );
 
-const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/denom-reward/new", "/multisend", "/reach", "/raffle/new"];
+const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/pool/add", "/reward/new", "/denom-reward/new", "/airdrop", "/raffle/new"];
 const TOKENS = ["/tokens", "/tokens/token", "/official"];
-const REWARDS = ["/rewards", "/reward/extend", "/reward/distribute", "/denom-reward/schedule", "/denom-reward/airdrop"];
+const REWARDS = ["/rewards", "/reward/extend", "/denom-reward/schedule"];
 
 // The desktop nav's links (the logo links home too).
 const active = () => within(screen.getAllByRole("navigation", { name: "Main" })[0]).getAllByRole("link").filter(l => l.getAttribute("aria-current") === "page").map(l => l.textContent);

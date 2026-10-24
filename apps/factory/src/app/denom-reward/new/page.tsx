@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import BigNumber from 'bignumber.js'
 import { Box, Button, chakra, Grid, Text, VStack } from '@chakra-ui/react'
 import { LuRefreshCw } from 'react-icons/lu'
@@ -39,11 +39,14 @@ import {
     ReviewStep,
     Segmented,
     SubmitNote,
+    TipNote,
     TxPanel,
     useGuidedSteps,
+    useReturnTo,
+    withReturn,
 } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
-import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, prizeSlot, summarizeScheduleCosts } from '@/lib/denom-reward'
+import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, prizeSlot, scheduleFormHref, summarizeScheduleCosts } from '@/lib/denom-reward'
 import {
     checkDailyPrize,
     compoundedCosts,
@@ -83,7 +86,8 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 function CompoundedNewContent() {
-    const { denomParam } = useNavigationWithParams()
+    const { denomParam, replace } = useNavigationWithParams()
+    const returnTo = useReturnTo()
     const { address } = useChain(getChainName())
     const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
 
@@ -108,6 +112,9 @@ function CompoundedNewContent() {
 
     // A load error is not "none": the chain may already hold one, so nothing is offered until it answers.
     const tokenOk = Boolean(asset) && !existing.isLoading && !existing.hasError && !existing.denomReward
+    // Already stakable: there is nothing to create, so the wizard goes on to adding a prize to it.
+    const stakable = Boolean(denom) && !existing.isLoading && !existing.hasError && Boolean(existing.denomReward)
+    const addPrizeHref = withReturn(scheduleFormHref(denom), returnTo)
 
     // A brand-new compounded reward has no prize yet: the first prize token always takes a slot.
     const maxPrizes = denomRewardLimits.maxPrizeDenomsPerDr
@@ -191,6 +198,12 @@ function CompoundedNewContent() {
         onDone,
     })
 
+    // A link to a token that is already stakable skips straight there, unless this wizard just made it so.
+    const linkedStakable = stakable && denom === denomParam && !done && !panelProps
+    useEffect(() => {
+        if (linkedStakable) replace(addPrizeHref)
+    }, [linkedStakable, addPrizeHref, replace])
+
     if (done) return <CompoundedDone input={done.input} hash={done.hash} />
 
     const isComplete = FORM_STEPS.every(k => steps.state[k] === 'done')
@@ -257,7 +270,9 @@ function CompoundedNewContent() {
                 question="Which token should people stake?"
                 {...steps.step('token')}
                 summary={ticker && `Make ${ticker} stakable`}
-                action={{ label: 'Continue', onClick: () => answer('token'), disabled: !tokenOk }}
+                action={stakable
+                    ? { label: 'Continue to add a prize', onClick: () => replace(addPrizeHref) }
+                    : { label: 'Continue', onClick: () => answer('token'), disabled: !tokenOk }}
             >
                 <VStack align="stretch" gap="16px">
                     <StakedTokenPicker
@@ -277,6 +292,13 @@ function CompoundedNewContent() {
                         >
                             {`Couldn't check whether ${ticker} already has a compounded reward. The node may be down.`}
                         </BlockerNote>
+                    )}
+                    {stakable && (
+                        <Box data-testid="already-stakable">
+                            <TipNote lead={`${ticker || 'This token'} is already stakable.`}>
+                                Continue to add a daily prize for its stakers.
+                            </TipNote>
+                        </Box>
                     )}
                     {tokenOk && (
                         <VStack align="stretch" gap="8px" data-testid="token-facts">

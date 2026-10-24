@@ -1,16 +1,20 @@
 import {expect, test} from "./support/mock-network";
 import {bzeWallets} from "./support/wallets";
 
-// "Send to a list of wallets" (/multisend, BFE-266): the Token · List · Review wizard without a
-// wallet, against the testnet fixtures. `?denom=ubze` answers the Token step with the native TBZE.
+// Airdrop coins to a list of wallets (/airdrop?to=list, formerly /multisend, BFE-266): the Who ·
+// Token · List · Review wizard without a wallet, against the testnet fixtures. `?denom=ubze` answers
+// the Token step with the native TBZE.
 
 const A = "bze13x5v3t9plqu8ql3h44ltx0ys59uzz43lt6p0tz";
 const B = "bze1sx6ep2vtlzsdj73tseeq3ydahqyt0ey2gs3tg0";
 
 test("checks a pasted list with an invalid and a duplicate line, then reaches Review", async ({page}) => {
+    // The old route redirects, its query kept.
     await page.goto("/multisend?denom=ubze");
+    await expect(page).toHaveURL(/\/airdrop\?.*to=list/);
 
-    await expect(page.getByRole("heading", {name: "Send to a list of wallets"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Airdrop coins"})).toBeVisible();
+    await expect(page.getByRole("region", {name: "Who", exact: true})).toContainText("A list of wallets");
     await expect(page.getByRole("region", {name: "Token", exact: true})).toHaveAttribute("data-state", "done");
     const list = page.getByRole("region", {name: "List", exact: true});
     await expect(list).toHaveAttribute("data-state", "active");
@@ -43,7 +47,7 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {
     await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/multisend?denom=ubze");
+    await page.goto("/airdrop?to=list&denom=ubze");
 
     const list = page.getByRole("region", {name: "List", exact: true});
     await list.getByLabel(/one per line/).fill(`${A}\nosmo108cyg5m3hwnu496xv5mnwkx33lmdvs7e7lptjl`);
@@ -56,7 +60,7 @@ test("fits a 390 px phone without horizontal scroll", async ({page}) => {
 
 test("a long list is planned as transactions of 100 on Review and fits a 390 px phone", async ({page}) => {
     await page.setViewportSize({width: 390, height: 844});
-    await page.goto("/multisend?denom=ubze");
+    await page.goto("/airdrop?to=list&denom=ubze");
 
     const list = page.getByRole("region", {name: "List", exact: true});
     await list.getByLabel(/Amount each/).fill("1");

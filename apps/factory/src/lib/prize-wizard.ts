@@ -90,21 +90,6 @@ export function scheduleExtendFacts(
     }
 }
 
-/**
- * The schedule a "Start daily prize" tx just created: the newest one with its prize, daily amount
- * and days, not paid yet. The tx keeps only the hash, so the Done screen finds it on chain.
- */
-export function findNewSchedule<T extends Pick<DenomRewardSchedule, 'schedule_id' | 'prize_denom' | 'daily_amount' | 'duration' | 'payouts'>>(
-    schedules: T[],
-    added: { prizeDenom: string; dailyAmount: string; days: number },
-): T | undefined {
-    const matches = schedules.filter(s => s.prize_denom === added.prizeDenom
-        && new BigNumber(s.daily_amount).eq(added.dailyAmount)
-        && s.duration === added.days
-        && s.payouts === 0)
-    return matches.sort((a, b) => b.schedule_id.localeCompare(a.schedule_id, 'en', { numeric: true }))[0]
-}
-
 /** What a prize wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
 export interface PrizeDoneInput {
     kind: 'add' | 'extend' | 'airdrop';
@@ -145,12 +130,4 @@ export function prizeDoneText(input: PrizeDoneInput): string {
     if (kind === 'airdrop') return `Everyone staking ${stakedTicker} got a share, split by stake. They can claim it right away.`
     if (kind === 'extend') return `Everyone staking ${stakedTicker} keeps sharing ${perDay} ${prizeTicker} a day until about ${newEnd}.`
     return `Everyone staking ${stakedTicker} shares ${perDay} ${prizeTicker} a day for ${dayCount(days ?? 0)}.`
-}
-
-/** The key number for the announcement: "50 BZE a day for 30 days", "10,000 BEE, airdropped". */
-export function prizeAnnouncement(input: PrizeDoneInput): string {
-    const { kind, prizeTicker, perDay, days, newEnd, amount } = input
-    if (kind === 'airdrop') return `${amount} ${prizeTicker}, airdropped`
-    if (kind === 'extend') return `${perDay} ${prizeTicker} a day until about ${newEnd}`
-    return `${perDay} ${prizeTicker} a day for ${dayCount(days ?? 0)}`
 }

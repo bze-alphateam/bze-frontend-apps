@@ -24,7 +24,7 @@ interface AirdropGiftInput {
 
 /**
  * A one-off airdrop on a compounded reward (`MsgDistributeDenomRewards`): the costs, the blocker, the
- * affordability check and the message. Shared by the airdrop form and "Reach another community".
+ * affordability check and the message. Used by the Airdrop coins wizard.
  */
 export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmount }: AirdropGiftInput) {
     const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
@@ -80,7 +80,7 @@ export function airdropPayRows(gift: AirdropGift, { prizeDenom, stakingTicker, s
             : [{ label: 'Prize fee', text: 'None', info: `${stakingTicker} already pays ${prizeTicker}, so only the network fee applies.` }]
 
     return [
-        ...(costs.escrow ? [{ label: 'The gift', coin: costs.escrow }] : []),
+        ...(costs.escrow ? [{ label: 'Airdrop', coin: costs.escrow }] : []),
         ...feeRows,
         ...extraFees.map(c => ({ label: 'Also charged', coin: c })),
     ]

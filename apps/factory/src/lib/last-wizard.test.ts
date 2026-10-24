@@ -33,8 +33,8 @@ describe("lastWizard", () => {
     });
 
     it("points to the multi-send list once a token is picked, and to Review while a run has batches left", () => {
-        expect(lastWizard({ multisendDraft: list("ubee") })).toMatchObject({ label: "Continue sending to a list of wallets", step: 2, total: 3, href: "/multisend" });
-        expect(lastWizard({ multisendDraft: list("ubee"), multisendRun: run([batch(1, "sent"), batch(2, "pending")]) })).toMatchObject({ step: 3 });
+        expect(lastWizard({ multisendDraft: list("ubee") })).toMatchObject({ label: "Continue your airdrop to a list of wallets", step: 3, total: 4, href: "/airdrop?to=list" });
+        expect(lastWizard({ multisendDraft: list("ubee"), multisendRun: run([batch(1, "sent"), batch(2, "pending")]) })).toMatchObject({ step: 4 });
     });
 
     it("ignores a finished run", () => {
@@ -42,7 +42,7 @@ describe("lastWizard", () => {
     });
 
     it("picks the most recently saved wizard", () => {
-        expect(lastWizard({ token: token("BEE", ["details"], 10), multisendDraft: list("ubee", 20) })).toMatchObject({ href: "/multisend" });
+        expect(lastWizard({ token: token("BEE", ["details"], 10), multisendDraft: list("ubee", 20) })).toMatchObject({ href: "/airdrop?to=list" });
         expect(lastWizard({ token: token("BEE", ["details"], 30), multisendDraft: list("ubee", 20) })).toMatchObject({ href: "/token/new" });
     });
 

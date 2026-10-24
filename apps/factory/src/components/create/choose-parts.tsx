@@ -178,7 +178,7 @@ export function OptionCard({ title, line, featuredTag, tag, children, action }: 
             </VStack>
             {children}
             <Box flex="1" />
-            <Button asChild variant={hgVariant(featuredTag ? 'primary' : 'secondary')} size="lg" w={{ base: 'full', sm: 'auto' }} alignSelf="flex-start">
+            <Button asChild variant={hgVariant('primary')} size="lg" w={{ base: 'full', sm: 'auto' }} alignSelf="flex-start">
                 <NextLink href={action.href}>{action.label} <LuArrowRight aria-hidden /></NextLink>
             </Button>
         </HgCard>
