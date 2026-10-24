@@ -1,5 +1,6 @@
 import {chakra} from "@chakra-ui/react";
 import type {ReactNode} from "react";
+import {LuBadgeCheck} from "react-icons/lu";
 
 // Small tags shared by /staking and /assets. The reward kind tags (Native / Simple / Compounded)
 // are RewardKindTag in staking-table.tsx.
@@ -11,9 +12,24 @@ export const KindTag = ({children}: { children: ReactNode }) => (
     </chakra.span>
 );
 
-/** The DEX-tinted "Verified" pill. */
+/** "Verified": the reward kind tags' shape (RewardKindTag), in the success green with a check. */
 export const VerifiedPill = () => (
-    <chakra.span fontSize="11px" fontWeight="600" px="8px" py="2px" borderRadius="full" color="hg.link" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+    <chakra.span
+        flex="none"
+        display="inline-flex"
+        alignItems="center"
+        gap="3px"
+        fontFamily="mono"
+        fontSize="11px"
+        lineHeight="16px"
+        px="6px"
+        borderRadius="6px"
+        borderWidth="1px"
+        color="hg.success.text"
+        bg="hg.success/10"
+        borderColor="hg.success/35"
+    >
+        <LuBadgeCheck size={11} aria-hidden="true"/>
         Verified
     </chakra.span>
 );
