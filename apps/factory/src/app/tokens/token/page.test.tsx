@@ -367,7 +367,7 @@ describe("token page", () => {
         });
         await renderSettled();
         expect(screen.getByTestId("daily-prize-line")).toHaveTextContent("50 BZE a day · ends in 3 days");
-        expect(returnOf(within(screen.getByTestId("daily-prize-line")).getByRole("link", { name: "Extend prize" }).getAttribute("href")).get("return")).toBe(TOKEN_PAGE);
+        expect(returnOf(within(screen.getByTestId("daily-prize-line")).getByRole("link", { name: "Extend" }).getAttribute("href")).get("return")).toBe(TOKEN_PAGE);
         expect(screen.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", expect.stringMatching(/^\/denom-reward\/schedule\?denom=/));
         expect(within(screen.getByTestId("compounded-actions")).getByRole("button", { name: "Airdrop" })).toBeDisabled();
         expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();

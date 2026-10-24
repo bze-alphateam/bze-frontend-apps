@@ -65,7 +65,7 @@ describe("Choose staking rewards", () => {
 
         const compounded = card("Compounded reward");
         expect(compounded.getByText("Pays stakers every day in up to 40 coins. Anyone can add more daily prizes or airdrop to its stakers.")).toBeInTheDocument();
-        expect(compounded.getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", "/denom-reward/new");
+        expect(compounded.getByRole("link", { name: "Make a token stakable" })).toHaveAttribute("href", "/denom-reward/new");
 
         expect(screen.queryByRole("term")).not.toBeInTheDocument();
         expect(screen.queryByText("Reward tokens")).not.toBeInTheDocument();
@@ -103,6 +103,6 @@ describe("Choose staking rewards", () => {
         m.query = new URLSearchParams({ [param]: HONEY });
         renderPage();
         expect(card("Simple reward").getByRole("link", { name: /Create simple reward/ })).toHaveAttribute("href", `/reward/new?staking=${ENC}`);
-        expect(card("Compounded reward").getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", `/denom-reward/new?denom=${ENC}`);
+        expect(card("Compounded reward").getByRole("link", { name: "Make a token stakable" })).toHaveAttribute("href", `/denom-reward/new?denom=${ENC}`);
     });
 });

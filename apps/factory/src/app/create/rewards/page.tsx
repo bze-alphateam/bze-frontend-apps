@@ -27,7 +27,7 @@ function ChooseRewards() {
                 <OptionCard
                     title="Compounded reward"
                     line={`Pays stakers every day in ${coins}. Anyone can add more daily prizes or airdrop to its stakers.`}
-                    action={{ label: 'Create compounded reward', href: targets.compounded }}
+                    action={{ label: 'Make a token stakable', href: targets.compounded }}
                 >
                     <CreationFeeRow fee={fees.createDenomRewardFee} isLoading={isLoading} />
                 </OptionCard>

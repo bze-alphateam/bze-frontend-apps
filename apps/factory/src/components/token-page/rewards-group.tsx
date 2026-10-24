@@ -47,7 +47,7 @@ function ScheduleLine({ schedule, href }: { schedule: DenomRewardSchedule; href:
     return (
         <HStack justify="space-between" gap="10px" flexWrap="wrap" data-testid="daily-prize-line">
             <Text fontSize="13px" color="fg">{left > 0 ? dailyPrizeLine(perDay, left) : `${perDay} a day · finished`}</Text>
-            <ItemLink href={href}>Extend prize</ItemLink>
+            <ItemLink href={href}>Extend</ItemLink>
         </HStack>
     )
 }

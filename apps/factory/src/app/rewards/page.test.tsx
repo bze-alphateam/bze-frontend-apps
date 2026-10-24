@@ -174,16 +174,16 @@ describe("rewards directory: sections", () => {
 });
 
 describe("rewards directory: actions", () => {
-    it("compounded: Add daily prize, Airdrop, Extend → per daily prize, Open token for Factory tokens only", async () => {
+    it("compounded: Add daily prize, Airdrop, Extend per daily prize, Open token for Factory tokens only", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.getSchedules.mockImplementation(async (d: string) => (d === "ubze" ? [schedule("3", "ubze", "1000000", 10, 1), schedule("4", TOK, "1000000", 10, 1)] : []));
         renderPage();
 
-        await waitFor(() => expect(within(card("Stake BZE")).getAllByRole("link", { name: "Extend →" })).toHaveLength(2));
+        await waitFor(() => expect(within(card("Stake BZE")).getAllByRole("link", { name: "Extend" })).toHaveLength(2));
         const bze = within(card("Stake BZE"));
         expect(bze.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", "/denom-reward/schedule?denom=ubze");
         expect(bze.getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", "/airdrop?to=stakers&denom=ubze");
-        expect(bze.getAllByRole("link", { name: "Extend →" }).map(l => l.getAttribute("href")))
+        expect(bze.getAllByRole("link", { name: "Extend" }).map(l => l.getAttribute("href")))
             .toEqual(["/denom-reward/schedule?denom=ubze&schedule=3", "/denom-reward/schedule?denom=ubze&schedule=4"]);
         // ubze isn't a Factory token: it has no token page.
         expect(bze.queryByRole("link", { name: "Open token" })).not.toBeInTheDocument();

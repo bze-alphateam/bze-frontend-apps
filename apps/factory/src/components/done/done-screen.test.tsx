@@ -46,7 +46,7 @@ const POOL: NextAction = {
     target: { href: "/pool/new?base=factory%2Fbze1c%2Fuhoney" },
 };
 const STAKABLE: NextAction = {
-    key: "makeStakable", icon: "stake", title: "Make HONEY stakable", text: "People stake it.", cta: "Create compounded reward",
+    key: "makeStakable", icon: "stake", title: "Make HONEY stakable", text: "People stake it.", cta: "Make HONEY stakable",
     target: { href: "/denom-reward/token?denom=x" },
 };
 const AIRDROP: NextAction = {
@@ -103,7 +103,7 @@ describe("DoneScreen", () => {
         expect(navigateMock).toHaveBeenCalledWith("/pool/new?base=factory%2Fbze1c%2Fuhoney");
 
         expect(screen.getAllByRole("article")).toHaveLength(4);
-        await userEvent.click(within(screen.getByRole("article", { name: "Make HONEY stakable" })).getByRole("button", { name: "Create compounded reward" }));
+        await userEvent.click(within(screen.getByRole("article", { name: "Make HONEY stakable" })).getByRole("button", { name: "Make HONEY stakable" }));
         expect(navigateMock).toHaveBeenLastCalledWith("/denom-reward/token?denom=x");
 
         await userEvent.click(screen.getByRole("button", { name: "Open token page" }));

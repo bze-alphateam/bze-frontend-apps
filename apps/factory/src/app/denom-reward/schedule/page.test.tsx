@@ -192,7 +192,7 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
         expect(step("Staked token")).toHaveAttribute("data-state", "active");
         expect(within(step("Staked token")).getByRole("heading", { name: "Whose stakers get it?" })).toBeInTheDocument();
         expect(screen.getByTestId("staked-picker")).toHaveAttribute("data-mode", "hasCompounded");
-        expect(screen.getByRole("link", { name: "Make it stakable first" })).toHaveAttribute("href", "/denom-reward/new");
+        expect(screen.getByRole("link", { name: "Make a token stakable" })).toHaveAttribute("href", "/denom-reward/new");
         expect(step("Prize")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
     });
@@ -219,7 +219,7 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
         renderPage();
         expect(step("Staked token")).toHaveAttribute("data-state", "active");
         expect(screen.getByTestId("no-compounded")).toHaveTextContent("HONEY has no compounded reward yet.");
-        expect(screen.getByRole("link", { name: "Make it stakable" })).toHaveAttribute("href", "/denom-reward/new?denom=uhoney");
+        expect(screen.getByRole("link", { name: "Make HONEY stakable" })).toHaveAttribute("href", "/denom-reward/new?denom=uhoney");
         expect(button(step("Staked token"), "Continue")).toBeDisabled();
     });
 
@@ -400,7 +400,7 @@ describe("Daily prize, extend (&schedule=)", { timeout: 20_000 }, () => {
 
         const review = step("Review");
         expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("10 more days for everyone staking HONEY");
-        await userEvent.click(button(review, "Extend daily prize"));
+        await userEvent.click(button(review, "Extend"));
         expect(sentMsgs().map(m => m.typeUrl)).toEqual(["/bze.rewards.MsgUpdateDenomRewardSchedule"]);
         expect(sentMsgs()[0].value).toMatchObject({ creator: "bze1me", denom: "uhoney", scheduleId: "000000000007", duration: "10" });
     });
@@ -425,7 +425,7 @@ describe("Daily prize, extend (&schedule=)", { timeout: 20_000 }, () => {
         renderPage();
         await userEvent.type(within(step("Extra days")).getByLabelText("Extra days"), "10");
         await userEvent.click(button(step("Extra days"), "Review extension"));
-        await signAndContinue("Extend daily prize");
+        await signAndContinue("Extend");
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("10 more days for HONEY stakers.");
         expect(screen.getByTestId("done-recommended")).toHaveTextContent("Stake on DEX");
     });

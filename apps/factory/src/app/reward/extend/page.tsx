@@ -361,7 +361,7 @@ function ExtendContent() {
                     gets={[{ label: 'Extension', value: `${daysCount.toLocaleString('en-US')} more day${daysCount === 1 ? '' : 's'} for everyone staking ${stakeTicker}` }]}
                     extra={newEnd ? [{ label: 'New end', value: newEnd }] : []}
                     permanent={['Extra tokens are committed to stakers']}
-                    submitLabel="Extend reward"
+                    submitLabel="Extend"
                     onSubmit={extend}
                     disabled={!canExtend}
                     onBack={steps.back}
