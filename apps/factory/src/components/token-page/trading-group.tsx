@@ -23,7 +23,7 @@ import { ActionGroup, ActionItem, ItemLink, type GroupProps } from './action-gro
 
 function CreatedBadge() {
     return (
-        <chakra.span fontSize="11px" fontWeight="600" px="8px" py="2px" borderRadius="hg.pill" color="hg.link" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+        <chakra.span fontSize="11px" fontWeight="600" px="8px" py="2px" borderRadius="hg.pill" color="fg.muted" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="created-badge">
             You created it
         </chakra.span>
     )
@@ -85,7 +85,6 @@ function MarketRow({ market, address }: { market: Market; address?: string }) {
                     isMine={Boolean(address) && market.creator === address}
                 />
             )}
-            line="Traders place limit orders here."
             action={<AppLink app="dex" href={dexMarketHref(getDexApp().href, marketId)}>DEX</AppLink>}
         />
     )
@@ -93,7 +92,7 @@ function MarketRow({ market, address }: { market: Market; address?: string }) {
 
 /**
  * Trading: every pool and order-book market with the token on either side, whoever created it, and
- * the way to pair it with another token. A halted token gets the notice and no create buttons.
+ * the way to create a DEX market for it. A halted token gets the notice and no create buttons.
  */
 export function TradingGroup({ asset, back }: GroupProps) {
     const { address } = useChain(getChainName())
@@ -108,7 +107,7 @@ export function TradingGroup({ asset, back }: GroupProps) {
     const isLoading = isPoolsLoading || isMarketsLoading
 
     return (
-        <ActionGroup id="trading" title="Trading" description={`Where ${ticker} can be traded.`}>
+        <ActionGroup id="trading" title="Trading">
             {isHalted && (
                 <Box pb="12px">
                     <HaltedNotice tickers={[ticker]}>
@@ -139,8 +138,7 @@ export function TradingGroup({ asset, back }: GroupProps) {
             {!isHalted && (
                 <ActionItem
                     testId="pair-item"
-                    title="Pair with another token"
-                    line="A liquidity pool or an order book, any pair."
+                    title="Create DEX market"
                     action={(
                         <ItemLink href={withReturn(`${CHOOSE_MARKET_PATH}?base=${encodeURIComponent(denom)}`, back)} primary={!isLoading && pools.length === 0}>
                             Create

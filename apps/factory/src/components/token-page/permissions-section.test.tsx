@@ -95,7 +95,7 @@ describe("PermissionsSection: states", () => {
         const section = within(screen.getByTestId("permissions-section"));
         expect(section.getByRole("heading", { name: "Permissions" })).toBeInTheDocument();
         expect(section.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet, bze1uv.*Changes here can't be undone by you\.$/);
-        expect(within(section.getByTestId("transfer-admin-item")).getByText("Give admin rights to another address, e.g. a team multisig.")).toBeInTheDocument();
+        expect(within(section.getByTestId("transfer-admin-item")).queryByText(/multisig/)).not.toBeInTheDocument();
         expect(within(section.getByTestId("renounce-admin-item")).getByText("Nobody, you included, can ever mint or edit HONEY again.")).toBeInTheDocument();
         expect(section.getByRole("button", { name: "Transfer admin" })).toBeInTheDocument();
         expect(section.getByRole("button", { name: "Renounce…" })).toBeInTheDocument();

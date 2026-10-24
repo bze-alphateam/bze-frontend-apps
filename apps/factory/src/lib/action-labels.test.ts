@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 // (simple or daily prize) reads "Extend", and every one that opens or submits /denom-reward/new
 // reads "Make {ticker} stakable" ("Make a token stakable" without a token). The product keeps its
 // name, "Compounded reward", on cards, crumbs and page titles, so `title` lines are not scanned.
+// The token page is the one exception: its item is already titled "Make {ticker} stakable", so its
+// button just says "Create".
 const RETIRED = [
     "Extend reward",
     "Add more days",

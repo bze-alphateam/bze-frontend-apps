@@ -3,7 +3,7 @@ import { withReturn } from '@/components/guided/return-to'
 import { dexPoolHref } from '@/lib/create-routes'
 import { officialHref } from '@/lib/registry-entry'
 import { VOCABULARY } from '@/lib/vocabulary'
-import { workspaceHref, type TokenSection } from '@/lib/workspace'
+import { workspaceHref } from '@/lib/workspace'
 
 // The token's setup checklist (BFE-146), drawn as the token page's setup chips since BFE-271.
 // Every item is computed from chain data on each render, never stored. A new item is one more
@@ -220,45 +220,4 @@ export function computeTokenSetup(facts: TokenSetupFacts, definitions: SetupItem
         doneCount: counted.filter(item => item.state === 'done').length,
         totalCount: counted.length,
     }
-}
-
-// Short hints for token lists (/tokens and the home strip), by item key and state.
-/** The chips of the token page, in order, with their short names (canvas D2). */
-const CHIPS: { key: string; label: string; section: TokenSection; needsAdmin?: boolean }[] = [
-    { key: 'created', label: 'Created', section: 'supply' },
-    { key: 'pool', label: 'Pool', section: 'trading' },
-    { key: 'holderRewards', label: 'Stakable', section: 'rewards' },
-    { key: 'registry', label: 'Logo in wallets', section: 'details' },
-    { key: 'brandKit', label: 'Brand kit', section: 'details', needsAdmin: true },
-]
-
-export interface SetupChip {
-    key: string;
-    label: string;
-    /** done ✓, todo ○ (partial counts as todo), unknown (the check failed), impossible (admin given up). */
-    state: 'done' | 'todo' | 'unknown' | 'impossible';
-    /** The page section that holds the chip's action. */
-    section: TokenSection;
-    /** Shown after the label: "Admin only" for an admin item the wallet can't do, "admin given up". */
-    note?: string;
-}
-
-/**
- * The setup chips: "Getting there · 3 of 5". Shown to everyone (the facts are public); an admin-only
- * item still to do says "Admin only" unless the wallet is the admin. Items left out by the checklist
- * (the registry on testnet) are left out here too, and impossible ones don't count.
- */
-export function setupChips(items: ReadonlyArray<SetupItem>, isAdmin: boolean) {
-    const chips = CHIPS.flatMap((chip): SetupChip[] => {
-        const item = items.find(i => i.key === chip.key)
-        if (!item) return []
-        const state = item.state === 'partial' ? 'todo' : item.state
-        const note = state === 'impossible'
-            ? 'admin given up'
-            : state === 'todo' && chip.needsAdmin && !isAdmin ? 'Admin only' : undefined
-        return [{ key: chip.key, label: chip.label, state, section: chip.section, note }]
-    })
-    const counted = chips.filter(c => c.state !== 'impossible')
-    const doneCount = counted.filter(c => c.state === 'done').length
-    return { chips, doneCount, totalCount: counted.length }
 }

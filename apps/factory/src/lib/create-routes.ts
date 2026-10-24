@@ -75,6 +75,13 @@ export const dexMarketHref = (dexHref: string, marketId: string) =>
 export const dexStakingHref = (dexHref: string, ticker: string) =>
     `${dexHref.replace(/\/$/, '')}/staking?search=${encodeURIComponent(ticker)}`
 
+/**
+ * A reward's page on the DEX, by the DEX staking row id: `simple:<reward_id>` or
+ * `compounded:<denom>` (the DEX's `rewardPagePath`).
+ */
+export const dexRewardHref = (dexHref: string, rowId: string) =>
+    `${dexHref.replace(/\/$/, '')}/staking/details?id=${encodeURIComponent(rowId)}`
+
 export const DOCS_HREF = 'https://docs.getbze.com'
 
 export interface StartingPoint {

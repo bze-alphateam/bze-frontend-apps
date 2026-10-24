@@ -35,7 +35,6 @@ function RaffleItem({ asset, back, burnerHref }: Pick<GroupProps, 'asset' | 'bac
             <ActionItem
                 testId="raffle-item"
                 title="Burning raffle running"
-                line="People buy tickets on Burner; what's left at the end is burned."
                 action={<AppLink app="burner" href={burnerHref}>Burner</AppLink>}
             >
                 <Grid templateColumns={{ base: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' }} gap="8px" data-testid="raffle-running">
@@ -58,9 +57,7 @@ function RaffleItem({ asset, back, burnerHref }: Pick<GroupProps, 'asset' | 'bac
         <ActionItem
             testId="raffle-item"
             title="Run a burning raffle"
-            line={raffle.status === 'error'
-                ? `Couldn't load the raffle for ${asset.ticker}.`
-                : `Tickets in ${asset.ticker}; what's left at the end is burned.`}
+            line={raffle.status === 'error' ? `Couldn't load the raffle for ${asset.ticker}.` : undefined}
             action={
                 raffle.status === 'loading' ? <Box data-testid="raffle-loading"><Shimmer h="36px" w="112px" borderRadius="10px" /></Box>
                     : raffle.status === 'error' ? (
@@ -81,17 +78,15 @@ export function SupplyGroup({ asset, access, back, supplyDisplay, onMinted }: Gr
     onMinted: () => void;
 }) {
     const [isMintOpen, setIsMintOpen] = useState(false)
-    const ticker = asset.ticker
     const burnerHref = burnerCoinHref(getBurnerApp().href, asset.denom)
 
     return (
-        <ActionGroup id="supply" title="Supply" description={`Mint new ${ticker}, or burn ${ticker} you hold on Burner.`}>
+        <ActionGroup id="supply" title="Supply">
             {access === 'checking' && <AdminItemShimmer />}
             {access === 'admin' && (
                 <ActionItem
                     testId="mint-item"
                     title="Mint tokens"
-                    line={`New ${ticker} goes to your wallet. Only the admin can mint.`}
                     action={
                         <ItemButton onClick={() => setIsMintOpen(open => !open)} aria-expanded={isMintOpen}>
                             {isMintOpen ? 'Close' : 'Mint'}
@@ -105,7 +100,6 @@ export function SupplyGroup({ asset, access, back, supplyDisplay, onMinted }: Gr
             <ActionItem
                 testId="burn-item"
                 title="Burn tokens"
-                line={`Destroy ${ticker} you hold. Lowers the supply.`}
                 action={<AppLink app="burner" href={burnerHref}>Burner</AppLink>}
             />
             {/* Halted tokens are worthless and LP shares can't be raffled. */}
