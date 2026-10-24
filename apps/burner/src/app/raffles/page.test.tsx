@@ -26,6 +26,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ...actual,
         useAsset: (denom: string) => useAssetMock(denom),
         useEpochs: () => useEpochsMock(),
+        // A fixed origin: the real one comes from env and differs per network.
+        getFactoryApp: () => ({ href: "https://factory.test" }),
     };
 });
 
@@ -120,5 +122,29 @@ describe("Raffles page", () => {
         // Clicking anywhere in the card bubbles to the card's onClick.
         await user.click(screen.getByText("HONEY Raffle"));
         expect(pushMock).toHaveBeenCalledWith("/coin?coin=factory/x/uhoney");
+    });
+
+    it("lists the raffles before the explanation of how they work", () => {
+        useRafflesMock.mockReturnValue({
+            raffles: [raffle("factory/x/uhoney")],
+            isLoading: false,
+        });
+        renderPage();
+
+        const list = screen.getByRole("heading", { name: "Active raffles" });
+        const explanation = screen.getByRole("heading", { name: "What are burning raffles?" });
+        expect(list.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("ends the explanation with a link to the Factory's raffle creation", () => {
+        useRafflesMock.mockReturnValue({ raffles: [], isLoading: false });
+        renderPage();
+
+        const link = screen.getByRole("link", { name: /Factory/ });
+        expect(link).toHaveAttribute("href", "https://factory.test/raffle/new");
+        expect(link).toHaveAttribute("data-app", "factory");
+        // It sits inside the explanation section, after the list.
+        const explanation = screen.getByRole("heading", { name: "What are burning raffles?" });
+        expect(explanation.closest("section")).toContainElement(link);
     });
 });

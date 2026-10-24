@@ -17,6 +17,8 @@ import {
     PageContainer,
     PageState,
     Shimmer,
+    AppLink,
+    getFactoryApp,
 } from "@bze/bze-ui-kit";
 import {RaffleSDKType} from "@bze/bzejs/bze/burner/raffle";
 import BigNumber from "bignumber.js";
@@ -122,6 +124,9 @@ const RaffleCardLoading = () => (
     </HgCard>
 );
 
+/** The Factory's raffle-creation flow: raffles are started there, not here. */
+const factoryRaffleHref = () => `${getFactoryApp().href}/raffle/new`;
+
 const rafflesGrid = {templateColumns: {base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))'}, gap: '16px'};
 
 export default function RafflesPage() {
@@ -141,28 +146,6 @@ export default function RafflesPage() {
 
             <PageContainer as="main" pt={{base: '28px', md: '36px'}}>
                 <Flex direction="column" gap="32px">
-                    <HgCard as="section" aria-labelledby="what-are-raffles" p={{base: '20px', md: '28px'}} borderRadius="20px" display="flex" flexDirection="column" gap="20px">
-                        <Flex align="center" gap="12px">
-                            <Flex
-                                as="span"
-                                aria-hidden
-                                boxSize="40px"
-                                flex="none"
-                                align="center"
-                                justify="center"
-                                borderRadius="hg.md"
-                                bg="hg.info/8"
-                                borderWidth="1px"
-                                borderColor="hg.info/30"
-                                color="hg.info"
-                            >
-                                <LuInfo size={20}/>
-                            </Flex>
-                            <chakra.h2 id="what-are-raffles" m="0" fontSize="20px" fontWeight="700">What are burning raffles?</chakra.h2>
-                        </Flex>
-                        <RaffleInfo/>
-                    </HgCard>
-
                     <Flex as="section" direction="column" gap="16px">
                         <chakra.h2 m="0" fontSize={{base: '20px', md: '22px'}} fontWeight="700">Active raffles</chakra.h2>
                         {isLoading ? (
@@ -194,6 +177,32 @@ export default function RafflesPage() {
                             </HgCard>
                         )}
                     </Flex>
+
+                    <HgCard as="section" aria-labelledby="what-are-raffles" p={{base: '20px', md: '28px'}} borderRadius="20px" display="flex" flexDirection="column" gap="20px">
+                        <Flex align="center" gap="12px">
+                            <Flex
+                                as="span"
+                                aria-hidden
+                                boxSize="40px"
+                                flex="none"
+                                align="center"
+                                justify="center"
+                                borderRadius="hg.md"
+                                bg="hg.info/8"
+                                borderWidth="1px"
+                                borderColor="hg.info/30"
+                                color="hg.info"
+                            >
+                                <LuInfo size={20}/>
+                            </Flex>
+                            <chakra.h2 id="what-are-raffles" m="0" fontSize="20px" fontWeight="700">What are burning raffles?</chakra.h2>
+                        </Flex>
+                        <RaffleInfo/>
+                        <Flex direction="column" align="flex-start" gap="8px" pt="16px" borderTopWidth="1px" borderColor="hg.divider">
+                            <chakra.p m="0" fontSize="14px" color="hg.text.secondary">Want to run a raffle for your own token? Raffles are created in the Factory.</chakra.p>
+                            <AppLink app="factory" href={factoryRaffleHref()} flush>Factory</AppLink>
+                        </Flex>
+                    </HgCard>
                 </Flex>
             </PageContainer>
         </Box>
