@@ -70,18 +70,19 @@ test("with a first daily prize, Review lists the prize fees and the locked prize
     await expect(leaves).toContainText("3,000 VDL");
 });
 
-test("picking a token that is already stakable tips to add a prize instead", async ({page}) => {
+test("picking a token that is already stakable continues to adding a prize to it", async ({page}) => {
     await page.goto("/denom-reward/new");
 
     const token = page.getByRole("region", {name: "Token", exact: true});
     await expect(token).toHaveAttribute("data-state", "active");
     await token.getByRole("textbox", {name: "Search tokens"}).fill("noadmin");
     const row = token.getByRole("radio").filter({hasText: "NOAD"}).first();
-    await expect(row).toContainText("Already stakable");
+    await expect(row).toContainText("Stakable · add a prize");
     await row.click();
 
-    await expect(token.getByTestId("already-stakable")).toHaveText("NOAD is already stakable. Add a prize to it instead.");
-    await expect(token.getByRole("link", {name: "Add a daily prize"})).toHaveAttribute("href", `/denom-reward/schedule?denom=${encodeURIComponent(NOADMIN)}`);
-    await expect(token.getByRole("link", {name: "Airdrop to stakers"})).toHaveAttribute("href", `/denom-reward/airdrop?denom=${encodeURIComponent(NOADMIN)}`);
-    await expect(token.getByRole("button", {name: "Continue"})).toBeDisabled();
+    await expect(token.getByTestId("already-stakable")).toContainText("NOAD is already stakable.");
+    await token.getByRole("button", {name: "Continue to add a prize"}).click();
+    await expect(page).toHaveURL(new RegExp(`/denom-reward/schedule\\?denom=${encodeURIComponent(NOADMIN)}$`));
+    await expect(page.getByRole("heading", {name: /Add a daily prize/})).toBeVisible();
+    await expect(page.getByRole("region", {name: "Prize", exact: true})).toHaveAttribute("data-state", "active");
 });

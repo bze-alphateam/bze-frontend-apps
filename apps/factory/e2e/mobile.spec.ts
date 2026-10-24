@@ -17,7 +17,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/", ready: heading("What are you building today?")},
     {path: "/create/market", ready: heading("How should people trade it?")},
     {path: "/create/rewards", ready: heading("Which kind of reward?")},
-    {path: "/create/grow", ready: heading("Who do you want to reach?")},
+    {path: "/create/grow", ready: heading("How do you want to grow?")},
     {path: "/token/new", ready: heading("Create a token")},
     {path: "/market/new", ready: heading("Create an order-book market")},
     {path: `/pool/new?base=${VDL}`, ready: heading("Create a liquidity pool")},
@@ -25,10 +25,10 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: `/reward/new?staking=${TUSDC_TBZE_LP}`, ready: heading(/Create a simple reward/)},
     // testnet's one simple reward (#000000000000) has finished: it can still be extended.
     {path: "/reward/extend?id=000000000000", ready: (page) => page.getByTestId("extend-terms")},
-    // ...and, with 37 VDL staked, still take a one-time distribution.
-    {path: "/reward/distribute?id=000000000000", ready: (page) => page.getByTestId("distribute-terms")},
-    {path: "/multisend?denom=ubze", ready: heading("Send to a list of wallets")},
-    {path: "/reach", ready: heading("Reach another community")},
+    // ...and, with 37 VDL staked, still take an airdrop through it.
+    {path: "/airdrop?id=000000000000", ready: (page) => page.getByRole("region", {name: "Amount", exact: true})},
+    {path: "/airdrop?to=list&denom=ubze", ready: (page) => page.getByRole("region", {name: "List", exact: true})},
+    {path: "/airdrop", ready: heading("Airdrop coins")},
     {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
     {path: "/tokens", ready: heading(/^Tokens$/)},
     // The token page stacks its groups; the setup chips scroll in their own row (BFE-271).
@@ -38,11 +38,10 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/rewards", ready: (page) => page.getByTestId("compounded-reward-card").first()},
     // testnet's one simple reward has finished.
     {path: "/rewards?kind=simple&status=finished", ready: (page) => page.getByTestId("simple-reward-row").first()},
-    // noadmin is already stakable: the picker stays open with its tip.
-    {path: `/denom-reward/new?denom=${NOADMIN}`, ready: heading(/Create a compounded reward/)},
+    {path: "/denom-reward/new", ready: heading(/Create a compounded reward/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Add a daily prize/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}&schedule=000000000000`, ready: heading(/Extend a daily prize/)},
-    {path: `/denom-reward/airdrop?denom=${NOADMIN}`, ready: heading(/Airdrop to stakers/)},
+    {path: `/airdrop?denom=${NOADMIN}`, ready: (page) => page.getByRole("region", {name: "You will pay"})},
     {path: `/official?denom=${VDL}`, ready: heading("Get VDL's logo in every wallet")},
 ];
 

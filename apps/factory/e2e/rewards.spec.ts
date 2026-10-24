@@ -39,7 +39,7 @@ test("lists every compounded and simple reward with the actions anyone can take"
     await expect(card.getByTestId("daily-prize-line")).toHaveCount(SCHEDULES.body.list.length);
     await expect(card.getByTestId("prize-token-line")).toHaveCount(PRIZES.body.list.length);
     await expect(card.getByRole("link", {name: "Add daily prize"})).toHaveAttribute("href", `/denom-reward/schedule?denom=${encodeURIComponent(NOADMIN)}`);
-    await expect(card.getByRole("link", {name: "Airdrop once"})).toHaveAttribute("href", `/denom-reward/airdrop?denom=${encodeURIComponent(NOADMIN)}`);
+    await expect(card.getByRole("link", {name: "Airdrop", exact: true})).toHaveAttribute("href", `/airdrop?to=stakers&denom=${encodeURIComponent(NOADMIN)}`);
     await expect(card.getByRole("link", {name: "Extend →"}).first())
         .toHaveAttribute("href", `/denom-reward/schedule?denom=${encodeURIComponent(NOADMIN)}&schedule=000000000000`);
     await expect(card.getByRole("link", {name: "Open token"})).toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(NOADMIN)}`);
@@ -51,7 +51,7 @@ test("lists every compounded and simple reward with the actions anyone can take"
     await expect(row.getByRole("heading", {name: "Stake VDL · earn VDL"})).toBeVisible();
     await expect(row.getByText("finished", {exact: true})).toBeVisible();
     await expect(row.getByRole("link", {name: "Extend"})).toHaveAttribute("href", "/reward/extend?id=000000000000");
-    await expect(row.getByRole("link", {name: "Distribute"})).toHaveAttribute("href", "/reward/distribute?id=000000000000");
+    await expect(row.getByRole("link", {name: "Airdrop", exact: true})).toHaveAttribute("href", `/airdrop?to=stakers&denom=${encodeURIComponent(VIDULUM)}&id=000000000000`);
     // 37 VDL staked: the finished reward can't be deleted yet, and says why.
     await expect(row.getByRole("button", {name: "Delete"})).toBeDisabled();
     await expect(row.getByTestId("staking-reward-delete-blocker")).toContainText("still staked");
@@ -107,7 +107,7 @@ test("Has stakers hides a compounded reward nobody stakes; its airdrop is disabl
     await expect(cards).toHaveCount(2);
     const empty = cards.filter({hasText: "Nothing staked yet"});
     await expect(empty).toHaveCount(1);
-    await expect(empty.getByRole("button", {name: "Airdrop once"})).toBeDisabled();
+    await expect(empty.getByRole("button", {name: "Airdrop", exact: true})).toBeDisabled();
 
     await page.getByRole("button", {name: "Has stakers"}).click();
     await expect(page).toHaveURL(/filter=stakers/);
