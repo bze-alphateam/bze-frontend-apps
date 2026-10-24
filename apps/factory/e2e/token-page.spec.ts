@@ -9,7 +9,7 @@ const ISSUER = "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
 const NOADMIN = encodeURIComponent(`${ISSUER}/noadmin`);
 const MISSING_TOKEN = "factory%2Fbze1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq%2Futok";
 
-test("a Factory token: header, setup chips and the groups, with no admin action", async ({page}) => {
+test("a Factory token: header and the groups, with no admin action", async ({page}) => {
     await page.goto(`/tokens/token?denom=${NOADMIN}&tab=supply`);
 
     await expect(page.getByRole("heading", {name: "NoAdminToken"})).toBeVisible();
@@ -17,11 +17,9 @@ test("a Factory token: header, setup chips and the groups, with no admin action"
     await expect(crumbs.getByRole("link", {name: "Tokens"})).toHaveAttribute("href", "/tokens");
     await expect(crumbs).toContainText("NOAD");
     await expect(page.getByTestId("token-stats")).toContainText("25 NOAD");
-    await expect(page.getByTestId("setup-progress")).toContainText(/Getting there|All set/);
-    await expect(page.getByTestId("setup-chip-created")).toHaveAttribute("data-state", "done");
-    await expect(page.getByTestId("setup-chip-holderRewards")).toHaveAttribute("data-state", "done");
-    // Testnet tokens can't be in the chain registry: no chip for it.
-    await expect(page.getByTestId("setup-chip-registry")).toHaveCount(0);
+    // No setup summary any more.
+    await expect(page.getByTestId("setup-chips")).toHaveCount(0);
+    await expect(page.getByText(/Getting there|All set/)).toHaveCount(0);
 
     const supply = page.getByRole("region", {name: "Supply"});
     await expect(supply.getByTestId("burn-item").getByRole("link", {name: /Burner/}))
@@ -30,11 +28,22 @@ test("a Factory token: header, setup chips and the groups, with no admin action"
 
     const trading = page.getByRole("region", {name: "Trading"});
     await expect(trading.getByText("NOAD/TUSDC pool")).toBeVisible();
+    await expect(trading.getByTestId("pair-item")).toContainText("Create DEX market");
     await expect(trading.getByRole("link", {name: "Create"})).toHaveAttribute("href", new RegExp(`^/create/market\\?base=${NOADMIN}&return=`));
+
+    const details = page.getByRole("region", {name: "Details and look"});
+    await expect(details.getByTestId("metadata-item").getByRole("button", {name: "View"})).toBeVisible();
+    await expect(details.getByTestId("brand-kit-item").getByRole("button", {name: "View"})).toBeVisible();
 
     const rewards = page.getByRole("region", {name: "Rewards on NOAD"});
     await expect(rewards.getByTestId("daily-prize-line")).toHaveCount(2);
-    await expect(rewards.getByTestId("compounded-actions").getByRole("link", {name: "Airdrop", exact: true})).toBeVisible();
+    const actions = rewards.getByTestId("compounded-actions");
+    await expect(actions.getByRole("link", {name: "Airdrop", exact: true})).toHaveCount(0);
+    const dexDetails = actions.getByRole("link", {name: /Details/});
+    await expect(dexDetails).toHaveAttribute("href", new RegExp(`/staking/details\\?id=compounded%3A${NOADMIN}$`));
+    await expect(dexDetails).toHaveAttribute("target", "_blank");
+    await expect(dexDetails).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(rewards.getByTestId("new-simple-reward")).toHaveCount(0);
 
     // Admin actions wait for a wallet that is the admin; ?tab= is ignored.
     await expect(page.getByRole("button", {name: "Mint"})).toHaveCount(0);

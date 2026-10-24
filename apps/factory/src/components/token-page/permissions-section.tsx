@@ -104,7 +104,6 @@ export function PermissionsSection({ asset, isChecking, admin, adminState, suppl
                         <ActionItem
                             testId="transfer-admin-item"
                             title="Transfer admin"
-                            line="Give admin rights to another address, e.g. a team multisig."
                             action={<ItemButton onClick={() => setDialog('transfer')}>Transfer admin</ItemButton>}
                         />
                         <ActionItem

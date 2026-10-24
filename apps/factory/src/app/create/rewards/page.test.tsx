@@ -72,6 +72,12 @@ describe("Choose staking rewards", () => {
         expect(screen.queryByText(/Stake HONEY/)).not.toBeInTheDocument();
     });
 
+    it("marks the compounded reward as recommended, and only it", () => {
+        renderPage();
+        expect(card("Compounded reward").getByText("Recommended")).toBeInTheDocument();
+        expect(card("Simple reward").queryByText("Recommended")).not.toBeInTheDocument();
+    });
+
     it("shows each fee without USD when the token has no price", () => {
         renderPage();
         expect(card("Simple reward").getByTestId("fee-line")).toHaveTextContent(/^Creation fee 5,000 BZE · \+ network fee$/);

@@ -18,18 +18,15 @@ function MetadataItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
     const { metadata, isLoading, refresh } = useTokenMetadata(asset.denom)
     // While the admin query runs or failed, the card stays read-only.
     const cardAccess: AdminState = access === 'checking' ? 'unknown' : access
-    const isAdmin = access === 'admin'
 
     return (
         <ActionItem
             testId="metadata-item"
             title="Name, logo, description"
-            line={access === 'renounced'
-                ? 'Frozen: the admin was given up, so nobody can change it.'
-                : isAdmin ? 'Edit what wallets and the DEX show.' : 'What wallets and the DEX show.'}
+            line={access === 'renounced' ? 'Frozen: the admin was given up, so nobody can change it.' : undefined}
             action={
                 <ItemButton onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
-                    {isOpen ? 'Close' : isAdmin ? 'Edit details' : 'View details'}
+                    {isOpen ? 'Close' : 'View'}
                 </ItemButton>
             }
         >
@@ -60,8 +57,7 @@ function RegistryItem({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
         <ActionItem
             testId="registry-item"
             title="Get your logo in every wallet"
-            line="Submit it to the Cosmos Chain Registry. We prepare the files."
-            action={<ItemLink href={withReturn(officialHref(asset.denom), back)} primary>Submit to registry</ItemLink>}
+            action={<ItemLink href={withReturn(officialHref(asset.denom), back)} primary>View</ItemLink>}
         />
     )
 }
@@ -75,10 +71,9 @@ function BrandKitItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
         <ActionItem
             testId="brand-kit-item"
             title="Brand kit"
-            line={`Colours and font for ${asset.ticker}'s Communities page.`}
             action={
                 <ItemButton onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
-                    {isOpen ? 'Close' : 'Open'}
+                    {isOpen ? 'Close' : 'View'}
                 </ItemButton>
             }
         >
@@ -90,7 +85,7 @@ function BrandKitItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
 /** Details and look: what wallets show, the registry logo, the brand kit. */
 export function DetailsGroup({ asset, access, back }: GroupProps) {
     return (
-        <ActionGroup id="details" title="Details and look" description={`How ${asset.ticker} appears everywhere.`}>
+        <ActionGroup id="details" title="Details and look">
             <MetadataItem asset={asset} access={access} />
             <RegistryItem asset={asset} back={back} />
             <BrandKitItem asset={asset} access={access} />

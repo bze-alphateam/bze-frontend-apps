@@ -19,25 +19,23 @@ export interface GroupProps {
     back: ReturnTo;
 }
 
-/** One group card (canvas D2): a title, a one-line description, then its items. */
-export function ActionGroup({ id, title, description, children }: {
+/** One group card (canvas D2): a title, then its items. */
+export function ActionGroup({ id, title, children }: {
     id: TokenSection;
     title: string;
-    description: string;
     children: React.ReactNode;
 }) {
     return (
         <Box as="section" id={id} aria-label={title} scrollMarginTop="96px" minW={0}>
             <HgCard px={{ base: '18px', md: '22px' }} pt="20px" pb="8px" h="full">
-                <Text as="h2" fontSize="18px" fontWeight="700">{title}</Text>
-                <Text fontSize="14px" color="fg.muted" mt="4px" mb="8px">{description}</Text>
+                <Text as="h2" fontSize="18px" fontWeight="700" mb="8px">{title}</Text>
                 <VStack align="stretch" gap="0">{children}</VStack>
             </HgCard>
         </Box>
     )
 }
 
-/** One item of a group: what it is, one line about it, and its button. `children` open below it. */
+/** One item of a group: what it is, an optional status line, and its button. `children` open below it. */
 export function ActionItem({ title, line, action, testId, children }: {
     title: React.ReactNode;
     line?: React.ReactNode;

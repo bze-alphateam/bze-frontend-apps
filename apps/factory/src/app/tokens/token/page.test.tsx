@@ -154,7 +154,7 @@ describe("token page: the seven admin states", () => {
         await renderSettled();
         expect(screen.getByTestId("owner-badge")).toHaveTextContent("Created by you · you are admin");
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
         const permissions = within(screen.getByTestId("permissions-section"));
         expect(permissions.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet, .*Changes here can't be undone by you\.$/);
         expect(permissions.getByTestId("transfer-admin-item")).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("token page: the seven admin states", () => {
         expect(within(screen.getByTestId("token-header")).getByText("Fixed supply")).toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
         expect(screen.getByText(/Frozen: the admin was given up/)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
         expect(screen.getByTestId("permissions-status")).toHaveTextContent("Admin given up. Nobody can mint or edit TOK any more.");
         expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
@@ -182,7 +182,7 @@ describe("token page: the seven admin states", () => {
         await renderSettled();
         expect(screen.getByTestId("owner-badge")).toHaveTextContent(/^Created by you · admin is bze1ne/);
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "View details" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
         expect(screen.getByTestId("permissions-status")).toHaveTextContent(/^Admin: bze1ne/);
         expect(screen.getByTestId("permissions-status")).toHaveAttribute("title", NEW_ADMIN);
         expect(screen.queryByTestId("transfer-admin-item")).not.toBeInTheDocument();
@@ -197,8 +197,8 @@ describe("token page: the seven admin states", () => {
         expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         // Permissionless actions are offered to everyone.
         expect(screen.getByRole("link", { name: "Start raffle" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Make TOK stakable" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Submit to registry" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" })).toBeInTheDocument();
         expect(within(screen.getByTestId("pair-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
         expectBurnOnBurner();
     });
@@ -303,14 +303,29 @@ describe("token page", () => {
         expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", `https://explorer.example/tokens/${ENCODED}`);
     });
 
-    it("setup chips: progress, links to their sections, Admin only for a non-admin", async () => {
-        m.address = OTHER;
+    it("no setup summary, no group descriptions, no create-simple-reward item", async () => {
         await renderSettled();
-        expect(screen.getByTestId("setup-progress")).toHaveTextContent("Getting there · 1 of 4");
-        expect(screen.getByTestId("setup-chip-created")).toHaveAttribute("data-state", "done");
-        expect(screen.getByTestId("setup-chip-pool")).toHaveAttribute("href", "#trading");
-        expect(screen.getByTestId("setup-chip-holderRewards")).toHaveTextContent("Stakable");
-        expect(screen.getByTestId("setup-chip-brandKit")).toHaveTextContent("Brand kit· Admin only");
+        expect(screen.queryByTestId("setup-chips")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Getting there|All set/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/How TOK appears everywhere|Where TOK can be traded|Anyone can add/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/New TOK goes to your wallet|Destroy TOK you hold|Colours and font/)).not.toBeInTheDocument();
+        expect(screen.queryByTestId("new-simple-reward")).not.toBeInTheDocument();
+        expect(screen.queryByText("Create a simple reward")).not.toBeInTheDocument();
+    });
+
+    it("labels: Create DEX market, Create, View, and a grey You created it badge", async () => {
+        m.pools = [{ id: "p1", base: DENOM, quote: "ubze", lp_denom: "ulp_tok_ubze", reserve_base: "2000000", reserve_quote: "1000000", creator: OWNER }];
+        await renderSettled();
+        const pair = within(screen.getByTestId("pair-item"));
+        expect(pair.getByText("Create DEX market")).toBeInTheDocument();
+        expect(screen.queryByText("Pair with another token")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("brand-kit-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /View details|Edit details|^Open$/ })).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("trading-pool-p1")).getByTestId("created-badge")).toHaveTextContent("You created it");
     });
 
     it("group links carry the way back to this page", async () => {
@@ -318,11 +333,10 @@ describe("token page", () => {
         await renderSettled();
         const hrefs = [
             screen.getByRole("link", { name: "Start raffle" }),
-            screen.getByRole("link", { name: "Submit to registry" }),
+            within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" }),
             screen.getByRole("link", { name: "Reward LPs" }),
             within(screen.getByTestId("pair-item")).getByRole("link", { name: "Create" }),
-            screen.getByRole("link", { name: "Make TOK stakable" }),
-            within(screen.getByTestId("new-simple-reward")).getByRole("link", { name: "Create" }),
+            within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" }),
         ].map(link => link.getAttribute("href"));
 
         for (const href of hrefs) {
@@ -334,7 +348,6 @@ describe("token page", () => {
         expect(hrefs[2]).toMatch(/^\/reward\/new\?staking=ulp_tok_ubze&/);
         expect(hrefs[3]).toMatch(new RegExp(`^/create/market\\?base=${ENCODED}&`));
         expect(hrefs[4]).toMatch(new RegExp(`^/denom-reward/new\\?denom=${ENCODED}&`));
-        expect(hrefs[5]).toMatch(new RegExp(`^/reward/new\\?staking=${ENCODED}&`));
     });
 
     it("trading: a pool with its price, You created it, DEX; a halted token gets no create buttons", async () => {
@@ -358,7 +371,7 @@ describe("token page", () => {
         expect(screen.queryByTestId("raffle-item")).not.toBeInTheDocument();
     });
 
-    it("rewards: the compounded reward's daily prizes, actions and details; airdrop off while nothing is staked", async () => {
+    it("rewards: the compounded reward's daily prizes, actions, no Airdrop, and Details opening its DEX page in a new tab", async () => {
         m.denomReward.mockReturnValue({
             ...noDenomReward(),
             denomReward: { denom: DENOM, staked_amount: "0", lock: 5, min_stake: "0" },
@@ -369,15 +382,20 @@ describe("token page", () => {
         expect(screen.getByTestId("daily-prize-line")).toHaveTextContent("50 BZE a day · ends in 3 days");
         expect(returnOf(within(screen.getByTestId("daily-prize-line")).getByRole("link", { name: "Extend" }).getAttribute("href")).get("return")).toBe(TOKEN_PAGE);
         expect(screen.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", expect.stringMatching(/^\/denom-reward\/schedule\?denom=/));
-        expect(within(screen.getByTestId("compounded-actions")).getByRole("button", { name: "Airdrop" })).toBeDisabled();
-        expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
+        const actions = within(screen.getByTestId("compounded-actions"));
+        expect(actions.queryByRole("button", { name: "Airdrop" })).not.toBeInTheDocument();
+        expect(actions.queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
+        expect(screen.queryByTestId("airdrop-disabled")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).queryByRole("link", { name: "Create" })).not.toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: "Details" }));
-        expect(screen.getByTestId("holder-prize-slots")).toHaveTextContent("1 of 5");
-        expect(screen.getByTestId("holder-prize")).toHaveTextContent("Last paid");
+        expect(screen.queryByRole("button", { name: "Details" })).not.toBeInTheDocument();
+        const details = actions.getByRole("link", { name: /Details/ });
+        expect(details).toHaveAttribute("href", `https://dex.example/staking/details?id=${encodeURIComponent(`compounded:${DENOM}`)}`);
+        expect(details).toHaveAttribute("target", "_blank");
+        expect(details).toHaveAttribute("rel", "noopener noreferrer");
     });
 
-    it("rewards: airdrop links to its wizard once someone stakes; simple rewards on the token have Extend, and Airdrop once someone stakes them", async () => {
+    it("rewards: simple rewards on the token have Extend, Airdrop once someone stakes them, and a DEX Details link", async () => {
         m.denomReward.mockReturnValue({
             ...noDenomReward(),
             denomReward: { denom: DENOM, staked_amount: "5000000", lock: 5, min_stake: "0" },
@@ -395,11 +413,15 @@ describe("token page", () => {
             refresh: vi.fn(),
         });
         await renderSettled();
-        expect(within(screen.getByTestId("compounded-actions")).getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", expect.stringMatching(/^\/airdrop\?to=stakers&denom=/));
+        expect(within(screen.getByTestId("compounded-actions")).queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
         const rows = screen.getAllByTestId("simple-reward-row");
         expect(rows).toHaveLength(2);
         expect(within(rows[0]).getByRole("link", { name: "Extend" })).toHaveAttribute("href", expect.stringMatching(/^\/reward\/extend\?id=000000000001&return=/));
         expect(within(rows[0]).getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", expect.stringMatching(/^\/airdrop\?to=stakers&denom=.*&id=000000000001&return=/));
+        const details = within(rows[0]).getByRole("link", { name: /Details/ });
+        expect(details).toHaveAttribute("href", `https://dex.example/staking/details?id=${encodeURIComponent("simple:000000000001")}`);
+        expect(details).toHaveAttribute("target", "_blank");
+        expect(details).toHaveAttribute("rel", "noopener noreferrer");
         expect(rows[1]).toHaveTextContent("Finished · all 10 paid");
         expect(within(rows[1]).queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
     });

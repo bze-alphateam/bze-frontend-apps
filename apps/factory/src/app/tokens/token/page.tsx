@@ -28,11 +28,9 @@ import type { AdminAccess } from '@/components/token-page/action-group'
 import { DetailsGroup } from '@/components/token-page/details-group'
 import { AdminUnknownNotice, PermissionsSection } from '@/components/token-page/permissions-section'
 import { RewardsGroup } from '@/components/token-page/rewards-group'
-import { SetupChips } from '@/components/token-page/setup-chips'
 import { SupplyGroup } from '@/components/token-page/supply-group'
 import { StatShimmer, TokenHeader } from '@/components/token-page/token-header'
 import { TradingGroup } from '@/components/token-page/trading-group'
-import { setupChips } from '@/lib/token-setup'
 import { TOKENS_PATH } from '@/lib/tokens-directory'
 import { TOKEN_SECTIONS, adminState, ownerBadge, tokenPageAccess, tokenPageReturn } from '@/lib/workspace'
 
@@ -60,7 +58,6 @@ function TokenPageBody({ asset }: { asset: Asset }) {
     const back = tokenPageReturn(asset)
     // Live supply (refreshed after every mint), asset snapshot as fallback.
     const supplyDisplay = uAmountToBigNumberAmount(supply ?? asset.supply, asset.decimals)
-    const chips = setupChips(setup.items, access === 'admin')
     const groupProps = { asset, access, back }
 
     return (
@@ -83,15 +80,6 @@ function TokenPageBody({ asset }: { asset: Asset }) {
 
             <PageContainer as="main" pt="24px" pb="64px">
                 <VStack align="stretch" gap="20px">
-                    <SetupChips
-                        chips={chips.chips}
-                        doneCount={chips.doneCount}
-                        totalCount={chips.totalCount}
-                        isLoading={setup.isLoading}
-                        hasError={setup.hasError}
-                        onRetry={() => void setup.refresh()}
-                    />
-
                     {access === 'unknown' && <AdminUnknownNotice onRetry={() => void refreshAdmin()} />}
 
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">

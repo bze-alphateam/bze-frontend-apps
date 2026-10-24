@@ -26,6 +26,7 @@ function ChooseRewards() {
                 </OptionCard>
                 <OptionCard
                     title="Compounded reward"
+                    featuredTag="Recommended"
                     line={`Pays stakers every day in ${coins}. Anyone can add more daily prizes or airdrop to its stakers.`}
                     action={{ label: 'Make a token stakable', href: targets.compounded }}
                 >
