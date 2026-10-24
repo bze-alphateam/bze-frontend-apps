@@ -1,13 +1,11 @@
 "use client"
 
 import React from 'react'
-import BigNumber from 'bignumber.js'
-import { getBurnerApp, getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
+import { getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
 import { DoneScreen } from '@/components/done'
 import { useReturnTo } from '@/components/guided'
-import { useDenomReward } from '@/hooks/useDenomReward'
 import { nextActions } from '@/lib/next-actions'
-import { type RaffleDoneInput, burnerCoinHref, raffleDoneText } from '@/lib/raffle-new'
+import { type RaffleDoneInput, raffleDoneText } from '@/lib/raffle-new'
 
 /**
  * "The HONEY raffle is **live**." (canvas D5, "Burning raffle started"). Open the raffle on Burner
@@ -16,13 +14,9 @@ import { type RaffleDoneInput, burnerCoinHref, raffleDoneText } from '@/lib/raff
 export function RaffleDone({ input, hash }: { input: RaffleDoneInput; hash: string }) {
     const { denom, ticker, endsAt } = input
     const { asset } = useAsset(denom)
-    const { denomReward } = useDenomReward(denom)
     const returnTo = useReturnTo()
 
-    const { recommended, more } = nextActions('raffleStarted', { denom, ticker }, {
-        hasCompoundedReward: Boolean(denomReward),
-        hasStakers: new BigNumber(denomReward?.staked_amount ?? 0).gt(0),
-    })
+    const { recommended, more } = nextActions('raffleStarted', { denom, ticker })
 
     return (
         <DoneScreen
@@ -31,7 +25,6 @@ export function RaffleDone({ input, hash }: { input: RaffleDoneInput; hash: stri
             text={raffleDoneText(endsAt)}
             links={[
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },
-                { label: 'Burner', href: burnerCoinHref(getBurnerApp().href, denom), app: 'burner' },
             ]}
             subject={ticker}
             recommended={recommended}

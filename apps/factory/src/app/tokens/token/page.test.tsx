@@ -369,7 +369,7 @@ describe("token page", () => {
         expect(screen.getByTestId("daily-prize-line")).toHaveTextContent("50 BZE a day · ends in 3 days");
         expect(returnOf(within(screen.getByTestId("daily-prize-line")).getByRole("link", { name: "Extend prize" }).getAttribute("href")).get("return")).toBe(TOKEN_PAGE);
         expect(screen.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", expect.stringMatching(/^\/denom-reward\/schedule\?denom=/));
-        expect(screen.getByRole("button", { name: "Airdrop to stakers" })).toBeDisabled();
+        expect(within(screen.getByTestId("compounded-actions")).getByRole("button", { name: "Airdrop" })).toBeDisabled();
         expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Details" }));
@@ -377,7 +377,7 @@ describe("token page", () => {
         expect(screen.getByTestId("holder-prize")).toHaveTextContent("Last paid");
     });
 
-    it("rewards: airdrop links to its wizard once someone stakes; simple rewards on the token have Extend", async () => {
+    it("rewards: airdrop links to its wizard once someone stakes; simple rewards on the token have Extend, and Airdrop once someone stakes them", async () => {
         m.denomReward.mockReturnValue({
             ...noDenomReward(),
             denomReward: { denom: DENOM, staked_amount: "5000000", lock: 5, min_stake: "0" },
@@ -385,7 +385,7 @@ describe("token page", () => {
         m.pools = [{ id: "p1", base: DENOM, quote: "ubze", lp_denom: "ulp_tok_ubze", reserve_base: "1", reserve_quote: "1", creator: OTHER }];
         m.stakingRewards.mockReturnValue({
             rewards: [
-                { reward_id: "000000000001", staking_denom: DENOM, prize_denom: "ubze", prize_amount: "1000000", duration: 10, payouts: 4 },
+                { reward_id: "000000000001", staking_denom: DENOM, prize_denom: "ubze", prize_amount: "1000000", duration: 10, payouts: 4, staked_amount: "7" },
                 { reward_id: "000000000002", staking_denom: "ulp_tok_ubze", prize_denom: "ubze", prize_amount: "1000000", duration: 10, payouts: 10 },
                 // Pays out in TOK but stakes something else: not on the page.
                 { reward_id: "000000000003", staking_denom: "ubze", prize_denom: DENOM, prize_amount: "1000000", duration: 10, payouts: 1 },
@@ -395,11 +395,13 @@ describe("token page", () => {
             refresh: vi.fn(),
         });
         await renderSettled();
-        expect(screen.getByRole("link", { name: "Airdrop to stakers" })).toHaveAttribute("href", expect.stringMatching(/^\/denom-reward\/airdrop\?denom=/));
+        expect(within(screen.getByTestId("compounded-actions")).getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", expect.stringMatching(/^\/airdrop\?to=stakers&denom=/));
         const rows = screen.getAllByTestId("simple-reward-row");
         expect(rows).toHaveLength(2);
         expect(within(rows[0]).getByRole("link", { name: "Extend" })).toHaveAttribute("href", expect.stringMatching(/^\/reward\/extend\?id=000000000001&return=/));
+        expect(within(rows[0]).getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", expect.stringMatching(/^\/airdrop\?to=stakers&denom=.*&id=000000000001&return=/));
         expect(rows[1]).toHaveTextContent("Finished · all 10 paid");
+        expect(within(rows[1]).queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
     });
 
     it("a running raffle shows its figures and the Burner link instead of Start raffle", async () => {

@@ -5,7 +5,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 
 // Choose staking rewards (BFE-260): simple vs compounded with their fees (in USD when BZE has a
-// price), the four things to do with an existing reward, and the staked token handed on.
+// price), the compounded reward's prize cap from the chain, and the staked token handed on.
 const m = vi.hoisted(() => ({
     query: new URLSearchParams(),
     fees: {} as Record<string, unknown>,
@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
-    useCreationFees: () => ({ fees: m.fees, isLoading: false }),
+    useCreationFees: () => ({ fees: m.fees, denomRewardLimits: { maxPrizeDenomsPerDr: 40 }, isLoading: false }),
     useAsset: (denom: string) => ({ asset: denom === "ubze" ? { denom, ticker: "BZE", decimals: 6 } : undefined, isLoading: false }),
     useAssetPrice: () => ({
         hasPrice: m.bzeUsd > 0,
@@ -32,7 +32,6 @@ import ChooseRewardsPage from "./page";
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
 const renderPage = () => render(<ChooseRewardsPage />, { wrapper });
 const card = (name: string) => within(screen.getByRole("region", { name }));
-const existing = () => within(screen.getByRole("region", { name: "Already created a reward?" }));
 
 const HONEY = "factory/bze1x/uhoney";
 const ENC = encodeURIComponent(HONEY);
@@ -65,7 +64,7 @@ describe("Choose staking rewards", () => {
         expect(simple.getByRole("link", { name: /Create simple reward/ })).toHaveAttribute("href", "/reward/new");
 
         const compounded = card("Compounded reward");
-        expect(compounded.getByText("Pays stakers every day in up to 50 coins. You can extend it, change the daily amount, or send everyone staking a one-time airdrop.")).toBeInTheDocument();
+        expect(compounded.getByText("Pays stakers every day in up to 40 coins. Anyone can add more daily prizes or airdrop to its stakers.")).toBeInTheDocument();
         expect(compounded.getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", "/denom-reward/new");
 
         expect(screen.queryByRole("term")).not.toBeInTheDocument();
@@ -94,19 +93,10 @@ describe("Choose staking rewards", () => {
         expect(card("Compounded reward").getByTestId("fee-line")).toHaveTextContent("Fee unavailable");
     });
 
-    it("lists the four things to do with an existing reward, in order", () => {
+    it("has nothing about rewards that already exist: picking one in the wizard continues it", () => {
         renderPage();
-        expect(screen.getByRole("heading", { level: 2, name: "Already created a reward?" })).toBeInTheDocument();
-        expect(screen.queryByText(/Anyone can do these on any reward/)).not.toBeInTheDocument();
-        const rows = existing().getAllByRole("link");
-        expect(rows.map(row => [row.querySelector("p")?.textContent, row.getAttribute("href")])).toEqual([
-            ["Extend a simple reward", "/reward/extend"],
-            ["Distribute to a simple reward", "/reward/distribute"],
-            ["Add a daily prize", "/denom-reward/schedule"],
-            ["Airdrop to stakers, once", "/denom-reward/airdrop"],
-        ]);
-        expect(existing().getByText("Add more days.")).toBeInTheDocument();
-        expect(existing().getByText("Send its stakers a one-time amount.")).toBeInTheDocument();
+        expect(screen.queryByText("Already created a reward?")).not.toBeInTheDocument();
+        expect(screen.getAllByTestId("option-card")).toHaveLength(2);
     });
 
     it.each([["denom"], ["staking"]])("hands ?%s= on to every form, in the name each form reads", (param) => {
@@ -114,10 +104,5 @@ describe("Choose staking rewards", () => {
         renderPage();
         expect(card("Simple reward").getByRole("link", { name: /Create simple reward/ })).toHaveAttribute("href", `/reward/new?staking=${ENC}`);
         expect(card("Compounded reward").getByRole("link", { name: /Create compounded reward/ })).toHaveAttribute("href", `/denom-reward/new?denom=${ENC}`);
-        expect(existing().getByRole("link", { name: /Add a daily prize/ })).toHaveAttribute("href", `/denom-reward/schedule?denom=${ENC}`);
-        expect(existing().getByRole("link", { name: /Airdrop to stakers, once/ })).toHaveAttribute("href", `/denom-reward/airdrop?denom=${ENC}`);
-        // Extend and Distribute pick a reward by id, not by staked token.
-        expect(existing().getByRole("link", { name: /Extend a simple reward/ })).toHaveAttribute("href", "/reward/extend");
-        expect(existing().getByRole("link", { name: /Distribute to a simple reward/ })).toHaveAttribute("href", "/reward/distribute");
     });
 });

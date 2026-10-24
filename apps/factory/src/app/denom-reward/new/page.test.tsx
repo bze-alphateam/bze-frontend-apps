@@ -14,7 +14,7 @@ type TxOpts = {
     onBroadcast?: (hash: string) => void;
     onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
 };
-const { queryParams, wallet, feeState, balances, afford, drState, navigateMock, txMock } = vi.hoisted(() => ({
+const { queryParams, wallet, feeState, balances, afford, drState, navigateMock, replaceMock, txMock } = vi.hoisted(() => ({
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1me" as string | undefined },
     feeState: {
@@ -25,6 +25,7 @@ const { queryParams, wallet, feeState, balances, afford, drState, navigateMock, 
     afford: { canAfford: true, message: "" },
     drState: { current: {} as Record<string, { denomReward?: unknown; hasError?: boolean; isLoading?: boolean }> },
     navigateMock: vi.fn(),
+    replaceMock: vi.fn(),
     txMock: vi.fn(),
 }));
 
@@ -38,6 +39,7 @@ vi.mock("@/hooks/useNavigation", () => ({
         denomParam: queryParams.current.get("denom"),
         getQueryParam: (p: string) => queryParams.current.get(p),
         navigate: navigateMock,
+        replace: replaceMock,
     }),
 }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock, progressTrack: "" }) }));
@@ -165,6 +167,7 @@ beforeEach(() => {
     afford.message = "";
     drState.current = {};
     navigateMock.mockReset();
+    replaceMock.mockReset();
     txMock.mockReset();
     txSucceeds();
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
@@ -205,12 +208,22 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             expect(step("First daily prize")).toHaveAttribute("data-state", "active");
         });
 
-        it("a token that already has one can't continue", async () => {
+        it("a token that already has one continues to adding a prize to it", async () => {
             drState.current = { upage: { denomReward: { staking_denom: "upage", lock: 7, min_stake: "0", staked_amount: "0" } } };
             renderPage();
             await userEvent.click(within(step("Token")).getByText("Stake upage"));
-            expect(button(step("Token"), "Continue")).toBeDisabled();
             expect(screen.queryByTestId("token-facts")).not.toBeInTheDocument();
+            expect(screen.getByTestId("already-stakable")).toBeInTheDocument();
+            expect(replaceMock).not.toHaveBeenCalled();
+            await userEvent.click(button(step("Token"), "Continue to add a prize"));
+            expect(replaceMock).toHaveBeenCalledWith("/denom-reward/schedule?denom=upage");
+        });
+
+        it("a link to a token that already has one goes straight to adding a prize", () => {
+            queryParams.current = new URLSearchParams({ denom: "upage", return: "/tokens/token?denom=upage", returnLabel: "PAGE" });
+            drState.current = { upage: { denomReward: { staking_denom: "upage", lock: 7, min_stake: "0", staked_amount: "0" } } };
+            renderPage();
+            expect(replaceMock).toHaveBeenCalledWith(`/denom-reward/schedule?denom=upage&return=${encodeURIComponent("/tokens/token?denom=upage")}&returnLabel=PAGE`);
         });
 
         it("a load error is not 'none': nothing is offered, with a retry", async () => {
@@ -334,7 +347,7 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
     });
 
     describe("Done", () => {
-        it("without a prize: the amber line and Add a daily prize recommended; the airdrop waits for stakers", async () => {
+        it("without a prize: the amber line, Stake on DEX recommended, then Add more rewards", async () => {
             renderPage();
             await pickToken();
             await userEvent.click(button(step("First daily prize"), "Continue"));
@@ -343,11 +356,11 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is stakable.");
             expect(screen.getByText("Anyone holding HONEY can stake it now, and anyone can add prizes for them.")).toBeInTheDocument();
             expect(screen.getByText(/^No prizes funded yet\. Stakers earn nothing until a prize is added\./)).toBeInTheDocument();
-            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Add a daily prize");
-            expect(screen.getAllByText("Available once someone is staking. We check before you sign.").length).toBeGreaterThan(0);
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Stake on DEX");
+            expect(screen.getByRole("article", { name: "Add more rewards" })).toBeInTheDocument();
         });
 
-        it("with a prize: no amber line and Tell your stakers recommended", async () => {
+        it("with a prize: no amber line, the same next steps", async () => {
             renderPage();
             await pickToken();
             await fillPrize("50", "30");
@@ -356,7 +369,7 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is stakable.");
             expect(screen.queryByText(/No prizes funded yet/)).not.toBeInTheDocument();
-            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Tell your stakers");
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Stake on DEX");
         });
     });
 });

@@ -31,8 +31,8 @@ interface ScheduleGiftInput {
 
 /**
  * A daily prize on a compounded reward, new (`MsgCreateDenomRewardSchedule`) or extended
- * (`MsgUpdateDenomRewardSchedule`): the costs, the affordability check and the message. Shared by
- * the daily-prize form and "Reach another community".
+ * (`MsgUpdateDenomRewardSchedule`): the costs, the affordability check and the message, for the
+ * daily-prize form.
  */
 export function useScheduleGift({ denom, prizes, prizeDenom, dailyUAmount, days, scheduleId }: ScheduleGiftInput) {
     const isExtend = scheduleId !== undefined

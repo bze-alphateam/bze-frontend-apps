@@ -22,7 +22,8 @@ import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { ItemLink } from '@/components/token-page/action-group'
 import { CardActions, CreatedByYouTag } from '@/components/rewards/compounded-reward-card'
 import { endDate, extendHref, formatDay } from '@/lib/reward-extend'
-import { distributeHref, hasStakers } from '@/lib/reward-distribute'
+import { stakersAirdropHref } from '@/lib/airdrop'
+import { hasStakers } from '@/lib/reward-distribute'
 import { stakingRewardDeletion } from '@/lib/staking-rewards'
 
 const { deleteStakingReward } = bze.rewards.MessageComposer.withTypeUrl
@@ -135,8 +136,8 @@ export function SimpleRewardRow({ reward, mine, now, onChanged }: SimpleRewardRo
                 <CardActions testId="simple-reward-actions">
                     {/* Extending is permissionless: anyone can pay for more days, in its own wizard (BFE-264). */}
                     <ItemLink href={extendHref(reward.reward_id)}>Extend</ItemLink>
-                    {/* So is a one-time distribution, once someone stakes. */}
-                    {hasStakers(reward) && <ItemLink href={distributeHref(reward.reward_id)}>Distribute</ItemLink>}
+                    {/* So is an airdrop to its stakers, once someone stakes. */}
+                    {hasStakers(reward) && <ItemLink href={stakersAirdropHref(reward.staking_denom, reward.reward_id)}>Airdrop</ItemLink>}
                     {finished && (
                         <Button
                             size="sm"

@@ -7,17 +7,14 @@ import {
     Field,
     HStack,
     Input,
-    Link,
     Text,
     Textarea,
     VStack,
 } from '@chakra-ui/react'
-import NextLink from 'next/link'
 import BigNumber from 'bignumber.js'
 import { LuDownload, LuUpload } from 'react-icons/lu'
 import { cosmos } from '@bze/bzejs'
 import {
-    GradientText,
     TxKindSpec,
     hgVariant,
     getChainName,
@@ -31,13 +28,10 @@ import {
 import type { TxFailureDetails } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
-    FormPage,
-    GuidedForm,
     Hint,
     OutcomePanel,
     PayPanel,
@@ -45,7 +39,6 @@ import {
     ReviewStep,
     Segmented,
     SubmitNote,
-    TipNote,
     TxPanel,
     WarningNote,
     useGuidedSteps,
@@ -87,10 +80,12 @@ import { checkBatchOnChain, restTxLookup } from '@/lib/multisend-lookup'
 import { RunProgress } from '@/components/multisend/run-progress'
 import { MultisendDone } from '@/components/multisend/multisend-done'
 import { softButton } from '@/components/ui/soft-button'
+import { AirdropForm, TargetQuestion } from '@/components/airdrop/airdrop-form'
+import type { AirdropTarget } from '@/lib/airdrop'
 
 const { multiSend } = cosmos.bank.v1beta1.MessageComposer.withTypeUrl
 
-const FORM_STEPS = ['token', 'list'] as const
+const FORM_STEPS = ['target', 'token', 'list'] as const
 type FormStep = typeof FORM_STEPS[number]
 const STEP_KEYS = [...FORM_STEPS, 'review'] as const
 
@@ -142,15 +137,24 @@ function Counter({ tone, children }: { tone: 'success' | 'warning' | 'danger' | 
     )
 }
 
-function MultiSendContent() {
-    const { getQueryParam } = useNavigationWithParams()
+interface ListAirdropProps {
+    /** The token a link picked (`?denom=` or `?prize=`). */
+    initialDenom?: string;
+    onTarget: (target: AirdropTarget) => void;
+}
+
+/**
+ * Airdrop coins to a list of wallets (bank multi-send): the same amount for everyone or one per
+ * wallet, pasted or uploaded. Over 100 wallets it runs in batches that can be resumed.
+ */
+export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
     const { address } = useChain(getChainName())
     const { tx } = useFactoryTx()
 
     // The page renders on the client only (search params under a Suspense boundary),
-    // so the browser draft can seed the first render. A `?denom=` link wins over it.
+    // so the browser draft can seed the first render. A link's token wins over it.
     const [draft] = useState(loadMultiSendDraft)
-    const [denom, setDenom] = useState(() => getQueryParam('denom') ?? draft?.denom ?? '')
+    const [denom, setDenom] = useState(() => initialDenom || draft?.denom || '')
     const [mode, setMode] = useState<RecipientMode>(draft?.mode ?? 'same')
     const [sameAmount, setSameAmount] = useState(draft?.sameAmount ?? '')
     const [text, setText] = useState(draft?.text ?? '')
@@ -160,7 +164,7 @@ function MultiSendContent() {
         return stored ? settleInterrupted(stored) : undefined
     })
     const runRef = useRef(run)
-    const [answered, setAnswered] = useState<FormStep[]>(() => (denom ? (run ? ['token', 'list'] : ['token']) : []))
+    const [answered, setAnswered] = useState<FormStep[]>(() => (denom ? (run ? ['target', 'token', 'list'] : ['target', 'token']) : ['target']))
     const [sameTouched, setSameTouched] = useState(false)
     const [fileError, setFileError] = useState('')
     const [sent, setSent] = useState<{ input: SentInput; hash: string } | undefined>(undefined)
@@ -223,6 +227,7 @@ function MultiSendContent() {
     }, [])
 
     const steps = useGuidedSteps(STEP_KEYS, {
+        target: true,
         token: answered.includes('token') && Boolean(asset),
         list: answered.includes('list') && listValid,
         review: false,
@@ -423,7 +428,7 @@ function MultiSendContent() {
         setPaused(false)
         setBatchPanel(undefined)
         setCheckErrors([])
-        setAnswered(denom ? ['token'] : [])
+        setAnswered(denom ? ['target', 'token'] : ['target'])
         steps.close()
     }
 
@@ -499,20 +504,8 @@ function MultiSendContent() {
             <WarningNote lead="Check the list twice.">
                 Tokens sent to a wrong address can&apos;t be recovered.
             </WarningNote>
-
-            <TipNote lead="Want to reach people who are already active?">
-                Gifting the stakers of a token goes only to wallets that hold and stake it.{' '}
-                <Link asChild color="hg.link" fontWeight="600" _hover={{ color: 'hg.link.hover' }}>
-                    <NextLink href="/rewards">Gift the stakers</NextLink>
-                </Link>
-            </TipNote>
         </>
     )
-
-    // One gradient word per title: the last word of the goal ("Send to a list of wallets").
-    const titleWords = VOCABULARY.multiSend.name.split(' ')
-    const titleLead = titleWords.slice(0, -1).join(' ')
-    const titleLast = titleWords[titleWords.length - 1]
 
     const problemsShown = parsed.problems.slice(0, SHOWN_PROBLEMS)
     const hiddenProblems = parsed.problems.length - problemsShown.length
@@ -602,18 +595,22 @@ function MultiSendContent() {
     )
 
     return (
-        <GuidedForm
-            crumb="Send to a list of wallets"
-            title={<>{titleLead} <GradientText>{titleLast}</GradientText></>}
-            subtitle="Paste addresses, or upload a file from a contest, a snapshot or a spreadsheet. Everyone on the list gets the token straight in their wallet."
+        <AirdropForm
             techTag={VOCABULARY.multiSend.tech}
             status="List saved in this browser"
             aside={aside}
         >
+            <TargetQuestion
+                {...steps.step('target')}
+                value="list"
+                onPick={(target) => (target === 'list' ? steps.close() : onTarget(target))}
+            />
+
             <Question
                 title="Token"
                 question="What are you sending?"
                 {...steps.step('token')}
+                onBack={steps.back}
                 summary={asset ? (address ? `${ticker} · you hold ${toDisplay(balance.amount)}` : ticker) : ''}
                 action={{ label: 'Continue', onClick: () => answer('token'), disabled: !asset }}
             >
@@ -741,14 +738,6 @@ function MultiSendContent() {
             </Question>
 
             {finalStep}
-        </GuidedForm>
-    )
-}
-
-export default function MultiSendPage() {
-    return (
-        <FormPage>
-            <MultiSendContent />
-        </FormPage>
+        </AirdropForm>
     )
 }

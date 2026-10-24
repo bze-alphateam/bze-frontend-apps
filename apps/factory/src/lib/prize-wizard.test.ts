@@ -2,10 +2,8 @@ import { describe, it, expect } from "vitest";
 import BigNumber from "bignumber.js";
 import {
     type PrizeDoneInput,
-    findNewSchedule,
     newPrizeNote,
     nothingStakedReason,
-    prizeAnnouncement,
     prizeDoneText,
     prizeDoneTitle,
     scheduleExtendFacts,
@@ -118,21 +116,6 @@ describe("scheduleExtendFacts", () => {
     });
 });
 
-describe("findNewSchedule", () => {
-    const s = (schedule_id: string, extra: Partial<{ prize_denom: string; daily_amount: string; duration: number; payouts: number }> = {}) => ({
-        schedule_id, prize_denom: "ubze", daily_amount: "50000000", duration: 30, payouts: 0, ...extra,
-    });
-
-    it("the newest unpaid schedule with the same prize, amount and days", () => {
-        const list = [s("000000000002"), s("000000000010"), s("000000000011", { payouts: 1 }), s("000000000012", { daily_amount: "1" })];
-        expect(findNewSchedule(list, { prizeDenom: "ubze", dailyAmount: "50000000", days: 30 })?.schedule_id).toBe("000000000010");
-    });
-
-    it("none yet", () => {
-        expect(findNewSchedule([s("1", { prize_denom: "uwax" })], { prizeDenom: "ubze", dailyAmount: "50000000", days: 30 })).toBeUndefined();
-    });
-});
-
 describe("Done copy", () => {
     const base = { stakedDenom: "uhoney", stakedTicker: "HONEY", prizeDenom: "ubze", prizeTicker: "BZE" };
     const add: PrizeDoneInput = { ...base, kind: "add", perDay: "50", dailyAmount: "50000000", days: 30 };
@@ -150,7 +133,5 @@ describe("Done copy", () => {
         expect(prizeDoneText(add)).toBe("Everyone staking HONEY shares 50 BZE a day for 30 days.");
         expect(prizeDoneText(extend)).toBe("Everyone staking HONEY keeps sharing 50 BZE a day until about 5 Nov.");
         expect(prizeDoneText(airdrop)).toBe("Everyone staking HONEY got a share, split by stake. They can claim it right away.");
-        expect(prizeAnnouncement(add)).toBe("50 BZE a day for 30 days");
-        expect(prizeAnnouncement(airdrop)).toBe("10,000 BEE, airdropped");
     });
 });

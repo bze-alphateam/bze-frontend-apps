@@ -1,10 +1,9 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import { getDexApp, getExplorerTxURL, getSettings, useAsset } from '@bze/bze-ui-kit'
+import { getExplorerTxURL, getSettings, useAsset } from '@bze/bze-ui-kit'
 import { DoneScreen } from '@/components/done'
 import { useReturnTo } from '@/components/guided'
-import { dexStakingHref } from '@/lib/create-routes'
 import { nextActions } from '@/lib/next-actions'
 import { fetchRewardId } from '@/lib/reward-new'
 
@@ -25,7 +24,7 @@ export interface SimpleRewardDoneInput {
  * DEX staking link, then the next steps with "Share the staking link" first.
  */
 export function SimpleRewardDone({ input, hash }: { input: SimpleRewardDoneInput; hash: string }) {
-    const { stakingDenom, stakingTicker, prizeDenom, prizeTicker, perDay, prize } = input
+    const { stakingDenom, stakingTicker, prizeTicker, perDay } = input
     const { asset: stakingAsset } = useAsset(stakingDenom)
     const returnTo = useReturnTo()
     const [rewardId, setRewardId] = useState<string | undefined>(undefined)
@@ -43,10 +42,6 @@ export function SimpleRewardDone({ input, hash }: { input: SimpleRewardDoneInput
     const { recommended, more } = nextActions('simpleRewardCreated', {
         stakedDenom: stakingDenom,
         stakedTicker: stakingTicker,
-        prizeDenom,
-        prizeTicker,
-        rewardId,
-        prize,
     })
 
     return (
@@ -57,7 +52,6 @@ export function SimpleRewardDone({ input, hash }: { input: SimpleRewardDoneInput
             code={{ label: 'Reward id', value: rewardId }}
             links={[
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },
-                { label: 'Stake on DEX', href: dexStakingHref(getDexApp().href, stakingTicker), app: 'dex' },
             ]}
             subject={stakingTicker}
             recommended={recommended}

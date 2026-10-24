@@ -391,11 +391,12 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
             expect(screen.queryByText("Airdrop to stakers, once")).not.toBeInTheDocument();
         });
 
-        it("offers an airdrop to the token's stakers when it is stakable", async () => {
+        it("proposes only opening the raffle on Burner", async () => {
             m.stakedAmount = "5000000";
             renderPage();
             await start();
-            expect(screen.getByText("Airdrop to stakers, once")).toBeInTheDocument();
+            expect(within(screen.getByTestId("done-recommended")).getByRole("link", { name: /Open on Burner/ })).toBeInTheDocument();
+            expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
         });
 
         it("offers Back to TOK when opened from the token page", async () => {

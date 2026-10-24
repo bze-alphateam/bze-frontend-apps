@@ -1,10 +1,9 @@
 "use client"
 
 import React from 'react'
-import { getDexApp, getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
+import { getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
 import { DoneScreen } from '@/components/done'
 import { useReturnTo } from '@/components/guided'
-import { dexStakingHref } from '@/lib/create-routes'
 import { nextActions } from '@/lib/next-actions'
 
 /** What the Extend wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
@@ -22,22 +21,15 @@ export interface ExtendDoneInput {
     newEnd: string;
 }
 
-/** "10 more days for HONEY/BZE stakers." then the prize-added next steps. */
+/** "10 more days for HONEY/BZE stakers." then Stake on DEX. */
 export function ExtendDone({ input, hash }: { input: ExtendDoneInput; hash: string }) {
-    const { rewardId, stakingDenom, stakingTicker, prizeDenom, prizeTicker, perDay, days, newEnd } = input
+    const { stakingDenom, stakingTicker, prizeTicker, perDay, days, newEnd } = input
     const { asset: stakingAsset } = useAsset(stakingDenom)
     const returnTo = useReturnTo()
 
     const dayCount = Number(days)
     const daysText = `${dayCount.toLocaleString('en-US')} more day${dayCount === 1 ? '' : 's'}`
-    const { recommended, more } = nextActions('prizeAdded', {
-        rewardId,
-        stakedDenom: stakingDenom,
-        stakedTicker: stakingTicker,
-        prizeDenom,
-        prizeTicker,
-        prize: `${perDay} ${prizeTicker} a day until ${newEnd}`,
-    })
+    const { recommended, more } = nextActions('prizeAdded', { stakedDenom: stakingDenom, stakedTicker: stakingTicker, viaSimpleReward: true })
 
     return (
         <DoneScreen
@@ -46,7 +38,6 @@ export function ExtendDone({ input, hash }: { input: ExtendDoneInput; hash: stri
             text={`Everyone staking ${stakingTicker} keeps sharing ${perDay} ${prizeTicker} a day until ${newEnd}.`}
             links={[
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },
-                { label: 'Stake on DEX', href: dexStakingHref(getDexApp().href, stakingTicker), app: 'dex' },
             ]}
             subject={stakingTicker}
             recommended={recommended}

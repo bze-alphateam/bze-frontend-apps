@@ -423,25 +423,15 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             expect(screen.getByRole("link", { name: /DEX/ })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${encodeURIComponent(DENOM)}`);
 
-            // The recommended pool first, then brand kit, registry and stakable.
-            expect(screen.getByText("Let people buy HONEY")).toBeInTheDocument();
-            expect(screen.getByText("Make HONEY stakable")).toBeInTheDocument();
+            // A market first, then staking rewards, an airdrop and the registry.
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Create a DEX market");
+            expect(screen.getByRole("article", { name: "Create staking rewards" })).toBeInTheDocument();
+            expect(screen.getByText("Airdrop HONEY")).toBeInTheDocument();
             expect(screen.getByText("Get your logo in every wallet")).toBeInTheDocument();
-            expect(screen.getByText("Give it a look")).toBeInTheDocument();
-            expect(screen.queryByText("Allow limit orders too")).not.toBeInTheDocument();
+            expect(screen.queryByText("Give it a look")).not.toBeInTheDocument();
             expect(screen.getByText(/Not now\? Every one of these waits for you on/)).toBeInTheDocument();
             expect(screen.getByText("HONEY's token page")).toBeInTheDocument();
             expect(savedDraft()).toBeNull();
-        });
-
-        it("skips the pool when a HONEY/BZE pool already exists", async () => {
-            setupState.pools = [{ id: "7", base: DENOM, quote: "ubze" }];
-            renderPage();
-            await answerAll();
-            await userEvent.click(createButton());
-            await userEvent.click(screen.getByRole("button", { name: "Continue" }));
-            expect(screen.queryByText("Let people buy HONEY")).not.toBeInTheDocument();
-            expect(screen.getByText("Make HONEY stakable")).toBeInTheDocument();
         });
     });
 

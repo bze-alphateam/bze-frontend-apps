@@ -56,7 +56,7 @@ const nextConfig: NextConfig = {
         return [
             // The compounded rewards directory moved to /rewards (BFE-153), and so did the page of one
             // token's compounded reward (BFE-272: `?denom=` carries over and opens its card). The
-            // schedule, airdrop and new forms keep their /denom-reward/* routes.
+            // schedule and new forms keep their /denom-reward/* routes.
             { source: "/denom-reward", destination: "/rewards", permanent: false },
             { source: "/denom-reward/token", destination: "/rewards", permanent: false },
             // The Manage area became Tokens (BFE-260).
@@ -64,6 +64,12 @@ const nextConfig: NextConfig = {
             { source: "/manage/token", destination: "/tokens/token", permanent: true },
             // Playbooks left the app for docs.getbze.com (BFE-260, BFE-276).
             { source: "/playbooks", destination: "/", permanent: true },
+            // Every way of sending coins to many wallets became one Airdrop wizard. /airdrop reads the
+            // old query names too (`staking`, `community`, `gift`).
+            { source: "/multisend", destination: "/airdrop?to=list", permanent: true },
+            { source: "/reach", destination: "/airdrop", permanent: true },
+            { source: "/denom-reward/airdrop", destination: "/airdrop", permanent: true },
+            { source: "/reward/distribute", destination: "/airdrop", permanent: true },
         ];
     },
     turbopack: {

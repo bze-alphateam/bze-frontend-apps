@@ -43,7 +43,7 @@ export function PoolDone({ input, hash }: { input: PoolDoneInput; hash: string }
 
     const pair = `${baseTicker}/${quoteTicker}`
     const startingPrice = `${price} ${quoteTicker} per ${baseTicker}`
-    const { recommended, more } = nextActions('poolCreated', { poolId, lpDenom, base, quote, pairLabel: pair, startingPrice })
+    const { recommended, more } = nextActions('poolCreated', { poolId })
 
     return (
         <DoneScreen

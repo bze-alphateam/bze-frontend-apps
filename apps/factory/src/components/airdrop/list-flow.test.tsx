@@ -12,7 +12,7 @@ import { loadMultiSendRun, markSending, planBatches, saveMultiSendRun, startRun,
 // fee engine and the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx
 // store, the Review step, the run progress and the Done screen are real. The asset picker
 // becomes a plain button per denom; PayPanel has its own coverage.
-const { queryParams, wallet, balances, afford, affordInputs, lookupMock, navigateMock, txMock, setup } = vi.hoisted(() => ({
+const { queryParams, wallet, balances, afford, affordInputs, lookupMock, navigateMock, txMock } = vi.hoisted(() => ({
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1me" as string | undefined },
     balances: { current: {} as Record<string, string> },
@@ -21,11 +21,10 @@ const { queryParams, wallet, balances, afford, affordInputs, lookupMock, navigat
     lookupMock: { getTx: vi.fn(), recentMultiSends: vi.fn() },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
-    setup: { hasCompoundedReward: false },
 }));
 
 vi.mock("next/navigation", () => ({
-    usePathname: () => "/multisend",
+    usePathname: () => "/airdrop",
     useSearchParams: () => queryParams.current,
 }));
 vi.mock("@/hooks/useNavigation", () => ({
@@ -47,16 +46,6 @@ vi.mock("@/hooks/useFeePayment", () => ({
         isLoading: false,
         method: "native",
         gasFee: { denom: "ubze", amount: new BigNumber(0), displayAmount: new BigNumber(0), ticker: "BZE", isLoading: false },
-    }),
-}));
-vi.mock("@/hooks/useTokenSetup", () => ({
-    useTokenSetup: () => ({
-        isLoading: false,
-        items: [],
-        pools: [],
-        hasMarket: false,
-        denomReward: setup.hasCompoundedReward ? {} : undefined,
-        hasStakers: false,
     }),
 }));
 vi.mock("@/components/guided/pay-panel", async (importActual) => ({
@@ -116,7 +105,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     };
 });
 
-import MultiSendPage from "./page";
+import { ListAirdrop } from "./list-flow";
 import { PendingTxProvider, createPendingTxStore } from "@/contexts/pending-tx";
 
 const A = "bze13x5v3t9plqu8ql3h44ltx0ys59uzz43lt6p0tz";
@@ -135,8 +124,9 @@ const renderPage = () => {
             <PendingTxProvider store={store}>{children}</PendingTxProvider>
         </ChakraProvider>
     );
-    return render(<MultiSendPage />, { wrapper });
+    return render(<ListAirdrop initialDenom={queryParams.current.get("denom") ?? undefined} onTarget={onTargetMock} />, { wrapper });
 };
+const onTargetMock = vi.fn();
 const TOKEN = "Token";
 const LIST = "List";
 const question = (title: string) => screen.getByRole("region", { name: title });
@@ -194,7 +184,6 @@ beforeEach(() => {
     balances.current = { utok: "1000000000", ubze: "1000000000" };
     afford.canAfford = true;
     afford.message = "";
-    setup.hasCompoundedReward = false;
     navigateMock.mockReset();
     affordInputs.length = 0;
     lookupMock.getTx.mockReset().mockResolvedValue(null);
@@ -211,10 +200,12 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
-    it("walks Token · List · Review and sends one multi-send whose input is the sum of the outputs", async () => {
+describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
+    it("walks Who · Token · List · Review and sends one multi-send whose input is the sum of the outputs", async () => {
         renderPage();
-        expect(screen.getByRole("heading", { name: "Send to a list of wallets" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop coins");
+        expect(question("Who")).toHaveAttribute("data-state", "done");
+        expect(question("Who")).toHaveTextContent("A list of wallets");
         expect(screen.getAllByText("bank · multi-send").length).toBeGreaterThan(0);
         expect(screen.getByText("List saved in this browser")).toBeInTheDocument();
         expect(within(question(TOKEN)).getByText("What are you sending?")).toBeInTheDocument();
@@ -269,7 +260,7 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         expect(screen.getByText("4 TOK is now in their wallets.")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Explorer" })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
         const recommended = screen.getByTestId("done-recommended");
-        expect(recommended).toHaveTextContent("Make TOK stakable");
+        expect(recommended).toHaveTextContent("Send to another list");
         expect(screen.queryByText("Download the report")).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "New list" }));
@@ -553,7 +544,6 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
 
     it("a finished run with more than 3 transactions opens on Done with the links folded and the report first", async () => {
         await storeRun(run => ({ ...run, batches: run.batches.map(b => ({ ...b, status: "sent", txHash: `T${b.id}` })) }), 400);
-        setup.hasCompoundedReward = true;
         renderPage();
         expect(await screen.findByRole("heading", { name: "Sent to 400 wallets in 4 transactions." })).toBeInTheDocument();
         const list = screen.getByTestId("done-link-list");
@@ -562,8 +552,6 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
             ["T1", "T2", "T3", "T4"].map(h => `https://explorer.test/txs/${h}`),
         );
         expect(screen.getByTestId("done-recommended")).toHaveTextContent("Download the report");
-        // Already stakable: the step is dropped.
-        expect(screen.queryByText("Make TOK stakable")).not.toBeInTheDocument();
         expect(screen.getByRole("article", { name: "Send to another list" })).toBeInTheDocument();
     });
 
@@ -681,5 +669,18 @@ describe("Send to a list of wallets (/multisend)", { timeout: 20_000 }, () => {
         await userEvent.type(within(question(LIST)).getByLabelText(/Amount each/), "1");
         expect(within(question(LIST)).getByRole("button", { name: "Review" })).toBeDisabled();
         expect(screen.queryByRole("button", { name: /^Send to/ })).not.toBeInTheDocument();
+    });
+});
+
+describe("Airdrop coins: the Who step of the list flow", () => {
+    it("Edit reopens it; the same target closes it, another one hands over to the page", async () => {
+        renderPage();
+        await userEvent.click(within(question("Who")).getByRole("button", { name: /Edit/ }));
+        await userEvent.click(screen.getByRole("radio", { name: /A list of wallets/ }));
+        expect(question("Who")).toHaveAttribute("data-state", "done");
+        expect(onTargetMock).not.toHaveBeenCalled();
+        await userEvent.click(within(question("Who")).getByRole("button", { name: /Edit/ }));
+        await userEvent.click(screen.getByRole("radio", { name: /Stakers of a token/ }));
+        expect(onTargetMock).toHaveBeenCalledWith("stakers");
     });
 });

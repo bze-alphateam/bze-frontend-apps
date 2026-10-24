@@ -31,7 +31,7 @@ describe("Home: What are you building today?", () => {
         ["token", "Create a token", "/token/new", ["Token"]],
         ["market", "Create a DEX market", "/create/market", ["Liquidity pool", "Order book"]],
         ["rewards", "Create staking rewards", "/create/rewards", ["Simple reward", "Compounded reward"]],
-        ["grow", "Grow a community", "/create/grow", ["Airdrop", "Multi-send", "Raffle", "+1"]],
+        ["grow", "Grow a community", "/create/grow", ["Airdrop", "Raffle"]],
     ])("the %s tile is a link to its starting point", (id, title, href, chips) => {
         renderPage();
         const link = tile(id);
@@ -150,8 +150,8 @@ describe("Home with stored progress", () => {
         vi.setSystemTime(new Date("2026-10-03T10:00:00Z"));
         renderPage();
         const line = within(hint()!);
-        expect(line.getByRole("link", { name: "Continue sending to a list of wallets" })).toHaveAttribute("href", "/multisend");
-        expect(hint()).toHaveTextContent("step 2 of 3");
+        expect(line.getByRole("link", { name: "Continue your airdrop to a list of wallets" })).toHaveAttribute("href", "/airdrop?to=list");
+        expect(hint()).toHaveTextContent("step 3 of 4");
         cleanupAll();
 
         vi.setSystemTime(new Date("2026-10-04T10:00:00Z"));

@@ -349,25 +349,13 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             await signAndContinue("Start daily prize");
         }
 
-        it("the title, Tell your stakers recommended and the Communities link", async () => {
+        it("the title, Stake on DEX recommended, Add more rewards and the Communities link", async () => {
             await startPrize();
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("50 BZE a day for HONEY stakers.");
-            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Tell your stakers");
+            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Stake on DEX");
+            await userEvent.click(within(screen.getByRole("article", { name: "Add more rewards" })).getByRole("button", { name: "Add daily prize" }));
+            expect(navigateMock).toHaveBeenCalledWith("/denom-reward/schedule?denom=uhoney");
             expect(screen.getAllByRole("link", { name: /Communities/ })[0]).toHaveAttribute("href", "https://communities.test/token?denom=uhoney");
-        });
-
-        it("Extend before it ends waits until the new schedule is on chain", async () => {
-            await startPrize();
-            expect(screen.getByTestId("pending-extend")).toBeInTheDocument();
-            expect(screen.getByRole("button", { name: "Extend daily prize" })).toBeDisabled();
-        });
-
-        it("Extend before it ends opens the new schedule once found", async () => {
-            const added = { ...SCHEDULE, schedule_id: "000000000009", payouts: 0 };
-            drState.current.uhoney = { ...drState.current.uhoney, schedules: [SCHEDULE, added] };
-            await startPrize();
-            await userEvent.click(screen.getByRole("button", { name: "Extend daily prize" }));
-            expect(navigateMock).toHaveBeenCalledWith("/denom-reward/schedule?denom=uhoney&schedule=000000000009");
         });
 
         it("with a return path: Back to <TICKER>", async () => {
@@ -433,14 +421,13 @@ describe("Daily prize, extend (&schedule=)", { timeout: 20_000 }, () => {
         expect(button(step("Extra days"), "Review extension")).toBeDisabled();
     });
 
-    it("Done: N more days, with Extend before it ends on the same schedule", async () => {
+    it("Done: N more days, then Stake on DEX", async () => {
         renderPage();
         await userEvent.type(within(step("Extra days")).getByLabelText("Extra days"), "10");
         await userEvent.click(button(step("Extra days"), "Review extension"));
         await signAndContinue("Extend daily prize");
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("10 more days for HONEY stakers.");
-        await userEvent.click(screen.getByRole("button", { name: "Extend daily prize" }));
-        expect(navigateMock).toHaveBeenCalledWith("/denom-reward/schedule?denom=uhoney&schedule=000000000007");
+        expect(screen.getByTestId("done-recommended")).toHaveTextContent("Stake on DEX");
     });
 
     it.each([

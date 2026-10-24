@@ -34,8 +34,8 @@ export interface WizardHint {
 /** Details, Supply, Permissions + Review. */
 const TOKEN_STEPS = TOKEN_FORM_KEYS.length + 1
 
-/** Token, List + Review. */
-const MULTISEND_STEPS = 3
+/** Who, Token, List + Review (the list flow of Airdrop coins). */
+const MULTISEND_STEPS = 4
 
 function tokenHint(saved: Saved<TokenDraft>): WizardHint | undefined {
     const { form, answered } = saved.value
@@ -58,17 +58,17 @@ function tokenHint(saved: Saved<TokenDraft>): WizardHint | undefined {
 function multisendHint(stored: StoredWizards): WizardHint | undefined {
     const run = stored.multisendRun
     const pick = run && run.value.batches.length > 0 && !isRunDone(run.value)
-        ? { step: 3, savedAt: run.savedAt }
+        ? { step: 4, savedAt: run.savedAt }
         : stored.multisendDraft?.value.denom
-            ? { step: 2, savedAt: stored.multisendDraft.savedAt }
+            ? { step: 3, savedAt: stored.multisendDraft.savedAt }
             : undefined
     if (!pick) return undefined
     return {
         key: `multisend:${pick.savedAt}`,
-        label: 'Continue sending to a list of wallets',
+        label: 'Continue your airdrop to a list of wallets',
         step: pick.step,
         total: MULTISEND_STEPS,
-        href: '/multisend',
+        href: '/airdrop?to=list',
         savedAt: pick.savedAt,
     }
 }

@@ -303,36 +303,19 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
         }
 
-        it("shows the open market, its links and recommends opening it on the DEX; a pool for the pair comes next", async () => {
+        it("shows the open market, its links and only opening it on the DEX next", async () => {
             await createMarket();
 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("The TOK/BZE market is open.");
             expect(screen.getByText("Anyone can place buy and sell orders for TOK priced in BZE.")).toBeInTheDocument();
-            // Once among the hero links, once as the "Share the market" card's button.
-            expect(screen.getAllByRole("button", { name: "Copy market link" })).toHaveLength(2);
+            expect(screen.getByRole("button", { name: "Copy market link" })).toBeInTheDocument();
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             expect(updateMarketsMock).toHaveBeenCalled();
 
             const recommended = screen.getByTestId("done-recommended");
             expect(recommended).toHaveTextContent("Open the market on DEX");
             expect(within(recommended).getByRole("link", { name: /Open market on DEX/ })).toHaveAttribute("href", marketUrl("utok/ubze"));
-
-            const pool = screen.getByRole("article", { name: "Create a pool for the pair" });
-            await userEvent.click(within(pool).getByRole("button", { name: "Create pool" }));
-            expect(navigateMock).toHaveBeenCalledWith("/pool/new?base=utok&quote=ubze");
-
-            const contest = screen.getByRole("article", { name: "Trading contest" });
-            expect(within(contest).getByRole("button", { name: "Coming soon" })).toBeDisabled();
-            expect(within(screen.getByRole("article", { name: "Share the market" })).getByRole("button", { name: "Copy market link" })).toBeInTheDocument();
-        });
-
-        it("skips creating a pool when the pair already has one", async () => {
-            existingPools.current = new Map([["ubze_utok", { id: "ubze_utok", base: "ubze", quote: "utok" }]]);
-            await createMarket();
-
-            expect(screen.getByTestId("done-recommended")).toHaveTextContent("Open the market on DEX");
-            expect(screen.queryByRole("article", { name: "Create a pool for the pair" })).not.toBeInTheDocument();
-            expect(screen.getByRole("article", { name: "Trading contest" })).toBeInTheDocument();
+            expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
         });
 
         it("offers the way back to the token it was opened from", async () => {

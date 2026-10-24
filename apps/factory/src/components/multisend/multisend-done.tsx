@@ -4,8 +4,7 @@ import React from 'react'
 import { getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
 import { DoneScreen, type DoneLink } from '@/components/done'
 import { useReturnTo } from '@/components/guided'
-import { useTokenSetup } from '@/hooks/useTokenSetup'
-import { factsFromTokenSetup, nextActions } from '@/lib/next-actions'
+import { nextActions } from '@/lib/next-actions'
 
 /** Up to this many transactions get one Explorer link each; more fold into a list. */
 const OPEN_LINKS = 3
@@ -36,12 +35,11 @@ function download(href: string) {
 
 /**
  * "Sent to 312 wallets." (canvas D5, row "Multi-send finished"): the Explorer link of each
- * transaction, then "Download the report" first when the list was batched, else "Make the token
- * stakable".
+ * transaction, then "Download the report" first when the list was batched, and "Send to another
+ * list".
  */
 export function MultisendDone({ denom, ticker, count, totalLabel, hashes, reportHref, onSendAnother }: MultisendDoneProps) {
     const { asset } = useAsset(denom)
-    const setup = useTokenSetup(denom)
     const returnTo = useReturnTo()
     const k = hashes.length
     const batched = k > 1
@@ -50,7 +48,7 @@ export function MultisendDone({ denom, ticker, count, totalLabel, hashes, report
         denom,
         ticker,
         downloadReport: reportHref ? () => download(reportHref) : undefined,
-    }, factsFromTokenSetup(setup))
+    })
     // The page is already /multisend: a new list resets it in place instead of navigating to itself.
     const local = (a: NonNullable<typeof next.recommended>) => (a.key === 'sendAgain' ? { ...a, target: { onClick: onSendAnother } } : a)
 

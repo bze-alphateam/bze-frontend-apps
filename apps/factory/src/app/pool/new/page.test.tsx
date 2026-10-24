@@ -445,7 +445,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
         }
 
-        it("shows the open pool, its links and the next steps; rewarding LPs waits for the LP denom", async () => {
+        it("shows the open pool, its links and only adding liquidity on the DEX next", async () => {
             let resolvePool: (p: { lp_denom: string }) => void = () => {};
             getLiquidityPoolMock.mockReturnValue(new Promise(r => { resolvePool = r; }));
             await createPool();
@@ -458,24 +458,15 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             expect(updatePoolsMock).toHaveBeenCalled();
 
             const recommended = screen.getByTestId("done-recommended");
-            expect(recommended).toHaveTextContent("Add liquidity you can withdraw");
+            expect(recommended).toHaveTextContent("Add liquidity on DEX");
             expect(within(recommended).getByRole("link", { name: /Add liquidity on DEX/ }))
                 .toHaveAttribute("href", "https://dex.test/pools/details?id=ubze_utok");
-            expect(screen.getByText("Allow limit orders too")).toBeInTheDocument();
-            expect(screen.getByText("Tell people about it")).toBeInTheDocument();
+            expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
 
-            // Pending: disabled with a shimmer, the code skeleton stands in for the LP denom.
-            const reward = screen.getByRole("article", { name: "Reward liquidity providers" });
-            expect(within(reward).getByRole("button", { name: "Create simple reward" })).toBeDisabled();
-            expect(within(reward).getByTestId("pending-rewardLps")).toBeInTheDocument();
+            // The code skeleton stands in for the LP denom until the pool is read.
             expect(screen.getByTestId("code-loading")).toBeInTheDocument();
-
             resolvePool({ lp_denom: "ulp/abc" });
             expect(await screen.findByText("ulp/abc")).toBeInTheDocument();
-            const known = screen.getByRole("article", { name: "Reward liquidity providers" });
-            expect(within(known).queryByTestId("pending-rewardLps")).not.toBeInTheDocument();
-            await userEvent.click(within(known).getByRole("button", { name: "Create simple reward" }));
-            expect(navigateMock).toHaveBeenCalledWith("/reward/new?staking=ulp%2Fabc");
         });
     });
 });

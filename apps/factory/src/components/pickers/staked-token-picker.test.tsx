@@ -91,8 +91,18 @@ describe("StakedTokenPicker", () => {
 
     it("makeStakable marks the tokens that already have a compounded reward; the rest get the caller's state", () => {
         renderPicker();
-        expect(within(group("All tokens").getByRole("radio", { name: "BeeZee · BZE" })).getByText("Already stakable")).toBeInTheDocument();
+        expect(within(group("All tokens").getByRole("radio", { name: "BeeZee · BZE" })).getByText("Stakable · add a prize")).toBeInTheDocument();
         expect(within(group("All tokens").getByRole("radio", { name: "STOP Token · STOP" })).getByText("Not stakable yet")).toBeInTheDocument();
+    });
+
+    it("hasRewards lists tokens with a compounded reward or a simple reward; only narrows to pool shares or tokens", () => {
+        const { rerender } = renderPicker({ mode: "hasRewards", stakable: new Set([HALTED.denom]) });
+        const names = () => screen.getAllByRole("radio").map(r => r.getAttribute("aria-label"));
+        expect(names()).toContain("STOP Token · STOP");
+        expect(names()).toContain("BeeZee · BZE");
+        rerender(<StakedTokenPicker mode="hasRewards" stakable={new Set([HALTED.denom])} only="lp" value="" onChange={onChange} stateOf={stateOf} />);
+        expect(screen.queryByRole("radio", { name: "STOP Token · STOP" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Pool shares" })).not.toBeInTheDocument();
     });
 
     it("hasCompounded lists only tokens with one, with the caller's state", () => {
@@ -165,15 +175,6 @@ describe("StakedTokenPicker", () => {
         expect(onChange).toHaveBeenCalledWith(HALTED);
         rerender(<StakedTokenPicker mode="makeStakable" value={HALTED.denom} onChange={onChange} stateOf={stateOf} />);
         expect(screen.getByRole("radio", { name: "STOP Token · STOP" })).toHaveAttribute("aria-checked", "true");
-        expect(screen.queryByTestId("already-stakable")).not.toBeInTheDocument();
-    });
-
-    it("an already stakable pick tips to add a prize instead, with both links", () => {
-        renderPicker({ value: PAGE.denom });
-        expect(screen.getByTestId("already-stakable")).toHaveTextContent("PAGE is already stakable. Add a prize to it instead.");
-        const enc = encodeURIComponent(PAGE.denom);
-        expect(screen.getByRole("link", { name: "Add a daily prize" })).toHaveAttribute("href", `/denom-reward/schedule?denom=${enc}`);
-        expect(screen.getByRole("link", { name: "Airdrop to stakers" })).toHaveAttribute("href", `/denom-reward/airdrop?denom=${enc}`);
     });
 
     it("a row whose state is disabled can't be picked, and says why", async () => {

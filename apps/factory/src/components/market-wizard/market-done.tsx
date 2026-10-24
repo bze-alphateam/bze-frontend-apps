@@ -1,11 +1,11 @@
 "use client"
 
 import React from 'react'
-import { createMarketId, getDexApp, getExplorerTxURL, useAsset, useLiquidityPools } from '@bze/bze-ui-kit'
+import { createMarketId, getDexApp, getExplorerTxURL, useAsset } from '@bze/bze-ui-kit'
 import { DoneScreen } from '@/components/done'
 import { useReturnTo } from '@/components/guided'
 import { dexMarketHref } from '@/lib/create-routes'
-import { type NextActionFacts, nextActions } from '@/lib/next-actions'
+import { nextActions } from '@/lib/next-actions'
 
 /** What the Order-book market wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
 export interface MarketDoneInput {
@@ -24,15 +24,10 @@ export function MarketDone({ input, hash }: { input: MarketDoneInput; hash: stri
     const { base, quote, baseTicker, quoteTicker } = input
     const { asset: baseAsset } = useAsset(base)
     const { asset: quoteAsset } = useAsset(quote)
-    const { getDenomsPool, isLoading: isPoolsLoading } = useLiquidityPools()
     const returnTo = useReturnTo()
 
     const pair = `${baseTicker}/${quoteTicker}`
-    const pool = getDenomsPool(base, quote)
-    const facts: NextActionFacts | undefined = isPoolsLoading
-        ? undefined
-        : { pools: pool ? [{ id: pool.id, base: pool.base, quote: pool.quote }] : [] }
-    const { recommended, more } = nextActions('marketCreated', { base, quote, pairLabel: pair }, facts)
+    const { recommended, more } = nextActions('marketCreated', { base, quote })
 
     return (
         <DoneScreen

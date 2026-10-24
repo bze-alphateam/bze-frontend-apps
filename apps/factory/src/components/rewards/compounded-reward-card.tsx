@@ -14,7 +14,8 @@ import {
 } from '@bze/bze-ui-kit'
 import { ItemButton, ItemLink } from '@/components/token-page/action-group'
 import type { DenomRewardDetails } from '@/hooks/useDenomRewardDetails'
-import { airdropFormHref, formatLastPaid, scheduleDaysLeft, scheduleFormHref } from '@/lib/denom-reward'
+import { stakersAirdropHref } from '@/lib/airdrop'
+import { formatLastPaid, scheduleDaysLeft, scheduleFormHref } from '@/lib/denom-reward'
 import { HolderRow, airdropDisabledReason, dailyPrizeEnd } from '@/lib/rewards-directory'
 import { workspaceHref } from '@/lib/workspace'
 import { isFactoryToken } from '@/lib/tokens-directory'
@@ -152,8 +153,8 @@ export function CompoundedRewardCard({ row, details, mine, currentDayEpoch, now 
                 <CardActions testId="compounded-actions">
                     <ItemLink href={scheduleFormHref(denom)}>Add daily prize</ItemLink>
                     {reason
-                        ? <ItemButton onClick={() => undefined} disabled>Airdrop once</ItemButton>
-                        : <ItemLink href={airdropFormHref(denom)}>Airdrop once</ItemLink>}
+                        ? <ItemButton onClick={() => undefined} disabled>Airdrop</ItemButton>
+                        : <ItemLink href={stakersAirdropHref(denom)}>Airdrop</ItemLink>}
                     {isFactoryToken({ denom }) &&<ItemLink href={workspaceHref(denom)}>Open token</ItemLink>}
                 </CardActions>
                 {reason && <Text fontSize="12px" color="hg.text.faint" data-testid="airdrop-disabled">{reason}</Text>}

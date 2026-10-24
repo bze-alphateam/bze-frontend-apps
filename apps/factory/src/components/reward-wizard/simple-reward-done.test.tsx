@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 // The Done screen's collaborators are mocked: no chain read for the reward id, no router.
@@ -24,9 +23,7 @@ beforeEach(() => vi.stubGlobal("matchMedia", (query: string) => ({ matches: fals
 afterEach(() => vi.unstubAllGlobals());
 
 describe("SimpleRewardDone", () => {
-    it("Copy staking link puts only the DEX staking URL on the clipboard", async () => {
-        const user = userEvent.setup();
-        const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    it("recommends only Stake on DEX, a link to the DEX staking page", () => {
         render(
             <SimpleRewardDone
                 hash="ABC"
@@ -36,7 +33,7 @@ describe("SimpleRewardDone", () => {
         );
 
         const card = screen.getByRole("article", { name: "Recommended next" });
-        await user.click(within(card).getByRole("button", { name: /Copy staking link/ }));
-        expect(writeText).toHaveBeenCalledWith("https://dex.test/staking?search=HONEY");
+        expect(within(card).getByRole("link", { name: /Stake on DEX/ })).toHaveAttribute("href", "https://dex.test/staking?search=HONEY");
+        expect(screen.queryByTestId("done-more")).not.toBeInTheDocument();
     });
 });

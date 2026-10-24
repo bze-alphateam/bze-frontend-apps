@@ -5,7 +5,14 @@ import { isFactoryToken, matchesSearch } from '@/lib/tokens-directory'
 // The staked-token picker (canvas D4, BFE-265): which token's stakers a wizard is about. Pure, so the
 // component stays a thin view: the groups, the chips, the order, the paging and the admin lines.
 
-export type StakedTokenPickerMode = 'makeStakable' | 'hasCompounded'
+/**
+ * `makeStakable`: every token; `hasCompounded`: tokens with a compounded reward; `hasRewards`:
+ * tokens with a compounded reward or one of the `stakable` simple-reward tokens.
+ */
+export type StakedTokenPickerMode = 'makeStakable' | 'hasCompounded' | 'hasRewards'
+
+/** Pool shares only, or everything but them. */
+export type PickerOnly = 'lp' | 'tokens'
 
 export const PICKER_CHIPS = ['all', 'mine', 'lp'] as const
 export type PickerChip = typeof PICKER_CHIPS[number]
@@ -71,13 +78,19 @@ export interface PickerFilter {
     q: string;
     includeLP: boolean;
     excludeHalted: boolean;
+    /** hasRewards: the staked tokens of the simple rewards. */
+    stakable?: ReadonlySet<string>;
+    only?: PickerOnly;
 }
 
 /** Whether a row belongs in the picker at all, before the chips. */
-export function keepPickerRow(row: PickerRow, { mode, q, includeLP, excludeHalted }: PickerFilter): boolean {
-    if (!includeLP && isLpDenom(row.asset.denom)) return false
+export function keepPickerRow(row: PickerRow, { mode, q, includeLP, excludeHalted, stakable, only }: PickerFilter): boolean {
+    const lp = isLpDenom(row.asset.denom)
+    if ((!includeLP || only === 'tokens') && lp) return false
+    if (only === 'lp' && !lp) return false
     if (excludeHalted && row.asset.halted) return false
     if (mode === 'hasCompounded' && !row.dr) return false
+    if (mode === 'hasRewards' && !row.dr && !stakable?.has(row.asset.denom)) return false
     return matchesSearch(row.asset, q)
 }
 
