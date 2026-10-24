@@ -4,7 +4,6 @@ import {
     airdropBlocker,
     compoundedNewHref,
     denomRewardHref,
-    formatLastPaid,
     newPrizeSlotInfo,
     prizeBlocker,
     summarizeAirdropCosts,
@@ -238,23 +237,5 @@ describe('newPrizeSlotInfo', () => {
         expect(newPrizeSlotInfo(stake, '', { isNewPrize: true, capReached: false, used: 0 })).toBe(
             "The first time a token becomes a prize on TOK it takes one of TOK's prize slots, for good. Gifting it to TOK again is free.",
         )
-    })
-})
-
-describe('formatLastPaid', () => {
-    it('reads epoch 0 as never paid', () => {
-        expect(formatLastPaid('0', '120')).toBe('Never')
-        expect(formatLastPaid(0)).toBe('Never')
-    })
-
-    it('counts days back from the current day epoch', () => {
-        expect(formatLastPaid('120', '120')).toBe('Today')
-        expect(formatLastPaid('119', 120)).toBe('Yesterday')
-        expect(formatLastPaid('100', '1100')).toBe('1,000 days ago')
-    })
-
-    it('falls back to the raw day when the current epoch is unknown', () => {
-        expect(formatLastPaid('42')).toBe('Day 42')
-        expect(formatLastPaid('42', '')).toBe('Day 42')
     })
 })

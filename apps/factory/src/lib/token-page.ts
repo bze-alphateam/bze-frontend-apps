@@ -30,11 +30,6 @@ export function poolLine(
     return `1 ${mine.ticker} = ${prettyAmount(otherReserve.dividedBy(mineReserve))} ${other.ticker} · ${liquidity}`
 }
 
-/** A running daily prize: "50 BZE a day · ends in 3 days" (payout days, as the chain counts them). */
-export function dailyPrizeLine(perDay: string, daysLeft: number): string {
-    return `${perDay} a day · ends in ${daysLeft.toLocaleString('en-US')} day${daysLeft === 1 ? '' : 's'}`
-}
-
 /**
  * The simple rewards a token page lists: those that stake the token itself or LP shares of a pool
  * with it on either side. Rewards that only pay out in the token are left out.

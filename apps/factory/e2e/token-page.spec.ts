@@ -39,7 +39,7 @@ test("a Factory token: header and the groups, with no admin action", async ({pag
     await expect(rewards.getByTestId("daily-prize-line")).toHaveCount(2);
     const actions = rewards.getByTestId("compounded-actions");
     await expect(actions.getByRole("link", {name: "Airdrop", exact: true})).toHaveCount(0);
-    const dexDetails = actions.getByRole("link", {name: /Details/});
+    const dexDetails = actions.getByRole("link", {name: /DEX/});
     await expect(dexDetails).toHaveAttribute("href", new RegExp(`/staking/details\\?id=compounded%3A${NOADMIN}$`));
     await expect(dexDetails).toHaveAttribute("target", "_blank");
     await expect(dexDetails).toHaveAttribute("rel", "noopener noreferrer");

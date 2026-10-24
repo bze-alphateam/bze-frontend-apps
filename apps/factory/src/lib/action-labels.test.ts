@@ -43,9 +43,8 @@ describe("action labels", () => {
         const text = (file: string) => sources.find(s => s.file === file)?.text ?? "";
         expect(text("app/reward/extend/page.tsx")).toContain('submitLabel="Extend"');
         expect(text("app/denom-reward/schedule/page.tsx")).toContain("submitLabel={isExtend ? 'Extend' : 'Start daily prize'}");
-        expect(text("components/rewards/compounded-reward-card.tsx")).toContain(">Extend</ItemLink>");
-        expect(text("components/rewards/simple-reward-row.tsx")).toContain(">Extend</ItemLink>");
-        expect(text("components/token-page/rewards-group.tsx").match(/>Extend<\/ItemLink>/g)).toHaveLength(2);
+        // The daily prize's and the simple reward's, on /rewards and the token page alike.
+        expect(text("components/rewards/reward-items.tsx").match(/>Extend<\/RewardLink>/g)).toHaveLength(2);
     });
 
     it("the compounded-reward actions say Make … stakable", () => {

@@ -216,20 +216,3 @@ export function newPrizeSlotInfo(stake: { ticker: string; possessive: string }, 
         : `one of ${stake.possessive} prize slots`
     return `The first time a token becomes a prize on ${stake.ticker} it takes ${slots}, for good. Gifting ${prizeTicker || 'it'} to ${stake.ticker} again is free.`
 }
-
-/**
- * "Last paid" of a prize entry from its `last_distribution_epoch` (day-epoch count, 0 = never paid)
- * and the chain's current day-epoch count. Without the current count the raw epoch is shown.
- */
-export function formatLastPaid(lastDistributionEpoch: string | number, currentDayEpoch?: string | number): string {
-    const last = Number(lastDistributionEpoch)
-    if (!Number.isFinite(last) || last <= 0) return 'Never'
-
-    const current = currentDayEpoch === undefined ? NaN : Number(currentDayEpoch)
-    if (!Number.isFinite(current) || current <= 0) return `Day ${last.toLocaleString('en-US')}`
-
-    const ago = Math.max(0, current - last)
-    if (ago === 0) return 'Today'
-    if (ago === 1) return 'Yesterday'
-    return `${ago.toLocaleString('en-US')} days ago`
-}

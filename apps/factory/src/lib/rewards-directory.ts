@@ -1,63 +1,60 @@
 import BigNumber from 'bignumber.js'
-import type { DenomReward } from '@bze/bze-ui-kit'
+import type { DenomReward, DenomRewardSchedule } from '@bze/bze-ui-kit'
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
-import { addDays, formatDay } from '@/lib/reward-extend'
 import { isStakingRewardFinished } from '@/lib/staking-rewards'
 
-// The rewards directory (`/rewards?kind=…&filter=…&sort=…&status=…&q=…`, BFE-153 / BFE-161 / BFE-272): its
-// URL state, the search by staked token, and the filter and sort of both sections (compounded rewards,
-// one per staked token, and simple rewards). Pure, so the page stays a thin view over it.
+// The rewards directory (`/rewards?kind=…&filter=…&sort=…&q=…`, BFE-153 / BFE-161 / BFE-272): its
+// URL state, the search by staked token, and the grouping of every reward by the token it stakes
+// (one row per token: its compounded reward, then its simple rewards). Pure, so the page stays a
+// thin view over it.
 
 export const REWARDS_PATH = '/rewards'
 
 export const REWARD_KINDS = ['all', 'compounded', 'simple'] as const
-export const REWARD_FILTERS = ['all', 'stakers', 'paying', 'mine'] as const
+export const REWARD_FILTERS = ['all', 'stakers', 'paying', 'mine', 'running', 'finished'] as const
 export const REWARD_SORTS = ['staked', 'prizes', 'name'] as const
-export const SIMPLE_STATUSES = ['all', 'running', 'finished'] as const
 
 export type RewardKind = typeof REWARD_KINDS[number]
 export type RewardFilter = typeof REWARD_FILTERS[number]
 export type RewardSort = typeof REWARD_SORTS[number]
-export type SimpleStatus = typeof SIMPLE_STATUSES[number]
 
 export interface RewardsView {
-    /** Which sections show: both, or one kind. */
+    /** Which rewards show: both kinds, or one. */
     kind: RewardKind;
-    /** "Paying now" only applies to compounded rewards; the others to both sections. */
     filter: RewardFilter;
     sort: RewardSort;
-    /** Simple rewards only: running or finished. */
-    status: SimpleStatus;
     /** Search by staked token, as typed. */
     q: string;
-    /** The token a deep link asked for (`/denom-reward/token?denom=` redirects here): prefills the search. */
+    /** The token a deep link asked for (`/denom-reward/token?denom=` redirects here): prefills the search and opens its row. */
     denom: string;
 }
 
-export const DEFAULT_REWARDS_VIEW: RewardsView = { kind: 'all', filter: 'all', sort: 'staked', status: 'all', q: '', denom: '' }
+export const DEFAULT_REWARDS_VIEW: RewardsView = { kind: 'all', filter: 'all', sort: 'staked', q: '', denom: '' }
 
 const pick = <T extends string>(values: readonly T[], value: string | null | undefined): T | undefined =>
     values.find(v => v === value)
 
 // The directory had two tabs before BFE-272: `tab=holder` (compounded) and `tab=programs` (simple).
 const LEGACY_TABS: Record<string, RewardKind> = { holder: 'compounded', programs: 'simple' }
+// Running and Finished were their own `status=` chips before they joined the filter.
+const LEGACY_STATUSES: Record<string, RewardFilter> = { running: 'running', finished: 'finished' }
 
-/** URL query → view; missing or unknown values fall back to the defaults, an old `tab=` to its kind. */
+/** URL query → view; missing or unknown values fall back to the defaults, an old `tab=` or `status=` to its value. */
 export function parseRewardsView(get: (key: string) => string | null | undefined): RewardsView {
+    const filter = pick(REWARD_FILTERS, get('filter'))
     return {
         kind: pick(REWARD_KINDS, get('kind')) ?? LEGACY_TABS[get('tab') ?? ''] ?? DEFAULT_REWARDS_VIEW.kind,
-        filter: pick(REWARD_FILTERS, get('filter')) ?? DEFAULT_REWARDS_VIEW.filter,
+        filter: (filter && filter !== 'all' ? filter : undefined) ?? LEGACY_STATUSES[get('status') ?? ''] ?? DEFAULT_REWARDS_VIEW.filter,
         sort: pick(REWARD_SORTS, get('sort')) ?? DEFAULT_REWARDS_VIEW.sort,
-        status: pick(SIMPLE_STATUSES, get('status')) ?? DEFAULT_REWARDS_VIEW.status,
         q: get('q') ?? '',
         denom: get('denom') ?? '',
     }
 }
 
-/** View → link. Kind, filter, sort and status are always written; the search and the deep-linked token only when set. */
+/** View → link. Kind, filter and sort are always written; the search and the deep-linked token only when set. */
 export function rewardsHref(view: Partial<RewardsView> = {}): string {
-    const { kind, filter, sort, status, q, denom } = { ...DEFAULT_REWARDS_VIEW, ...view }
-    const params = new URLSearchParams({ kind, filter, sort, status })
+    const { kind, filter, sort, q, denom } = { ...DEFAULT_REWARDS_VIEW, ...view }
+    const params = new URLSearchParams({ kind, filter, sort })
     if (q.trim() !== '') params.set('q', q)
     if (denom !== '') params.set('denom', denom)
     return `${REWARDS_PATH}?${params.toString()}`
@@ -66,7 +63,7 @@ export function rewardsHref(view: Partial<RewardsView> = {}): string {
 /** The search box's text: what was typed, else the deep-linked token. */
 export const searchText = (view: Pick<RewardsView, 'q' | 'denom'>) => view.q || view.denom
 
-/** "Created by you": the staked token's denom carries the connected wallet's `factory/<address>/` prefix. */
+/** "Yours": the staked token's denom carries the connected wallet's `factory/<address>/` prefix. */
 export const createdBy = (denom: string, address: string | undefined) =>
     !!address && denom.startsWith(`factory/${address}/`)
 
@@ -90,142 +87,201 @@ export function matchesStakedToken(token: StakedToken, q: string, deepLinked: st
     return [token.ticker, token.name ?? '', token.denom].some(v => v.toLowerCase().includes(lower))
 }
 
-/** Per-DR counts from its prize and schedule lists. */
-export interface DenomRewardCounts {
-    /** Prize entries: every prize denom the DR ever used. */
-    prizes: number;
-    /** Running daily schedules (the chain deletes finished ones). */
-    schedules: number;
-    /** Distinct prize denoms of the running schedules, in first-seen order. */
-    payingDenoms: string[];
-}
+const staked = (amount: BigNumber.Value | undefined) => new BigNumber(amount || 0)
 
-export function toCounts(prizes: ReadonlyArray<unknown>, schedules: ReadonlyArray<{ prize_denom: string }>): DenomRewardCounts {
-    return {
-        prizes: prizes.length,
-        schedules: schedules.length,
-        payingDenoms: Array.from(new Set(schedules.map(s => s.prize_denom))),
-    }
-}
-
-/** A staked amount and what one display unit is worth, for "Most staked". */
-interface Staked {
-    /** `staked_amount` in display units. */
-    stakedDisplay: BigNumber;
-    /** USD price of one display unit; 0 or undefined when unknown. */
-    usdPrice?: BigNumber;
-}
-
-/** One compounded reward card as the page knows it right now. */
-export interface HolderRow extends Staked {
-    dr: DenomReward;
-    /** Display name used by the A–Z sort and the search (ticker, else the denom). */
-    ticker: string;
-    name?: string;
-    /** undefined while loading, null when the queries failed. */
-    counts: DenomRewardCounts | null | undefined;
-}
-
-/** One simple reward row. */
-export interface SimpleRow extends Staked {
-    reward: StakingRewardSDKType;
-    /** The staked token's ticker (else its denom), for the A–Z sort and the search. */
-    ticker: string;
-    name?: string;
-    /** `prize_amount` a day, in display units. */
-    prizeDisplay: BigNumber;
-    /** USD price of one display unit of the prize; 0 or undefined when unknown. */
-    prizeUsdPrice?: BigNumber;
-}
-
-export const hasStakers = (dr: Pick<DenomReward, 'staked_amount'>) => new BigNumber(dr.staked_amount || 0).gt(0)
+export const hasStakers = (reward: { staked_amount?: string }) => staked(reward.staked_amount).gt(0)
 
 /** Visible reason the Airdrop button is disabled, or '' (chain error 5018 refuses an airdrop without stakers). */
 export const airdropDisabledReason = (dr: Pick<DenomReward, 'staked_amount'>) =>
     hasStakers(dr) ? '' : 'Nothing staked yet'
 
 /**
- * Compounded rows the filter keeps. "Paying now" needs the counts: a row still loading stays in
- * the list (with its skeleton) instead of disappearing and coming back; a row whose counts failed
- * is left out, since it can't be shown as paying.
+ * A compounded reward's running daily prizes: undefined while they load, null when the query
+ * failed (the chain deletes finished schedules, so every listed one is running).
  */
-export function filterHolderRows<T extends HolderRow>(rows: ReadonlyArray<T>, filter: RewardFilter, address?: string): T[] {
+export type CompoundedSchedules = DenomRewardSchedule[] | null | undefined
+
+/** The DEX staking list's statuses (`statusText` in apps/dex), so both apps say the same. */
+export type RewardStatus = 'paying' | 'airdrops' | 'running' | 'waiting' | 'finished'
+
+export const STATUS_TEXT: Record<RewardStatus, string> = {
+    paying: 'Paying daily',
+    airdrops: 'Airdrops only',
+    running: 'Running',
+    waiting: 'Waiting for stakers',
+    finished: 'Finished',
+}
+
+/** A compounded reward pays daily while it has a daily prize; else it only passes on airdrops. Unknown while loading. */
+export const compoundedStatus = (schedules: CompoundedSchedules): RewardStatus | undefined =>
+    schedules ? (schedules.length > 0 ? 'paying' : 'airdrops') : undefined
+
+export const simpleStatus = (reward: Pick<StakingRewardSDKType, 'payouts' | 'duration' | 'staked_amount'>): RewardStatus =>
+    isStakingRewardFinished(reward) ? 'finished' : hasStakers(reward) ? 'running' : 'waiting'
+
+/** A lock in days as "21d" (the DEX's `formatLockPeriod`); no lock is "instant". */
+export const formatLock = (days: number) => (days > 0 ? `${Math.round(days)}d` : 'instant')
+
+/** "Unlock 7d · Min 100 BZE · Running": the DEX spec line. No minimum, no "Min"; no status while unknown. */
+export const specLine = (lockDays: number, minStake: string, status: RewardStatus | undefined) =>
+    [`Unlock ${formatLock(lockDays)}`, minStake ? `Min ${minStake}` : '', status ? STATUS_TEXT[status] : '']
+        .filter(Boolean)
+        .join(' · ')
+
+/** "500 VDL / day · 16 / 30 days": the daily amount and the DEX's Elapsed / Duration. */
+export const perDayLine = (perDay: string, done: number, duration: number) =>
+    `${perDay} / day · ${done.toLocaleString('en-US')} / ${duration.toLocaleString('en-US')} days`
+
+/** Does the filter keep this compounded reward? A row still loading its daily prizes stays for "Paying daily". */
+export function keepsCompounded(dr: Pick<DenomReward, 'staked_amount'>, schedules: CompoundedSchedules, filter: RewardFilter): boolean {
     switch (filter) {
         case 'stakers':
-            return rows.filter(r => hasStakers(r.dr))
+            return hasStakers(dr)
         case 'paying':
-            return rows.filter(r => r.counts === undefined || (r.counts !== null && r.counts.schedules > 0))
-        case 'mine':
-            return rows.filter(r => createdBy(r.dr.staking_denom, address))
+            return schedules === undefined || (schedules !== null && schedules.length > 0)
+        // Compounded rewards never end: they are always running, never finished.
+        case 'finished':
+            return false
         default:
-            return [...rows]
+            return true
     }
 }
 
-/** Simple rows the filter and the status keep. "Paying now" is about daily prizes: simple rows ignore it. */
-export function filterSimpleRows<T extends SimpleRow>(rows: ReadonlyArray<T>, filter: RewardFilter, status: SimpleStatus, address?: string): T[] {
-    return rows.filter(r => {
-        if (filter === 'stakers' && !hasStakers(r.reward)) return false
-        if (filter === 'mine' && !createdBy(r.reward.staking_denom, address)) return false
-        if (status === 'running') return !isStakingRewardFinished(r.reward)
-        if (status === 'finished') return isStakingRewardFinished(r.reward)
-        return true
-    })
+/** Does the filter keep this simple reward? "Paying daily" is a running one with stakers. */
+export function keepsSimple(reward: StakingRewardSDKType, filter: RewardFilter): boolean {
+    switch (filter) {
+        case 'stakers':
+            return hasStakers(reward)
+        case 'paying':
+            return simpleStatus(reward) === 'running'
+        case 'running':
+            return !isStakingRewardFinished(reward)
+        case 'finished':
+            return isStakingRewardFinished(reward)
+        default:
+            return true
+    }
+}
+
+/** One row of the directory: a staked token and the rewards that stake it. */
+export interface RewardGroup extends StakedToken {
+    compounded?: DenomReward;
+    /** The compounded reward's running daily prizes (see {@link CompoundedSchedules}). */
+    schedules: CompoundedSchedules;
+    /** Running ones first, then as the chain lists them (newest first). */
+    simple: StakingRewardSDKType[];
+    /** Staked in all the listed rewards, in display units. */
+    stakedDisplay: BigNumber;
+    /** USD price of one display unit; 0 or undefined when unknown. */
+    usdPrice?: BigNumber;
+    /** Prize denoms: the compounded reward's daily prizes, then the running simple rewards' prizes. */
+    earn: string[];
+}
+
+export const rewardCount = (group: Pick<RewardGroup, 'compounded' | 'simple'>) => (group.compounded ? 1 : 0) + group.simple.length
+
+/** What grouping needs to know about a token. */
+export interface TokenLookup {
+    token: (denom: string) => StakedToken & { decimals: number };
+    usdPrice: (denom: string) => BigNumber | undefined;
+}
+
+export interface GroupInput {
+    compounded: ReadonlyArray<DenomReward>;
+    /** Per staking denom; missing while loading, null when failed. */
+    schedules: Record<string, DenomRewardSchedule[] | null>;
+    simple: ReadonlyArray<StakingRewardSDKType>;
+    view: Pick<RewardsView, 'kind' | 'filter' | 'q' | 'denom'>;
+    address?: string;
+}
+
+/**
+ * The rows the view keeps: every kept reward under its staked token, in chain order (compounded
+ * rewards first). The search and "Yours" look at the token; the other filters at each reward, and
+ * a token left with no reward drops out.
+ */
+export function groupRewards(input: GroupInput, lk: TokenLookup): RewardGroup[] {
+    const { view, address } = input
+    const groups = new Map<string, RewardGroup>()
+    const groupOf = (denom: string) => {
+        let group = groups.get(denom)
+        if (!group) {
+            const { ticker, name } = lk.token(denom)
+            group = { denom, ticker, name, schedules: undefined, simple: [], stakedDisplay: new BigNumber(0), usdPrice: lk.usdPrice(denom), earn: [] }
+            groups.set(denom, group)
+        }
+        return group
+    }
+    const tokenKept = (denom: string) =>
+        matchesStakedToken(lk.token(denom), view.q, view.denom) && (view.filter !== 'mine' || createdBy(denom, address))
+    const addStaked = (group: RewardGroup, amount: string | undefined) => {
+        group.stakedDisplay = group.stakedDisplay.plus(staked(amount).shiftedBy(-lk.token(group.denom).decimals))
+    }
+    const addEarn = (group: RewardGroup, denom: string) => {
+        if (!group.earn.includes(denom)) group.earn.push(denom)
+    }
+
+    if (view.kind !== 'simple') {
+        input.compounded.forEach(dr => {
+            const denom = dr.staking_denom
+            const schedules = denom in input.schedules ? input.schedules[denom] : undefined
+            if (!tokenKept(denom) || !keepsCompounded(dr, schedules, view.filter)) return
+            const group = groupOf(denom)
+            group.compounded = dr
+            group.schedules = schedules
+            addStaked(group, dr.staked_amount)
+            schedules?.forEach(s => addEarn(group, s.prize_denom))
+        })
+    }
+    if (view.kind !== 'compounded') {
+        input.simple.forEach(reward => {
+            if (!tokenKept(reward.staking_denom) || !keepsSimple(reward, view.filter)) return
+            const group = groupOf(reward.staking_denom)
+            group.simple.push(reward)
+            addStaked(group, reward.staked_amount)
+            if (!isStakingRewardFinished(reward)) addEarn(group, reward.prize_denom)
+        })
+    }
+    const finishedLast = (a: StakingRewardSDKType, b: StakingRewardSDKType) =>
+        Number(isStakingRewardFinished(a)) - Number(isStakingRewardFinished(b))
+    return [...groups.values()].map(group => ({ ...group, simple: stableSort(group.simple, finishedLast) }))
 }
 
 const knownPrice = (p?: BigNumber) => p !== undefined && p.gt(0)
 
 /**
- * Bigger value first. Display amounts of different tokens aren't comparable (1 BZE ≠ 1 TOK), so
- * two amounts whose USD prices are both known compare by USD value; otherwise they fall back to
- * the raw display amount. The fallback keeps tokens without a market sortable.
+ * Bigger staked value first. Display amounts of different tokens aren't comparable (1 BZE ≠ 1 TOK),
+ * so two rows whose USD prices are both known compare by USD value; otherwise they fall back to the
+ * raw display amount. The fallback keeps tokens without a market sortable.
  */
-function compareValue(a: BigNumber, aPrice: BigNumber | undefined, b: BigNumber, bPrice: BigNumber | undefined): number {
-    if (knownPrice(aPrice) && knownPrice(bPrice)) {
-        return b.multipliedBy(bPrice!).comparedTo(a.multipliedBy(aPrice!)) ?? 0
+function compareStaked(a: RewardGroup, b: RewardGroup): number {
+    if (knownPrice(a.usdPrice) && knownPrice(b.usdPrice)) {
+        return b.stakedDisplay.multipliedBy(b.usdPrice!).comparedTo(a.stakedDisplay.multipliedBy(a.usdPrice!)) ?? 0
     }
-    return b.comparedTo(a) ?? 0
+    return b.stakedDisplay.comparedTo(a.stakedDisplay) ?? 0
 }
 
-const compareStaked = (a: Staked, b: Staked) => compareValue(a.stakedDisplay, a.usdPrice, b.stakedDisplay, b.usdPrice)
-
-const compareTicker = (a: { ticker: string }, b: { ticker: string }) => a.ticker.localeCompare(b.ticker, 'en', { sensitivity: 'base' })
+const compareTicker = (a: RewardGroup, b: RewardGroup) =>
+    a.ticker.localeCompare(b.ticker, 'en', { sensitivity: 'base' }) || a.denom.localeCompare(b.denom)
 
 /** Sorts with the chain order breaking ties; never mutates its input. */
 function stableSort<T>(rows: ReadonlyArray<T>, cmp: (a: T, b: T) => number): T[] {
     return rows.map((row, i) => ({ row, i })).sort((x, y) => cmp(x.row, y.row) || x.i - y.i).map(x => x.row)
 }
 
-/**
- * Compounded rows in the chosen order; ties keep the chain order. "Most prize tokens" needs the
- * counts: rows still loading keep their slot, and only the loaded rows (failed ones last) are
- * sorted into the other slots, so nothing jumps around while the counts arrive.
- */
-export function sortHolderRows<T extends HolderRow>(rows: ReadonlyArray<T>, sort: RewardSort): T[] {
-    if (sort === 'staked') return stableSort(rows, compareStaked)
-    if (sort === 'name') return stableSort(rows, (a, b) => compareTicker(a, b) || a.dr.staking_denom.localeCompare(b.dr.staking_denom))
+/** Its compounded reward's daily prizes are still loading, so what it earns isn't known yet. */
+const earnPending = (g: RewardGroup) => g.compounded !== undefined && g.schedules === undefined
 
-    const prizes = (r: T) => (r.counts ? r.counts.prizes : -1)
-    const sorted = stableSort(rows.filter(r => r.counts !== undefined), (a, b) => prizes(b) - prizes(a))
+/**
+ * Rows in the chosen order; ties keep the chain order. "Most prize tokens" counts what each row
+ * earns: rows still loading keep their slot and only the loaded rows are sorted into the other
+ * slots, so nothing jumps around while the daily prizes arrive.
+ */
+export function sortRewardGroups(groups: ReadonlyArray<RewardGroup>, sort: RewardSort): RewardGroup[] {
+    if (sort === 'staked') return stableSort(groups, compareStaked)
+    if (sort === 'name') return stableSort(groups, compareTicker)
+
+    const sorted = stableSort(groups.filter(g => !earnPending(g)), (a, b) => b.earn.length - a.earn.length)
     let next = 0
-    return rows.map(r => (r.counts === undefined ? r : sorted[next++]))
+    return groups.map(g => (earnPending(g) ? g : sorted[next++]))
 }
-
-/**
- * Simple rows in the chosen order, running ones first; ties keep the chain order (newest first).
- * "Most prize tokens" compares the prize paid a day, by USD value when both prices are known.
- */
-export function sortSimpleRows<T extends SimpleRow>(rows: ReadonlyArray<T>, sort: RewardSort): T[] {
-    const byKind = (a: T, b: T) =>
-        Number(isStakingRewardFinished(a.reward)) - Number(isStakingRewardFinished(b.reward))
-    const bySort = sort === 'staked'
-        ? compareStaked
-        : sort === 'prizes'
-            ? (a: T, b: T) => compareValue(a.prizeDisplay, a.prizeUsdPrice, b.prizeDisplay, b.prizeUsdPrice)
-            : (a: T, b: T) => compareTicker(a, b) || a.reward.staking_denom.localeCompare(b.reward.staking_denom)
-    return stableSort(rows, (a, b) => byKind(a, b) || bySort(a, b))
-}
-
-/** A running daily prize: "50 BZE a day · ends 26 Oct" (days without stakers are skipped, so it may end later). */
-export const dailyPrizeEnd = (perDay: string, daysLeft: number, now: Date) =>
-    `${perDay} a day · ends ${formatDay(addDays(now, daysLeft), now)}`

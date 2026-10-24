@@ -11,39 +11,31 @@ import {
     Shimmer,
     getChainName,
     hgVariant,
-    uAmountToBigNumberAmount,
+    isLpDenom,
     useAssets,
     useAssetsContext,
-    useEpochs,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { InnerHero } from '@/components/ui/inner-hero'
 import { FilterChip } from '@/components/ui/filter-chip'
-import { CompoundedRewardCard, rewardCardId } from '@/components/rewards/compounded-reward-card'
-import { SimpleRewardRow } from '@/components/rewards/simple-reward-row'
+import { RewardGroupRow, rewardRowId } from '@/components/rewards/reward-group-row'
 import { useAllDenomRewards } from '@/hooks/useAllDenomRewards'
 import { useDenomRewardDetails } from '@/hooks/useDenomRewardDetails'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
 import { compoundedNewHref } from '@/lib/denom-reward'
 import {
-    HolderRow,
     RewardFilter,
     RewardKind,
     RewardSort,
     RewardsView,
-    SimpleRow,
-    SimpleStatus,
     createdBy,
-    filterHolderRows,
-    filterSimpleRows,
-    matchesStakedToken,
+    groupRewards,
     parseRewardsView,
+    rewardCount,
     rewardsHref,
     searchText,
-    sortHolderRows,
-    sortSimpleRows,
-    toCounts,
+    sortRewardGroups,
 } from '@/lib/rewards-directory'
 
 const KINDS: { value: RewardKind; label: string }[] = [
@@ -55,12 +47,8 @@ const KINDS: { value: RewardKind; label: string }[] = [
 const FILTERS: { value: RewardFilter; label: string }[] = [
     { value: 'all', label: 'Any' },
     { value: 'stakers', label: 'Has stakers' },
-    { value: 'paying', label: 'Paying now' },
-    { value: 'mine', label: 'Created by you' },
-]
-
-const STATUSES: { value: SimpleStatus; label: string }[] = [
-    { value: 'all', label: 'Any status' },
+    { value: 'paying', label: 'Paying daily' },
+    { value: 'mine', label: 'Yours' },
     { value: 'running', label: 'Running' },
     { value: 'finished', label: 'Finished' },
 ]
@@ -71,20 +59,14 @@ const SORTS: { value: RewardSort; label: string }[] = [
     { value: 'name', label: 'A–Z' },
 ]
 
-/** A section's title: "Compounded · one per staked token · 3". */
-function SectionTitle({ children, count }: { children: React.ReactNode; count?: number }) {
-    return (
-        <Text as="h2" fontSize="12px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint">
-            {children}{count !== undefined && ` · ${count}`}
-        </Text>
-    )
-}
+const selectField = { h: '46px', borderRadius: '14px', bg: 'hg.card', borderColor: 'hg.lineStrong', fontSize: '14px' }
 
-function SectionSkeleton({ testId }: { testId: string }) {
+function ListSkeleton() {
     return (
-        <VStack align="stretch" gap="10px" data-testid={testId} aria-busy="true">
-            <Shimmer h="120px" borderRadius="16px" />
-            <Shimmer h="120px" borderRadius="16px" />
+        <VStack align="stretch" gap="10px" data-testid="rewards-loading" aria-busy="true">
+            <Shimmer h="76px" borderRadius="16px" />
+            <Shimmer h="76px" borderRadius="16px" />
+            <Shimmer h="76px" borderRadius="16px" />
         </VStack>
     )
 }
@@ -106,35 +88,20 @@ function LoadError({ title, onRetry }: { title: string; onRetry: () => void }) {
     )
 }
 
-function Empty({ title, description, href, cta }: { title: string; description: string; href: string; cta: string }) {
-    return (
-        <HgCard p="16px">
-            <PageState
-                kind="empty"
-                icon={<LuGift />}
-                title={title}
-                description={description}
-                action={(
-                    <Button asChild variant={hgVariant('primary')} size="lg">
-                        <NextLink href={href}><LuPlus /> {cta}</NextLink>
-                    </Button>
-                )}
-            />
-        </HgCard>
-    )
-}
-
-/** Every staking reward on the chain (they are permissionless), found by the token people stake. */
+/**
+ * Every staking reward on the chain (they are permissionless), one row per staked token: its
+ * compounded reward and the simple rewards that stake it, behind a click.
+ */
 function RewardsDirectory() {
     const { getQueryParam, replace } = useNavigationWithParams()
     const view = parseRewardsView(getQueryParam)
     // The search box keeps its own text, so typing never waits for the URL to catch up.
     const [q, setQ] = useState(() => searchText(view))
-    const [now] = useState(() => new Date())
+    // The rows opened or closed by hand; the rest follow their default (see `isOpen`).
+    const [toggled, setToggled] = useState<ReadonlySet<string>>(() => new Set())
     const { getAsset, denomTicker } = useAssets()
     const { usdPricesMap } = useAssetsContext()
     const { address } = useChain(getChainName())
-    const { dayEpochInfo } = useEpochs()
     const compounded = useAllDenomRewards()
     const simple = useStakingRewards()
     const details = useDenomRewardDetails((compounded.list ?? []).map(dr => dr.staking_denom))
@@ -145,133 +112,90 @@ function RewardsDirectory() {
         // Typing replaces the deep-linked token: from here on it is an ordinary search.
         replace(rewardsHref({ ...view, q: value, denom: '' }))
     }
+    const toggle = (denom: string) => setToggled(prev => {
+        const next = new Set(prev)
+        if (!next.delete(denom)) next.add(denom)
+        return next
+    })
 
-    const tokenOf = (denom: string) => {
-        const asset = getAsset(denom)
-        return { denom, ticker: asset?.ticker ?? denomTicker(denom), name: asset?.name, decimals: asset?.decimals ?? 0, logo: asset?.logo }
-    }
-
-    const holderRows: (HolderRow & { logo?: string })[] = sortHolderRows(filterHolderRows(
-        (compounded.list ?? [])
-            .map(dr => {
-                const token = tokenOf(dr.staking_denom)
-                const d = details[dr.staking_denom]
-                return {
-                    dr,
-                    ticker: token.ticker,
-                    name: token.name,
-                    logo: token.logo,
-                    stakedDisplay: uAmountToBigNumberAmount(dr.staked_amount, token.decimals),
-                    usdPrice: usdPricesMap.get(dr.staking_denom),
-                    counts: d === undefined ? undefined : d === null ? null : toCounts(d.prizes, d.schedules),
-                }
-            })
-            .filter(row => matchesStakedToken({ denom: row.dr.staking_denom, ticker: row.ticker, name: row.name }, q, view.denom)),
-        view.filter,
-        address,
+    const schedules = Object.fromEntries(Object.entries(details).map(([denom, d]) => [denom, d ? d.schedules : null]))
+    const groups = sortRewardGroups(groupRewards(
+        { compounded: compounded.list ?? [], schedules, simple: simple.rewards, view: { ...view, q }, address },
+        {
+            token: denom => {
+                const asset = getAsset(denom)
+                return { denom, ticker: asset?.ticker ?? denomTicker(denom), name: asset?.name, decimals: asset?.decimals ?? 0 }
+            },
+            usdPrice: denom => usdPricesMap.get(denom),
+        },
     ), view.sort)
 
-    const simpleRows: SimpleRow[] = sortSimpleRows(filterSimpleRows(
-        simple.rewards
-            .map(reward => {
-                const token = tokenOf(reward.staking_denom)
-                const prize = tokenOf(reward.prize_denom)
-                return {
-                    reward,
-                    ticker: token.ticker,
-                    name: token.name,
-                    stakedDisplay: uAmountToBigNumberAmount(reward.staked_amount || 0, token.decimals),
-                    usdPrice: usdPricesMap.get(reward.staking_denom),
-                    prizeDisplay: uAmountToBigNumberAmount(reward.prize_amount, prize.decimals),
-                    prizeUsdPrice: usdPricesMap.get(reward.prize_denom),
-                }
-            })
-            .filter(row => matchesStakedToken({ denom: row.reward.staking_denom, ticker: row.ticker, name: row.name }, q, view.denom)),
-        view.filter,
-        view.status,
-        address,
-    ), view.sort)
-
-    // A deep link (`?denom=`) scrolls to that token's compounded reward once the cards are there.
+    // A deep link (`?denom=`) opens that token's row and, once the rows are there, scrolls to it;
+    // so does a list down to one row.
+    const isOpen = (denom: string) => toggled.has(denom) !== (denom === view.denom || groups.length === 1)
+    const loading = compounded.isLoading || simple.isLoading
     const scrolledTo = useRef('')
-    const cardsReady = compounded.list !== undefined
     useEffect(() => {
-        if (!view.denom || !cardsReady || scrolledTo.current === view.denom) return
+        if (!view.denom || loading || scrolledTo.current === view.denom) return
         scrolledTo.current = view.denom
-        document.getElementById(rewardCardId(view.denom))?.scrollIntoView({ block: 'start' })
-    }, [view.denom, cardsReady])
+        document.getElementById(rewardRowId(view.denom))?.scrollIntoView({ block: 'start' })
+    }, [view.denom, loading])
 
-    const showCompounded = view.kind !== 'simple'
-    const showSimple = view.kind !== 'compounded'
+    // "Make X stakable" belongs where every reward of the token shows, and only once the
+    // compounded rewards are known. LP shares are staked in simple rewards.
+    const offerStakable = (denom: string) =>
+        compounded.list !== undefined && view.kind === 'all' && (view.filter === 'all' || view.filter === 'mine') && !isLpDenom(denom)
+
+    const nothingYet = !loading && !compounded.hasError && !simple.hasError
+        && (compounded.list ?? []).length === 0 && simple.rewards.length === 0
     const searching = q.trim() !== ''
-    const noMatch = searching ? `No reward stakes a token matching '${q.trim()}'.` : 'Nothing matches these filters.'
+    const total = groups.reduce((n, g) => n + rewardCount(g), 0)
 
-    let compoundedBody: React.ReactNode
-    if (compounded.isLoading) {
-        compoundedBody = <SectionSkeleton testId="compounded-loading" />
-    } else if (compounded.hasError) {
-        compoundedBody = <LoadError title="Couldn't load the compounded rewards." onRetry={compounded.retry} />
-    } else if ((compounded.list ?? []).length === 0) {
-        compoundedBody = (
-            <Empty
-                title="No compounded rewards yet."
-                description="Make a token stakable: holders stake it and share daily prizes that anyone can add."
-                href={compoundedNewHref()}
-                cta="Make a token stakable"
-            />
+    let list: React.ReactNode
+    if (loading) {
+        list = <ListSkeleton />
+    } else if (nothingYet) {
+        list = (
+            <HgCard p="16px">
+                <PageState
+                    kind="empty"
+                    icon={<LuGift />}
+                    title="No staking rewards yet."
+                    description="Make a token stakable: holders stake it and share daily prizes that anyone can add."
+                    action={(
+                        <Button asChild variant={hgVariant('primary')} size="lg">
+                            <NextLink href={compoundedNewHref()}><LuPlus /> Make a token stakable</NextLink>
+                        </Button>
+                    )}
+                />
+            </HgCard>
         )
-    } else if (holderRows.length === 0) {
-        compoundedBody = <Text fontSize="14px" color="fg.muted" data-testid="compounded-no-match">{noMatch}</Text>
+    } else if (groups.length === 0) {
+        list = (
+            <Text fontSize="14px" color="fg.muted" data-testid="rewards-no-match">
+                {searching ? `No reward stakes a token matching '${q.trim()}'.` : 'Nothing matches these filters.'}
+            </Text>
+        )
     } else {
-        compoundedBody = (
-            <VStack align="stretch" gap="12px">
-                {holderRows.map(row => (
-                    <CompoundedRewardCard
-                        key={row.dr.staking_denom}
-                        row={row}
-                        details={details[row.dr.staking_denom]}
-                        mine={createdBy(row.dr.staking_denom, address)}
-                        currentDayEpoch={dayEpochInfo?.current_epoch?.toString()}
-                        now={now}
-                    />
-                ))}
-            </VStack>
-        )
-    }
-
-    let simpleBody: React.ReactNode
-    if (simple.isLoading) {
-        simpleBody = <SectionSkeleton testId="simple-loading" />
-    } else if (simple.hasError) {
-        simpleBody = <LoadError title="Couldn't load the simple rewards." onRetry={simple.refresh} />
-    } else if (simple.rewards.length === 0) {
-        simpleBody = (
-            <Empty
-                title="No simple rewards yet."
-                description="People stake a token and earn a prize, day by day, for as long as it is paid for."
-                href="/reward/new"
-                cta="Create a simple reward"
-            />
-        )
-    } else if (simpleRows.length === 0) {
-        simpleBody = <Text fontSize="14px" color="fg.muted" data-testid="simple-no-match">{noMatch}</Text>
-    } else {
-        simpleBody = (
-            <VStack align="stretch" gap="12px">
-                {simpleRows.map(row => (
-                    <SimpleRewardRow
-                        key={row.reward.reward_id}
-                        reward={row.reward}
-                        mine={createdBy(row.reward.staking_denom, address)}
-                        now={now}
+        list = (
+            <VStack align="stretch" gap="10px">
+                <Text fontSize="12px" fontWeight="700" letterSpacing="0.08em" textTransform="uppercase" color="hg.text.faint" data-testid="rewards-count">
+                    {`${groups.length} token${groups.length === 1 ? '' : 's'} · ${total} reward${total === 1 ? '' : 's'}`}
+                </Text>
+                {groups.map(group => (
+                    <RewardGroupRow
+                        key={group.denom}
+                        group={group}
+                        mine={createdBy(group.denom, address)}
+                        open={isOpen(group.denom)}
+                        onToggle={() => toggle(group.denom)}
+                        offerStakable={offerStakable(group.denom)}
                         onChanged={simple.refresh}
                     />
                 ))}
             </VStack>
         )
     }
-
-    const ready = (isLoading: boolean, hasError: boolean) => !isLoading && !hasError
 
     return (
         <>
@@ -285,79 +209,55 @@ function RewardsDirectory() {
                 )}
             />
             <PageContainer as="main" pt="28px" pb="64px">
-                <VStack align="stretch" gap="28px">
-                    <VStack align="stretch" gap="14px">
-                        <HStack gap="12px" wrap="wrap" align="center">
-                            <InputGroup flex="1 1 280px" startElement={<LuSearch size={18} aria-hidden />}>
-                                <Input
-                                    aria-label="Search by staked token"
-                                    placeholder="Search by staked token"
-                                    h="46px"
-                                    borderRadius="14px"
-                                    bg="hg.card"
-                                    borderColor="hg.lineStrong"
-                                    value={q}
-                                    onChange={(e) => search(e.currentTarget.value)}
-                                />
-                            </InputGroup>
-                            <NativeSelect.Root size="sm" width="auto">
-                                <NativeSelect.Field
-                                    aria-label="Sort"
-                                    h="46px"
-                                    borderRadius="14px"
-                                    bg="hg.card"
-                                    borderColor="hg.lineStrong"
-                                    fontSize="14px"
-                                    value={view.sort}
-                                    onChange={(e) => show({ sort: e.currentTarget.value as RewardSort })}
-                                >
-                                    {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </NativeSelect.Field>
-                                <NativeSelect.Indicator />
-                            </NativeSelect.Root>
-                        </HStack>
-                        <HStack gap="8px" wrap="wrap" role="group" aria-label="Kind">
+                <VStack align="stretch" gap="20px">
+                    <HStack gap="10px" wrap="wrap" align="center">
+                        <InputGroup flex="1 1 260px" startElement={<LuSearch size={18} aria-hidden />}>
+                            <Input
+                                aria-label="Search by staked token"
+                                placeholder="Search by staked token"
+                                h="46px"
+                                borderRadius="14px"
+                                bg="hg.card"
+                                borderColor="hg.lineStrong"
+                                value={q}
+                                onChange={(e) => search(e.currentTarget.value)}
+                            />
+                        </InputGroup>
+                        <HStack gap="6px" wrap="wrap" role="group" aria-label="Kind">
                             {KINDS.map(k => (
                                 <FilterChip key={k.value} pressed={view.kind === k.value} onClick={() => show({ kind: k.value })}>
                                     {k.label}
                                 </FilterChip>
                             ))}
                         </HStack>
-                        <HStack gap="8px" wrap="wrap" role="group" aria-label="Filter">
-                            {FILTERS.filter(f => f.value !== 'paying' || showCompounded).map(f => (
-                                <FilterChip key={f.value} pressed={view.filter === f.value} onClick={() => show({ filter: f.value })}>
-                                    {f.label}
-                                </FilterChip>
-                            ))}
-                        </HStack>
-                        {showSimple && (
-                            <HStack gap="8px" wrap="wrap" role="group" aria-label="Simple reward status">
-                                {STATUSES.map(s => (
-                                    <FilterChip key={s.value} pressed={view.status === s.value} onClick={() => show({ status: s.value })}>
-                                        {s.label}
-                                    </FilterChip>
-                                ))}
-                            </HStack>
-                        )}
-                    </VStack>
+                        <NativeSelect.Root size="sm" width="auto">
+                            <NativeSelect.Field
+                                aria-label="Filter"
+                                {...selectField}
+                                value={view.filter}
+                                onChange={(e) => show({ filter: e.currentTarget.value as RewardFilter })}
+                            >
+                                {FILTERS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                        <NativeSelect.Root size="sm" width="auto">
+                            <NativeSelect.Field
+                                aria-label="Sort"
+                                {...selectField}
+                                value={view.sort}
+                                onChange={(e) => show({ sort: e.currentTarget.value as RewardSort })}
+                            >
+                                {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                            </NativeSelect.Field>
+                            <NativeSelect.Indicator />
+                        </NativeSelect.Root>
+                    </HStack>
 
-                    {showCompounded && (
-                        <VStack as="section" aria-label="Compounded rewards" align="stretch" gap="12px">
-                            <SectionTitle count={ready(compounded.isLoading, compounded.hasError) ? holderRows.length : undefined}>
-                                Compounded · one per staked token
-                            </SectionTitle>
-                            {compoundedBody}
-                        </VStack>
-                    )}
+                    {compounded.hasError && <LoadError title="Couldn't load the compounded rewards." onRetry={compounded.retry} />}
+                    {simple.hasError && <LoadError title="Couldn't load the simple rewards." onRetry={simple.refresh} />}
 
-                    {showSimple && (
-                        <VStack as="section" aria-label="Simple rewards" align="stretch" gap="12px">
-                            <SectionTitle count={ready(simple.isLoading, simple.hasError) ? simpleRows.length : undefined}>
-                                Simple · fixed budget, end date
-                            </SectionTitle>
-                            {simpleBody}
-                        </VStack>
-                    )}
+                    <Box as="section" aria-label="Rewards by staked token">{list}</Box>
                 </VStack>
             </PageContainer>
         </>

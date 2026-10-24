@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dailyPrizeLine, poolLine, stakesToken } from "./token-page";
+import { poolLine, stakesToken } from "./token-page";
 
 const TOK = "factory/bze1owner/utok";
 const SIDE_TOK = { ticker: "TOK", decimals: 6 };
@@ -17,13 +17,6 @@ describe("poolLine", () => {
     it("gives no price for an empty pool", () => {
         const pool = { base: TOK, quote: "ubze", reserve_base: "0", reserve_quote: "0" };
         expect(poolLine(pool, TOK, SIDE_TOK, SIDE_BZE)).toBe("0 TOK + 0 BZE in the pool");
-    });
-});
-
-describe("dailyPrizeLine", () => {
-    it("says how much a day and how many days are left", () => {
-        expect(dailyPrizeLine("50 BZE", 3)).toBe("50 BZE a day · ends in 3 days");
-        expect(dailyPrizeLine("50 BZE", 1)).toBe("50 BZE a day · ends in 1 day");
     });
 });
 
