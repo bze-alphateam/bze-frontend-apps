@@ -108,7 +108,7 @@ const renderPage = () => {
 };
 const step = (title: string) => screen.getByRole("region", { name: title });
 const button = (region: HTMLElement, name: string | RegExp) => within(region).getByRole("button", { name });
-const extendButton = () => button(step("Review"), "Extend reward");
+const extendButton = () => button(step("Review"), "Extend");
 const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Record<string, unknown> }[];
 
 async function enterDays(days: string) {

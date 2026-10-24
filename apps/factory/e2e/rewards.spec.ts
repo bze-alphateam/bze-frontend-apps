@@ -40,7 +40,7 @@ test("lists every compounded and simple reward with the actions anyone can take"
     await expect(card.getByTestId("prize-token-line")).toHaveCount(PRIZES.body.list.length);
     await expect(card.getByRole("link", {name: "Add daily prize"})).toHaveAttribute("href", `/denom-reward/schedule?denom=${encodeURIComponent(NOADMIN)}`);
     await expect(card.getByRole("link", {name: "Airdrop", exact: true})).toHaveAttribute("href", `/airdrop?to=stakers&denom=${encodeURIComponent(NOADMIN)}`);
-    await expect(card.getByRole("link", {name: "Extend →"}).first())
+    await expect(card.getByRole("link", {name: "Extend", exact: true}).first())
         .toHaveAttribute("href", `/denom-reward/schedule?denom=${encodeURIComponent(NOADMIN)}&schedule=000000000000`);
     await expect(card.getByRole("link", {name: "Open token"})).toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(NOADMIN)}`);
     // Staker counts are not on the chain (epic decision 12).

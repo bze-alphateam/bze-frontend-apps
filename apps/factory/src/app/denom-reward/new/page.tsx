@@ -395,7 +395,7 @@ function CompoundedNewContent() {
                         "There is one compounded reward per token. It can't be removed",
                         ...(withPrize ? ['The locked prize is paid out to stakers. It can\'t be withdrawn'] : []),
                     ]}
-                    submitLabel={ticker ? `Make ${ticker} stakable` : 'Make it stakable'}
+                    submitLabel={ticker ? `Make ${ticker} stakable` : 'Make a token stakable'}
                     onSubmit={create}
                     disabled={!canCreate}
                     onBack={steps.back}

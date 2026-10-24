@@ -256,7 +256,7 @@ function ScheduleFormContent() {
             permanent={isExtend
                 ? ['Extra tokens are committed to stakers. The daily amount can\'t change']
                 : ['Committed tokens are paid out to stakers; the daily amount can\'t change']}
-            submitLabel={isExtend ? 'Extend daily prize' : 'Start daily prize'}
+            submitLabel={isExtend ? 'Extend' : 'Start daily prize'}
             onSubmit={sign}
             disabled={!canSign}
             onBack={steps.back}

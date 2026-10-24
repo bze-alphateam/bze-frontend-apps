@@ -40,7 +40,7 @@ test("shows the reward's read-only terms and the new end date", async ({page}) =
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("10 more days for everyone staking VDL");
-    await expect(review.getByRole("button", {name: "Extend reward"})).toBeDisabled();
+    await expect(review.getByRole("button", {name: "Extend", exact: true})).toBeDisabled();
     await expect(page.getByText("Connect your wallet to extend this reward.")).toBeVisible();
 });
 

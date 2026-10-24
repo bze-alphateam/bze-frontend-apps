@@ -38,7 +38,7 @@ export function StakedTokenStep({ flow, value, onChange, ticker, denomReward, is
             <StakedTokenPicker mode="hasCompounded" value={value} onChange={onChange} stateOf={stateOf} />
             <Text fontSize="14px" color="fg.muted">
                 {'Not in the list? '}
-                <Link asChild color="hg.link" fontWeight="600"><NextLink href={compoundedNewHref()}>Make it stakable first</NextLink></Link>
+                <Link asChild color="hg.link" fontWeight="600"><NextLink href={compoundedNewHref()}>Make a token stakable</NextLink></Link>
             </Text>
 
             {value && hasError && (
@@ -54,7 +54,7 @@ export function StakedTokenStep({ flow, value, onChange, ticker, denomReward, is
             )}
             {value && !isLoading && !hasError && !denomReward && (
                 <BlockerNote
-                    action={<Link asChild color="hg.link" fontSize="14px" fontWeight="600"><NextLink href={compoundedNewHref(value)}>Make it stakable</NextLink></Link>}
+                    action={<Link asChild color="hg.link" fontSize="14px" fontWeight="600"><NextLink href={compoundedNewHref(value)}>{ticker ? `Make ${ticker} stakable` : 'Make a token stakable'}</NextLink></Link>}
                 >
                     <Box as="span" data-testid="no-compounded">{`${name} has no compounded reward yet. Make it stakable first, then add prizes.`}</Box>
                 </BlockerNote>

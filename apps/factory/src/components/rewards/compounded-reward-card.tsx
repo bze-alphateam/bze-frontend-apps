@@ -50,7 +50,7 @@ export function CardActions({ children, testId }: { children: React.ReactNode; t
     )
 }
 
-/** One running daily prize: "50 BZE a day · ends 26 Oct" and its Extend →. */
+/** One running daily prize: "50 BZE a day · ends 26 Oct" and its Extend. */
 function DailyPrizeLine({ denom, schedule, now }: { denom: string; schedule: DenomRewardSchedule; now: Date }) {
     const { asset } = useAsset(schedule.prize_denom)
     const ticker = asset?.ticker ?? schedule.prize_denom
@@ -62,7 +62,7 @@ function DailyPrizeLine({ denom, schedule, now }: { denom: string; schedule: Den
             <Text fontSize="13px" minW={0} wordBreak="break-word">
                 {left > 0 ? dailyPrizeEnd(perDay, left, now) : `${perDay} a day · finished`}
             </Text>
-            <ItemLink href={scheduleFormHref(denom, schedule.schedule_id)}>Extend →</ItemLink>
+            <ItemLink href={scheduleFormHref(denom, schedule.schedule_id)}>Extend</ItemLink>
         </HStack>
     )
 }

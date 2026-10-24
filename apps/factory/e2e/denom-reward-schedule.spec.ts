@@ -15,7 +15,7 @@ test("without a token, asks whose stakers first and lists what each stakes", asy
     await expect(token).toHaveAttribute("data-state", "active");
     await token.getByRole("textbox", {name: "Search tokens"}).fill("noadmin");
     await expect(token.getByRole("radio").filter({hasText: "NOAD"}).first()).toContainText("20 staked");
-    await expect(token.getByRole("link", {name: "Make it stakable first"})).toHaveAttribute("href", "/denom-reward/new");
+    await expect(token.getByRole("link", {name: "Make a token stakable"})).toHaveAttribute("href", "/denom-reward/new");
 });
 
 test("adds a daily prize for NOAD stakers and reaches Review with the fee and the connect message", async ({page}) => {
@@ -71,7 +71,7 @@ test("extends a running schedule without a fee", async ({page}) => {
     const leaves = review.getByRole("region", {name: "Leaves your wallet"});
     await expect(leaves).toContainText("100 VDL");
     await expect(leaves.getByText("None", {exact: true})).toBeVisible();
-    await expect(review.getByRole("button", {name: "Extend daily prize"})).toBeDisabled();
+    await expect(review.getByRole("button", {name: "Extend", exact: true})).toBeDisabled();
 });
 
 test("explains a schedule that no longer runs", async ({page}) => {

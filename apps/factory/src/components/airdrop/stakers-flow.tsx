@@ -358,7 +358,7 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                     />
                     <Text fontSize="14px" color="fg.muted">
                         {'Not in the list? '}
-                        <Link asChild color="hg.link" fontWeight="600"><NextLink href={target === 'lp' ? chooseRewardsHref() : compoundedNewHref()}>Make it stakable first</NextLink></Link>
+                        <Link asChild color="hg.link" fontWeight="600"><NextLink href={target === 'lp' ? chooseRewardsHref() : compoundedNewHref()}>{target === 'lp' ? 'Make it stakable first' : 'Make a token stakable'}</NextLink></Link>
                     </Text>
                     {tokenNote}
                 </VStack>
