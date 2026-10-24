@@ -7,7 +7,8 @@ import type { Asset } from "@bze/bze-ui-kit";
 import type { StakingRewardSDKType } from "@bze/bzejs/bze/rewards/store";
 
 // The directory against mocked chain queries: the DR list plus per-DR prize and schedule lists, and
-// the simple rewards hook. Order assertions wait for the rows to settle (BFE-253).
+// the simple rewards hook, grouped one row per staked token (canvas C-2). Order assertions wait for
+// the rows to settle (BFE-253).
 const m = vi.hoisted(() => ({
     getAll: vi.fn(),
     getPrizes: vi.fn(),
@@ -46,7 +47,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssets: () => ({ getAsset: (d: string) => assets[d], denomTicker: (d: string) => assets[d]?.ticker ?? d }),
         useAssetsContext: () => ({ usdPricesMap: m.prices }),
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
-        useEpochs: () => ({ dayEpochInfo: { current_epoch: "10" } }),
+        useLiquidityPools: () => ({ pools: [], getPoolByLpDenom: () => undefined }),
+        getDexApp: () => ({ href: "https://dex.example" }),
         getAllDenomRewards: () => m.getAll(),
         getDenomRewardPrizes: (denom: string) => m.getPrizes(denom),
         getDenomRewardSchedules: (denom: string) => m.getSchedules(denom),
@@ -93,10 +95,12 @@ function renderPage() {
     });
 }
 
-const cards = () => screen.queryAllByTestId("compounded-reward-card");
-const cardTitles = () => cards().map(c => within(c).getByRole("heading").textContent);
-const simpleTitles = () => screen.queryAllByTestId("simple-reward-row").map(r => within(r).getByRole("heading").textContent);
-const card = (title: string) => cards().find(c => within(c).getByRole("heading").textContent === title)!;
+const groups = () => screen.queryAllByTestId("reward-group");
+const tickers = () => groups().map(g => within(g).getByTestId("reward-group-ticker").textContent);
+const group = (ticker: string) => groups().find(g => within(g).getByTestId("reward-group-ticker").textContent === ticker)!;
+const header = (ticker: string) => within(group(ticker)).getAllByRole("button")[0];
+const toggle = (ticker: string) => userEvent.click(header(ticker));
+const dex = (id: string) => `https://dex.example/staking/details?id=${encodeURIComponent(id)}`;
 
 beforeEach(() => {
     m.getAll.mockReset();
@@ -111,57 +115,44 @@ beforeEach(() => {
     m.simple = { rewards: [], isLoading: false, hasError: false };
 });
 
-describe("rewards directory: sections", () => {
-    it("lists one card per compounded reward and one row per simple reward, with their counts", async () => {
-        m.getAll.mockResolvedValue(DRS);
-        m.simple.rewards = [reward("1"), reward("2", { staking_denom: "ubze", prize_denom: TOK })];
-        renderPage();
-
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE", "Stake TOK"]));
-        expect(simpleTitles()).toEqual(["Stake TOK · earn BZE", "Stake BZE · earn TOK"]);
-        expect(screen.getByRole("heading", { level: 2, name: "Compounded · one per staked token · 2" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { level: 2, name: "Simple · fixed budget, end date · 2" })).toBeInTheDocument();
-
-        expect(within(card("Stake BZE")).getByTestId("compounded-meta")).toHaveTextContent("1,500 staked · unstaking takes 7 days");
-        expect(within(card("Stake TOK")).getByTestId("compounded-meta")).toHaveTextContent("0 staked · unstaking takes 1 day");
-        // No staker counts: the chain doesn't store them.
-        cards().forEach(c => expect(c).not.toHaveTextContent(/stakers/));
-    });
-
-    it("shows the staked USD value when priced", async () => {
+describe("rewards directory: one row per staked token", () => {
+    it("lists every staked token once, closed, with what it earns, the total staked and its reward count", async () => {
         const { default: BigNumber } = await import("bignumber.js");
-        m.getAll.mockResolvedValue([DRS[0]]);
+        m.getAll.mockResolvedValue(DRS);
+        m.getSchedules.mockImplementation(async (d: string) => (d === "ubze" ? [schedule("1", "ubze", "1000000", 10, 1), schedule("2", TOK, "1000000", 10, 1)] : []));
+        m.simple.rewards = [reward("1"), reward("2", { staking_denom: "ubze", prize_denom: TOK })];
         m.prices = new Map([["ubze", new BigNumber("0.01")]]);
         renderPage();
 
-        await waitFor(() => expect(screen.getByTestId("compounded-meta")).toHaveTextContent("1,500 staked · ≈$15 · unstaking takes 7 days"));
+        await waitFor(() => expect(within(group("BZE")).getByText("+ 1 token")).toBeInTheDocument());
+        expect(tickers()).toEqual(["BZE", "TOK"]);
+        expect(screen.getByTestId("rewards-count")).toHaveTextContent("2 tokens · 4 rewards");
+
+        const bze = within(group("BZE"));
+        expect(bze.getByTestId("reward-group-count")).toHaveTextContent("2 rewards");
+        // 1,500 in the compounded reward + 5 in simple #2, at $0.01.
+        expect(bze.getByTestId("reward-group-staked")).toHaveTextContent("Total staked1.505K≈ $15.05");
+        expect(header("BZE")).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByTestId("reward-group-body")).not.toBeInTheDocument();
+        // "Last paid" is gone, and no staker counts: the chain doesn't store them.
+        expect(screen.getByRole("region", { name: "Rewards by staked token" })).not.toHaveTextContent(/Last paid|stakers/);
     });
 
-    it("lists the running daily prizes with their end and the prize tokens with when they last paid", async () => {
-        vi.useFakeTimers({ toFake: ["Date"] });
-        vi.setSystemTime(new Date(2026, 9, 22, 12));
-        m.getAll.mockResolvedValue([DRS[0]]);
-        m.getPrizes.mockResolvedValue(prizes("ubze", TOK));
-        m.getSchedules.mockResolvedValue([schedule("7", "ubze", "50000000", 10, 6)]);
-        renderPage();
-
-        const line = await screen.findByTestId("daily-prize-line");
-        expect(line).toHaveTextContent("50 BZE a day · ends 26 Oct");
-        expect(screen.getAllByTestId("prize-token-line").map(l => l.textContent)).toEqual(["BZELast paid Yesterday", "TOKLast paid Yesterday"]);
-        vi.useRealTimers();
-    });
-
-    it("says no daily prize is running, and that a failed prize query isn't 'no prizes'", async () => {
+    it("opens and closes a row; a list of one row starts open", async () => {
         m.getAll.mockResolvedValue(DRS);
-        m.getPrizes.mockImplementation(async (d: string) => {
-            if (d === TOK) throw new Error("boom");
-            return [];
-        });
-        vi.spyOn(console, "error").mockImplementation(() => {});
-        renderPage();
+        const view = renderPage();
+        await waitFor(() => expect(groups()).toHaveLength(2));
 
-        await waitFor(() => expect(within(card("Stake BZE")).getByText("No daily prize running.")).toBeInTheDocument());
-        await waitFor(() => expect(within(card("Stake TOK")).getByText(/Couldn't load its prizes/)).toBeInTheDocument());
+        await toggle("TOK");
+        expect(header("TOK")).toHaveAttribute("aria-expanded", "true");
+        expect(within(group("TOK")).getByTestId("compounded-item")).toBeInTheDocument();
+        await toggle("TOK");
+        expect(within(group("TOK")).queryByTestId("compounded-item")).not.toBeInTheDocument();
+        view.unmount();
+
+        m.getAll.mockResolvedValue([DRS[0]]);
+        renderPage();
+        await waitFor(() => expect(header("BZE")).toHaveAttribute("aria-expanded", "true"));
     });
 
     it("links Create a reward to the reward kinds", () => {
@@ -173,53 +164,79 @@ describe("rewards directory: sections", () => {
     });
 });
 
-describe("rewards directory: actions", () => {
-    it("compounded: Add daily prize, Airdrop, Extend per daily prize, Open token for Factory tokens only", async () => {
-        m.getAll.mockResolvedValue(DRS);
-        m.getSchedules.mockImplementation(async (d: string) => (d === "ubze" ? [schedule("3", "ubze", "1000000", 10, 1), schedule("4", TOK, "1000000", 10, 1)] : []));
+describe("rewards directory: a token's rewards", () => {
+    it("compounded: the DEX spec line, each daily prize with its days and Extend, Add daily prize, Airdrop and DEX", async () => {
+        m.getAll.mockResolvedValue([DRS[0]]);
+        m.getPrizes.mockResolvedValue(prizes("ubze", TOK));
+        m.getSchedules.mockResolvedValue([schedule("3", "ubze", "50000000", 10, 6), schedule("4", TOK, "1000000", 30, 2)]);
         renderPage();
 
-        await waitFor(() => expect(within(card("Stake BZE")).getAllByRole("link", { name: "Extend" })).toHaveLength(2));
-        const bze = within(card("Stake BZE"));
-        expect(bze.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", "/denom-reward/schedule?denom=ubze");
-        expect(bze.getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", "/airdrop?to=stakers&denom=ubze");
-        expect(bze.getAllByRole("link", { name: "Extend" }).map(l => l.getAttribute("href")))
+        const item = within(await screen.findByTestId("compounded-item"));
+        await waitFor(() => expect(item.getAllByTestId("daily-prize-line")).toHaveLength(2));
+        expect(item.getByText("Compounded")).toBeInTheDocument();
+        expect(item.getByTestId("reward-spec")).toHaveTextContent("Unlock 7d · Paying daily");
+        expect(item.getAllByTestId("daily-prize-line").map(l => l.textContent)).toEqual(["50 BZE / day · 6 / 10 days" + "Extend", "1 TOK / day · 2 / 30 days" + "Extend"]);
+        expect(item.getAllByRole("link", { name: "Extend" }).map(l => l.getAttribute("href")))
             .toEqual(["/denom-reward/schedule?denom=ubze&schedule=3", "/denom-reward/schedule?denom=ubze&schedule=4"]);
-        // ubze isn't a Factory token: it has no token page.
-        expect(bze.queryByRole("link", { name: "Open token" })).not.toBeInTheDocument();
-
-        const tok = within(card("Stake TOK"));
-        expect(tok.getByRole("link", { name: "Open token" })).toHaveAttribute("href", `/tokens/token?denom=${encodeURIComponent(TOK)}`);
+        expect(item.getByRole("link", { name: "Add daily prize" })).toHaveAttribute("href", "/denom-reward/schedule?denom=ubze");
+        expect(item.getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", "/airdrop?to=stakers&denom=ubze");
+        const link = item.getByRole("link", { name: /DEX/ });
+        expect(link).toHaveAttribute("href", dex("compounded:ubze"));
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+        // Its token page isn't a button any more, and no prize says when it last paid.
+        expect(item.queryByRole("link", { name: "Open token" })).not.toBeInTheDocument();
+        expect(group("BZE")).not.toHaveTextContent("Last paid");
     });
 
-    it("disables Airdrop with the reason when nothing is staked", async () => {
-        m.getAll.mockResolvedValue(DRS);
+    it("compounded: Nothing scheduled, Airdrops only, and Airdrop disabled while nothing is staked", async () => {
+        m.getAll.mockResolvedValue([DRS[1]]);
         renderPage();
 
-        await waitFor(() => expect(cards()).toHaveLength(2));
-        const tok = within(card("Stake TOK"));
-        expect(tok.getByRole("button", { name: "Airdrop" })).toBeDisabled();
-        expect(tok.getByTestId("airdrop-disabled")).toHaveTextContent("Nothing staked yet");
-        expect(within(card("Stake BZE")).queryByTestId("airdrop-disabled")).not.toBeInTheDocument();
+        const item = within(await screen.findByTestId("compounded-item"));
+        await waitFor(() => expect(item.getByText("Nothing scheduled")).toBeInTheDocument());
+        expect(item.getByTestId("reward-spec")).toHaveTextContent("Unlock 1d · Airdrops only");
+        const airdrop = item.getByRole("button", { name: "Airdrop" });
+        expect(airdrop).toBeDisabled();
+        expect(airdrop).toHaveAttribute("title", "Nothing staked yet");
     });
 
-    it("simple: Extend links to its wizard; the end day, or finished", async () => {
-        vi.useFakeTimers({ toFake: ["Date"] });
-        vi.setSystemTime(new Date(2026, 9, 22, 12));
+    it("compounded: a failed prize query isn't 'nothing scheduled'", async () => {
+        m.getAll.mockResolvedValue([DRS[0]]);
+        m.getPrizes.mockRejectedValue(new Error("boom"));
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        renderPage();
+
+        expect(await screen.findByText("Couldn't load its daily prizes.")).toBeInTheDocument();
+        expect(screen.queryByText("Nothing scheduled")).not.toBeInTheDocument();
+        expect(screen.getByTestId("reward-spec")).toHaveTextContent(/^Unlock 7d$/);
+    });
+
+    it("simple: #id, the DEX spec line, what it pays a day and its days, Extend, Airdrop once staked, DEX", async () => {
         m.getAll.mockResolvedValue([]);
-        m.simple.rewards = [reward("000000000005", { duration: 30, payouts: 26 }), reward("000000000006", { payouts: 30, staked_amount: "0" })];
+        m.simple.rewards = [
+            reward("000000000005", { duration: 30, payouts: 26, lock: 3, min_stake: 1000000000n }),
+            reward("000000000006", { staked_amount: "0" }),
+            reward("000000000007", { payouts: 30, staked_amount: "1" }),
+        ];
         renderPage();
 
-        const [running, finished] = screen.getAllByTestId("simple-reward-row");
+        const [running, waiting, finished] = await screen.findAllByTestId("simple-reward-row");
+        expect(within(running).getByText("#000000000005")).toBeInTheDocument();
+        expect(within(running).getByTestId("reward-spec")).toHaveTextContent("Unlock 3d · Min 1K TOK · Running");
+        expect(within(running).getByTestId("simple-reward-facts")).toHaveTextContent("2 BZE / day · 26 / 30 days");
         expect(within(running).getByRole("link", { name: "Extend" })).toHaveAttribute("href", "/reward/extend?id=000000000005");
-        expect(within(running).getByTestId("simple-reward-facts")).toHaveTextContent("2 BZE a day");
-        expect(within(running).getByTestId("simple-reward-facts")).toHaveTextContent("ends 26 Oct");
-        expect(within(running).getByTestId("simple-reward-facts")).toHaveTextContent("5 TOK staked");
-        expect(within(finished).getByTestId("simple-reward-facts")).toHaveTextContent("finished");
-        vi.useRealTimers();
+        expect(within(running).getByRole("link", { name: "Airdrop" })).toHaveAttribute("href", `/airdrop?to=stakers&denom=${encodeURIComponent(TOK)}&id=000000000005`);
+        expect(within(running).getByRole("link", { name: /DEX/ })).toHaveAttribute("href", dex("simple:000000000005"));
+
+        expect(within(waiting).getByTestId("reward-spec")).toHaveTextContent("Unlock instant · Waiting for stakers");
+        expect(within(waiting).queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
+        expect(within(finished).getByTestId("reward-spec")).toHaveTextContent("Finished");
+        // A finished reward can still be extended.
+        expect(within(finished).getByRole("link", { name: "Extend" })).toBeInTheDocument();
     });
 
-    it("Delete shows only for finished rewards, and works only once nothing is staked", async () => {
+    it("Delete shows only once a finished reward has nobody staked, and deletes it", async () => {
         m.getAll.mockResolvedValue([]);
         m.address = "bze1someone";
         m.simple.rewards = [
@@ -229,10 +246,9 @@ describe("rewards directory: actions", () => {
         ];
         renderPage();
 
-        const [running, staked, empty] = screen.getAllByTestId("simple-reward-row");
+        const [running, staked, empty] = await screen.findAllByTestId("simple-reward-row");
         expect(within(running).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
-        expect(within(staked).getByRole("button", { name: "Delete" })).toBeDisabled();
-        expect(within(staked).getByTestId("staking-reward-delete-blocker")).toHaveTextContent("37 TOK still staked — stakers must exit first before it can be deleted.");
+        expect(within(staked).queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
 
         await userEvent.click(within(empty).getByRole("button", { name: "Delete" }));
         await userEvent.click(within(empty).getByRole("button", { name: "Delete reward #3" }));
@@ -242,52 +258,62 @@ describe("rewards directory: actions", () => {
         opts.onSuccess();
         expect(m.refresh).toHaveBeenCalled();
     });
+
+    it("a token without a compounded reward offers Make X stakable; an LP token doesn't", async () => {
+        m.getAll.mockResolvedValue([DRS[0]]);
+        m.simple.rewards = [reward("1"), reward("2", { staking_denom: LP })];
+        renderPage();
+
+        await waitFor(() => expect(groups()).toHaveLength(3));
+        await toggle("TOK");
+        expect(within(group("TOK")).getByTestId("stakable-offer")).toHaveTextContent("No compounded reward yet.");
+        expect(within(group("TOK")).getByRole("link", { name: "Make TOK stakable" })).toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(TOK)}`);
+        await toggle("TOK/BZE LP");
+        expect(within(group("TOK/BZE LP")).queryByTestId("stakable-offer")).not.toBeInTheDocument();
+    });
 });
 
-describe("rewards directory: kind, filters and URL", () => {
-    it("one kind shows its section only; an old tab= maps to its kind", async () => {
+describe("rewards directory: kind, filter and URL", () => {
+    it("one kind keeps its rewards only; an old tab= maps to its kind", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.simple.rewards = [reward("1")];
 
         m.query = "kind=compounded";
         let view = renderPage();
-        await waitFor(() => expect(cards()).toHaveLength(2));
-        expect(screen.queryByRole("region", { name: "Simple rewards" })).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.getByTestId("rewards-count")).toHaveTextContent("2 tokens · 2 rewards"));
         view.unmount();
 
         m.query = "tab=programs";
         view = renderPage();
+        await waitFor(() => expect(tickers()).toEqual(["TOK"]));
         expect(screen.getAllByTestId("simple-reward-row")).toHaveLength(1);
-        expect(screen.queryByRole("region", { name: "Compounded rewards" })).not.toBeInTheDocument();
-        // Paying now is about daily prizes: no chip for it here.
-        expect(screen.queryByRole("button", { name: "Paying now" })).not.toBeInTheDocument();
+        expect(screen.queryByTestId("compounded-item")).not.toBeInTheDocument();
+        // Only every kind together offers Make X stakable.
+        expect(screen.queryByTestId("stakable-offer")).not.toBeInTheDocument();
         view.unmount();
 
         m.query = "tab=holder";
         renderPage();
-        await waitFor(() => expect(cards()).toHaveLength(2));
-        expect(screen.queryByRole("region", { name: "Simple rewards" })).not.toBeInTheDocument();
-        // Status chips are for simple rewards only.
-        expect(screen.queryByRole("group", { name: "Simple reward status" })).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.getByTestId("rewards-count")).toHaveTextContent("2 tokens · 2 rewards"));
     });
 
-    it("writes kind, filter, status and sort to the URL, keeping the rest", async () => {
+    it("writes kind, filter and sort to the URL, keeping the rest", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.query = "sort=name&q=tok";
         renderPage();
-        await waitFor(() => expect(cards()).toHaveLength(1));
+        await waitFor(() => expect(groups()).toHaveLength(1));
 
         await userEvent.click(within(screen.getByRole("group", { name: "Kind" })).getByRole("button", { name: "Simple" }));
-        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=simple&filter=all&sort=name&status=all&q=tok");
-        await userEvent.click(screen.getByRole("button", { name: "Has stakers" }));
-        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=stakers&sort=name&status=all&q=tok");
-        await userEvent.click(screen.getByRole("button", { name: "Finished" }));
-        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=all&sort=name&status=finished&q=tok");
+        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=simple&filter=all&sort=name&q=tok");
+        await userEvent.selectOptions(screen.getByRole("combobox", { name: "Filter" }), "finished");
+        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=finished&sort=name&q=tok");
         await userEvent.selectOptions(screen.getByRole("combobox", { name: "Sort" }), "prizes");
-        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=all&sort=prizes&status=all&q=tok");
+        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=all&sort=prizes&q=tok");
+        expect(within(screen.getByRole("combobox", { name: "Filter" })).getAllByRole("option").map(o => o.textContent))
+            .toEqual(["Any", "Has stakers", "Paying daily", "Yours", "Running", "Finished"]);
     });
 
-    it("filters: Has stakers, Paying now, Created by you with its tag, simple status", async () => {
+    it("filters: Has stakers, Paying daily, Yours with its tag, Finished", async () => {
         m.getAll.mockResolvedValue([...DRS, MINE_DR]);
         m.getSchedules.mockImplementation(async (d: string) => (d === "ubze" ? [schedule("1", "ubze", "1", 5, 1)] : []));
         m.address = "bze1me";
@@ -295,56 +321,58 @@ describe("rewards directory: kind, filters and URL", () => {
 
         m.query = "filter=stakers";
         let view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE", "Stake MINE"]));
+        await waitFor(() => expect(tickers()).toEqual(["BZE", "MINE", "TOK"]));
+        // TOK's compounded reward has nobody staked: only its two simple rewards stay.
+        expect(within(group("TOK")).getByTestId("reward-group-count")).toHaveTextContent("2 rewards");
         view.unmount();
 
         m.query = "filter=paying";
         view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE"]));
+        await waitFor(() => expect(within(group("BZE")).getByTestId("reward-group-count")).toHaveTextContent("1 reward"));
+        await waitFor(() => expect(tickers()).toEqual(["BZE", "TOK", "MINE"]));
+        expect(within(group("TOK")).getByTestId("reward-group-count")).toHaveTextContent("1 reward");
         view.unmount();
 
         m.query = "filter=mine";
         view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake MINE"]));
-        expect(within(card("Stake MINE")).getByText("Created by you")).toBeInTheDocument();
-        expect(simpleTitles()).toEqual(["Stake MINE · earn BZE"]);
+        await waitFor(() => expect(tickers()).toEqual(["MINE"]));
+        expect(within(group("MINE")).getByText("Yours")).toBeInTheDocument();
+        expect(within(group("MINE")).getByTestId("reward-group-count")).toHaveTextContent("2 rewards");
         view.unmount();
 
         m.query = "status=finished";
         renderPage();
-        await waitFor(() => expect(cards()).toHaveLength(3));
+        await waitFor(() => expect(tickers()).toEqual(["TOK"]));
         expect(screen.getAllByTestId("simple-reward-row").map(r => within(r).getByText(/^#/).textContent)).toEqual(["#2"]);
     });
 
     it("says so when nothing matches", async () => {
         m.getAll.mockResolvedValue([DRS[1]]);
         m.simple.rewards = [reward("1", { payouts: 30 })];
-        m.query = "filter=stakers&status=running";
+        m.query = "filter=paying";
         renderPage();
 
-        expect(await screen.findByTestId("compounded-no-match")).toHaveTextContent("Nothing matches these filters.");
-        expect(screen.getByTestId("simple-no-match")).toHaveTextContent("Nothing matches these filters.");
+        await waitFor(() => expect(screen.getByTestId("rewards-no-match")).toHaveTextContent("Nothing matches these filters."));
     });
 });
 
 describe("rewards directory: search", () => {
-    it("searches both sections by staked token and writes the search to the URL", async () => {
+    it("searches by staked token and writes the search to the URL", async () => {
         m.getAll.mockResolvedValue(DRS);
         m.simple.rewards = [reward("1"), reward("2", { staking_denom: "ubze", prize_denom: TOK })];
         renderPage();
-        await waitFor(() => expect(cards()).toHaveLength(2));
+        await waitFor(() => expect(groups()).toHaveLength(2));
 
         await userEvent.type(screen.getByRole("textbox", { name: "Search by staked token" }), "token");
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake TOK"]));
-        expect(simpleTitles()).toEqual(["Stake TOK · earn BZE"]);
-        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=all&sort=staked&status=all&q=token");
+        await waitFor(() => expect(tickers()).toEqual(["TOK"]));
+        expect(m.replace).toHaveBeenLastCalledWith("/rewards?kind=all&filter=all&sort=staked&q=token");
 
         await userEvent.clear(screen.getByRole("textbox", { name: "Search by staked token" }));
         await userEvent.type(screen.getByRole("textbox", { name: "Search by staked token" }), "zzz");
-        expect(screen.getByTestId("compounded-no-match")).toHaveTextContent("No reward stakes a token matching 'zzz'.");
+        expect(screen.getByTestId("rewards-no-match")).toHaveTextContent("No reward stakes a token matching 'zzz'.");
     });
 
-    it("?denom= prefills the search with that token, matches it exactly and scrolls to its card", async () => {
+    it("?denom= prefills the search with that token, matches it exactly, opens its row and scrolls to it", async () => {
         const scroll = vi.fn();
         Element.prototype.scrollIntoView = scroll;
         m.getAll.mockResolvedValue([...DRS, { staking_denom: LP, lock: 1, min_stake: "0", staked_amount: "1" }]);
@@ -353,9 +381,10 @@ describe("rewards directory: search", () => {
 
         expect(screen.getByRole("textbox", { name: "Search by staked token" })).toHaveValue("ubze");
         // The LP share's denom ends in ubze too, but the deep link asked for ubze itself.
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE"]));
+        await waitFor(() => expect(tickers()).toEqual(["BZE"]));
+        expect(header("BZE")).toHaveAttribute("aria-expanded", "true");
         await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1));
-        expect(scroll.mock.contexts[0]).toBe(card("Stake BZE"));
+        expect(scroll.mock.contexts[0]).toBe(group("BZE"));
     });
 });
 
@@ -363,45 +392,29 @@ describe("rewards directory: sorts", () => {
     it("most staked by USD when priced, else the display amount; most prize tokens; A–Z", async () => {
         const { default: BigNumber } = await import("bignumber.js");
         m.getAll.mockResolvedValue([...DRS, MINE_DR]);
-        m.getPrizes.mockImplementation(async (d: string) => prizes(...Array.from({ length: d === MINE ? 5 : d === "ubze" ? 3 : 0 }, (_, i) => `p${i}`)));
+        m.getSchedules.mockImplementation(async (d: string) =>
+            Array.from({ length: d === MINE ? 3 : d === "ubze" ? 2 : 0 }, (_, i) => schedule(`${i}`, `p${i}`, "1", 10, 1)));
 
         // 1,500 BZE at $0.01 = $15 < 50 MINE at $1 = $50.
         m.prices = new Map([["ubze", new BigNumber("0.01")], [MINE, new BigNumber(1)], [TOK, new BigNumber(1)]]);
         let view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake MINE", "Stake BZE", "Stake TOK"]));
+        await waitFor(() => expect(tickers()).toEqual(["MINE", "BZE", "TOK"]));
         view.unmount();
 
         m.prices = new Map();
         view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE", "Stake MINE", "Stake TOK"]));
+        await waitFor(() => expect(tickers()).toEqual(["BZE", "MINE", "TOK"]));
         view.unmount();
 
         m.query = "sort=prizes";
         view = renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake MINE", "Stake BZE", "Stake TOK"]));
+        await waitFor(() => expect(within(group("MINE")).getByText("+ 2 tokens")).toBeInTheDocument());
+        await waitFor(() => expect(tickers()).toEqual(["MINE", "BZE", "TOK"]));
         view.unmount();
 
         m.query = "sort=name";
         renderPage();
-        await waitFor(() => expect(cardTitles()).toEqual(["Stake BZE", "Stake MINE", "Stake TOK"]));
-    });
-
-    it("sorts simple rewards too, running ones first", async () => {
-        m.getAll.mockResolvedValue([]);
-        m.simple.rewards = [
-            reward("1", { staking_denom: "ubze", staked_amount: "1000000" }),
-            reward("2", { staking_denom: MINE, staked_amount: "9000000", payouts: 30 }),
-            reward("3", { staking_denom: TOK, staked_amount: "5000000" }),
-        ];
-
-        m.query = "sort=staked";
-        const view = renderPage();
-        await waitFor(() => expect(simpleTitles()).toEqual(["Stake TOK · earn BZE", "Stake BZE · earn BZE", "Stake MINE · earn BZE"]));
-        view.unmount();
-
-        m.query = "sort=name";
-        renderPage();
-        await waitFor(() => expect(simpleTitles()).toEqual(["Stake BZE · earn BZE", "Stake TOK · earn BZE", "Stake MINE · earn BZE"]));
+        await waitFor(() => expect(tickers()).toEqual(["BZE", "MINE", "TOK"]));
     });
 });
 
@@ -411,11 +424,10 @@ describe("rewards directory: loading, errors and empty", () => {
         m.simple = { rewards: [], isLoading: true, hasError: false };
         renderPage();
 
-        expect(screen.getByTestId("compounded-loading")).toBeInTheDocument();
-        expect(screen.getByTestId("simple-loading")).toBeInTheDocument();
+        expect(screen.getByTestId("rewards-loading")).toBeInTheDocument();
     });
 
-    it("an error is never 'no rewards': it says so and retries", async () => {
+    it("an error is never 'no rewards': it says so, retries, and lists what did load", async () => {
         m.getAll.mockRejectedValueOnce(new Error("501")).mockResolvedValueOnce([DRS[0]]);
         m.simple = { rewards: [], isLoading: false, hasError: true };
         vi.spyOn(console, "error").mockImplementation(() => {});
@@ -423,24 +435,21 @@ describe("rewards directory: loading, errors and empty", () => {
 
         expect(await screen.findByText("Couldn't load the compounded rewards.")).toBeInTheDocument();
         expect(screen.getByText("Couldn't load the simple rewards.")).toBeInTheDocument();
-        expect(screen.queryByText("No compounded rewards yet.")).not.toBeInTheDocument();
-        expect(screen.queryByText("No simple rewards yet.")).not.toBeInTheDocument();
+        expect(screen.queryByText("No staking rewards yet.")).not.toBeInTheDocument();
 
         const [retryCompounded, retrySimple] = screen.getAllByRole("button", { name: /Retry/ });
         await userEvent.click(retrySimple);
         expect(m.refresh).toHaveBeenCalledTimes(1);
         await userEvent.click(retryCompounded);
-        await waitFor(() => expect(cards()).toHaveLength(1));
+        await waitFor(() => expect(groups()).toHaveLength(1));
         expect(m.getAll).toHaveBeenCalledTimes(2);
     });
 
-    it("the empty states offer to create one", async () => {
+    it("the empty state offers to make a token stakable", async () => {
         m.getAll.mockResolvedValue([]);
         renderPage();
 
-        expect(await screen.findByText("No compounded rewards yet.")).toBeInTheDocument();
+        expect(await screen.findByText("No staking rewards yet.")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Make a token stakable" })).toHaveAttribute("href", "/denom-reward/new");
-        expect(screen.getByText("No simple rewards yet.")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Create a simple reward" })).toHaveAttribute("href", "/reward/new");
     });
 });

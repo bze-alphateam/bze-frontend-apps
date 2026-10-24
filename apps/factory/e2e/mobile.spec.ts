@@ -34,9 +34,9 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: `/tokens/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("burn-item")},
     {path: `/tokens/token?denom=${MISSING_TOKEN}`, ready: (page) => page.getByText("We couldn't find this token.")},
     // Both sections stacked, their actions in two columns (BFE-272).
-    {path: "/rewards", ready: (page) => page.getByTestId("compounded-reward-card").first()},
-    // testnet's one simple reward has finished.
-    {path: "/rewards?kind=simple&status=finished", ready: (page) => page.getByTestId("simple-reward-row").first()},
+    {path: "/rewards", ready: (page) => page.getByTestId("reward-group").first()},
+    // testnet's one simple reward has finished; a list of one row starts open.
+    {path: "/rewards?kind=simple&filter=finished", ready: (page) => page.getByTestId("simple-reward-row").first()},
     {path: "/denom-reward/new", ready: heading(/Create a compounded reward/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}`, ready: heading(/Add a daily prize/)},
     {path: `/denom-reward/schedule?denom=${NOADMIN}&schedule=000000000000`, ready: heading(/Extend a daily prize/)},
