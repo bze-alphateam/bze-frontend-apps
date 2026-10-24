@@ -18,7 +18,7 @@ import {
 // The compact /staking tables: the viewer's positions and the explore list. One row per reward,
 // its facts compacted under the name; on phones each row folds into a small two-column card.
 
-const POSITIONS_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 0.7fr) minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 160px';
+const POSITIONS_COLUMNS = 'minmax(0, 2.1fr) minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 160px';
 const EXPLORE_COLUMNS = 'minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 160px';
 
 const KIND_LABEL: Record<RewardKind, string> = {native: 'Native', simple: 'Simple', compounded: 'Compounded'};
@@ -126,8 +126,9 @@ const Cell = ({label, children, align = 'left'}: { label: string; children: Reac
     </Flex>
 );
 
-const Sub = ({children}: { children: ReactNode }) => (
-    <chakra.span fontSize="12px" color="hg.text.faint" truncate>{children}</chakra.span>
+/** A small grey line under a cell's value; `wrap` lets it take a second line instead of cutting it. */
+const Sub = ({children, wrap}: { children: ReactNode; wrap?: boolean }) => (
+    <chakra.span fontSize="12px" lineHeight="1.35" color="hg.text.faint" maxW="full" {...(wrap ? {wordBreak: 'break-word'} : {truncate: true})}>{children}</chakra.span>
 );
 
 /** A coin as two lines: the number, and its ticker under it, so long amounts and names fit the column. */
@@ -135,8 +136,8 @@ const CoinAmount = ({coin, color, strong = true}: { coin: DenomRewardCoin; color
     const {shortAmount, ticker} = useCoinText();
     return (
         <>
-            <chakra.span fontSize="13px" fontWeight={strong ? '600' : '500'} color={color} lineHeight="1.3" truncate>{shortAmount(coin)}</chakra.span>
-            <chakra.span fontSize="11px" color="hg.text.faint" lineHeight="1.3" truncate>{ticker(coin.denom)}</chakra.span>
+            <chakra.span fontSize="13px" fontWeight={strong ? '600' : '500'} color={color} lineHeight="1.3" maxW="full" truncate>{shortAmount(coin)}</chakra.span>
+            <chakra.span fontSize="11px" color="hg.text.faint" lineHeight="1.3" maxW="full" truncate>{ticker(coin.denom)}</chakra.span>
         </>
     );
 };
@@ -308,7 +309,7 @@ export const PositionsCard = ({rows, nativeDenom, isLoading, onManage, onClaim}:
                             <Cell label="APR">
                                 <AprText apr={row.apr}/>
                                 {row.position?.daily[0] && (
-                                    <Sub>
+                                    <Sub wrap>
                                         ≈ {short(row.position.daily[0])} / day
                                         {row.position.daily.length > 1 && ` + ${row.position.daily.length - 1} more`}
                                     </Sub>
