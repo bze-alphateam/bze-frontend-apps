@@ -27,13 +27,11 @@ import {
     FormFrame,
     FormPage,
     GuidedForm,
-    Hint,
     OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
     SubmitNote,
-    TipNote,
     TxPanel,
     useGuidedSteps,
     useReturnTo,
@@ -210,22 +208,16 @@ function ScheduleFormContent() {
 
     const aside = (
         <>
-            <OutcomePanel>
+            {!isExtend && <OutcomePanel>
                 {totalText ? (
                     <Text data-testid="outcome">
                         <chakra.span fontWeight="600">{totalText}</chakra.span>
-                        {isExtend
-                            ? ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day for ${fmtDays(extraDays)} more to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`
-                            : ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
+                        {` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
                     </Text>
                 ) : (
-                    <Text color="fg.muted">
-                        {isExtend
-                            ? 'Enter how many more days to see what leaves your wallet.'
-                            : 'Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.'}
-                    </Text>
+                    <Text color="fg.muted">Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.</Text>
                 )}
-            </OutcomePanel>
+            </OutcomePanel>}
             <PayPanel
                 rows={payRows}
                 moduleFee={isExtend ? undefined : gift.mainFee}
@@ -254,14 +246,13 @@ function ScheduleFormContent() {
                 ? (ext?.newEnd ? [{ label: 'New end', value: `About ${ext.newEnd}` }] : [])
                 : (prize ? [{ label: 'Prize', value: prize }] : [])}
             permanent={isExtend
-                ? ['Extra tokens are committed to stakers. The daily amount can\'t change']
-                : ['Committed tokens are paid out to stakers; the daily amount can\'t change']}
+                ? ['Extra tokens are committed to stakers']
+                : ['Committed tokens are paid out to stakers']}
             submitLabel={isExtend ? 'Extend' : 'Start daily prize'}
             onSubmit={sign}
             disabled={!canSign}
             onBack={steps.back}
         >
-            <Hint>Funding a prize doesn&apos;t make you the reward&apos;s owner.</Hint>
             {!address ? (
                 <SubmitNote>Connect your wallet to fund this daily prize.</SubmitNote>
             ) : isComplete && gift.costs.escrow && !gift.afford.isLoading && !gift.afford.canAfford && gift.afford.message && (
@@ -281,7 +272,7 @@ function ScheduleFormContent() {
                 </>
             }
             subtitle={isExtend
-                ? `Pay for more days of this daily prize for ${stakedName} stakers. Anyone can, on any token.`
+                ? `Pay for more days of this daily prize for ${stakedName} stakers.`
                 : "Pay a prize every day to everyone staking a token. Any token's stakers, yours or not."}
             techTag={VOCABULARY.dailyPrize.tech}
             aside={aside}
@@ -296,12 +287,9 @@ function ScheduleFormContent() {
                         action={{ label: 'Continue', onClick: () => answer('schedule') }}
                     >
                         <VStack as="section" aria-label="This daily prize" align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="schedule-terms">
-                            <Text fontSize="13px" fontWeight="700" color="fg.muted">Stays as it is</Text>
-                            <TermRow label="People stake" value={stakedName} />
-                            <TermRow label="Prize" value={prizeTicker} />
-                            <TermRow label="Shared every day" value={`${perDay} ${prizeTicker}`} />
-                            <TermRow label="Days left" value={`${ext.daysLeft.toLocaleString('en-US')} of ${schedule.duration.toLocaleString('en-US')}`} />
-                            <TermRow label="Ends" value={`About ${ext.end}`} />
+                            <TermRow label="Stake" value={stakedName} />
+                            <TermRow label="Daily reward" value={`${perDay} ${prizeTicker}`} />
+                            <TermRow label="End date" value={`About ${ext.end}`} />
                         </VStack>
                     </Question>
 
@@ -314,7 +302,6 @@ function ScheduleFormContent() {
                         action={{ label: 'Review extension', onClick: () => answer('days'), disabled: ext.extra === undefined || extendShort }}
                     >
                         <VStack align="stretch" gap="16px">
-                            <Text fontSize="14px" color="fg.muted">The daily amount can&apos;t change. You pay for the extra days up front.</Text>
                             <Field.Root invalid={daysInput !== '' && ext.error !== ''} disabled={ext.room === 0}>
                                 <Field.Label>Extra days</Field.Label>
                                 <Input
@@ -326,30 +313,23 @@ function ScheduleFormContent() {
                                 />
                                 <Field.HelperText>
                                     {ext.room === 0
-                                        ? `This daily prize already runs the maximum of ${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} days.`
-                                        : `1–${ext.room.toLocaleString('en-US')} days. Days with nobody staking are skipped.`}
+                                        ? `This daily prize already runs the maximum of ${MAX_SCHEDULE_DAYS} days.`
+                                        : `Min 1 · Max ${ext.room} days`}
                                 </Field.HelperText>
                                 <Field.ErrorText>{ext.error}</Field.ErrorText>
                             </Field.Root>
 
                             {ext.escrow && (
-                                <Box p="14px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border" fontSize="14px" data-testid="extend-cost">
-                                    <Text fontFamily="mono" fontSize="13px">{`${perDay} ${prizeTicker}/day × ${fmtDays(extraDays)} = ${totalText}`}</Text>
-                                    <Text mt="6px" data-testid="extend-new-end">
-                                        {'New end: about '}
-                                        <chakra.strong>{ext.newEnd}</chakra.strong>
-                                        {` instead of ${ext.end}.`}
-                                    </Text>
-                                    {extendShort && (
-                                        <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                            {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
-                                        </Text>
-                                    )}
-                                </Box>
+                                <VStack align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="extend-cost">
+                                    <Box data-testid="extend-new-end"><TermRow label="New end date" value={`About ${ext.newEnd}`} /></Box>
+                                </VStack>
                             )}
 
-                            <TipNote lead="No fee:">extending only locks the extra days.</TipNote>
-                            <Hint>Anyone can extend any daily prize. Paying for days doesn&apos;t make you its owner.</Hint>
+                            {ext.escrow && extendShort && (
+                                <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                                    {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
+                                </Text>
+                            )}
                         </VStack>
                     </Question>
                 </>

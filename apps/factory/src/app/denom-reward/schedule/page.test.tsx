@@ -300,8 +300,9 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             const review = step("Review");
             expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Daily prize fee");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A daily prize for HONEY stakers");
-            expect(review).toHaveTextContent("Committed tokens are paid out to stakers; the daily amount can't change");
-            expect(review).toHaveTextContent("Funding a prize doesn't make you the reward's owner.");
+            expect(review).toHaveTextContent("Committed tokens are paid out to stakers");
+            expect(review).not.toHaveTextContent("daily amount can't change");
+            expect(review).not.toHaveTextContent("doesn't make you the reward's owner");
 
             await userEvent.click(button(review, "Start daily prize"));
             expect(sentMsgs().map(m => m.typeUrl)).toEqual(["/bze.rewards.MsgCreateDenomRewardSchedule"]);
@@ -375,26 +376,29 @@ describe("Daily prize, extend (&schedule=)", { timeout: 20_000 }, () => {
     });
     afterEach(() => vi.useRealTimers());
 
-    it("summarises the schedule, then asks for the extra days; no fee", async () => {
+    it("summarises the schedule, then asks for the extra days; no fee, no explainers", async () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Extend a daily prize/ })).toBeInTheDocument();
         expect(step("Daily prize")).toHaveAttribute("data-state", "done");
         expect(step("Daily prize")).toHaveTextContent("50 BZE a day for HONEY stakers · 20 days left");
         expect(step("Extra days")).toHaveAttribute("data-state", "active");
-        expect(within(step("Extra days")).getByText("extending only locks the extra days.")).toBeInTheDocument();
+        expect(within(step("Extra days")).getByText("Min 1 · Max 36470 days")).toBeInTheDocument();
+        expect(within(step("Extra days")).queryByText(/Anyone can extend|daily amount can't change|No fee/)).not.toBeInTheDocument();
         expect(screen.getByTestId("pay-panel")).toHaveTextContent("Fee: None");
 
         await userEvent.click(within(step("Daily prize")).getByRole("button", { name: /Edit/ }));
         const terms = within(screen.getByTestId("schedule-terms"));
-        expect(terms.getByText("20 of 30")).toBeInTheDocument();
+        expect(terms.getByText("Stake")).toBeInTheDocument();
+        expect(terms.getByText("Daily reward")).toBeInTheDocument();
+        expect(terms.getByText("End date")).toBeInTheDocument();
         expect(terms.getByText("About 10 Nov")).toBeInTheDocument();
+        expect(terms.queryByText(/Stays as it is/)).not.toBeInTheDocument();
     });
 
     it("escrows daily × extra days, moves the end and signs MsgUpdateDenomRewardSchedule", async () => {
         renderPage();
         await userEvent.type(within(step("Extra days")).getByLabelText("Extra days"), "10");
-        expect(screen.getByTestId("extend-cost")).toHaveTextContent("50 BZE/day × 10 days = 500 BZE");
-        expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end: about 20 Nov instead of 10 Nov.");
+        expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end dateAbout 20 Nov");
         expect(screen.getByTestId("pay-panel")).toHaveTextContent("Locked for prizes: 500000000 ubze, Fee: None");
         await userEvent.click(button(step("Extra days"), "Review extension"));
 

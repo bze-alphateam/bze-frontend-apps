@@ -28,12 +28,10 @@ import {
     FormFrame,
     FormPage,
     GuidedForm,
-    Hint,
     PayPanel,
     Question,
     ReviewStep,
     SubmitNote,
-    TipNote,
     TxPanel,
     useGuidedSteps,
 } from '@/components/guided'
@@ -198,7 +196,6 @@ function ExtendContent() {
     const finished = reward ? isFinished(reward) : false
     const oldEnd = reward && !finished ? formatDay(endDate(reward, now), now) : ''
     const newEnd = reward && cost ? formatDay(newEndDate(reward, Number(extraDays.trim()), now), now) : ''
-    const costText = cost ? `${display(cost)} ${prizeTicker}` : ''
     const daysCount = Number(extraDays.trim())
     const daysText = `${daysCount.toLocaleString('en-US')} day${daysCount === 1 ? '' : 's'}`
 
@@ -278,7 +275,7 @@ function ExtendContent() {
             parent={{ href: '/rewards', label: 'Rewards' }}
             crumb="Extend"
             title={<>Extend a <GradientText>reward</GradientText></>}
-            subtitle="Pay for more days of a simple reward. Anyone can do it, on any reward."
+            subtitle="Pay for more days of a simple reward."
             techTag="rewards · update staking reward"
             aside={aside}
         >
@@ -302,13 +299,10 @@ function ExtendContent() {
                 {reward && (
                     <VStack align="stretch" gap="16px">
                         <VStack as="section" aria-label="This reward" align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="extend-terms">
-                            <Text fontSize="13px" fontWeight="700" color="fg.muted">This reward · stays as it is</Text>
-                            <TermRow label="People stake" value={stakeTicker} />
-                            <TermRow label="Shared every day" value={`${perDay} ${prizeTicker}`} />
-                            <TermRow label="Days left" value={daysLeftText(reward, now)} />
+                            <TermRow label="Stake" value={stakeTicker} />
+                            <TermRow label="Daily reward" value={`${perDay} ${prizeTicker}`} />
+                            <TermRow label="End date" value={finished ? 'Ended' : oldEnd} />
                         </VStack>
-
-                        <Text fontSize="14px" color="fg.muted">The daily amount can&apos;t change. You pay for the extra days up front.</Text>
 
                         <Field.Root invalid={extraDays !== '' && daysError !== ''}>
                             <Field.Label>Extra days</Field.Label>
@@ -319,33 +313,21 @@ function ExtendContent() {
                                 onChange={(e) => setExtraDays(e.target.value)}
                                 maxW="200px"
                             />
-                            <Field.HelperText>{`1–${extendRoom(reward).toLocaleString('en-US')} days.`}</Field.HelperText>
+                            <Field.HelperText>{`Min 1 · Max ${extendRoom(reward)} days`}</Field.HelperText>
                             <Field.ErrorText>{daysError}</Field.ErrorText>
                         </Field.Root>
 
                         {cost && (
-                            <Box p="14px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border" fontSize="14px" data-testid="extend-cost">
-                                <Text fontFamily="mono" fontSize="13px">{`${perDay} ${prizeTicker}/day × ${daysText} = ${costText}`}</Text>
-                                <Text mt="6px" data-testid="extend-new-end">
-                                    {'New end: '}
-                                    <chakra.strong>{newEnd}</chakra.strong>
-                                    {finished ? ' (today + the extra days: it starts paying again).' : ` instead of ${oldEnd}.`}
-                                </Text>
-                                {connected && !hasEnough && (
-                                    <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                        {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)}.`}
-                                    </Text>
-                                )}
-                            </Box>
+                            <VStack align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="extend-cost">
+                                <Box data-testid="extend-new-end"><TermRow label="New end date" value={newEnd} /></Box>
+                            </VStack>
                         )}
 
-                        {finished && (
-                            <TipNote lead="This reward has finished.">
-                                Extending it starts the daily payouts again, from today until the new end.
-                            </TipNote>
+                        {cost && connected && !hasEnough && (
+                            <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                                {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)}.`}
+                            </Text>
                         )}
-
-                        <Hint>Anyone can extend any reward. Paying for days doesn&apos;t make you its owner or let you change it.</Hint>
                     </VStack>
                 )}
             </Question>

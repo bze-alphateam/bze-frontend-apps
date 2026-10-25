@@ -26,15 +26,14 @@ test("shows the reward's read-only terms and the new end date", async ({page}) =
     const days = page.getByRole("region", {name: "Extra days", exact: true});
     await expect(days).toHaveAttribute("data-state", "active");
     const terms = days.getByTestId("extend-terms");
-    await expect(terms).toContainText("This reward · stays as it is");
-    await expect(terms).toContainText("VDL");
+    await expect(terms).toContainText("Stake");
+    await expect(terms).toContainText("Daily reward");
     await expect(terms).toContainText("10 VDL");
-    await expect(terms).toContainText("Finished · all 15 paid");
-    await expect(days.getByText("This reward has finished.")).toBeVisible();
+    await expect(terms).toContainText("End date");
+    await expect(terms).toContainText("Ended");
 
     await days.getByLabel("Extra days").fill("10");
-    await expect(days.getByTestId("extend-cost")).toContainText("10 VDL/day × 10 days = 100 VDL");
-    await expect(days.getByTestId("extend-new-end")).toContainText("New end: 30 Oct");
+    await expect(days.getByTestId("extend-new-end")).toContainText("New end date");
 
     await days.getByRole("button", {name: "Review extension"}).click();
     const review = page.getByRole("region", {name: "Review", exact: true});

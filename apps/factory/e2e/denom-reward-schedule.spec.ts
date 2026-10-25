@@ -46,7 +46,8 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await expect(leaves).toContainText("25,000 TBZE");
     await expect(leaves).toContainText("3,000 VDL");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("A daily prize for NOAD stakers");
-    await expect(review).toContainText("Committed tokens are paid out to stakers; the daily amount can't change");
+    await expect(review).toContainText("Committed tokens are paid out to stakers");
+    await expect(review).not.toContainText("daily amount can't change");
     await expect(review.getByRole("button", {name: "Start daily prize"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet to fund this daily prize.")).toBeVisible();
 });
@@ -61,9 +62,9 @@ test("extends a running schedule without a fee", async ({page}) => {
 
     const days = page.getByRole("region", {name: "Extra days"});
     await expect(days).toHaveAttribute("data-state", "active");
-    await expect(days).toContainText("No fee:");
+    await expect(days).toContainText("Min 1 · Max");
     await days.getByLabel("Extra days").fill("10");
-    await expect(days.getByTestId("extend-cost")).toContainText("10 VDL/day × 10 days = 100 VDL");
+    await expect(days.getByTestId("extend-new-end")).toContainText("New end date");
     await days.getByRole("button", {name: "Review extension"}).click();
 
     const review = page.getByRole("region", {name: "Review"});
