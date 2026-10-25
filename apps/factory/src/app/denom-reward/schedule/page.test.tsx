@@ -300,8 +300,9 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             const review = step("Review");
             expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Daily prize fee");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A daily prize for HONEY stakers");
-            expect(review).toHaveTextContent("Committed tokens are paid out to stakers; the daily amount can't change");
-            expect(review).toHaveTextContent("Funding a prize doesn't make you the reward's owner.");
+            expect(review).toHaveTextContent("Committed tokens are paid out to stakers");
+            expect(review).not.toHaveTextContent("daily amount can't change");
+            expect(review).not.toHaveTextContent("doesn't make you the reward's owner");
 
             await userEvent.click(button(review, "Start daily prize"));
             expect(sentMsgs().map(m => m.typeUrl)).toEqual(["/bze.rewards.MsgCreateDenomRewardSchedule"]);

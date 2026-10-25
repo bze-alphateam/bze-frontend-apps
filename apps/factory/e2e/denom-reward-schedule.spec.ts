@@ -46,7 +46,8 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await expect(leaves).toContainText("25,000 TBZE");
     await expect(leaves).toContainText("3,000 VDL");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("A daily prize for NOAD stakers");
-    await expect(review).toContainText("Committed tokens are paid out to stakers; the daily amount can't change");
+    await expect(review).toContainText("Committed tokens are paid out to stakers");
+    await expect(review).not.toContainText("daily amount can't change");
     await expect(review.getByRole("button", {name: "Start daily prize"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet to fund this daily prize.")).toBeVisible();
 });

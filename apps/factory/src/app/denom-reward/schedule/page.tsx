@@ -27,7 +27,6 @@ import {
     FormFrame,
     FormPage,
     GuidedForm,
-    Hint,
     OutcomePanel,
     PayPanel,
     Question,
@@ -209,22 +208,16 @@ function ScheduleFormContent() {
 
     const aside = (
         <>
-            <OutcomePanel>
+            {!isExtend && <OutcomePanel>
                 {totalText ? (
                     <Text data-testid="outcome">
                         <chakra.span fontWeight="600">{totalText}</chakra.span>
-                        {isExtend
-                            ? ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day for ${fmtDays(extraDays)} more to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`
-                            : ` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
+                        {` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
                     </Text>
                 ) : (
-                    <Text color="fg.muted">
-                        {isExtend
-                            ? 'Enter how many more days to see what leaves your wallet.'
-                            : 'Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.'}
-                    </Text>
+                    <Text color="fg.muted">Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.</Text>
                 )}
-            </OutcomePanel>
+            </OutcomePanel>}
             <PayPanel
                 rows={payRows}
                 moduleFee={isExtend ? undefined : gift.mainFee}
@@ -253,14 +246,13 @@ function ScheduleFormContent() {
                 ? (ext?.newEnd ? [{ label: 'New end', value: `About ${ext.newEnd}` }] : [])
                 : (prize ? [{ label: 'Prize', value: prize }] : [])}
             permanent={isExtend
-                ? ['Extra tokens are committed to stakers. The daily amount can\'t change']
-                : ['Committed tokens are paid out to stakers; the daily amount can\'t change']}
+                ? ['Extra tokens are committed to stakers']
+                : ['Committed tokens are paid out to stakers']}
             submitLabel={isExtend ? 'Extend' : 'Start daily prize'}
             onSubmit={sign}
             disabled={!canSign}
             onBack={steps.back}
         >
-            <Hint>Funding a prize doesn&apos;t make you the reward&apos;s owner.</Hint>
             {!address ? (
                 <SubmitNote>Connect your wallet to fund this daily prize.</SubmitNote>
             ) : isComplete && gift.costs.escrow && !gift.afford.isLoading && !gift.afford.canAfford && gift.afford.message && (
@@ -280,7 +272,7 @@ function ScheduleFormContent() {
                 </>
             }
             subtitle={isExtend
-                ? `Pay for more days of this daily prize for ${stakedName} stakers. Anyone can, on any token.`
+                ? `Pay for more days of this daily prize for ${stakedName} stakers.`
                 : "Pay a prize every day to everyone staking a token. Any token's stakers, yours or not."}
             techTag={VOCABULARY.dailyPrize.tech}
             aside={aside}

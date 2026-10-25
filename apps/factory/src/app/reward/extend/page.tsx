@@ -32,7 +32,6 @@ import {
     Question,
     ReviewStep,
     SubmitNote,
-    TipNote,
     TxPanel,
     useGuidedSteps,
 } from '@/components/guided'
@@ -276,7 +275,7 @@ function ExtendContent() {
             parent={{ href: '/rewards', label: 'Rewards' }}
             crumb="Extend"
             title={<>Extend a <GradientText>reward</GradientText></>}
-            subtitle="Pay for more days of a simple reward. Anyone can do it, on any reward."
+            subtitle="Pay for more days of a simple reward."
             techTag="rewards · update staking reward"
             aside={aside}
         >
@@ -329,13 +328,6 @@ function ExtendContent() {
                                 {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)}.`}
                             </Text>
                         )}
-
-                        {finished && (
-                            <TipNote lead="This reward has finished.">
-                                Extending it starts the daily payouts again, from today until the new end.
-                            </TipNote>
-                        )}
-
                     </VStack>
                 )}
             </Question>

@@ -198,11 +198,10 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             expect(button(step("Extra days"), "Review extension")).toBeDisabled();
         });
 
-        it("restarts a finished reward from today, and says so", async () => {
+        it("restarts a finished reward from today", async () => {
             queryParams.current = new URLSearchParams({ id: FINISHED.reward_id });
             renderPage();
             expect(screen.getByTestId("extend-terms")).toHaveTextContent("End dateEnded");
-            expect(screen.getByText("This reward has finished.")).toBeInTheDocument();
             await enterDays("10");
             expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end date30 Oct");
         });

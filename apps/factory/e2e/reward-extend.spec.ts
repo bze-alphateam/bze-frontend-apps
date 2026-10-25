@@ -31,7 +31,6 @@ test("shows the reward's read-only terms and the new end date", async ({page}) =
     await expect(terms).toContainText("10 VDL");
     await expect(terms).toContainText("End date");
     await expect(terms).toContainText("Ended");
-    await expect(days.getByText("This reward has finished.")).toBeVisible();
 
     await days.getByLabel("Extra days").fill("10");
     await expect(days.getByTestId("extend-new-end")).toContainText("New end date");
