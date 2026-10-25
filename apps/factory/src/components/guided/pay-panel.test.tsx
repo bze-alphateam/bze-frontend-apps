@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 
@@ -70,8 +70,25 @@ describe("PayPanel", () => {
         renderPanel();
         expect(screen.getByRole("region", { name: "You will pay" })).toBeInTheDocument();
         expect(screen.getByText("Market creation fee")).toBeInTheDocument();
-        expect(screen.getByText("25,000 BZE")).toBeInTheDocument();
+        expect(screen.getAllByText("25,000 BZE")).toHaveLength(2);
         expect(screen.getByText("≈ $50")).toBeInTheDocument();
+    });
+
+    it("explains each cost in a tooltip next to its label", () => {
+        payment.current = pay({ gasFee: { denom: "ubze", amount: new BigNumber(5000), displayAmount: new BigNumber("0.005"), ticker: "BZE" } });
+        render(<PayPanel rows={[{ label: "Creation fee", coin: FEE }, { label: "Rewards", coin: { denom: "utok", amount: "1000000" } }]} moduleFee={FEE} txKind="create-market" />, { wrapper });
+        expect(screen.getByRole("button", { name: "About Creation fee" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "About Rewards" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "About Network fee" })).toBeInTheDocument();
+    });
+
+    it("sums every cost per token in a separate Total, the network fee included", () => {
+        payment.current = pay({ gasFee: { denom: "ubze", amount: new BigNumber(5000), displayAmount: new BigNumber("0.005"), ticker: "BZE" } });
+        render(<PayPanel rows={[{ label: "Creation fee", coin: FEE }, { label: "Rewards", coin: { denom: "utok", amount: "1000000" } }]} moduleFee={FEE} txKind="create-market" />, { wrapper });
+        const total = within(screen.getByTestId("pay-total"));
+        expect(total.getByText("Total")).toBeInTheDocument();
+        expect(total.getByText(/^≈ 25,000\.005\d* BZE$/)).toBeInTheDocument();
+        expect(total.getByText("1 TOK")).toBeInTheDocument();
     });
 
     it("shows a skeleton while fees load", () => {
@@ -95,8 +112,13 @@ describe("PayPanel", () => {
         expect(screen.getByText("You hold enough BZE")).toBeInTheDocument();
     });
 
-    it("offers the Fee token button that opens the Settings sidebar", () => {
-        payment.current = pay({ altAsset: { ticker: "ATOM" } });
+    it("hides the Fee token button while the fee token is BZE", () => {
+        renderPanel();
+        expect(screen.queryByRole("button", { name: /Fee token/ })).not.toBeInTheDocument();
+    });
+
+    it("offers the Fee token button that opens the Settings sidebar when another fee token is picked", () => {
+        payment.current = pay({ isAltSelected: true, altAsset: { ticker: "ATOM" } });
         renderPanel();
         expect(screen.getByRole("button", { name: /Fee token: ATOM/ })).toBeInTheDocument();
         expect(screen.getByTestId("settings-sidebar")).toHaveTextContent("settings");
@@ -164,8 +186,8 @@ describe("PayPanel", () => {
             />,
             { wrapper },
         );
-        expect(screen.getByText("25,000 BZE")).toBeInTheDocument();
-        expect(screen.getByText("1 TOK")).toBeInTheDocument();
+        expect(screen.getAllByText("25,000 BZE")).toHaveLength(2);
+        expect(screen.getAllByText("1 TOK")).toHaveLength(2);
         expect(screen.getByText("None")).toBeInTheDocument();
         expect(screen.getAllByText(/≈ 12.5 ATOM/)).toHaveLength(1);
         expect(screen.getByText("Left in your wallet: plenty")).toBeInTheDocument();

@@ -37,11 +37,10 @@ export function AnswerChips({ children }: { children: React.ReactNode }) {
     return <Flex gap="6px" wrap="wrap" align="center">{children}</Flex>
 }
 
-/** The way out of an active question: Continue, and Skip for an optional one. */
-export function ContinueRow({ onContinue, disabled, onSkip, label = 'Continue' }: {
+/** The way out of an active question: Continue. */
+export function ContinueRow({ onContinue, disabled, label = 'Continue' }: {
     onContinue: () => void;
     disabled?: boolean;
-    onSkip?: () => void;
     label?: string;
 }) {
     return (
@@ -49,11 +48,6 @@ export function ContinueRow({ onContinue, disabled, onSkip, label = 'Continue' }
             <Button variant={hgVariant('primary')} size="sm" px="16px" disabled={disabled} onClick={onContinue}>
                 {label}
             </Button>
-            {onSkip && (
-                <Button variant="ghost" size="sm" color="hg.link" _hover={{ bg: 'app.subtle' }} onClick={onSkip}>
-                    Skip
-                </Button>
-            )}
         </Flex>
     )
 }

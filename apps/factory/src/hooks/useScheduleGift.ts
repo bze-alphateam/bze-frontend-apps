@@ -87,16 +87,12 @@ export type ScheduleGift = ReturnType<typeof useScheduleGift>
 
 /** The "You will pay" rows of a daily prize: the rewards, then the fees (none when extending). */
 export function schedulePayRows(gift: ScheduleGift, rewardsLabel = 'Rewards'): PayRow[] {
-    const { costs, extraFees, isExtend } = gift
+    const { costs, isExtend } = gift
     const feeRows: PayRow[] = costs.fees.map(f => ({ label: FEE_LABELS[f.label] ?? f.label, coin: f.coin }))
-    // Several charged fees: show their per-denom totals too, the amounts the wallet is charged.
-    const chargedCount = costs.fees.filter(f => new BigNumber(f.coin.amount).gt(0)).length
-    const totalRows: PayRow[] = chargedCount > 1
-        ? costs.feeTotals.map((c, i) => ({ label: i === 0 ? 'Fees total' : 'Also charged', coin: c }))
-        : extraFees.map(c => ({ label: 'Also charged', coin: c }))
 
+    // The panel's Total sums these per token.
     return [
         ...(costs.escrow ? [{ label: rewardsLabel, coin: costs.escrow }] : []),
-        ...(isExtend ? [] : [...feeRows, ...totalRows]),
+        ...(isExtend ? [] : feeRows),
     ]
 }

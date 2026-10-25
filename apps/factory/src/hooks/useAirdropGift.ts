@@ -62,9 +62,9 @@ export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmoun
 
 export type AirdropGift = ReturnType<typeof useAirdropGift>
 
-/** The "You will pay" rows of an airdrop: the gift, the new prize fee (if any) and "Also charged". */
+/** The "You will pay" rows of an airdrop: the gift and the new prize fee (if any); the panel sums them. */
 export function airdropPayRows(gift: AirdropGift, prizeDenom: string): PayRow[] {
-    const { costs, slot, isNewPrize, extraFees } = gift
+    const { costs, slot, isNewPrize } = gift
 
     // A new prize with the cap reached gets no fee row: the blocker banner covers it.
     const feeRows: PayRow[] = prizeDenom && isNewPrize && !slot.capReached
@@ -74,6 +74,5 @@ export function airdropPayRows(gift: AirdropGift, prizeDenom: string): PayRow[] 
     return [
         ...(costs.escrow ? [{ label: 'Airdrop', coin: costs.escrow }] : []),
         ...feeRows,
-        ...extraFees.map(c => ({ label: 'Also charged', coin: c })),
     ]
 }

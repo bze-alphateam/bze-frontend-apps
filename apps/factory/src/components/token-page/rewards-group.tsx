@@ -1,22 +1,24 @@
 "use client"
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Box, Button, VStack } from '@chakra-ui/react'
 import { LuRefreshCw } from 'react-icons/lu'
 import { Shimmer, useLiquidityPools } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
+import { MakeStakableDialog } from '@/components/rewards/make-stakable-dialog'
 import { CompoundedRewardItem, SimpleRewardItem } from '@/components/rewards/reward-items'
 import { softButton } from '@/components/ui/soft-button'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
 import { compoundedNewHref } from '@/lib/denom-reward'
 import { stakesToken } from '@/lib/token-page'
-import { ActionGroup, ActionItem, ItemLink, type GroupProps } from './action-group'
+import { ActionGroup, ActionItem, ItemButton, ItemLink, type GroupProps } from './action-group'
 
 /** The compounded reward of the token, or the way to make it stakable. */
 function Compounded({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
     const ticker = asset.ticker
     const { denomReward, schedules, isLoading, hasError, refresh } = useDenomReward(asset.denom)
+    const [isExplaining, setExplaining] = useState(false)
 
     if (isLoading) {
         return (
@@ -42,11 +44,19 @@ function Compounded({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
     }
     if (!denomReward) {
         return (
-            <ActionItem
-                testId="compounded-item"
-                title={`Make ${ticker} stakable`}
-                action={<ItemLink href={withReturn(compoundedNewHref(asset.denom), back)} primary>Create</ItemLink>}
-            />
+            <>
+                <ActionItem
+                    testId="compounded-item"
+                    title={`Make ${ticker} stakable`}
+                    action={<ItemButton onClick={() => setExplaining(true)} primary>Create</ItemButton>}
+                />
+                <MakeStakableDialog
+                    open={isExplaining}
+                    onClose={() => setExplaining(false)}
+                    ticker={ticker}
+                    href={withReturn(compoundedNewHref(asset.denom), back)}
+                />
+            </>
         )
     }
     // The token page leaves Airdrop out: its Grow actions have one.

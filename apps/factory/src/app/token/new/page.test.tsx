@@ -169,15 +169,15 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
     });
 
     describe("Details", () => {
-        it("uppercases the ticker, previews the denom and summarises name · ticker", async () => {
+        it("uppercases the ticker, hides the denom and summarises name · ticker", async () => {
             renderPage();
             const q = step("Details");
-            expect(within(q).getByText(`factory/${ME}/u<ticker>`)).toBeInTheDocument();
+            expect(within(q).queryByText(/^factory\//)).not.toBeInTheDocument();
             expect(within(q).queryByText("The ticker is permanent.")).not.toBeInTheDocument();
             await userEvent.type(within(q).getByPlaceholderText("e.g. Honey"), "Honey");
             await userEvent.type(within(q).getByPlaceholderText("e.g. HONEY"), "honey");
             expect(within(q).getByPlaceholderText("e.g. HONEY")).toHaveValue("HONEY");
-            expect(within(q).getByText(DENOM)).toBeInTheDocument();
+            expect(within(q).queryByText(DENOM)).not.toBeInTheDocument();
 
             expect(screen.queryByTestId("preview-name")).not.toBeInTheDocument();
 
@@ -185,13 +185,6 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(step("Details")).toHaveAttribute("data-state", "done");
             expect(step("Details")).toHaveTextContent("Honey · HONEY");
             expect(step("Supply")).toHaveAttribute("data-state", "active");
-        });
-
-        it("uses a placeholder for the address without a wallet", async () => {
-            wallet.address = undefined;
-            renderPage();
-            await userEvent.type(screen.getByPlaceholderText("e.g. HONEY"), "hny");
-            expect(screen.getByText("factory/<you>/uhny")).toBeInTheDocument();
         });
 
         it("shows field errors after blur and keeps Continue disabled", async () => {
@@ -312,21 +305,27 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             await answerAll();
             const q = step("Review");
             expect(within(q).getByRole("heading", { name: "Everything right?" })).toBeInTheDocument();
-            const leaves = within(q).getByRole("region", { name: "Leaves your wallet" });
+            const leaves = within(q).getByRole("region", { name: "You pay" });
             expect(leaves).toHaveTextContent("Creation fee");
             expect(leaves).toHaveTextContent("25,000 BZE");
             expect(leaves).toHaveTextContent("Network fee");
             expect(leaves).toHaveTextContent("0.004000 BZE");
             expect(within(q).getByRole("region", { name: "You get" })).toHaveTextContent("1,000,000 HONEY");
-            expect(q).toHaveTextContent("AdminYour wallet · mint and edit details");
-            expect(within(q).getByRole("region", { name: "Permanent" })).toHaveTextContent("The ticker in its address");
+            const gets = within(within(q).getByRole("region", { name: "You get" }));
+            expect(gets.getByText("New token")).toBeInTheDocument();
+            expect(gets.getByText("Honey · HONEY")).toBeInTheDocument();
+            expect(gets.getByText("Minted to you")).toBeInTheDocument();
+            expect(within(q).queryByText("In your wallet")).not.toBeInTheDocument();
+            expect(q).toHaveTextContent("AdminYou");
+            expect(q).not.toHaveTextContent("mint and edit details");
+            expect(within(q).queryByRole("region", { name: "Permanent" })).not.toBeInTheDocument();
             expect(createButton()).toBeEnabled();
         });
 
         it("shows the other admin's full address", async () => {
             renderPage();
             await answerAll(OTHER);
-            expect(step("Review")).toHaveTextContent(`Admin${OTHER} · mint and edit details`);
+            expect(step("Review")).toHaveTextContent(`Admin${OTHER}`);
         });
 
         it.each([

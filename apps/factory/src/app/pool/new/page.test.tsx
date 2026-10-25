@@ -184,7 +184,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
     it("shows the four steps with Pair open, and the pool fee", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Create a liquidity pool" })).toBeInTheDocument();
-        expect(screen.getByText("tradebin · liquidity pool")).toBeInTheDocument();
+        expect(screen.queryByText("tradebin · liquidity pool")).not.toBeInTheDocument();
         expect(step("Pair")).toHaveAttribute("data-state", "active");
         expect(within(step("Pair")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
         expect(within(step("Pair")).getByRole("heading", { name: "Which pair?" })).toBeInTheDocument();
@@ -343,17 +343,16 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await answerFees();
 
             const review = step("Review");
-            const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
+            const leaves = within(review).getByRole("region", { name: "You pay" });
             // Each coin row: label, logo (the mock prints the ticker), amount.
             expect(leaves).toHaveTextContent(/Creation fee\s*BZE\s*25 BZE/);
             expect(leaves).toHaveTextContent(/Starting TOK\s*TOK\s*1,000 TOK/);
             expect(leaves).toHaveTextContent(/Starting BZE\s*BZE\s*50 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("TOK/BZE pool");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("Liquidity poolTOK/BZE");
             expect(review).toHaveTextContent("Swap fee0.2% · 50% to providers, 25% burned, 25% treasury");
             const permanent = within(review).getByRole("region", { name: "Permanent" });
-            expect(permanent).toHaveTextContent("The first deposit (1,000 TOK + 50 BZE)");
-            expect(permanent).toHaveTextContent("The pair");
+            expect(permanent).toHaveTextContent("This action can't be undone");
 
             // The pay panel lists the same rows as Review.
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("Creation fee: 25000000, Starting TOK: 1000000000, Starting BZE: 50000000");

@@ -86,20 +86,18 @@ export function TargetQuestion({ value, onPick, number = 1, total, state = 'acti
 }
 
 interface AirdropFormProps {
-    techTag?: React.ReactNode;
     status?: React.ReactNode;
     aside?: React.ReactNode;
     children: React.ReactNode;
 }
 
 /** "Airdrop tokens": the page title and breadcrumb of every flow. */
-export function AirdropForm({ techTag, status, aside, children }: AirdropFormProps) {
+export function AirdropForm({ status, aside, children }: AirdropFormProps) {
     return (
         <GuidedForm
             crumb="Airdrop"
             title={<>Airdrop <GradientText>tokens</GradientText></>}
             subtitle="Send tokens to wallets or stakers."
-            techTag={techTag}
             status={status}
             aside={aside}
         >

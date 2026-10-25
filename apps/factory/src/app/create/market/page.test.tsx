@@ -38,7 +38,7 @@ beforeEach(() => {
 describe("Choose a DEX market", () => {
     it("asks how people should trade it, under Create / DEX market", () => {
         renderPage();
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("How should people trade it?");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("What kind of market do you want to create?");
         const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
         expect(crumbs.getByRole("link", { name: "Create" })).toHaveAttribute("href", "/");
         expect(crumbs.getByText("DEX market")).toHaveAttribute("aria-current", "page");
@@ -47,8 +47,8 @@ describe("Choose a DEX market", () => {
     it("offers a liquidity pool first, with its care line, the creation fee and the way in", () => {
         renderPage();
         const pool = card("Liquidity pool");
-        expect(pool.getByText("Most common first step")).toBeInTheDocument();
-        expect(pool.getByText("Your first deposit stays in the pool forever. You get no withdrawable share for it.")).toBeInTheDocument();
+        expect(pool.getByText("Most common")).toBeInTheDocument();
+        expect(pool.queryByText(/stays in the pool forever/)).not.toBeInTheDocument();
         expect(pool.getByTestId("fee-line")).toHaveTextContent("Creation fee 25,000 BZE + network fee");
         expect(pool.getByRole("link", { name: /Create liquidity pool/ })).toHaveAttribute("href", "/pool/new");
     });
@@ -56,7 +56,7 @@ describe("Choose a DEX market", () => {
     it("offers an order-book market with the same fee", () => {
         renderPage();
         const market = card("Order-book market");
-        expect(market.getByText("A new market is empty. Nothing trades until people place orders.")).toBeInTheDocument();
+        expect(market.queryByText(/A new market is empty/)).not.toBeInTheDocument();
         expect(market.getByTestId("fee-line")).toHaveTextContent("Creation fee 25,000 BZE + network fee");
         expect(market.getByRole("link", { name: /Create order-book market/ })).toHaveAttribute("href", "/market/new");
     });
@@ -88,7 +88,7 @@ describe("Choose a DEX market", () => {
 
     it("sends existing pools to the DEX", () => {
         renderPage();
-        expect(screen.getByText("Want to add to a pool that already exists, or take your liquidity out?")).toBeInTheDocument();
+        expect(screen.getByText("Want to manage the liquidity of an existing pool? Visit the")).toBeInTheDocument();
         expect(screen.getByTestId("app-link")).toHaveAttribute("href", "https://dex.example/pools");
     });
 });

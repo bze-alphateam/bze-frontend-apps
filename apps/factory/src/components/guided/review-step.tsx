@@ -26,7 +26,7 @@ interface ReviewStepProps {
     title?: string;
     question?: React.ReactNode;
     /**
-     * Leaves your wallet: the module fee and the amounts sent or escrowed, the same rows (and
+     * You pay: the module fee and the amounts sent or escrowed, the same rows (and
      * the same `moduleFee` / `txKind` / fee states) the PayPanel gets, so the two never disagree.
      * The network fee row is added from `txKind`.
      */
@@ -55,11 +55,11 @@ interface ReviewStepProps {
     children?: React.ReactNode;
 }
 
-function Group({ label, children, tone }: { label: string; children: React.ReactNode; tone?: 'warning' }) {
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <VStack as="section" aria-label={label} align="stretch" gap="10px" p="14px" borderRadius="hg.md" bg="hg.inset"
-            borderWidth="1px" borderColor={tone === 'warning' ? 'hg.warning/45' : 'hg.divider'}>
-            <chakra.h3 m="0" fontSize="13px" fontWeight="700" color={tone === 'warning' ? 'hg.warning.text' : 'fg.muted'}>{label}</chakra.h3>
+            borderWidth="1px" borderColor="hg.divider">
+            <chakra.h3 m="0" fontSize="13px" fontWeight="700" color="fg.muted">{label}</chakra.h3>
             {children}
         </VStack>
     )
@@ -91,7 +91,7 @@ export function ReviewStep({
             action={blocker ? undefined : { label: submitLabel, onClick: onSubmit, disabled: Boolean(disabled || isLoading || feeUnknown || cantPay) }}
         >
             <VStack align="stretch" gap="12px">
-                <Group label="Leaves your wallet">
+                <Group label="You pay">
                     {feeUnknown ? (
                         <HStack gap="8px" color="fg.muted" align="start">
                             <Box mt="3px" flexShrink={0}><LuCircleAlert size={16} /></Box>
@@ -123,7 +123,7 @@ export function ReviewStep({
                 ))}
 
                 {permanent.length > 0 && (
-                    <Group label="Permanent" tone="warning">
+                    <Box as="section" aria-label="Permanent" px="14px">
                         <VStack as="ul" align="stretch" gap="6px" m="0" p="0" listStyleType="none">
                             {permanent.map((line, i) => (
                                 <HStack as="li" key={i} gap="8px" align="start" color="hg.warning.text">
@@ -132,7 +132,7 @@ export function ReviewStep({
                                 </HStack>
                             ))}
                         </VStack>
-                    </Group>
+                    </Box>
                 )}
 
                 {children}

@@ -163,7 +163,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
     it("shows the two steps with Pair open, and the market fee", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: "Create an order-book market" })).toBeInTheDocument();
-        expect(screen.getByText("tradebin · order-book market")).toBeInTheDocument();
+        expect(screen.queryByText("tradebin · order-book market")).not.toBeInTheDocument();
         expect(step("Pair")).toHaveAttribute("data-state", "active");
         expect(within(step("Pair")).getByText("Step 1 of 2 ·", { exact: false })).toBeInTheDocument();
         expect(within(step("Pair")).getByRole("heading", { name: "Which pair?" })).toBeInTheDocument();
@@ -242,11 +242,11 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             await answerPair("utok", "ubze");
 
             const review = step("Review");
-            const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
+            const leaves = within(review).getByRole("region", { name: "You pay" });
             expect(leaves).toHaveTextContent(/Creation fee\s*BZE\s*25 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("TOK/BZE order book");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("One market per pair, and it can't be deleted");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("Order-book marketTOK/BZE");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
             expect(within(review).queryByText("A new market is empty. Nothing trades until people place orders. Pairs with a pool usually fill faster.")).not.toBeInTheDocument();
 
             await userEvent.click(createButton());

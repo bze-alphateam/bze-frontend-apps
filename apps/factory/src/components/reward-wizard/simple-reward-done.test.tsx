@@ -27,7 +27,7 @@ describe("SimpleRewardDone", () => {
         render(
             <SimpleRewardDone
                 hash="ABC"
-                input={{ stakingDenom: "factory/bze1a/uhoney", stakingTicker: "HONEY", prizeDenom: "ubze", prizeTicker: "BZE", perDay: "100", prize: "100 BZE a day for 30 days" }}
+                input={{ stakingDenom: "factory/bze1a/uhoney", stakingTicker: "HONEY", prizeDenom: "ubze", prizeTicker: "BZE", perDay: "100", prize: "100 BZE/day × 30 days" }}
             />,
             { wrapper },
         );

@@ -9,7 +9,7 @@ test("walks Details, Supply and Permissions to a Review with the creation fee", 
     await page.goto("/token/new");
 
     await expect(page.getByRole("heading", {name: "Create a token"})).toBeVisible();
-    await expect(page.getByText("tokenfactory · create denom")).toBeVisible();
+    await expect(page.getByText("tokenfactory · create denom")).toHaveCount(0);
 
     const details = page.getByRole("region", {name: "Details"});
     await expect(details).toHaveAttribute("data-state", "active");
@@ -19,7 +19,7 @@ test("walks Details, Supply and Permissions to a Review with the creation fee", 
 
     await details.getByPlaceholder("e.g. Honey", {exact: true}).fill("Honey");
     await details.getByPlaceholder("e.g. HONEY", {exact: true}).fill("honey");
-    await expect(details.getByText("factory/<you>/uhoney")).toBeVisible();
+    await expect(details.getByText("factory/<you>/uhoney")).toHaveCount(0);
 
     await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     await expect(page.getByTestId("preview-name")).toHaveCount(0);
@@ -45,9 +45,9 @@ test("walks Details, Supply and Permissions to a Review with the creation fee", 
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"}).getByText("25,000 TBZE", {exact: true})).toBeVisible();
+    await expect(review.getByRole("region", {name: "You pay"}).getByText("25,000 TBZE", {exact: true})).toBeVisible();
     await expect(review.getByRole("region", {name: "You get"})).toContainText("1,000,000 HONEY");
-    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("The ticker in its address");
+    await expect(review.getByRole("region", {name: "Permanent"})).toHaveCount(0);
 
     await expect(review.getByRole("button", {name: "Create token"})).toBeDisabled();
     await expect(review.getByText("Connect your wallet.")).toBeVisible();

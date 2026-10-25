@@ -1,14 +1,16 @@
 "use client"
 
 import React, { useMemo } from 'react'
+import type BigNumber from 'bignumber.js'
 import { Box, Button, chakra, HStack, Separator, Text, VStack } from '@chakra-ui/react'
-import { LuCircleAlert, LuCircleCheck, LuSettings, LuTriangleAlert } from 'react-icons/lu'
+import { LuCircleAlert, LuCircleCheck, LuInfo, LuSettings, LuTriangleAlert } from 'react-icons/lu'
 import {
     FeeCoin,
     Sidebar,
     SettingsSidebarContent,
     Shimmer,
     TokenLogo,
+    Tooltip,
     TxSpec,
     getChainName,
     prettyAmount,
@@ -29,6 +31,45 @@ export interface PayRow {
     text?: string;
     /** A short explanation under the row. */
     info?: React.ReactNode;
+    /** What the cost is, in a tooltip next to the label. Defaults to the one for the label (rowTip). */
+    tip?: string;
+}
+
+const TIPS: Record<string, string> = {
+    'Creation fee': 'A one-time payment to create it.',
+    'Compounded reward fee': 'A one-time payment that makes the token stakable.',
+    'Daily prize fee': 'Paid once, so the blockchain pays out your daily prize to stakers until it ends.',
+    'New prize fee': 'A one-time payment, the first time a token becomes a prize of this reward.',
+    'Rewards': 'Locked now and paid to stakers day by day.',
+    'Extra rewards': 'Locked now and paid to stakers during the extra days.',
+    'Airdrop': 'Shared among the stakers right away.',
+    'Sent to wallets': 'Sent to the wallets on your list right away.',
+    'Starting pot': "The pot the raffle starts with. Winners are paid from it, and what's left at the end is burned.",
+    'Network fee': 'The amount shown is an estimate.',
+}
+
+/** The tooltip of a pay row: its own, or the one for its label. */
+export function rowTip(label: string, tip?: string): string | undefined {
+    if (tip) return tip
+    if (label.startsWith('Starting ')) return 'Your first deposit. It sets the starting price and stays in the pool.'
+    return TIPS[label]
+}
+
+/** A row label with an ⓘ that explains the cost. */
+function RowLabel({ label, tip }: { label: string; tip?: string }) {
+    const text = rowTip(label, tip)
+    return (
+        <HStack gap="4px" align="center" minW={0}>
+            <Text fontSize="14px" color="fg.muted">{label}</Text>
+            {text && (
+                <Tooltip content={text} showArrow openDelay={100} positioning={{ placement: 'top' }}>
+                    <chakra.button type="button" aria-label={`About ${label}`} display="inline-flex" color="hg.text.faint" bg="transparent" border="0" p="0" cursor="help" _hover={{ color: 'fg' }} focusVisibleRing="outside">
+                        <LuInfo size={13} aria-hidden />
+                    </chakra.button>
+                </Tooltip>
+            )}
+        </HStack>
+    )
 }
 
 interface PayPanelProps {
@@ -84,7 +125,7 @@ export function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; alt
     return (
         <VStack align="stretch" gap="3px">
             <HStack justify="space-between" align="start" gap="12px">
-                <Text fontSize="14px" color="fg.muted">{row.label}</Text>
+                <RowLabel label={row.label} tip={row.tip} />
                 <HStack gap="6px" flexShrink={0}>
                     <TokenLogo src={asset?.logo} symbol={ticker} size="4" />
                     <Text fontSize="14px" fontWeight="600">{display} {ticker}</Text>
@@ -96,16 +137,34 @@ export function CoinRow({ row, altText }: { row: PayRow & { coin: FeeCoin }; alt
     )
 }
 
-export function TextRow({ label, value, info }: { label: string; value: React.ReactNode; info?: React.ReactNode }) {
+export function TextRow({ label, value, info, tip }: { label: string; value: React.ReactNode; info?: React.ReactNode; tip?: string }) {
     return (
         <VStack align="stretch" gap="3px">
             <HStack justify="space-between" align="start" gap="12px">
-                <Text fontSize="14px" color="fg.muted">{label}</Text>
+                <RowLabel label={label} tip={tip} />
                 <Text fontSize="14px" fontWeight="600" textAlign="right">{value}</Text>
             </HStack>
             {info && <Box fontSize="12px" lineHeight="1.45" color="hg.text.faint">{info}</Box>}
         </VStack>
     )
+}
+
+/** One line of the total: an amount of one token. */
+function TotalCoin({ coin, approx }: { coin: FeeCoin; approx: boolean }) {
+    const { asset } = useAsset(coin.denom)
+    const ticker = asset?.ticker ?? coin.denom
+    const display = asset ? prettyAmount(uAmountToBigNumberAmount(coin.amount, asset.decimals)) : coin.amount
+    return <Text fontSize="15px" fontWeight="700" textAlign="right">{`${approx ? '≈ ' : ''}${display} ${ticker}`}</Text>
+}
+
+/** Every coin row plus the network fee, summed per token, in the order they first appear. */
+export function payTotals(rows: PayRow[], gas?: FeeCoin): FeeCoin[] {
+    const sums = new Map<string, BigNumber>()
+    for (const coin of [...rows.map(r => r.coin), gas]) {
+        if (!coin || !toBigNumber(coin.amount).gt(0)) continue
+        sums.set(coin.denom, (sums.get(coin.denom) ?? toBigNumber(0)).plus(toBigNumber(coin.amount)))
+    }
+    return [...sums].map(([denom, amount]) => ({ denom, amount: amount.toFixed(0) }))
 }
 
 /**
@@ -154,6 +213,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
     const moduleRowIndex = moduleFee
         ? rows.findIndex(r => r.coin?.denom === moduleFee.denom && r.coin?.amount === moduleFee.amount)
         : -1
+    const totals = payTotals(rows, hasGas ? { denom: payment.gasFee.denom, amount: payment.gasFee.amount.toFixed(0) } : undefined)
     const nativeBalance = prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))
 
     return (
@@ -161,13 +221,34 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
             <VStack align="stretch" gap="10px">
                 {rows.map((row, i) => row.coin
                     ? <CoinRow key={`${row.label}-${i}`} row={row as PayRow & { coin: FeeCoin }} altText={i === moduleRowIndex ? altText : undefined} />
-                    : <TextRow key={`${row.label}-${i}`} label={row.label} value={row.text ?? ''} info={row.info} />
+                    : <TextRow key={`${row.label}-${i}`} label={row.label} value={row.text ?? ''} info={row.info} tip={row.tip} />
                 )}
                 {gasText && (
                     <TextRow label="Network fee" value={gasText} />
                 )}
             </VStack>
 
+            {totals.length > 0 && (
+                <HStack
+                    justify="space-between"
+                    align="start"
+                    gap="12px"
+                    px="12px"
+                    py="10px"
+                    borderRadius="hg.md"
+                    bg="app.subtle"
+                    borderWidth="1px"
+                    borderColor="app.border"
+                    data-testid="pay-total"
+                >
+                    <Text fontSize="15px" fontWeight="700">Total</Text>
+                    <VStack align="end" gap="2px">
+                        {totals.map(coin => <TotalCoin key={coin.denom} coin={coin} approx={hasGas && coin.denom === payment.gasFee.denom} />)}
+                    </VStack>
+                </HStack>
+            )}
+
+            {payment.isAltSelected && (
             <Sidebar
                 ariaLabel="Settings"
                 trigger={
@@ -179,6 +260,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
             >
                 <SettingsSidebarContent />
             </Sidebar>
+            )}
 
             {moduleFee && (
                 <>

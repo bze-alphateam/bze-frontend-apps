@@ -21,7 +21,7 @@ test("without a token, asks whose stakers first and lists what each stakes", asy
 test("adds a daily prize for NOAD stakers and reaches Review with the fee and the connect message", async ({page}) => {
     await page.goto(`/denom-reward/schedule?denom=${NOADMIN}`);
 
-    await expect(page.getByText("rewards · denom reward schedule")).toBeVisible();
+    await expect(page.getByText("rewards · denom reward schedule")).toHaveCount(0);
     const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "done");
     await expect(token).toContainText("NOAD stakers");
@@ -37,11 +37,11 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await expect(prize.getByTestId("prize-sentence")).toHaveCount(0);
     await expect(prize.getByTestId("escrow-amount")).toHaveCount(0);
     await prize.getByRole("button", {name: "Continue"}).click();
-    await expect(prize).toContainText("100 VDL a day for 30 days");
+    await expect(prize).toContainText("100 VDL/day × 30 days");
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    const leaves = review.getByRole("region", {name: "Leaves your wallet"});
+    const leaves = review.getByRole("region", {name: "You pay"});
     await expect(leaves).toContainText("Daily prize fee");
     await expect(leaves).toContainText("25,000 TBZE");
     await expect(leaves).toContainText("Rewards");
@@ -71,7 +71,7 @@ test("extends a running schedule without a fee", async ({page}) => {
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    const leaves = review.getByRole("region", {name: "Leaves your wallet"});
+    const leaves = review.getByRole("region", {name: "You pay"});
     await expect(leaves).toContainText("Extra rewards");
     await expect(leaves).toContainText("100 VDL");
     await expect(leaves.getByText("None", {exact: true})).toHaveCount(0);

@@ -13,7 +13,7 @@ export interface CompoundedDoneInput {
     /** The first daily prize, when one was funded with it. */
     prizeDenom?: string;
     prizeTicker?: string;
-    /** "50 BZE a day for 30 days". */
+    /** "50 BZE/day × 30 days". */
     prize?: string;
 }
 

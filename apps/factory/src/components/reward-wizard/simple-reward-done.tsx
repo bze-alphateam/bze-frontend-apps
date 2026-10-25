@@ -15,7 +15,7 @@ export interface SimpleRewardDoneInput {
     prizeTicker: string;
     /** The daily amount, formatted: "100". */
     perDay: string;
-    /** "100 HONEY a day for 30 days". */
+    /** "100 HONEY/day × 30 days". */
     prize: string;
 }
 

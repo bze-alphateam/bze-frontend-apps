@@ -166,7 +166,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
     it("shows the four steps with Stake open", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Create a simple reward/ })).toBeInTheDocument();
-        expect(screen.getByText("rewards · staking reward")).toBeInTheDocument();
+        expect(screen.queryByText("rewards · staking reward")).not.toBeInTheDocument();
         expect(step("Stake")).toHaveAttribute("data-state", "active");
         expect(within(step("Stake")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
         expect(within(step("Stake")).getByRole("heading", { name: "Which token?" })).toBeInTheDocument();
@@ -213,7 +213,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards: 3000000000 utok, Creation fee: 25000000 ubze");
 
             await userEvent.click(button(step("Reward"), "Continue"));
-            expect(step("Reward")).toHaveTextContent("100 TOK a day for 30 days");
+            expect(step("Reward")).toHaveTextContent("100 TOK/day × 30 days");
             expect(step("Rules")).toHaveAttribute("data-state", "active");
         });
 
@@ -281,22 +281,23 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
     });
 
     describe("Review", () => {
-        it("lists the committed rewards and the fee, what you get, the days and what is permanent, then signs the msg in base units", async () => {
+        it("lists the committed rewards and the fee, what you get, the rules and what is permanent, then signs the msg in base units", async () => {
             renderPage();
             await answerStake();
             await answerBudget("1.5", "30");
             await answerRules("7", "2.5");
 
             const review = step("Review");
-            const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
+            const leaves = within(review).getByRole("region", { name: "You pay" });
             // The same rows, in the same order, as the pay panel.
             expect(leaves).toHaveTextContent(/Rewards\s*TOK\s*45 TOK.*Creation fee\s*BZE\s*25 BZE/);
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("Stake TOK/BZE LP · earn 1.5 TOK a day");
-            expect(review).toHaveTextContent("Days30 days");
+            const gets = within(review).getByRole("region", { name: "You get" });
+            expect(gets).toHaveTextContent("TOK/BZE LP becomes stakable");
+            expect(gets).toHaveTextContent("1.5 TOK/day × 30 days");
+            expect(review).toHaveTextContent("Unstaking lock7 days");
+            expect(review).toHaveTextContent("Minimum stake2.5 TOK/BZE LP");
             expect(review).not.toHaveTextContent("Budget");
-            const permanent = within(review).getByRole("region", { name: "Permanent" });
-            expect(permanent).toHaveTextContent("Daily reward and rules");
-            expect(permanent).toHaveTextContent("Rewards are committed to stakers");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
 
             await userEvent.click(createButton());
             expect(sentMsgs()).toEqual([{

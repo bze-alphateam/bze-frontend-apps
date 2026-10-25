@@ -267,7 +267,11 @@ describe("rewards directory: a token's rewards", () => {
         await waitFor(() => expect(groups()).toHaveLength(3));
         await toggle("TOK");
         expect(within(group("TOK")).getByTestId("stakable-offer")).toHaveTextContent("No compounded reward yet.");
-        expect(within(group("TOK")).getByRole("link", { name: "Make TOK stakable" })).toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(TOK)}`);
+        await userEvent.click(within(group("TOK")).getByRole("button", { name: "Make TOK stakable" }));
+        const dialog = within(await screen.findByRole("dialog"));
+        expect(dialog.getByText(/For TOK to be stakable, it needs a staking reward/)).toBeInTheDocument();
+        expect(dialog.getByRole("link", { name: "Create compounded reward" })).toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(TOK)}`);
+        await userEvent.keyboard("{Escape}");
         await toggle("TOK/BZE LP");
         expect(within(group("TOK/BZE LP")).queryByTestId("stakable-offer")).not.toBeInTheDocument();
     });

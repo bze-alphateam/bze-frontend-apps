@@ -42,7 +42,6 @@ import {
     useGuidedSteps,
 } from '@/components/guided'
 import type { TxPanelError, TxPanelStatus } from '@/components/guided'
-import { VOCABULARY } from '@/lib/vocabulary'
 import {
     MAX_RECIPIENT_LINES,
     RecipientMode,
@@ -531,7 +530,7 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
             ]}
             txKind={spec}
             gets={[{ label: 'Wallets', value: `${count} wallets receive ${ticker}` }]}
-            permanent={["Sent tokens can't be taken back"]}
+            permanent={["This action can't be undone"]}
             submitLabel={`Airdrop to ${count} wallets`}
             onSubmit={submit}
             disabled={!canSend}
@@ -569,7 +568,6 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
 
     return (
         <AirdropForm
-            techTag={VOCABULARY.multiSend.tech}
             status="List saved in this browser"
             aside={aside}
         >

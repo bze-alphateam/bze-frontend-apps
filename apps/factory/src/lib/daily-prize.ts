@@ -67,9 +67,9 @@ export function checkDailyPrize(input: DailyPrizeCheckInput): DailyPrizeCheck {
     }
 }
 
-/** "50 BZE a day for 30 days". */
+/** "50 BZE/day × 30 days". */
 export function dailyPrizeSummary(dailyText: string, ticker: string, days: number): string {
-    return `${dailyText} ${ticker} a day for ${days.toLocaleString('en-US')} day${days === 1 ? '' : 's'}`
+    return `${dailyText} ${ticker}/day × ${days.toLocaleString('en-US')} day${days === 1 ? '' : 's'}`
 }
 
 /** A first daily prize funded with the compounded reward. */

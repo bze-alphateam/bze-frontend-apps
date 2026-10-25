@@ -15,7 +15,7 @@ const heading = (name: string | RegExp) => (page: Page) => page.getByRole("headi
 
 const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/", ready: heading("What are you building today?")},
-    {path: "/create/market", ready: heading("How should people trade it?")},
+    {path: "/create/market", ready: heading("What kind of market do you want to create?")},
     {path: "/create/rewards", ready: heading("Which kind of reward?")},
     {path: "/create/grow", ready: heading("How do you want to grow?")},
     {path: "/token/new", ready: heading("Create a token")},

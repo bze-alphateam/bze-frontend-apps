@@ -138,8 +138,8 @@ describe("extractRewardId", () => {
 
 describe("budget wording", () => {
     it("summarises the daily amount and the days", () => {
-        expect(prizeSummary("100", "HONEY", "30")).toBe("100 HONEY a day for 30 days");
-        expect(prizeSummary("1.5", "TOK", " 1 ")).toBe("1.5 TOK a day for 1 day");
+        expect(prizeSummary("100", "HONEY", "30")).toBe("100 HONEY/day × 30 days");
+        expect(prizeSummary("1.5", "TOK", " 1 ")).toBe("1.5 TOK/day × 1 day");
     });
 });
 
