@@ -1,7 +1,8 @@
 import BigNumber from 'bignumber.js'
 import type { DenomReward, DenomRewardSchedule } from '@bze/bze-ui-kit'
-import { type PrizeSlot, MAX_SCHEDULE_DAYS, scheduleDaysLeft, validateScheduleDays } from '@/lib/denom-reward'
-import { addDays, formatDay } from '@/lib/reward-extend'
+import { MAX_SCHEDULE_DAYS, scheduleDaysLeft, validateScheduleDays } from '@/lib/denom-reward'
+import { formatDate } from '@/lib/format'
+import { addDays } from '@/lib/reward-extend'
 
 // The daily prize (add + extend) and Airdrop to stakers wizards (BFE-268): the picker row states,
 // the new-prize note, the extend math and the Done titles. Both fund any token's compounded reward.
@@ -24,31 +25,14 @@ export function stakedRowState(stakedDisplay: BigNumber | undefined, flow: Prize
     if (stakedDisplay === undefined) return undefined
     if (stakedDisplay.gt(0)) return { text: `${pretty(stakedDisplay)} staked`, tone: 'good' }
     return flow === 'airdrop'
-        ? { text: 'Nothing staked · airdrop waits', tone: 'warn', disabled: true }
-        : { text: 'Nothing staked yet', tone: 'muted' }
+        ? { text: 'Nothing staked', tone: 'warn', disabled: true }
+        : { text: 'Nothing staked', tone: 'muted' }
 }
 
 /** The picked token's compounded reward can take this prize: it is loaded, it exists, and for an airdrop something is staked. */
 export function stakedTokenOk(flow: PrizeFlow, read: { denomReward?: Pick<DenomReward, 'staked_amount'>; isLoading: boolean; hasError: boolean }): boolean {
     if (read.isLoading || read.hasError || !read.denomReward) return false
     return flow !== 'airdrop' || new BigNumber(read.denomReward.staked_amount || 0).gt(0)
-}
-
-/** Why an airdrop to `ticker` stakers can't be picked: nobody stakes it. */
-export const nothingStakedReason = (ticker: string) =>
-    `Nobody is staking ${ticker} yet, so there is no one to pay. The chain refuses an airdrop when nothing is staked. Nothing would leave your wallet.`
-
-/**
- * "BZE is a new prize token here: +25,000 TBZE, uses 1 of the remaining 4 prize slots." ('' for a
- * prize the reward already pays, or once the cap is reached: the blocker says so then.)
- */
-export function newPrizeNote(prizeTicker: string, feeText: string, slot: PrizeSlot, max?: number): string {
-    if (!slot.isNewPrize || slot.capReached) return ''
-    const fee = feeText ? `+${feeText}` : 'the new prize fee applies'
-    const slots = max === undefined
-        ? 'uses 1 prize slot for good'
-        : `uses 1 of the remaining ${Math.max(0, max - slot.used).toLocaleString('en-US')} prize slots`
-    return `${prizeTicker} is a new prize token here: ${fee}, ${slots}.`
 }
 
 /** The read-only facts of a schedule being extended, and what `extraInput` more days do. */
@@ -73,7 +57,7 @@ export function scheduleExtendFacts(
     now: Date,
 ): ScheduleExtendFacts {
     const daysLeft = scheduleDaysLeft(schedule)
-    const end = formatDay(addDays(now, daysLeft), now)
+    const end = formatDate(addDays(now, daysLeft), now)
     const room = Math.max(0, MAX_SCHEDULE_DAYS - schedule.duration)
     const error = validateScheduleDays(extraInput, schedule.duration)
     if (error !== '') return { daysLeft, end, room, error }
@@ -86,7 +70,7 @@ export function scheduleExtendFacts(
         error,
         extra,
         escrow: new BigNumber(schedule.daily_amount).multipliedBy(extra),
-        newEnd: formatDay(addDays(now, daysLeft + extra), now),
+        newEnd: formatDate(addDays(now, daysLeft + extra), now),
     }
 }
 
@@ -127,7 +111,7 @@ export function prizeDoneTitle(input: PrizeDoneInput): string {
 /** The line under the Done title. */
 export function prizeDoneText(input: PrizeDoneInput): string {
     const { kind, stakedTicker, prizeTicker, perDay, days, newEnd } = input
-    if (kind === 'airdrop') return `Everyone staking ${stakedTicker} got a share, split by stake. They can claim it right away.`
-    if (kind === 'extend') return `Everyone staking ${stakedTicker} keeps sharing ${perDay} ${prizeTicker} a day until about ${newEnd}.`
-    return `Everyone staking ${stakedTicker} shares ${perDay} ${prizeTicker} a day for ${dayCount(days ?? 0)}.`
+    if (kind === 'airdrop') return `${stakedTicker} stakers got a share, split by stake. They can claim it right away.`
+    if (kind === 'extend') return `${stakedTicker} stakers keep sharing ${perDay} ${prizeTicker} a day until ${newEnd}.`
+    return `${stakedTicker} stakers share ${perDay} ${prizeTicker} a day for ${dayCount(days ?? 0)}.`
 }

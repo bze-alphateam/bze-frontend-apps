@@ -353,7 +353,7 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
             renderPage();
             await toReview();
             expect(startButton()).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to start the raffle.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("says what the wallet is short of", async () => {

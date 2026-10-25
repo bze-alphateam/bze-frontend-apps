@@ -101,7 +101,7 @@ export const STARTING_POINTS: StartingPoint[] = [
     { id: 'token', title: 'Create a token', line: 'Name, ticker, logo and supply. Minted to your wallet.', chips: ['Token'], options: 'Token', href: '/token/new', featured: true },
     { id: 'market', title: 'Create a DEX market', line: 'Let people swap a pair instantly, or trade it with limit orders.', chips: ['Liquidity pool', 'Order book'], options: 'Liquidity pool · Order book', href: CHOOSE_MARKET_PATH },
     { id: 'rewards', title: 'Create staking rewards', line: 'Pay people for staking a token, any token, not only yours.', chips: ['Simple reward', 'Compounded reward'], options: 'Simple · Compounded', href: CHOOSE_REWARDS_PATH },
-    { id: 'grow', title: 'Grow a community', line: 'Airdrop coins to wallets, stakers or liquidity providers, or run a raffle.', chips: ['Airdrop', 'Raffle'], options: 'Airdrop · Raffle', href: CHOOSE_GROW_PATH },
+    { id: 'grow', title: 'Grow a community', line: 'Airdrop tokens to wallets, stakers or liquidity providers, or run a raffle.', chips: ['Airdrop', 'Raffle'], options: 'Airdrop · Raffle', href: CHOOSE_GROW_PATH },
     { id: 'dao', title: 'Create a DAO', line: 'Let holders decide together: proposals, votes and a shared treasury.', chips: [], options: '' },
     { id: 'contest', title: 'Create a trading contest', line: 'Prizes for the top traders of a market over a set period.', chips: [], options: '' },
 ]

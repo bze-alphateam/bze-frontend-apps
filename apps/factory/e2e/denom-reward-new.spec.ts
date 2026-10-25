@@ -44,7 +44,7 @@ test("walks from the preselected token to Review without a prize, with the fee a
     await expect(review.getByRole("region", {name: "You get"})).toContainText("TUSDC becomes stakable for everyone");
     await expect(review).toContainText("There is one compounded reward per token. It can't be removed");
     await expect(review.getByRole("button", {name: "Make TUSDC stakable"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to make it stakable.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("with a first daily prize, Review lists the prize fees and the locked prize", async ({page, network}) => {

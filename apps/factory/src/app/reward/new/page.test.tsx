@@ -343,7 +343,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             await answerBudget("1", "10");
             await answerRules("0", "");
             expect(step("Review")).toHaveAttribute("data-state", "active");
-            expect(screen.getByText("Connect your wallet to create this reward.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
             expect(createButton()).toBeDisabled();
         });
 

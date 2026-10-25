@@ -41,7 +41,7 @@ test("walks from the preselected LP token to Review, with the fee and the connec
     await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("3,000 VDL");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("A simple reward anyone can stake in");
     await expect(review.getByRole("button", {name: "Create simple reward"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to create this reward.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {

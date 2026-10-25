@@ -17,7 +17,7 @@ test.beforeEach(async ({page}) => {
 test("asks who gets the coins first, and keeps the answer in the URL", async ({page}) => {
     await page.goto("/airdrop");
 
-    await expect(page.getByRole("heading", {level: 1, name: "Airdrop coins"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Airdrop tokens"})).toBeVisible();
     const who = page.getByRole("region", {name: "Who", exact: true});
     await expect(who.getByRole("radio")).toHaveCount(3);
     await who.getByRole("radio", {name: /Liquidity providers/}).click();
@@ -55,7 +55,7 @@ test("through NOAD's compounded reward: any coin, then Review with the connect m
     await expect(review.getByRole("region", {name: "You get"})).toContainText("NOAD stakers can claim it right away");
     await expect(review).toContainText("An airdrop can't be undone");
     await expect(review.getByRole("button", {name: "Airdrop now"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to airdrop.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("refuses a token nobody is staking", async ({page, network}) => {
@@ -87,7 +87,7 @@ test("the old Distribute link lands on the simple reward, in its own prize coin"
 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review.getByRole("button", {name: "Airdrop now"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to airdrop.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("the old airdrop and Reach links keep their token", async ({page}) => {

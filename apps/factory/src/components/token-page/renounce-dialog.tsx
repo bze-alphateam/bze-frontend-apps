@@ -126,7 +126,7 @@ function RenounceContent({ asset, admin, supply, supplyDisplay, open, onClose, o
             sheetOnPhones
             closeLabel="Close dialog"
             title={`Renounce admin of ${ticker}?`}
-            description="This is permanent. There is no undo, not by you, not by BeeZee."
+            description="Permanent."
             initialFocusEl={() => keepRef.current}
             footer={panelProps ? undefined : (
                 <>

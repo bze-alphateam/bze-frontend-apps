@@ -36,8 +36,8 @@ export function TokenDone({ input, hash }: { input: TokenDoneInput; hash: string
             celebrate
             avatar={{ ticker, logo: asset?.logo }}
             title={`${ticker} is **live**.`}
-            text={`${prettyAmount(toBigNumber(input.supply))} ${ticker} just landed in your wallet. Nice work.`}
-            code={{ label: 'Denom', value: denom }}
+            text={`${prettyAmount(toBigNumber(input.supply))} ${ticker} are in your wallet.`}
+            code={{ label: 'Token ID', value: denom }}
             links={[
                 { label: 'Open token page', href: tokenPage },
                 { label: 'DEX', href: `${getDexApp().href}/assets/details?denom=${encodeURIComponent(denom)}`, app: 'dex' },
@@ -46,7 +46,6 @@ export function TokenDone({ input, hash }: { input: TokenDoneInput; hash: string
             subject={ticker}
             recommended={recommended}
             more={more}
-            footnote={{ text: 'Not now? Every one of these waits for you on', link: { label: `${ticker}'s token page`, href: tokenPage }, after: '.' }}
             back={returnTo}
         />
     )

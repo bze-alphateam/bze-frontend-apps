@@ -8,7 +8,8 @@ import { prettyAmount, uAmountToBigNumberAmount, type Asset, type DenomReward } 
 import { BlockerNote } from '@/components/guided'
 import { StakedTokenPicker } from '@/components/pickers/staked-token-picker'
 import { compoundedNewHref } from '@/lib/denom-reward'
-import { type PrizeFlow, nothingStakedReason, stakedRowState, stakedTokenOk } from '@/lib/prize-wizard'
+import { nothingStakedText } from '@/lib/denom-reward'
+import { type PrizeFlow, stakedRowState, stakedTokenOk } from '@/lib/prize-wizard'
 
 interface StakedTokenStepProps {
     flow: PrizeFlow;
@@ -61,7 +62,7 @@ export function StakedTokenStep({ flow, value, onChange, ticker, denomReward, is
             )}
             {flow === 'airdrop' && denomReward && !isLoading && !hasError && !stakedTokenOk(flow, { denomReward, isLoading, hasError }) && (
                 <Box data-testid="airdrop-blocker">
-                    <BlockerNote>{nothingStakedReason(ticker || 'this token')}</BlockerNote>
+                    <BlockerNote>{nothingStakedText(ticker || 'this token')}</BlockerNote>
                 </Box>
             )}
         </VStack>

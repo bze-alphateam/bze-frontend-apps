@@ -4,7 +4,7 @@ import { bze } from '@bze/bzejs'
 import { DenomRewardPrize, TxSpec, useCanAffordTx, useCreationFees } from '@bze/bze-ui-kit'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import type { PayRow } from '@/components/guided'
-import { airdropBlocker, newPrizeSlotInfo, prizeSlot, summarizeAirdropCosts } from '@/lib/denom-reward'
+import { airdropBlocker, prizeSlot, summarizeAirdropCosts } from '@/lib/denom-reward'
 
 const { distributeDenomRewards } = bze.rewards.MessageComposer.withTypeUrl
 
@@ -20,13 +20,15 @@ interface AirdropGiftInput {
     prizeDenom: string;
     /** The gift in prize base units; undefined while the input is invalid. */
     uAmount?: string;
+    /** For the nobody-stakes blocker. */
+    stakedTicker?: string;
 }
 
 /**
  * A one-off airdrop on a compounded reward (`MsgDistributeDenomRewards`): the costs, the blocker, the
  * affordability check and the message. Used by the Airdrop coins wizard.
  */
-export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmount }: AirdropGiftInput) {
+export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmount, stakedTicker }: AirdropGiftInput) {
     const { fees, denomRewardLimits, isLoading: isFeeLoading } = useCreationFees()
     const maxPrizes = denomRewardLimits.maxPrizeDenomsPerDr
     const prizeFee = fees.createDenomRewardPrizeFee
@@ -36,7 +38,7 @@ export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmoun
     const costs = summarizeAirdropCosts({ uAmount, prizeDenom, prizeFee, isNewPrize })
     const blocker = stakedAmount === undefined
         ? ''
-        : airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown: costs.feesKnown })
+        : airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown: costs.feesKnown, max: maxPrizes, stakedTicker })
 
     const mainFee = costs.feeTotals[0]
     const extraFees = costs.feeTotals.slice(1)
@@ -60,24 +62,14 @@ export function useAirdropGift({ denom, stakedAmount, prizes, prizeDenom, uAmoun
 
 export type AirdropGift = ReturnType<typeof useAirdropGift>
 
-export interface PayRowNames {
-    prizeDenom: string;
-    stakingTicker: string;
-    stakingPossessive: string;
-    prizeTicker: string;
-}
-
-/** The "You will pay" rows of an airdrop: the gift, the prize fee (or none) and "Also charged". */
-export function airdropPayRows(gift: AirdropGift, { prizeDenom, stakingTicker, stakingPossessive, prizeTicker }: PayRowNames): PayRow[] {
-    const { costs, slot, isNewPrize, maxPrizes, extraFees } = gift
-    const slotInfo = newPrizeSlotInfo({ ticker: stakingTicker, possessive: stakingPossessive }, prizeTicker, slot, maxPrizes)
+/** The "You will pay" rows of an airdrop: the gift, the new prize fee (if any) and "Also charged". */
+export function airdropPayRows(gift: AirdropGift, prizeDenom: string): PayRow[] {
+    const { costs, slot, isNewPrize, extraFees } = gift
 
     // A new prize with the cap reached gets no fee row: the blocker banner covers it.
-    const feeRows: PayRow[] = !prizeDenom || (isNewPrize && slot.capReached)
-        ? []
-        : isNewPrize
-            ? costs.fees.map(f => ({ label: 'New prize fee', coin: f.coin, info: slotInfo }))
-            : [{ label: 'Prize fee', text: 'None', info: `${stakingTicker} already pays ${prizeTicker}, so only the network fee applies.` }]
+    const feeRows: PayRow[] = prizeDenom && isNewPrize && !slot.capReached
+        ? costs.fees.map(f => ({ label: 'New prize fee', coin: f.coin }))
+        : []
 
     return [
         ...(costs.escrow ? [{ label: 'Airdrop', coin: costs.escrow }] : []),

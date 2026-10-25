@@ -33,14 +33,14 @@ export function CompoundedDone({ input, hash }: { input: CompoundedDoneInput; ha
         <DoneScreen
             avatar={{ ticker, logo: asset?.logo }}
             title={`${ticker} is **stakable**.`}
-            text={`Anyone holding ${ticker} can stake it now, and anyone can add prizes for them.`}
+            text={`${ticker} can be staked now.`}
             links={[
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },
             ]}
             subject={ticker}
             notice={funded
                 ? undefined
-                : 'No prizes funded yet. Stakers earn nothing until a prize is added. Add the first one so the people who join today get paid.'}
+                : 'No daily reward yet.'}
             recommended={recommended}
             more={more}
             back={returnTo}

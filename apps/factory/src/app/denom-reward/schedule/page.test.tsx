@@ -326,7 +326,7 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             await fillPrize("50", "30");
             await userEvent.click(button(step("Prize"), "Continue"));
             expect(button(step("Review"), "Start daily prize")).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to fund this daily prize.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("says what the wallet is short of", async () => {

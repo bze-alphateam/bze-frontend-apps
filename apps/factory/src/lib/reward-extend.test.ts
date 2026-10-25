@@ -8,12 +8,12 @@ import {
     extendHref,
     extendMsgValue,
     extendRoom,
-    formatDay,
     isFinished,
     newEndDate,
     searchRunningRewards,
     validateExtraDays,
 } from "./reward-extend";
+import { formatDate as formatDay } from "./format";
 
 const reward = (over: Partial<StakingRewardSDKType> = {}): StakingRewardSDKType => ({
     reward_id: "1",
@@ -70,18 +70,18 @@ describe("the 36,500-day cap", () => {
 
     it.each([
         ["", "Required."],
-        ["0", "Enter a whole number of days, at least 1."],
-        ["1.5", "Enter a whole number of days, at least 1."],
-        ["-3", "Enter a whole number of days, at least 1."],
+        ["0", "Enter a whole number of days."],
+        ["1.5", "Enter a whole number of days."],
+        ["-3", "Enter a whole number of days."],
         ["10", ""],
         ["36470", ""],
-        ["36471", "At most 36,470 more days: a reward can't run more than 36,500 days in total."],
+        ["36471", "Max 36470 days."],
     ])("%j extra days → %j", (value, error) => {
         expect(validateExtraDays(value, reward())).toBe(error);
     });
 
     it("refuses any day on a reward already at the cap", () => {
-        expect(validateExtraDays("1", reward({ duration: 36500 }))).toBe("This reward already runs the maximum of 36,500 days.");
+        expect(validateExtraDays("1", reward({ duration: 36500 }))).toBe("Max 36500 days reached.");
     });
 });
 

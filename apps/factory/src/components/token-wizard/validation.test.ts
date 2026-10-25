@@ -67,22 +67,22 @@ describe("validateSymbol", () => {
     });
 
     it("requires a symbol", () => {
-        expect(validateSymbol("")).toBe("Symbol is required.");
+        expect(validateSymbol("")).toBe("Ticker is required.");
     });
 
     it("enforces min and max length", () => {
-        expect(validateSymbol("A")).toBe("Symbol must be at least 3 characters.");
+        expect(validateSymbol("A")).toBe("Ticker must be at least 3 characters.");
         // The lowercased symbol becomes the metadata display denom, which the chain
         // validates with sdk.ValidateDenom (minimum 3 characters).
-        expect(validateSymbol("AB")).toBe("Symbol must be at least 3 characters.");
+        expect(validateSymbol("AB")).toBe("Ticker must be at least 3 characters.");
         expect(validateSymbol("ABC")).toBe("");
         expect(validateSymbol("A".repeat(MAX_SYMBOL_LENGTH + 1))).toBe(
-            `Symbol must be at most ${MAX_SYMBOL_LENGTH} characters.`,
+            `Ticker must be at most ${MAX_SYMBOL_LENGTH} characters.`,
         );
     });
 
     it("must start with a letter and be alphanumeric", () => {
-        const err = "Symbol must start with a letter and contain only letters and digits.";
+        const err = "Ticker must start with a letter and contain only letters and digits.";
         expect(validateSymbol("1AB")).toBe(err);
         expect(validateSymbol("A-B")).toBe(err);
     });

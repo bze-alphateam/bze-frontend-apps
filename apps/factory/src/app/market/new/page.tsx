@@ -1,14 +1,17 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Text, VStack } from '@chakra-ui/react'
+import { VStack } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import {
     AppLink,
     GradientText,
     getChainName,
     getDexApp,
+    prettyAmount,
+    uAmountToBigNumberAmount,
     useAsset,
+    useBalance,
     useCreationFees,
     useMarkets,
 } from '@bze/bze-ui-kit'
@@ -22,8 +25,6 @@ import {
     BlockerNote,
     FormPage,
     GuidedForm,
-    Hint,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -32,6 +33,7 @@ import {
     useGuidedSteps,
 } from '@/components/guided'
 import { dexMarketHref } from '@/lib/create-routes'
+import { notEnoughText } from '@/lib/format'
 import { createMarketMsgValue, marketPairProblem } from '@/lib/market-new'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
@@ -58,6 +60,8 @@ function MarketNewContent() {
 
     const fee = fees.createMarketFee
     const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, CREATE_MARKET_TX_KIND)
+    const { asset: feeAsset } = useAsset(fee?.denom ?? '')
+    const { balance: feeBalance } = useBalance(fee?.denom ?? '')
 
     const connected = Boolean(address)
     const baseTicker = baseAsset?.ticker ?? ''
@@ -102,33 +106,25 @@ function MarketNewContent() {
         submit({ base: baseDenom, quote: quoteDenom, baseTicker, quoteTicker })
     }
 
+    const feeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
+    const feeBalanceText = prettyAmount(uAmountToBigNumberAmount(feeBalance.amount, feeAsset?.decimals ?? 6))
+    const payRows = [{ label: 'Creation fee', coin: fee }]
+
     const aside = (
-        <>
-            <OutcomePanel>
-                <Text data-testid="outcome">
-                    {pair && isPairValid
-                        ? `A ${pair} order book opens on the DEX. Anyone can place orders to buy or sell ${baseTicker} at a price in ${quoteTicker} they name.`
-                        : 'An order book for your pair opens on the DEX. Anyone can place orders at the price they name.'}
-                </Text>
-            </OutcomePanel>
-
-            <PayPanel
-                rows={[{ label: 'Market creation fee', coin: fee }]}
-                moduleFee={fee}
-                txKind={CREATE_MARKET_TX_KIND}
-                isLoading={isFeeLoading}
-                feeUnknown={!fee}
-            />
-
-            <Hint>Creating a market doesn&apos;t make you its owner. Anyone can trade on it.</Hint>
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={fee}
+            txKind={CREATE_MARKET_TX_KIND}
+            isLoading={isFeeLoading}
+            feeUnknown={!fee}
+        />
     )
 
     return (
         <GuidedForm
             crumb="Order-book market"
             title={<>Create an <GradientText>order-book market</GradientText></>}
-            subtitle="Open an order book on the DEX so traders can buy and sell at the price they name. Everything is shown before you sign."
+            subtitle="Open an order book on the DEX."
             techTag="tradebin · order-book market"
             aside={aside}
         >
@@ -140,16 +136,15 @@ function MarketNewContent() {
                 action={{ label: 'Continue', onClick: answerPair, disabled: !isPairValid }}
             >
                 <VStack align="stretch" gap="16px">
-                    <Text fontSize="14px" color="fg.muted">Orders are priced in the quote token, e.g. HONEY priced in BZE.</Text>
                     <AssetPicker
-                        label="Base: what is traded"
+                        label="Base token"
                         value={baseDenom}
                         excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
                         excludeHalted
                         onSelect={(asset) => setBaseDenom(asset.denom)}
                     />
                     <AssetPicker
-                        label="Quote: what it is priced in"
+                        label="Quote token"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
                         excludeHalted
@@ -177,23 +172,22 @@ function MarketNewContent() {
                 <ReviewStep
                     {...steps.step('review')}
                     question="Everything right?"
-                    leaves={[{ label: 'Market creation fee', coin: fee }]}
+                    leaves={payRows}
                     moduleFee={fee}
                     txKind={CREATE_MARKET_TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Market', value: `An empty ${pair} order book anyone can trade on` }]}
+                    gets={[{ label: 'Market', value: `${pair} order book` }]}
                     permanent={["One market per pair, and it can't be deleted"]}
                     submitLabel="Create market"
                     onSubmit={create}
                     disabled={!canCreate}
                     onBack={steps.back}
                 >
-                    <Hint>A new market is empty. Nothing trades until people place orders. Pairs with a pool usually fill faster.</Hint>
                     {!address ? (
-                        <SubmitNote>Connect your wallet to create this market.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !isBalanceLoading && !canPayFee && (
-                        <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
+                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

@@ -13,7 +13,7 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
     await page.goto("/multisend?denom=ubze");
     await expect(page).toHaveURL(/\/airdrop\?.*to=list/);
 
-    await expect(page.getByRole("heading", {level: 1, name: "Airdrop coins"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Airdrop tokens"})).toBeVisible();
     await expect(page.getByRole("region", {name: "Who", exact: true})).toContainText("A list of wallets");
     await expect(page.getByRole("region", {name: "Token", exact: true})).toHaveAttribute("data-state", "done");
     const list = page.getByRole("region", {name: "List", exact: true});
@@ -42,7 +42,7 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
     await expect(review.getByRole("region", {name: "You get"})).toContainText("2 wallets receive TBZE");
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("Sent tokens can't be taken back");
     await expect(review.getByRole("button", {name: "Send to 2 wallets"})).toBeDisabled();
-    await expect(review.getByText("Connect your wallet to send.")).toBeVisible();
+    await expect(review.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {
@@ -71,7 +71,7 @@ test("a long list is planned as transactions of 100 on Review and fits a 390 px 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review.getByText(/We send it in 3 transactions of up to 100 wallets\. Your wallet asks you to approve each one\./)).toBeVisible();
     await expect(review.getByRole("button", {name: "Send to 250 wallets"})).toBeDisabled();
-    await expect(review.getByText("Connect your wallet to send.")).toBeVisible();
+    await expect(review.getByText("Connect your wallet.")).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);

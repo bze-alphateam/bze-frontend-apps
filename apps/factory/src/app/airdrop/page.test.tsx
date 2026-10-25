@@ -35,7 +35,7 @@ describe("Airdrop coins (/airdrop)", () => {
     it("asks who gets the coins, and puts the answer in the URL with the coin kept", async () => {
         m.query = new URLSearchParams({ prize: "uhoney" });
         render(<AirdropPage />, { wrapper });
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop coins");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
         expect(screen.getAllByRole("radio").map(r => r.textContent)).toEqual([
             expect.stringContaining("A list of wallets"),
             expect.stringContaining("Stakers of a token"),

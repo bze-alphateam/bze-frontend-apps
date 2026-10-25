@@ -204,7 +204,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByText("Name must be at least 2 characters.")).toBeInTheDocument();
             await userEvent.type(within(q).getByPlaceholderText("e.g. HONEY"), "1ab");
             await userEvent.tab();
-            expect(screen.getByText("Symbol must start with a letter and contain only letters and digits.")).toBeInTheDocument();
+            expect(screen.getByText("Ticker must start with a letter and contain only letters and digits.")).toBeInTheDocument();
             expect(button(q, "Continue")).toBeDisabled();
         });
 
@@ -332,7 +332,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
         });
 
         it.each([
-            ["no wallet", () => { wallet.address = undefined; }, "Connect your wallet to create this token."],
+            ["no wallet", () => { wallet.address = undefined; }, "Connect your wallet."],
             ["the fee is unknown", () => { feeState.fee = undefined; }, "Could not load the current fee from the chain. Please refresh and try again."],
             ["the fee can't be paid", () => { payment.canPayFee = false; }, "Not enough balance to cover the creation fee."],
         ])("keeps Create token disabled when %s", async (_name, setup, note) => {

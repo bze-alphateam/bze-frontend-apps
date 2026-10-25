@@ -7,26 +7,23 @@ import { GradientText } from '@bze/bze-ui-kit'
 import { GuidedForm, Question, type StepProps } from '@/components/guided'
 import type { AirdropTarget } from '@/lib/airdrop'
 
-// The frame every Airdrop coins flow shares: one title, one first step ("Who gets it?"). Each
+// The frame every Airdrop flow shares: one title, one first step ("Who gets it?"). Each
 // target has its own flow component with its own steps after that one.
 
-const TARGETS: { value: AirdropTarget; label: string; line: string; icon: React.ReactNode }[] = [
+const TARGETS: { value: AirdropTarget; label: string; icon: React.ReactNode }[] = [
     {
         value: 'list',
         label: 'A list of wallets',
-        line: 'Contest winners, early supporters, a snapshot. Paste or upload addresses.',
         icon: <LuList size={20} aria-hidden />,
     },
     {
         value: 'stakers',
         label: 'Stakers of a token',
-        line: 'Split an amount between everyone staking a token in a reward. Yours or any other.',
         icon: <LuUsers size={20} aria-hidden />,
     },
     {
         value: 'lp',
         label: 'Liquidity providers',
-        line: "Split an amount between everyone staking a pool's shares in a reward.",
         icon: <LuCoins size={20} aria-hidden />,
     },
 ]
@@ -39,7 +36,7 @@ interface TargetQuestionProps extends Partial<StepProps> {
     onPick: (target: AirdropTarget) => void;
 }
 
-/** Step 1 of every flow: who gets the coins. */
+/** Step 1 of every flow: who gets the tokens. */
 export function TargetQuestion({ value, onPick, number = 1, total, state = 'active', direction, onEdit }: TargetQuestionProps) {
     return (
         <Question
@@ -49,10 +46,10 @@ export function TargetQuestion({ value, onPick, number = 1, total, state = 'acti
             direction={direction}
             onEdit={onEdit}
             title="Who"
-            question="Who gets the coins?"
+            question="Who gets the tokens?"
             summary={value ? targetLabel(value) : ''}
         >
-            <VStack align="stretch" gap="8px" role="radiogroup" aria-label="Who gets the coins">
+            <VStack align="stretch" gap="8px" role="radiogroup" aria-label="Who gets the tokens">
                 {TARGETS.map(t => {
                     const selected = t.value === value
                     return (
@@ -79,10 +76,7 @@ export function TargetQuestion({ value, onPick, number = 1, total, state = 'acti
                             data-testid="airdrop-target"
                         >
                             <chakra.span flex="none" color="app.fg" display="inline-flex">{t.icon}</chakra.span>
-                            <VStack align="start" gap="2px" minW={0}>
-                                <Text fontSize="15px" fontWeight="700">{t.label}</Text>
-                                <Text fontSize="13px" color="fg.muted">{t.line}</Text>
-                            </VStack>
+                            <Text fontSize="15px" fontWeight="700" minW={0}>{t.label}</Text>
                         </chakra.button>
                     )
                 })}
@@ -98,13 +92,13 @@ interface AirdropFormProps {
     children: React.ReactNode;
 }
 
-/** "Airdrop coins": the page title and breadcrumb of every flow. */
+/** "Airdrop tokens": the page title and breadcrumb of every flow. */
 export function AirdropForm({ techTag, status, aside, children }: AirdropFormProps) {
     return (
         <GuidedForm
             crumb="Airdrop"
-            title={<>Airdrop <GradientText>coins</GradientText></>}
-            subtitle="Send coins to a list of wallets, or split them between everyone staking a token or a pool's shares."
+            title={<>Airdrop <GradientText>tokens</GradientText></>}
+            subtitle="Send tokens to wallets or stakers."
             techTag={techTag}
             status={status}
             aside={aside}

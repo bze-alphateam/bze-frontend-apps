@@ -39,7 +39,7 @@ test("opens on Pair, then a deep-linked pair reaches Review with the market fee"
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await expect(review.getByRole("button", {name: "Create market"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to create this market.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("a pair whose market exists the other way round links to it on the DEX in its real direction", async ({page}) => {

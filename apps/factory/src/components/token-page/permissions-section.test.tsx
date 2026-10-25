@@ -233,7 +233,7 @@ describe("Renounce dialog", () => {
             "Minting more HONEY",
             "Editing name, logo and description",
             "Editing the brand kit",
-            "Handing admin to someone else",
+            "Transferring admin",
         ]);
         expect(within(dialog.getByRole("region", { name: "Stays the same" })).getAllByRole("listitem").map(li => li.textContent)).toEqual([
             "Everyone keeps their HONEY",

@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js'
 import { amountToUAmount } from '@bze/bze-ui-kit'
 import { validateAmount } from '@/components/token-wizard/validation'
+import { minMaxHint } from '@/lib/format'
 
 // Chain limits verified in x/rewards: duration 1–36,500 days, lock 0–3,650 days.
 export const MIN_DURATION_DAYS = 1
@@ -14,7 +15,7 @@ export function validateDays(value: string, min: number, max: number): string {
     if (!/^\d+$/.test(trimmed)) return 'Enter a whole number of days.'
     const days = Number(trimmed)
     if (days < min || days > max) {
-        return `Must be between ${min.toLocaleString()} and ${max.toLocaleString()} days.`
+        return `${minMaxHint(min, max, 'days')}.`
     }
     return ''
 }
@@ -91,7 +92,7 @@ export function extractRewardId(res: { [key: string]: unknown }): string | undef
     return raw ? raw.replace(/^"|"$/g, '') : undefined
 }
 
-/** Quick answers under "For how many days". */
+/** Quick answers under "Days". */
 export const DURATION_PRESETS = ['7', '30', '90', '180'] as const
 
 const days = (n: number | string) => `${Number(n).toLocaleString('en-US')} day${Number(n) === 1 ? '' : 's'}`
@@ -100,22 +101,11 @@ const days = (n: number | string) => `${Number(n).toLocaleString('en-US')} day${
 export const prizeSummary = (perDay: string, ticker: string, duration: string) =>
     `${perDay} ${ticker} a day for ${days(duration.trim())}`
 
-/** The mono budget line: "100 HONEY/day × 30 days = 3,000 HONEY committed now". */
-export const budgetLine = (perDay: string, ticker: string, duration: string, total: string) =>
-    `${perDay} ${ticker}/day × ${days(duration.trim())} = ${total} ${ticker} committed now`
-
 /** The rules step's summary: "No lock · no minimum", "7-day lock · min 100 TOK". */
 export function rulesSummary(lock: string, minStake?: string): string {
     const n = Number(lock.trim() || '0')
     const lockText = n > 0 ? `${n.toLocaleString('en-US')}-day lock` : 'No lock'
     return `${lockText} · ${minStake ? `min ${minStake}` : 'no minimum'}`
-}
-
-/** What the lock means for stakers, under its field. */
-export function lockMeaning(lock: string): string {
-    const n = Number(lock.trim() || '0')
-    if (!Number.isFinite(n) || n <= 0) return 'Stakers can leave any time.'
-    return `Stakers get their tokens back ${days(n)} after they unstake.`
 }
 
 /** The REST shape of a tx's events (SDK 0.50 `tx_response.events`). */

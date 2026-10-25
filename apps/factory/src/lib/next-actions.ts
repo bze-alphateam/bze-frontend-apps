@@ -173,7 +173,7 @@ function candidatesFor(kind: NextActionKind, ctx: NextActionContext, facts?: Nex
                 icon: 'airdrop',
                 title: `Airdrop ${name(ticker)}`,
                 text: 'Send it to a list of wallets, or to the stakers of any token.',
-                cta: 'Airdrop coins',
+                cta: 'Airdrop',
                 target: { href: ROUTES.airdrop(denom) },
             },
             {

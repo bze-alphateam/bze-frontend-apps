@@ -9,11 +9,11 @@ import { workspaceHref } from '@/lib/workspace'
 export function permissionsStatus(state: AdminState, admin: string | undefined, ticker: string): string {
     switch (state) {
         case 'admin':
-            return `Admin: your wallet, ${truncateAddress(admin ?? '')}. Changes here can't be undone by you.`
+            return 'Admin: your wallet'
         case 'not-admin':
             return `Admin: ${truncateAddress(admin ?? '')}`
         case 'renounced':
-            return `Admin given up. Nobody can mint or edit ${ticker} any more.`
+            return 'Admin renounced'
         default:
             return ''
     }
@@ -32,15 +32,15 @@ export function transferAdminError(input: string, address: string | undefined): 
 /** The Renounce button arms only on the exact ticker, case included. */
 export const renounceArmed = (typed: string, ticker: string) => ticker !== '' && typed === ticker
 
-/** Everything the admin can do, lost by the one who transfers or renounces it. */
-export const ADMIN_POWERS = 'Mint, edit details, transfer or renounce admin.'
+/** What the admin can do: the token form's Admin row and the token page. */
+export const ADMIN_POWERS = 'Mint and edit details'
 
 /** What renouncing ends for good. Branding is admin-gated too (`MsgSetDenomBranding`). */
 export const goneForever = (ticker: string) => [
     `Minting more ${ticker}`,
     'Editing name, logo and description',
     'Editing the brand kit',
-    'Handing admin to someone else',
+    'Transferring admin',
 ]
 
 /** What renouncing leaves as it is. */

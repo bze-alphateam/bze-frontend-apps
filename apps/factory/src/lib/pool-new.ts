@@ -57,14 +57,14 @@ export function maxReserveAmount(maxSpendable: BigNumber, denom: string, fee?: {
     return left.gt(0) ? left : new BigNumber(0)
 }
 
-/** "0.2 % · 50 % to providers, 25 % burned, 25 % treasury"; the shares at 0 % are left out. */
+/** "0.2% · 50% to providers, 25% burned, 25% treasury"; the shares at 0% are left out. */
 export function swapFeeSummary(pct: string, split: FeeSplit): string {
     const shares = [
-        split.providers > 0 ? `${split.providers} % to providers` : '',
-        split.burner > 0 ? `${split.burner} % burned` : '',
-        split.treasury > 0 ? `${split.treasury} % treasury` : '',
+        split.providers > 0 ? `${split.providers}% to providers` : '',
+        split.burner > 0 ? `${split.burner}% burned` : '',
+        split.treasury > 0 ? `${split.treasury}% treasury` : '',
     ].filter(Boolean)
-    return `${pct.trim()} % · ${shares.join(', ')}`
+    return `${pct.trim()}% · ${shares.join(', ')}`
 }
 
 /** Why the two picked tokens can't get a new pool; `existingPoolId` when the pool is already there. */
@@ -90,7 +90,7 @@ export function pairProblem(
     if (halted !== '') return { message: halted }
     const existing = findPool(baseDenom, quoteDenom)
     if (existing) {
-        return { message: 'This pair already has a pool. Each pair gets exactly one.', existingPoolId: existing.id }
+        return { message: 'This pair already has a pool.', existingPoolId: existing.id }
     }
     return undefined
 }

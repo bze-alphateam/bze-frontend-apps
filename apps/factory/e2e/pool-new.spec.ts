@@ -46,7 +46,7 @@ test("walks Pair · Starting amounts · Fees up to Review with the pool fee", as
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await expect(review.getByRole("button", {name: "Create pool"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to create this pool.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("an existing pair links to its pool on the DEX", async ({page}) => {

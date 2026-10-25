@@ -414,7 +414,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await answerAmounts("10", "10");
             await answerFees();
             expect(createButton()).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to create this pool.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("keeps the answers when the wallet declines", async () => {

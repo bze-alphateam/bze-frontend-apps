@@ -45,7 +45,7 @@ test("Token, Prize pot and How it plays, then Review with the connect message", 
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("What's left in the pot at the end is burned");
     await expect(review.getByText("Once started, a raffle can't be stopped or changed.")).toBeVisible();
     await expect(review.getByRole("button", {name: "Start raffle"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to start the raffle.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {

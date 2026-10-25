@@ -49,7 +49,7 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await expect(review).toContainText("Committed tokens are paid out to stakers");
     await expect(review).not.toContainText("daily amount can't change");
     await expect(review.getByRole("button", {name: "Start daily prize"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to fund this daily prize.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("extends a running schedule without a fee", async ({page}) => {

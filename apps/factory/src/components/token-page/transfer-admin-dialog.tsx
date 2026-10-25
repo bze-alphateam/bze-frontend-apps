@@ -10,7 +10,7 @@ import { FactoryDialog } from '@/components/ui/factory-dialog'
 import { TxPanel } from '@/components/guided/tx-panel'
 import { WarningNote } from '@/components/guided/notes'
 import { useWizardTx } from '@/hooks/useWizardTx'
-import { ADMIN_POWERS, adminTxHref, transferAdminError } from '@/lib/permissions'
+import { adminTxHref, transferAdminError } from '@/lib/permissions'
 
 const { changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
 
@@ -116,7 +116,6 @@ function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferA
                     />
                     <Field.ErrorText>{error}</Field.ErrorText>
                 </Field.Root>
-                <Text fontSize="13px" color="fg.muted">A team multisig, a DAO or another wallet of yours.</Text>
                 <Box>
                     <Button type="submit" variant={hgVariant('primary')} size="md" disabled={touched && error !== ''}>
                         Continue
@@ -138,13 +137,10 @@ function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferA
                 </HStack>
                 <StepLabel number={2} title="Review" />
                 <VStack align="stretch" gap="8px">
-                    <ReviewRow label="You lose" value={ADMIN_POWERS} />
-                    <ReviewRow label="They get" value="The same." />
-                    <ReviewRow label="Permanent for you" value="Only the new admin can give it back." warn />
+                    <ReviewRow label="They get" value="Admin" />
+                    <ReviewRow label="You lose" value="Admin" warn />
                 </VStack>
-                <WarningNote lead="Triple-check the address.">
-                    {"Sent to the wrong one, it can't be fixed by anyone but that address's owner."}
-                </WarningNote>
+                <WarningNote>Triple-check the address.</WarningNote>
                 {gasFee.amount.gt(0) && (
                     <Text fontSize="13px" color="fg.muted">{`Network fee ≈ ${prettyAmount(gasFee.displayAmount)} ${gasFee.ticker}`}</Text>
                 )}
@@ -159,7 +155,6 @@ function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferA
             width="520px"
             sheetOnPhones
             title={`Transfer admin of ${ticker}`}
-            description="Give admin rights to another address, e.g. a team multisig."
             footer={!panelProps && step === 'review' ? (
                 <>
                     <Button variant={hgVariant('secondary')} size="lg" onClick={() => setStep('address')} flex={{ base: '1 1 100%', md: '0 0 auto' }}>

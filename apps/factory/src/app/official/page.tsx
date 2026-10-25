@@ -133,31 +133,12 @@ function OfficialContent() {
     )
 
     const aside = (
-        <>
-            <SideCard title="How the registry works">
-                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
-                    {`Wallets, explorers and DEXes across Cosmos read token names and logos from one public list: the Cosmos Chain Registry on GitHub. Adding ${ticker} is free. You send a request with your logo, and the registry's maintainers review it.`}
-                </Text>
-                <Text fontSize="14px" lineHeight="1.55" color="fg.muted">
-                    {`Without an entry, most wallets show ${ticker} as a long factory/… code with no logo. That looks like a scam, even when it isn't.`}
-                </Text>
-            </SideCard>
-            <SideCard title="Logo rules">
-                <List.Root fontSize="14px" lineHeight="1.5" color="fg.muted" ps="18px" gap="4px">
-                    <List.Item>Square, 250 KB at most.</List.Item>
-                    <List.Item>PNG or SVG. A JPG renamed to .png is sent back.</List.Item>
-                    <List.Item>A lower-case file name.</List.Item>
-                    <List.Item>An SVG with at most 1,000 shapes.</List.Item>
-                    <List.Item>And in the entry: no missing comma in the list.</List.Item>
-                </List.Root>
-            </SideCard>
-            <SideCard title="Stuck? Ask in the BeeZee community">
-                <HStack gap="16px">
-                    <Link href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Telegram <LuArrowUpRight /></Link>
-                    <Link href={DISCORD_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Discord <LuArrowUpRight /></Link>
-                </HStack>
-            </SideCard>
-        </>
+        <SideCard title="Stuck? Ask in the BeeZee community">
+            <HStack gap="16px">
+                <Link href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Telegram <LuArrowUpRight /></Link>
+                <Link href={DISCORD_URL} target="_blank" rel="noopener noreferrer" fontSize="14px" fontWeight="600" color="hg.link">Discord <LuArrowUpRight /></Link>
+            </HStack>
+        </SideCard>
     )
 
     return (
@@ -165,7 +146,7 @@ function OfficialContent() {
             parent={{ href: workspaceHref(denom), label: ticker }}
             crumb="Get your logo in every wallet"
             title={<chakra.span wordBreak="break-word">{`Get ${ticker}'s logo in `}<GradientText>every wallet</GradientText></chakra.span>}
-            subtitle={`Submit ${ticker} to the Cosmos Chain Registry. It's free, and nothing is signed: you prepare the files here and open a request on GitHub.`}
+            subtitle={`Submit ${ticker} to the Cosmos Chain Registry. Free, nothing to sign.`}
             aside={aside}
         >
             {listing.status === 'off' && (
@@ -245,7 +226,6 @@ function OfficialContent() {
                 action={{ label: 'Next step', onClick: () => finish('entry'), disabled: !metadata }}
             >
                 <VStack align="stretch" gap="12px">
-                    <Text fontSize="14px" color="fg.muted">{`We wrote it for you from ${ticker}'s on-chain details. You won't need to edit it.`}</Text>
                     {metadata && !metadata.description.trim() && (
                         <Box data-testid="official-no-description">
                             <Notice status="warning">
@@ -295,7 +275,7 @@ function OfficialContent() {
                 action={{ label: 'Save the link', onClick: () => finish('submit', { prUrl: prUrl.trim() }), disabled: !isRegistryPrUrl(prUrl) }}
             >
                 <VStack align="stretch" gap="12px">
-                    <Text fontSize="14px" color="fg.muted">You need a free GitHub account. Everything happens in the browser, no coding.</Text>
+                    <Text fontSize="14px" color="fg.muted">Needs a GitHub account.</Text>
                     <List.Root as="ol" fontSize="14px" lineHeight="1.5" ps="20px" gap="8px">
                         <List.Item>Open the registry on GitHub and click <b>Fork</b>. That makes your own copy.</List.Item>
                         <List.Item>
@@ -346,7 +326,6 @@ function OfficialContent() {
                             Your request <LuArrowUpRight />
                         </Link>
                     )}
-                    <Text fontSize="14px" color="fg.muted">The maintainers review requests as they come in. Usually it takes a few days, sometimes a few weeks.</Text>
                     <Text fontSize="14px" color="fg.muted" data-testid="official-after-merge">{AFTER_MERGE_COPY}</Text>
                 </VStack>
             </Question>

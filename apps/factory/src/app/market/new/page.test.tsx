@@ -259,7 +259,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
             renderPage();
             expect(createButton()).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to create this market.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("blocks when the fee can't be paid", () => {

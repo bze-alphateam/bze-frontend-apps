@@ -22,7 +22,7 @@ export const PICKER_PAGE_SIZE = 20
 
 /** The line under a token's name. */
 export function tokenKind(asset: Pick<Asset, 'denom' | 'type'>, nativeDenom?: string): string {
-    if (isLpDenom(asset.denom)) return 'Pool share'
+    if (isLpDenom(asset.denom)) return 'LP shares'
     if (asset.denom === nativeDenom || asset.type === 'Native') return 'Native token'
     if (isFactoryToken(asset)) return 'Community token'
     return 'IBC token'

@@ -183,7 +183,7 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
     it("Who is answered; the token picker lists tokens with any reward, pool shares left out", () => {
         simpleState.rewards = [{ ...HONEY_SR, staking_denom: "ubee" }];
         renderFlow();
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop coins");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
         expect(step("Who")).toHaveAttribute("data-state", "done");
         expect(step("Who")).toHaveTextContent("Stakers of a token");
         expect(step("Token")).toHaveAttribute("data-state", "active");

@@ -7,7 +7,6 @@ import { bze } from '@bze/bzejs'
 import { Asset, getChainName, hgVariant, prettyAmount, useMaxSpendable } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { WarningNote } from '@/components/guided/notes'
 import { mintAmountError, newTotalSupply, supplyCoins } from '@/lib/supply'
 
 const { mint } = bze.tokenfactory.MessageComposer.withTypeUrl
@@ -70,15 +69,13 @@ export function MintForm({ asset, currentSupply, onDone }: {
                         fontSize="16px"
                         bg="bg.panel"
                     />
-                    <Field.HelperText fontSize="13px" color="fg.muted" data-testid="mint-sentence">
-                        {newSupply
-                            ? `New total supply ${prettyAmount(newSupply)} ${ticker}. The new ${ticker} goes to your wallet.`
-                            : 'Minted to your wallet and added to the total supply.'}
-                    </Field.HelperText>
+                    {newSupply && (
+                        <Field.HelperText fontSize="13px" color="fg.muted" data-testid="mint-sentence">
+                            {`New supply ${prettyAmount(newSupply)} ${ticker}`}
+                        </Field.HelperText>
+                    )}
                     <Field.ErrorText>{error}</Field.ErrorText>
                 </Field.Root>
-
-                <WarningNote lead="Heads up:">Minting more lowers the share every holder owns.</WarningNote>
 
                 <VStack align="stretch" gap="6px">
                     <Button
@@ -87,7 +84,7 @@ export function MintForm({ asset, currentSupply, onDone }: {
                         size="lg"
                         disabled={!isValid}
                         loading={isSubmitting}
-                        loadingText="Waiting for signature..."
+                        loadingText="Confirm in your wallet"
                         whiteSpace="normal"
                         h="auto"
                         minH="46px"
@@ -98,7 +95,7 @@ export function MintForm({ asset, currentSupply, onDone }: {
                     <Text fontSize="12px" fontFamily="mono" color="hg.text.faint" textAlign="center" data-testid="mint-fee">
                         {gasFee.amount.gt(0)
                             ? `Network fee ≈ ${prettyAmount(gasFee.displayAmount)} ${gasFee.ticker}`
-                            : 'Network fee only, no module fee'}
+                            : 'Network fee'}
                     </Text>
                 </VStack>
             </VStack>

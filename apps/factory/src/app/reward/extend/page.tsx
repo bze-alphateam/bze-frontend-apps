@@ -42,12 +42,12 @@ import {
     extendHref,
     extendMsgValue,
     extendRoom,
-    formatDay,
     isFinished,
     newEndDate,
     searchRunningRewards,
     validateExtraDays,
 } from '@/lib/reward-extend'
+import { formatDate, minMaxHint, notEnoughText, youHoldText } from '@/lib/format'
 
 const { updateStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
@@ -133,7 +133,7 @@ function NotFound({ id }: { id: string }) {
                 <PageState
                     kind="not-found"
                     title={`We couldn't find reward #${id}.`}
-                    description="A finished reward with nothing staked can be deleted from the chain, so an old link may lead nowhere."
+                    description="It may have finished and been removed."
                     action={(
                         <Button variant={hgVariant('secondary')} size="lg" onClick={() => navigate('/rewards')}>
                             <LuArrowLeft />
@@ -194,8 +194,8 @@ function ExtendContent() {
 
     const perDay = reward ? display(reward.prize_amount) : ''
     const finished = reward ? isFinished(reward) : false
-    const oldEnd = reward && !finished ? formatDay(endDate(reward, now), now) : ''
-    const newEnd = reward && cost ? formatDay(newEndDate(reward, Number(extraDays.trim()), now), now) : ''
+    const oldEnd = reward && !finished ? formatDate(endDate(reward, now), now) : ''
+    const newEnd = reward && cost ? formatDate(newEndDate(reward, Number(extraDays.trim()), now), now) : ''
     const daysCount = Number(extraDays.trim())
     const daysText = `${daysCount.toLocaleString('en-US')} day${daysCount === 1 ? '' : 's'}`
 
@@ -246,7 +246,7 @@ function ExtendContent() {
             txKind={TX_KIND}
             footer={cost && connected && (
                 <Text fontSize="14px" color={hasEnough ? 'fg.muted' : 'hg.danger.text'} data-testid="extend-holdings">
-                    {`You hold ${display(prizeBalance.amount)} ${prizeTicker} ${hasEnough ? '✓' : '✗'}`}
+                    {`${youHoldText(display(prizeBalance.amount), prizeTicker)} ${hasEnough ? '✓' : '✗'}`}
                 </Text>
             )}
         />
@@ -313,7 +313,7 @@ function ExtendContent() {
                                 onChange={(e) => setExtraDays(e.target.value)}
                                 maxW="200px"
                             />
-                            <Field.HelperText>{`Min 1 · Max ${extendRoom(reward)} days`}</Field.HelperText>
+                            <Field.HelperText>{minMaxHint(1, extendRoom(reward), 'days')}</Field.HelperText>
                             <Field.ErrorText>{daysError}</Field.ErrorText>
                         </Field.Root>
 
@@ -325,7 +325,7 @@ function ExtendContent() {
 
                         {cost && connected && !hasEnough && (
                             <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
-                                {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)}.`}
+                                {notEnoughText(prizeTicker, display(prizeBalance.amount))}
                             </Text>
                         )}
                     </VStack>
@@ -340,18 +340,18 @@ function ExtendContent() {
                     question="Everything right?"
                     leaves={leaves}
                     txKind={TX_KIND}
-                    gets={[{ label: 'Extension', value: `${daysCount.toLocaleString('en-US')} more day${daysCount === 1 ? '' : 's'} for everyone staking ${stakeTicker}` }]}
-                    extra={newEnd ? [{ label: 'New end', value: newEnd }] : []}
-                    permanent={['Extra tokens are committed to stakers']}
+                    gets={[{ label: 'Extension', value: `${daysCount.toLocaleString('en-US')} more day${daysCount === 1 ? '' : 's'}` }]}
+                    extra={newEnd ? [{ label: 'New end date', value: newEnd }] : []}
+                    permanent={['Rewards are committed to stakers']}
                     submitLabel="Extend"
                     onSubmit={extend}
                     disabled={!canExtend}
                     onBack={steps.back}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to extend this reward.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !hasEnough && (
-                        <SubmitNote tone="error">{`Not enough ${prizeTicker} to pay for the extra days.`}</SubmitNote>
+                        <SubmitNote tone="error">{notEnoughText(prizeTicker, display(prizeBalance.amount))}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

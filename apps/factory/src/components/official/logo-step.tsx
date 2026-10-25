@@ -107,8 +107,8 @@ export function LogoStep({ display, initial, onReady }: LogoStepProps) {
         <VStack align="stretch" gap={4}>
             <List.Root fontSize="sm" color="fg.muted" ps={5} gap={1}>
                 <List.Item>Square, under 250 KB.</List.Item>
-                <List.Item>PNG or SVG only. SVG is preferred: sharp at every size. No JPG, not even renamed.</List.Item>
-                <List.Item>An SVG must be real vector art with under 1,000 shapes, not a picture wrapped in SVG.</List.Item>
+                <List.Item>PNG or SVG (preferred). No JPG, not even renamed.</List.Item>
+                <List.Item>An SVG: real vector art, under 1000 shapes.</List.Item>
                 <List.Item>A lower-case file name.</List.Item>
             </List.Root>
 

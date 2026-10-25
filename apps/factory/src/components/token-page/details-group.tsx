@@ -23,7 +23,7 @@ function MetadataItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
         <ActionItem
             testId="metadata-item"
             title="Name, logo, description"
-            line={access === 'renounced' ? 'Frozen: the admin was given up, so nobody can change it.' : undefined}
+            line={access === 'renounced' ? 'Frozen' : undefined}
             action={
                 <ItemButton onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
                     {isOpen ? 'Close' : 'View'}

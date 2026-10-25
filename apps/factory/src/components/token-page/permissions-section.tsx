@@ -109,7 +109,6 @@ export function PermissionsSection({ asset, isChecking, admin, adminState, suppl
                         <ActionItem
                             testId="renounce-admin-item"
                             title="Renounce admin"
-                            line={`Nobody, you included, can ever mint or edit ${ticker} again.`}
                             action={(
                                 <Button
                                     variant={hgVariant('danger')}

@@ -51,7 +51,7 @@ test("walks Details, Supply and Permissions to a Review with the creation fee", 
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("The ticker in its address");
 
     await expect(review.getByRole("button", {name: "Create token"})).toBeDisabled();
-    await expect(review.getByText("Connect your wallet to create this token.")).toBeVisible();
+    await expect(review.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("keeps the answers in the browser and reopens on the next step", async ({page}) => {

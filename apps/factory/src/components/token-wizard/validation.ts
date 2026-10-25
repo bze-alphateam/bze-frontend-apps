@@ -42,11 +42,11 @@ export function validateName(name: string): string {
 }
 
 export function validateSymbol(symbol: string): string {
-    if (!symbol) return 'Symbol is required.'
-    if (symbol.length < MIN_SYMBOL_LENGTH) return `Symbol must be at least ${MIN_SYMBOL_LENGTH} characters.`
-    if (symbol.length > MAX_SYMBOL_LENGTH) return `Symbol must be at most ${MAX_SYMBOL_LENGTH} characters.`
+    if (!symbol) return 'Ticker is required.'
+    if (symbol.length < MIN_SYMBOL_LENGTH) return `Ticker must be at least ${MIN_SYMBOL_LENGTH} characters.`
+    if (symbol.length > MAX_SYMBOL_LENGTH) return `Ticker must be at most ${MAX_SYMBOL_LENGTH} characters.`
     if (!/^[A-Za-z][A-Za-z0-9]*$/.test(symbol)) {
-        return 'Symbol must start with a letter and contain only letters and digits.'
+        return 'Ticker must start with a letter and contain only letters and digits.'
     }
     return ''
 }

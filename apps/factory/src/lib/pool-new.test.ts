@@ -52,12 +52,12 @@ describe("maxReserveAmount", () => {
 
 describe("swapFeeSummary", () => {
     it("names each share of the split", () => {
-        expect(swapFeeSummary(" 0.2 ", { providers: 50, burner: 25, treasury: 25 })).toBe("0.2 % · 50 % to providers, 25 % burned, 25 % treasury");
+        expect(swapFeeSummary(" 0.2 ", { providers: 50, burner: 25, treasury: 25 })).toBe("0.2% · 50% to providers, 25% burned, 25% treasury");
     });
 
     it("leaves out the shares at 0 %", () => {
-        expect(swapFeeSummary("1", { providers: 100, burner: 0, treasury: 0 })).toBe("1 % · 100 % to providers");
-        expect(swapFeeSummary("0.3", { providers: 0, burner: 60, treasury: 40 })).toBe("0.3 % · 60 % burned, 40 % treasury");
+        expect(swapFeeSummary("1", { providers: 100, burner: 0, treasury: 0 })).toBe("1% · 100% to providers");
+        expect(swapFeeSummary("0.3", { providers: 0, burner: 60, treasury: 40 })).toBe("0.3% · 60% burned, 40% treasury");
     });
 });
 

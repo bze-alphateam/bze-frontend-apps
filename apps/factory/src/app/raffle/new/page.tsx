@@ -31,18 +31,20 @@ import {
     BlockerNote,
     FormPage,
     GuidedForm,
-    Hint,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
     SubmitNote,
     TxPanel,
-    WarningNote,
     useGuidedSteps,
 } from '@/components/guided'
 import type { PayRow } from '@/components/guided'
 import {
+    MAX_ONE_IN,
+    MAX_PRIZE_PERCENT,
+    MAX_RAFFLE_DAYS,
+    MIN_PRIZE_PERCENT,
+    MIN_RAFFLE_DAYS,
     POT_TREND_TEXT,
     type RaffleDoneInput,
     type RafflePlay,
@@ -53,12 +55,10 @@ import {
     expectedPotTrend,
     formatRaffleEnd,
     isRaffleRunningError,
-    percentFromChances,
     potSummary,
     raffleEndDate,
     raffleRunningText,
     rafflePlaySummary,
-    raffleSentence,
     toBaseUnits,
     validateOneIn,
     validatePot,
@@ -67,6 +67,7 @@ import {
     validateTicketPrice,
 } from '@/lib/raffle-new'
 import { softButton } from '@/components/ui/soft-button'
+import { minMaxHint, youHoldText } from '@/lib/format'
 
 const STEPS = ['token', 'pot', 'play', 'review'] as const
 type FormStep = Exclude<typeof STEPS[number], 'review'>
@@ -74,12 +75,6 @@ type FormStep = Exclude<typeof STEPS[number], 'review'>
 const DAY_PRESETS = [7, 14, 30]
 const ONE_IN_PRESETS = [10, 100, 1000]
 const PERCENT_PRESETS = [10, 25, 50]
-
-const WARNINGS = [
-    "The pot leaves your wallet now and can't be taken back.",
-    "Once started, a raffle can't be stopped or changed.",
-    'Whatever is left in the pot when it ends is burned. Nothing comes back to you.',
-]
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 
@@ -122,7 +117,7 @@ function RaffleFormContent() {
     // Deep links can name a token the picker hides.
     const tokenBlock = !asset ? '' : asset.halted
         ? "Halted tokens can't be raffled."
-        : isLpDenom(asset.denom) ? "LP tokens can't be raffled." : ''
+        : isLpDenom(asset.denom) ? "LP shares can't be raffled." : ''
 
     const currentEpoch = hourEpochInfo?.current_epoch
     const runningRaffle = raffle.status === 'running' ? raffle.raffle : undefined
@@ -176,9 +171,6 @@ function RaffleFormContent() {
     )
     const endText = endsAt ? formatRaffleEnd(endsAt) : ''
 
-    const prizeNowText = potBase && percent !== undefined
-        ? `${displayAmount(potBase.multipliedBy(percent).div(100).integerValue(BigNumber.ROUND_DOWN), decimals)} ${ticker}`
-        : ''
     const trend = potBase && ticketBase && chances !== undefined && percent !== undefined
         ? expectedPotTrend({ ticketPrice: ticketBase, chances, ratio: new BigNumber(percent).div(100).toFixed(2), pot: potBase })
         : undefined
@@ -200,7 +192,7 @@ function RaffleFormContent() {
         if (input) setDone({ input, hash })
     }
     const { submit, panelProps } = useWizardTx<RaffleDoneInput>(buildMsgs, {
-        title: `Start the ${ticker || 'token'} raffle`,
+        title: ticker ? `Start ${ticker} raffle` : 'Start raffle',
         onDone,
     })
 
@@ -246,61 +238,36 @@ function RaffleFormContent() {
     )
 
     const payRows: PayRow[] = [
-        potBase
-            ? { label: 'Prize pot', coin: { denom, amount: potBase.toFixed() }, info: 'Leaves your wallet now.' }
-            : { label: 'Prize pot', text: '—' },
-        { label: 'Factory fee', text: 'None' },
+        potBase ? { label: 'Prize pot', coin: { denom, amount: potBase.toFixed() } } : { label: 'Prize pot', text: '—' },
     ]
 
-    const aside = (
-        <>
-            <OutcomePanel>
-                <VStack align="stretch" gap="8px">
-                    {potText && play ? (
-                        <Text data-testid="raffle-outcome">
-                            You put <Text as="span" fontWeight="600">{potText}</Text> in the pot now.
-                            {` ${raffleSentence(play)}`}
-                            {' Losing tickets add their price to the pot.'}
-                            {endText && ` On ${endText}, whatever is left is burned.`}
-                        </Text>
-                    ) : (
-                        <Text color="fg.muted">
-                            Answer the questions to see how your raffle will run.
-                        </Text>
-                    )}
-                    {trend && <Text fontWeight="600">{POT_TREND_TEXT[trend]}</Text>}
-                </VStack>
-            </OutcomePanel>
-            <PayPanel rows={payRows} txKind="start-raffle" />
-        </>
-    )
+    const aside = <PayPanel rows={payRows} txKind="start-raffle" />
 
     return (
         <GuidedForm
             crumb="Burning raffle"
-            title={<>Run a burning <GradientText>raffle</GradientText></>}
-            subtitle="Fund a prize pot. People buy tickets for a chance to win part of it. Losing tickets make the pot bigger, and whatever is left at the end is burned."
-            techTag="Burning raffle"
+            title={<>Start a burning <GradientText>raffle</GradientText></>}
+            subtitle="Fund a prize pot. What's left at the end is burned."
+            techTag="burner · raffle"
             aside={aside}
         >
             <Question
                 title="Token"
-                question="Which token is the raffle in?"
+                question="Which token?"
                 {...steps.step('token')}
                 summary={ticker}
                 action={{ label: 'Continue', onClick: () => answer('token'), disabled: !tokenReady }}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
-                        label="Token to raffle"
+                        label="Token"
                         value={denom}
                         ownFirst={true}
                         excludeHalted={true}
                         onSelect={(a) => pickToken(a.denom)}
                     />
-                    <Hint>{"Any token can be raffled. Halted tokens can't be raffled."}</Hint>
                     {asset && address && (
-                        <Text fontSize="14px" color="fg.muted">You have {displayAmount(max.balance, decimals)} {ticker}.</Text>
+                        <Text fontSize="14px" color="fg.muted">{youHoldText(displayAmount(max.balance, decimals), ticker)}</Text>
                     )}
                     {tokenBlock ? (
                         <Text fontSize="14px" color="hg.danger.text" role="alert">{tokenBlock}</Text>
@@ -333,7 +300,9 @@ function RaffleFormContent() {
                 <VStack align="stretch" gap="12px">
                     <TextField
                         label={`Prize pot (${ticker})`}
-                        helper={`At least ${displayAmount('100000', decimals)} ${ticker}.${address ? ` You can put in up to ${displayAmount(max.amount, decimals)} ${ticker}.` : ''}`}
+                        helper={address
+                            ? minMaxHint(displayAmount('100000', decimals), displayAmount(max.amount, decimals), ticker)
+                            : `Min ${displayAmount('100000', decimals)} ${ticker}`}
                         error={potError}
                         value={potInput}
                         onChange={setPotInput}
@@ -341,7 +310,7 @@ function RaffleFormContent() {
                     />
                     {address && (
                         <Button alignSelf="start" {...softButton} size="xs" onClick={() => setPotInput(max.inputValue)}>
-                            MAX
+                            Max
                         </Button>
                     )}
                 </VStack>
@@ -349,7 +318,7 @@ function RaffleFormContent() {
 
             <Question
                 title="How it plays"
-                question="How long, what a ticket costs, and what a winner gets"
+                question="How does it play?"
                 {...steps.step('play')}
                 summary={play ? rafflePlaySummary(play) : ''}
                 onBack={steps.back}
@@ -360,17 +329,22 @@ function RaffleFormContent() {
                         <Presets values={DAY_PRESETS} current={daysInput} label={n => `${n} days`} onPick={n => setDaysInput(String(n))} />
                         <TextField
                             label="Days"
-                            helper={endText ? `Ends around ${endText}.` : '1 to 180 whole days.'}
+                            helper={minMaxHint(MIN_RAFFLE_DAYS, MAX_RAFFLE_DAYS, 'days')}
                             error={daysError}
                             value={daysInput}
                             onChange={setDaysInput}
                             placeholder="e.g. 14"
                             inputMode="numeric"
                         />
+                        {endText && (
+                            <HStack justify="space-between" gap="12px" data-testid="raffle-end">
+                                <Text fontSize="14px" color="fg.muted">End date</Text>
+                                <Text fontSize="14px" fontWeight="600">{endText}</Text>
+                            </HStack>
+                        )}
                     </VStack>
                     <TextField
                         label={`Ticket price (${ticker})`}
-                        helper="Paid by each person joining, per ticket. A losing ticket's price goes into the pot."
                         error={ticketError}
                         value={ticketInput}
                         onChange={setTicketInput}
@@ -379,10 +353,8 @@ function RaffleFormContent() {
                     <VStack align="stretch" gap="8px">
                         <Presets values={ONE_IN_PRESETS} current={oneInInput} label={n => `1 in ${fmt(n)}`} onPick={n => setOneInInput(String(n))} />
                         <TextField
-                            label="1 ticket in how many wins?"
-                            helper={chances !== undefined
-                                ? `Each ticket wins with a chance of ${percentFromChances(chances)} %.`
-                                : `A whole number from 1 to ${fmt(1_000_000)}.`}
+                            label="Win chance (1 in N)"
+                            helper={minMaxHint(1, MAX_ONE_IN)}
                             error={oneInError}
                             value={oneInInput}
                             onChange={setOneInInput}
@@ -391,12 +363,10 @@ function RaffleFormContent() {
                         />
                     </VStack>
                     <VStack align="stretch" gap="8px">
-                        <Presets values={PERCENT_PRESETS} current={percentInput} label={n => `${n} %`} onPick={n => setPercentInput(String(n))} />
+                        <Presets values={PERCENT_PRESETS} current={percentInput} label={n => `${n}%`} onPick={n => setPercentInput(String(n))} />
                         <TextField
-                            label="Share of the pot (%)"
-                            helper={percent !== undefined && prizeNowText
-                                ? `${percent} % of the pot, ${prizeNowText} right now.`
-                                : 'A whole percent from 1 to 100, of the pot at the moment of the win.'}
+                            label="Winner gets (%)"
+                            helper={minMaxHint(MIN_PRIZE_PERCENT, `${MAX_PRIZE_PERCENT}%`)}
                             error={percentError}
                             value={percentInput}
                             onChange={setPercentInput}
@@ -404,9 +374,6 @@ function RaffleFormContent() {
                             inputMode="numeric"
                         />
                     </VStack>
-                    {play && (
-                        <Text fontSize="14px" fontWeight="600" data-testid="raffle-sentence">{raffleSentence(play)}</Text>
-                    )}
                 </VStack>
             </Question>
 
@@ -422,17 +389,18 @@ function RaffleFormContent() {
                     leaves={payRows}
                     txKind="start-raffle"
                     gets={[{ label: 'Burning raffle', value: 'A raffle on Burner' }]}
-                    permanent={["What's left in the pot at the end is burned", "Raffle settings can't change once started"]}
+                    extra={[
+                        ...(endText ? [{ label: 'End date', value: endText }] : []),
+                        ...(trend ? [{ label: 'Pot trend', value: POT_TREND_TEXT[trend] }] : []),
+                    ]}
+                    permanent={["The pot can't be taken back", "What's left in the pot at the end is burned", "Raffle settings can't change once started"]}
                     submitLabel="Start raffle"
                     onSubmit={() => void sign()}
                     disabled={!canSign}
                     onBack={steps.back}
                 >
-                    <VStack align="stretch" gap="8px" aria-label="Before you start">
-                        {WARNINGS.map(w => <WarningNote key={w} lead="Heads up:">{w}</WarningNote>)}
-                    </VStack>
                     {!address ? (
-                        <SubmitNote>Connect your wallet to start the raffle.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : checkFailed ? (
                         <SubmitNote tone="error">{`Couldn't check whether ${ticker} already has a raffle running. Please try again.`}</SubmitNote>
                     ) : isComplete && !afford.isLoading && !afford.canAfford && afford.message && (

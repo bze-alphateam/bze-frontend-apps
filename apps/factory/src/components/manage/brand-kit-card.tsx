@@ -249,11 +249,6 @@ function BrandKitForm({
                 </VStack>
             </Grid>
 
-            <InfoBox>
-                Saving always stores the whole kit — the font and all eight colours. It is public
-                and apps that support brand kits pick it up right away.
-            </InfoBox>
-
             <HStack gap="10px">
                 <Button variant="ghost" size="lg" color="hg.link" fontWeight="600" onClick={onCancel} flex="1">
                     Cancel
@@ -264,7 +259,7 @@ function BrandKitForm({
                     onClick={submit}
                     disabled={!isValid || isUnchanged}
                     loading={isSubmitting}
-                    loadingText="Waiting for signature..."
+                    loadingText="Confirm in your wallet"
                     flex="1"
                 >
                     Save brand kit
@@ -301,8 +296,7 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
     return (
         <VStack align="stretch" gap={3} data-testid="brand-kit-remove-panel">
             <InfoBox title="Remove the brand kit?">
-                Apps that support brand kits go back to their default look for {asset.ticker}. You
-                can set a new kit at any time while you control the token.
+                {`${asset.ticker} goes back to the default look.`}
             </InfoBox>
             <HStack gap="10px">
                 <Button variant="ghost" size="lg" color="hg.link" fontWeight="600" onClick={onCancel} flex="1">
@@ -313,7 +307,7 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
                     size="lg"
                     onClick={submit}
                     loading={isSubmitting}
-                    loadingText="Waiting for signature..."
+                    loadingText="Confirm in your wallet"
                     flex="1"
                 >
                     Remove brand kit
@@ -389,18 +383,14 @@ export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKit
                             <BrandKitPreview asset={asset} branding={branding} />
                         ) : (
                             <Text fontSize="14px" color="fg.muted">
-                                {isAdmin
-                                    ? `No brand kit yet. Pick colours and a font so ${ticker}'s Communities page feels like yours.`
-                                    : 'This token has no brand kit.'}
+                                No brand kit yet.
                             </Text>
                         )}
                         {access === 'renounced' && (
                             <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="brand-kit-frozen">
                                 <LuLock />
                                 <Text>
-                                    {branding
-                                        ? 'Frozen — it can never change.'
-                                        : `Frozen — ${ticker} will never have a brand kit.`}
+                                    Frozen
                                 </Text>
                             </HStack>
                         )}

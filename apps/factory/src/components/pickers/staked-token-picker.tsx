@@ -68,7 +68,7 @@ export interface StakedTokenPickerProps {
 const CHIPS: { value: PickerChip; label: string }[] = [
     { value: 'all', label: 'All' },
     { value: 'mine', label: 'Created by you' },
-    { value: 'lp', label: 'Pool shares' },
+    { value: 'lp', label: 'LP shares' },
 ]
 
 function GroupTitle({ children }: { children: React.ReactNode }) {
@@ -222,7 +222,7 @@ export function StakedTokenPicker({ mode, stakable, only, excludeHalted = false,
                 <Text fontSize="14px" color="fg.muted" data-testid="picker-empty">
                     {q.trim() !== ''
                         ? `No token matches '${q.trim()}'.`
-                        : mode === 'makeStakable' ? 'No token to show.' : only === 'lp' ? 'No pool share is staked in a reward yet.' : 'No token is stakable yet.'}
+                        : mode === 'makeStakable' ? 'No token to show.' : only === 'lp' ? 'No LP shares are staked in a reward yet.' : 'No token is stakable yet.'}
                 </Text>
             ) : (
                 <VStack align="stretch" gap="18px" role="radiogroup" aria-label="Token">

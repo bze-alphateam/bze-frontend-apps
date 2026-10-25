@@ -5,8 +5,7 @@ import BigNumber from 'bignumber.js'
 import { DenomRewardPrize, TxSpec, useCanAffordTx, useCreationFees } from '@bze/bze-ui-kit'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import type { PayRow } from '@/components/guided'
-import type { PayRowNames } from '@/hooks/useAirdropGift'
-import { newPrizeSlotInfo, prizeSlot, summarizeScheduleCosts } from '@/lib/denom-reward'
+import { prizeSlot, summarizeScheduleCosts } from '@/lib/denom-reward'
 
 const { createDenomRewardSchedule, updateDenomRewardSchedule } = bze.rewards.MessageComposer.withTypeUrl
 
@@ -86,19 +85,10 @@ export function useScheduleGift({ denom, prizes, prizeDenom, dailyUAmount, days,
 
 export type ScheduleGift = ReturnType<typeof useScheduleGift>
 
-/**
- * The "You will pay" rows of a daily prize: the locked amount, then the fees (or none when
- * extending). With `names`, the new prize fee row explains the prize slot it takes.
- */
-export function schedulePayRows(gift: ScheduleGift, names?: Omit<PayRowNames, 'prizeDenom'>): PayRow[] {
-    const { costs, extraFees, isExtend, slot, maxPrizes } = gift
-    const slotInfo = names
-        ? newPrizeSlotInfo({ ticker: names.stakingTicker, possessive: names.stakingPossessive }, names.prizeTicker, slot, maxPrizes)
-        : undefined
-    const feeRows: PayRow[] = costs.fees.map(f => {
-        const label = FEE_LABELS[f.label] ?? f.label
-        return label === 'New prize fee' && slotInfo ? { label, coin: f.coin, info: slotInfo } : { label, coin: f.coin }
-    })
+/** The "You will pay" rows of a daily prize: the rewards, then the fees (none when extending). */
+export function schedulePayRows(gift: ScheduleGift, rewardsLabel = 'Rewards'): PayRow[] {
+    const { costs, extraFees, isExtend } = gift
+    const feeRows: PayRow[] = costs.fees.map(f => ({ label: FEE_LABELS[f.label] ?? f.label, coin: f.coin }))
     // Several charged fees: show their per-denom totals too, the amounts the wallet is charged.
     const chargedCount = costs.fees.filter(f => new BigNumber(f.coin.amount).gt(0)).length
     const totalRows: PayRow[] = chargedCount > 1
@@ -106,9 +96,7 @@ export function schedulePayRows(gift: ScheduleGift, names?: Omit<PayRowNames, 'p
         : extraFees.map(c => ({ label: 'Also charged', coin: c }))
 
     return [
-        ...(costs.escrow ? [{ label: 'Locked for prizes', coin: costs.escrow }] : []),
-        ...(isExtend
-            ? [{ label: 'Fee', text: 'None', info: 'None — extending only locks the extra days. Anyone can extend any schedule.' }]
-            : [...feeRows, ...totalRows]),
+        ...(costs.escrow ? [{ label: rewardsLabel, coin: costs.escrow }] : []),
+        ...(isExtend ? [] : [...feeRows, ...totalRows]),
     ]
 }

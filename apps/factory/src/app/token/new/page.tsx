@@ -1,8 +1,19 @@
 "use client"
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Button, chakra, Circle, Field, Grid, HStack, Input, Text, Textarea, VStack } from '@chakra-ui/react'
-import { GradientText, type TxSpec, getChainName, prettyAmount, toBigNumber, truncateAddress, useCreationFees } from '@bze/bze-ui-kit'
+import { Button, chakra, Field, Grid, HStack, Input, Text, Textarea, VStack } from '@chakra-ui/react'
+import {
+    GradientText,
+    type TxSpec,
+    getChainName,
+    prettyAmount,
+    toBigNumber,
+    truncateAddress,
+    uAmountToBigNumberAmount,
+    useAsset,
+    useBalance,
+    useCreationFees,
+} from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import {
     AnswerChip,
@@ -11,7 +22,6 @@ import {
     GuidedForm,
     Hint,
     Optional,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -22,7 +32,7 @@ import {
 import { createTokenMsgs, createdDenom } from '@/components/token-wizard/create-token-msgs'
 import { TokenDone, type TokenDoneInput } from '@/components/token-wizard/token-done'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
-import { MAX_DESCRIPTION_LENGTH, TOKEN_DECIMALS } from '@/components/token-wizard/validation'
+import { MAX_DESCRIPTION_LENGTH } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import {
@@ -36,6 +46,8 @@ import {
     loadTokenDraft,
     saveTokenDraft,
 } from '@/lib/token-draft'
+import { notEnoughText } from '@/lib/format'
+import { ADMIN_POWERS } from '@/lib/permissions'
 
 const CREATE_KINDS: TxSpec = ['create-denom', 'mint', 'set-denom-metadata']
 const CREATE_AND_HAND_OVER_KINDS: TxSpec = ['create-denom', 'mint', 'set-denom-metadata', 'change-admin']
@@ -44,37 +56,8 @@ const STEP_KEYS = [...TOKEN_FORM_KEYS, 'review'] as const
 
 const SUPPLY_PRESETS = ['100000', '1000000', '21000000']
 
-const ADMIN_POWERS = 'can mint more and edit details'
 
 type Touched = Partial<Record<'name' | 'symbol' | 'description' | 'initialSupply' | 'adminAddress', boolean>>
-
-function initial(name: string, symbol: string): string {
-    return (name.trim()[0] ?? symbol[0] ?? '?').toUpperCase()
-}
-
-/** The token as it will look, for "What will happen". */
-function TokenPreview({ name, ticker }: { name: string; ticker: string }) {
-    return (
-        <HStack gap="12px" minW={0} mb="10px">
-            <Circle
-                size="40px"
-                bg="app.subtle"
-                boxShadow="0 0 0 2px {colors.app.border}"
-                color="hg.link"
-                fontWeight="800"
-                fontSize="15px"
-                flexShrink={0}
-                aria-hidden
-            >
-                {initial(name, ticker)}
-            </Circle>
-            <VStack align="start" gap="0" minW={0}>
-                <Text fontWeight="700" wordBreak="break-word" data-testid="preview-name">{name.trim() || 'Your token'}</Text>
-                <Text fontSize="12px" color="hg.text.faint" data-testid="preview-ticker">{ticker}</Text>
-            </VStack>
-        </HStack>
-    )
-}
 
 /** One of the two Permissions choices, as a radio card. */
 function AdminOption({ selected, title, text, onSelect }: { selected: boolean; title: string; text: string; onSelect: () => void }) {
@@ -149,6 +132,8 @@ function TokenNewContent() {
     const fee = fees.createDenomFee
     const txKind = form.adminChoice === 'other' ? CREATE_AND_HAND_OVER_KINDS : CREATE_KINDS
     const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, txKind)
+    const { asset: feeAsset } = useAsset(fee?.denom ?? '')
+    const { balance: feeBalance } = useBalance(fee?.denom ?? '')
 
     const buildMsgs = useCallback(() => (address ? createTokenMsgs(form, address) : undefined), [address, form])
     const onDone = useCallback(({ input, hash }: WizardTxDone<TokenDoneInput>) => {
@@ -205,35 +190,25 @@ function TokenNewContent() {
 
     const chooseAdmin = (adminChoice: AdminChoice) => update({ adminChoice })
 
+    const feeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
+    const feeBalanceText = prettyAmount(uAmountToBigNumberAmount(feeBalance.amount, feeAsset?.decimals ?? 6))
+    const payRows = [{ label: 'Creation fee', coin: fee }]
+
     const aside = (
-        <>
-            <OutcomePanel>
-                <TokenPreview name={form.name} ticker={ticker} />
-                <Text data-testid="outcome">
-                    You receive {supplyText ? `${supplyText} ${ticker}` : ticker}.{' '}
-                    {handsOver
-                        ? 'The address you choose gets permission to mint more and update its details.'
-                        : 'Your wallet keeps permission to mint more and update its details.'}
-                </Text>
-            </OutcomePanel>
-
-            <PayPanel
-                rows={[{ label: 'Token creation fee', coin: fee }]}
-                moduleFee={fee}
-                txKind={txKind}
-                isLoading={isFeeLoading}
-                feeUnknown={!fee}
-            />
-
-            <Hint>Click a finished step to change it. Scrolling only scrolls.</Hint>
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={fee}
+            txKind={txKind}
+            isLoading={isFeeLoading}
+            feeUnknown={!fee}
+        />
     )
 
     return (
         <GuidedForm
             crumb="Token"
             title={<>Create a <GradientText>token</GradientText></>}
-            subtitle="Name it, choose how many to start with and who can change it later. Everything is shown before you sign."
+            subtitle="Name it, set the supply and the admin."
             techTag="tokenfactory · create denom"
             status={!isEmptyTokenForm(form) && <Text as="span">Draft saved in this browser</Text>}
             aside={aside}
@@ -266,7 +241,6 @@ function TokenNewContent() {
                                 onBlur={() => touch('symbol')}
                             />
                             <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
-                            <Field.HelperText>The ticker is permanent.</Field.HelperText>
                         </Field.Root>
                     </Grid>
                     <Hint mono>{denomPreview}</Hint>
@@ -274,7 +248,7 @@ function TokenNewContent() {
                         <Field.Label>Description <Optional /></Field.Label>
                         <Textarea
                             rows={3}
-                            placeholder="What is it for? Shown in wallets."
+                            placeholder="What is it for?"
                             value={form.description}
                             onChange={(e) => update({ description: e.target.value })}
                             onBlur={() => touch('description')}
@@ -316,7 +290,6 @@ function TokenNewContent() {
                         />
                         <Field.ErrorText>{errorFor('initialSupply')}</Field.ErrorText>
                     </Field.Root>
-                    <Hint>Minted to your wallet. {TOKEN_DECIMALS} decimals.</Hint>
                 </VStack>
             </Question>
 
@@ -333,13 +306,13 @@ function TokenNewContent() {
                         <AdminOption
                             selected={!handsOver}
                             title="My wallet"
-                            text="Mint more and edit details. Best while the project is young."
+                            text={ADMIN_POWERS}
                             onSelect={() => chooseAdmin('mine')}
                         />
                         <AdminOption
                             selected={handsOver}
                             title="Another address"
-                            text="A team or multisig wallet becomes the admin from the start."
+                            text="A team or multisig wallet"
                             onSelect={() => chooseAdmin('other')}
                         />
                     </Grid>
@@ -356,7 +329,6 @@ function TokenNewContent() {
                             <Field.ErrorText>{errorFor('adminAddress')}</Field.ErrorText>
                         </Field.Root>
                     )}
-                    <Hint>You can transfer or renounce admin later on the token&apos;s page, under Permissions.</Hint>
                 </VStack>
             </Question>
 
@@ -366,7 +338,7 @@ function TokenNewContent() {
                 <ReviewStep
                     {...steps.step('review')}
                     question="Everything right?"
-                    leaves={[{ label: 'Creation fee', coin: fee }]}
+                    leaves={payRows}
                     moduleFee={fee}
                     txKind={txKind}
                     isLoading={isFeeLoading}
@@ -375,8 +347,8 @@ function TokenNewContent() {
                     extra={[{
                         label: 'Admin',
                         value: handsOver
-                            ? <><chakra.span fontFamily="mono" overflowWrap="anywhere">{otherAdmin}</chakra.span> · {ADMIN_POWERS}</>
-                            : `your wallet · ${ADMIN_POWERS}`,
+                            ? <><chakra.span fontFamily="mono" overflowWrap="anywhere">{otherAdmin}</chakra.span> · {ADMIN_POWERS.toLowerCase()}</>
+                            : `Your wallet · ${ADMIN_POWERS.toLowerCase()}`,
                     }]}
                     permanent={['The ticker in its address']}
                     submitLabel="Create token"
@@ -385,9 +357,9 @@ function TokenNewContent() {
                     onBack={steps.back}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to create this token.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : !isBalanceLoading && !canPayFee && (
-                        <SubmitNote tone="error">Not enough balance to cover the creation fee.</SubmitNote>
+                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

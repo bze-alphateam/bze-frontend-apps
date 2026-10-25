@@ -232,7 +232,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             await enterDays("10");
             expect(screen.queryByTestId("extend-holdings")).not.toBeInTheDocument();
             await userEvent.click(button(step("Extra days"), "Review extension"));
-            expect(screen.getByText("Connect your wallet to extend this reward.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
             expect(extendButton()).toBeDisabled();
         });
     });

@@ -203,7 +203,7 @@ afterEach(() => {
 describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
     it("walks Who · Token · List · Review and sends one multi-send whose input is the sum of the outputs", async () => {
         renderPage();
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop coins");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
         expect(question("Who")).toHaveAttribute("data-state", "done");
         expect(question("Who")).toHaveTextContent("A list of wallets");
         expect(screen.getAllByText("bank · multi-send").length).toBeGreaterThan(0);
@@ -648,7 +648,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         await pasteList(A);
         await continueList();
         expect(sendButton()).toBeDisabled();
-        expect(within(review()).getByText("Connect your wallet to send.")).toBeInTheDocument();
+        expect(within(review()).getByText("Connect your wallet.")).toBeInTheDocument();
     });
 
     it("a list the wallet can't afford is not sent", async () => {

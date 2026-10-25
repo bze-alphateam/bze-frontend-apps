@@ -332,7 +332,7 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             await pickToken();
             await userEvent.click(button(step("First daily prize"), "Continue"));
             expect(button(step("Review"), "Make HONEY stakable")).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to make it stakable.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("says what the wallet is short of", async () => {

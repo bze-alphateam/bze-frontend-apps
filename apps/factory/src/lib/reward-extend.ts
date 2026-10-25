@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js'
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
+import { formatDate } from '@/lib/format'
 import { MAX_DURATION_DAYS } from '@/lib/reward-new'
 
 // Extend a simple reward (BFE-264). MsgUpdateStakingReward is permissionless: anyone escrows
@@ -36,29 +37,21 @@ export const endDate = (reward: RewardDays, now: Date) => addDays(now, daysLeft(
  */
 export const newEndDate = (reward: RewardDays, extra: number, now: Date) => addDays(now, daysLeft(reward) + extra)
 
-/** "26 Oct", with the year when it isn't this year's: "3 Jan 2028". */
-export function formatDay(date: Date, now: Date): string {
-    const sameYear = date.getFullYear() === now.getFullYear()
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })
-}
-
 /** "6 of 30 · ends 26 Oct", or "Finished · all 30 paid". */
 export function daysLeftText(reward: RewardDays, now: Date): string {
     const total = reward.duration.toLocaleString('en-US')
     if (isFinished(reward)) return `Finished · all ${total} paid`
-    return `${daysLeft(reward).toLocaleString('en-US')} of ${total} · ends ${formatDay(endDate(reward, now), now)}`
+    return `${daysLeft(reward).toLocaleString('en-US')} of ${total} · ends ${formatDate(endDate(reward, now), now)}`
 }
 
 /** Extra days: a whole number from 1 up to the room left under the cap. */
 export function validateExtraDays(value: string, reward: Pick<StakingRewardSDKType, 'duration'>): string {
     const trimmed = value.trim()
     if (!trimmed) return 'Required.'
-    if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) return 'Enter a whole number of days, at least 1.'
+    if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) return 'Enter a whole number of days.'
     const room = extendRoom(reward)
-    if (room === 0) return `This reward already runs the maximum of ${MAX_DURATION_DAYS.toLocaleString('en-US')} days.`
-    if (Number(trimmed) > room) {
-        return `At most ${room.toLocaleString('en-US')} more days: a reward can't run more than ${MAX_DURATION_DAYS.toLocaleString('en-US')} days in total.`
-    }
+    if (room === 0) return `Max ${MAX_DURATION_DAYS} days reached.`
+    if (Number(trimmed) > room) return `Max ${room} days.`
     return ''
 }
 

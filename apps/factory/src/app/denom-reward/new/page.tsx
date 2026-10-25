@@ -31,8 +31,6 @@ import {
     ContinueRow,
     FormPage,
     GuidedForm,
-    Hint,
-    OutcomePanel,
     PayPanel,
     type PayRow,
     Question,
@@ -47,6 +45,7 @@ import {
 } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, prizeSlot, scheduleFormHref, summarizeScheduleCosts } from '@/lib/denom-reward'
+import { minMaxHint, notEnoughText, youHoldText } from '@/lib/format'
 import {
     checkDailyPrize,
     compoundedCosts,
@@ -73,7 +72,7 @@ function stakeState(asset: Asset, dr?: DenomReward): TokenState {
     const staked = uAmountToBigNumberAmount(dr.staked_amount, asset.decimals)
     return staked.gt(0)
         ? { text: `${prettyAmount(staked)} staked`, tone: 'good' }
-        : { text: 'Nothing staked yet', tone: 'warn' }
+        : { text: 'Nothing staked', tone: 'warn' }
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
@@ -168,10 +167,7 @@ function CompoundedNewContent() {
     const dailyText = check.dailyUAmount !== undefined && prizeAsset
         ? prettyAmount(uAmountToBigNumberAmount(check.dailyUAmount, prizeAsset.decimals))
         : ''
-    const escrowText = check.escrow !== undefined && prizeAsset
-        ? `${prettyAmount(uAmountToBigNumberAmount(check.escrow, prizeAsset.decimals))} ${prizeTicker}`
-        : ''
-    const prizeBalanceText = prizeAsset ? `${prettyAmount(uAmountToBigNumberAmount(prizeBalance.amount, prizeAsset.decimals))} ${prizeTicker}` : ''
+    const prizeBalanceText = prizeAsset ? prettyAmount(uAmountToBigNumberAmount(prizeBalance.amount, prizeAsset.decimals)) : ''
     const prize = withPrize && dailyText && check.days !== undefined ? dailyPrizeSummary(dailyText, prizeTicker, check.days) : ''
 
     // Snapshots of the params: the chain fixes both on the reward when it is created.
@@ -225,31 +221,17 @@ function CompoundedNewContent() {
     const payRows: PayRow[] = [
         ...costs.fees.map(f => ({ label: f.label, coin: f.coin })),
         ...totalRows,
-        ...(costs.escrow ? [{ label: 'Locked for prizes', coin: costs.escrow }] : []),
+        ...(costs.escrow ? [{ label: 'Rewards', coin: costs.escrow }] : []),
     ]
 
     const aside = (
-        <>
-            <OutcomePanel>
-                {tokenOk && ticker ? (
-                    <Text data-testid="outcome">
-                        {prize
-                            ? `${ticker} becomes stakable for everyone, and ${escrowText} leaves your wallet now to pay ${prize} to its stakers. It can't be withdrawn.`
-                            : `${ticker} becomes stakable for everyone. Stakers earn once someone adds a prize.`}
-                    </Text>
-                ) : (
-                    <Text color="fg.muted">Pick the token people should stake to see what happens.</Text>
-                )}
-            </OutcomePanel>
-
-            <PayPanel
-                rows={payRows}
-                moduleFee={mainFee}
-                txKind={txKind}
-                isLoading={isFeeLoading}
-                feeUnknown={feeUnknown}
-            />
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={mainFee}
+            txKind={txKind}
+            isLoading={isFeeLoading}
+            feeUnknown={feeUnknown}
+        />
     )
 
     return (
@@ -261,13 +243,13 @@ function CompoundedNewContent() {
                     <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
-            subtitle="Make a token stakable for good. Anyone can add prizes for its stakers, in any token, every day or once."
+            subtitle="Make a token stakable."
             techTag={VOCABULARY.holderRewards.tech}
             aside={aside}
         >
             <Question
-                title="Token"
-                question="Which token should people stake?"
+                title="Stake"
+                question="Which token?"
                 {...steps.step('token')}
                 summary={ticker && `Make ${ticker} stakable`}
                 action={stakable
@@ -295,19 +277,14 @@ function CompoundedNewContent() {
                     )}
                     {stakable && (
                         <Box data-testid="already-stakable">
-                            <TipNote lead={`${ticker || 'This token'} is already stakable.`}>
-                                Continue to add a daily prize for its stakers.
-                            </TipNote>
+                            <TipNote>{`${ticker || 'This token'} is already stakable.`}</TipNote>
                         </Box>
                     )}
                     {tokenOk && (
-                        <VStack align="stretch" gap="8px" data-testid="token-facts">
-                            <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="12px">
-                                <Fact label="Unstaking takes" value={lockValue} />
-                                <Fact label="Minimum stake" value={minStakeValue} />
-                            </Grid>
-                            <Hint>Set by the chain and fixed when created. Any token, LP shares included. It doesn&apos;t have to be yours.</Hint>
-                        </VStack>
+                        <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="12px" data-testid="token-facts">
+                            <Fact label="Unstaking lock" value={lockValue} />
+                            <Fact label="Minimum stake" value={minStakeValue} />
+                        </Grid>
                     )}
                 </VStack>
             </Question>
@@ -321,50 +298,37 @@ function CompoundedNewContent() {
             >
                 <VStack align="stretch" gap="16px">
                     <Segmented label="First daily prize" options={PRIZE_CHOICES} value={prizeChoice} onChange={setPrizeChoice} />
-                    {!withPrize ? (
-                        <Hint>Stakers earn nothing until someone adds a prize. You can add one right after.</Hint>
-                    ) : (
+                    {withPrize && (
                         <>
                             <PrizeTokenQuestion
-                                denomReward={{ staking_denom: denom }}
                                 prizes={[]}
                                 maxPrizeDenoms={maxPrizes}
-                                prizeFee={prizeFee}
                                 value={pickedPrize}
                                 onSelect={(picked) => setPickedPrize(picked.denom)}
                             />
                             {prizeAsset && (
                                 <>
                                     <TextField
-                                        label={`Prize per day (${prizeTicker})`}
-                                        helper={connected ? `You hold ${prizeBalanceText}.` : 'Shared by everyone staking, by how much each stakes.'}
+                                        label={`Daily reward (${prizeTicker})`}
+                                        helper={connected ? youHoldText(prizeBalanceText, prizeTicker) : undefined}
                                         error={check.dailyError}
                                         value={dailyInput}
                                         onChange={setDailyInput}
                                         placeholder="e.g. 50"
                                     />
                                     <TextField
-                                        label="Payout days"
-                                        helper={`${MIN_SCHEDULE_DAYS}–${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} payout days. Days with nobody staking are skipped.`}
+                                        label="Days"
+                                        helper={minMaxHint(MIN_SCHEDULE_DAYS, MAX_SCHEDULE_DAYS, 'days')}
                                         error={check.daysError}
                                         value={daysInput}
                                         onChange={setDaysInput}
                                         placeholder="e.g. 30"
                                         inputMode="numeric"
                                     />
-                                    {escrowText && (
-                                        <Box fontSize="14px" data-testid="escrow-line">
-                                            <Text color="fg.muted">
-                                                {'Locked now: '}
-                                                <chakra.span fontWeight="600" color="fg" data-testid="escrow-amount">{escrowText}</chakra.span>
-                                                {" (daily prize × days), taken from your wallet in full when you sign. It can't be withdrawn."}
-                                            </Text>
-                                            {check.short && (
-                                                <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                                    {`Not enough ${prizeTicker}: you hold ${prizeBalanceText}.`}
-                                                </Text>
-                                            )}
-                                        </Box>
+                                    {check.escrow !== undefined && check.short && (
+                                        <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                                            {notEnoughText(prizeTicker, prizeBalanceText)}
+                                        </Text>
                                     )}
                                 </>
                             )}
@@ -387,13 +351,13 @@ function CompoundedNewContent() {
                     feeUnknown={feeUnknown}
                     gets={[{ label: VOCABULARY.holderRewards.name, value: `${ticker} becomes stakable for everyone` }]}
                     extra={[
-                        { label: 'Unstaking takes', value: lockValue },
+                        { label: 'Unstaking lock', value: lockValue },
                         { label: 'Minimum stake', value: minStakeValue },
-                        { label: 'First prize', value: withPrize ? prize : 'No prize yet' },
+                        { label: 'Daily reward', value: withPrize ? prize : 'None yet' },
                     ]}
                     permanent={[
-                        "There is one compounded reward per token. It can't be removed",
-                        ...(withPrize ? ['The locked prize is paid out to stakers. It can\'t be withdrawn'] : []),
+                        'The compounded reward (one per token)',
+                        ...(withPrize ? ['Rewards are committed to stakers'] : []),
                     ]}
                     submitLabel={ticker ? `Make ${ticker} stakable` : 'Make a token stakable'}
                     onSubmit={create}
@@ -401,7 +365,7 @@ function CompoundedNewContent() {
                     onBack={steps.back}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to make it stakable.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !afford.isLoading && !afford.canAfford && afford.message && (
                         <SubmitNote tone="error">{afford.message}</SubmitNote>
                     )}

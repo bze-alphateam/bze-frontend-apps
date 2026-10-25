@@ -49,7 +49,7 @@ export interface DoneScreenProps {
     avatar: DoneAvatar | [DoneAvatar, DoneAvatar];
     /** One sentence; the word wrapped in **…** gets the gradient: "HONEY is **live**." */
     title: string;
-    text: React.ReactNode;
+    text?: React.ReactNode;
     /** A value worth keeping (denom, pool id) with Copy; no value yet shows a skeleton. */
     code?: { label: string; value?: string };
     links?: DoneLink[];
@@ -362,7 +362,7 @@ export function DoneScreen({
                     >
                         {titleParts(title)}
                     </chakra.h1>
-                    <Text m="0" fontSize={{ base: '15px', md: '18px' }} color="fg.muted" maxW="640px">{text}</Text>
+                    {text && <Text m="0" fontSize={{ base: '15px', md: '18px' }} color="fg.muted" maxW="640px">{text}</Text>}
                     {(code || links.length > 0) && (
                         <Flex align="center" gap="12px" wrap="wrap" justify="center" mt="4px" maxW="100%">
                             {code && (code.value ? (
