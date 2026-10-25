@@ -32,16 +32,16 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
 
     await list.getByRole("button", {name: "Review"}).click();
     await expect(list).toContainText("2 wallets · 4 TBZE in total");
-    await expect(page.getByRole("region", {name: "What will happen"})).toContainText("4 TBZE goes to 2 wallets, each getting 2 TBZE.");
+    await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const pay = page.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Factory fee")).toBeVisible();
-    await expect(pay.getByText("None", {exact: true})).toBeVisible();
+    await expect(pay.getByText("Sent to wallets")).toBeVisible();
+    await expect(pay.getByText("Factory fee")).toHaveCount(0);
 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("2 wallets receive TBZE");
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("Sent tokens can't be taken back");
-    await expect(review.getByRole("button", {name: "Send to 2 wallets"})).toBeDisabled();
+    await expect(review.getByRole("button", {name: "Airdrop to 2 wallets"})).toBeDisabled();
     await expect(review.getByText("Connect your wallet.")).toBeVisible();
 });
 
@@ -69,8 +69,9 @@ test("a long list is planned as transactions of 100 on Review and fits a 390 px 
     await list.getByRole("button", {name: "Review"}).click();
 
     const review = page.getByRole("region", {name: "Review", exact: true});
-    await expect(review.getByText(/We send it in 3 transactions of up to 100 wallets\. Your wallet asks you to approve each one\./)).toBeVisible();
-    await expect(review.getByRole("button", {name: "Send to 250 wallets"})).toBeDisabled();
+    await expect(review.getByTestId("batch-note")).toHaveText("3 transactions · one approval each");
+    await expect(review.getByText(/We send it in/)).toHaveCount(0);
+    await expect(review.getByRole("button", {name: "Airdrop to 250 wallets"})).toBeDisabled();
     await expect(review.getByText("Connect your wallet.")).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

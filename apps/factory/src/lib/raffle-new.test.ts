@@ -10,6 +10,7 @@ import {
     oneInFromChances,
     percentFromChances,
     percentFromRatio,
+    formatRaffleEnd,
     raffleEndDate,
     raffleHref,
     raffleRunningText,
@@ -23,25 +24,24 @@ import {
     potSummary,
     raffleDoneText,
     rafflePlaySummary,
-    raffleSentence,
 } from "./raffle-new";
 
 const DENOM = "factory/bze1owner/utok";
 
 describe("validatePot", () => {
     it("needs at least 100000 base units (0.1 of a 6-decimal token)", () => {
-        expect(validatePot("0.099999", 6, "TOK")).toBe("The pot must be at least 0.1 TOK.");
+        expect(validatePot("0.099999", 6, "TOK")).toBe("Min 0.1 TOK.");
         expect(validatePot("0.1", 6, "TOK")).toBe("");
     });
 
     it("shows the minimum in the token's own decimals", () => {
-        expect(validatePot("999", 2, "TWO")).toBe("The pot must be at least 1,000 TWO.");
+        expect(validatePot("999", 2, "TWO")).toBe("Min 1,000 TWO.");
         expect(validatePot("1000", 2, "TWO")).toBe("");
     });
 
     it("caps at the spendable amount when a wallet is connected", () => {
         const max = new BigNumber(5_000_000);
-        expect(validatePot("5.000001", 6, "TOK", max)).toBe("You only have 5 TOK.");
+        expect(validatePot("5.000001", 6, "TOK", max)).toBe("Not enough TOK: you hold 5 TOK.");
         expect(validatePot("5", 6, "TOK", max)).toBe("");
         expect(validatePot("500", 6, "TOK")).toBe("");
     });
@@ -55,10 +55,10 @@ describe("validatePot", () => {
 
 describe("validateRaffleDays", () => {
     it.each([
-        ["0", "At least 1 day."],
+        ["0", "Min 1 · Max 180 days."],
         ["1", ""],
         ["180", ""],
-        ["181", "At most 180 days."],
+        ["181", "Min 1 · Max 180 days."],
         ["1.5", "Enter a whole number of days."],
         ["", "Required."],
     ])("%s → %s", (input, error) => {
@@ -102,21 +102,21 @@ describe("win chance", () => {
     });
 
     it("N must be a whole number from 1 to 1,000,000", () => {
-        expect(validateOneIn("0")).toBe("Enter a number from 1 to 1,000,000.");
+        expect(validateOneIn("0")).toBe("Min 1 · Max 1000000.");
         expect(validateOneIn("1")).toBe("");
         expect(validateOneIn("1000000")).toBe("");
-        expect(validateOneIn("1000001")).toBe("Enter a number from 1 to 1,000,000.");
+        expect(validateOneIn("1000001")).toBe("Min 1 · Max 1000000.");
         expect(validateOneIn("2.5")).toBe("Enter a whole number.");
     });
 });
 
 describe("prize share", () => {
     it("whole percents from 1 to 100", () => {
-        expect(validatePrizePercent("0")).toBe("Enter a percent from 1 to 100.");
+        expect(validatePrizePercent("0")).toBe("Min 1 · Max 100%.");
         expect(validatePrizePercent("1")).toBe("");
         expect(validatePrizePercent("100")).toBe("");
-        expect(validatePrizePercent("101")).toBe("Enter a percent from 1 to 100.");
-        expect(validatePrizePercent("12.5")).toBe("Enter a whole percent.");
+        expect(validatePrizePercent("101")).toBe("Min 1 · Max 100%.");
+        expect(validatePrizePercent("12.5")).toBe("Enter a whole number.");
     });
 
     it("is sent as a ratio with two decimals", () => {
@@ -137,10 +137,10 @@ describe("expectedPotTrend", () => {
         expect(expectedPotTrend({ ...base, ticketPrice: 2_500_000 })).toBe("same");
     });
 
-    it("has a sentence for each trend", () => {
-        expect(POT_TREND_TEXT.grows).toBe("On average the pot grows as people play.");
-        expect(POT_TREND_TEXT.shrinks).toBe("On average the pot shrinks as people win.");
-        expect(POT_TREND_TEXT.same).toBe("On average the pot stays about the same.");
+    it("has a Review row for each trend", () => {
+        expect(POT_TREND_TEXT.grows).toBe("Grows on average");
+        expect(POT_TREND_TEXT.shrinks).toBe("Shrinks on average");
+        expect(POT_TREND_TEXT.same).toBe("About the same on average");
     });
 });
 
@@ -194,6 +194,12 @@ describe("links and texts", () => {
         expect(raffleEndDate(1, "not a date", now).toISOString()).toBe("2026-10-16T10:30:00.000Z");
     });
 
+    it("prints the end as a date only, the year when it isn't the current one", () => {
+        const now = new Date("2026-10-15T10:30:00Z");
+        expect(formatRaffleEnd(new Date("2026-11-14T12:00:00Z"), now)).toBe("14 Nov");
+        expect(formatRaffleEnd(new Date("2027-01-03T12:00:00Z"), now)).toBe("3 Jan 2027");
+    });
+
     it("recognises the chain's one-raffle-per-coin error", () => {
         expect(isRaffleRunningError("failed to execute message; message index: 0: raffle already running for this coin")).toBe(true);
         expect(isRaffleRunningError("not enough balance")).toBe(false);
@@ -205,18 +211,13 @@ describe("links and texts", () => {
 describe('the raffle wizard summaries (BFE-270)', () => {
     const play = { days: 7, ticket: '10 HONEY', oneIn: 100, percent: 50 }
 
-    it('the live sentence of How it plays', () => {
-        expect(raffleSentence(play)).toBe('For 7 days, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 100 chance to win 50 % of the pot.')
-        expect(raffleSentence({ ...play, days: 1, oneIn: 1000 })).toBe('For 1 day, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 1,000 chance to win 50 % of the pot.')
-    })
-
     it('the step summaries', () => {
         expect(potSummary('500,000 HONEY')).toBe('500,000 HONEY in the pot')
-        expect(rafflePlaySummary(play)).toBe('7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50 %')
+        expect(rafflePlaySummary(play)).toBe('7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50%')
     })
 
     it('the Done text, with or without the end', () => {
-        expect(raffleDoneText('14 Nov, 18:00')).toBe('It ends around 14 Nov, 18:00. Whatever is left in the pot then is burned.')
-        expect(raffleDoneText('')).toBe('Whatever is left in the pot when it ends is burned.')
+        expect(raffleDoneText('14 Nov')).toBe('Ends 14 Nov.')
+        expect(raffleDoneText('')).toBe('')
     })
 })

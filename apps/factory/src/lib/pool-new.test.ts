@@ -82,7 +82,7 @@ describe("pairProblem", () => {
     it("names the existing pool of the pair, in either order", () => {
         const findPool = (a: string, b: string) => ([a, b].sort().join("_") === "ubze_utok" ? { id: "ubze_utok" } : undefined);
         expect(pairProblem("utok", "ubze", tok, bze, findPool)).toEqual({
-            message: "This pair already has a pool. Each pair gets exactly one.",
+            message: "This pair already has a pool.",
             existingPoolId: "ubze_utok",
         });
     });

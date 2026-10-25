@@ -126,8 +126,8 @@ const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Reco
 const marketUrl = (id: string) => `https://dex.test/exchange/market?id=${encodeURIComponent(id)}`;
 
 async function answerPair(base = "utok", quote = "ubze") {
-    await userEvent.click(within(step("Pair")).getByText(`Base: what is traded: ${base}`));
-    await userEvent.click(within(step("Pair")).getByText(`Quote: what it is priced in: ${quote}`));
+    await userEvent.click(within(step("Pair")).getByText(`Base token: ${base}`));
+    await userEvent.click(within(step("Pair")).getByText(`Quote token: ${quote}`));
     await userEvent.click(button(step("Pair"), "Continue"));
 }
 
@@ -167,22 +167,24 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
         expect(step("Pair")).toHaveAttribute("data-state", "active");
         expect(within(step("Pair")).getByText("Step 1 of 2 ·", { exact: false })).toBeInTheDocument();
         expect(within(step("Pair")).getByRole("heading", { name: "Which pair?" })).toBeInTheDocument();
-        expect(within(step("Pair")).getByText("Orders are priced in the quote token, e.g. HONEY priced in BZE.")).toBeInTheDocument();
+        expect(within(step("Pair")).queryByText("Orders are priced in the quote token, e.g. HONEY priced in BZE.")).not.toBeInTheDocument();
         expect(step("Review")).toHaveAttribute("data-state", "todo");
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Market creation fee: 25000000");
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Creation fee: 25000000");
+        expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Creating a market doesn't make you its owner. Anyone can trade on it.")).not.toBeInTheDocument();
     });
 
     describe("Pair", () => {
         it("waits for Continue, then summarises the pair as base priced in quote", async () => {
             renderPage();
-            await userEvent.click(within(step("Pair")).getByText("Base: what is traded: utok"));
-            await userEvent.click(within(step("Pair")).getByText("Quote: what it is priced in: ubze"));
+            await userEvent.click(within(step("Pair")).getByText("Base token: utok"));
+            await userEvent.click(within(step("Pair")).getByText("Quote token: ubze"));
             expect(step("Pair")).toHaveAttribute("data-state", "active");
             await userEvent.click(button(step("Pair"), "Continue"));
             expect(step("Pair")).toHaveAttribute("data-state", "done");
             expect(step("Pair")).toHaveTextContent("TOK priced in BZE");
             expect(step("Review")).toHaveAttribute("data-state", "active");
-            expect(screen.getByTestId("outcome")).toHaveTextContent("A TOK/BZE order book opens on the DEX.");
+            expect(screen.queryByTestId("outcome")).not.toBeInTheDocument();
         });
 
         it("rejects the same token on both sides of a deep link and keeps the step open", () => {
@@ -227,13 +229,13 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             await answerPair();
             await userEvent.click(screen.getByRole("button", { name: "Edit Pair" }));
             expect(step("Pair")).toHaveAttribute("data-state", "active");
-            await userEvent.click(within(step("Pair")).getByText("Base: what is traded: uhalt"));
+            await userEvent.click(within(step("Pair")).getByText("Base token: uhalt"));
             expect(button(step("Pair"), "Continue")).toBeDisabled();
         });
     });
 
     describe("Review", () => {
-        it("lists the fee and the network fee, the empty order book and what is permanent, then signs the pair in the user's order", async () => {
+        it("lists the fee and the network fee, the order book and what is permanent, then signs the pair in the user's order", async () => {
             payment.gasAmount = "4000";
             renderPage();
             // ubze < utok alphabetically: the message must keep the user's order, not sort it.
@@ -241,11 +243,11 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
 
             const review = step("Review");
             const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
-            expect(leaves).toHaveTextContent(/Market creation fee\s*BZE\s*25 BZE/);
+            expect(leaves).toHaveTextContent(/Creation fee\s*BZE\s*25 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("An empty TOK/BZE order book anyone can trade on");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("TOK/BZE order book");
             expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("One market per pair, and it can't be deleted");
-            expect(within(review).getByText("A new market is empty. Nothing trades until people place orders. Pairs with a pool usually fill faster.")).toBeInTheDocument();
+            expect(within(review).queryByText("A new market is empty. Nothing trades until people place orders. Pairs with a pool usually fill faster.")).not.toBeInTheDocument();
 
             await userEvent.click(createButton());
             expect(sentMsgs()).toEqual([{
@@ -266,7 +268,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             payment.canPayFee = false;
             queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
             renderPage();
-            expect(screen.getByText("Not enough balance to cover the creation fee.")).toBeInTheDocument();
+            expect(screen.getByText("Not enough BZE: you hold 1,000 BZE.")).toBeInTheDocument();
             expect(createButton()).toBeDisabled();
         });
 
@@ -307,7 +309,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             await createMarket();
 
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("The TOK/BZE market is open.");
-            expect(screen.getByText("Anyone can place buy and sell orders for TOK priced in BZE.")).toBeInTheDocument();
+            expect(screen.queryByText("Anyone can place buy and sell orders for TOK priced in BZE.")).not.toBeInTheDocument();
             expect(screen.getByRole("button", { name: "Copy market link" })).toBeInTheDocument();
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             expect(updateMarketsMock).toHaveBeenCalled();

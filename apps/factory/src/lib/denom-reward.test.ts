@@ -4,8 +4,9 @@ import {
     airdropBlocker,
     compoundedNewHref,
     denomRewardHref,
-    newPrizeSlotInfo,
+    nothingStakedText,
     prizeBlocker,
+    prizeCapText,
     summarizeAirdropCosts,
     prizeSlot,
     scheduleDaysLeft,
@@ -22,8 +23,8 @@ describe('validateScheduleDays — create', () => {
     })
 
     it('rejects 0 and anything above 36,500 before signing', () => {
-        expect(validateScheduleDays('0')).toMatch(/between 1 and 36,500/)
-        expect(validateScheduleDays('36501')).toMatch(/between 1 and 36,500/)
+        expect(validateScheduleDays('0')).toBe('Min 1 · Max 36500 days.')
+        expect(validateScheduleDays('36501')).toBe('Min 1 · Max 36500 days.')
     })
 
     it('rejects empty, fractional and negative input', () => {
@@ -39,12 +40,12 @@ describe('validateScheduleDays — extend (extra days on top of the current dura
     })
 
     it('rejects 0 extra days and a total past 36,500', () => {
-        expect(validateScheduleDays('0', 30)).toMatch(/between 1 and 36,470/)
-        expect(validateScheduleDays('501', 36000)).toMatch(/between 1 and 500/)
+        expect(validateScheduleDays('0', 30)).toBe('Enter a whole number of days.')
+        expect(validateScheduleDays('501', 36000)).toBe('Max 500 days.')
     })
 
-    it('explains when the schedule is already at the maximum', () => {
-        expect(validateScheduleDays('1', MAX_SCHEDULE_DAYS)).toMatch(/already runs the maximum/)
+    it('says so when the schedule is already at the maximum', () => {
+        expect(validateScheduleDays('1', MAX_SCHEDULE_DAYS)).toBe('Max 36500 days reached.')
     })
 })
 
@@ -191,13 +192,14 @@ describe('airdropBlocker', () => {
     const freeSlot = { isNewPrize: false, capReached: false, used: 1 }
 
     it('refuses a DR without stakers, whatever the prize', () => {
-        expect(airdropBlocker({ stakedAmount: '0', prizeDenom: '', slot: freeSlot, feesKnown: true })).toMatch(/no one to pay/)
-        expect(airdropBlocker({ stakedAmount: '', prizeDenom: 'ubze', slot: freeSlot, feesKnown: true })).toMatch(/no one to pay/)
+        expect(airdropBlocker({ stakedAmount: '0', prizeDenom: '', slot: freeSlot, feesKnown: true, stakedTicker: 'HONEY' })).toBe('Nobody stakes HONEY yet.')
+        expect(airdropBlocker({ stakedAmount: '', prizeDenom: 'ubze', slot: freeSlot, feesKnown: true })).toBe('Nobody stakes this token yet.')
     })
 
     it('refuses a new prize token once the cap is reached', () => {
         const slot = { isNewPrize: true, capReached: true, used: 2 }
-        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'uatom', slot, feesKnown: true })).toMatch(/maximum number of prize tokens/)
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'uatom', slot, feesKnown: true, max: 5 })).toBe('Max 5 reward tokens reached.')
+        expect(airdropBlocker({ stakedAmount: '10', prizeDenom: 'uatom', slot, feesKnown: true })).toBe('Max reward tokens reached.')
     })
 
     it('refuses a new prize token whose fee is unknown', () => {
@@ -218,24 +220,19 @@ describe('prizeBlocker', () => {
     })
 
     it('refuses the cap and an unknown new prize fee, nothing without a prize', () => {
-        expect(prizeBlocker({ prizeDenom: 'uatom', slot: { isNewPrize: true, capReached: true, used: 2 }, feesKnown: true })).toMatch(/maximum number of prize tokens/)
+        expect(prizeBlocker({ prizeDenom: 'uatom', slot: { isNewPrize: true, capReached: true, used: 2 }, feesKnown: true, max: 2 })).toBe('Max 2 reward tokens reached.')
         expect(prizeBlocker({ prizeDenom: 'uatom', slot: { isNewPrize: true, capReached: false, used: 1 }, feesKnown: false })).toMatch(/couldn't be read/)
         expect(prizeBlocker({ prizeDenom: '', slot: { isNewPrize: true, capReached: true, used: 2 }, feesKnown: false })).toBe('')
     })
 })
 
-describe('newPrizeSlotInfo', () => {
-    const stake = { ticker: 'TOK', possessive: "TOK's" }
-
-    it('names the slot it takes out of the cap', () => {
-        expect(newPrizeSlotInfo(stake, 'ATOM', { isNewPrize: true, capReached: false, used: 1 }, 5)).toBe(
-            "The first time a token becomes a prize on TOK it takes one of TOK's 5 prize slots (2 of 5 after this), for good. Gifting ATOM to TOK again is free.",
-        )
+describe('blocker texts', () => {
+    it('the prize cap, with or without the known max', () => {
+        expect(prizeCapText(5)).toBe('Max 5 reward tokens reached.')
+        expect(prizeCapText()).toBe('Max reward tokens reached.')
     })
 
-    it('leaves the numbers out while the cap is unknown', () => {
-        expect(newPrizeSlotInfo(stake, '', { isNewPrize: true, capReached: false, used: 0 })).toBe(
-            "The first time a token becomes a prize on TOK it takes one of TOK's prize slots, for good. Gifting it to TOK again is free.",
-        )
+    it('nobody stakes the token', () => {
+        expect(nothingStakedText('HONEY')).toBe('Nobody stakes HONEY yet.')
     })
 })

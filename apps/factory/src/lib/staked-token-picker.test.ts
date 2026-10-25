@@ -38,7 +38,7 @@ describe("tokenKind", () => {
     it("names native, community, pool share and IBC tokens", () => {
         expect(tokenKind(asset("BZE", { denom: "ubze", type: "Native" }), "ubze")).toBe("Native token");
         expect(tokenKind(asset("HONEY"))).toBe("Community token");
-        expect(tokenKind(asset("LP", { denom: "ulp_factory/x/a_ubze", type: "LP" }))).toBe("Pool share");
+        expect(tokenKind(asset("LP", { denom: "ulp_factory/x/a_ubze", type: "LP" }))).toBe("LP shares");
         expect(tokenKind(asset("ATOM", { denom: "ibc/ABC", type: "IBC" }))).toBe("IBC token");
     });
 });

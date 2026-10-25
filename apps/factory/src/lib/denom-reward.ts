@@ -86,12 +86,7 @@ export interface ScheduleCostSummary {
     feeTotals: FeeCoin[];
     /** False when a fee that applies could not be read from the chain — never treat that as free. */
     feesKnown: boolean;
-    /** `max_prize_denoms_per_dr`, for the cap blocker; undefined while unknown. */
-    max?: number;
 }
-
-/** The prize-cap blocker (5017): "Max 5 reward tokens reached." */
-export const prizeCapText = (max?: number) => max === undefined ? 'Max reward tokens reached.' : `Max ${max} reward tokens reached.`
 
 const sumByDenom = (coins: FeeCoin[]): FeeCoin[] => {
     const totals = new Map<string, BigNumber>()

@@ -4,10 +4,8 @@ import {
     MAX_DURATION_DAYS,
     MAX_LOCK_DAYS,
     MIN_DURATION_DAYS,
-    budgetLine,
     escrowAmount,
     fetchRewardId,
-    lockMeaning,
     prizeSummary,
     rulesSummary,
     extractRewardId,
@@ -21,16 +19,16 @@ describe("validateDays", () => {
     it.each([
         ["0", ""],
         ["3650", ""],
-        ["3651", "Must be between 0 and 3,650 days."],
+        ["3651", "Min 0 · Max 3650 days."],
     ])("lock %s → %j", (value, error) => {
         expect(validateDays(value, 0, MAX_LOCK_DAYS)).toBe(error);
     });
 
     it.each([
-        ["0", "Must be between 1 and 36,500 days."],
+        ["0", "Min 1 · Max 36500 days."],
         ["1", ""],
         ["36500", ""],
-        ["36501", "Must be between 1 and 36,500 days."],
+        ["36501", "Min 1 · Max 36500 days."],
     ])("duration %s → %j", (value, error) => {
         expect(validateDays(value, MIN_DURATION_DAYS, MAX_DURATION_DAYS)).toBe(error);
     });
@@ -143,11 +141,6 @@ describe("budget wording", () => {
         expect(prizeSummary("100", "HONEY", "30")).toBe("100 HONEY a day for 30 days");
         expect(prizeSummary("1.5", "TOK", " 1 ")).toBe("1.5 TOK a day for 1 day");
     });
-
-    it("writes the mono total line", () => {
-        expect(budgetLine("100", "HONEY", "30", "3,000")).toBe("100 HONEY/day × 30 days = 3,000 HONEY committed now");
-        expect(budgetLine("5", "BZE", "1000", "5,000")).toBe("5 BZE/day × 1,000 days = 5,000 BZE committed now");
-    });
 });
 
 describe("rules wording", () => {
@@ -159,12 +152,6 @@ describe("rules wording", () => {
         ["1000", undefined, "1,000-day lock · no minimum"],
     ])("lock %j, min %j → %j", (lock, min, text) => {
         expect(rulesSummary(lock, min)).toBe(text);
-    });
-
-    it("says what the lock means for stakers", () => {
-        expect(lockMeaning("0")).toBe("Stakers can leave any time.");
-        expect(lockMeaning("1")).toBe("Stakers get their tokens back 1 day after they unstake.");
-        expect(lockMeaning("7")).toBe("Stakers get their tokens back 7 days after they unstake.");
     });
 });
 

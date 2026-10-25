@@ -135,8 +135,8 @@ const createButton = () => button(step("Review"), "Create pool");
 const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Record<string, unknown> }[];
 
 async function answerPair(base = "utok", quote = "ubze") {
-    await userEvent.click(within(step("Pair")).getByText(`Your token: ${base}`));
-    await userEvent.click(within(step("Pair")).getByText(`Paired with: ${quote}`));
+    await userEvent.click(within(step("Pair")).getByText(`Base token: ${base}`));
+    await userEvent.click(within(step("Pair")).getByText(`Quote token: ${quote}`));
     await userEvent.click(button(step("Pair"), "Continue"));
 }
 
@@ -144,7 +144,7 @@ async function answerAmounts(base: string, quote: string, baseTicker = "TOK", qu
     const q = step("Starting amounts");
     await userEvent.type(within(q).getByLabelText(baseTicker), base);
     await userEvent.type(within(q).getByLabelText(quoteTicker), quote);
-    await userEvent.click(button(q, "Continue to fees"));
+    await userEvent.click(button(q, "Continue"));
 }
 
 const answerFees = () => userEvent.click(button(step("Fees"), "Review pool"));
@@ -187,19 +187,20 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
         expect(screen.getByText("tradebin · liquidity pool")).toBeInTheDocument();
         expect(step("Pair")).toHaveAttribute("data-state", "active");
         expect(within(step("Pair")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
-        expect(within(step("Pair")).getByRole("heading", { name: "Which two tokens?" })).toBeInTheDocument();
+        expect(within(step("Pair")).getByRole("heading", { name: "Which pair?" })).toBeInTheDocument();
         expect(step("Starting amounts")).toHaveAttribute("data-state", "todo");
         expect(step("Fees")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Pool creation fee: 25000000");
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Creation fee: 25000000");
+        expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
     });
 
     describe("Pair", () => {
-        it("summarises the pair in the order picked and notes the chain's alphabetical order", async () => {
+        it("summarises the pair in the order picked", async () => {
             renderPage();
-            await userEvent.click(within(step("Pair")).getByText("Your token: utok"));
-            await userEvent.click(within(step("Pair")).getByText("Paired with: ubze"));
-            expect(within(step("Pair")).getByText("Stored on chain as BZE/TOK: the chain orders every pair alphabetically.")).toBeInTheDocument();
+            await userEvent.click(within(step("Pair")).getByText("Base token: utok"));
+            await userEvent.click(within(step("Pair")).getByText("Quote token: ubze"));
+            expect(within(step("Pair")).queryByText(/Stored on chain as/)).not.toBeInTheDocument();
             await userEvent.click(button(step("Pair"), "Continue"));
             expect(step("Pair")).toHaveAttribute("data-state", "done");
             expect(step("Pair")).toHaveTextContent("TOK / BZE");
@@ -251,13 +252,13 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             const q = step("Starting amounts");
             expect(within(q).getByRole("heading", { name: "How much goes in first?" })).toBeInTheDocument();
             expect(within(q).getByText("This first deposit stays in the pool forever.")).toBeInTheDocument();
-            expect(within(q).getByText(/You get no withdrawable share for it, nobody can take it out, you\s+included/)).toBeInTheDocument();
-            expect(within(q).getByText("Balance 1,000 TOK")).toBeInTheDocument();
+            expect(within(q).queryByText(/You get no withdrawable share for it/)).not.toBeInTheDocument();
+            expect(within(q).getByText("You hold 1,000 TOK")).toBeInTheDocument();
             await userEvent.type(within(q).getByLabelText("TOK"), "100");
             await userEvent.type(within(q).getByLabelText("BZE"), "50");
             // 1 TOK = 0.5 BZE, 1 BZE = $2 in the mock.
-            expect(within(q).getByTestId("starting-price")).toHaveTextContent("Starting price: 1 TOK = 0.500000 BZE ≈ $1");
-            await userEvent.click(button(q, "Continue to fees"));
+            expect(within(q).getByTestId("starting-price")).toHaveTextContent(/Starting price\s*1 TOK = 0\.500000 BZE ≈ \$1/);
+            await userEvent.click(button(q, "Continue"));
             expect(step("Starting amounts")).toHaveTextContent("100 TOK + 50 BZE · 0.500000 BZE per TOK");
         });
 
@@ -276,8 +277,8 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             const input = within(step("Starting amounts")).getByLabelText("TOK");
             await userEvent.type(input, "5000");
             await userEvent.tab();
-            expect(within(step("Starting amounts")).getByText("Amount exceeds your balance.")).toBeInTheDocument();
-            expect(button(step("Starting amounts"), "Continue to fees")).toBeDisabled();
+            expect(within(step("Starting amounts")).getByText("Not enough TOK: you hold 1,000 TOK.")).toBeInTheDocument();
+            expect(button(step("Starting amounts"), "Continue")).toBeDisabled();
         });
 
         it("without a wallet, takes any amount and leaves Max and the balance out", async () => {
@@ -288,7 +289,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             expect(within(q).queryByRole("button", { name: "Max TOK" })).not.toBeInTheDocument();
             await userEvent.type(within(q).getByLabelText("TOK"), "5000");
             await userEvent.type(within(q).getByLabelText("BZE"), "10");
-            expect(button(q, "Continue to fees")).toBeEnabled();
+            expect(button(q, "Continue")).toBeEnabled();
         });
     });
 
@@ -344,19 +345,19 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             const review = step("Review");
             const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
             // Each coin row: label, logo (the mock prints the ticker), amount.
-            expect(leaves).toHaveTextContent(/Pool creation fee\s*BZE\s*25 BZE/);
+            expect(leaves).toHaveTextContent(/Creation fee\s*BZE\s*25 BZE/);
             expect(leaves).toHaveTextContent(/Starting TOK\s*TOK\s*1,000 TOK/);
             expect(leaves).toHaveTextContent(/Starting BZE\s*BZE\s*50 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A TOK/BZE pool anyone can swap in");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("TOK/BZE pool");
             expect(review).toHaveTextContent("Swap fee0.2 % · 50 % to providers, 25 % burned, 25 % treasury");
             const permanent = within(review).getByRole("region", { name: "Permanent" });
             expect(permanent).toHaveTextContent("The first deposit (1,000 TOK + 50 BZE)");
             expect(permanent).toHaveTextContent("The pair");
 
-            expect(screen.getByTestId("outcome")).toHaveTextContent(
-                "A TOK/BZE pool opens on the DEX at 0.050000 BZE per TOK. Anyone can swap and add liquidity right away. 1,000 TOK + 50 BZE stay in it forever.",
-            );
+            // The pay panel lists the same rows as Review.
+            expect(screen.getByTestId("pay-panel")).toHaveTextContent("Creation fee: 25000000, Starting TOK: 1000000000, Starting BZE: 50000000");
+            expect(screen.queryByTestId("outcome")).not.toBeInTheDocument();
 
             await userEvent.click(createButton());
             // ubze < utok: the chain stores BZE/TOK and the amounts swap with it.
@@ -395,9 +396,9 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             // 80 BZE + 25 BZE fee + 1 BZE gas > 100 BZE.
             await answerAmounts("10", "80");
             await answerFees();
-            expect(screen.getByTestId("pay-panel")).toHaveTextContent("BZE needed in total: 105 BZE");
+            expect(screen.getByTestId("pay-panel")).not.toHaveTextContent("needed in total");
             expect(createButton()).toBeDisabled();
-            expect(screen.getByText("Not enough balance to cover the creation fee on top of the starting amounts.")).toBeInTheDocument();
+            expect(screen.getByText("Not enough BZE: you hold 100 BZE.")).toBeInTheDocument();
             unmount();
 
             payment.paysWithAlt = true;

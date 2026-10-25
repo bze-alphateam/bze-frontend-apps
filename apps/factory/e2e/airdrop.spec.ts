@@ -14,7 +14,7 @@ test.beforeEach(async ({page}) => {
     await page.clock.setFixedTime(new Date(2026, 9, 20, 12));
 });
 
-test("asks who gets the coins first, and keeps the answer in the URL", async ({page}) => {
+test("asks who gets the tokens first, and keeps the answer in the URL", async ({page}) => {
     await page.goto("/airdrop");
 
     await expect(page.getByRole("heading", {level: 1, name: "Airdrop tokens"})).toBeVisible();
@@ -23,17 +23,17 @@ test("asks who gets the coins first, and keeps the answer in the URL", async ({p
     await who.getByRole("radio", {name: /Liquidity providers/}).click();
     await expect(page).toHaveURL(/\/airdrop\?to=lp$/);
 
-    const token = page.getByRole("region", {name: "Pool share", exact: true});
+    const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "active");
-    await expect(token.getByText("Which pool's providers?")).toBeVisible();
-    await expect(token.getByTestId("picker-empty")).toHaveText("No pool share is staked in a reward yet.");
+    await expect(token.getByText("Which LP shares?")).toBeVisible();
+    await expect(token.getByTestId("picker-empty")).toHaveText("No LP shares are staked in a reward yet.");
 });
 
-test("through NOAD's compounded reward: any coin, then Review with the connect message", async ({page}) => {
+test("through NOAD's compounded reward: any token, then Review with the connect message", async ({page}) => {
     await page.goto(`/airdrop?denom=${encodeURIComponent(NOADMIN)}`);
 
     await expect(page.getByRole("region", {name: "Who", exact: true})).toContainText("Stakers of a token");
-    const token = page.getByRole("region", {name: "Token", exact: true});
+    const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "done");
     await expect(token).toContainText("NOAD stakers");
     // NOAD has no simple reward: the compounded one answers the Reward step.
@@ -44,17 +44,17 @@ test("through NOAD's compounded reward: any coin, then Review with the connect m
     await amount.getByRole("combobox").click();
     await page.getByPlaceholder("Search by name or ticker...").fill("VDL");
     await page.getByRole("option").filter({hasText: "VDL"}).first().click();
-    await expect(amount.getByTestId("prize-slot-note")).toHaveText("No prize fee: NOAD already pays VDL.");
+    await expect(amount.getByText("No prize fee: NOAD already pays VDL.")).toHaveCount(0);
     await amount.getByLabel("Amount (VDL)").fill("100");
-    await expect(amount.getByTestId("airdrop-sentence")).toContainText("100 VDL is split right now between all NOAD stakers (25 NOAD staked), by how much each stakes.");
+    await expect(amount.getByTestId("airdrop-sentence")).toHaveCount(0);
     await amount.getByRole("button", {name: "Review", exact: true}).click();
 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
     await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("100 VDL");
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("NOAD stakers can claim it right away");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("100 VDL to NOAD stakers");
     await expect(review).toContainText("An airdrop can't be undone");
-    await expect(review.getByRole("button", {name: "Airdrop now"})).toBeDisabled();
+    await expect(review.getByRole("button", {name: "Airdrop", exact: true})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
@@ -65,38 +65,38 @@ test("refuses a token nobody is staking", async ({page, network}) => {
     });
     await page.goto(`/airdrop?denom=${encodeURIComponent(NOADMIN)}`);
 
-    const token = page.getByRole("region", {name: "Token", exact: true});
+    const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "active");
-    await expect(page.getByTestId("airdrop-blocker")).toContainText("Nobody is staking NOAD yet");
+    await expect(page.getByTestId("airdrop-blocker")).toHaveText("Nobody stakes NOAD yet.");
     await expect(token.getByRole("button", {name: "Continue"})).toBeDisabled();
 });
 
-test("the old Distribute link lands on the simple reward, in its own prize coin", async ({page}) => {
+test("the old Distribute link lands on the simple reward, in its own reward token", async ({page}) => {
     await page.goto("/reward/distribute?id=000000000000");
     await expect(page).toHaveURL(/\/airdrop\?id=000000000000/);
 
-    await expect(page.getByRole("region", {name: "Token", exact: true})).toContainText("VDL stakers");
+    await expect(page.getByRole("region", {name: "Stake", exact: true})).toContainText("VDL stakers");
     await expect(page.getByRole("region", {name: "Reward", exact: true})).toContainText("Simple reward #000000000000 · 37 VDL staked");
     const amount = page.getByRole("region", {name: "Amount", exact: true});
     await expect(amount).toHaveAttribute("data-state", "active");
-    await expect(amount).toContainText("A simple reward pays only in its own coin: VDL.");
-    await expect(amount.getByText("This reward has finished.")).toBeVisible();
+    await expect(amount.getByText("Paid in VDL", {exact: true})).toBeVisible();
+    await expect(amount.getByText("This reward has finished.")).toHaveCount(0);
     await amount.getByLabel("Amount (VDL)").fill("5");
-    await expect(amount.getByTestId("airdrop-sentence")).toContainText("5 VDL is split right now between all VDL stakers (37 VDL staked)");
+    await expect(amount.getByTestId("airdrop-sentence")).toHaveCount(0);
     await amount.getByRole("button", {name: "Review", exact: true}).click();
 
     const review = page.getByRole("region", {name: "Review", exact: true});
-    await expect(review.getByRole("button", {name: "Airdrop now"})).toBeDisabled();
+    await expect(review.getByRole("button", {name: "Airdrop", exact: true})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("the old airdrop and Reach links keep their token", async ({page}) => {
     await page.goto(`/denom-reward/airdrop?denom=${encodeURIComponent(NOADMIN)}`);
-    await expect(page.getByRole("region", {name: "Token", exact: true})).toContainText("NOAD stakers");
+    await expect(page.getByRole("region", {name: "Stake", exact: true})).toContainText("NOAD stakers");
 
     await page.goto(`/reach?community=${encodeURIComponent(NOADMIN)}`);
     await expect(page).toHaveURL(/\/airdrop\?community=/);
-    await expect(page.getByRole("region", {name: "Token", exact: true})).toContainText("NOAD stakers");
+    await expect(page.getByRole("region", {name: "Stake", exact: true})).toContainText("NOAD stakers");
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {

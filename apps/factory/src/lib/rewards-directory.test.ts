@@ -142,8 +142,8 @@ describe("matchesStakedToken", () => {
 
 describe("airdropDisabledReason", () => {
     it("explains a DR without stakers (chain error 5018)", () => {
-        expect(airdropDisabledReason({ staked_amount: "0" })).toBe("Nothing staked yet");
-        expect(airdropDisabledReason({ staked_amount: "" })).toBe("Nothing staked yet");
+        expect(airdropDisabledReason({ staked_amount: "0" })).toBe("Nothing staked");
+        expect(airdropDisabledReason({ staked_amount: "" })).toBe("Nothing staked");
         expect(airdropDisabledReason({ staked_amount: "5" })).toBe("");
     });
 });
