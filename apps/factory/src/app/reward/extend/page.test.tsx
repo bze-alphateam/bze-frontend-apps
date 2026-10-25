@@ -157,19 +157,20 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
         expect(step("Extra days")).toHaveAttribute("data-state", "active");
 
         const terms = screen.getByTestId("extend-terms");
-        expect(terms).toHaveTextContent("This reward · stays as it is");
-        expect(terms).toHaveTextContent("People stakeHONEY/BZE LP");
-        expect(terms).toHaveTextContent("Shared every day100 HONEY");
-        expect(terms).toHaveTextContent("Days left6 of 30 · ends 26 Oct");
-        expect(screen.getByText("Anyone can extend any reward. Paying for days doesn't make you its owner or let you change it.")).toBeInTheDocument();
+        expect(terms).toHaveTextContent("StakeHONEY/BZE LP");
+        expect(terms).toHaveTextContent("Daily reward100 HONEY");
+        expect(terms).toHaveTextContent("End date26 Oct");
+        expect(terms).not.toHaveTextContent("stays as it is");
+        expect(screen.queryByText(/Anyone can extend/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/daily amount can't change/)).not.toBeInTheDocument();
     });
 
     describe("Extra days", () => {
-        it("costs the daily amount × the days and moves the end", async () => {
+        it("shows only the new end date and puts the cost in the pay panel", async () => {
             renderPage();
             await enterDays("10");
-            expect(screen.getByTestId("extend-cost")).toHaveTextContent("100 HONEY/day × 10 days = 1,000 HONEY");
-            expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end: 5 Nov instead of 26 Oct.");
+            expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end date5 Nov");
+            expect(screen.getByTestId("extend-cost")).not.toHaveTextContent("×");
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("Extra rewards: 1000000000 uhoney");
             expect(screen.getByTestId("extend-holdings")).toHaveTextContent("You hold 797,000 HONEY ✓");
 
@@ -181,7 +182,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
         it("refuses more days than the 36,500-day cap leaves, before signing", async () => {
             rewardsState.rewards = [reward({ duration: 36000, payouts: 100 })];
             renderPage();
-            expect(within(step("Extra days")).getByText("1–500 days.")).toBeInTheDocument();
+            expect(within(step("Extra days")).getByText("Min 1 · Max 500 days")).toBeInTheDocument();
             await enterDays("501");
             expect(within(step("Extra days")).getByText("At most 500 more days: a reward can't run more than 36,500 days in total.")).toBeInTheDocument();
             expect(button(step("Extra days"), "Review extension")).toBeDisabled();
@@ -200,10 +201,10 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
         it("restarts a finished reward from today, and says so", async () => {
             queryParams.current = new URLSearchParams({ id: FINISHED.reward_id });
             renderPage();
-            expect(screen.getByTestId("extend-terms")).toHaveTextContent("Days leftFinished · all 30 paid");
+            expect(screen.getByTestId("extend-terms")).toHaveTextContent("End dateEnded");
             expect(screen.getByText("This reward has finished.")).toBeInTheDocument();
             await enterDays("10");
-            expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end: 30 Oct (today + the extra days: it starts paying again).");
+            expect(screen.getByTestId("extend-new-end")).toHaveTextContent("New end date30 Oct");
         });
     });
 
