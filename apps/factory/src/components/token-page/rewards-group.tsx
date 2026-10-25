@@ -12,7 +12,7 @@ import { useDenomReward } from '@/hooks/useDenomReward'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
 import { compoundedNewHref } from '@/lib/denom-reward'
 import { stakesToken } from '@/lib/token-page'
-import { ActionGroup, ActionItem, ItemButton, ItemLink, type GroupProps } from './action-group'
+import { ActionGroup, ActionItem, ItemButton, type GroupProps } from './action-group'
 
 /** The compounded reward of the token, or the way to make it stakable. */
 function Compounded({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {

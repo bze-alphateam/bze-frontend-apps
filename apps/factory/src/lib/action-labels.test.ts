@@ -3,11 +3,10 @@ import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 // One action, one name (factory forms audit R4/R5): every button or link that extends a reward
-// (simple or daily prize) reads "Extend", and every one that opens or submits /denom-reward/new
-// reads "Make {ticker} stakable" ("Make a token stakable" without a token). The product keeps its
-// name, "Compounded reward", on cards, crumbs and page titles, so `title` lines are not scanned.
-// The token page is the one exception: its item is already titled "Make {ticker} stakable", so its
-// button just says "Create".
+// (simple or daily prize) reads "Extend". The compounded form submits as "Make {ticker} stakable";
+// the choose page and the dialogs lead into it with "Create compounded reward", the reward cards and
+// the token page item (already titled "Make {ticker} stakable") with "Create". `title` lines are not
+// scanned.
 const RETIRED = [
     "Extend reward",
     "Add more days",
@@ -15,7 +14,6 @@ const RETIRED = [
     "Extend prize",
     "Extend →",
     "Extend before it ends",
-    "Create compounded reward",
 ];
 
 const srcDir = join(__dirname, "..");
@@ -47,9 +45,10 @@ describe("action labels", () => {
         expect(text("components/rewards/reward-items.tsx").match(/>Extend<\/RewardLink>/g)).toHaveLength(2);
     });
 
-    it("the compounded-reward actions say Make … stakable", () => {
+    it("the compounded-reward actions: Create on the cards, Create compounded reward in the dialogs, Make … stakable on submit", () => {
         const text = (file: string) => sources.find(s => s.file === file)?.text ?? "";
-        expect(text("app/create/rewards/page.tsx")).toContain("label: 'Make a token stakable'");
+        expect(text("app/create/rewards/page.tsx")).toContain(">Create compounded reward</NextLink>");
+        expect(text("components/rewards/make-stakable-dialog.tsx")).toContain(">Create compounded reward</NextLink>");
         expect(text("app/denom-reward/new/page.tsx")).toContain("submitLabel={ticker ? `Make ${ticker} stakable` : 'Make a token stakable'}");
     });
 });

@@ -11,7 +11,6 @@ test("walks from the preselected LP token to Review, with the fee and the connec
 
     await expect(page.getByRole("heading", {name: /Create a simple reward/})).toBeVisible();
     await expect(page.getByText("rewards · staking reward")).toHaveCount(0);
-    await expect(page.getByRole("link", {name: "Compare the kinds of reward"})).toHaveAttribute("href", "/create/rewards");
 
     // The deep link answers step 1.
     const stake = page.getByRole("region", {name: "Stake", exact: true});

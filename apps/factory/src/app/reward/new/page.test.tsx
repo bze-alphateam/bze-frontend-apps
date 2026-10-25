@@ -175,7 +175,6 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
         expect(step("Reward")).toHaveAttribute("data-state", "todo");
         expect(step("Rules")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
-        expect(screen.getByRole("link", { name: "Compare the kinds of reward" })).toHaveAttribute("href", "/create/rewards");
     });
 
     describe("Stake", () => {

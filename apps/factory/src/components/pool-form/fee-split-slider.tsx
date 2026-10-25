@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Box, Field, HStack, Input, Slider, Text, VStack } from '@chakra-ui/react'
 import { HIVE_GLOW_APPS } from '@bze/bze-ui-kit'
 
@@ -66,11 +66,10 @@ const SEGMENTS = [
 
 /** A share's number box: typing updates the split (and so the slider) on every valid number. */
 function ShareInput({ label, value, onChange }: { label: string; value: number; onChange: (pct: number) => void }) {
-    const [draft, setDraft] = useState(String(value))
-    // Follow the slider and the other boxes, but keep a half-typed (empty) box as it is.
-    useEffect(() => {
-        setDraft(prev => (prev.trim() === '' && value === 0 ? prev : String(value)))
-    }, [value])
+    // What the user typed, kept while it still matches the split (an emptied box reads as 0);
+    // the slider or another box moving the share replaces it with the number.
+    const [draft, setDraft] = useState<string | null>(null)
+    const shown = draft !== null && Number(draft || '0') === value ? draft : String(value)
     return (
         <Field.Root w="72px">
             <Input
@@ -79,13 +78,13 @@ function ShareInput({ label, value, onChange }: { label: string; value: number; 
                 borderRadius="hg.pill"
                 inputMode="numeric"
                 aria-label={`${label} (%)`}
-                value={draft}
+                value={shown}
                 onChange={(e) => {
                     const text = e.target.value.replace(/[^0-9]/g, '')
                     setDraft(text)
                     onChange(text === '' ? 0 : Number(text))
                 }}
-                onBlur={() => setDraft(String(value))}
+                onBlur={() => setDraft(null)}
             />
         </Field.Root>
     )

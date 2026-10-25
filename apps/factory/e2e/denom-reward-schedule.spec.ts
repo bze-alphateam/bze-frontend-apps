@@ -48,7 +48,7 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await expect(leaves).toContainText("3,000 VDL");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("NOAD stakers");
     await expect(review.getByRole("region", {name: "You get"})).not.toContainText("A daily prize for");
-    await expect(review).toContainText("Rewards are committed to stakers");
+    await expect(review).toContainText("This action can't be undone");
     await expect(review).not.toContainText("daily amount can't change");
     await expect(review.getByRole("button", {name: "Start daily prize"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();

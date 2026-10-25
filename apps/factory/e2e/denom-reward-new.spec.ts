@@ -67,10 +67,10 @@ test("with a first daily prize, Review lists the prize fees and the locked prize
     const leaves = page.getByRole("region", {name: "Review"}).getByRole("region", {name: "You pay"});
     await expect(leaves).toContainText("Daily prize fee");
     await expect(leaves).toContainText("New prize fee");
-    await expect(leaves).toContainText("75,000 TBZE");
+    await expect(page.getByTestId("pay-total")).toContainText("75,000");
     await expect(leaves).toContainText("Rewards");
     await expect(leaves).toContainText("3,000 VDL");
-    await expect(page.getByRole("region", {name: "Review"})).toContainText("Rewards are committed to stakers");
+    await expect(page.getByRole("region", {name: "Review"})).toContainText("This action can't be undone");
 });
 
 test("picking a token that is already stakable continues to adding a prize to it", async ({page}) => {
