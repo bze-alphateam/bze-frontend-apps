@@ -11,7 +11,7 @@ test("without a token, asks whose stakers first and lists what each stakes", asy
     await page.goto("/denom-reward/schedule");
 
     await expect(page.getByRole("heading", {name: /Add a daily prize/})).toBeVisible();
-    const token = page.getByRole("region", {name: "Staked token"});
+    const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "active");
     await token.getByRole("textbox", {name: "Search tokens"}).fill("noadmin");
     await expect(token.getByRole("radio").filter({hasText: "NOAD"}).first()).toContainText("20 staked");
@@ -22,7 +22,7 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await page.goto(`/denom-reward/schedule?denom=${NOADMIN}`);
 
     await expect(page.getByText("rewards · denom reward schedule")).toBeVisible();
-    const token = page.getByRole("region", {name: "Staked token"});
+    const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "done");
     await expect(token).toContainText("NOAD stakers");
 
@@ -31,11 +31,11 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     await prize.getByRole("combobox").click();
     await page.getByPlaceholder("Search by name or ticker...").fill("VDL");
     await page.getByRole("option").filter({hasText: "VDL"}).first().click();
-    await expect(prize.getByTestId("prize-slot-note")).toHaveText("No prize fee: NOAD already pays VDL.");
-    await prize.getByLabel(/Prize per day/).fill("100");
-    await prize.getByLabel(/Payout days/).fill("30");
-    await expect(prize.getByTestId("prize-sentence")).toContainText("Everyone staking NOAD shares 100 VDL a day for 30 days.");
-    await expect(prize.getByTestId("escrow-amount")).toHaveText("3,000 VDL");
+    await expect(prize.getByText("No prize fee: NOAD already pays VDL.")).toHaveCount(0);
+    await prize.getByLabel(/Daily reward/).fill("100");
+    await prize.getByLabel("Days", {exact: true}).fill("30");
+    await expect(prize.getByTestId("prize-sentence")).toHaveCount(0);
+    await expect(prize.getByTestId("escrow-amount")).toHaveCount(0);
     await prize.getByRole("button", {name: "Continue"}).click();
     await expect(prize).toContainText("100 VDL a day for 30 days");
 
@@ -44,9 +44,11 @@ test("adds a daily prize for NOAD stakers and reaches Review with the fee and th
     const leaves = review.getByRole("region", {name: "Leaves your wallet"});
     await expect(leaves).toContainText("Daily prize fee");
     await expect(leaves).toContainText("25,000 TBZE");
+    await expect(leaves).toContainText("Rewards");
     await expect(leaves).toContainText("3,000 VDL");
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("A daily prize for NOAD stakers");
-    await expect(review).toContainText("Committed tokens are paid out to stakers");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("NOAD stakers");
+    await expect(review.getByRole("region", {name: "You get"})).not.toContainText("A daily prize for");
+    await expect(review).toContainText("Rewards are committed to stakers");
     await expect(review).not.toContainText("daily amount can't change");
     await expect(review.getByRole("button", {name: "Start daily prize"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
@@ -58,7 +60,7 @@ test("extends a running schedule without a fee", async ({page}) => {
     await expect(page.getByRole("heading", {name: /Extend a daily prize/})).toBeVisible();
     const schedule = page.getByRole("region", {name: "Daily prize", exact: true});
     await expect(schedule).toHaveAttribute("data-state", "done");
-    await expect(schedule).toContainText("10 VDL a day for NOAD stakers · 198 days left");
+    await expect(schedule).toContainText("Stake NOAD · earn 10 VDL a day");
 
     const days = page.getByRole("region", {name: "Extra days"});
     await expect(days).toHaveAttribute("data-state", "active");
@@ -70,8 +72,9 @@ test("extends a running schedule without a fee", async ({page}) => {
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
     const leaves = review.getByRole("region", {name: "Leaves your wallet"});
+    await expect(leaves).toContainText("Extra rewards");
     await expect(leaves).toContainText("100 VDL");
-    await expect(leaves.getByText("None", {exact: true})).toBeVisible();
+    await expect(leaves.getByText("None", {exact: true})).toHaveCount(0);
     await expect(review.getByRole("button", {name: "Extend", exact: true})).toBeDisabled();
 });
 

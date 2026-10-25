@@ -28,7 +28,7 @@ const ROUTES: {path: string; ready: (page: Page) => Locator}[] = [
     {path: "/airdrop?id=000000000000", ready: (page) => page.getByRole("region", {name: "Amount", exact: true})},
     {path: "/airdrop?to=list&denom=ubze", ready: (page) => page.getByRole("region", {name: "List", exact: true})},
     {path: "/airdrop", ready: heading("Airdrop tokens")},
-    {path: "/raffle/new?denom=ubze", ready: heading("Run a burning raffle")},
+    {path: "/raffle/new?denom=ubze", ready: heading("Start a burning raffle")},
     {path: "/tokens", ready: heading(/^Tokens$/)},
     // The token page stacks its groups; the setup chips scroll in their own row (BFE-271).
     {path: `/tokens/token?denom=${NOADMIN}`, ready: (page) => page.getByTestId("burn-item")},

@@ -133,12 +133,12 @@ const question = (title: string) => screen.getByRole("region", { name: title });
 const review = () => question("Review");
 const continueToken = () => userEvent.click(within(question(TOKEN)).getByRole("button", { name: "Continue" }));
 const continueList = () => userEvent.click(within(question(LIST)).getByRole("button", { name: "Review" }));
-const sendButton = () => within(review()).getByRole("button", { name: /^Send to \d+ wallets$/ });
+const sendButton = () => within(review()).getByRole("button", { name: /^Airdrop to \d+ wallets$/ });
 const listInput = () => within(question(LIST)).getByLabelText(/one per line/);
 const txPanel = () => screen.getByTestId("tx-panel");
 
 async function pickToken(denom = "utok") {
-    await userEvent.click(within(question(TOKEN)).getByText(`Token to send: ${denom}`));
+    await userEvent.click(within(question(TOKEN)).getByText(`Token: ${denom}`));
     await continueToken();
 }
 
@@ -200,7 +200,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
+describe("Airdrop tokens to a list of wallets", { timeout: 20_000 }, () => {
     it("walks Who · Token · List · Review and sends one multi-send whose input is the sum of the outputs", async () => {
         renderPage();
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
@@ -210,13 +210,13 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         expect(screen.getByText("List saved in this browser")).toBeInTheDocument();
         expect(within(question(TOKEN)).getByText("What are you sending?")).toBeInTheDocument();
         // Only what the wallet holds, LP shares included, own tokens first.
-        expect(screen.getByText("Token to send: ulp/abc")).toBeInTheDocument();
-        const picker = screen.getByText("Token to send").parentElement!;
+        expect(screen.getByText("Token: ulp/abc")).toBeInTheDocument();
+        const picker = screen.getByText("Token: ulp/abc").parentElement!;
         expect(picker).toHaveAttribute("data-own-first", "true");
         expect(picker).toHaveAttribute("data-held-only", "true");
 
         await pickToken();
-        expect(question(TOKEN)).toHaveTextContent("TOK · you hold 1,000");
+        expect(question(TOKEN)).toHaveTextContent("TOK · You hold 1,000 TOK");
         expect(within(question(LIST)).getByText("Who gets it?")).toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Amount per wallet" }));
@@ -224,10 +224,9 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         await continueList();
         expect(question(LIST)).toHaveTextContent("2 wallets · 4 TOK in total");
 
-        expect(screen.getByRole("region", { name: "What will happen" })).toHaveTextContent(
-            "4 TOK goes to 2 wallets, each getting the amount on its line.",
-        );
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Sent to wallets: 4000000 utok, Factory fee: None");
+        expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Sent to wallets: 4000000 utok");
+        expect(screen.getByTestId("pay-panel")).not.toHaveTextContent("Factory fee");
         expect(screen.getByTestId("tx-kind")).toHaveTextContent('{"kind":"multi-send","count":2}');
         // The gas is paid in BZE here, so only the sent amount leaves the TOK balance.
         expect(screen.getByText("Left in your wallet").nextSibling).toHaveTextContent("996 TOK");
@@ -277,9 +276,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         await pasteList(`${A}\n${B}\n${C}`);
         await continueList();
 
-        expect(screen.getByRole("region", { name: "What will happen" })).toHaveTextContent(
-            "9 BZE goes to 3 wallets, each getting 3 BZE.",
-        );
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Sent to wallets: 9000000 ubze");
         expect(screen.getByText("Left in your wallet").nextSibling).toHaveTextContent("990.995 BZE");
 
         await userEvent.click(sendButton());
@@ -320,16 +317,14 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
 
     it("a long list: Review says K transactions, then each click signs one batch of 100 and the run ends on Done with the report", async () => {
         await longList();
-        expect(screen.getByTestId("batch-note")).toHaveTextContent(
-            "We send it in 3 transactions of up to 100 wallets. Your wallet asks you to approve each one. If you close the page, you can resume where it stopped.",
-        );
+        expect(screen.getByTestId("batch-note")).toHaveTextContent("3 transactions · one approval each");
         expect(within(review()).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("3, one network fee each");
         // The network fee covers the three transactions.
         expect(JSON.parse(screen.getByTestId("tx-kind").textContent!)).toEqual([
             { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 50 },
         ]);
 
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         expect(txMock).toHaveBeenCalledTimes(1);
         expect(sentOutputs(0)).toEqual(wallets(250).slice(0, 100));
         expect((txMock.mock.calls[0][0] as MultiSendMsg[])[0].value.inputs[0].coins[0].amount).toBe("100000000");
@@ -382,7 +377,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
             spec: [{ kind: "multi-send", count: 100 }, { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 50 }],
             spend: { denom: "utok", amount: "250000000" },
         });
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         await userEvent.click(screen.getByRole("button", { name: "Send the next transaction" }));
         // Then the next batch only.
         expect(affordInputs.at(-1)).toEqual({ spec: { kind: "multi-send", count: 50 }, spend: { denom: "utok", amount: "50000000" } });
@@ -403,7 +398,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
             return ok;
         });
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         expect(within(txPanel()).getByText("Confirm in your wallet")).toBeInTheDocument();
         expect(batchRows()[0]).toBe("100 wallets · 100 TOKSending…");
 
@@ -423,7 +418,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
 
     it("a batch the chain refused is the only one signed again on Try again", async () => {
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         txMock.mockImplementationOnce(async (_m: unknown, opts: TxOpts) => {
             opts.onBroadcast?.("BAD2");
             opts.onFailure?.("Insufficient funds", { stage: "chain", txHash: "BAD2", rawLog: "insufficient funds", code: 5 });
@@ -453,7 +448,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         });
         lookupMock.getTx.mockResolvedValue({ txhash: "H1", code: 0, multiSends: [] });
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
 
         await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓"));
         expect(lookupMock.getTx).toHaveBeenCalledWith("H1");
@@ -470,7 +465,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         });
         lookupMock.getTx.mockImplementation(() => new Promise(res => { finishLookup = res; }));
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         expect(batchRows()[0]).toBe("100 wallets · 100 TOKChecking…");
         expect(within(txPanel()).getByText("Taking longer than usual")).toBeInTheDocument();
 
@@ -498,7 +493,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         });
         lookupMock.getTx.mockRejectedValueOnce(new Error("502")).mockResolvedValue({ txhash: "H1", code: 0, multiSends: [] });
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKCouldn't checkCheck again"));
         expect(screen.queryByRole("button", { name: "Send this one again" })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Check again" }));
@@ -512,7 +507,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         });
         lookupMock.getTx.mockRejectedValueOnce(new Error("502")).mockResolvedValue({ txhash: "H1", code: 0, multiSends: [] });
         await longList();
-        await userEvent.click(within(review()).getByRole("button", { name: "Send to 250 wallets" }));
+        await userEvent.click(within(review()).getByRole("button", { name: "Airdrop to 250 wallets" }));
         await waitFor(() => expect(batchRows()[0]).toContain("Couldn't check"));
         await userEvent.click(within(txPanel()).getByRole("button", { name: "Check transaction status" }));
         await waitFor(() => expect(batchRows()[0]).toBe("100 wallets · 100 TOKSent ✓"));
@@ -599,18 +594,18 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         expect(listInput()).toHaveValue("");
     });
 
-    it("offers an example file and a format hint per mode", async () => {
+    it("offers an example file per mode and the wallet cap", async () => {
         renderPage();
         await pickToken();
         const link = () => within(question(LIST)).getByRole("link", { name: /Download an example file/ });
         expect(decodeURIComponent(link().getAttribute("href")!.split(",")[1])).toBe(exampleCsv("same"));
         expect(link()).toHaveAttribute("download", "wallets-example.csv");
-        expect(question(LIST)).toHaveTextContent('A CSV with an "address" column works too.');
+        expect(question(LIST)).toHaveTextContent("Max 5000 wallets");
 
         await userEvent.click(screen.getByRole("button", { name: "Amount per wallet" }));
         expect(decodeURIComponent(link().getAttribute("href")!.split(",")[1])).toBe(exampleCsv("perWallet"));
         expect(exampleCsv("perWallet")).toContain("address,amount");
-        expect(question(LIST)).toHaveTextContent('A CSV with "address,amount" columns works too.');
+        expect(question(LIST)).toHaveTextContent("Max 5000 wallets");
     });
 
     it("saves the draft, restores it on load and clears it after sending", async () => {
@@ -634,7 +629,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         saveMultiSendDraft({ denom: "ubze", mode: "same", sameAmount: "1", text: A });
         queryParams.current = new URLSearchParams("denom=utok");
         renderPage();
-        expect(question(TOKEN)).toHaveTextContent("TOK · you hold");
+        expect(question(TOKEN)).toHaveTextContent("TOK · You hold");
         expect(question(TOKEN)).not.toHaveTextContent("BZE");
     });
 
@@ -643,7 +638,7 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         renderPage();
         await pickToken();
         expect(question(TOKEN)).toHaveTextContent("TOK");
-        expect(question(TOKEN)).not.toHaveTextContent("you hold");
+        expect(question(TOKEN)).not.toHaveTextContent("You hold");
         await userEvent.type(within(question(LIST)).getByLabelText(/Amount each/), "1");
         await pasteList(A);
         await continueList();
@@ -668,11 +663,11 @@ describe("Airdrop coins to a list of wallets", { timeout: 20_000 }, () => {
         await pickToken();
         await userEvent.type(within(question(LIST)).getByLabelText(/Amount each/), "1");
         expect(within(question(LIST)).getByRole("button", { name: "Review" })).toBeDisabled();
-        expect(screen.queryByRole("button", { name: /^Send to/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Airdrop to/ })).not.toBeInTheDocument();
     });
 });
 
-describe("Airdrop coins: the Who step of the list flow", () => {
+describe("Airdrop tokens: the Who step of the list flow", () => {
     it("Edit reopens it; the same target closes it, another one hands over to the page", async () => {
         renderPage();
         await userEvent.click(within(question("Who")).getByRole("button", { name: /Edit/ }));

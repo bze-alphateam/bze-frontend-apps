@@ -184,7 +184,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             renderPage();
             expect(within(step("Extra days")).getByText("Min 1 · Max 500 days")).toBeInTheDocument();
             await enterDays("501");
-            expect(within(step("Extra days")).getByText("At most 500 more days: a reward can't run more than 36,500 days in total.")).toBeInTheDocument();
+            expect(within(step("Extra days")).getByText("Max 500 days.")).toBeInTheDocument();
             expect(button(step("Extra days"), "Review extension")).toBeDisabled();
             expect(txMock).not.toHaveBeenCalled();
         });
@@ -193,7 +193,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             balances.current = { uhoney: "500000000" };
             renderPage();
             await enterDays("10");
-            expect(screen.getByRole("alert")).toHaveTextContent("Not enough HONEY: you hold 500.");
+            expect(screen.getByRole("alert")).toHaveTextContent("Not enough HONEY: you hold 500 HONEY.");
             expect(screen.getByTestId("extend-holdings")).toHaveTextContent("You hold 500 HONEY ✗");
             expect(button(step("Extra days"), "Review extension")).toBeDisabled();
         });
@@ -208,7 +208,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
     });
 
     describe("Review", () => {
-        it("lists what leaves the wallet, what stakers get and what is permanent, then signs MsgUpdateStakingReward with the days added", async () => {
+        it("lists what leaves the wallet, the extension, the new end date and what is permanent, then signs MsgUpdateStakingReward with the days added", async () => {
             renderPage();
             await enterDays("10");
             await userEvent.click(button(step("Extra days"), "Review extension"));
@@ -216,8 +216,10 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             const review = step("Review");
             const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
             expect(leaves).toHaveTextContent(/Extra rewards\s*HONEY\s*1,000 HONEY/);
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("10 more days for everyone staking HONEY/BZE LP");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Extra tokens are committed to stakers");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("10 more days");
+            expect(within(review).getByRole("region", { name: "You get" })).not.toHaveTextContent("for everyone staking");
+            expect(review).toHaveTextContent("New end date5 Nov");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Rewards are committed to stakers");
 
             await userEvent.click(extendButton());
             expect(sentMsgs()).toEqual([{
@@ -289,6 +291,7 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             queryParams.current = new URLSearchParams({ id: "0000000000000099" });
             renderPage();
             expect(screen.getByText("We couldn't find reward #0000000000000099.")).toBeInTheDocument();
+            expect(screen.getByText("It may have finished and been removed.")).toBeInTheDocument();
             await userEvent.click(screen.getByRole("button", { name: /See all rewards/ }));
             expect(navigateMock).toHaveBeenCalledWith("/rewards");
         });

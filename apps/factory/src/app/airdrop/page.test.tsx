@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-// The Airdrop coins page: step 1 when the link names no target, else the target's flow (stubbed
+// The Airdrop tokens page: step 1 when the link names no target, else the target's flow (stubbed
 // here; each flow has its own tests). The target lives in the URL.
 const m = vi.hoisted(() => ({ query: new URLSearchParams(), replace: vi.fn() }));
 
@@ -31,11 +31,12 @@ beforeEach(() => {
     m.replace.mockReset();
 });
 
-describe("Airdrop coins (/airdrop)", () => {
-    it("asks who gets the coins, and puts the answer in the URL with the coin kept", async () => {
+describe("Airdrop tokens (/airdrop)", () => {
+    it("asks who gets the tokens, and puts the answer in the URL with the token kept", async () => {
         m.query = new URLSearchParams({ prize: "uhoney" });
         render(<AirdropPage />, { wrapper });
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
+        expect(screen.getByRole("heading", { name: "Who gets the tokens?" })).toBeInTheDocument();
         expect(screen.getAllByRole("radio").map(r => r.textContent)).toEqual([
             expect.stringContaining("A list of wallets"),
             expect.stringContaining("Stakers of a token"),

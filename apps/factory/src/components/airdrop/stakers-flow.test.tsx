@@ -6,11 +6,11 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset, DenomReward } from "@bze/bze-ui-kit";
 
-// Airdrop coins to stakers on mocked hooks: wallet, fees, the spendable balance, the fee engine, each
+// Airdrop tokens to stakers on mocked hooks: wallet, fees, the spendable balance, the fee engine, each
 // token's compounded reward (with its refresh, the pre-sign read), the simple rewards and the wallet
 // side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store, the Review step and the
 // Done screens are real. The staked-token picker becomes a button per token and shows its props; the
-// asset picker a button per coin.
+// asset picker a button per token.
 type TxOpts = {
     onBroadcast?: (hash: string) => void;
     onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
@@ -140,12 +140,12 @@ const BZE_PRIZE = { staking_denom: "uhoney", prize_denom: "ubze", distributed_st
 const HONEY_SR = { reward_id: "000000000007", staking_denom: "uhoney", prize_denom: "ubze", prize_amount: "1000000", staked_amount: "300000000", duration: 30, payouts: 5 };
 
 async function pickToken(denom = "uhoney") {
-    await userEvent.click(within(step("Token")).getByText(`Stake ${denom}`));
-    await userEvent.click(button(step("Token"), "Continue"));
+    await userEvent.click(within(step("Stake")).getByText(`Stake ${denom}`));
+    await userEvent.click(button(step("Stake"), "Continue"));
 }
 
 async function signAndContinue() {
-    await userEvent.click(button(step("Review"), "Airdrop now"));
+    await userEvent.click(button(step("Review"), "Airdrop"));
     expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 }
@@ -179,14 +179,14 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
+describe("Airdrop tokens to stakers", { timeout: 20_000 }, () => {
     it("Who is answered; the token picker lists tokens with any reward, pool shares left out", () => {
         simpleState.rewards = [{ ...HONEY_SR, staking_denom: "ubee" }];
         renderFlow();
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
         expect(step("Who")).toHaveAttribute("data-state", "done");
         expect(step("Who")).toHaveTextContent("Stakers of a token");
-        expect(step("Token")).toHaveAttribute("data-state", "active");
+        expect(step("Stake")).toHaveAttribute("data-state", "active");
         const picker = screen.getByTestId("staked-picker");
         expect(picker).toHaveAttribute("data-mode", "hasRewards");
         expect(picker).toHaveAttribute("data-only", "tokens");
@@ -208,20 +208,20 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
 
     it("a token nobody stakes: the reason, and no way on", async () => {
         renderFlow();
-        await userEvent.click(within(step("Token")).getByText("Stake upage"));
-        expect(screen.getByTestId("airdrop-blocker")).toHaveTextContent("Nobody is staking PAGE yet");
-        expect(button(step("Token"), "Continue")).toBeDisabled();
+        await userEvent.click(within(step("Stake")).getByText("Stake upage"));
+        expect(screen.getByTestId("airdrop-blocker")).toHaveTextContent("Nobody stakes PAGE yet.");
+        expect(button(step("Stake"), "Continue")).toBeDisabled();
     });
 
     it("a token with no reward at all points to creating one", async () => {
         drState.current = {};
         renderFlow();
-        await userEvent.click(within(step("Token")).getByText("Stake uhoney"));
-        expect(within(step("Token")).getByRole("link", { name: "Create a staking reward" })).toHaveAttribute("href", "/create/rewards?denom=uhoney");
-        expect(button(step("Token"), "Continue")).toBeDisabled();
+        await userEvent.click(within(step("Stake")).getByText("Stake uhoney"));
+        expect(within(step("Stake")).getByRole("link", { name: "Create a staking reward" })).toHaveAttribute("href", "/create/rewards?denom=uhoney");
+        expect(button(step("Stake"), "Continue")).toBeDisabled();
     });
 
-    it("only a compounded reward: the Reward step answers itself, any coin goes, and it sends MsgDistributeDenomRewards", async () => {
+    it("only a compounded reward: the Reward step answers itself, any token goes, and it sends MsgDistributeDenomRewards", async () => {
         renderFlow();
         await pickToken();
         expect(step("Reward")).toHaveAttribute("data-state", "done");
@@ -229,7 +229,7 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
         const amount = step("Amount");
         await userEvent.click(within(amount).getByText("Prize ubze"));
         await userEvent.type(within(amount).getByRole("textbox"), "100");
-        expect(screen.getByTestId("airdrop-sentence")).toHaveTextContent("100 BZE is split right now between all HONEY stakers (1,250 HONEY staked), by how much each stakes.");
+        expect(screen.queryByTestId("airdrop-sentence")).not.toBeInTheDocument();
         await userEvent.click(button(amount, "Review"));
         await signAndContinue();
 
@@ -247,19 +247,19 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
         expect(step("Reward")).toHaveAttribute("data-state", "active");
         const options = within(step("Reward")).getAllByTestId("airdrop-reward");
         expect(options.map(o => o.textContent)).toEqual([
-            "Compounded reward · any coin1,250 HONEY staked",
+            "Compounded reward · any token1,250 HONEY staked",
             "Simple reward #000000000007 · paid in BZE300 HONEY staked",
         ]);
     });
 
-    it("through a simple reward: only its prize coin, and it sends MsgDistributeStakingRewards", async () => {
+    it("through a simple reward: only its reward token, and it sends MsgDistributeStakingRewards", async () => {
         simpleState.rewards = [HONEY_SR];
         renderFlow();
         await pickToken();
         await userEvent.click(within(step("Reward")).getByText(/Simple reward #000000000007/));
         const amount = step("Amount");
         expect(within(amount).queryByText("Prize ubze")).not.toBeInTheDocument();
-        expect(amount).toHaveTextContent("A simple reward pays only in its own coin: BZE.");
+        expect(amount).toHaveTextContent("Paid in BZE");
         await userEvent.type(within(amount).getByRole("textbox"), "25");
         await userEvent.click(button(amount, "Review"));
         await signAndContinue();
@@ -274,8 +274,8 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
         drState.current = {};
         simpleState.rewards = [HONEY_SR];
         renderFlow({ initialRewardId: "000000000007" });
-        expect(step("Token")).toHaveAttribute("data-state", "done");
-        expect(step("Token")).toHaveTextContent("HONEY stakers");
+        expect(step("Stake")).toHaveAttribute("data-state", "done");
+        expect(step("Stake")).toHaveTextContent("HONEY stakers");
         expect(step("Reward")).toHaveTextContent("Simple reward #000000000007 · 300 HONEY staked");
         expect(step("Amount")).toHaveAttribute("data-state", "active");
     });
@@ -285,7 +285,7 @@ describe("Airdrop coins to stakers", { timeout: 20_000 }, () => {
         renderFlow({ initialDenom: "uhoney", initialPrize: "ubze" });
         await userEvent.type(within(step("Amount")).getByRole("textbox"), "100");
         await userEvent.click(button(step("Amount"), "Review"));
-        await userEvent.click(button(step("Review"), "Airdrop now"));
+        await userEvent.click(button(step("Review"), "Airdrop"));
         expect(txMock).not.toHaveBeenCalled();
         expect(await screen.findByTestId("presign-blocker")).toBeInTheDocument();
     });

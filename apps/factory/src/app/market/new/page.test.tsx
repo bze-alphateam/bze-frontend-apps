@@ -210,7 +210,7 @@ describe("Create an order-book market (/market/new)", { timeout: 20_000 }, () =>
             queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
             renderPage();
             expect(step("Pair")).toHaveAttribute("data-state", "active");
-            expect(screen.getByRole("alert")).toHaveTextContent("This pair already has a market. Each pair gets exactly one.");
+            expect(screen.getByRole("alert")).toHaveTextContent("This pair already has a market.");
             const link = screen.getByRole("link", { name: /Open it on the DEX/ });
             expect(link).toHaveAttribute("href", marketUrl(existingId));
             expect(link).toHaveAttribute("data-app", "dex");

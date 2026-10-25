@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {expect, test} from "./support/mock-network";
 
-// Airdrop coins (/airdrop) to stakers and LP providers, without a wallet, against the testnet
+// Airdrop tokens (/airdrop) to stakers and LP providers, without a wallet, against the testnet
 // fixtures: the noadmin compounded reward (fixtures/lcd/rewards.denom_reward.noadmin.json, 25 NOAD
 // staked, prizes NOAD and VDL) and the one simple reward, #000000000000 (stake VDL, paid in VDL,
 // finished, 37 VDL staked; VDL has no compounded reward). The list flow is in airdrop-list.spec.ts.

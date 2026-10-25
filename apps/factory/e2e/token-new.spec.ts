@@ -21,12 +21,11 @@ test("walks Details, Supply and Permissions to a Review with the creation fee", 
     await details.getByPlaceholder("e.g. HONEY", {exact: true}).fill("honey");
     await expect(details.getByText("factory/<you>/uhoney")).toBeVisible();
 
-    const outcome = page.getByRole("region", {name: "What will happen"});
-    await expect(outcome.getByTestId("preview-name")).toHaveText("Honey");
-    await expect(outcome.getByTestId("preview-ticker")).toHaveText("HONEY");
+    await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
+    await expect(page.getByTestId("preview-name")).toHaveCount(0);
 
     const pay = page.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Token creation fee")).toBeVisible();
+    await expect(pay.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await details.getByRole("button", {name: "Continue"}).click();
@@ -143,5 +142,5 @@ test("can be walked and edited with the keyboard only, the focus on each step's 
     await expect(details.getByPlaceholder("e.g. Honey", {exact: true})).toHaveValue("Honey");
     await page.keyboard.press("End");
     await page.keyboard.type(" Bee");
-    await expect(page.getByRole("region", {name: "What will happen"}).getByTestId("preview-name")).toHaveText("Honey Bee");
+    await expect(details.getByPlaceholder("e.g. Honey", {exact: true})).toHaveValue("Honey Bee");
 });

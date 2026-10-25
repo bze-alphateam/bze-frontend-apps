@@ -156,7 +156,7 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
         expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
         const permissions = within(screen.getByTestId("permissions-section"));
-        expect(permissions.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet, .*Changes here can't be undone by you\.$/);
+        expect(permissions.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet$/);
         expect(permissions.getByTestId("transfer-admin-item")).toBeInTheDocument();
         expect(permissions.getByRole("button", { name: "Renounce…" })).toBeInTheDocument();
         expect(within(screen.getByTestId("token-stats")).getByText("You hold")).toBeInTheDocument();
@@ -170,9 +170,10 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByTestId("owner-badge")).toHaveTextContent("Created by you · admin given up");
         expect(within(screen.getByTestId("token-header")).getByText("Fixed supply")).toBeInTheDocument();
         expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
-        expect(screen.getByText(/Frozen: the admin was given up/)).toBeInTheDocument();
+        expect(within(screen.getByTestId("metadata-item")).getByText("Frozen")).toBeInTheDocument();
+        expect(screen.queryByText(/Frozen: the admin was given up/)).not.toBeInTheDocument();
         expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
-        expect(screen.getByTestId("permissions-status")).toHaveTextContent("Admin given up. Nobody can mint or edit TOK any more.");
+        expect(screen.getByTestId("permissions-status")).toHaveTextContent("Admin renounced");
         expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         expectBurnOnBurner();
     });
@@ -262,7 +263,7 @@ describe("token page", () => {
         await userEvent.click(screen.getByRole("button", { name: "Mint" }));
         expect(screen.getByTestId("mint-form")).toBeInTheDocument();
         await userEvent.type(screen.getByPlaceholderText("e.g. 1000"), "6");
-        expect(screen.getByTestId("mint-sentence")).toHaveTextContent("New total supply 10 TOK.");
+        expect(screen.getByTestId("mint-sentence")).toHaveTextContent("New supply 10 TOK");
         expect(screen.getByRole("button", { name: "Mint 6 TOK" })).toBeEnabled();
     });
 

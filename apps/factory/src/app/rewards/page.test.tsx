@@ -198,7 +198,7 @@ describe("rewards directory: a token's rewards", () => {
         expect(item.getByTestId("reward-spec")).toHaveTextContent("Unlock 1d · Airdrops only");
         const airdrop = item.getByRole("button", { name: "Airdrop" });
         expect(airdrop).toBeDisabled();
-        expect(airdrop).toHaveAttribute("title", "Nothing staked yet");
+        expect(airdrop).toHaveAttribute("title", "Nothing staked");
     });
 
     it("compounded: a failed prize query isn't 'nothing scheduled'", async () => {

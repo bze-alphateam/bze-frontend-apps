@@ -1,7 +1,7 @@
 import {expect, test} from "./support/mock-network";
 import {bzeWallets} from "./support/wallets";
 
-// Airdrop coins to a list of wallets (/airdrop?to=list, formerly /multisend, BFE-266): the Who ·
+// Airdrop tokens to a list of wallets (/airdrop?to=list, formerly /multisend, BFE-266): the Who ·
 // Token · List · Review wizard without a wallet, against the testnet fixtures. `?denom=ubze` answers
 // the Token step with the native TBZE.
 

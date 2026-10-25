@@ -227,7 +227,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
             renderPage();
             expect(step("Pair")).toHaveAttribute("data-state", "active");
-            expect(screen.getByRole("alert")).toHaveTextContent("This pair already has a pool. Each pair gets exactly one.");
+            expect(screen.getByRole("alert")).toHaveTextContent("This pair already has a pool.");
             const link = screen.getByRole("link", { name: /Add liquidity to it on the DEX/ });
             expect(link).toHaveAttribute("href", "https://dex.test/pools/details?id=ubze_utok");
             expect(link).toHaveAttribute("data-app", "dex");
@@ -306,7 +306,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await userEvent.click(button(q, "0.3%"));
             await userEvent.click(within(q).getByText("split 50/25/25"));
             await answerFees();
-            expect(step("Fees")).toHaveTextContent("0.3 % · 50 % to providers, 25 % burned, 25 % treasury");
+            expect(step("Fees")).toHaveTextContent("0.3% · 50% to providers, 25% burned, 25% treasury");
         });
 
         it.each([
@@ -350,7 +350,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             expect(leaves).toHaveTextContent(/Starting BZE\s*BZE\s*50 BZE/);
             expect(leaves).toHaveTextContent("Network fee≈ 0.004000 BZE");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("TOK/BZE pool");
-            expect(review).toHaveTextContent("Swap fee0.2 % · 50 % to providers, 25 % burned, 25 % treasury");
+            expect(review).toHaveTextContent("Swap fee0.2% · 50% to providers, 25% burned, 25% treasury");
             const permanent = within(review).getByRole("region", { name: "Permanent" });
             expect(permanent).toHaveTextContent("The first deposit (1,000 TOK + 50 BZE)");
             expect(permanent).toHaveTextContent("The pair");

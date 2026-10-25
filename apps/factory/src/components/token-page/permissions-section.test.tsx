@@ -94,9 +94,9 @@ describe("PermissionsSection: states", () => {
         renderSection(props());
         const section = within(screen.getByTestId("permissions-section"));
         expect(section.getByRole("heading", { name: "Permissions" })).toBeInTheDocument();
-        expect(section.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet, bze1uv.*Changes here can't be undone by you\.$/);
+        expect(section.getByTestId("permissions-status")).toHaveTextContent(/^Admin: your wallet$/);
         expect(within(section.getByTestId("transfer-admin-item")).queryByText(/multisig/)).not.toBeInTheDocument();
-        expect(within(section.getByTestId("renounce-admin-item")).getByText("Nobody, you included, can ever mint or edit HONEY again.")).toBeInTheDocument();
+        expect(within(section.getByTestId("renounce-admin-item")).queryByText(/Nobody, you included/)).not.toBeInTheDocument();
         expect(section.getByRole("button", { name: "Transfer admin" })).toBeInTheDocument();
         expect(section.getByRole("button", { name: "Renounce…" })).toBeInTheDocument();
     });
@@ -117,9 +117,9 @@ describe("PermissionsSection: states", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
-    it("renounced: Admin given up, and no actions", () => {
+    it("renounced: Admin renounced, and no actions", () => {
         renderSection(props({ admin: "", adminState: "renounced" }));
-        expect(screen.getByTestId("permissions-status")).toHaveTextContent("Admin given up. Nobody can mint or edit HONEY any more.");
+        expect(screen.getByTestId("permissions-status")).toHaveTextContent(/^Admin renounced$/);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
@@ -174,9 +174,8 @@ describe("Transfer admin dialog", () => {
 
         const rows = dialog.getAllByTestId("transfer-review-row").map(r => r.textContent);
         expect(rows).toEqual([
-            "You loseMint, edit details, transfer or renounce admin.",
-            "They getThe same.",
-            "Permanent for youOnly the new admin can give it back.",
+            "They getAdmin",
+            "You loseAdmin",
         ]);
         expect(dialog.getByTestId("transfer-new-admin")).toHaveAttribute("title", OTHER);
         expect(dialog.getByText(/Triple-check the address/)).toBeInTheDocument();
@@ -228,7 +227,7 @@ describe("Renounce dialog", () => {
         renderSection(props());
         const dialog = await open();
 
-        expect(dialog.getByText("This is permanent. There is no undo, not by you, not by BeeZee.")).toBeInTheDocument();
+        expect(dialog.getByText("Permanent.")).toBeInTheDocument();
         expect(within(dialog.getByRole("region", { name: "Gone forever" })).getAllByRole("listitem").map(li => li.textContent)).toEqual([
             "Minting more HONEY",
             "Editing name, logo and description",

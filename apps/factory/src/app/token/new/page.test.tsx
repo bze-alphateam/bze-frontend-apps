@@ -415,7 +415,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
 
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is live.");
-            expect(screen.getByText("1,000,000 HONEY just landed in your wallet. Nice work.")).toBeInTheDocument();
+            expect(screen.getByText("1,000,000 HONEY are in your wallet.")).toBeInTheDocument();
             expect(screen.getByText(DENOM)).toBeInTheDocument();
             expect(screen.getByTestId("done-confetti")).toBeInTheDocument();
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
@@ -427,8 +427,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByText("Airdrop HONEY")).toBeInTheDocument();
             expect(screen.getByText("Get your logo in every wallet")).toBeInTheDocument();
             expect(screen.queryByText("Give it a look")).not.toBeInTheDocument();
-            expect(screen.getByText(/Not now\? Every one of these waits for you on/)).toBeInTheDocument();
-            expect(screen.getByText("HONEY's token page")).toBeInTheDocument();
+            expect(screen.queryByText(/Not now\? Every one of these waits for you on/)).not.toBeInTheDocument();
             expect(savedDraft()).toBeNull();
         });
     });

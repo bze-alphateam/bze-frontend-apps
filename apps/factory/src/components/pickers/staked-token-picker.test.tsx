@@ -48,7 +48,7 @@ const dr = (a: Asset, staked: string): DenomReward => ({ staking_denom: a.denom,
 
 const onChange = vi.fn();
 const stateOf = (_a: Asset, d?: DenomReward) => d
-    ? (d.staked_amount === "0" ? { text: "Nothing staked · airdrop waits", tone: "warn" as const } : { text: "staked", tone: "good" as const })
+    ? (d.staked_amount === "0" ? { text: "Nothing staked", tone: "warn" as const } : { text: "staked", tone: "good" as const })
     : { text: "Not stakable yet", tone: "muted" as const };
 
 function renderPicker(props: Partial<StakedTokenPickerProps> = {}) {
@@ -86,7 +86,7 @@ describe("StakedTokenPicker", () => {
             "STOP Token · STOP",
         ]);
         expect(within(group("All tokens").getByRole("radio", { name: "BeeZee · BZE" })).getByText("Native token")).toBeInTheDocument();
-        expect(within(group("All tokens").getByRole("radio", { name: /pool shares/ })).getByText("Pool share")).toBeInTheDocument();
+        expect(within(group("All tokens").getByRole("radio", { name: /pool shares/ })).getByText("LP shares")).toBeInTheDocument();
     });
 
     it("makeStakable marks the tokens that already have a compounded reward; the rest get the caller's state", () => {
@@ -95,21 +95,21 @@ describe("StakedTokenPicker", () => {
         expect(within(group("All tokens").getByRole("radio", { name: "STOP Token · STOP" })).getByText("Not stakable yet")).toBeInTheDocument();
     });
 
-    it("hasRewards lists tokens with a compounded reward or a simple reward; only narrows to pool shares or tokens", () => {
+    it("hasRewards lists tokens with a compounded reward or a simple reward; only narrows to LP shares or tokens", () => {
         const { rerender } = renderPicker({ mode: "hasRewards", stakable: new Set([HALTED.denom]) });
         const names = () => screen.getAllByRole("radio").map(r => r.getAttribute("aria-label"));
         expect(names()).toContain("STOP Token · STOP");
         expect(names()).toContain("BeeZee · BZE");
         rerender(<StakedTokenPicker mode="hasRewards" stakable={new Set([HALTED.denom])} only="lp" value="" onChange={onChange} stateOf={stateOf} />);
         expect(screen.queryByRole("radio", { name: "STOP Token · STOP" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Pool shares" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "LP shares" })).not.toBeInTheDocument();
     });
 
     it("hasCompounded lists only tokens with one, with the caller's state", () => {
         renderPicker({ mode: "hasCompounded" });
         expect(screen.queryByRole("region", { name: "Created by you" })).not.toBeInTheDocument();
         expect(rowNames("All tokens")).toEqual(["PAGE Token · PAGE", "BeeZee · BZE", "HONEY/BZE pool shares · HONEY/BZE LP"]);
-        expect(within(group("All tokens").getByRole("radio", { name: /pool shares/ })).getByText("Nothing staked · airdrop waits")).toBeInTheDocument();
+        expect(within(group("All tokens").getByRole("radio", { name: /pool shares/ })).getByText("Nothing staked")).toBeInTheDocument();
     });
 
     it("searches by ticker, name or denom", async () => {
@@ -127,13 +127,13 @@ describe("StakedTokenPicker", () => {
         expect(screen.getByTestId("picker-empty")).toHaveTextContent("No token matches 'nothing like it'.");
     });
 
-    it("the chips: Created by you, Pool shares, All", async () => {
+    it("the chips: Created by you, LP shares, All", async () => {
         renderPicker();
         await userEvent.click(screen.getByRole("button", { name: "Created by you" }));
         expect(screen.queryByRole("region", { name: "All tokens" })).not.toBeInTheDocument();
         expect(rowNames("Created by you")).toHaveLength(3);
 
-        await userEvent.click(screen.getByRole("button", { name: "Pool shares" }));
+        await userEvent.click(screen.getByRole("button", { name: "LP shares" }));
         expect(screen.queryByRole("region", { name: "Created by you" })).not.toBeInTheDocument();
         expect(rowNames("All tokens")).toEqual(["HONEY/BZE pool shares · HONEY/BZE LP"]);
 
@@ -153,7 +153,7 @@ describe("StakedTokenPicker", () => {
     it("leaves out halted tokens and LP shares when asked", () => {
         renderPicker({ excludeHalted: true, includeLP: false });
         expect(rowNames("All tokens")).toEqual(["PAGE Token · PAGE", "BeeZee · BZE"]);
-        expect(screen.queryByRole("button", { name: "Pool shares" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "LP shares" })).not.toBeInTheDocument();
     });
 
     it("pages All tokens 20 at a time", async () => {
@@ -179,12 +179,12 @@ describe("StakedTokenPicker", () => {
 
     it("a row whose state is disabled can't be picked, and says why", async () => {
         const airdropState = (_a: Asset, d?: DenomReward) => d && d.staked_amount === "0"
-            ? { text: "Nothing staked · airdrop waits", tone: "warn" as const, disabled: true }
+            ? { text: "Nothing staked", tone: "warn" as const, disabled: true }
             : { text: "staked", tone: "good" as const };
         renderPicker({ mode: "hasCompounded", stateOf: airdropState });
         const lp = group("All tokens").getByRole("radio", { name: /pool shares/ });
         expect(lp).toBeDisabled();
-        expect(within(lp).getByText("Nothing staked · airdrop waits")).toBeInTheDocument();
+        expect(within(lp).getByText("Nothing staked")).toBeInTheDocument();
         await userEvent.click(lp);
         expect(onChange).not.toHaveBeenCalled();
         await userEvent.click(group("All tokens").getByRole("radio", { name: "BeeZee · BZE" }));
