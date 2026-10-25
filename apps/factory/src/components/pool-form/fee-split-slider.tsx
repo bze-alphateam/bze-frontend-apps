@@ -32,19 +32,16 @@ const SEGMENTS = [
         key: 'providers' as const,
         label: 'Providers',
         cssVar: 'var(--chakra-colors-app-solid)',
-        hint: 'compounds into the pool for LPs',
     },
     {
         key: 'burner' as const,
         label: 'Burner',
         cssVar: 'var(--fee-split-burner)',
-        hint: 'burned forever',
     },
     {
         key: 'treasury' as const,
         label: 'Treasury',
         cssVar: 'var(--chakra-colors-hg-info)',
-        hint: 'community treasury',
     },
 ]
 
@@ -98,7 +95,6 @@ export function FeeSplitSlider({ value, onChange }: { value: FeeSplit; onChange:
                         <Box boxSize="10px" borderRadius="full" flexShrink={0} style={{ background: segment.cssVar }} />
                         <Text fontSize="13px">
                             <Text as="span" fontWeight="600">{segment.label} {value[segment.key]}%</Text>
-                            <Text as="span" color="fg.muted"> — {segment.hint}</Text>
                         </Text>
                     </HStack>
                 ))}

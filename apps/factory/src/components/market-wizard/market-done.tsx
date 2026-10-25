@@ -33,7 +33,6 @@ export function MarketDone({ input, hash }: { input: MarketDoneInput; hash: stri
         <DoneScreen
             avatar={[{ ticker: baseTicker, logo: baseAsset?.logo }, { ticker: quoteTicker, logo: quoteAsset?.logo }]}
             title={`The ${pair} market is **open**.`}
-            text={`Anyone can place buy and sell orders for ${baseTicker} priced in ${quoteTicker}.`}
             links={[
                 { label: 'Copy market link', href: dexMarketHref(getDexApp().href, createMarketId(base, quote)), copy: { copied: 'Market link' } },
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },

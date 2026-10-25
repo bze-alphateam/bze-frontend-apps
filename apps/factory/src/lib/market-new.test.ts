@@ -30,7 +30,7 @@ describe("marketPairProblem", () => {
 
     it("names an existing market stored in the picked direction (A/B)", () => {
         expect(marketPairProblem("utok", "ubze", tok, bze, existing("utok/ubze"))).toEqual({
-            message: "This pair already has a market. Each pair gets exactly one.",
+            message: "This pair already has a market.",
             existingMarketId: "utok/ubze",
         });
     });

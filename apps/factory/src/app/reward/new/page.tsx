@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { Box, chakra, Field, Input, Text, VStack } from '@chakra-ui/react'
+import { chakra, Field, Input, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { bze } from '@bze/bzejs'
 import {
@@ -27,8 +27,6 @@ import {
     AnswerChips,
     FormPage,
     GuidedForm,
-    Hint,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -42,10 +40,8 @@ import {
     MAX_DURATION_DAYS,
     MAX_LOCK_DAYS,
     MIN_DURATION_DAYS,
-    budgetLine,
     escrowAmount,
     hasNoMinStake,
-    lockMeaning,
     minStakeToChain,
     prizeSummary,
     programBalances,
@@ -53,6 +49,7 @@ import {
     validateDays,
     validateMinStake,
 } from '@/lib/reward-new'
+import { minMaxHint, notEnoughText, youHoldText } from '@/lib/format'
 
 const { createStakingReward } = bze.rewards.MessageComposer.withTypeUrl
 
@@ -118,6 +115,7 @@ function RewardNewContent() {
 
     const fee = fees.createStakingRewardFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
+    const { asset: feeAsset } = useAsset(fee?.denom ?? '')
     const feePayment = useFeePayment(fee, TX_KIND)
 
     const connected = Boolean(address)
@@ -165,8 +163,8 @@ function RewardNewContent() {
     }
 
     const perDayText = prizeAsset && prizeError === '' && prizePerDay.trim() ? prettyAmount(new BigNumber(prizePerDay)) : ''
-    const escrowText = escrowDisplay ? prettyAmount(escrowDisplay) : ''
-    const budget = escrowText && prizeTicker ? prizeSummary(perDayText, prizeTicker, duration) : ''
+    const budget = escrowDisplay && prizeTicker ? prizeSummary(perDayText, prizeTicker, duration) : ''
+    const daysCount = Number(duration.trim())
     const minStakeText = hasNoMinStake(minStake) || minStakeError !== ''
         ? undefined
         : `${prettyAmount(new BigNumber(minStake.trim()))} ${stakeTicker}`
@@ -206,32 +204,22 @@ function RewardNewContent() {
     const prizeBalanceText = prizeAsset
         ? prettyAmount(uAmountToBigNumberAmount(prizeBalance.amount, prizeAsset.decimals))
         : ''
-    const escrowRow = escrow && prizeDenom
-        ? [{ label: 'Rewards, committed now', coin: { denom: prizeDenom, amount: escrow.toFixed() } }]
-        : []
+    const feeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
+    const feeBalanceText = prettyAmount(uAmountToBigNumberAmount(feeBalance.amount, feeAsset?.decimals ?? 6))
+    // The same rows, in the same order, in the pay panel and in Review.
+    const payRows = [
+        ...(escrow && prizeDenom ? [{ label: 'Rewards', coin: { denom: prizeDenom, amount: escrow.toFixed() } }] : []),
+        { label: 'Creation fee', coin: fee },
+    ]
 
     const aside = (
-        <>
-            <OutcomePanel>
-                {budget && stakeTicker ? (
-                    <Text data-testid="outcome">
-                        {`${escrowText} ${prizeTicker} leaves your wallet now and is paid out as ${budget} to everyone staking ${stakeTicker}. It can't be withdrawn. Anyone can add more days later.`}
-                    </Text>
-                ) : (
-                    <Text color="fg.muted">
-                        Pick what people stake and what they earn to see what your reward pays out.
-                    </Text>
-                )}
-            </OutcomePanel>
-
-            <PayPanel
-                rows={[...escrowRow, { label: `${VOCABULARY.stakingProgram.name} fee`, coin: fee }]}
-                moduleFee={fee}
-                txKind={TX_KIND}
-                isLoading={isFeeLoading}
-                feeUnknown={!fee}
-            />
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={fee}
+            txKind={TX_KIND}
+            isLoading={isFeeLoading}
+            feeUnknown={!fee}
+        />
     )
 
     return (
@@ -243,49 +231,44 @@ function RewardNewContent() {
                     <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
-            subtitle="People stake one token and share a daily amount you pay for up front, for a set number of days."
+            subtitle="Pay stakers a daily reward for a set number of days."
             techTag={VOCABULARY.stakingProgram.tech}
             aside={aside}
         >
             <Question
-                title="What to stake"
-                question="Which token do people stake?"
+                title="Stake"
+                question="Which token?"
                 {...steps.step('stake')}
                 summary={stakeTicker && `Stake ${stakeTicker}`}
                 action={{ label: 'Continue', onClick: () => answer('stake'), disabled: !stakingAsset }}
             >
-                <VStack align="stretch" gap="16px">
-                    <AssetPicker
-                        label="Token people stake"
-                        value={stakingDenom}
-                        includeLP={true}
-                        onSelect={(asset) => setStakingDenom(asset.denom)}
-                    />
-                    <Hint>Any token, LP shares included. It doesn&apos;t have to be yours.</Hint>
-                </VStack>
+                <AssetPicker
+                    label="Token"
+                    value={stakingDenom}
+                    includeLP={true}
+                    onSelect={(asset) => setStakingDenom(asset.denom)}
+                />
             </Question>
 
             <Question
-                title="Reward & budget"
+                title="Reward"
                 question="What do they earn?"
                 {...steps.step('prize')}
                 summary={budget}
                 onBack={steps.back}
-                action={{ label: 'Continue to rules', onClick: () => answer('prize'), disabled: !prizeValid }}
+                action={{ label: 'Continue', onClick: () => answer('prize'), disabled: !prizeValid }}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
-                        label="Reward token (paid from your wallet)"
+                        label="Reward token"
                         value={prizeDenom}
                         onSelect={(asset) => setPrizeDenom(asset.denom)}
                     />
                     {prizeAsset && (
                         <>
                             <FieldWithError
-                                label={`Shared every day (${prizeTicker})`}
-                                helper={connected
-                                    ? `Split between all stakers, by how much each stakes. You hold ${prizeBalanceText} ${prizeTicker}.`
-                                    : 'Split between all stakers, by how much each stakes.'}
+                                label={`Daily reward (${prizeTicker})`}
+                                helper={connected ? youHoldText(prizeBalanceText, prizeTicker) : undefined}
                                 error={prizeError}
                                 value={prizePerDay}
                                 onChange={setPrizePerDay}
@@ -293,8 +276,8 @@ function RewardNewContent() {
                             />
                             <VStack align="stretch" gap="8px">
                                 <FieldWithError
-                                    label="For how many days"
-                                    helper={`${MIN_DURATION_DAYS}–${MAX_DURATION_DAYS.toLocaleString('en-US')} days.`}
+                                    label="Days"
+                                    helper={minMaxHint(MIN_DURATION_DAYS, MAX_DURATION_DAYS, 'days')}
                                     error={durationError}
                                     value={duration}
                                     onChange={setDuration}
@@ -309,28 +292,13 @@ function RewardNewContent() {
                                     ))}
                                 </AnswerChips>
                             </VStack>
-                            {budget && (
-                                <Box fontSize="14px" data-testid="budget">
-                                    <Text>
-                                        {`Everyone staking ${stakeTicker} shares `}
-                                        <chakra.strong>{`${perDayText} ${prizeTicker} a day`}</chakra.strong>
-                                        {' for '}
-                                        <chakra.strong>{`${Number(duration.trim()).toLocaleString('en-US')} days`}</chakra.strong>
-                                        {'.'}
-                                    </Text>
-                                    <Text mt="6px" fontFamily="mono" fontSize="12px" color="hg.text.secondary" data-testid="budget-line">
-                                        {budgetLine(perDayText, prizeTicker, duration, escrowText)}
-                                    </Text>
-                                    {connected && !coversRewards && (
-                                        <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                            {`Not enough ${prizeTicker}: you hold ${prizeBalanceText}.`}
-                                        </Text>
-                                    )}
-                                </Box>
+                            {budget && connected && !coversRewards && (
+                                <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                                    {notEnoughText(prizeTicker, prizeBalanceText)}
+                                </Text>
                             )}
                         </>
                     )}
-                    <Hint>Anyone can add more days later, at the same daily amount.</Hint>
                 </VStack>
             </Question>
 
@@ -344,8 +312,8 @@ function RewardNewContent() {
             >
                 <VStack align="stretch" gap="16px">
                     <FieldWithError
-                        label="Wait after unstaking (days)"
-                        helper={`0–${MAX_LOCK_DAYS.toLocaleString('en-US')} days. ${lockError === '' ? lockMeaning(lock) : ''}`}
+                        label="Unstaking lock (days)"
+                        helper={minMaxHint(0, MAX_LOCK_DAYS, 'days')}
                         error={lockError}
                         value={lock}
                         onChange={setLock}
@@ -353,11 +321,10 @@ function RewardNewContent() {
                     />
                     <FieldWithError
                         label={`Minimum stake (optional${stakeTicker ? `, ${stakeTicker}` : ''})`}
-                        helper="The smallest amount someone can join with. Leave empty for no minimum."
                         error={minStakeError}
                         value={minStake}
                         onChange={setMinStake}
-                        placeholder="0"
+                        placeholder="None"
                     />
                 </VStack>
             </Question>
@@ -368,20 +335,19 @@ function RewardNewContent() {
                 <ReviewStep
                     {...steps.step('review')}
                     question="Everything right?"
-                    leaves={[{ label: `${VOCABULARY.stakingProgram.name} fee`, coin: fee }, ...escrowRow]}
+                    leaves={payRows}
                     moduleFee={fee}
                     txKind={TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Reward', value: 'A simple reward anyone can stake in' }]}
+                    gets={[{ label: 'Reward', value: `Stake ${stakeTicker} · earn ${perDayText} ${prizeTicker} a day` }]}
                     extra={[
-                        { label: 'Stakers', value: stakeTicker },
-                        { label: 'Budget', value: budget },
+                        { label: 'Days', value: `${daysCount.toLocaleString('en-US')} day${daysCount === 1 ? '' : 's'}` },
                         { label: 'Rules', value: rules },
                     ]}
                     permanent={[
-                        'The daily amount and the rules. You can add days later, never change them',
-                        'Committed tokens are paid out to stakers',
+                        'Daily reward and rules',
+                        'Rewards are committed to stakers',
                     ]}
                     submitLabel="Create simple reward"
                     onSubmit={create}
@@ -389,9 +355,9 @@ function RewardNewContent() {
                     onBack={steps.back}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to create this reward.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
-                        <SubmitNote tone="error">Not enough balance to cover the creation fee on top of the committed rewards.</SubmitNote>
+                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

@@ -91,8 +91,8 @@ describe("PayPanel", () => {
         renderPanel({ txKind: "create-market" });
         expect(screen.getByText("Network fee")).toBeInTheDocument();
         expect(screen.getByText("≈ 0.005000 BZE")).toBeInTheDocument();
-        expect(screen.getByText("Taken first, from the same balance.")).toBeInTheDocument();
-        expect(screen.getByText(/You have enough BZE to pay this fee and the network fee\./)).toBeInTheDocument();
+        expect(screen.queryByText("Taken first, from the same balance.")).not.toBeInTheDocument();
+        expect(screen.getByText("You hold enough BZE")).toBeInTheDocument();
     });
 
     it("offers the Fee token button that opens the Settings sidebar", () => {
@@ -118,7 +118,7 @@ describe("PayPanel", () => {
         payment.current = pay({ method: "alt", isAltSelected: true, altAsset: { ticker: "ATOM" }, altAmount: new BigNumber("12.5") });
         renderPanel();
         expect(screen.getByText("(≈ 12.5 ATOM)")).toBeInTheDocument();
-        expect(screen.getByText("You have enough ATOM to pay this fee.")).toBeInTheDocument();
+        expect(screen.getByText("You hold enough ATOM")).toBeInTheDocument();
     });
 
     it("alt fee token short: orange fallback to the native denom", () => {
@@ -127,12 +127,12 @@ describe("PayPanel", () => {
             altAmount: new BigNumber("12.5"), altBalanceDisplay: new BigNumber(2),
         });
         renderPanel();
-        expect(screen.getByText(/Not enough ATOM \(you have 2\) — the fee will be charged in BZE instead\. You have enough BZE\./)).toBeInTheDocument();
+        expect(screen.getByText("Not enough ATOM · paid in BZE")).toBeInTheDocument();
     });
 
     it("native: green enough line", () => {
         renderPanel();
-        expect(screen.getByText("You have enough BZE to pay this fee.")).toBeInTheDocument();
+        expect(screen.getByText("You hold enough BZE")).toBeInTheDocument();
     });
 
     it("insufficient with an alt token: red line with both balances", () => {
@@ -141,13 +141,13 @@ describe("PayPanel", () => {
             altBalanceDisplay: new BigNumber(2),
         });
         renderPanel();
-        expect(screen.getByText("Not enough ATOM or BZE to pay this fee — you have 2 ATOM and 3 BZE.")).toBeInTheDocument();
+        expect(screen.getByText("Not enough ATOM or BZE: you hold 2 ATOM and 3 BZE.")).toBeInTheDocument();
     });
 
     it("insufficient native: red line with the balance", () => {
         payment.current = pay({ method: "insufficient", canPayFee: false });
         renderPanel();
-        expect(screen.getByText("Not enough BZE to pay this fee — you have 3.")).toBeInTheDocument();
+        expect(screen.getByText("Not enough BZE: you hold 3 BZE.")).toBeInTheDocument();
     });
 
     it("several fee denoms: one row per denom, the ≈ ALT estimate only on the module fee row", () => {

@@ -32,8 +32,6 @@ import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { validateAmount } from '@/components/token-wizard/validation'
 import {
-    Hint,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -46,7 +44,7 @@ import {
 import type { TxPanelError, TxPanelStatus } from '@/components/guided'
 import { VOCABULARY } from '@/lib/vocabulary'
 import {
-    MULTISEND_BATCH_SIZE,
+    MAX_RECIPIENT_LINES,
     RecipientMode,
     clearMultiSendDraft,
     exampleCsv,
@@ -55,6 +53,7 @@ import {
     parseRecipients,
     saveMultiSendDraft,
 } from '@/lib/multisend'
+import { youHoldText } from '@/lib/format'
 import {
     MultiSendRun,
     RunBatch,
@@ -95,11 +94,6 @@ const SHOWN_PROBLEMS = 50
 const PLACEHOLDERS: Record<RecipientMode, string> = {
     same: 'bze1…\nbze1…\nbze1…',
     perWallet: 'bze1…, 100\nbze1…, 250\nbze1…, 50',
-}
-
-const FORMAT_HINT: Record<RecipientMode, string> = {
-    same: 'One wallet per line. A CSV with an "address" column works too.',
-    perWallet: 'One wallet and its amount per line: bze1…, 100. A CSV with "address,amount" columns works too.',
 }
 
 /** What the single-transaction send hands its Done screen (kept in the pending-tx store, so serialisable). */
@@ -467,44 +461,23 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
     // Derived from state only: the panel's callbacks read refs, so render never branches on them.
     const showBatchPanel = batchPanel !== undefined && batchStatus !== undefined
 
-    const balanceText = asset ? `${toDisplay(balance.amount)} ${ticker}` : ''
     // The network fee comes out of the same balance when it is paid in the sent token.
     const gasInDenom = afford.gasFee.denom === denom ? afford.gasFee.amount : new BigNumber(0)
     const left = new BigNumber(balance.amount).minus(total).minus(listValid ? gasInDenom : 0)
 
     const aside = (
-        <>
-            <OutcomePanel techTag={VOCABULARY.multiSend.tech}>
-                {listValid ? (
-                    <Text>
-                        <Text as="span" fontWeight="600">{totalLabel}</Text> goes to {count} wallets, each
-                        getting {mode === 'same' ? `${prettyAmount(new BigNumber(sameAmount.trim()))} ${ticker}` : 'the amount on its line'}.
+        <PayPanel
+            rows={listValid ? [{ label: 'Sent to wallets', coin: { denom, amount: parsed.total } }] : []}
+            txKind={spec}
+            footer={asset && address && !activeRun ? (
+                <HStack justify="space-between" gap="12px">
+                    <Text color="fg.muted">Left in your wallet</Text>
+                    <Text fontWeight="600" color={left.lt(0) ? 'hg.danger.text' : undefined}>
+                        {toDisplay(left)} {ticker}
                     </Text>
-                ) : (
-                    <Text color="fg.muted">Pick a token and add the wallets to see what gets sent.</Text>
-                )}
-            </OutcomePanel>
-
-            <PayPanel
-                rows={[
-                    ...(listValid ? [{ label: 'Sent to wallets', coin: { denom, amount: parsed.total } }] : []),
-                    { label: 'Factory fee', text: 'None' },
-                ]}
-                txKind={spec}
-                footer={asset && address && !activeRun ? (
-                    <HStack justify="space-between" gap="12px">
-                        <Text color="fg.muted">Left in your wallet</Text>
-                        <Text fontWeight="600" color={left.lt(0) ? 'hg.danger.text' : undefined}>
-                            {toDisplay(left)} {ticker}
-                        </Text>
-                    </HStack>
-                ) : undefined}
-            />
-
-            <WarningNote lead="Check the list twice.">
-                Tokens sent to a wrong address can&apos;t be recovered.
-            </WarningNote>
-        </>
+                </HStack>
+            ) : undefined}
+        />
     )
 
     const problemsShown = parsed.problems.slice(0, SHOWN_PROBLEMS)
@@ -536,7 +509,7 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
                 paused={paused}
                 checkErrors={checkErrors}
                 sendingId={sendingId}
-                blocker={!address ? 'Connect your wallet to send.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
+                blocker={!address ? 'Connect your wallet.' : !afford.isLoading && !afford.canAfford ? afford.message : ''}
                 reportHref={reportHref}
                 actions={!showBatchPanel}
                 onSendNext={sendNext}
@@ -559,14 +532,14 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
             txKind={spec}
             gets={[{ label: 'Wallets', value: `${count} wallets receive ${ticker}` }]}
             permanent={["Sent tokens can't be taken back"]}
-            submitLabel={`Send to ${count} wallets`}
+            submitLabel={`Airdrop to ${count} wallets`}
             onSubmit={submit}
             disabled={!canSend}
             onBack={steps.back}
         >
             {k > 1 && (
                 <Text fontSize="14px" lineHeight="1.5" color="fg.muted" data-testid="batch-note">
-                    {`We send it in ${k} transactions of up to ${MULTISEND_BATCH_SIZE} wallets. Your wallet asks you to approve each one. If you close the page, you can resume where it stopped.`}
+                    {`${k} transactions · one approval each`}
                 </Text>
             )}
             {resume === 'changed' && (
@@ -587,7 +560,7 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
                 </WarningNote>
             )}
             {!address ? (
-                <SubmitNote>Connect your wallet to send.</SubmitNote>
+                <SubmitNote>Connect your wallet.</SubmitNote>
             ) : listValid && !afford.isLoading && !afford.canAfford && (
                 <SubmitNote tone="error">{afford.message}</SubmitNote>
             )}
@@ -611,22 +584,20 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
                 question="What are you sending?"
                 {...steps.step('token')}
                 onBack={steps.back}
-                summary={asset ? (address ? `${ticker} · you hold ${toDisplay(balance.amount)}` : ticker) : ''}
+                summary={asset ? (address ? `${ticker} · ${youHoldText(toDisplay(balance.amount), ticker)}` : ticker) : ''}
                 action={{ label: 'Continue', onClick: () => answer('token'), disabled: !asset }}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
-                        label="Token to send"
+                        label="Token"
                         value={denom}
                         includeLP={true}
                         ownFirst={true}
                         heldOnly={true}
                         onSelect={(a) => setDenom(a.denom)}
                     />
-                    {asset && address ? (
-                        <Text fontSize="14px" color="fg.muted">You hold {balanceText}.</Text>
-                    ) : (
-                        <Hint>You can only send a token your wallet holds.</Hint>
+                    {asset && address && (
+                        <Text fontSize="14px" color="fg.muted">{youHoldText(toDisplay(balance.amount), ticker)}</Text>
                     )}
                 </VStack>
             </Question>
@@ -671,10 +642,7 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
                             value={text}
                             onChange={(e) => setText(e.target.value)}
                         />
-                        <Field.HelperText>
-                            {FORMAT_HINT[mode]} Commas, semicolons, tabs or spaces between fields; lines starting with # are skipped.
-                            Up to 5,000 wallets. The file is read in this browser and never uploaded.
-                        </Field.HelperText>
+                        <Field.HelperText>{`Max ${MAX_RECIPIENT_LINES} wallets`}</Field.HelperText>
                     </Field.Root>
 
                     <HStack gap="8px" wrap="wrap">
@@ -717,7 +685,7 @@ export function ListAirdrop({ initialDenom, onTarget }: ListAirdropProps) {
                             </HStack>
                             {parsed.notes.length > 0 && (
                                 <Text fontSize="12px" color="hg.text.faint">
-                                    {parsed.notes.length} {parsed.notes.length === 1 ? 'line has' : 'lines have'} an amount that is ignored: everyone gets the same.
+                                    {`${parsed.notes.length} ${parsed.notes.length === 1 ? 'amount' : 'amounts'} ignored`}
                                 </Text>
                             )}
                             {parsed.problems.length > 0 && (

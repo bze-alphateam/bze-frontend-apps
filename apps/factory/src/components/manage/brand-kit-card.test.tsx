@@ -97,24 +97,24 @@ describe("BrandKitCard", () => {
         expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
     });
 
-    it("words the empty state for the admin and for everyone else", () => {
+    it("words the empty state the same for the admin and for everyone else", () => {
         const { unmount } = renderCard("admin");
-        expect(screen.getByText("No brand kit yet. Pick colours and a font so TOK's Communities page feels like yours.")).toBeInTheDocument();
+        expect(screen.getByText("No brand kit yet.")).toBeInTheDocument();
         unmount();
 
         renderCard("not-admin");
-        expect(screen.getByText("This token has no brand kit.")).toBeInTheDocument();
+        expect(screen.getByText("No brand kit yet.")).toBeInTheDocument();
     });
 
-    it("marks the kit of a renounced token as frozen, or its absence as permanent", () => {
+    it("marks a renounced token's kit, or its absence, as frozen", () => {
         const { unmount } = renderCard("renounced", { branding: KIT });
-        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("Frozen — it can never change.");
+        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent(/^Frozen$/);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         unmount();
 
         renderCard("renounced");
-        expect(screen.getByText("This token has no brand kit.")).toBeInTheDocument();
-        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent("Frozen — TOK will never have a brand kit.");
+        expect(screen.getByText("No brand kit yet.")).toBeInTheDocument();
+        expect(screen.getByTestId("brand-kit-frozen")).toHaveTextContent(/^Frozen$/);
     });
 
     it("reports a failed query instead of 'no kit' and offers no edit", async () => {

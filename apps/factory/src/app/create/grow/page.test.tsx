@@ -17,12 +17,13 @@ describe("Choose how to grow a community", () => {
     it("has exactly the two options, each with its button", () => {
         render(<ChooseGrowPage />, { wrapper });
         expect(screen.getAllByTestId("option-card")).toHaveLength(2);
-        expect(within(screen.getByRole("region", { name: "Airdrop coins" })).getByRole("link", { name: /Airdrop coins/ })).toHaveAttribute("href", "/airdrop");
-        expect(within(screen.getByRole("region", { name: "Run a burning raffle" })).getByRole("link", { name: /Run a raffle/ })).toHaveAttribute("href", "/raffle/new");
+        expect(within(screen.getByRole("region", { name: "Airdrop tokens" })).getByRole("link", { name: /^Airdrop$/ })).toHaveAttribute("href", "/airdrop");
+        expect(within(screen.getByRole("region", { name: "Burning raffle" })).getByRole("link", { name: /Start raffle/ })).toHaveAttribute("href", "/raffle/new");
     });
 
     it("never promises a free airdrop: a new prize coin may pay the prize fee", () => {
         render(<ChooseGrowPage />, { wrapper });
         expect(screen.queryByText(/No fee|No extra fee/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/coins/)).not.toBeInTheDocument();
     });
 });

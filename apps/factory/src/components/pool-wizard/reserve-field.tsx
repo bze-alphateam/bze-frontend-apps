@@ -5,6 +5,7 @@ import { Button, Field, HStack, Input } from '@chakra-ui/react'
 import { amountToUAmount, prettyAmount, uAmountToBigNumberAmount, useAsset, useBalance, useMaxSpendable } from '@bze/bze-ui-kit'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { softButton } from '@/components/ui/soft-button'
+import { notEnoughText, youHoldText } from '@/lib/format'
 import { maxReserveAmount } from '@/lib/pool-new'
 
 export const CREATE_POOL_TX_KIND = 'create-pool'
@@ -38,7 +39,7 @@ export function ReserveField({
         const base = validateAmount(amount, asset.decimals)
         if (base) return base
         if (connected && balance.amount.lt(amountToUAmount(amount, asset.decimals))) {
-            return 'Amount exceeds your balance.'
+            return notEnoughText(asset.ticker, prettyAmount(uAmountToBigNumberAmount(balance.amount, asset.decimals)))
         }
         return ''
     }, [amount, asset, balance, connected])
@@ -77,7 +78,7 @@ export function ReserveField({
             </HStack>
             {connected && (
                 <Field.HelperText>
-                    Balance {prettyAmount(uAmountToBigNumberAmount(balance.amount, asset.decimals))} {asset.ticker}
+                    {youHoldText(prettyAmount(uAmountToBigNumberAmount(balance.amount, asset.decimals)), asset.ticker)}
                 </Field.HelperText>
             )}
             <Field.ErrorText>{error}</Field.ErrorText>

@@ -121,7 +121,7 @@ const startButton = () => button(step("Review"), "Start raffle");
 const RUNNING = { denom: "utok", pot: "5000000", ticket_price: "1000000", chances: 10000n, ratio: "0.25", end_at: 148n };
 
 async function pickToken(denom = "utok") {
-    await userEvent.click(within(step("Token")).getByText(`Token to raffle: ${denom}`));
+    await userEvent.click(within(step("Token")).getByText(`Token: ${denom}`));
     await waitFor(() => expect(button(step("Token"), "Continue")).toBeEnabled());
     await userEvent.click(button(step("Token"), "Continue"));
 }
@@ -136,7 +136,7 @@ async function fillPlay() {
     await userEvent.click(q.getByRole("button", { name: "14 days" }));
     await userEvent.type(q.getByLabelText(/Ticket price/), "10");
     await userEvent.click(q.getByRole("button", { name: "1 in 100" }));
-    await userEvent.click(q.getByRole("button", { name: "25 %" }));
+    await userEvent.click(q.getByRole("button", { name: "25%" }));
 }
 
 async function toReview() {
@@ -167,12 +167,13 @@ afterEach(() => vi.unstubAllGlobals());
 describe("/raffle/new", { timeout: 20_000 }, () => {
     it("has four steps: Token, Prize pot, How it plays, Review", () => {
         renderPage();
-        expect(screen.getByRole("heading", { name: "Run a burning raffle" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Start a burning raffle" })).toBeInTheDocument();
         expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Burning raffle")).toBeInTheDocument();
         expect(step("Token")).toHaveAttribute("data-state", "active");
-        expect(screen.getByText("Which token is the raffle in?")).toBeInTheDocument();
+        expect(screen.getByText("Which token?")).toBeInTheDocument();
         for (const title of ["Prize pot", "How it plays", "Review"]) expect(step(title)).toHaveAttribute("data-state", "todo");
-        expect(screen.getByText("Factory fee: None")).toBeInTheDocument();
+        expect(screen.queryByText("Factory fee: None")).not.toBeInTheDocument();
+        expect(screen.getByText("burner · raffle")).toBeInTheDocument();
         expect(screen.getByTestId("tx-kind")).toHaveTextContent("start-raffle");
         expect(screen.getByTestId("asset-picker")).toHaveAttribute("data-exclude-halted", "true");
     });
@@ -193,47 +194,49 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
             await userEvent.type(within(step("Prize pot")).getByLabelText(/Prize pot/), "0.09");
             await userEvent.tab();
             expect(button(step("Prize pot"), "Continue")).toBeDisabled();
-            expect(step("Prize pot")).toHaveTextContent("The pot must be at least 0.1 TOK.");
+            expect(step("Prize pot")).toHaveTextContent("Min 0.1 TOK.");
         });
 
-        it("keeps the network fee out of MAX when the raffled token pays it", async () => {
+        it("keeps the network fee out of Max when the raffled token pays it", async () => {
             renderPage();
             await pickToken("ubze");
             expect(m.maxInputs).toContainEqual(["ubze", "start-raffle"]);
             const pot = within(step("Prize pot"));
-            await userEvent.click(pot.getByRole("button", { name: "MAX" }));
+            expect(pot.getByText("Min 0.1 · Max 9.995 BZE")).toBeInTheDocument();
+            await userEvent.click(pot.getByRole("button", { name: "Max" }));
             expect(pot.getByLabelText(/Prize pot/)).toHaveValue("9.995");
             await userEvent.clear(pot.getByLabelText(/Prize pot/));
             await userEvent.type(pot.getByLabelText(/Prize pot/), "10");
             await userEvent.tab();
-            expect(step("Prize pot")).toHaveTextContent("You only have 9.995 BZE.");
+            expect(step("Prize pot")).toHaveTextContent("Not enough BZE: you hold 9.995 BZE.");
             expect(pot.getByRole("button", { name: "Continue" })).toBeDisabled();
         });
     });
 
     describe("How it plays", () => {
-        it("the four fields with their hints, the live sentence and the summary", async () => {
+        it("the four fields with their min/max hints, the end date and the summary", async () => {
             renderPage();
             await pickToken();
             await fillPot();
             await fillPlay();
             const q = within(step("How it plays"));
-            expect(q.getByText("Each ticket wins with a chance of 1 %.")).toBeInTheDocument();
-            expect(q.getByText(/25 % of the pot, 250 TOK right now\./)).toBeInTheDocument();
-            expect(q.getByTestId("raffle-sentence")).toHaveTextContent(
-                "For 14 days, anyone can pay 10 TOK for a ticket. Each ticket has a 1 in 100 chance to win 25 % of the pot.",
-            );
+            expect(q.getByText("Min 1 · Max 180 days")).toBeInTheDocument();
+            expect(q.getByText("Min 1 · Max 1000000")).toBeInTheDocument();
+            expect(q.getByText("Min 1 · Max 100%")).toBeInTheDocument();
+            expect(q.getByTestId("raffle-end")).toHaveTextContent("End date");
+            expect(q.queryByText("Each ticket wins with a chance of 1 %.")).not.toBeInTheDocument();
+            expect(q.queryByTestId("raffle-sentence")).not.toBeInTheDocument();
             await userEvent.click(button(step("How it plays"), "Continue"));
-            expect(step("How it plays")).toHaveTextContent("14 days · 10 TOK a ticket · 1 in 100 · winner gets 25 %");
+            expect(step("How it plays")).toHaveTextContent("14 days · 10 TOK a ticket · 1 in 100 · winner gets 25%");
             expect(step("Review")).toHaveAttribute("data-state", "active");
         });
 
         it.each([
-            ["Days", "181", "At most 180 days."],
-            ["Days", "0", "At least 1 day."],
-            ["1 ticket in how many wins?", "1000001", "Enter a number from 1 to 1,000,000."],
-            ["Share of the pot (%)", "101", "Enter a percent from 1 to 100."],
-            ["Share of the pot (%)", "0", "Enter a percent from 1 to 100."],
+            ["Days", "181", "Min 1 · Max 180 days."],
+            ["Days", "0", "Min 1 · Max 180 days."],
+            ["Win chance (1 in N)", "1000001", "Min 1 · Max 1000000."],
+            ["Winner gets (%)", "101", "Min 1 · Max 100%."],
+            ["Winner gets (%)", "0", "Min 1 · Max 100%."],
         ])("%s %s: %s, and no way on", async (label, value, error) => {
             renderPage();
             await pickToken();
@@ -243,7 +246,7 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
             await userEvent.clear(q.getByLabelText(label));
             await userEvent.type(q.getByLabelText(label), value);
             await userEvent.tab();
-            expect(step("How it plays")).toHaveTextContent(error);
+            expect(q.getByText(error)).toBeInTheDocument();
             expect(button(step("How it plays"), "Continue")).toBeDisabled();
         });
 
@@ -265,7 +268,7 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
         it("stops at Token when the token already has a raffle running, with a Burner link", async () => {
             m.raffles.mockResolvedValue([RUNNING]);
             renderPage();
-            await userEvent.click(within(step("Token")).getByText("Token to raffle: utok"));
+            await userEvent.click(within(step("Token")).getByText("Token: utok"));
 
             const running = await screen.findByTestId("raffle-running");
             expect(running).toHaveTextContent("A raffle for TOK is already running. It ends in 2d 0h.");
@@ -277,7 +280,7 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
         it("a failed lookup is never read as none running: it offers Retry", async () => {
             m.raffles.mockRejectedValueOnce(new Error("node down"));
             renderPage();
-            await userEvent.click(within(step("Token")).getByText("Token to raffle: utok"));
+            await userEvent.click(within(step("Token")).getByText("Token: utok"));
 
             expect(await screen.findByText("Couldn't check whether TOK already has a raffle running.")).toBeInTheDocument();
             expect(button(step("Token"), "Continue")).toBeDisabled();
@@ -322,22 +325,20 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
     });
 
     describe("Review", () => {
-        it("the pot leaves, a raffle on Burner, what is permanent and the three Heads-up notes; signs one MsgStartRaffle", async () => {
+        it("the pot leaves, a raffle on Burner, the end date, the pot trend and what is permanent; signs one MsgStartRaffle", async () => {
             renderPage();
             await toReview();
             const review = step("Review");
             expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Prize pot");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A raffle on Burner");
+            expect(review).toHaveTextContent("End date");
+            expect(review).toHaveTextContent("Pot trendGrows on average");
             const permanent = within(review).getByRole("region", { name: "Permanent" });
+            expect(permanent).toHaveTextContent("The pot can't be taken back");
             expect(permanent).toHaveTextContent("What's left in the pot at the end is burned");
             expect(permanent).toHaveTextContent("Raffle settings can't change once started");
-            expect(review).toHaveTextContent("The pot leaves your wallet now and can't be taken back.");
-            expect(review).toHaveTextContent("Once started, a raffle can't be stopped or changed.");
-            expect(review).toHaveTextContent("Whatever is left in the pot when it ends is burned. Nothing comes back to you.");
-            expect(screen.getByTestId("raffle-outcome")).toHaveTextContent(
-                "You put 1,000 TOK in the pot now. For 14 days, anyone can pay 10 TOK for a ticket. Each ticket has a 1 in 100 chance to win 25 % of the pot. Losing tickets add their price to the pot.",
-            );
-            expect(screen.getByText("On average the pot grows as people play.")).toBeInTheDocument();
+            expect(review).not.toHaveTextContent("Heads up:");
+            expect(screen.queryByTestId("raffle-outcome")).not.toBeInTheDocument();
 
             await userEvent.click(startButton());
             expect(await screen.findByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
@@ -353,7 +354,7 @@ describe("/raffle/new", { timeout: 20_000 }, () => {
             renderPage();
             await toReview();
             expect(startButton()).toBeDisabled();
-            expect(screen.getByText("Connect your wallet to start the raffle.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
         });
 
         it("says what the wallet is short of", async () => {

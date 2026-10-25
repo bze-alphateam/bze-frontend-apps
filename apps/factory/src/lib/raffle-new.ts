@@ -1,8 +1,9 @@
 import BigNumber from 'bignumber.js'
 import { bze } from '@bze/bzejs'
 import { validateAmount } from '@/components/token-wizard/validation'
+import { formatDate, minMaxHint, notEnoughText } from '@/lib/format'
 
-// "Run a burning raffle" (/raffle/new, BFE-208): x/burner MsgStartRaffle. Chain limits from
+// "Burning raffle" (/raffle/new, BFE-208): x/burner MsgStartRaffle. Chain limits from
 // its ValidateBasic: pot ≥ 100000 base units, duration 1–180 whole days, chances 1–1,000,000
 // (a ticket wins when a random number in [0, 1,000,000) is below it), ratio 0.01–1.00, ticket
 // price ≥ 1 base unit. No creation fee; one raffle per denom at a time.
@@ -38,8 +39,8 @@ export function validatePot(amount: string, decimals: number, ticker: string, ma
     const error = validateAmount(amount, decimals)
     if (error) return error
     const base = toBaseUnits(amount, decimals) as BigNumber
-    if (base.lt(MIN_POT)) return `The pot must be at least ${displayAmount(MIN_POT, decimals)} ${ticker}.`
-    if (maxBase && base.gt(maxBase)) return `You only have ${displayAmount(maxBase, decimals)} ${ticker}.`
+    if (base.lt(MIN_POT)) return `Min ${displayAmount(MIN_POT, decimals)} ${ticker}.`
+    if (maxBase && base.gt(maxBase)) return notEnoughText(ticker, displayAmount(maxBase, decimals))
     return ''
 }
 
@@ -49,8 +50,7 @@ export function validateRaffleDays(value: string): string {
     if (!trimmed) return 'Required.'
     if (!/^\d+$/.test(trimmed)) return 'Enter a whole number of days.'
     const days = Number(trimmed)
-    if (days < MIN_RAFFLE_DAYS) return `At least ${MIN_RAFFLE_DAYS} day.`
-    if (days > MAX_RAFFLE_DAYS) return `At most ${MAX_RAFFLE_DAYS} days.`
+    if (days < MIN_RAFFLE_DAYS || days > MAX_RAFFLE_DAYS) return `${minMaxHint(MIN_RAFFLE_DAYS, MAX_RAFFLE_DAYS, 'days')}.`
     return ''
 }
 
@@ -70,7 +70,7 @@ export function validateOneIn(value: string): string {
     if (!trimmed) return 'Required.'
     if (!/^\d+$/.test(trimmed)) return 'Enter a whole number.'
     const n = Number(trimmed)
-    if (n < 1 || n > MAX_ONE_IN) return `Enter a number from 1 to ${fmt(MAX_ONE_IN)}.`
+    if (n < 1 || n > MAX_ONE_IN) return `${minMaxHint(1, MAX_ONE_IN)}.`
     return ''
 }
 
@@ -78,9 +78,9 @@ export function validateOneIn(value: string): string {
 export function validatePrizePercent(value: string): string {
     const trimmed = value.trim()
     if (!trimmed) return 'Required.'
-    if (!/^\d+$/.test(trimmed)) return 'Enter a whole percent.'
+    if (!/^\d+$/.test(trimmed)) return 'Enter a whole number.'
     const p = Number(trimmed)
-    if (p < MIN_PRIZE_PERCENT || p > MAX_PRIZE_PERCENT) return `Enter a percent from ${MIN_PRIZE_PERCENT} to ${MAX_PRIZE_PERCENT}.`
+    if (p < MIN_PRIZE_PERCENT || p > MAX_PRIZE_PERCENT) return `${minMaxHint(MIN_PRIZE_PERCENT, `${MAX_PRIZE_PERCENT}%`)}.`
     return ''
 }
 
@@ -127,10 +127,11 @@ export function expectedPotTrend(input: { ticketPrice: BigNumber.Value; chances:
     return 'same'
 }
 
+/** The Review's "Pot trend" row. */
 export const POT_TREND_TEXT: Record<PotTrend, string> = {
-    grows: 'On average the pot grows as people play.',
-    shrinks: 'On average the pot shrinks as people win.',
-    same: 'On average the pot stays about the same.',
+    grows: 'Grows on average',
+    shrinks: 'Shrinks on average',
+    same: 'About the same on average',
 }
 
 /**
@@ -143,10 +144,8 @@ export function raffleEndDate(days: number, hourEpochStart?: Date | string, now:
     return new Date(base.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
-/** "14 Nov, 18:00" in the user's locale. */
-export function formatRaffleEnd(date: Date, locale?: string): string {
-    return date.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+/** "14 Nov", with the year when it isn't the current one: the shared date format. */
+export const formatRaffleEnd = (date: Date, now: Date = new Date()): string => formatDate(date, now)
 
 export const raffleRunningText = (ticker: string, timeLeft: string) =>
     `A raffle for ${ticker} is already running. It ends in ${timeLeft}.`
@@ -211,26 +210,18 @@ export interface RafflePlay {
 /** "500,000 HONEY in the pot". */
 export const potSummary = (pot: string) => `${pot} in the pot`
 
-/** "For 7 days, anyone can pay 10 HONEY for a ticket. Each ticket has a 1 in 100 chance to win 50 % of the pot." */
-export function raffleSentence({ days, ticket, oneIn, percent }: RafflePlay): string {
-    return `For ${fmt(days)} ${days === 1 ? 'day' : 'days'}, anyone can pay ${ticket} for a ticket. ` +
-        `Each ticket has a 1 in ${fmt(oneIn)} chance to win ${percent} % of the pot.`
-}
-
-/** "7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50 %". */
+/** "7 days · 10 HONEY a ticket · 1 in 100 · winner gets 50%". */
 export function rafflePlaySummary({ days, ticket, oneIn, percent }: RafflePlay): string {
-    return `${fmt(days)} ${days === 1 ? 'day' : 'days'} · ${ticket} a ticket · 1 in ${fmt(oneIn)} · winner gets ${percent} %`
+    return `${fmt(days)} ${days === 1 ? 'day' : 'days'} · ${ticket} a ticket · 1 in ${fmt(oneIn)} · winner gets ${percent}%`
 }
 
 /** What the raffle wizard hands its Done screen (kept in the pending-tx store, so serialisable). */
 export interface RaffleDoneInput {
     denom: string;
     ticker: string;
-    /** "14 Nov, 18:00"; '' when unknown. */
+    /** "14 Nov"; '' when unknown. */
     endsAt: string;
 }
 
 /** The Done screen's line under the title. */
-export const raffleDoneText = (endsAt: string) => endsAt
-    ? `It ends around ${endsAt}. Whatever is left in the pot then is burned.`
-    : 'Whatever is left in the pot when it ends is burned.'
+export const raffleDoneText = (endsAt: string) => endsAt ? `Ends ${endsAt}.` : ''

@@ -7,7 +7,6 @@ import {
     Field,
     HStack,
     Input,
-    Separator,
     Text,
     Textarea,
     VStack,
@@ -18,7 +17,6 @@ import { LuArrowRight, LuLock, LuWallet } from 'react-icons/lu'
 import { Asset, HgCard, IconTile, Shimmer, getChainName, hgVariant } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { InfoBox } from '@/components/ui/info-box'
 import { softButton } from '@/components/ui/soft-button'
 import {
     MAX_DESCRIPTION_LENGTH,
@@ -165,12 +163,6 @@ export function MetadataCard({
                             ))}
                         </VStack>
 
-                        <Separator borderColor="hg.divider" />
-
-                        <InfoBox>
-                            {`Signing replaces the token's on-chain metadata with the values above. Wallets and explorers pick the change up right away.`}
-                        </InfoBox>
-
                         <HStack gap="10px">
                             <Button {...linkButton} onClick={() => setMode('edit')} flex="1">
                                 Back
@@ -180,7 +172,7 @@ export function MetadataCard({
                                 size="lg"
                                 onClick={submit}
                                 loading={isSubmitting}
-                                loadingText="Waiting for signature..."
+                                loadingText="Confirm in your wallet"
                                 flex="1"
                             >
                                 Save on-chain
@@ -229,14 +221,10 @@ export function MetadataCard({
 
                         <MetadataRow label="Token ID" value={asset.denom} mono />
 
-                        <Text fontSize="12px" color="hg.text.faint">
-                            The ticker, token ID and decimals can never change.
-                        </Text>
-
                         {access === 'renounced' && (
                             <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="metadata-frozen">
                                 <LuLock />
-                                <Text>Frozen: the admin was given up.</Text>
+                                <Text>Frozen</Text>
                             </HStack>
                         )}
 

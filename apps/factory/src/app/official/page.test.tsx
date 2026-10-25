@@ -83,8 +83,9 @@ describe("Get your logo in every wallet (/official)", { timeout: 20_000 }, () =>
         expect(progressText()).toBe("Your progress: 0 of 5 steps");
         expect(step("Logo")).toHaveAttribute("data-state", "active");
         for (const title of ["Links", "Entry", "Submit", "Review"]) expect(step(title)).toHaveAttribute("data-state", "todo");
-        expect(screen.getByRole("region", { name: "Logo rules" })).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "How the registry works" })).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Logo rules" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "How the registry works" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Stuck? Ask in the BeeZee community" })).toBeInTheDocument();
     });
 
     it("on testnet: the registry lists mainnet tokens only, and the files can still be prepared", () => {

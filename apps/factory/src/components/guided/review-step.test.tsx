@@ -66,6 +66,7 @@ describe("ReviewStep", () => {
         renderReview();
 
         expect(screen.getByRole("region", { name: "Review" })).toHaveTextContent("Step 4 of 4 · Review");
+        expect(screen.getByText("Everything right?")).toBeInTheDocument();
         const leaves = within(screen.getByRole("region", { name: "Leaves your wallet" }));
         expect(leaves.getByText("Factory fee")).toBeInTheDocument();
         expect(leaves.getByText("25,000 BZE")).toBeInTheDocument();

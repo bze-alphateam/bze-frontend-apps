@@ -61,6 +61,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             asset: denom === "ubze" ? { denom: "ubze", ticker: "BZE", decimals: 6, logo: "" } : undefined,
             isLoading: false,
         }),
+        // 10 BZE in the wallet: what the not-enough note prints.
+        useBalance: (denom: string) => ({ balance: { denom, amount: new BigNumber("10000000") }, isLoading: false }),
         useAssetPrice: () => ({ hasPrice: false, uAmountUsdValue: () => new BigNumber(0) }),
         useCreationFees: () => ({ fees: { createDenomFee: feeState.fee }, isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
@@ -161,8 +163,9 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
         expect(step("Supply")).toHaveAttribute("data-state", "todo");
         expect(step("Permissions")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
-        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Token creation fee: 25000000000 | create-denom,mint,set-denom-metadata");
-        expect(screen.getByText("Click a finished step to change it. Scrolling only scrolls.")).toBeInTheDocument();
+        expect(screen.getByTestId("pay-panel")).toHaveTextContent("Creation fee: 25000000000 | create-denom,mint,set-denom-metadata");
+        expect(screen.queryByText("Click a finished step to change it. Scrolling only scrolls.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
     });
 
     describe("Details", () => {
@@ -170,16 +173,13 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             renderPage();
             const q = step("Details");
             expect(within(q).getByText(`factory/${ME}/u<ticker>`)).toBeInTheDocument();
-            expect(within(q).getByText("The ticker is permanent.")).toBeInTheDocument();
+            expect(within(q).queryByText("The ticker is permanent.")).not.toBeInTheDocument();
             await userEvent.type(within(q).getByPlaceholderText("e.g. Honey"), "Honey");
             await userEvent.type(within(q).getByPlaceholderText("e.g. HONEY"), "honey");
             expect(within(q).getByPlaceholderText("e.g. HONEY")).toHaveValue("HONEY");
             expect(within(q).getByText(DENOM)).toBeInTheDocument();
 
-            const outcome = screen.getByRole("region", { name: "What will happen" });
-            expect(within(outcome).getByTestId("preview-name")).toHaveTextContent("Honey");
-            expect(within(outcome).getByTestId("preview-ticker")).toHaveTextContent("HONEY");
-            expect(within(outcome).getByText("H")).toBeInTheDocument();
+            expect(screen.queryByTestId("preview-name")).not.toBeInTheDocument();
 
             await userEvent.click(button(q, "Continue"));
             expect(step("Details")).toHaveAttribute("data-state", "done");
@@ -204,7 +204,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByText("Name must be at least 2 characters.")).toBeInTheDocument();
             await userEvent.type(within(q).getByPlaceholderText("e.g. HONEY"), "1ab");
             await userEvent.tab();
-            expect(screen.getByText("Symbol must start with a letter and contain only letters and digits.")).toBeInTheDocument();
+            expect(screen.getByText("Ticker must start with a letter and contain only letters and digits.")).toBeInTheDocument();
             expect(button(q, "Continue")).toBeDisabled();
         });
 
@@ -233,16 +233,16 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
     });
 
     describe("Supply", () => {
-        it("offers three presets, says where the tokens go and summarises the amount", async () => {
+        it("offers three presets and summarises the amount", async () => {
             renderPage();
             await answerDetails();
             const q = step("Supply");
             expect(within(q).getByRole("heading", { name: "How many to start with?" })).toBeInTheDocument();
-            expect(within(q).getByText("Minted to your wallet. 6 decimals.")).toBeInTheDocument();
+            expect(within(q).queryByText("Minted to your wallet. 6 decimals.")).not.toBeInTheDocument();
             expect(button(q, "Continue")).toBeDisabled();
             await userEvent.click(button(q, "21,000,000"));
             expect(within(q).getByPlaceholderText("e.g. 1000000")).toHaveValue("21000000");
-            expect(screen.getByTestId("outcome")).toHaveTextContent("You receive 21,000,000 HONEY.");
+            expect(screen.queryByTestId("outcome")).not.toBeInTheDocument();
             await userEvent.click(button(q, "Continue"));
             expect(step("Supply")).toHaveTextContent("21,000,000 HONEY to your wallet");
         });
@@ -274,11 +274,10 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             const q = step("Permissions");
             expect(within(q).getByRole("radio", { name: /My wallet/ })).toHaveAttribute("aria-checked", "true");
             expect(within(q).getByRole("radio", { name: /Another address/ })).toHaveAttribute("aria-checked", "false");
-            expect(within(q).getByText("You can transfer or renounce admin later on the token's page, under Permissions.")).toBeInTheDocument();
+            expect(within(q).getByText("Mint and edit details")).toBeInTheDocument();
+            expect(within(q).getByText("A team or multisig wallet")).toBeInTheDocument();
+            expect(within(q).queryByText("You can transfer or renounce admin later on the token's page, under Permissions.")).not.toBeInTheDocument();
             expect(within(q).queryByText(/renounce now/i)).not.toBeInTheDocument();
-            expect(screen.getByTestId("outcome")).toHaveTextContent(
-                "You receive 1,000,000 HONEY. Your wallet keeps permission to mint more and update its details.",
-            );
             await userEvent.click(button(q, "Review token"));
             expect(step("Permissions")).toHaveTextContent("Admin: your wallet");
             expect(step("Review")).toHaveAttribute("data-state", "active");
@@ -297,13 +296,12 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(button(q, "Review token")).toBeDisabled();
         });
 
-        it("hands the admin to another address and says so", async () => {
+        it("hands the admin to another address", async () => {
             renderPage();
             await answerDetails();
             await answerSupply();
             await answerPermissions(OTHER);
             expect(step("Permissions")).toHaveTextContent(`Admin: ${truncateAddress(OTHER)}`);
-            expect(screen.getByTestId("outcome")).toHaveTextContent("The address you choose gets permission to mint more and update its details.");
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("create-denom,mint,set-denom-metadata,change-admin");
         });
     });
@@ -320,7 +318,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(leaves).toHaveTextContent("Network fee");
             expect(leaves).toHaveTextContent("0.004000 BZE");
             expect(within(q).getByRole("region", { name: "You get" })).toHaveTextContent("1,000,000 HONEY");
-            expect(q).toHaveTextContent("Adminyour wallet · can mint more and edit details");
+            expect(q).toHaveTextContent("AdminYour wallet · mint and edit details");
             expect(within(q).getByRole("region", { name: "Permanent" })).toHaveTextContent("The ticker in its address");
             expect(createButton()).toBeEnabled();
         });
@@ -328,13 +326,13 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
         it("shows the other admin's full address", async () => {
             renderPage();
             await answerAll(OTHER);
-            expect(step("Review")).toHaveTextContent(`Admin${OTHER} · can mint more and edit details`);
+            expect(step("Review")).toHaveTextContent(`Admin${OTHER} · mint and edit details`);
         });
 
         it.each([
-            ["no wallet", () => { wallet.address = undefined; }, "Connect your wallet to create this token."],
+            ["no wallet", () => { wallet.address = undefined; }, "Connect your wallet."],
             ["the fee is unknown", () => { feeState.fee = undefined; }, "Could not load the current fee from the chain. Please refresh and try again."],
-            ["the fee can't be paid", () => { payment.canPayFee = false; }, "Not enough balance to cover the creation fee."],
+            ["the fee can't be paid", () => { payment.canPayFee = false; }, "Not enough BZE: you hold 10 BZE."],
         ])("keeps Create token disabled when %s", async (_name, setup, note) => {
             setup();
             renderPage();
@@ -417,7 +415,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
 
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is live.");
-            expect(screen.getByText("1,000,000 HONEY just landed in your wallet. Nice work.")).toBeInTheDocument();
+            expect(screen.getByText("1,000,000 HONEY are in your wallet.")).toBeInTheDocument();
             expect(screen.getByText(DENOM)).toBeInTheDocument();
             expect(screen.getByTestId("done-confetti")).toBeInTheDocument();
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
@@ -429,8 +427,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByText("Airdrop HONEY")).toBeInTheDocument();
             expect(screen.getByText("Get your logo in every wallet")).toBeInTheDocument();
             expect(screen.queryByText("Give it a look")).not.toBeInTheDocument();
-            expect(screen.getByText(/Not now\? Every one of these waits for you on/)).toBeInTheDocument();
-            expect(screen.getByText("HONEY's token page")).toBeInTheDocument();
+            expect(screen.queryByText(/Not now\? Every one of these waits for you on/)).not.toBeInTheDocument();
             expect(savedDraft()).toBeNull();
         });
     });

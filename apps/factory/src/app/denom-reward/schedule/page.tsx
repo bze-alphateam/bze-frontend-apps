@@ -27,7 +27,6 @@ import {
     FormFrame,
     FormPage,
     GuidedForm,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -39,6 +38,7 @@ import {
 import { VOCABULARY } from '@/lib/vocabulary'
 import { checkDailyPrize, dailyPrizeSummary } from '@/lib/daily-prize'
 import { MAX_SCHEDULE_DAYS, MIN_SCHEDULE_DAYS, prizeSlot } from '@/lib/denom-reward'
+import { minMaxHint, notEnoughText, youHoldText } from '@/lib/format'
 import { type PrizeDoneInput, scheduleExtendFacts, stakedTokenOk } from '@/lib/prize-wizard'
 
 const ADD_STEPS = ['token', 'prize', 'review'] as const
@@ -46,7 +46,6 @@ const EXTEND_STEPS = ['schedule', 'days', 'review'] as const
 type Step = typeof ADD_STEPS[number] | typeof EXTEND_STEPS[number]
 type FormStep = Exclude<Step, 'review'>
 
-const fmtDays = (n: number) => `${n.toLocaleString('en-US')} day${n === 1 ? '' : 's'}`
 const moreDays = (n: number) => `${n.toLocaleString('en-US')} more day${n === 1 ? '' : 's'}`
 
 function TermRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -134,7 +133,6 @@ function ScheduleFormContent() {
     }
 
     const perDay = schedule ? display(schedule.daily_amount) : check.dailyUAmount !== undefined ? display(check.dailyUAmount) : ''
-    const totalText = gift.costs.escrow ? `${display(gift.costs.escrow.amount)} ${prizeTicker}` : ''
     const prize = !isExtend && perDay && check.days !== undefined ? dailyPrizeSummary(perDay, prizeTicker, check.days) : ''
 
     const buildMsgs = () => {
@@ -203,29 +201,17 @@ function ScheduleFormContent() {
             : { ...names, kind: 'add', dailyAmount: check.dailyUAmount?.toFixed(0), days: check.days })
     }
 
-    const payRows = schedulePayRows(gift, { stakingTicker: stakedName, stakingPossessive: ticker ? `${ticker}'s` : "the token's", prizeTicker })
+    const payRows = schedulePayRows(gift, isExtend ? 'Extra rewards' : 'Rewards')
     const extraDays = ext?.extra ?? 0
 
     const aside = (
-        <>
-            {!isExtend && <OutcomePanel>
-                {totalText ? (
-                    <Text data-testid="outcome">
-                        <chakra.span fontWeight="600">{totalText}</chakra.span>
-                        {` leaves your wallet now and pays ${perDay} ${prizeTicker} a day to everyone staking ${stakedName}, split by stake. It can't be withdrawn.`}
-                    </Text>
-                ) : (
-                    <Text color="fg.muted">Pick the stakers, the prize, the daily amount and the days to see what leaves your wallet.</Text>
-                )}
-            </OutcomePanel>}
-            <PayPanel
-                rows={payRows}
-                moduleFee={isExtend ? undefined : gift.mainFee}
-                txKind={gift.txKind}
-                isLoading={!isExtend && gift.isFeeLoading}
-                feeUnknown={gift.feeUnknown}
-            />
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={isExtend ? undefined : gift.mainFee}
+            txKind={gift.txKind}
+            isLoading={!isExtend && gift.isFeeLoading}
+            feeUnknown={gift.feeUnknown}
+        />
     )
 
     const review = panelProps ? (
@@ -240,21 +226,19 @@ function ScheduleFormContent() {
             isLoading={!isExtend && gift.isFeeLoading}
             feeUnknown={gift.feeUnknown}
             gets={isExtend
-                ? [{ label: 'Extension', value: `${moreDays(extraDays)} for everyone staking ${stakedName}` }]
-                : [{ label: VOCABULARY.dailyPrize.name, value: `A daily prize for ${stakedName} stakers` }]}
+                ? [{ label: 'Extension', value: moreDays(extraDays) }]
+                : [{ label: VOCABULARY.dailyPrize.name, value: `${stakedName} stakers` }]}
             extra={isExtend
-                ? (ext?.newEnd ? [{ label: 'New end', value: `About ${ext.newEnd}` }] : [])
-                : (prize ? [{ label: 'Prize', value: prize }] : [])}
-            permanent={isExtend
-                ? ['Extra tokens are committed to stakers']
-                : ['Committed tokens are paid out to stakers']}
+                ? (ext?.newEnd ? [{ label: 'New end date', value: ext.newEnd }] : [])
+                : (prize ? [{ label: 'Daily reward', value: prize }] : [])}
+            permanent={['Rewards are committed to stakers']}
             submitLabel={isExtend ? 'Extend' : 'Start daily prize'}
             onSubmit={sign}
             disabled={!canSign}
             onBack={steps.back}
         >
             {!address ? (
-                <SubmitNote>Connect your wallet to fund this daily prize.</SubmitNote>
+                <SubmitNote>Connect your wallet.</SubmitNote>
             ) : isComplete && gift.costs.escrow && !gift.afford.isLoading && !gift.afford.canAfford && gift.afford.message && (
                 <SubmitNote tone="error">{gift.afford.message}</SubmitNote>
             )}
@@ -271,9 +255,7 @@ function ScheduleFormContent() {
                     <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
-            subtitle={isExtend
-                ? `Pay for more days of this daily prize for ${stakedName} stakers.`
-                : "Pay a prize every day to everyone staking a token. Any token's stakers, yours or not."}
+            subtitle={isExtend ? 'Pay for more days of a daily prize.' : "Pay a token's stakers a daily reward."}
             techTag={VOCABULARY.dailyPrize.tech}
             aside={aside}
         >
@@ -281,15 +263,15 @@ function ScheduleFormContent() {
                 <>
                     <Question
                         title="Daily prize"
-                        question="This daily prize"
+                        question="Which daily prize?"
                         {...steps.step('schedule')}
-                        summary={`${perDay} ${prizeTicker} a day for ${stakedName} stakers · ${ext.daysLeft.toLocaleString('en-US')} days left`}
+                        summary={`Stake ${stakedName} · earn ${perDay} ${prizeTicker} a day`}
                         action={{ label: 'Continue', onClick: () => answer('schedule') }}
                     >
                         <VStack as="section" aria-label="This daily prize" align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="schedule-terms">
                             <TermRow label="Stake" value={stakedName} />
                             <TermRow label="Daily reward" value={`${perDay} ${prizeTicker}`} />
-                            <TermRow label="End date" value={`About ${ext.end}`} />
+                            <TermRow label="End date" value={ext.end} />
                         </VStack>
                     </Question>
 
@@ -297,7 +279,7 @@ function ScheduleFormContent() {
                         title="Extra days"
                         question="How many more days?"
                         {...steps.step('days')}
-                        summary={ext.newEnd && `${moreDays(extraDays)} · new end about ${ext.newEnd}`}
+                        summary={ext.newEnd && `${moreDays(extraDays)} · new end ${ext.newEnd}`}
                         onBack={steps.back}
                         action={{ label: 'Review extension', onClick: () => answer('days'), disabled: ext.extra === undefined || extendShort }}
                     >
@@ -312,22 +294,20 @@ function ScheduleFormContent() {
                                     maxW="200px"
                                 />
                                 <Field.HelperText>
-                                    {ext.room === 0
-                                        ? `This daily prize already runs the maximum of ${MAX_SCHEDULE_DAYS} days.`
-                                        : `Min 1 · Max ${ext.room} days`}
+                                    {ext.room === 0 ? `Max ${MAX_SCHEDULE_DAYS} days` : minMaxHint(1, ext.room, 'days')}
                                 </Field.HelperText>
                                 <Field.ErrorText>{ext.error}</Field.ErrorText>
                             </Field.Root>
 
                             {ext.escrow && (
                                 <VStack align="stretch" gap="8px" p="14px" borderRadius="hg.md" bg="hg.inset" borderWidth="1px" borderColor="hg.divider" data-testid="extend-cost">
-                                    <Box data-testid="extend-new-end"><TermRow label="New end date" value={`About ${ext.newEnd}`} /></Box>
+                                    <Box data-testid="extend-new-end"><TermRow label="New end date" value={ext.newEnd} /></Box>
                                 </VStack>
                             )}
 
                             {ext.escrow && extendShort && (
                                 <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
-                                    {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
+                                    {notEnoughText(prizeTicker, display(prizeBalance.amount))}
                                 </Text>
                             )}
                         </VStack>
@@ -336,8 +316,8 @@ function ScheduleFormContent() {
             ) : (
                 <>
                     <Question
-                        title="Staked token"
-                        question="Whose stakers get it?"
+                        title="Stake"
+                        question="Which token?"
                         {...steps.step('token')}
                         summary={ticker && `${ticker} stakers`}
                         action={{ label: 'Continue', onClick: () => answer('token'), disabled: !tokenOk }}
@@ -363,23 +343,21 @@ function ScheduleFormContent() {
                         action={{ label: 'Continue', onClick: () => answer('prize'), disabled: !check.valid }}
                     >
                         <VStack align="stretch" gap="16px">
-                            <AssetPicker label="Prize token (paid from your wallet)" value={pickedPrize} onSelect={(asset) => setPickedPrize(asset.denom)} />
-                            {prizeAsset && (
-                                <PrizeSlotNote stakedTicker={stakedName} prizeTicker={prizeTicker} slot={slot} max={maxPrizes} prizeFee={prizeFee} />
-                            )}
+                            <AssetPicker label="Reward token" value={pickedPrize} onSelect={(asset) => setPickedPrize(asset.denom)} />
+                            {prizeAsset && <PrizeSlotNote slot={slot} max={maxPrizes} />}
                             {prizeAsset && (
                                 <>
                                     <TextField
-                                        label={`Prize per day (${prizeTicker})`}
-                                        helper={connected ? `You hold ${display(prizeBalance.amount)} ${prizeTicker}.` : 'Shared by everyone staking, by how much each stakes.'}
+                                        label={`Daily reward (${prizeTicker})`}
+                                        helper={connected ? youHoldText(display(prizeBalance.amount), prizeTicker) : undefined}
                                         error={check.dailyError}
                                         value={dailyInput}
                                         onChange={setDailyInput}
                                         placeholder="e.g. 50"
                                     />
                                     <TextField
-                                        label="Payout days"
-                                        helper={`${MIN_SCHEDULE_DAYS}–${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} payout days. Days with nobody staking are skipped.`}
+                                        label="Days"
+                                        helper={minMaxHint(MIN_SCHEDULE_DAYS, MAX_SCHEDULE_DAYS, 'days')}
                                         error={check.daysError}
                                         value={daysInput}
                                         onChange={setDaysInput}
@@ -388,25 +366,10 @@ function ScheduleFormContent() {
                                     />
                                 </>
                             )}
-                            {check.escrow !== undefined && check.days !== undefined && (
-                                <Box fontSize="14px" data-testid="prize-sentence">
-                                    <Text>
-                                        {`Everyone staking ${stakedName} shares `}
-                                        <chakra.strong>{`${perDay} ${prizeTicker} a day`}</chakra.strong>
-                                        {' for '}
-                                        <chakra.strong>{fmtDays(check.days)}</chakra.strong>
-                                        {'.'}
-                                    </Text>
-                                    <Text mt="6px" fontFamily="mono" fontSize="13px" color="fg.muted">
-                                        {`${perDay} ${prizeTicker}/day × ${fmtDays(check.days)} = `}
-                                        <chakra.span color="fg" fontWeight="600" data-testid="escrow-amount">{totalText}</chakra.span>
-                                    </Text>
-                                    {check.short && (
-                                        <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                            {`Not enough ${prizeTicker}: you hold ${display(prizeBalance.amount)} ${prizeTicker}.`}
-                                        </Text>
-                                    )}
-                                </Box>
+                            {check.escrow !== undefined && check.short && (
+                                <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                                    {notEnoughText(prizeTicker, display(prizeBalance.amount))}
+                                </Text>
                             )}
                         </VStack>
                     </Question>

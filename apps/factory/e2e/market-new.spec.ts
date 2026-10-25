@@ -17,7 +17,7 @@ test("opens on Pair, then a deep-linked pair reaches Review with the market fee"
     await expect(page.getByText("tradebin · order-book market")).toBeVisible();
     const pair = page.getByRole("region", {name: "Pair"});
     await expect(pair).toHaveAttribute("data-state", "active");
-    await expect(pair.getByText("Orders are priced in the quote token, e.g. HONEY priced in BZE.")).toBeVisible();
+    await expect(pair.getByText("Orders are priced in the quote token, e.g. HONEY priced in BZE.")).toHaveCount(0);
     await expect(page.getByRole("region", {name: "Review"})).toHaveAttribute("data-state", "todo");
 
     await page.goto(`/market/new?base=${VDL}&quote=ubze`);
@@ -27,19 +27,19 @@ test("opens on Pair, then a deep-linked pair reaches Review with the market fee"
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
     const leaves = review.getByRole("region", {name: "Leaves your wallet"});
-    await expect(leaves.getByText("Market creation fee")).toBeVisible();
+    await expect(leaves.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(leaves.getByText("25,000 TBZE", {exact: true})).toBeVisible();
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("An empty VDL/TBZE order book anyone can trade on");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("VDL/TBZE order book");
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("One market per pair, and it can't be deleted");
-    await expect(review.getByText("A new market is empty.", {exact: false})).toBeVisible();
+    await expect(review.getByText("A new market is empty.", {exact: false})).toHaveCount(0);
 
-    await expect(page.getByRole("region", {name: "What will happen"})).toContainText("A VDL/TBZE order book opens on the DEX.");
+    await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const pay = page.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Market creation fee")).toBeVisible();
+    await expect(pay.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await expect(review.getByRole("button", {name: "Create market"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to create this market.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("a pair whose market exists the other way round links to it on the DEX in its real direction", async ({page}) => {
@@ -47,7 +47,7 @@ test("a pair whose market exists the other way round links to it on the DEX in i
 
     const pair = page.getByRole("region", {name: "Pair"});
     await expect(pair).toHaveAttribute("data-state", "active");
-    await expect(pair.getByText("This pair already has a market. Each pair gets exactly one.")).toBeVisible();
+    await expect(pair.getByText("This pair already has a market.", {exact: true})).toBeVisible();
     const link = pair.getByRole("link", {name: /Open it on the DEX/});
     await expect(link).toHaveAttribute("href", new RegExp(`/exchange/market\\?id=${encodeURIComponent(`${IBC_DENOM}/${TUSDC_DENOM}`)}$`));
     await expect(pair.getByRole("button", {name: "Continue"})).toBeDisabled();

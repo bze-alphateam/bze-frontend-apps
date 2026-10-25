@@ -32,7 +32,7 @@ describe("checkDailyPrize", () => {
     it("validates the amount and the days (1…36,500)", () => {
         expect(checkDailyPrize({ ...base, dailyInput: "" }).dailyError).toBe("Amount is required.");
         expect(checkDailyPrize({ ...base, dailyInput: "0.0000001" }).dailyError).toMatch(/decimal places/);
-        expect(checkDailyPrize({ ...base, daysInput: "0" }).daysError).toMatch(/between 1 and 36,500/);
+        expect(checkDailyPrize({ ...base, daysInput: "0" }).daysError).toBe("Min 1 · Max 36500 days.");
         expect(checkDailyPrize({ ...base, daysInput: "36501" }).valid).toBe(false);
         expect(checkDailyPrize({ ...base, daysInput: "1.5" }).daysError).toBe("Enter a whole number of days.");
     });
@@ -43,7 +43,7 @@ describe("checkDailyPrize", () => {
 
     it("is blocked when the prize slots are full", () => {
         const c = checkDailyPrize({ ...base, slot: prizeSlot([], "ubze", 0) });
-        expect(c.blocker).toMatch(/maximum number of prize tokens/);
+        expect(c.blocker).toBe("Max reward tokens reached.");
         expect(c.valid).toBe(false);
     });
 

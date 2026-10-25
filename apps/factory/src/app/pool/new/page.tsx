@@ -33,8 +33,6 @@ import {
     BlockerNote,
     FormPage,
     GuidedForm,
-    Hint,
-    OutcomePanel,
     PayPanel,
     Question,
     ReviewStep,
@@ -53,6 +51,7 @@ import {
     swapFeeSummary,
     validateSwapFee,
 } from '@/lib/pool-new'
+import { notEnoughText } from '@/lib/format'
 
 const { createLiquidityPool } = bze.tradebin.MessageComposer.withTypeUrl
 
@@ -91,10 +90,6 @@ function PoolNewContent() {
     const baseTicker = baseAsset?.ticker ?? ''
     const quoteTicker = quoteAsset?.ticker ?? ''
     const pair = baseTicker && quoteTicker ? `${baseTicker}/${quoteTicker}` : ''
-
-    // The chain stores pairs alphabetically and swaps the amounts to match.
-    const isCanonicalOrder = !baseDenom || !quoteDenom || baseDenom < quoteDenom
-    const storedPair = pair && (isCanonicalOrder ? pair : `${quoteTicker}/${baseTicker}`)
 
     const problem = useMemo(
         () => pairProblem(baseDenom, quoteDenom, baseAsset, quoteAsset, getDenomsPool),
@@ -194,63 +189,49 @@ function PoolNewContent() {
     const pricePer = price ? `${priceText} ${quoteTicker} per ${baseTicker}` : ''
 
     const feeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
-    const totalInFeeDenom = fee && feeDenomReserve.gt(0)
-        ? prettyAmount(uAmountToBigNumberAmount(new BigNumber(fee.amount).plus(feeDenomReserve), feeAsset?.decimals ?? 6))
-        : undefined
+    const feeBalanceText = prettyAmount(uAmountToBigNumberAmount(feeBalance.amount, feeAsset?.decimals ?? 6))
+    // The same rows in the pay panel and in Review: the fee, then the starting amounts.
+    const payRows = [
+        { label: 'Creation fee', coin: fee },
+        ...(uBase ? [{ label: `Starting ${baseTicker}`, coin: { denom: baseDenom, amount: uBase } }] : []),
+        ...(uQuote ? [{ label: `Starting ${quoteTicker}`, coin: { denom: quoteDenom, amount: uQuote } }] : []),
+    ]
 
     const aside = (
-        <>
-            <OutcomePanel>
-                <Text data-testid="outcome">
-                    {pair ? `A ${pair} pool opens on the DEX` : 'A pool for your pair opens on the DEX'}
-                    {pricePer ? ` at ${pricePer}.` : '.'} Anyone can swap and add liquidity right away.
-                    {deposit && ` ${deposit} stay in it forever.`}
-                </Text>
-            </OutcomePanel>
-
-            <PayPanel
-                rows={[{ label: 'Pool creation fee', coin: fee }]}
-                moduleFee={fee}
-                txKind={CREATE_POOL_TX_KIND}
-                isLoading={isFeeLoading}
-                feeUnknown={!fee}
-                footer={totalInFeeDenom && (
-                    <Text color="fg.muted">
-                        {feeTicker} needed in total: <Text as="span" fontWeight="600" color="fg">{totalInFeeDenom} {feeTicker}</Text>
-                        {' '}(the starting amount + the creation fee)
-                    </Text>
-                )}
-            />
-
-            <Hint>Creating a pool doesn&apos;t make you its owner. Nobody can take out other people&apos;s deposits.</Hint>
-        </>
+        <PayPanel
+            rows={payRows}
+            moduleFee={fee}
+            txKind={CREATE_POOL_TX_KIND}
+            isLoading={isFeeLoading}
+            feeUnknown={!fee}
+        />
     )
 
     return (
         <GuidedForm
             crumb="Liquidity pool"
             title={<>Create a <GradientText>liquidity pool</GradientText></>}
-            subtitle="Pair two tokens and put in the first amounts: they set the starting price. Everything is shown before you sign."
+            subtitle="Pair two tokens and set the starting price."
             techTag="tradebin · liquidity pool"
             aside={aside}
         >
             <Question
                 title="Pair"
-                question="Which two tokens?"
+                question="Which pair?"
                 {...steps.step('pair')}
                 summary={baseTicker && quoteTicker ? `${baseTicker} / ${quoteTicker}` : ''}
                 action={{ label: 'Continue', onClick: () => answer('pair'), disabled: !isPairValid }}
             >
                 <VStack align="stretch" gap="16px">
                     <AssetPicker
-                        label="Your token"
+                        label="Base token"
                         value={baseDenom}
                         excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
                         excludeHalted
                         onSelect={(asset) => setBaseDenom(asset.denom)}
                     />
                     <AssetPicker
-                        label="Paired with"
+                        label="Quote token"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
                         excludeHalted
@@ -269,10 +250,6 @@ function PoolNewContent() {
                             {problem.message}
                         </BlockerNote>
                     )}
-
-                    {storedPair && !problem && !isCanonicalOrder && (
-                        <Hint>Stored on chain as {storedPair}: the chain orders every pair alphabetically.</Hint>
-                    )}
                 </VStack>
             </Question>
 
@@ -282,24 +259,23 @@ function PoolNewContent() {
                 {...steps.step('amounts')}
                 summary={deposit && `${deposit} · ${pricePer}`}
                 onBack={steps.back}
-                action={{ label: 'Continue to fees', onClick: () => answer('amounts'), disabled: !amountsValid }}
+                action={{ label: 'Continue', onClick: () => answer('amounts'), disabled: !amountsValid }}
             >
                 <VStack align="stretch" gap="16px">
-                    <Text fontSize="14px" color="fg.muted">The ratio between the two sets the starting price.</Text>
                     <ReserveField denom={baseDenom} amount={baseAmount} onChange={setBaseAmount} fee={fee} connected={connected} />
                     <ReserveField denom={quoteDenom} amount={quoteAmount} onChange={setQuoteAmount} fee={fee} connected={connected} />
 
                     {price && (
-                        <Text fontSize="14px" color="fg.muted" data-testid="starting-price">
-                            Starting price: <Text as="span" fontWeight="600" color="fg">1 {baseTicker} = {priceText} {quoteTicker}</Text>
-                            {priceUsd && <> ≈ ${prettyAmount(priceUsd)}</>}
-                        </Text>
+                        <HStack justify="space-between" align="start" gap="12px" p="14px" borderRadius="hg.md" bg="hg.inset"
+                            borderWidth="1px" borderColor="hg.divider" data-testid="starting-price">
+                            <Text fontSize="14px" color="fg.muted">Starting price</Text>
+                            <Text fontSize="14px" fontWeight="600" textAlign="right">
+                                {`1 ${baseTicker} = ${priceText} ${quoteTicker}`}{priceUsd && ` ≈ $${prettyAmount(priceUsd)}`}
+                            </Text>
+                        </HStack>
                     )}
 
-                    <WarningNote lead="This first deposit stays in the pool forever.">
-                        It sets the starting price. You get no withdrawable share for it, nobody can take it out, you
-                        included. Add withdrawable liquidity on the DEX after the pool exists.
-                    </WarningNote>
+                    <WarningNote>This first deposit stays in the pool forever.</WarningNote>
                 </VStack>
             </Question>
 
@@ -313,7 +289,7 @@ function PoolNewContent() {
             >
                 <VStack align="stretch" gap="16px">
                     <VStack align="stretch" gap="8px">
-                        <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">Swap fee, charged on every swap</Text>
+                        <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">Swap fee</Text>
                         <HStack gap="6px" flexWrap="wrap">
                             {SWAP_FEE_PRESETS.map(preset => (
                                 <AnswerChip key={preset} selected={swapFee === preset} onClick={() => setSwapFee(preset)}>
@@ -341,8 +317,6 @@ function PoolNewContent() {
                         <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">Where the fees go</Text>
                         <FeeSplitSlider value={feeSplit} onChange={setFeeSplit} />
                     </VStack>
-
-                    <Hint>The pair gets exactly one pool. Its fee and where the fee goes are fixed when it is created.</Hint>
                 </VStack>
             </Question>
 
@@ -352,16 +326,12 @@ function PoolNewContent() {
                 <ReviewStep
                     {...steps.step('review')}
                     question="Everything right?"
-                    leaves={[
-                        { label: 'Pool creation fee', coin: fee },
-                        ...(uBase ? [{ label: `Starting ${baseTicker}`, coin: { denom: baseDenom, amount: uBase } }] : []),
-                        ...(uQuote ? [{ label: `Starting ${quoteTicker}`, coin: { denom: quoteDenom, amount: uQuote } }] : []),
-                    ]}
+                    leaves={payRows}
                     moduleFee={fee}
                     txKind={CREATE_POOL_TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Pool', value: `A ${pair} pool anyone can swap in` }]}
+                    gets={[{ label: 'Pool', value: `${pair} pool` }]}
                     extra={[{ label: 'Swap fee', value: feeSummary }]}
                     permanent={[`The first deposit (${deposit})`, 'The pair']}
                     submitLabel="Create pool"
@@ -370,9 +340,9 @@ function PoolNewContent() {
                     onBack={steps.back}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to create this pool.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
-                        <SubmitNote tone="error">Not enough balance to cover the creation fee on top of the starting amounts.</SubmitNote>
+                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

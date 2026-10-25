@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js'
 import type { DenomRewardPrize, DenomRewardSchedule, FeeCoin } from '@bze/bze-ui-kit'
+import { minMaxHint } from '@/lib/format'
 
 /**
  * Pure Denom Rewards math for the factory forms (chain v8.2.0, x/rewards). The chain rules it
@@ -27,18 +28,15 @@ export function validateScheduleDays(value: string, currentDuration?: number): s
 
     if (currentDuration === undefined) {
         if (days < MIN_SCHEDULE_DAYS || days > MAX_SCHEDULE_DAYS) {
-            return `Must be between ${MIN_SCHEDULE_DAYS} and ${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} days.`
+            return `${minMaxHint(MIN_SCHEDULE_DAYS, MAX_SCHEDULE_DAYS, 'days')}.`
         }
         return ''
     }
 
     const room = Math.max(0, MAX_SCHEDULE_DAYS - currentDuration)
-    if (room === 0) {
-        return `This schedule already runs the maximum of ${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} days.`
-    }
-    if (days < 1 || days > room) {
-        return `Add between 1 and ${room.toLocaleString('en-US')} days — a schedule can't run longer than ${MAX_SCHEDULE_DAYS.toLocaleString('en-US')} days in total.`
-    }
+    if (room === 0) return `Max ${MAX_SCHEDULE_DAYS} days reached.`
+    if (days < 1) return 'Enter a whole number of days.'
+    if (days > room) return `Max ${room} days.`
     return ''
 }
 
@@ -181,38 +179,34 @@ export interface AirdropGuardInput {
     prizeDenom: string;
     slot: PrizeSlot;
     feesKnown: boolean;
+    /** `max_prize_denoms_per_dr`, for the cap blocker; undefined while unknown. */
+    max?: number;
 }
+
+/** The prize-cap blocker (5017): "Max 5 reward tokens reached." */
+export const prizeCapText = (max?: number) => max === undefined ? 'Max reward tokens reached.' : `Max ${max} reward tokens reached.`
+
+/** The nobody-stakes blocker (5018): "Nobody stakes HONEY yet." */
+export const nothingStakedText = (ticker: string) => `Nobody stakes ${ticker} yet.`
 
 /**
  * Why an airdrop can't be sent as configured, or '' when nothing blocks it. Mirrors the chain's
  * refusals (5018 no stakers, 5017 prize cap) — a convenience only, the chain stays the gate.
  */
-export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown }: AirdropGuardInput): string {
-    if (!new BigNumber(stakedAmount || 0).gt(0)) {
-        return 'Nobody is staking this token yet, so there is no one to pay. The chain refuses an airdrop to stakers when nobody stakes — nothing would leave your wallet.'
-    }
-    return prizeBlocker({ prizeDenom, slot, feesKnown })
+export function airdropBlocker({ stakedAmount, prizeDenom, slot, feesKnown, max, stakedTicker }: AirdropGuardInput & { stakedTicker?: string }): string {
+    if (!new BigNumber(stakedAmount || 0).gt(0)) return nothingStakedText(stakedTicker || 'this token')
+    return prizeBlocker({ prizeDenom, slot, feesKnown, max })
 }
 
 /**
  * Why the chain would refuse this prize token on a compounded reward, or '': the cap is reached, or the
  * new prize fee is unknown. The part of `airdropBlocker` that a daily prize shares.
  */
-export function prizeBlocker({ prizeDenom, slot, feesKnown }: Omit<AirdropGuardInput, 'stakedAmount'>): string {
+export function prizeBlocker({ prizeDenom, slot, feesKnown, max }: Omit<AirdropGuardInput, 'stakedAmount'>): string {
     if (!prizeDenom) return ''
-    if (slot.capReached) {
-        return 'This compounded reward already pays the maximum number of prize tokens. Pick a prize token they already pay.'
-    }
+    if (slot.capReached) return prizeCapText(max)
     if (slot.isNewPrize && !feesKnown) {
         return "The new prize token fee couldn't be read from the chain. Try again later."
     }
     return ''
-}
-
-/** The info text of a "New prize fee" row: the slot the prize takes on `stake`, for good. */
-export function newPrizeSlotInfo(stake: { ticker: string; possessive: string }, prizeTicker: string, slot: PrizeSlot, max?: number): string {
-    const slots = max !== undefined
-        ? `one of ${stake.possessive} ${max} prize slots (${slot.used + 1} of ${max} after this)`
-        : `one of ${stake.possessive} prize slots`
-    return `The first time a token becomes a prize on ${stake.ticker} it takes ${slots}, for good. Gifting ${prizeTicker || 'it'} to ${stake.ticker} again is free.`
 }

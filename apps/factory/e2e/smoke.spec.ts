@@ -50,7 +50,7 @@ test("the staking rewards and community Choose screens render", async ({page}) =
     await page.goto("/create/grow");
     await expect(page.getByRole("heading", {level: 1, name: "How do you want to grow?"})).toBeVisible();
     await expect(page.getByTestId("option-card")).toHaveCount(2);
-    await expect(page.getByRole("link", {name: /Airdrop coins/})).toHaveAttribute("href", "/airdrop");
+    await expect(page.getByRole("link", {name: /^Airdrop$/})).toHaveAttribute("href", "/airdrop");
 });
 
 test("old URLs redirect: /manage to /tokens, /playbooks home", async ({page}) => {

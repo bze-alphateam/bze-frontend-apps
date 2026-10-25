@@ -50,7 +50,7 @@ export function PoolDone({ input, hash }: { input: PoolDoneInput; hash: string }
             avatar={[{ ticker: baseTicker, logo: baseAsset?.logo }, { ticker: quoteTicker, logo: quoteAsset?.logo }]}
             title={`The ${pair} pool is **open**.`}
             text={`People can swap ${baseTicker} for ${quoteTicker} right now, starting at ${startingPrice}.`}
-            code={{ label: 'Pool share token', value: lpDenom }}
+            code={{ label: 'LP shares', value: lpDenom }}
             links={[
                 { label: 'Copy pool link', href: dexPoolHref(getDexApp().href, poolId), copy: { copied: 'Pool link' } },
                 { label: 'Explorer', href: getExplorerTxURL(hash), app: 'explorer' },

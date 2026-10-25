@@ -53,7 +53,7 @@ describe("MetadataCard", () => {
         expect(card.getByText("TOK")).toBeInTheDocument();
         expect(card.getByText("The old one")).toBeInTheDocument();
         expect(card.getByText(DENOM)).toBeInTheDocument();
-        expect(card.getByText("The ticker, token ID and decimals can never change.")).toBeInTheDocument();
+        expect(card.queryByText("The ticker, token ID and decimals can never change.")).not.toBeInTheDocument();
     });
 
     it("edits in place, reviews old → new and saves from the on-chain metadata", async () => {
@@ -136,7 +136,7 @@ describe("MetadataCard", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
         if (access === "renounced") {
-            expect(screen.getByTestId("metadata-frozen")).toHaveTextContent("Frozen: the admin was given up.");
+            expect(screen.getByTestId("metadata-frozen")).toHaveTextContent(/^Frozen$/);
         } else {
             expect(screen.queryByTestId("metadata-frozen")).not.toBeInTheDocument();
         }

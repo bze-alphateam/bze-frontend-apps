@@ -155,7 +155,6 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
         ? rows.findIndex(r => r.coin?.denom === moduleFee.denom && r.coin?.amount === moduleFee.amount)
         : -1
     const nativeBalance = prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))
-    const plusGas = gasText ? ' and the network fee' : ''
 
     return (
         <PanelShell>
@@ -165,7 +164,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                     : <TextRow key={`${row.label}-${i}`} label={row.label} value={row.text ?? ''} info={row.info} />
                 )}
                 {gasText && (
-                    <TextRow label="Network fee" value={gasText} info="Taken first, from the same balance." />
+                    <TextRow label="Network fee" value={gasText} />
                 )}
             </VStack>
 
@@ -194,23 +193,21 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                         <HStack gap="8px" color="hg.success.text" align="start">
                             <Box mt="3px" flexShrink={0}><LuCircleCheck size={16} /></Box>
                             <Text fontSize="14px" lineHeight="1.5">
-                                You have enough {altTicker} to pay this fee{plusGas}.
+                                {`You hold enough ${altTicker}`}
                             </Text>
                         </HStack>
                     ) : payment.method === 'fallback' ? (
                         <HStack gap="8px" color="hg.warning.text" align="start">
                             <Box mt="3px" flexShrink={0}><LuTriangleAlert size={16} /></Box>
                             <Text fontSize="14px" lineHeight="1.5">
-                                Not enough {altTicker} (you have{' '}
-                                {prettyAmount(payment.altBalanceDisplay)}{gasText ? ', the network fee goes first' : ''}) — the fee will be
-                                charged in {nativeTicker} instead. You have enough {nativeTicker}.
+                                {`Not enough ${altTicker} · paid in ${nativeTicker}`}
                             </Text>
                         </HStack>
                     ) : payment.method === 'native' ? (
                         <HStack gap="8px" color="hg.success.text" align="start">
                             <Box mt="3px" flexShrink={0}><LuCircleCheck size={16} /></Box>
                             <Text fontSize="14px" lineHeight="1.5">
-                                You have enough {nativeTicker} to pay this fee{plusGas}.
+                                {`You hold enough ${nativeTicker}`}
                             </Text>
                         </HStack>
                     ) : (
@@ -218,8 +215,8 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                             <Box mt="3px" flexShrink={0}><LuCircleAlert size={16} /></Box>
                             <Text fontSize="14px" lineHeight="1.5">
                                 {payment.isAltSelected
-                                    ? `Not enough ${altTicker} or ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${nativeBalance} ${nativeTicker}.`
-                                    : `Not enough ${nativeTicker} to pay this fee${gasText ? ' plus the network fee' : ''} — you have ${nativeBalance}.`}
+                                    ? `Not enough ${altTicker} or ${nativeTicker}: you hold ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${nativeBalance} ${nativeTicker}.`
+                                    : `Not enough ${nativeTicker}: you hold ${nativeBalance} ${nativeTicker}.`}
                             </Text>
                         </HStack>
                     )}

@@ -93,7 +93,7 @@ export const hasStakers = (reward: { staked_amount?: string }) => staked(reward.
 
 /** Visible reason the Airdrop button is disabled, or '' (chain error 5018 refuses an airdrop without stakers). */
 export const airdropDisabledReason = (dr: Pick<DenomReward, 'staked_amount'>) =>
-    hasStakers(dr) ? '' : 'Nothing staked yet'
+    hasStakers(dr) ? '' : 'Nothing staked'
 
 /**
  * A compounded reward's running daily prizes: undefined while they load, null when the query

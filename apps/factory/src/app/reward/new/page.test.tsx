@@ -105,25 +105,25 @@ const createButton = () => button(step("Review"), "Create simple reward");
 const sentMsgs = () => txMock.mock.calls[0][0] as { typeUrl: string; value: Record<string, unknown> }[];
 
 async function answerStake(denom = "ulp/abc") {
-    await userEvent.click(within(step("What to stake")).getByText(`Token people stake: ${denom}`));
-    await userEvent.click(button(step("What to stake"), "Continue"));
+    await userEvent.click(within(step("Stake")).getByText(`Token: ${denom}`));
+    await userEvent.click(button(step("Stake"), "Continue"));
 }
 
 async function fillBudget(perDay: string, days: string, denom = "utok") {
-    const q = step("Reward & budget");
-    await userEvent.click(within(q).getByText(`Reward token (paid from your wallet): ${denom}`));
-    await userEvent.type(within(q).getByLabelText(/Shared every day/), perDay);
-    await userEvent.type(within(q).getByLabelText(/For how many days/), days);
+    const q = step("Reward");
+    await userEvent.click(within(q).getByText(`Reward token: ${denom}`));
+    await userEvent.type(within(q).getByLabelText(/Daily reward/), perDay);
+    await userEvent.type(within(q).getByLabelText("Days"), days);
 }
 
 async function answerBudget(perDay: string, days: string, denom = "utok") {
     await fillBudget(perDay, days, denom);
-    await userEvent.click(button(step("Reward & budget"), "Continue to rules"));
+    await userEvent.click(button(step("Reward"), "Continue"));
 }
 
 async function answerRules(lock: string, minStake: string) {
     const q = step("Rules");
-    const lockInput = within(q).getByLabelText(/Wait after unstaking/);
+    const lockInput = within(q).getByLabelText(/Unstaking lock/);
     await userEvent.clear(lockInput);
     await userEvent.type(lockInput, lock);
     if (minStake) await userEvent.type(within(q).getByLabelText(/Minimum stake/), minStake);
@@ -163,65 +163,68 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
-    it("shows the four steps with What to stake open", () => {
+    it("shows the four steps with Stake open", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Create a simple reward/ })).toBeInTheDocument();
         expect(screen.getByText("rewards · staking reward")).toBeInTheDocument();
-        expect(step("What to stake")).toHaveAttribute("data-state", "active");
-        expect(within(step("What to stake")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
-        expect(within(step("What to stake")).getByRole("heading", { name: "Which token do people stake?" })).toBeInTheDocument();
-        expect(screen.getByText("Any token, LP shares included. It doesn't have to be yours.")).toBeInTheDocument();
-        expect(step("Reward & budget")).toHaveAttribute("data-state", "todo");
+        expect(step("Stake")).toHaveAttribute("data-state", "active");
+        expect(within(step("Stake")).getByText("Step 1 of 4 ·", { exact: false })).toBeInTheDocument();
+        expect(within(step("Stake")).getByRole("heading", { name: "Which token?" })).toBeInTheDocument();
+        expect(screen.queryByText("Any token, LP shares included. It doesn't have to be yours.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
+        expect(step("Reward")).toHaveAttribute("data-state", "todo");
         expect(step("Rules")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
         expect(screen.getByRole("link", { name: "Compare the kinds of reward" })).toHaveAttribute("href", "/create/rewards");
     });
 
-    describe("What to stake", () => {
+    describe("Stake", () => {
         it("offers LP shares to stake and summarises the pick", async () => {
             renderPage();
-            expect(screen.getByText("Token people stake: ulp/abc")).toBeInTheDocument();
+            expect(screen.getByText("Token: ulp/abc")).toBeInTheDocument();
             await answerStake();
-            expect(step("What to stake")).toHaveAttribute("data-state", "done");
-            expect(step("What to stake")).toHaveTextContent("Stake TOK/BZE LP");
+            expect(step("Stake")).toHaveAttribute("data-state", "done");
+            expect(step("Stake")).toHaveTextContent("Stake TOK/BZE LP");
             // The reward token picker has no LP shares.
-            expect(screen.queryByText("Reward token (paid from your wallet): ulp/abc")).not.toBeInTheDocument();
+            expect(screen.queryByText("Reward token: ulp/abc")).not.toBeInTheDocument();
         });
 
         it("is pre-answered by ?staking=", () => {
             queryParams.current = new URLSearchParams({ staking: "ulp/abc" });
             renderPage();
-            expect(step("What to stake")).toHaveAttribute("data-state", "done");
-            expect(step("What to stake")).toHaveTextContent("Stake TOK/BZE LP");
-            expect(step("Reward & budget")).toHaveAttribute("data-state", "active");
+            expect(step("Stake")).toHaveAttribute("data-state", "done");
+            expect(step("Stake")).toHaveTextContent("Stake TOK/BZE LP");
+            expect(step("Reward")).toHaveAttribute("data-state", "active");
         });
     });
 
-    describe("Reward & budget", () => {
-        it("writes the live sentence and the total committed, then summarises the budget", async () => {
+    describe("Reward", () => {
+        it("shows the balance and the committed rewards in the pay panel, then summarises the budget", async () => {
             renderPage();
             await answerStake();
             await fillBudget("100", "30");
-            expect(screen.getByTestId("budget")).toHaveTextContent("Everyone staking TOK/BZE LP shares 100 TOK a day for 30 days.");
-            expect(screen.getByTestId("budget-line")).toHaveTextContent("100 TOK/day × 30 days = 3,000 TOK committed now");
-            expect(screen.getByTestId("outcome")).toHaveTextContent(
-                "3,000 TOK leaves your wallet now and is paid out as 100 TOK a day for 30 days to everyone staking TOK/BZE LP.",
-            );
-            expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards, committed now: 3000000000 utok, Simple reward fee: 25000000 ubze");
+            const q = step("Reward");
+            expect(within(q).getByText("You hold 1,000,000 TOK")).toBeInTheDocument();
+            expect(within(q).getByText("Min 1 · Max 36500 days")).toBeInTheDocument();
+            expect(within(q).queryByText("Anyone can add more days later, at the same daily amount.")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("budget")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("budget-line")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("outcome")).not.toBeInTheDocument();
+            expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards: 3000000000 utok, Creation fee: 25000000 ubze");
 
-            await userEvent.click(button(step("Reward & budget"), "Continue to rules"));
-            expect(step("Reward & budget")).toHaveTextContent("100 TOK a day for 30 days");
+            await userEvent.click(button(step("Reward"), "Continue"));
+            expect(step("Reward")).toHaveTextContent("100 TOK a day for 30 days");
             expect(step("Rules")).toHaveAttribute("data-state", "active");
         });
 
         it("fills the days from a quick answer", async () => {
             renderPage();
             await answerStake();
-            await userEvent.click(within(step("Reward & budget")).getByText("Reward token (paid from your wallet): utok"));
-            await userEvent.type(within(step("Reward & budget")).getByLabelText(/Shared every day/), "2");
-            await userEvent.click(button(step("Reward & budget"), "90 days"));
-            expect(within(step("Reward & budget")).getByLabelText(/For how many days/)).toHaveValue("90");
-            expect(screen.getByTestId("budget-line")).toHaveTextContent("2 TOK/day × 90 days = 180 TOK committed now");
+            await userEvent.click(within(step("Reward")).getByText("Reward token: utok"));
+            await userEvent.type(within(step("Reward")).getByLabelText(/Daily reward/), "2");
+            await userEvent.click(button(step("Reward"), "90 days"));
+            expect(within(step("Reward")).getByLabelText("Days")).toHaveValue("90");
+            expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards: 180000000 utok");
         });
 
         it("stops at the budget when the wallet holds too little of the reward token", async () => {
@@ -229,20 +232,20 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             renderPage();
             await answerStake();
             await fillBudget("1", "30");
-            expect(screen.getByRole("alert")).toHaveTextContent("Not enough TOK: you hold 10.");
-            expect(button(step("Reward & budget"), "Continue to rules")).toBeDisabled();
+            expect(screen.getByRole("alert")).toHaveTextContent("Not enough TOK: you hold 10 TOK.");
+            expect(button(step("Reward"), "Continue")).toBeDisabled();
         });
 
         it("shows the day limits after blur", async () => {
             renderPage();
             await answerStake();
-            const q = step("Reward & budget");
-            await userEvent.click(within(q).getByText("Reward token (paid from your wallet): utok"));
-            await userEvent.type(within(q).getByLabelText(/For how many days/), "36501");
-            expect(within(q).queryByText("Must be between 1 and 36,500 days.")).not.toBeInTheDocument();
+            const q = step("Reward");
+            await userEvent.click(within(q).getByText("Reward token: utok"));
+            await userEvent.type(within(q).getByLabelText("Days"), "36501");
+            expect(within(q).queryByText("Min 1 · Max 36500 days.")).not.toBeInTheDocument();
             await userEvent.tab();
-            expect(within(q).getByText("Must be between 1 and 36,500 days.")).toBeInTheDocument();
-            expect(button(q, "Continue to rules")).toBeDisabled();
+            expect(within(q).getByText("Min 1 · Max 36500 days.")).toBeInTheDocument();
+            expect(button(q, "Continue")).toBeDisabled();
         });
     });
 
@@ -251,7 +254,9 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             renderPage();
             await answerStake();
             await answerBudget("1", "10");
-            expect(within(step("Rules")).getByText(/Stakers can leave any time\./)).toBeInTheDocument();
+            expect(within(step("Rules")).getByText("Min 0 · Max 3650 days")).toBeInTheDocument();
+            expect(within(step("Rules")).queryByText(/Stakers can leave any time\./)).not.toBeInTheDocument();
+            expect(within(step("Rules")).getByLabelText(/Minimum stake/)).toHaveAttribute("placeholder", "None");
             await userEvent.click(button(step("Rules"), "Review reward"));
             expect(step("Rules")).toHaveTextContent("No lock · no minimum");
         });
@@ -268,7 +273,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             renderPage();
             await answerStake();
             await answerBudget("1", "10");
-            const lockInput = within(step("Rules")).getByLabelText(/Wait after unstaking/);
+            const lockInput = within(step("Rules")).getByLabelText(/Unstaking lock/);
             await userEvent.clear(lockInput);
             await userEvent.type(lockInput, "3651");
             expect(button(step("Rules"), "Review reward")).toBeDisabled();
@@ -276,7 +281,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
     });
 
     describe("Review", () => {
-        it("lists the fee and the committed rewards, what you get and what is permanent, then signs the msg in base units", async () => {
+        it("lists the committed rewards and the fee, what you get, the days and what is permanent, then signs the msg in base units", async () => {
             renderPage();
             await answerStake();
             await answerBudget("1.5", "30");
@@ -284,12 +289,14 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
 
             const review = step("Review");
             const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
-            expect(leaves).toHaveTextContent(/Simple reward fee\s*BZE\s*25 BZE/);
-            expect(leaves).toHaveTextContent(/Rewards, committed now\s*TOK\s*45 TOK/);
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("A simple reward anyone can stake in");
+            // The same rows, in the same order, as the pay panel.
+            expect(leaves).toHaveTextContent(/Rewards\s*TOK\s*45 TOK.*Creation fee\s*BZE\s*25 BZE/);
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("Stake TOK/BZE LP · earn 1.5 TOK a day");
+            expect(review).toHaveTextContent("Days30 days");
+            expect(review).not.toHaveTextContent("Budget");
             const permanent = within(review).getByRole("region", { name: "Permanent" });
-            expect(permanent).toHaveTextContent("The daily amount and the rules. You can add days later, never change them");
-            expect(permanent).toHaveTextContent("Committed tokens are paid out to stakers");
+            expect(permanent).toHaveTextContent("Daily reward and rules");
+            expect(permanent).toHaveTextContent("Rewards are committed to stakers");
 
             await userEvent.click(createButton());
             expect(sentMsgs()).toEqual([{
@@ -325,7 +332,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             await answerBudget("1", "30", "ubze");
             await answerRules("0", "");
             expect(createButton()).toBeDisabled();
-            expect(screen.getByText("Not enough balance to cover the creation fee on top of the committed rewards.")).toBeInTheDocument();
+            expect(screen.getByText("Not enough BZE: you hold 40 BZE.")).toBeInTheDocument();
             unmount();
 
             payment.paysWithAlt = true;
@@ -343,7 +350,7 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             await answerBudget("1", "10");
             await answerRules("0", "");
             expect(step("Review")).toHaveAttribute("data-state", "active");
-            expect(screen.getByText("Connect your wallet to create this reward.")).toBeInTheDocument();
+            expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
             expect(createButton()).toBeDisabled();
         });
 

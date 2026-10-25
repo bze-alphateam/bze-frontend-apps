@@ -26,27 +26,29 @@ test("walks Pair · Starting amounts · Fees up to Review with the pool fee", as
     await amounts.getByLabel("VDL").fill("1000");
     await amounts.getByLabel("TBZE").fill("2");
     await expect(amounts.getByTestId("starting-price")).toContainText("1 VDL = 0.002000 TBZE");
-    await amounts.getByRole("button", {name: "Continue to fees"}).click();
+    await amounts.getByRole("button", {name: "Continue", exact: true}).click();
     await expect(amounts).toContainText("1,000 VDL + 2 TBZE · 0.002000 TBZE per VDL");
 
     const fees = page.getByRole("region", {name: "Fees"});
     await expect(fees).toHaveAttribute("data-state", "active");
     await fees.getByRole("button", {name: "Review pool"}).click();
-    await expect(fees).toContainText("0.2 % · 100 % to providers");
+    await expect(fees).toContainText("0.2% · 100% to providers");
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
     const leaves = review.getByRole("region", {name: "Leaves your wallet"});
-    await expect(leaves.getByText("Pool creation fee")).toBeVisible();
+    await expect(leaves.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(leaves.getByText("25,000 TBZE", {exact: true})).toBeVisible();
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("A VDL/TBZE pool anyone can swap in");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("VDL/TBZE pool");
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("The first deposit (1,000 VDL + 2 TBZE)");
 
+    await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const pay = page.getByRole("region", {name: "You will pay"});
+    await expect(pay.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(pay.getByText("25,000 TBZE", {exact: true})).toBeVisible();
 
     await expect(review.getByRole("button", {name: "Create pool"})).toBeDisabled();
-    await expect(page.getByText("Connect your wallet to create this pool.")).toBeVisible();
+    await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("an existing pair links to its pool on the DEX", async ({page}) => {
@@ -54,7 +56,7 @@ test("an existing pair links to its pool on the DEX", async ({page}) => {
 
     const pair = page.getByRole("region", {name: "Pair"});
     await expect(pair).toHaveAttribute("data-state", "active");
-    await expect(pair.getByText("This pair already has a pool. Each pair gets exactly one.")).toBeVisible();
+    await expect(pair.getByText("This pair already has a pool.", {exact: true})).toBeVisible();
     const link = pair.getByRole("link", {name: /Add liquidity to it on the DEX/});
     await expect(link).toHaveAttribute("href", new RegExp(`/pools/details\\?id=${encodeURIComponent(`${ISSUER}/testusd_ubze`)}$`));
     await expect(pair.getByRole("button", {name: "Continue"})).toBeDisabled();

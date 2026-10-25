@@ -28,7 +28,7 @@ export function marketPairProblem(
     const reversed = createMarketId(quoteDenom, baseDenom)
     const existingMarketId = marketExists(direct) ? direct : marketExists(reversed) ? reversed : undefined
     if (existingMarketId) {
-        return { message: 'This pair already has a market. Each pair gets exactly one.', existingMarketId }
+        return { message: 'This pair already has a market.', existingMarketId }
     }
     return undefined
 }

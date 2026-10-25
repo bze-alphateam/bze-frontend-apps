@@ -71,7 +71,7 @@ function Group({ label, children, tone }: { label: string; children: React.React
  * unknown, when the wallet can't pay it, and under the page's own `disabled` conditions.
  */
 export function ReviewStep({
-    number, total, state, direction, title = 'Review', question = 'Check everything before you sign',
+    number, total, state, direction, title = 'Review', question = 'Everything right?',
     leaves, moduleFee, txKind, isLoading, feeUnknown, gets, extra = [], permanent = [],
     submitLabel, onSubmit, disabled, onBack, blocker, children,
 }: ReviewStepProps) {

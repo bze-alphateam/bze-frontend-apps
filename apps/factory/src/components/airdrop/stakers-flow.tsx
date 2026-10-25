@@ -20,13 +20,11 @@ import { useChain } from '@interchain-kit/react'
 import { AirdropForm, TargetQuestion } from '@/components/airdrop/airdrop-form'
 import {
     BlockerNote,
-    OutcomePanel,
     PayPanel,
     type PayRow,
     Question,
     ReviewStep,
     SubmitNote,
-    TipNote,
     TxPanel,
     useGuidedSteps,
 } from '@/components/guided'
@@ -47,8 +45,9 @@ import {
     rewardsOfToken,
     simpleStakedDenoms,
 } from '@/lib/airdrop'
-import { compoundedNewHref } from '@/lib/denom-reward'
-import { type PrizeDoneInput, nothingStakedReason } from '@/lib/prize-wizard'
+import { compoundedNewHref, nothingStakedText } from '@/lib/denom-reward'
+import type { PrizeDoneInput } from '@/lib/prize-wizard'
+import { notEnoughText, youHoldText } from '@/lib/format'
 import { checkDistributeAmount, distributeMsgValue } from '@/lib/reward-distribute'
 import { chooseRewardsHref } from '@/lib/create-routes'
 
@@ -87,7 +86,7 @@ function RewardOption({ reward, stakedTicker, stakedDecimals, selected, onPick }
     const staked = stakedDecimals !== undefined ? prettyAmount(uAmountToBigNumberAmount(reward.staked, stakedDecimals)) : reward.staked
     const empty = !hasStaked(reward)
     const title = reward.kind === 'compounded'
-        ? 'Compounded reward · any coin'
+        ? 'Compounded reward · any token'
         : `Simple reward #${reward.rewardId} · paid in ${prizeAsset?.ticker ?? reward.prizeDenom}`
     const line = reward.kind === 'simple' && reward.daysLeft === 0 ? 'Finished · stakers can still claim' : ''
 
@@ -121,7 +120,7 @@ function RewardOption({ reward, stakedTicker, stakedDecimals, selected, onPick }
                 {line && <Text fontSize="12px" color="fg.muted">{line}</Text>}
             </VStack>
             <Text fontSize="13px" fontWeight="600" color={empty ? 'hg.text.faint' : 'hg.success.text'} textAlign="end" flexShrink={0}>
-                {empty ? 'Nobody staking' : `${staked} ${stakedTicker} staked`}
+                {empty ? 'Nothing staked' : `${staked} ${stakedTicker} staked`}
             </Text>
         </chakra.button>
     )
@@ -181,6 +180,7 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
         prizes: dr.prizes,
         prizeDenom: viaCompounded ? prizeDenom : '',
         uAmount: viaCompounded ? amount.uAmount : undefined,
+        stakedTicker: stakedAsset?.ticker,
     })
 
     const loading = dr.isLoading || simple.isLoading
@@ -220,12 +220,11 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
     // Until the asset list loads, plain words stand in for the tickers: a raw factory denom is one
     // long unbreakable word that would push the page wider than a phone.
     const ticker = stakedAsset?.ticker ?? ''
-    const stakedName = ticker || (target === 'lp' ? 'the pool share' : 'the token')
+    const stakedName = ticker || (target === 'lp' ? 'the LP shares' : 'the token')
     const people = target === 'lp' ? `${stakedName} liquidity providers` : `${stakedName} stakers`
     const coinTicker = coinAsset?.ticker ?? ''
     const giftText = amount.uAmount && coinAsset ? `${prettyAmount(uAmountToBigNumberAmount(amount.uAmount, coinAsset.decimals))} ${coinTicker}` : ''
-    const balanceText = coinAsset ? `${prettyAmount(uAmountToBigNumberAmount(spendable.balance, coinAsset.decimals))} ${coinTicker}` : ''
-    const maxText = coinAsset ? `${prettyAmount(uAmountToBigNumberAmount(spendable.amount, coinAsset.decimals))} ${coinTicker}` : ''
+    const balanceText = coinAsset ? prettyAmount(uAmountToBigNumberAmount(spendable.balance, coinAsset.decimals)) : ''
     const stakedText = reward && stakedAsset ? `${prettyAmount(uAmountToBigNumberAmount(reward.staked, stakedAsset.decimals))} ${ticker}` : ''
     const rewardSummary = !reward ? '' : reward.kind === 'compounded'
         ? `Compounded reward · ${stakedText} staked`
@@ -287,25 +286,13 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
     }
 
     const payRows: PayRow[] = viaCompounded
-        ? airdropPayRows(gift, { prizeDenom, stakingTicker: stakedName, stakingPossessive: ticker ? `${ticker}'s` : "the token's", prizeTicker: coinTicker })
+        ? airdropPayRows(gift, prizeDenom)
         : amount.uAmount && reward ? [{ label: 'Airdrop', coin: { denom: coinDenom, amount: amount.uAmount } }] : []
     const feeLoading = viaCompounded && gift.isNewPrize && gift.isFeeLoading
     const feeUnknown = viaCompounded && gift.isNewPrize && !gift.slot.capReached && !gift.isFeeLoading && !gift.costs.feesKnown
 
     const aside = (
-        <>
-            <OutcomePanel>
-                {giftText ? (
-                    <Text data-testid="airdrop-outcome">
-                        <chakra.span fontWeight="600">{giftText}</chakra.span>
-                        {` leaves your wallet now and is split between all ${people}, by how much each stakes. It can't be taken back. You don't need to own ${stakedName} or ask its creator.`}
-                    </Text>
-                ) : (
-                    <Text color="fg.muted">Pick the token, the reward and the amount to see what leaves your wallet.</Text>
-                )}
-            </OutcomePanel>
-            <PayPanel rows={payRows} moduleFee={viaCompounded ? gift.mainFee : undefined} txKind={txKind} isLoading={feeLoading} feeUnknown={feeUnknown} />
-        </>
+        <PayPanel rows={payRows} moduleFee={viaCompounded ? gift.mainFee : undefined} txKind={txKind} isLoading={feeLoading} feeUnknown={feeUnknown} />
     )
 
     let tokenNote: React.ReactNode = null
@@ -328,11 +315,11 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
             </BlockerNote>
         )
     } else if (denom && !loading && !anyStaked) {
-        tokenNote = <Box data-testid="airdrop-blocker"><BlockerNote>{nothingStakedReason(stakedName)}</BlockerNote></Box>
+        tokenNote = <Box data-testid="airdrop-blocker"><BlockerNote>{nothingStakedText(stakedName)}</BlockerNote></Box>
     }
 
     return (
-        <AirdropForm techTag={viaCompounded ? 'rewards · distribute denom rewards' : reward ? 'rewards · distribute staking rewards' : undefined} aside={aside}>
+        <AirdropForm techTag={viaCompounded ? 'rewards · distribute denom rewards' : reward ? 'rewards · distribute staking rewards' : 'rewards · distribute'} aside={aside}>
             <TargetQuestion
                 {...steps.step('target')}
                 value={target}
@@ -340,8 +327,8 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
             />
 
             <Question
-                title={target === 'lp' ? 'Pool share' : 'Token'}
-                question={target === 'lp' ? "Which pool's providers?" : "Which token's stakers?"}
+                title="Stake"
+                question={target === 'lp' ? 'Which LP shares?' : 'Which token?'}
                 {...steps.step('token')}
                 summary={ticker && people}
                 onBack={steps.back}
@@ -372,9 +359,6 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                 onBack={steps.back}
             >
                 <VStack align="stretch" gap="8px" role="radiogroup" aria-label="Reward">
-                    <Text fontSize="14px" color="fg.muted">
-                        {`${stakedName} is staked in more than one reward. Each reward splits the airdrop between its own stakers.`}
-                    </Text>
                     {rewards.map(r => (
                         <RewardOption
                             key={r.key}
@@ -398,13 +382,13 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
             >
                 <VStack align="stretch" gap="16px">
                     {viaCompounded && (
-                        <AssetPicker label="Coin to send (from your wallet)" value={prizeDenom} onSelect={(asset) => setPrizeDenom(asset.denom)} />
+                        <AssetPicker label="Token" value={prizeDenom} onSelect={(asset) => setPrizeDenom(asset.denom)} />
                     )}
                     {viaCompounded && coinAsset && (
-                        <PrizeSlotNote stakedTicker={stakedName} prizeTicker={coinTicker} slot={gift.slot} max={gift.maxPrizes} prizeFee={gift.prizeFee} />
+                        <PrizeSlotNote slot={gift.slot} max={gift.maxPrizes} />
                     )}
                     {reward?.kind === 'simple' && (
-                        <Text fontSize="14px" color="fg.muted">{`A simple reward pays only in its own coin: ${coinTicker || 'its prize'}.`}</Text>
+                        <Text fontSize="14px" color="fg.muted">{`Paid in ${coinTicker || 'its reward token'}`}</Text>
                     )}
                     {coinAsset && (
                         <Field.Root invalid={amountTouched && amountInput.trim() !== '' && amount.error !== ''}>
@@ -412,7 +396,7 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                                 <Field.Label>{`Amount (${coinTicker})`}</Field.Label>
                                 {connected && (
                                     <HStack gap="4px">
-                                        <Text fontSize="12px" color="hg.text.faint" data-testid="airdrop-balance">{`of ${balanceText}`}</Text>
+                                        <Text fontSize="12px" color="hg.text.faint" data-testid="airdrop-balance">{youHoldText(balanceText, coinTicker)}</Text>
                                         <Button
                                             size="2xs"
                                             variant="ghost" color="hg.link" _hover={{ bg: 'app.subtle' }}
@@ -434,21 +418,10 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                             <Field.ErrorText>{amount.error}</Field.ErrorText>
                         </Field.Root>
                     )}
-                    {giftText && (
-                        <Box fontSize="14px" data-testid="airdrop-sentence">
-                            <Text>
-                                <chakra.strong>{giftText}</chakra.strong>
-                                {` is split right now between all ${people}${stakedText ? ` (${stakedText} staked)` : ''}, by how much each stakes.`}
-                            </Text>
-                            {amount.short && (
-                                <Text mt="6px" color="hg.danger.text" fontWeight="600" role="alert">
-                                    {`Not enough ${coinTicker}: you can send up to ${maxText}.`}
-                                </Text>
-                            )}
-                        </Box>
-                    )}
-                    {reward?.kind === 'simple' && reward.daysLeft === 0 && (
-                        <TipNote lead="This reward has finished.">Its stakers can still claim what you send.</TipNote>
+                    {giftText && amount.short && (
+                        <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
+                            {notEnoughText(coinTicker, balanceText)}
+                        </Text>
                     )}
                 </VStack>
             </Question>
@@ -464,21 +437,20 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                     txKind={txKind}
                     isLoading={feeLoading}
                     feeUnknown={feeUnknown}
-                    gets={[{ label: 'Airdrop', value: `${people} can claim it right away` }]}
-                    extra={giftText ? [{ label: 'Split between', value: `All ${people}, by stake` }] : []}
+                    gets={[{ label: 'Airdrop', value: giftText ? `${giftText} to ${people}` : people }]}
                     permanent={["An airdrop can't be undone"]}
-                    submitLabel="Airdrop now"
+                    submitLabel="Airdrop"
                     onSubmit={() => void sign()}
                     disabled={!canSign}
                     onBack={steps.back}
                     blocker={nobodyStakes ? (
                         <Box data-testid="presign-blocker">
-                            <BlockerNote lead="We check before you sign.">{nothingStakedReason(stakedName)}</BlockerNote>
+                            <BlockerNote>{nothingStakedText(stakedName)}</BlockerNote>
                         </Box>
                     ) : undefined}
                 >
                     {!address ? (
-                        <SubmitNote>Connect your wallet to airdrop.</SubmitNote>
+                        <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : lastCheck === 'error' ? (
                         <SubmitNote tone="error">{`Couldn't check the stakers right before signing. Please try again.`}</SubmitNote>
                     ) : viaCompounded && isComplete && gift.blocker ? (

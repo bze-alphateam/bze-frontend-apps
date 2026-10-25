@@ -1,7 +1,7 @@
 import {expect, test} from "./support/mock-network";
 import {bzeWallets} from "./support/wallets";
 
-// Airdrop coins to a list of wallets (/airdrop?to=list, formerly /multisend, BFE-266): the Who ·
+// Airdrop tokens to a list of wallets (/airdrop?to=list, formerly /multisend, BFE-266): the Who ·
 // Token · List · Review wizard without a wallet, against the testnet fixtures. `?denom=ubze` answers
 // the Token step with the native TBZE.
 
@@ -13,7 +13,7 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
     await page.goto("/multisend?denom=ubze");
     await expect(page).toHaveURL(/\/airdrop\?.*to=list/);
 
-    await expect(page.getByRole("heading", {level: 1, name: "Airdrop coins"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "Airdrop tokens"})).toBeVisible();
     await expect(page.getByRole("region", {name: "Who", exact: true})).toContainText("A list of wallets");
     await expect(page.getByRole("region", {name: "Token", exact: true})).toHaveAttribute("data-state", "done");
     const list = page.getByRole("region", {name: "List", exact: true});
@@ -32,17 +32,17 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
 
     await list.getByRole("button", {name: "Review"}).click();
     await expect(list).toContainText("2 wallets · 4 TBZE in total");
-    await expect(page.getByRole("region", {name: "What will happen"})).toContainText("4 TBZE goes to 2 wallets, each getting 2 TBZE.");
+    await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const pay = page.getByRole("region", {name: "You will pay"});
-    await expect(pay.getByText("Factory fee")).toBeVisible();
-    await expect(pay.getByText("None", {exact: true})).toBeVisible();
+    await expect(pay.getByText("Sent to wallets")).toBeVisible();
+    await expect(pay.getByText("Factory fee")).toHaveCount(0);
 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("2 wallets receive TBZE");
     await expect(review.getByRole("region", {name: "Permanent"})).toContainText("Sent tokens can't be taken back");
-    await expect(review.getByRole("button", {name: "Send to 2 wallets"})).toBeDisabled();
-    await expect(review.getByText("Connect your wallet to send.")).toBeVisible();
+    await expect(review.getByRole("button", {name: "Airdrop to 2 wallets"})).toBeDisabled();
+    await expect(review.getByText("Connect your wallet.")).toBeVisible();
 });
 
 test("fits a 390 px phone without horizontal scroll", async ({page}) => {
@@ -69,9 +69,10 @@ test("a long list is planned as transactions of 100 on Review and fits a 390 px 
     await list.getByRole("button", {name: "Review"}).click();
 
     const review = page.getByRole("region", {name: "Review", exact: true});
-    await expect(review.getByText(/We send it in 3 transactions of up to 100 wallets\. Your wallet asks you to approve each one\./)).toBeVisible();
-    await expect(review.getByRole("button", {name: "Send to 250 wallets"})).toBeDisabled();
-    await expect(review.getByText("Connect your wallet to send.")).toBeVisible();
+    await expect(review.getByTestId("batch-note")).toHaveText("3 transactions · one approval each");
+    await expect(review.getByText(/We send it in/)).toHaveCount(0);
+    await expect(review.getByRole("button", {name: "Airdrop to 250 wallets"})).toBeDisabled();
+    await expect(review.getByText("Connect your wallet.")).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
