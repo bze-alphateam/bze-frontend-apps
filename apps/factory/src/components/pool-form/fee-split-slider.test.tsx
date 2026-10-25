@@ -5,6 +5,13 @@ import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { DEFAULT_FEE_SPLIT, type FeeSplit, FeeSplitSlider, setFeeShare } from "./fee-split-slider";
 
+// The slider measures its thumbs with ResizeObserver, which jsdom lacks.
+globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+};
+
 function Harness({ initial = DEFAULT_FEE_SPLIT }: { initial?: FeeSplit }) {
     const [split, setSplit] = useState(initial);
     return (
