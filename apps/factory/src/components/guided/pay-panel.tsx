@@ -167,6 +167,19 @@ export function payTotals(rows: PayRow[], gas?: FeeCoin): FeeCoin[] {
     return [...sums].map(([denom, amount]) => ({ denom, amount: amount.toFixed(0) }))
 }
 
+/** The index of the row that is the module fee itself (the first one carrying it), or -1. */
+export function moduleFeeRowIndex(rows: PayRow[], moduleFee?: FeeCoin): number {
+    return moduleFee
+        ? rows.findIndex(r => r.coin?.denom === moduleFee.denom && r.coin?.amount === moduleFee.amount)
+        : -1
+}
+
+/** Every coin the rows take from the wallet besides the module fee: the balance check reserves them. */
+export function spentBesidesFee(rows: PayRow[], moduleFee?: FeeCoin): FeeCoin[] {
+    const feeIndex = moduleFeeRowIndex(rows, moduleFee)
+    return rows.flatMap((row, i) => (row.coin && i !== feeIndex ? [row.coin] : []))
+}
+
 /**
  * "You will pay": every cost of the form before signing. Replaces FeeDisclosure in the
  * guided forms and keeps all its behaviour: the fee in the token picked in Settings
@@ -179,7 +192,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
     const { address } = useChain(getChainName())
     const { asset: feeAsset } = useAsset(moduleFee?.denom ?? '')
     const { balance, isLoading: isBalanceLoading } = useBalance(moduleFee?.denom ?? '')
-    const payment = useFeePayment(moduleFee, txKind)
+    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(rows, moduleFee))
 
     if (isLoading) {
         return (
@@ -210,9 +223,7 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
     const altText = payment.altAmount && altTicker ? `${prettyAmount(payment.altAmount)} ${altTicker}` : undefined
 
     // The ≈ ALT estimate belongs to the module fee row only (the first row carrying it).
-    const moduleRowIndex = moduleFee
-        ? rows.findIndex(r => r.coin?.denom === moduleFee.denom && r.coin?.amount === moduleFee.amount)
-        : -1
+    const moduleRowIndex = moduleFeeRowIndex(rows, moduleFee)
     const totals = payTotals(rows, hasGas ? { denom: payment.gasFee.denom, amount: payment.gasFee.amount.toFixed(0) } : undefined)
     const nativeBalance = prettyAmount(uAmountToBigNumberAmount(balance.amount, feeAsset?.decimals ?? 6))
 

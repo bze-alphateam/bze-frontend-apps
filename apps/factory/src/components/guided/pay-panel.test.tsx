@@ -6,14 +6,20 @@ import BigNumber from "bignumber.js";
 
 // The fee engine (useFeePayment) and the ui-kit hooks are mocked: each test sets the
 // payment outcome and the panel must word it the way FeeDisclosure does.
-const { wallet, payment, prices } = vi.hoisted(() => ({
+const { wallet, payment, prices, feePaymentArgs } = vi.hoisted(() => ({
     wallet: { address: "bze1me" as string | undefined },
     payment: { current: {} as Record<string, unknown> },
     prices: { current: {} as Record<string, number> },
+    feePaymentArgs: { current: [] as unknown[] },
 }));
 
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: wallet.address }) }));
-vi.mock("@/hooks/useFeePayment", () => ({ useFeePayment: () => payment.current }));
+vi.mock("@/hooks/useFeePayment", () => ({
+    useFeePayment: (...args: unknown[]) => {
+        feePaymentArgs.current = args;
+        return payment.current;
+    },
+}));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     const assets: Record<string, { denom: string; ticker: string; decimals: number; logo: string }> = {
@@ -89,6 +95,20 @@ describe("PayPanel", () => {
         expect(total.getByText("Total")).toBeInTheDocument();
         expect(total.getByText(/^≈ 25,000\.005\d* BZE$/)).toBeInTheDocument();
         expect(total.getByText("1 TOK")).toBeInTheDocument();
+    });
+
+    it("has the balance check reserve every other coin the form spends, not only the fee", () => {
+        const startingBze = { denom: "ubze", amount: "2874974309929" };
+        const startingTok = { denom: "utok", amount: "1000000" };
+        render(
+            <PayPanel
+                rows={[{ label: "Creation fee", coin: FEE }, { label: "Starting BZE", coin: startingBze }, { label: "Starting TOK", coin: startingTok }]}
+                moduleFee={FEE}
+                txKind="create-pool"
+            />,
+            { wrapper },
+        );
+        expect(feePaymentArgs.current).toEqual([FEE, "create-pool", [startingBze, startingTok]]);
     });
 
     it("shows a skeleton while fees load", () => {
