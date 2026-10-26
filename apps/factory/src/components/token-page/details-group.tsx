@@ -74,7 +74,6 @@ function BrandKitItem({ asset, access, back }: GroupProps) {
         <ActionItem
             testId="brand-kit-item"
             title="Brand kit"
-            line={`Colours and font for ${asset.ticker}'s Communities page.`}
             action={access === 'admin'
                 ? <ItemLink href={withReturn(brandKitHref(asset.denom), back)}>Edit brand kit</ItemLink>
                 : undefined}

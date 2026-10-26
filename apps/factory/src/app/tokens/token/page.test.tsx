@@ -323,7 +323,8 @@ describe("token page", () => {
         expect(within(screen.getByTestId("compounded-item")).getByRole("button", { name: "Create" })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
         expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
-        expect(within(screen.getByTestId("brand-kit-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("brand-kit-item")).getByRole("link", { name: "Edit brand kit" }))
+            .toHaveAttribute("href", expect.stringMatching(new RegExp(`^/brand-kit\\?denom=${ENCODED}&return=`)));
         expect(within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /View details|Edit details|^Open$/ })).not.toBeInTheDocument();
         expect(within(screen.getByTestId("trading-pool-p1")).getByTestId("created-badge")).toHaveTextContent("You created it");
