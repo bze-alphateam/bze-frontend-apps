@@ -1,24 +1,23 @@
-'use client';
+import type {Metadata} from "next";
 
-import {Suspense} from "react";
-import {DEFAULT_DENOM_BRANDING} from "@bze/bze-ui-kit";
+import {TokenPage} from "@/components/token-site/token-page";
+import {isCommunitiesEnabled} from "@/lib/app-gate";
+import {restTokenHeadSource, tokenPageMetadata} from "@/lib/token-site/metadata";
 
-import {useDenomParam} from "@/hooks/useNavigation";
-import {TokenSite} from "@/components/token-site/token-site";
-import {TokenSiteTheme} from "@/components/token-site/kit";
+// Server-rendered so shared links and crawlers see the token's own title and description; a
+// hidden build serves the placeholder, so it keeps the site-wide head and never asks the node.
+export async function generateMetadata({searchParams}: {searchParams: Promise<{denom?: string | string[]}>}): Promise<Metadata> {
+    if (!isCommunitiesEnabled()) {
+        return {};
+    }
 
-// The denom comes from `?denom=` (useSearchParams), which needs a Suspense boundary for the
-// static build.
-const TokenPageContent = () => {
-    const denom = useDenomParam();
-
-    return <TokenSite denom={denom ?? ""}/>;
-};
-
-export default function TokenPage() {
-    return (
-        <Suspense fallback={<TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><div/></TokenSiteTheme>}>
-            <TokenPageContent/>
-        </Suspense>
+    const {denom} = await searchParams;
+    return tokenPageMetadata(
+        Array.isArray(denom) ? denom[0] : denom,
+        restTokenHeadSource(process.env.NEXT_PUBLIC_REST_ENDPOINT ?? ""),
     );
+}
+
+export default function Page() {
+    return <TokenPage/>;
 }

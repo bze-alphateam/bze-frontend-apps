@@ -311,6 +311,11 @@ image for that commit, so rollback tags come from the target's own release histo
   `true`. Launching communities.getbze.com is a one-line change to the mainnet
   `build.env` in the deploy repo (the value is baked in at build time, so it needs a new
   image, not a container restart).
+- **Public origin for `apps/communities`:** `NEXT_PUBLIC_SITE_URL` is the base of the
+  head's absolute URLs (canonical, `og:url`, `og:image`). Unset, it falls back to
+  `https://communities.getbze.com`, so the testnet `build.env` must set its own origin.
+  Testnet builds (`NEXT_PUBLIC_CHAIN_IS_TESTNET=true`) also ask search engines not to
+  index them.
 
 ### Build locally (what CI does)
 
