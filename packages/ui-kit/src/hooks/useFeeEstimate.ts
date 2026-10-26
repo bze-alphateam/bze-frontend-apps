@@ -25,6 +25,12 @@ export interface UseFeeEstimateOptions {
      * fee is checked against. Omit when the gas fee is unknown.
      */
     gasFee?: GasFeeCoin;
+    /**
+     * Other coins the same transaction spends besides the fee (a pool's starting reserves,
+     * a reward's budget…). They leave the wallet too, so they are reserved from the native
+     * and preferred balances before the fee is checked.
+     */
+    reserved?: FeeCoin[];
 }
 
 export interface UseFeeEstimateResult {
@@ -74,7 +80,7 @@ export interface UseFeeEstimateResult {
  * Needs SettingsProvider and the app's assets context (pools, assets, balances) above it.
  */
 export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {}): UseFeeEstimateResult {
-    const { gasFee } = options;
+    const { gasFee, reserved = [] } = options;
     const nativeDenom = getChainNativeAssetDenom();
     const { denom: feeDenom, isLoading: feeDenomLoading } = useTxFeeDenom();
     const { getDenomsPool, isLoading: poolsLoading } = useLiquidityPools();
@@ -99,10 +105,14 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         })
         : undefined;
 
+    const spentIn = (denom: string) => [...reserved, ...(gasFee ? [gasFee] : [])]
+        .filter(coin => coin.denom === denom)
+        .reduce((sum, coin) => sum.plus(coin.amount), new BigNumber(0));
+
     const method = estimate
         ? resolveFeePayment(estimate, preferredBalance.amount, nativeBalance.amount, {
-            reservedNative: gasFee?.denom === feeNativeDenom ? gasFee.amount : undefined,
-            reservedPreferred: gasFee?.denom === feeDenom && feeDenom !== feeNativeDenom ? gasFee.amount : undefined,
+            reservedNative: spentIn(feeNativeDenom),
+            reservedPreferred: isPreferredSelected ? spentIn(feeDenom) : undefined,
         })
         : undefined;
 
