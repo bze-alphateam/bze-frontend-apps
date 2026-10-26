@@ -58,7 +58,7 @@ function Position({label, value, testId}: { label: string; value: string; testId
 export function BalanceCard({asset, address, positions}: { asset: Asset; address: string; positions: TokenWalletPositions }) {
     const {balance} = useBalance(asset.denom);
     const {price, hasPrice} = useAssetPrice(asset.denom);
-    const display = (amount: BigNumber) => walletAmount(uAmountToBigNumberAmount(amount, asset.decimals));
+    const display = (amount: BigNumber) => `${walletAmount(uAmountToBigNumberAmount(amount, asset.decimals))} ${asset.ticker}`;
     const amount = uAmountToBigNumberAmount(balance.amount, asset.decimals);
 
     return (
@@ -88,15 +88,14 @@ export function BalanceCard({asset, address, positions}: { asset: Asset; address
                 )}
             </Flex>
             <Grid
-                templateColumns="repeat(3, minmax(0, 1fr))"
+                templateColumns="repeat(2, minmax(0, 1fr))"
                 gap="12px"
                 pt="14px"
                 borderTopWidth="1px"
                 borderStyle="solid"
                 borderColor={ts.border}
             >
-                <Position label="Holders pool" value={display(positions.holdersPool)} testId="wallet-holders-pool"/>
-                <Position label="Programs" value={display(positions.programs)} testId="wallet-programs"/>
+                <Position label="Staked" value={display(positions.staked)} testId="wallet-staked"/>
                 <Position label="Unlocking" value={display(positions.unlocking)} testId="wallet-unlocking"/>
             </Grid>
         </TsFeaturedCard>

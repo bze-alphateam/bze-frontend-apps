@@ -31,10 +31,8 @@ export interface WalletCoin {
 
 /** What the wallet drawer shows about the viewer's T positions (Business Logic R4), in base units. */
 export interface TokenWalletPositions {
-    /** Staked in T's holders pool (Denom Rewards). */
-    holdersPool: BigNumber;
-    /** Staked in the fixed-term programs whose staking denom is T. */
-    programs: BigNumber;
+    /** T staked: the holders pool (Denom Rewards) plus the fixed-term programs whose staking denom is T. */
+    staked: BigNumber;
     /** T on its way back: holders-pool exits plus program unstakes, still locked. */
     unlocking: BigNumber;
     /** Rewards ready to claim, one entry per prize denom, biggest first. */
@@ -68,7 +66,7 @@ export function tokenWalletPositions({denom, holdersPool, programs, addressProgr
     const poolPending = claimableCoins(holdersPool?.position);
     poolPending.forEach((coin) => add(pending, coin.denom, coin.amount));
 
-    let staked = new BigNumber(0);
+    let staked = new BigNumber(holdersPool?.position?.participant.amount || 0);
     let unlocking = (holdersPool?.unlocks ?? []).reduce((sum, unlock) => sum.plus(unlock.amount), new BigNumber(0));
     const claimProgramIds: string[] = [];
 
@@ -91,8 +89,7 @@ export function tokenWalletPositions({denom, holdersPool, programs, addressProgr
     }
 
     return {
-        holdersPool: new BigNumber(holdersPool?.position?.participant.amount || 0),
-        programs: staked,
+        staked,
         unlocking,
         pending: Array.from(pending.entries())
             .map(([coinDenom, amount]) => ({denom: coinDenom, amount}))

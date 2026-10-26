@@ -47,17 +47,15 @@ describe("tokenWalletPositions", () => {
             ),
         });
 
-        expect(positions.holdersPool.toFixed()).toBe("5000");
-        // Program 3 pays T but stakes BZE: it is Earn's, not the wallet's.
-        expect(positions.programs.toFixed()).toBe("2000");
+        // 5000 in the holders pool + 2000 in programs 1 and 2. Program 3 pays T but stakes BZE: it is Earn's, not the wallet's.
+        expect(positions.staked.toFixed()).toBe("7000");
         expect(positions.unlocking.toFixed()).toBe("1250");
     });
 
     it("is all zero without a holders pool or programs", () => {
         const positions = tokenWalletPositions({denom: T, programs: []});
 
-        expect(positions.holdersPool.toFixed()).toBe("0");
-        expect(positions.programs.toFixed()).toBe("0");
+        expect(positions.staked.toFixed()).toBe("0");
         expect(positions.unlocking.toFixed()).toBe("0");
         expect(positions.pending).toEqual([]);
     });
