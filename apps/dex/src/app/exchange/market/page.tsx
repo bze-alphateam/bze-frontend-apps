@@ -151,9 +151,10 @@ const TradingPageContent = () => {
     const {asset: baseAsset} = useAsset(market?.base ?? '')
     const {asset: quoteAsset} = useAsset(market?.quote ?? '')
     // A governance-halted market keeps its order book, history and "Your Orders" (cancel works);
-    // only the buy/sell forms give way to the notice, since the chain refuses new orders.
+    // the buy/sell forms stay in view but disabled under the notice, since the chain refuses new orders.
     const {isDenomHalted, isMarketHalted} = useHaltedDenoms()
     const isHalted = isMarketHalted(market)
+    const formsDisabled = submittingOrder || isHalted
     const haltedTickers = [baseAsset, quoteAsset]
         .filter(asset => asset && isDenomHalted(asset.denom))
         .map(asset => asset!.ticker)
@@ -436,6 +437,8 @@ const TradingPageContent = () => {
         onSellTotalChange(total);
     }, [submittingOrder, quoteSpendable.amount, quoteAsset, onBuyTotalChange, onSellTotalChange])
     const onOrderBookClick = useCallback((price: string, orderType: 'buy' | 'sell', index: number) => {
+        // The forms are disabled on a halted market, so a book click has nothing to fill.
+        if (isHalted) return;
         const transformedPrice = uPriceToPrice(price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0);
         setBuyPrice(transformedPrice);
         setSellPrice(transformedPrice);
@@ -463,7 +466,7 @@ const TradingPageContent = () => {
         const total = calculateTotalAmount(transformedPrice, amount, quoteAsset?.decimals ?? 0);
         setSellTotal(total);
         setBuyTotal(total);
-    }, [quoteAsset, baseAsset, activeOrders])
+    }, [quoteAsset, baseAsset, activeOrders, isHalted])
     const onTimeframeChange = useCallback((timeframe: string) => {
         fetchChartData(timeframe);
         setTimeframe(timeframe)
@@ -582,6 +585,10 @@ const TradingPageContent = () => {
         setSubmittingOrder(false);
     }, [address, tx, activeOrders, toast, marketId])
     const onOrderSubmit = useCallback(async (orderType: string) => {
+        if (isHalted) {
+            toast.error('Trading is halted on this market');
+            return;
+        }
         if (!address || !tx) {
             toast.error('Please connect your wallet');
             return;
@@ -645,7 +652,7 @@ const TradingPageContent = () => {
         return submitFillOrdersMsg(toFill);
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [quoteAsset, baseAsset, buyAmount, buyPrice, sellAmount, sellPrice, getMatchingOrders, submitCreateOrderMsg, submitFillOrdersMsg, estimateGasFee, getBalanceByDenom, takerFeeEstimate.resolvedFee, makerFeeEstimate.resolvedFee])
+    }, [quoteAsset, baseAsset, buyAmount, buyPrice, sellAmount, sellPrice, getMatchingOrders, submitCreateOrderMsg, submitFillOrdersMsg, estimateGasFee, getBalanceByDenom, takerFeeEstimate.resolvedFee, makerFeeEstimate.resolvedFee, isHalted])
 
     const multipleOrdersFillMessage = useCallback((orderType: string, price: string, amount: string) => {
         if (!activeOrders) return undefined;
@@ -921,13 +928,12 @@ const TradingPageContent = () => {
                                 Resting orders on this market will not execute while trading is halted. Cancel them in Your Orders to get your funds back.
                             </HaltedNotice>
                         )}
-                        {!isHalted && (
                         <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
                             <OrderForm
                                 side="buy"
                                 title={`Buy ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={buyFillMessage}
-                                disabled={submittingOrder}
+                                disabled={formsDisabled}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_BUY)}
                             >
                                 <OrderField
@@ -935,7 +941,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={buyPrice}
                                     onChange={onBuyPriceChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                     usd={buyPrice && shouldShowUsdValues ? quoteUsdValue(buyPrice) : undefined}
                                 />
                                 <OrderField
@@ -943,14 +949,14 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={buyAmount}
                                     onChange={onBuyAmountChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                 />
                                 <OrderField
                                     label="Total"
                                     unit={quoteAsset?.ticker}
                                     value={buyTotal}
                                     onChange={onBuyTotalChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                     usd={buyTotal && shouldShowUsdValues ? quoteUsdValue(buyTotal) : undefined}
                                 />
                             </OrderForm>
@@ -959,7 +965,7 @@ const TradingPageContent = () => {
                                 side="sell"
                                 title={`Sell ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={sellFillMessage}
-                                disabled={submittingOrder}
+                                disabled={formsDisabled}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_SELL)}
                             >
                                 <OrderField
@@ -967,7 +973,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={sellPrice}
                                     onChange={onSellPriceChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                     usd={sellPrice && shouldShowUsdValues ? quoteUsdValue(sellPrice) : undefined}
                                 />
                                 <OrderField
@@ -975,19 +981,18 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={sellAmount}
                                     onChange={onSellAmountChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                 />
                                 <OrderField
                                     label="Total"
                                     unit={quoteAsset?.ticker}
                                     value={sellTotal}
                                     onChange={onSellTotalChange}
-                                    disabled={submittingOrder}
+                                    disabled={formsDisabled}
                                     usd={sellTotal && shouldShowUsdValues ? quoteUsdValue(sellTotal) : undefined}
                                 />
                             </OrderForm>
                         </Grid>
-                        )}
                     </Flex>
 
                     {/* Right: Market History/My History & Active Orders */}
@@ -1109,6 +1114,7 @@ const TradingPageContent = () => {
                                 ticker={baseAsset?.ticker}
                                 aria-label={`Use my available ${baseAsset?.ticker ?? ''} balance as amount`}
                                 onClick={onBaseBalanceClick}
+                                disabled={isHalted}
                             >
                                 {displayBaseBalance}
                             </BalanceButton>
@@ -1116,6 +1122,7 @@ const TradingPageContent = () => {
                                 ticker={quoteAsset?.ticker}
                                 aria-label={`Use my available ${quoteAsset?.ticker ?? ''} balance as total`}
                                 onClick={onQuoteBalanceClick}
+                                disabled={isHalted}
                             >
                                 {displayQuoteBalance}
                             </BalanceButton>

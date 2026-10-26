@@ -6,7 +6,7 @@ import {useMemo, useState} from 'react'
 import NextLink from "next/link";
 import {
     useAsset, useAssets, createMarketId, useAssetPrice, prettyAmount, formatUsdAmount, HighlightText, MarketData,
-    useAssetsValue, useMarkets, LPTokenLogo, HaltedBadge, useHaltedDenoms,
+    useAssetsValue, useMarkets, HaltedBadge, useHaltedDenoms,
     PageContainer, HeroGlow, PageHero, Eyebrow, HgCard, Shimmer,
 } from "@bze/bze-ui-kit";
 import {MarketSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -15,37 +15,11 @@ import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {marketPagePath} from "@/hooks/useNavigation";
 import {VenueTag, VENUE_SUBTITLE} from "@/components/ui/trading/venue";
 import {ChangePill} from "@/components/ui/trading/badges";
+import {PairLogo} from "@/components/ui/trading/pair-logo";
 import {sortMarkets} from "@/lib/market-list";
 import {marketPriceLabel} from "@/lib/market-price";
 
 const DESKTOP_COLUMNS = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 140px'
-
-/** The outlined order-book tile holding the pair's two logos. */
-const PairTile = ({market}: { market: MarketSDKType }) => {
-    const {asset: baseAsset} = useAsset(market.base)
-    const {asset: quoteAsset} = useAsset(market.quote)
-
-    return (
-        <Flex
-            boxSize="40px"
-            flex="none"
-            align="center"
-            justify="center"
-            borderRadius="10px"
-            bg="hg.inset"
-            borderWidth="1px"
-            borderColor="app.border"
-        >
-            <LPTokenLogo
-                baseAssetLogo={baseAsset?.logo || ''}
-                quoteAssetLogo={quoteAsset?.logo || ''}
-                baseAssetSymbol={baseAsset?.ticker || market.base}
-                quoteAssetSymbol={quoteAsset?.ticker || market.quote}
-                size="5"
-            />
-        </Flex>
-    )
-}
 
 interface MarketRowProps {
     market: MarketSDKType
@@ -63,6 +37,14 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
     const isVerifiedMarket = !!baseAsset?.verified && !!quoteAsset?.verified
     const isHaltedMarket = !!baseAsset?.halted || !!quoteAsset?.halted
     const pair = `${baseAsset?.ticker}/${quoteAsset?.ticker}`
+    const pairLogo = (
+        <PairLogo
+            baseLogo={baseAsset?.logo}
+            quoteLogo={quoteAsset?.logo}
+            baseTicker={baseAsset?.ticker || market.base}
+            quoteTicker={quoteAsset?.ticker || market.quote}
+        />
+    )
 
     const badges = (
         <>
@@ -96,7 +78,7 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
                 {/* Desktop */}
                 <Grid templateColumns={DESKTOP_COLUMNS} gap="16px" alignItems="center" hideBelow="md">
                     <Flex align="center" gap="12px" minW="0">
-                        <PairTile market={market}/>
+                        {pairLogo}
                         <Flex direction="column" gap="3px" minW="0">
                             <Flex align="center" gap="8px" wrap="wrap">
                                 <chakra.strong fontSize="16px" fontWeight="700">{pair}</chakra.strong>
@@ -134,7 +116,7 @@ const MarketRow = ({ market, marketData }: MarketRowProps) => {
                 {/* Phone */}
                 <Flex direction="column" gap="14px" hideFrom="md">
                     <Flex align="center" gap="12px" minW="0">
-                        <PairTile market={market}/>
+                        {pairLogo}
                         <Flex direction="column" gap="3px" minW="0">
                             <Flex align="center" gap="8px" wrap="wrap">
                                 <chakra.strong fontSize="15px" fontWeight="700">{pair}</chakra.strong>
@@ -193,7 +175,7 @@ const LoadingRows = () => (
         {[140, 110, 125].map((w, i) => (
             <Flex key={i} justify="space-between" align="center" py="10px" borderTopWidth={i > 0 ? '1px' : 0} borderColor="hg.divider">
                 <Flex gap="12px" align="center">
-                    <Shimmer boxSize="40px" borderRadius="10px"/>
+                    <Shimmer w="52px" h="32px" borderRadius="full"/>
                     <Shimmer w={`${w}px`} h="12px"/>
                 </Flex>
                 <Shimmer w="90px" h="36px" borderRadius="10px"/>

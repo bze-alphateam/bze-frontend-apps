@@ -87,15 +87,20 @@ beforeEach(() => {
 });
 
 describe("trading page on a governance-halted market", () => {
-    it("replaces the buy/sell forms with the notice and badges the market", async () => {
+    it("shows the notice, badges the market and keeps the buy/sell forms visible but disabled", async () => {
         mocks.halted = new Set([HALTED]);
         renderPage();
 
         expect(await screen.findByText("HALT is no longer tradeable on BZE")).toBeInTheDocument();
         expect(screen.getByText("Trading halted")).toBeInTheDocument();
         expect(screen.getByText(/Resting orders on this market will not execute/)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Buy HALT" })).toBeNull();
-        expect(screen.queryByRole("button", { name: "Sell HALT" })).toBeNull();
+        expect(screen.getByRole("button", { name: "Buy HALT" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Sell HALT" })).toBeDisabled();
+        for (const field of screen.getAllByRole("textbox")) {
+            expect(field).toBeDisabled();
+        }
+        expect(screen.getByRole("button", { name: "Use my available HALT balance as amount" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Use my available BZE balance as total" })).toBeDisabled();
     });
 
     it("keeps the owner's orders cancellable", async () => {
@@ -114,8 +119,8 @@ describe("trading page on a governance-halted market", () => {
     it("shows the forms and no halt UI when nothing is halted", async () => {
         renderPage();
 
-        expect(await screen.findByRole("button", { name: "Buy HALT" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Sell HALT" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Buy HALT" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Sell HALT" })).toBeEnabled();
         expect(screen.queryByText("Trading halted")).toBeNull();
         expect(screen.queryByText(/no longer tradeable/)).toBeNull();
     });

@@ -246,6 +246,7 @@ export const BalanceButton = ({ticker, children, ...props}: ComponentProps<typeo
         fontWeight="500"
         cursor="pointer"
         _hover={{bg: 'hg.inset'}}
+        _disabled={{cursor: 'not-allowed', opacity: 0.6, bg: 'transparent'}}
         focusVisibleRing="inside"
         {...props}
     >

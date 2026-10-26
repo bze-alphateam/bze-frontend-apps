@@ -16,7 +16,7 @@ import {
 import {LuSearch, LuChevronUp, LuChevronDown, LuArrowUpDown, LuUser} from 'react-icons/lu'
 import {
     useAsset, useAssets, toBigNumber, useBalances, calculateUserPoolData, shortNumberFormat, HighlightText,
-    LiquidityPoolData, useLiquidityPools, LPTokenLogo, HaltedBadge, hgVariant,
+    LiquidityPoolData, useLiquidityPools, HaltedBadge, hgVariant,
     PageContainer, HgCard, FeaturedCard,
 } from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
@@ -25,6 +25,7 @@ import {sortPools, filterPoolsBySearch, partitionUserPools} from "@/lib/pool-lis
 import {InnerHero, CountPill} from "@/components/ui/layout/inner-hero";
 import {AprChip} from "@/components/ui/pools/apr-chip";
 import {VenueTag} from "@/components/ui/trading/venue";
+import {PairLogo} from "@/components/ui/trading/pair-logo";
 
 
 type SortField = 'volume24h' | 'totalLiquidity' | 'apr'
@@ -65,13 +66,7 @@ const PoolName = ({baseTicker, quoteTicker, baseLogo, quoteLogo, isHalted}: {
     isHalted: boolean;
 }) => (
     <Flex align="center" gap="12px" minW="0">
-        <LPTokenLogo
-            baseAssetLogo={baseLogo || ''}
-            quoteAssetLogo={quoteLogo || ''}
-            baseAssetSymbol={baseTicker || ''}
-            quoteAssetSymbol={quoteTicker || ''}
-            size="8"
-        />
+        <PairLogo baseLogo={baseLogo} quoteLogo={quoteLogo} baseTicker={baseTicker || ''} quoteTicker={quoteTicker || ''}/>
         <Flex direction="column" gap="2px" minW="0">
             <Flex align="center" gap="8px" wrap="wrap">
                 <chakra.strong fontSize="15px" fontWeight="700">{baseTicker}/{quoteTicker}</chakra.strong>
