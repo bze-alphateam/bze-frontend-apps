@@ -199,9 +199,13 @@ describe("WalletDrawer", () => {
 
             expect(within(drawer).getByTestId("wallet-balance")).toHaveTextContent("12,480");
             expect(within(drawer).getByTestId("wallet-balance-usd")).toHaveTextContent("≈ $514.18");
-            expect(within(drawer).getByTestId("wallet-holders-pool")).toHaveTextContent("5,000");
-            expect(within(drawer).getByTestId("wallet-programs")).toHaveTextContent("2,000");
-            expect(within(drawer).getByTestId("wallet-unlocking")).toHaveTextContent("1,000");
+            // Amounts of T, labelled so "Programs" can't be read as a count of programs.
+            expect(within(drawer).getByTestId("wallet-holders-pool")).toHaveTextContent("5,000 PAGE");
+            expect(within(drawer).getByTestId("wallet-programs")).toHaveTextContent("2,000 PAGE");
+            expect(within(drawer).getByTestId("wallet-unlocking")).toHaveTextContent("1,000 PAGE");
+            expect(within(drawer).getByText("Staked in holders pool")).toBeInTheDocument();
+            expect(within(drawer).getByText("Staked in programs")).toBeInTheDocument();
+            expect(within(drawer).queryByText("Programs")).not.toBeInTheDocument();
             expect(within(drawer).getByRole("button", {name: "Copy address"})).toHaveTextContent("bze1z3m…wg3l · Copy");
         });
 
