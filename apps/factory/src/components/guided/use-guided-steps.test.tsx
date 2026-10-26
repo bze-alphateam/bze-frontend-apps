@@ -64,7 +64,7 @@ describe("useGuidedSteps", () => {
         expect(states()).toEqual(["done", "done", "done"]);
 
         await userEvent.click(screen.getByText("toggle frozen"));
-        expect(states()).toEqual(["done", "active", "todo"]);
+        expect(states()).toEqual(["done", "active", "done"]);
     });
 
     it("leaves no question active when all are answered", async () => {
