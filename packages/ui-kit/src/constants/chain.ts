@@ -5,6 +5,7 @@ import {BZE_TESTNET_2_SUGGEST_CHAIN, BZE_TESTNET_NETWORK} from "./testnet";
 import {Chain} from "@chain-registry/types";
 import {assetLists, chains, ibcData} from "chain-registry";
 import {isChainDenied, isCrossChainEnabled} from "./cross_chain";
+import type {IbcConnectionEntry} from "../utils/ibc_duplicates";
 
 export const getChainId = (): string => {
     return process.env.NEXT_PUBLIC_CHAIN_ID || 'beezee-1'
@@ -122,6 +123,11 @@ export const getIBCAssetList = () => {
     const all = ibcAssetsList(getChainName(), ibcData, getAssetLists())
 
     return all.length > 0 ? all[0].assets : []
+}
+
+// chain-registry's IBC connections (channels between chains), camelCase npm shape.
+export const getIBCConnections = (): IbcConnectionEntry[] => {
+    return ibcData as unknown as IbcConnectionEntry[]
 }
 
 export const getChainAddressPrefix = () => {

@@ -78,6 +78,8 @@ export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
 export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout } from './utils/ibc';
 export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
+export { ibcOriginFromTrace, ibcOriginFromRegistry, unverifyIndirectIbcDuplicates } from './utils/ibc_duplicates';
+export type { IbcOrigin } from './utils/ibc_duplicates';
 export { isDenomHaltedIn, isPairHaltedIn } from './utils/halted_denoms';
 export type { DenomPair } from './utils/halted_denoms';
 export {
