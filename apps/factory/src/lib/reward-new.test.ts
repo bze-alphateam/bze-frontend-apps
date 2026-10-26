@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 import {
     MAX_DURATION_DAYS,
     MAX_LOCK_DAYS,
+    MAX_MIN_STAKE_BASE,
     MIN_DURATION_DAYS,
     escrowAmount,
     fetchRewardId,
@@ -56,6 +57,29 @@ describe("min stake", () => {
 
     it("rejects an invalid value", () => {
         expect(validateMinStake("abc", 6)).not.toBe("");
+    });
+
+    // The chain stores min_stake as a uint64 in base units.
+    it.each([
+        [18, "18.446744073709551615", "18.446744073709551616"],
+        [18, "18.446744073709551615", "19"],
+        [6, "18446744073709.551615", "18446744073709.551616"],
+        [0, "18446744073709551615", "18446744073709551616"],
+    ])("caps %i decimals at %s (refuses %s)", (decimals, max, over) => {
+        expect(validateMinStake(max, decimals)).toBe("");
+        expect(validateMinStake(over, decimals)).toBe(`Must be at most ${max}.`);
+    });
+
+    it("still treats empty and 0 as no minimum for 18 decimals", () => {
+        expect(validateMinStake("", 18)).toBe("");
+        expect(validateMinStake("0", 18)).toBe("");
+    });
+
+    it("sends the maximum exactly", () => {
+        expect(MAX_MIN_STAKE_BASE.toFixed()).toBe("18446744073709551615");
+        expect(minStakeToChain("18.446744073709551615", 18)).toBe("18446744073709551615");
+        expect(minStakeToChain("18446744073709.551615", 6)).toBe("18446744073709551615");
+        expect(minStakeToChain("18446744073709551615", 0)).toBe("18446744073709551615");
     });
 });
 
