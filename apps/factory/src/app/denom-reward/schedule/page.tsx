@@ -16,7 +16,7 @@ import { useChain } from '@interchain-kit/react'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { schedulePayRows, useScheduleGift } from '@/hooks/useScheduleGift'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import { Notice, TextField } from '@/components/manage/denom-reward-form-parts'
 import { PrizeDone } from '@/components/reward-wizard/prize-done'
 import { PrizeSlotNote } from '@/components/reward-wizard/prize-slot-note'
@@ -118,13 +118,15 @@ function ScheduleFormContent() {
         : { denom, prizes, prizeDenom: pickedPrize, dailyUAmount: check.dailyUAmount, days: check.days })
 
     const stepKeys: readonly Step[] = isExtend ? EXTEND_STEPS : ADD_STEPS
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps<Step>(stepKeys, {
         token: answered.includes('token') && tokenOk,
         prize: answered.includes('prize') && check.valid,
         schedule: answered.includes('schedule') && Boolean(schedule),
         days: answered.includes('days') && ext?.extra !== undefined && !extendShort,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))

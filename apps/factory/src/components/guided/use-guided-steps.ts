@@ -28,9 +28,18 @@ export interface StepProps {
  * that becomes invalid makes its question unanswered, so it turns active again.
  *
  * `direction` says which way the active step last moved, for the step cards' slide.
+ *
+ * `frozen` keeps the answers as they were when it turned on: once the wizard's transaction is
+ * broadcast, the chain changes under the form (balances spent, the pair now taken), and the
+ * steps must not reopen above the transaction panel.
  */
-export function useGuidedSteps<K extends string>(keys: readonly K[], isAnswered: Record<K, boolean>) {
+export function useGuidedSteps<K extends string>(keys: readonly K[], liveAnswers: Record<K, boolean>, { frozen = false }: { frozen?: boolean } = {}) {
     const [reopened, setReopened] = useState<K | undefined>(undefined)
+
+    // The answers last seen while not frozen (the "store information from previous renders" pattern).
+    const [kept, setKept] = useState(liveAnswers)
+    if (!frozen && keys.some(k => kept[k] !== liveAnswers[k])) setKept(liveAnswers)
+    const isAnswered = frozen ? kept : liveAnswers
 
     const active = useMemo(() => {
         const firstUnanswered = keys.find(k => !isAnswered[k])

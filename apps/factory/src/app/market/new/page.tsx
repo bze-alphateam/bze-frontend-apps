@@ -19,7 +19,7 @@ import { useChain } from '@interchain-kit/react'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import { MarketDone, type MarketDoneInput } from '@/components/market-wizard/market-done'
 import {
     BlockerNote,
@@ -75,10 +75,12 @@ function MarketNewContent() {
     )
     const isPairValid = Boolean(baseAsset) && Boolean(quoteAsset) && problem === undefined
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
         pair: pairAnswered && isPairValid,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answerPair = () => {
         setPairAnswered(true)

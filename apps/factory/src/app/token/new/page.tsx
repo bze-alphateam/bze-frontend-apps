@@ -33,7 +33,7 @@ import { TokenDone, type TokenDoneInput } from '@/components/token-wizard/token-
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { MAX_DESCRIPTION_LENGTH } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import {
     type AdminChoice,
     EMPTY_TOKEN_FORM,
@@ -117,12 +117,14 @@ function TokenNewContent() {
     const validation = useTokenWizardValidation(form)
     const { errors, isDetailsValid, isSupplyValid, isPermissionsValid } = validation
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
         details: answered.includes('details') && isDetailsValid,
         supply: answered.includes('supply') && isSupplyValid,
         permissions: answered.includes('permissions') && isPermissionsValid,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     useEffect(() => {
         saveTokenDraft({ form, answered })

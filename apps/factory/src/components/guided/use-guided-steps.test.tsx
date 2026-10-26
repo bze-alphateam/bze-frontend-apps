@@ -9,8 +9,9 @@ const KEYS = ["a", "b", "c"] as const;
 // A tiny form: each key has a text answer; "bad" is an invalid answer.
 function Harness({ initial = {} }: { initial?: Partial<Record<(typeof KEYS)[number], string>> }) {
     const [answers, setAnswers] = useState<Record<string, string>>({ a: "", b: "", c: "", ...initial });
+    const [frozen, setFrozen] = useState(false);
     const valid = (v: string) => v !== "" && v !== "bad";
-    const steps = useGuidedSteps(KEYS, { a: valid(answers.a), b: valid(answers.b), c: valid(answers.c) });
+    const steps = useGuidedSteps(KEYS, { a: valid(answers.a), b: valid(answers.b), c: valid(answers.c) }, { frozen });
 
     return (
         <div>
@@ -26,6 +27,7 @@ function Harness({ initial = {} }: { initial?: Partial<Record<(typeof KEYS)[numb
             ))}
             <span data-testid="direction">{steps.direction}</span>
             <button onClick={steps.back}>back</button>
+            <button onClick={() => setFrozen(f => !f)}>toggle frozen</button>
         </div>
     );
 }
@@ -53,6 +55,16 @@ describe("useGuidedSteps", () => {
 
         await userEvent.click(screen.getByText("answer a"));
         expect(states()).toEqual(["done", "done", "active"]);
+    });
+
+    it("keeps the answers while frozen and follows them again once thawed", async () => {
+        render(<Harness initial={{ a: "x", b: "y", c: "z" }} />);
+        await userEvent.click(screen.getByText("toggle frozen"));
+        await userEvent.click(screen.getByText("break b"));
+        expect(states()).toEqual(["done", "done", "done"]);
+
+        await userEvent.click(screen.getByText("toggle frozen"));
+        expect(states()).toEqual(["done", "active", "todo"]);
     });
 
     it("leaves no question active when all are answered", async () => {
