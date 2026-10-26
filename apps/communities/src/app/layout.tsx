@@ -4,6 +4,7 @@ import {Inter, JetBrains_Mono} from "next/font/google"
 import {Providers} from "./providers";
 import {UnderConstruction} from "@/components/under-construction/under-construction";
 import {isCommunitiesEnabled} from "@/lib/app-gate";
+import {HIDDEN_SITE_DESCRIPTION, isTestnetBuild, SITE_DESCRIPTION, SITE_NAME, SITE_OG_IMAGE, SITE_TITLE} from "@/lib/site-head";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,14 +26,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communities.getbze
 // providers, so no wallet / RPC / WebSocket code runs on a deployment that isn't public yet.
 const APP_ENABLED = isCommunitiesEnabled();
 
-const DESCRIPTION = APP_ENABLED
-  ? "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token."
-  : "Discover, join, and grow communities on the BeeZee blockchain. BeeZee Communities is coming soon.";
+const DESCRIPTION = APP_ENABLED ? SITE_DESCRIPTION : HIDDEN_SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Communities | BeeZee Blockchain",
+  title: SITE_TITLE,
   description: DESCRIPTION,
+  robots: isTestnetBuild() ? {index: false, follow: false} : undefined,
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
@@ -43,26 +43,17 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "BeeZee Communities",
+    siteName: SITE_NAME,
     url: "/",
-    title: "Communities | BeeZee Blockchain",
-    description:
-      "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token.",
-    images: [
-      {
-        url: "/images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "BeeZee Communities logo, communities.getbze.com",
-      },
-    ],
+    title: SITE_TITLE,
+    description: DESCRIPTION,
+    images: [SITE_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Communities | BeeZee Blockchain",
-    description:
-      "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token.",
-    images: ["/images/og-image.png"],
+    title: SITE_TITLE,
+    description: DESCRIPTION,
+    images: [SITE_OG_IMAGE.url],
   },
 };
 
