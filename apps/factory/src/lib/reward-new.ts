@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js'
-import { amountToUAmount } from '@bze/bze-ui-kit'
+import { amountToBigNumberUAmount, amountToUAmount } from '@bze/bze-ui-kit'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { minMaxHint } from '@/lib/format'
 
@@ -7,6 +7,8 @@ import { minMaxHint } from '@/lib/format'
 export const MIN_DURATION_DAYS = 1
 export const MAX_DURATION_DAYS = 36500
 export const MAX_LOCK_DAYS = 3650
+/** StakingReward.min_stake is a uint64 in base units: the chain refuses anything above its maximum. */
+export const MAX_MIN_STAKE_BASE = new BigNumber('18446744073709551615')
 
 /** Required whole number of days within [min, max]. */
 export function validateDays(value: string, min: number, max: number): string {
@@ -26,10 +28,19 @@ export const hasNoMinStake = (value: string) => {
     return !trimmed || trimmed === '0'
 }
 
-/** Min stake is optional: empty or 0 = no minimum, else a valid amount in the staking decimals. */
+/**
+ * Min stake is optional: empty or 0 = no minimum, else a valid amount in the staking decimals
+ * that fits the chain's uint64 (only ~18.4 whole tokens for an 18-decimal token).
+ */
 export function validateMinStake(value: string, decimals: number): string {
     if (hasNoMinStake(value)) return ''
-    return validateAmount(value.trim(), decimals)
+    const error = validateAmount(value.trim(), decimals)
+    if (error) return error
+    if (amountToBigNumberUAmount(value.trim(), decimals).gt(MAX_MIN_STAKE_BASE)) {
+        // shiftedBy is exact, and toFixed() drops trailing zeros without exponent notation.
+        return `Must be at most ${MAX_MIN_STAKE_BASE.shiftedBy(-decimals).toFixed()}.`
+    }
+    return ''
 }
 
 /** The min stake as the chain expects it: '0' for none, else base units. */

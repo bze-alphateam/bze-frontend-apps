@@ -57,7 +57,7 @@ vi.mock("@/components/ui/asset-picker", () => ({
     AssetPicker: ({ label, includeLP, onSelect }: { label: string; includeLP?: boolean; onSelect: (a: { denom: string }) => void }) => (
         <div>
             <span>{label}</span>
-            {["utok", "ubze", ...(includeLP ? ["ulp/abc"] : [])].map(d => (
+            {["utok", "ubze", "ueth", ...(includeLP ? ["ulp/abc"] : [])].map(d => (
                 <button key={d} onClick={() => onSelect({ denom: d })}>{label}: {d}</button>
             ))}
         </div>
@@ -69,6 +69,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const assets: Record<string, Partial<Asset>> = {
         utok: { denom: "utok", ticker: "TOK", decimals: 6, logo: "" },
         ubze: { denom: "ubze", ticker: "BZE", decimals: 6, logo: "" },
+        ueth: { denom: "ueth", ticker: "ETH", decimals: 18, logo: "" },
         "ulp/abc": { denom: "ulp/abc", ticker: "TOK/BZE LP", decimals: 12, logo: "" },
     };
     const { default: BN } = await import("bignumber.js");
@@ -275,6 +276,16 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             const lockInput = within(step("Rules")).getByLabelText(/Unstaking lock/);
             await userEvent.clear(lockInput);
             await userEvent.type(lockInput, "3651");
+            expect(button(step("Rules"), "Review reward")).toBeDisabled();
+        });
+
+        it("refuses a minimum stake over the chain's uint64 limit for an 18-decimal token", async () => {
+            renderPage();
+            await answerStake("ueth");
+            await answerBudget("1", "10");
+            await userEvent.type(within(step("Rules")).getByLabelText(/Minimum stake/), "19");
+            await userEvent.tab();
+            expect(within(step("Rules")).getByText("Must be at most 18.446744073709551615.")).toBeInTheDocument();
             expect(button(step("Rules"), "Review reward")).toBeDisabled();
         });
     });
