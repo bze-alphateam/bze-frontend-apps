@@ -542,7 +542,9 @@ test("a token that can pay fees never mentions BeeZee and lets the viewer pay in
 
     const feeSwitch = drawer.getByRole("switch", {name: "Pay network fees in TUSDC"});
     await expect(feeSwitch).toHaveAttribute("aria-checked", "true");
-    await expect(page.getByText(/BeeZee/)).toHaveCount(0);
+    // Visible text only: Next streams the async token-page metadata into <body> for browsers, and
+    // its <title> keeps the site name.
+    await expect(page.getByText(/BeeZee/).filter({visible: true})).toHaveCount(0);
 
     await feeSwitch.click();
     await expect(feeSwitch).toHaveAttribute("aria-checked", "false");
