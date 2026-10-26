@@ -18,7 +18,7 @@ export function NotTradableNotice({asset}: { asset: Asset }) {
     return (
         <TsNotice data-testid="get-not-tradable">
             <chakra.strong display="block">Not tradable yet</chakra.strong>
-            {asset.ticker} isn&apos;t in any liquidity pool, so it can&apos;t be swapped into for now.
+            {`${asset.ticker} isn't in any liquidity pool, so it can't be swapped into for now.`}
         </TsNotice>
     );
 }
