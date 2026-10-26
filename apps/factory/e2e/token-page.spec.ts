@@ -33,7 +33,12 @@ test("a Factory token: header and the groups, with no admin action", async ({pag
 
     const details = page.getByRole("region", {name: "Details and look"});
     await expect(details.getByTestId("metadata-item").getByRole("button", {name: "View"})).toBeVisible();
-    await expect(details.getByTestId("brand-kit-item").getByRole("button", {name: "View"})).toBeVisible();
+    // The brand kit is drawn small, read-only: editing is on /brand-kit, for the admin only (BFE-293).
+    const brandKit = details.getByTestId("brand-kit-item");
+    await expect(brandKit.getByTestId("brand-kit-preview-light")).toBeVisible();
+    await expect(brandKit.getByTestId("brand-kit-preview-dark")).toBeVisible();
+    await expect(brandKit).toContainText("Font: JetBrains Mono");
+    await expect(brandKit.getByRole("link", {name: "Edit brand kit"})).toHaveCount(0);
 
     const rewards = page.getByRole("region", {name: "Rewards on NOAD"});
     await expect(rewards.getByTestId("daily-prize-line")).toHaveCount(2);

@@ -8,6 +8,7 @@ import { BrandKitCard, type BrandKitAccess } from '@/components/manage/brand-kit
 import { MetadataCard } from '@/components/manage/metadata-card'
 import { useRegistryListing } from '@/hooks/useRegistryListing'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
+import { brandKitHref } from '@/lib/brand-kit'
 import { officialHref } from '@/lib/registry-entry'
 import type { AdminState } from '@/lib/workspace'
 import { ActionGroup, ActionItem, ItemButton, ItemLink, type GroupProps } from './action-group'
@@ -62,22 +63,23 @@ function RegistryItem({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
     )
 }
 
-/** Colours and a font for the Communities page: today's BrandKitCard, editable by the admin only. */
-function BrandKitItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
-    const [isOpen, setIsOpen] = useState(false)
+/**
+ * Colours and a font for the Communities page: the kit drawn small, always shown; the admin edits
+ * it on its own page (/brand-kit, with the way back here) and can remove it from here.
+ */
+function BrandKitItem({ asset, access, back }: GroupProps) {
     const cardAccess: BrandKitAccess = access === 'admin' || access === 'renounced' ? access : 'not-admin'
 
     return (
         <ActionItem
             testId="brand-kit-item"
             title="Brand kit"
-            action={
-                <ItemButton onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
-                    {isOpen ? 'Close' : 'View'}
-                </ItemButton>
-            }
+            line={`Colours and font for ${asset.ticker}'s Communities page.`}
+            action={access === 'admin'
+                ? <ItemLink href={withReturn(brandKitHref(asset.denom), back)}>Edit brand kit</ItemLink>
+                : undefined}
         >
-            {isOpen && <BrandKitCard asset={asset} access={cardAccess} />}
+            <BrandKitCard asset={asset} access={cardAccess} />
         </ActionItem>
     )
 }
@@ -88,7 +90,7 @@ export function DetailsGroup({ asset, access, back }: GroupProps) {
         <ActionGroup id="details" title="Details and look">
             <MetadataItem asset={asset} access={access} />
             <RegistryItem asset={asset} back={back} />
-            <BrandKitItem asset={asset} access={access} />
+            <BrandKitItem asset={asset} access={access} back={back} />
         </ActionGroup>
     )
 }
