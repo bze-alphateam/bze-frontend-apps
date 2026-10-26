@@ -1,8 +1,8 @@
 'use client';
 
-import {useState, useMemo} from 'react';
-import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
-import {LuTriangleAlert, LuWallet} from 'react-icons/lu';
+import {useState, useMemo, useRef} from 'react';
+import {Button} from '@chakra-ui/react';
+import {LuWallet} from 'react-icons/lu';
 import {
     useAssets,
     useBalance,
@@ -14,6 +14,8 @@ import {
     uAmountToBigNumberAmount,
     amountToUAmount,
     sanitizeNumberInput,
+    hgVariant,
+    Notice,
 } from '@bze/bze-ui-kit';
 import {
     validateDelegationAmount,
@@ -27,15 +29,22 @@ import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
+import {CopyStakeLinkButton} from './copy-stake-link-button';
+import {AmountField, InsetRow, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 
 interface DelegateModalProps {
     isOpen: boolean;
     onClose: () => void;
     validator: ValidatorSDKType | null;
     onSuccess: () => void;
+    // Opens the page's wallet sidebar for a user without a wallet. The page sets the form aside
+    // while the sidebar is up and brings it back afterwards. Without it, the button closes the
+    // form and opens the wallet modal.
+    onConnectWallet?: () => void;
 }
 
-export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateModalProps) {
+export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectWallet}: DelegateModalProps) {
     const {nativeAsset} = useAssets();
     const {balance} = useBalance(getChainNativeAssetDenom());
     const {address, status, connect} = useChain(getChainName());
@@ -44,6 +53,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const amountInputRef = useRef<HTMLInputElement>(null);
 
     const decimals = nativeAsset?.decimals ?? 6;
     const availableHuman = uAmountToBigNumberAmount(balance.amount, decimals);
@@ -52,10 +63,12 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
     const maxSpendable = useMaxSpendable(getChainNativeAssetDenom(), 'delegate');
     const spendableHuman = maxSpendable.displayAmount;
     const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
+    const earnsNoRewards = !!validator
+        && (validator.jailed || bondStatusFromJSON(validator.status) !== BondStatus.BOND_STATUS_BONDED);
 
     const handleDelegate = async () => {
         if (!address || !validator) {
-            toast.error('Invalid amount', 'Please enter a valid amount to delegate');
+            toast.error('Invalid amount', 'Please enter a valid amount to stake');
             return;
         }
 
@@ -66,7 +79,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
             } else if (amountError === 'no-fee-reserve') {
                 toast.error('Not enough left for fees', `Keep ≈ ${prettyAmount(maxSpendable.gasFee.displayAmount)} ${maxSpendable.gasFee.ticker} for the network fee.`);
             } else {
-                toast.error('Invalid amount', 'Please enter a valid amount to delegate');
+                toast.error('Invalid amount', 'Please enter a valid amount to stake');
             }
             return;
         }
@@ -87,12 +100,12 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
 
             const success = await tx([msg]);
             if (success) {
-                toast.success('Delegation successful', `Delegated ${amount} ${nativeAsset?.ticker} to ${validator.description?.moniker}`);
+                toast.success('Staked', `Staked ${amount} ${nativeAsset?.ticker} to ${validator.description?.moniker}`);
                 onSuccess();
             }
         } catch (e) {
             console.error('Delegate failed:', e);
-            toast.error('Delegation failed', 'Transaction failed. Please try again.');
+            toast.error('Staking failed', 'Transaction failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -113,102 +126,89 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess}: DelegateM
         setAmount(maxSpendable.inputValue);
     };
 
+    // On open the dialog focuses its first tabbable element, which is the copy-link icon in the
+    // title. When the form opens from a stake link (no click before it), the browser treats
+    // that focus as keyboard focus and draws the focus ring around the icon. Focus the amount
+    // field instead, or the dialog itself while the field is disabled (no wallet).
+    const initialFocusEl = () => (isConnected ? amountInputRef.current : null) ?? contentRef.current;
+
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW="md" p="6">
-                        <Dialog.Header pb="4">
-                            <Dialog.Title>Delegate to {validator?.description?.moniker}</Dialog.Title>
-                        </Dialog.Header>
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                <Box bg="purple.500/5" p="3" borderRadius="md" borderWidth="1px" borderColor="purple.500/15">
-                                    <HStack justify="space-between" fontSize="sm">
-                                        <Text color="fg.muted">Commission</Text>
-                                        <Text fontWeight="semibold">{commission}%</Text>
-                                    </HStack>
-                                </Box>
+        <StakingDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            contentRef={contentRef}
+            initialFocusEl={initialFocusEl}
+            title={`Stake with ${validator?.description?.moniker ?? ''}`}
+            titleAside={validator && <CopyStakeLinkButton operatorAddress={validator.operator_address} />}
+        >
+            <InsetRow label="Commission">{commission}%</InsetRow>
 
-                                <VStack align="stretch" gap="2">
-                                    <HStack justify="space-between">
-                                        <Text fontSize="sm" fontWeight="medium">Amount</Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Available: {prettyAmount(availableHuman)} {nativeAsset?.ticker}
-                                        </Text>
-                                    </HStack>
-                                    <Input
-                                        placeholder="0.00"
-                                        value={amount}
-                                        onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
-                                        type="text"
-                                        disabled={!isConnected}
-                                    />
-                                    <HStack gap="2">
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.25)} disabled={!isConnected}>25%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.5)} disabled={!isConnected}>50%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.75)} disabled={!isConnected}>75%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(1)} disabled={!isConnected}>Max</Button>
-                                    </HStack>
-                                </VStack>
+            {earnsNoRewards && (
+                <Notice status="warning">
+                    {validator?.jailed ? 'This validator is jailed. ' : 'This validator is outside the active set. '}
+                    It does not earn rewards while jailed or outside the active set, so your stake earns nothing until it is back.
+                </Notice>
+            )}
 
-                                {exceedsSpendable && (
-                                    <Box bg="orange.500/10" p="3" borderRadius="md" borderWidth="1px" borderColor="orange.500/20">
-                                        <HStack gap="2" align="start">
-                                            <Box color="orange.500" mt="0.5"><LuTriangleAlert size={14} /></Box>
-                                            <VStack align="stretch" gap="2" flex="1">
-                                                <Text fontSize="xs" color="fg.muted">
-                                                    This amount leaves less than the network fee
-                                                    (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
-                                                    so the transaction would fail.
-                                                </Text>
-                                                {maxSpendable.amount.gt(0) && (
-                                                    <Button
-                                                        size="xs"
-                                                        variant="outline"
-                                                        colorPalette="orange"
-                                                        onClick={useSpendableMax}
-                                                        alignSelf="start"
-                                                    >
-                                                        Delegate {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
-                                                    </Button>
-                                                )}
-                                            </VStack>
-                                        </HStack>
-                                    </Box>
-                                )}
+            <AmountField
+                value={amount}
+                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                aside={`Available: ${prettyAmount(availableHuman)} ${nativeAsset?.ticker ?? ''}`}
+                ticker={nativeAsset?.ticker}
+                disabled={!isConnected}
+                warning={exceedsSpendable}
+                inputRef={amountInputRef}
+            >
+                <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
+            </AmountField>
 
-                                {progressTrack && (
-                                    <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
-                                )}
+            {exceedsSpendable && (
+                <Notice status="warning">
+                    This amount leaves less than the network fee
+                    (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
+                    so the transaction would fail.
+                    {maxSpendable.amount.gt(0) && (
+                        <Button
+                            display="flex"
+                            mt="8px"
+                            size="xs"
+                            variant="outline"
+                            color="hg.warning.text"
+                            borderColor="hg.warning/45"
+                            bg="transparent"
+                            _hover={{bg: 'hg.warning/12'}}
+                            onClick={useSpendableMax}
+                        >
+                            Stake {prettyAmount(spendableHuman)} {nativeAsset?.ticker} instead
+                        </Button>
+                    )}
+                </Notice>
+            )}
 
-                                {!isConnected ? (
-                                    <Button
-                                        colorPalette="purple"
-                                        w="full"
-                                        onClick={() => { onClose(); connect(); }}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        colorPalette="purple"
-                                        onClick={handleDelegate}
-                                        loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
-                                        w="full"
-                                    >
-                                        Delegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
-                                    </Button>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
+            <ProgressLine>{progressTrack}</ProgressLine>
 
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {!isConnected ? (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    w="full"
+                    onClick={onConnectWallet ?? (() => { onClose(); connect(); })}
+                >
+                    <LuWallet /> Connect Wallet
+                </Button>
+            ) : (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    onClick={handleDelegate}
+                    loading={isSubmitting}
+                    disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
+                    w="full"
+                >
+                    Stake {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                </Button>
+            )}
+        </StakingDialog>
     );
 }

@@ -1,13 +1,22 @@
 import type {Metadata, Viewport} from "next";
-import {Inter} from "next/font/google"
+import {Inter, JetBrains_Mono} from "next/font/google"
 
 import {Providers} from "./providers";
 import {UnderConstruction} from "@/components/under-construction/under-construction";
 import {isCommunitiesEnabled} from "@/lib/app-gate";
+import {HIDDEN_SITE_DESCRIPTION, isTestnetBuild, SITE_DESCRIPTION, SITE_NAME, SITE_OG_IMAGE, SITE_TITLE} from "@/lib/site-head";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+  variable: "--font-mono",
 })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communities.getbze.com";
@@ -17,39 +26,34 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://communities.getbze
 // providers, so no wallet / RPC / WebSocket code runs on a deployment that isn't public yet.
 const APP_ENABLED = isCommunitiesEnabled();
 
-const DESCRIPTION = APP_ENABLED
-  ? "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token."
-  : "Discover, join, and grow communities on the BeeZee blockchain. BeeZee Communities is coming soon.";
+const DESCRIPTION = APP_ENABLED ? SITE_DESCRIPTION : HIDDEN_SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Communities | BeeZee Blockchain",
+  title: SITE_TITLE,
   description: DESCRIPTION,
+  robots: isTestnetBuild() ? {index: false, follow: false} : undefined,
   icons: {
-    icon: "/images/logo_320px.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/images/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
-    siteName: "BeeZee Communities",
+    siteName: SITE_NAME,
     url: "/",
-    title: "Communities | BeeZee Blockchain",
-    description:
-      "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token.",
-    images: [
-      {
-        url: "/images/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "BeeZee Communities",
-      },
-    ],
+    title: SITE_TITLE,
+    description: DESCRIPTION,
+    images: [SITE_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Communities | BeeZee Blockchain",
-    description:
-      "Every token created on the BeeZee blockchain has its own community page: supply, staking rewards, burns, and a built-in way to get the token.",
-    images: ["/images/og-image.png"],
+    title: SITE_TITLE,
+    description: DESCRIPTION,
+    images: [SITE_OG_IMAGE.url],
   },
 };
 
@@ -60,7 +64,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({children}: { children: React.ReactNode }) {
     return (
-      <html className={inter.className} suppressHydrationWarning>
+      <html className={`${inter.className} ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
           <body>
             {APP_ENABLED ? <Providers>{children}</Providers> : <UnderConstruction/>}
           </body>

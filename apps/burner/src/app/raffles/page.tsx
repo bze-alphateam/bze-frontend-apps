@@ -1,24 +1,31 @@
 'use client';
 
+import {Box, chakra, Flex, Grid, VisuallyHidden} from "@chakra-ui/react";
+import {useRouter} from "next/navigation";
+import {useMemo, type ReactNode} from "react";
+import {LuArrowRight, LuClock, LuFlame, LuInfo} from "react-icons/lu";
+import {RaffleInfo} from "@/components/raffle-info";
+import {useRaffles} from "@/hooks/useRaffles";
 import {
-    Box,
-    Container,
-    VStack,
-    HStack,
-    Text,
-    Card,
-    Badge,
-    Grid,
-} from "@chakra-ui/react";
-import { useRouter } from "next/navigation";
-import { useMemo } from "react";
-import { RaffleInfo } from "@/components/raffle-info";
-import { useRaffles } from "@/hooks/useRaffles";
-import { useAsset, HighlightText, uAmountToBigNumberAmount, prettyAmount, toBigNumber, formatTimeRemainingFromEpochs, useEpochs } from "@bze/bze-ui-kit";
-import { RaffleSDKType } from "@bze/bzejs/bze/burner/raffle";
+    useAsset,
+    uAmountToBigNumberAmount,
+    prettyAmount,
+    toBigNumber,
+    formatTimeRemainingFromEpochs,
+    useEpochs,
+    HgCard,
+    PageContainer,
+    PageState,
+    Shimmer,
+    AppLink,
+    getFactoryApp,
+} from "@bze/bze-ui-kit";
+import {RaffleSDKType} from "@bze/bzejs/bze/burner/raffle";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
-import { rafflePrize, raffleWinChance } from "@/lib/raffle";
+import {rafflePrize, raffleWinChance} from "@/lib/raffle";
+import {InnerHero} from "@/components/ui/burner/inner-hero";
+import {AppPill} from "@/components/ui/burner/parts";
 
 interface RaffleCardProps {
     raffle: RaffleSDKType;
@@ -26,8 +33,17 @@ interface RaffleCardProps {
     onClick: () => void;
 }
 
-function RaffleCard({ raffle, currentEpoch, onClick }: RaffleCardProps) {
-    const { asset } = useAsset(raffle.denom);
+/** A prize or contribution box on the inset. */
+const RaffleFigure = ({label, value, ticker, ember}: { label: string; value: ReactNode; ticker: string; ember?: boolean }) => (
+    <Flex direction="column" gap="2px" bg="hg.inset" borderRadius="hg.md" px="14px" py="12px" minW="0">
+        <chakra.span fontSize="11px" letterSpacing="0.1em" textTransform="uppercase" fontWeight="700" color="hg.text.faint">{label}</chakra.span>
+        <chakra.span fontSize="20px" fontWeight="800" color={ember ? 'hg.link' : 'fg'} overflowWrap="anywhere">{value}</chakra.span>
+        <chakra.span fontSize="12px" color="hg.text.faint">{ticker}</chakra.span>
+    </Flex>
+);
+
+function RaffleCard({raffle, currentEpoch, onClick}: RaffleCardProps) {
+    const {asset} = useAsset(raffle.denom);
 
     const ticker = useMemo(() => asset?.ticker || raffle.denom, [asset?.ticker, raffle.denom]);
     const name = useMemo(() => asset?.name || raffle.denom, [asset?.name, raffle.denom]);
@@ -45,137 +61,77 @@ function RaffleCard({ raffle, currentEpoch, onClick }: RaffleCardProps) {
 
     const winChance = useMemo(() => raffleWinChance(raffle.chances), [raffle.chances]);
 
-    const timeRemaining = useMemo(() => {
-        // end_at is an epoch number (each epoch = 1 hour)
-        return formatTimeRemainingFromEpochs(raffle.end_at, currentEpoch);
-    }, [raffle.end_at, currentEpoch]);
-
-    const raffleName = useMemo(() => {
-        return `${ticker} Raffle`;
-    }, [ticker]);
+    // end_at is an epoch number (each epoch = 1 hour)
+    const timeRemaining = useMemo(() => formatTimeRemainingFromEpochs(raffle.end_at, currentEpoch), [raffle.end_at, currentEpoch]);
 
     return (
-        <Card.Root
-            bgGradient="to-br"
-            gradientFrom="purple.50"
-            gradientVia="pink.50"
-            gradientTo="orange.50"
-            _dark={{
-                gradientFrom: "purple.950",
-                gradientVia: "pink.950",
-                gradientTo: "orange.950",
-            }}
-            borderRadius="3xl"
-            shadow="lg"
-            cursor="pointer"
+        <HgCard
+            as="button"
+            interactive
             onClick={onClick}
-            transition="all 0.3s"
-            _hover={{
-                transform: "translateY(-4px) rotate(1deg)",
-                shadow: "2xl",
-            }}
+            textAlign="start"
+            cursor="pointer"
+            w="100%"
+            p="20px"
+            borderRadius="18px"
+            display="flex"
+            flexDirection="column"
+            gap="16px"
+            minW="0"
         >
-            <Card.Body>
-                <VStack gap="4" align="stretch">
-                    {/* Coin Info Header */}
-                    <HStack gap="3">
-                        <Box
-                            p="2"
-                            borderRadius="full"
-                        >
-                            {asset && <AssetLogo asset={asset} size="40px" /> }
-                        </Box>
-                        <VStack gap="0" align="start" flex="1">
-                            <Text fontSize="lg" fontWeight="black" color="purple.600" _dark={{ color: "purple.300" }}>
-                                {raffleName}
-                            </Text>
-                            <HStack gap="1">
-                                <Text fontSize="sm" fontWeight="bold">
-                                    {ticker}
-                                </Text>
-                                <Text fontSize="xs" color="fg.muted">
-                                    • {name}
-                                </Text>
-                            </HStack>
-                        </VStack>
-                    </HStack>
+            <Flex align="center" gap="12px" minW="0">
+                {asset && <AssetLogo asset={asset} size="44px"/>}
+                <Flex direction="column" gap="2px" minW="0">
+                    <chakra.strong fontSize="17px" truncate>{ticker} Raffle</chakra.strong>
+                    <chakra.span fontSize="13px" color="hg.text.faint" truncate>{ticker} · {name}</chakra.span>
+                </Flex>
+            </Flex>
 
-                    {/* Time and Chance Badges */}
-                    <HStack gap="2" flexWrap="wrap">
-                        <Badge colorPalette="purple" size="sm">
-                            ⏰ {timeRemaining}
-                        </Badge>
-                        <Badge colorPalette="pink" size="sm">
-                            {winChance}
-                        </Badge>
-                    </HStack>
+            <Flex gap="8px" wrap="wrap">
+                <AppPill><Flex as="span" align="center" gap="6px"><LuClock size={12} aria-hidden/>{timeRemaining}</Flex></AppPill>
+                <chakra.span fontSize="12px" fontWeight="600" px="10px" py="3px" borderRadius="hg.pill" color="hg.text.secondary" bg="hg.secondaryFill" borderWidth="1px" borderColor="hg.hairline">
+                    {winChance}
+                </chakra.span>
+            </Flex>
 
-                    {/* Prize and Contribution Info */}
-                    <Grid templateColumns="1fr 1fr" gap="3">
-                        {/* Current Prize */}
-                        <Box
-                            p="3"
-                            bg="white"
-                            _dark={{ bg: "gray.800" }}
-                            borderRadius="lg"
-                            textAlign="center"
-                        >
-                            <VStack gap="1">
-                                <Text fontSize="xs" color="fg.muted" fontWeight="bold">
-                                    🏆 PRIZE
-                                </Text>
-                                <HighlightText fontSize="xl" fontWeight="black" color="orange.500" highlightColor="orange.500" highlightIntensity="evident">
-                                    {formattedPrize}
-                                </HighlightText>
-                                <Text fontSize="xs" color="fg.muted">
-                                    {ticker}
-                                </Text>
-                            </VStack>
-                        </Box>
+            <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="10px">
+                <RaffleFigure label="Prize" value={formattedPrize} ticker={ticker} ember/>
+                <RaffleFigure label="Contribution" value={formattedTicketPrice} ticker={ticker}/>
+            </Grid>
 
-                        {/* Contribution Price */}
-                        <Box
-                            p="3"
-                            bg="white"
-                            _dark={{ bg: "gray.800" }}
-                            borderRadius="lg"
-                            textAlign="center"
-                        >
-                            <VStack gap="1">
-                                <Text fontSize="xs" color="fg.muted" fontWeight="bold">
-                                    💰 CONTRIBUTION
-                                </Text>
-                                <Text fontSize="xl" fontWeight="black" color="purple.500">
-                                    {formattedTicketPrice}
-                                </Text>
-                                <Text fontSize="xs" color="fg.muted">
-                                    {ticker}
-                                </Text>
-                            </VStack>
-                        </Box>
-                    </Grid>
-
-                    {/* Click to view CTA */}
-                    <Box
-                        p="2"
-                        bg="purple.100"
-                        _dark={{ bg: "purple.900/30" }}
-                        borderRadius="md"
-                        textAlign="center"
-                    >
-                        <Text fontSize="xs" fontWeight="bold" color="purple.700" _dark={{ color: "purple.300" }}>
-                            Click to contribute →
-                        </Text>
-                    </Box>
-                </VStack>
-            </Card.Body>
-        </Card.Root>
+            <Flex justify="space-between" align="center" pt="12px" borderTopWidth="1px" borderColor="hg.divider" fontSize="14px" fontWeight="600" color="hg.link">
+                Click to contribute
+                <LuArrowRight size={16} aria-hidden/>
+            </Flex>
+        </HgCard>
     );
 }
 
+/** A raffle card's skeleton while the list loads. */
+const RaffleCardLoading = () => (
+    <HgCard p="20px" borderRadius="18px" display="flex" flexDirection="column" gap="14px" aria-hidden data-testid="raffle-card-loading">
+        <Flex gap="12px" align="center">
+            <Shimmer boxSize="44px" borderRadius="full" flex="none"/>
+            <Flex direction="column" gap="6px" flex="1">
+                <Shimmer h="14px" w="60%"/>
+                <Shimmer h="10px" w="40%"/>
+            </Flex>
+        </Flex>
+        <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="10px">
+            <Shimmer h="72px" borderRadius="hg.md"/>
+            <Shimmer h="72px" borderRadius="hg.md"/>
+        </Grid>
+    </HgCard>
+);
+
+/** The Factory's raffle-creation flow: raffles are started there, not here. */
+const factoryRaffleHref = () => `${getFactoryApp().href}/raffle/new`;
+
+const rafflesGrid = {templateColumns: {base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))'}, gap: '16px'};
+
 export default function RafflesPage() {
     const router = useRouter();
-    const { raffles, isLoading } = useRaffles();
+    const {raffles, isLoading} = useRaffles();
     const {hourEpochInfo} = useEpochs()
 
     const currentEpoch = useMemo(() => toBigNumber(hourEpochInfo?.current_epoch ?? 0), [hourEpochInfo])
@@ -185,82 +141,70 @@ export default function RafflesPage() {
     };
 
     return (
-        <Box minH="100vh" pb="12">
-            <Container py={{ base: '6', md: '10' }}>
-                <VStack gap="8" align="stretch">
-                    {/* Page Header */}
-                    <VStack gap="2" align="start">
-                        <Text fontSize={{ base: "3xl", md: "4xl" }} fontWeight="black">
-                            🔥 Burning Raffles
-                        </Text>
-                        <Text fontSize={{ base: "md", md: "lg" }} color="fg.muted">
-                            Join active raffles and win rewards by burning tokens!
-                        </Text>
-                    </VStack>
+        <Box minH="100vh" pb="80px">
+            <InnerHero title="Burning raffles" subtitle="Join active raffles and win rewards by burning tokens!"/>
 
-                    {/* Info Card - What are Burning Raffles */}
-                    <Card.Root
-                        bgGradient="to-br"
-                        gradientFrom="blue.50"
-                        gradientTo="blue.100"
-                        _dark={{
-                            gradientFrom: "blue.950",
-                            gradientTo: "blue.900",
-                        }}
-                        borderRadius="3xl"
-                        shadow="lg"
-                    >
-                        <Card.Body>
-                            <VStack gap="4" align="stretch">
-                                <HStack gap="3">
-                                    <Text fontSize="3xl">ℹ️</Text>
-                                    <Text fontSize="xl" fontWeight="black" color="blue.700" _dark={{ color: "blue.300" }}>
-                                        What are Burning Raffles?
-                                    </Text>
-                                </HStack>
-                                <RaffleInfo />
-                            </VStack>
-                        </Card.Body>
-                    </Card.Root>
-
-                    {/* Raffles Grid */}
-                    {isLoading ? (
-                        <Box textAlign="center" py="12">
-                            <Text fontSize="md" color="fg.muted">
-                                Loading raffles...
-                            </Text>
-                        </Box>
-                    ) : raffles.length > 0 ? (
-                        <Grid
-                            templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }}
-                            gap="6"
-                        >
-                            {raffles.map((raffle, idx) => (
-                                <RaffleCard
-                                    key={`${raffle.denom}-${idx}`}
-                                    raffle={raffle}
-                                    currentEpoch={currentEpoch}
-                                    onClick={() => handleRaffleClick(raffle.denom)}
+            <PageContainer as="main" pt={{base: '28px', md: '36px'}}>
+                <Flex direction="column" gap="32px">
+                    <Flex as="section" direction="column" gap="16px">
+                        <chakra.h2 m="0" fontSize={{base: '20px', md: '22px'}} fontWeight="700">Active raffles</chakra.h2>
+                        {isLoading ? (
+                            <Box aria-busy="true">
+                                <VisuallyHidden>Loading raffles...</VisuallyHidden>
+                                <Grid {...rafflesGrid}>
+                                    {[1, 2, 3].map(i => <RaffleCardLoading key={i}/>)}
+                                </Grid>
+                            </Box>
+                        ) : raffles.length > 0 ? (
+                            <Grid {...rafflesGrid}>
+                                {raffles.map((raffle, idx) => (
+                                    <RaffleCard
+                                        key={`${raffle.denom}-${idx}`}
+                                        raffle={raffle}
+                                        currentEpoch={currentEpoch}
+                                        onClick={() => handleRaffleClick(raffle.denom)}
+                                    />
+                                ))}
+                            </Grid>
+                        ) : (
+                            <HgCard>
+                                <PageState
+                                    kind="empty"
+                                    icon={<LuFlame/>}
+                                    title="No Active Raffles"
+                                    description="There are no active raffles at the moment. Check back later!"
                                 />
-                            ))}
-                        </Grid>
-                    ) : (
-                        <Card.Root>
-                            <Card.Body>
-                                <VStack gap="3" align="center" py="12">
-                                    <Text fontSize="4xl">🔥</Text>
-                                    <Text fontSize="xl" fontWeight="bold">
-                                        No Active Raffles
-                                    </Text>
-                                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                        There are no active raffles at the moment. Check back later!
-                                    </Text>
-                                </VStack>
-                            </Card.Body>
-                        </Card.Root>
-                    )}
-                </VStack>
-            </Container>
+                            </HgCard>
+                        )}
+                    </Flex>
+
+                    <HgCard as="section" aria-labelledby="what-are-raffles" p={{base: '20px', md: '28px'}} borderRadius="20px" display="flex" flexDirection="column" gap="20px">
+                        <Flex align="center" gap="12px">
+                            <Flex
+                                as="span"
+                                aria-hidden
+                                boxSize="40px"
+                                flex="none"
+                                align="center"
+                                justify="center"
+                                borderRadius="hg.md"
+                                bg="hg.info/8"
+                                borderWidth="1px"
+                                borderColor="hg.info/30"
+                                color="hg.info"
+                            >
+                                <LuInfo size={20}/>
+                            </Flex>
+                            <chakra.h2 id="what-are-raffles" m="0" fontSize="20px" fontWeight="700">What are burning raffles?</chakra.h2>
+                        </Flex>
+                        <RaffleInfo/>
+                        <Flex direction="column" align="flex-start" gap="8px" pt="16px" borderTopWidth="1px" borderColor="hg.divider">
+                            <chakra.p m="0" fontSize="14px" color="hg.text.secondary">Want to run a raffle for your own token? Raffles are created in the Factory.</chakra.p>
+                            <AppLink app="factory" href={factoryRaffleHref()} flush>Factory</AppLink>
+                        </Flex>
+                    </HgCard>
+                </Flex>
+            </PageContainer>
         </Box>
     );
 }

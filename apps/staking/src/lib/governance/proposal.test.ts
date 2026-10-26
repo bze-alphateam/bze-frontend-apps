@@ -71,7 +71,7 @@ describe("title and summary", () => {
 describe("status", () => {
     it("names each listed status", () => {
         expect(statusInfo("PROPOSAL_STATUS_VOTING_PERIOD").text).toBe("Voting");
-        expect(statusInfo("PROPOSAL_STATUS_PASSED")).toEqual({text: "Passed", tone: "green"});
+        expect(statusInfo("PROPOSAL_STATUS_PASSED")).toEqual({text: "Passed", tone: "success"});
         expect(statusInfo("PROPOSAL_STATUS_REJECTED").text).toBe("Rejected");
         expect(statusInfo("PROPOSAL_STATUS_FAILED").text).toBe("Failed");
     });

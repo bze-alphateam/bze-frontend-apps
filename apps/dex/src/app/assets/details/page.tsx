@@ -1,52 +1,27 @@
 'use client';
 
-import React, {Suspense, useCallback, useMemo} from 'react';
-import {
-    Box,
-    Container,
-    VStack,
-    HStack,
-    Text,
-    Button,
-    Badge,
-    IconButton,
-    Skeleton,
-} from '@chakra-ui/react';
-import {
-    LuArrowLeft,
-    LuArrowUpRight,
-    LuArrowDownRight,
-    LuLink,
-    LuSearchX,
-} from 'react-icons/lu';
+import {Suspense, useCallback, useMemo} from 'react';
+import {Box, Button, chakra, Flex, IconButton, Skeleton} from '@chakra-ui/react';
+import {LuArrowLeft, LuLink, LuSearchX} from 'react-icons/lu';
 import {
     Asset,
-    ASSET_TYPE_FACTORY,
-    ASSET_TYPE_IBC,
-    ASSET_TYPE_NATIVE,
     useAsset,
     useAssetPrice,
     formatUsdAmount,
     HighlightText,
     TokenLogo,
     useToast,
+    useBlockedIbcInbound,
+    getLegacyAssetNotice,
+    LegacyAssetNoticeBox,
+    HaltedBadge, HaltedNotice,
+    hgVariant, FeaturedCard, HgCard, HeroGlow, IconTile, PageContainer, Shimmer,
 } from "@bze/bze-ui-kit";
 import {useNavigationWithParams, assetPagePath} from "@/hooks/useNavigation";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {AssetDetails} from "@/components/ui/assets/asset-details";
-
-const getTypeColor = (type: string) => {
-    switch (type) {
-        case ASSET_TYPE_NATIVE:
-            return 'purple'
-        case ASSET_TYPE_FACTORY:
-            return 'blue'
-        case ASSET_TYPE_IBC:
-            return 'teal'
-        default:
-            return 'gray'
-    }
-}
+import {PriceChange} from "@/components/ui/assets/price-change";
+import {KindTag} from "@/components/ui/staking/staking-card-parts";
 
 const AssetHeader = ({ asset }: { asset: Asset }) => {
     const { price, change, isLoading: priceLoading } = useAssetPrice(asset.denom)
@@ -61,167 +36,123 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
         } catch { /* clipboard unavailable: ignore */ }
     }, [asset.denom, asset.ticker, toast])
 
-    const renderChangeArrow = useMemo(() => {
-        if (change > 0) return <LuArrowUpRight size={14} color="var(--chakra-colors-green-500)" />
-        if (change < 0) return <LuArrowDownRight size={14} color="var(--chakra-colors-red-500)" />
-        return null
-    }, [change])
-
-    const renderChangeText = useMemo(() => {
-        if (change > 0) return <Text fontSize="sm" color="green.500">+{change}%</Text>
-        if (change < 0) return <Text fontSize="sm" color="red.500">{change}%</Text>
-        return <Text fontSize="sm" color="red.200">{change}%</Text>
-    }, [change])
-
     return (
-        <Box
-            bgGradient="to-br"
-            gradientFrom="blue.500/8"
-            gradientTo="blue.600/8"
-            borderWidth="1px"
-            borderColor="blue.500/20"
-            borderRadius="xl"
-            shadow="sm"
-            p={{ base: 4, md: 6 }}
-        >
-            <VStack align="stretch" gap={3}>
-                <HStack justify="space-between" align="start" flexWrap="wrap" gap={4}>
-                    <HStack gap={3}>
-                        <Box
-                            position="relative"
-                            width="48px"
-                            height="48px"
-                            borderRadius="full"
-                            bg="bg.surface"
-                            borderWidth="1px"
-                            borderColor="border.subtle"
-                            flexShrink={0}
-                        >
-                            <TokenLogo
-                                src={asset.logo}
-                                symbol={asset.ticker}
-                                circular={true}
-                            />
-                        </Box>
-                        <Box>
-                            <HStack gap={2} flexWrap="wrap">
-                                <Text fontWeight="bold" fontSize="xl">
-                                    {asset.name}
-                                </Text>
-                                <Badge colorPalette={getTypeColor(asset.type)} size="sm">
-                                    {asset.type.toUpperCase()}
-                                </Badge>
-                                {asset.verified && (<VerifiedBadge/>)}
-                            </HStack>
-                            <Text color="fg.muted" fontSize="sm">
-                                {asset.ticker}
-                            </Text>
-                        </Box>
-                    </HStack>
+        <FeaturedCard as="section" aria-label={asset.name} borderRadius="21px" px={{base: '18px', md: '24px'}} py="22px">
+            <Flex direction="column" gap="12px">
+                <Flex align="center" gap="16px" wrap="wrap">
+                    <Box
+                        position="relative"
+                        boxSize="56px"
+                        flex="none"
+                        borderRadius="full"
+                        borderWidth="1px"
+                        borderColor="hg.hairline"
+                    >
+                        <TokenLogo
+                            src={asset.logo}
+                            symbol={asset.ticker}
+                            circular={true}
+                        />
+                    </Box>
+                    <Flex direction="column" gap="4px" flex="1" minW="0">
+                        <Flex align="center" gap="8px" wrap="wrap">
+                            <chakra.h1 m="0" fontSize="26px" fontWeight="800" letterSpacing="-0.01em">{asset.name}</chakra.h1>
+                            <KindTag>{asset.type.toUpperCase()}</KindTag>
+                            {asset.verified && (<VerifiedBadge/>)}
+                            {asset.halted && (<HaltedBadge/>)}
+                        </Flex>
+                        <chakra.span color="hg.text.faint" fontSize="14px">{asset.ticker}</chakra.span>
+                    </Flex>
 
-                    <HStack gap={3}>
-                        <Box textAlign="right">
+                    <Flex align="center" gap="10px">
+                        <Flex direction="column" align="flex-end" gap="2px">
                             <Skeleton asChild loading={priceLoading}>
-                                <HighlightText fontWeight="semibold" fontSize="lg">
+                                <HighlightText fontWeight="700" fontSize="20px">
                                     ${formattedPrice}
                                 </HighlightText>
                             </Skeleton>
                             <Skeleton asChild loading={priceLoading}>
-                                <HStack gap={1} justify="flex-end">
-                                    {renderChangeArrow}
-                                    {renderChangeText}
-                                </HStack>
+                                <PriceChange change={change} fontSize="13px"/>
                             </Skeleton>
-                        </Box>
+                        </Flex>
                         <IconButton
                             aria-label="Copy link to this asset"
-                            size="sm"
-                            variant="ghost"
+                            size="lg"
+                            variant={hgVariant('secondary')}
                             onClick={copyAssetLink}
                         >
                             <LuLink />
                         </IconButton>
-                    </HStack>
-                </HStack>
+                    </Flex>
+                </Flex>
 
-                <Text fontSize="xs" fontFamily="mono" color="fg.muted" wordBreak="break-all">
+                <chakra.span fontSize="12px" fontFamily="mono" color="hg.text.faint" wordBreak="break-all">
                     {asset.denom}
-                </Text>
-            </VStack>
-        </Box>
+                </chakra.span>
+            </Flex>
+        </FeaturedCard>
     )
 }
 
 const AssetDetailsPageContent = () => {
     const {toAssetsPage, denomParam} = useNavigationWithParams()
     const {asset, isLoading} = useAsset(denomParam ?? '')
+    // Wind-down notice (e.g. USDC.n) — only while the chain refuses the asset's deposits.
+    const blockedIbcInbound = useBlockedIbcInbound()
+    const legacyNotice = useMemo(() => getLegacyAssetNotice(asset, blockedIbcInbound), [asset, blockedIbcInbound])
 
     const notFound = !isLoading && (!asset || asset.denom === '')
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" py={12}>
-                <VStack align="stretch" gap={6}>
-                    <Box>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toAssetsPage()}
-                        >
-                            <LuArrowLeft />Assets
-                        </Button>
-                    </Box>
+        <Box position="relative" minH="100vh">
+            <HeroGlow strength="inner" h="420px"/>
+            <PageContainer position="relative" zIndex="1" pt="28px" pb="80px">
+                <Flex direction="column" gap="20px">
+                    <Button
+                        alignSelf="flex-start"
+                        variant="ghost"
+                        size="md"
+                        px="12px"
+                        color="hg.text.secondary"
+                        onClick={() => toAssetsPage()}
+                    >
+                        <LuArrowLeft aria-hidden="true"/>Assets
+                    </Button>
 
                     {isLoading && (
-                        <VStack align="stretch" gap={4}>
-                            <Skeleton height="120px" borderRadius="xl" />
-                            <Skeleton height="300px" borderRadius="xl" />
-                        </VStack>
+                        <Flex direction="column" gap="16px" aria-busy="true">
+                            <Shimmer h="120px" borderRadius="22px" />
+                            <Shimmer h="300px" borderRadius="22px" />
+                        </Flex>
                     )}
 
                     {notFound && (
-                        <Box
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/8"
-                            gradientTo="blue.600/8"
-                            borderWidth="1px"
-                            borderColor="blue.500/20"
-                            borderRadius="xl"
-                            shadow="sm"
-                            p={10}
-                        >
-                            <VStack gap={3}>
-                                <LuSearchX size={32} color="var(--chakra-colors-fg-muted)" />
-                                <Text fontSize="lg" fontWeight="semibold">Asset not found</Text>
-                                <Text fontSize="sm" color="fg.muted" textAlign="center">
+                        <HgCard borderRadius="22px">
+                            <Flex direction="column" align="center" textAlign="center" gap="8px" py="10px">
+                                <IconTile icon={<LuSearchX/>} variant="outline" size={48}/>
+                                <chakra.strong fontSize="17px">Asset not found</chakra.strong>
+                                <chakra.span fontSize="14px" color="fg.muted" maxW="360px" lineHeight="1.5">
                                     We couldn&apos;t find an asset for this link. It may have been removed or the link is incorrect.
-                                </Text>
-                                <Button size="sm" variant="outline" onClick={() => toAssetsPage()}>
-                                    <LuArrowLeft />Browse all assets
+                                </chakra.span>
+                                <Button mt="4px" size="md" variant={hgVariant('secondary')} onClick={() => toAssetsPage()}>
+                                    <LuArrowLeft aria-hidden="true"/>Browse all assets
                                 </Button>
-                            </VStack>
-                        </Box>
+                            </Flex>
+                        </HgCard>
                     )}
 
                     {!isLoading && asset && asset.denom !== '' && (
                         <>
                             <AssetHeader asset={asset} />
-                            <Box
-                                bgGradient="to-br"
-                                gradientFrom="blue.500/5"
-                                gradientTo="blue.600/5"
-                                borderWidth="1px"
-                                borderColor="blue.500/15"
-                                borderRadius="xl"
-                                shadow="sm"
-                                p={{ base: 4, md: 6 }}
-                            >
+                            {legacyNotice && <LegacyAssetNoticeBox notice={legacyNotice} />}
+                            {asset.halted && <HaltedNotice tickers={[asset.ticker]} />}
+                            <HgCard as="section" aria-label="Asset details" borderRadius="22px" p={{base: '18px', md: '22px'}}>
                                 <AssetDetails asset={asset} />
-                            </Box>
+                            </HgCard>
                         </>
                     )}
-                </VStack>
-            </Container>
+                </Flex>
+            </PageContainer>
         </Box>
     );
 }

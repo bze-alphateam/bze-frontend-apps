@@ -6,7 +6,6 @@ import {
     Button,
     createListCollection,
     Field,
-    Group,
     HStack,
     Input,
     Portal,
@@ -17,6 +16,8 @@ import {
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
 import {TokenLogo} from '../token-logo';
+import {hgVariant} from '../../theme/variants';
+import {DrawerChosenRow, DrawerKV, DrawerMono, DrawerRoute} from './drawer-kit';
 import {
     useWithdrawableBalances,
     type WithdrawableAsset,
@@ -29,10 +30,7 @@ import {sanitizeNumberInput} from '../../utils/number';
 import {amountToUAmount, prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {formatDuration} from '../../utils/cross_chain';
 import {getChainName} from '../../constants/chain';
-
-interface WithdrawFormProps {
-    accentColor: string;
-}
+import {MaxInputGroup} from '../max-input-group';
 
 /**
  * Withdraw flow: send an asset from BeeZee to another chain.
@@ -45,7 +43,7 @@ interface WithdrawFormProps {
  *   • BZE-native + factory tokens can go anywhere BZE has an IBC channel.
  *     Osmosis is pre-selected as default.
  */
-export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
+export const WithdrawForm = () => {
     const [selectedAsset, setSelectedAsset] = useState<WithdrawableAsset | undefined>();
     const [selectedDestination, setSelectedDestination] = useState<WithdrawDestinationChain | undefined>();
     const [amount, setAmount] = useState('');
@@ -215,15 +213,15 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
     const destDisplayName = selectedDestination?.displayName ?? '';
 
     return (
-        <VStack gap="4" align="stretch">
-            <Text fontSize="sm" color="fg.muted">
+        <VStack gap="14px" align="stretch">
+            <Text fontSize="14px" color="fg.muted">
                 Send assets from BeeZee to other networks
             </Text>
 
             {/* Empty state */}
             {!isLoadingAssets && withdrawableAssets.length === 0 && (
-                <Box p="3" bg="fg.muted/5" borderRadius="md">
-                    <Text fontSize="sm" color="fg.muted">
+                <Box px="12px" py="10px" bg="hg.inset" borderRadius="14px">
+                    <Text fontSize="14px" color="fg.muted">
                         You don&apos;t have any assets that can be sent to another chain right now.
                     </Text>
                 </Box>
@@ -274,19 +272,10 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
             {/* Destination — locked for IBC vouchers, picker for native/factory */}
             {selectedAsset && selectedAsset.isDestinationLocked && selectedDestination && (
-                <Box>
-                    <Text fontSize="xs" fontWeight="medium" mb="1">Destination</Text>
-                    <HStack
-                        gap="2"
-                        p="2"
-                        borderWidth="1px"
-                        borderColor={`${accentColor}.500/20`}
-                        borderRadius="md"
-                    >
-                        <TokenLogo src={selectedDestination.logo} symbol={destDisplayName} size="16px"/>
-                        <Text fontSize="sm">{destDisplayName}</Text>
-                    </HStack>
-                </Box>
+                <DrawerChosenRow label="Destination">
+                    <TokenLogo src={selectedDestination.logo} symbol={destDisplayName} size="18px"/>
+                    {destDisplayName}
+                </DrawerChosenRow>
             )}
 
             {selectedAsset && !selectedAsset.isDestinationLocked && (
@@ -328,7 +317,7 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
             {/* Transfer direction label */}
             {selectedAsset && selectedDestination && (
-                <Text fontSize="xs" color="fg.muted">
+                <Text fontSize="13px" color="hg.text.faint">
                     From BeeZee → {destDisplayName}
                 </Text>
             )}
@@ -338,18 +327,16 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
                 <Box>
                     <Field.Root invalid={amountErrorText !== ''}>
                         <Field.Label>Amount to send</Field.Label>
-                        <Group attached w="full">
+                        <MaxInputGroup w="full" onMax={setMaxAmount}>
                             <Input
                                 size="sm"
+                                fontFamily="mono"
                                 placeholder="0.00"
                                 value={amount}
                                 onChange={(e) => onAmountChange(e.target.value)}
                                 onBlur={validateAmount}
                             />
-                            <Button variant="outline" size="sm" onClick={setMaxAmount}>
-                                Max
-                            </Button>
-                        </Group>
+                        </MaxInputGroup>
                         <Field.ErrorText>{amountErrorText}</Field.ErrorText>
                         {maxSpendable.isReserving && amountErrorText === '' && (
                             <Field.HelperText>
@@ -359,8 +346,8 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
                     </Field.Root>
 
                     {sourceBalance && (
-                        <HStack justify="space-between" mt="1.5">
-                            <Text fontSize="xs" color="fg.muted">Available on BeeZee</Text>
+                        <HStack justify="space-between" mt="6px" fontSize="12px">
+                            <Text color="hg.text.faint">Available on BeeZee</Text>
                             <Text fontSize="xs" fontFamily="mono">
                                 {prettyAmount(sourceBalance.display)} {selectedAsset.balance.ticker}
                             </Text>
@@ -371,37 +358,19 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
             {/* Route preview */}
             {routePreview && amount && (
-                <Box
-                    p="3"
-                    bgGradient="to-br"
-                    gradientFrom={`${accentColor}.500/8`}
-                    gradientTo={`${accentColor}.600/8`}
-                    borderRadius="md"
-                    borderWidth="1px"
-                    borderColor={`${accentColor}.500/20`}
-                >
-                    <VStack gap="2" align="stretch">
-                        <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted">Recipient gets</Text>
-                            <Text fontSize="sm" fontWeight="medium" fontFamily="mono">
-                                {routePreview.estimatedOutput} {routePreview.estimatedOutputTicker}
-                            </Text>
-                        </HStack>
-                        <HStack justify="space-between">
-                            <Text fontSize="xs" color="fg.muted">Estimated time</Text>
-                            <Text fontSize="xs">{formatDuration(routePreview.estimatedDurationSeconds)}</Text>
-                        </HStack>
-                    </VStack>
-                </Box>
+                <DrawerRoute>
+                    <DrawerKV label="Recipient gets" size={14}><DrawerMono size={14}><b>{routePreview.estimatedOutput} {routePreview.estimatedOutputTicker}</b></DrawerMono></DrawerKV>
+                    <DrawerKV label="Estimated time" size={12}>{formatDuration(routePreview.estimatedDurationSeconds)}</DrawerKV>
+                </DrawerRoute>
             )}
 
             {/* Wallet connect prompt */}
             {selectedDestination && destWalletStatus !== WalletState.Connected && (
-                <VStack gap="3">
-                    <Text fontSize="sm" color="fg.muted">
+                <VStack gap="10px" align="stretch">
+                    <Text fontSize="14px" color="fg.muted" textAlign="center">
                         Connect your wallet on {destDisplayName} to receive funds
                     </Text>
-                    <Button size="sm" w="full" colorPalette={accentColor} onClick={handleConnectDest}>
+                    <Button size="lg" w="full" variant={hgVariant('primary')} onClick={handleConnectDest}>
                         Connect to {destDisplayName}
                     </Button>
                 </VStack>
@@ -409,9 +378,9 @@ export const WithdrawForm = ({accentColor}: WithdrawFormProps) => {
 
             {/* Execute */}
             <Button
-                size="sm"
+                size="lg"
                 w="full"
-                colorPalette={accentColor}
+                variant={hgVariant('primary')}
                 disabled={!canExecute}
                 loading={isExecuting}
                 loadingText={progressMessage || "Transferring..."}

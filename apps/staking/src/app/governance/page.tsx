@@ -2,12 +2,12 @@
 
 import {useMemo, useState} from 'react';
 import NextLink from 'next/link';
-import {Box, Button, Container, HStack, Link, Skeleton, Stack, Text, VStack} from '@chakra-ui/react';
-import {LuCircleAlert, LuLandmark} from 'react-icons/lu';
+import {Box, Button, chakra, Flex, Link} from '@chakra-ui/react';
+import {LuLandmark} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
 import BigNumber from 'bignumber.js';
-import {getChainName, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
+import {getChainName, HgCard, hgVariant, PageContainer, PageState, Shimmer, type GovProposal, type GovVote} from '@bze/bze-ui-kit';
 import {useGovernance} from '@/hooks/useGovernance';
 import {useNow} from '@/hooks/useNow';
 import {useVoter} from '@/hooks/useVoter';
@@ -18,115 +18,107 @@ import {OpenProposalCard} from '@/components/governance/open-proposal-card';
 import {FinishedProposals} from '@/components/governance/finished-proposals';
 import {ConnectWallet} from '@/components/governance/connect-wallet';
 import {VoteFlow} from '@/components/governance/vote-flow';
+import {InnerHero} from '@/components/ui/layout/inner-hero';
 
 /** The voting power card: a visitor is asked to connect; a wallet sees its power. */
 function VotingPowerCard({isConnected, isLoading, power, failed}: {isConnected: boolean; isLoading: boolean; power?: VotingPower; failed?: boolean}) {
     if (isLoading || (isConnected && !power && !failed)) {
-        return <Skeleton hideBelow={isConnected ? undefined : 'md'} flex="1 1 300px" maxW={{md: '360px'}} h="76px" borderRadius="lg" />;
+        return (
+            <HgCard hideBelow={isConnected ? undefined : 'md'} px="18px" py="16px" display="flex" flexDirection="column" gap="10px" aria-hidden>
+                <Shimmer h="10px" w="40%" />
+                <Shimmer h="22px" w="60%" />
+                <Shimmer h="10px" w="50%" />
+            </HgCard>
+        );
     }
 
     const count = power?.validators.length ?? 0;
     const noStake = !!power && !power.power.gt(0);
 
     return (
-        <Box
-            flex="1 1 300px"
-            maxW={{md: '360px'}}
-            bg={{base: isConnected ? 'bg.panel' : undefined, md: 'bg.panel'}}
+        <HgCard
+            bg={{base: isConnected ? 'hg.card' : 'transparent', md: 'hg.card'}}
             borderWidth={{base: isConnected ? '1px' : '0', md: '1px'}}
-            borderRadius="lg"
-            px={{base: isConnected ? '4' : '0', md: '4.5'}}
-            py={{base: isConnected ? '3' : '0', md: '3.5'}}
+            boxShadow={{base: isConnected ? 'hg.card' : 'none', md: 'hg.card'}}
+            px={{base: isConnected ? '16px' : '0', md: '18px'}}
+            py={{base: isConnected ? '14px' : '0', md: '16px'}}
             data-testid="voting-power"
         >
             {isConnected && !power && (
-                <Text fontSize="sm" color="fg.muted">{"Your voting power didn't load. Reload the page to try again."}</Text>
+                <chakra.span fontSize="14px" color="fg.muted">{"Your voting power didn't load. Reload the page to try again."}</chakra.span>
             )}
             {power && (
-                <VStack align="start" gap="0.5">
-                    <Text fontSize="xs" fontWeight="medium" color="fg.muted">Your voting power</Text>
-                    <Text fontSize="xl" fontWeight="bold">{`${wholeBze(power.power)} BZE`}</Text>
-                    <Text fontSize="xs" color="fg.muted">
+                <Flex direction="column" align="flex-start" gap="4px">
+                    <chakra.span fontSize="12px" fontWeight="600" color="hg.text.faint">Your voting power</chakra.span>
+                    <chakra.span fontSize="24px" fontWeight="700">{`${wholeBze(power.power)} BZE`}</chakra.span>
+                    <chakra.span fontSize="12px" color="hg.text.faint">
                         {noStake ? 'You have no BZE staked.' : `Staked with ${count} ${count === 1 ? 'validator' : 'validators'}`}
-                    </Text>
+                    </chakra.span>
                     {power.inactive.gt(0) && (
-                        <Text fontSize="xs" color="fg.muted">{`${wholeBze(power.inactive)} BZE with inactive validators doesn't count.`}</Text>
+                        <chakra.span fontSize="12px" color="hg.text.faint">{`${wholeBze(power.inactive)} BZE with inactive validators doesn't count.`}</chakra.span>
                     )}
                     {noStake && (
-                        <Link asChild mt="1" fontSize="sm" fontWeight="semibold" color="purple.fg">
+                        <Link asChild mt="4px" fontSize="14px" fontWeight="600" color="hg.link">
                             <NextLink href="/">Stake BZE to get voting power →</NextLink>
                         </Link>
                     )}
-                </VStack>
+                </Flex>
             )}
             {!isConnected && (
-                <VStack align="stretch" gap="2.5">
-                    <Text hideBelow="md" fontSize="sm" color="fg.muted">Connect your wallet to see your voting power and vote.</Text>
+                <Flex direction="column" gap="12px">
+                    <chakra.span hideBelow="md" fontSize="14px" lineHeight="1.5" color="fg.muted">Connect your wallet to see your voting power and vote.</chakra.span>
                     <ConnectWallet phoneLabel="Connect Wallet to vote" />
-                </VStack>
+                </Flex>
             )}
-        </Box>
+        </HgCard>
     );
 }
 
 function LoadingState() {
     return (
-        <VStack aria-busy="true" aria-label="Loading proposals" align="stretch" gap="4">
-            <Skeleton w="200px" h="22px" />
-            <Skeleton h={{base: '300px', md: '168px'}} borderRadius="lg" />
-            <Skeleton w="120px" h="22px" mt="4" />
-            {[1, 2, 3].map((i) => <Skeleton key={i} h={{base: '88px', md: '56px'}} borderRadius="lg" />)}
-        </VStack>
+        <Flex direction="column" gap="16px" aria-busy="true" aria-label="Loading proposals">
+            <Shimmer w="200px" h="20px" />
+            <Shimmer h={{base: '300px', md: '168px'}} borderRadius="hg.lg" />
+            <Shimmer w="120px" h="20px" mt="16px" />
+            {[1, 2, 3].map((i) => <Shimmer key={i} h={{base: '88px', md: '52px'}} borderRadius="hg.md" />)}
+        </Flex>
     );
 }
 
 function ErrorState({onRetry}: {onRetry: () => void}) {
     return (
-        <Stack
-            role="alert"
-            direction={{base: 'column', md: 'row'}}
-            bg="red.subtle"
-            borderWidth="1px"
-            borderColor="red.500/30"
-            borderRadius="lg"
-            p={{base: '4', md: '6'}}
-            gap={{base: '2', md: '4'}}
-            align={{base: 'stretch', md: 'flex-start'}}
-        >
-            <Box hideBelow="md" color="red.fg" mt="0.5"><LuCircleAlert size={20} /></Box>
-            <VStack align="start" gap="1" flex="1">
-                <Text fontWeight="bold" color="red.fg">Couldn&apos;t load proposals</Text>
-                <Text fontSize="sm" color="fg.muted">
-                    {"The BeeZee node didn't answer. Your stake and your votes are not affected. Try again in a moment."}
-                </Text>
-            </VStack>
-            <Button variant="outline" colorPalette="red" size={{base: 'lg', md: 'sm'}} onClick={onRetry}>Try again</Button>
-        </Stack>
+        <HgCard p="0" borderColor="hg.danger/35">
+            <PageState
+                kind="error"
+                title="Couldn't load proposals"
+                description="The BeeZee node didn't answer. Your stake and your votes are not affected. Try again in a moment."
+                action={<Button variant={hgVariant('secondary')} size={{base: 'lg', md: 'md'}} onClick={onRetry}>Try again</Button>}
+            />
+        </HgCard>
     );
 }
 
 function EmptyState() {
     return (
-        <VStack bg="bg.panel" borderWidth="1px" borderStyle="dashed" borderRadius="lg" py={{base: '10', md: '14'}} px="6" gap="2" textAlign="center">
-            <Box hideBelow="md" w="12" h="12" borderRadius="full" bg="purple.subtle" color="purple.fg" display="flex" alignItems="center" justifyContent="center">
-                <LuLandmark size={22} />
-            </Box>
-            <Text fontSize="lg" fontWeight="bold">No proposals yet</Text>
-            <Text fontSize="sm" color="fg.muted" maxW="420px">
-                When a proposal is put to a vote, it shows up here and you can vote with your staked BZE.
-            </Text>
-        </VStack>
+        <HgCard p="0" borderStyle="dashed">
+            <PageState
+                kind="empty"
+                icon={<LuLandmark />}
+                title="No proposals yet"
+                description="When a proposal is put to a vote, it shows up here and you can vote with your staked BZE."
+            />
+        </HgCard>
     );
 }
 
 function NoneOpen() {
     return (
-        <VStack bg="bg.panel" borderWidth="1px" borderStyle="dashed" borderRadius="lg" py={{base: '6', md: '8'}} px="6" gap="1" textAlign="center">
-            <Text fontWeight="bold">No proposals are open for voting right now</Text>
-            <Text fontSize="sm" color="fg.muted">
+        <HgCard borderStyle="dashed" display="flex" flexDirection="column" alignItems="center" gap="4px" textAlign="center" py={{base: '24px', md: '32px'}}>
+            <chakra.strong fontSize="15px">No proposals are open for voting right now</chakra.strong>
+            <chakra.span fontSize="14px" color="fg.muted">
                 {"New proposals show up here as soon as voting starts. We'll flag them on your dashboard too."}
-            </Text>
-        </VStack>
+            </chakra.span>
+        </HgCard>
     );
 }
 
@@ -147,21 +139,21 @@ export default function GovernancePage() {
     const showData = !showLoading && !showError && !!data && !isEmpty;
 
     return (
-        <Container maxW="7xl" py="6" pb="12">
-            <VStack align="stretch" gap={{base: '5', md: '8'}}>
-                <Stack direction={{base: 'column', md: 'row'}} justify="space-between" align={{base: 'stretch', md: 'flex-start'}} gap={{base: '5', md: '6'}}>
-                    <VStack align="start" gap={{base: '1.5', md: '2'}} flex="999 1 520px">
-                        <Text as="h1" fontSize={{base: 'xl', md: '2xl'}} fontWeight="bold">Governance</Text>
-                        <Text fontSize="sm" color="fg.muted" maxW="640px">
-                            {'Vote on proposals that change the BeeZee network. Your staked BZE is your voting power.'}
-                            <Text as="span" hideBelow="md">{" If you don't vote, your validator's vote counts for the BZE you staked with them."}</Text>
-                        </Text>
-                    </VStack>
-                    {!showError && (
-                        <VotingPowerCard isConnected={isConnected} isLoading={showLoading || (isConnected && voter.isLoading)} power={voter.power} failed={voter.failed} />
-                    )}
-                </Stack>
+        <Box>
+            <InnerHero
+                title="Governance"
+                subtitle={
+                    <>
+                        {'Vote on proposals that change the BeeZee network. Your staked BZE is your voting power.'}
+                        <chakra.span hideBelow="md">{" If you don't vote, your validator's vote counts for the BZE you staked with them."}</chakra.span>
+                    </>
+                }
+                aside={!showError && (
+                    <VotingPowerCard isConnected={isConnected} isLoading={showLoading || (isConnected && voter.isLoading)} power={voter.power} failed={voter.failed} />
+                )}
+            />
 
+            <PageContainer as="main" pt={{base: '24px', md: '32px'}} pb={{base: '48px', md: '64px'}} display="flex" flexDirection="column" gap={{base: '24px', md: '32px'}}>
                 {showData && <RulesStrip params={data.params} />}
 
                 {showError && <ErrorState onRetry={reload} />}
@@ -170,11 +162,11 @@ export default function GovernancePage() {
 
                 {showData && (
                     <>
-                        <VStack as="section" aria-labelledby="open-h" align="stretch" gap={{base: '3', md: '4'}}>
-                            <HStack as="h2" id="open-h" fontSize={{base: 'md', md: 'lg'}} fontWeight="bold" gap="1.5">
-                                <Text as="span">Open for voting</Text>
-                                <Text as="span" color="fg.muted" fontWeight="medium">{data.open.length}</Text>
-                            </HStack>
+                        <Flex as="section" aria-labelledby="open-h" direction="column" gap={{base: '12px', md: '14px'}}>
+                            <chakra.h2 id="open-h" m="0" fontSize={{base: '18px', md: '20px'}} fontWeight="700" display="flex" gap="6px">
+                                <span>Open for voting</span>
+                                <chakra.span color="hg.text.faint" fontWeight="500">{data.open.length}</chakra.span>
+                            </chakra.h2>
                             {data.open.length === 0 ? <NoneOpen /> : data.open.map((item) => {
                                 const forProposal = voter.voterFor(item.proposal.id);
                                 return (
@@ -191,7 +183,7 @@ export default function GovernancePage() {
                                     />
                                 );
                             })}
-                        </VStack>
+                        </Flex>
 
                         <FinishedProposals
                             proposals={data.finished}
@@ -202,7 +194,7 @@ export default function GovernancePage() {
                         />
                     </>
                 )}
-            </VStack>
+            </PageContainer>
             {flow && data && (
                 <VoteFlow
                     proposal={flow.proposal}
@@ -217,6 +209,6 @@ export default function GovernancePage() {
                     onEnded={reload}
                 />
             )}
-        </Container>
+        </Box>
     );
 }

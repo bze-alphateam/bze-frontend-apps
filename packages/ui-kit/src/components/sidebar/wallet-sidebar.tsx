@@ -5,10 +5,12 @@ import {
     Badge,
     Box,
     Button,
+    chakra,
     createListCollection,
     Field,
-    Group,
+    Flex,
     HStack,
+    IconButton,
     Image,
     Input,
     Portal,
@@ -17,8 +19,8 @@ import {
     Textarea,
     VStack,
 } from '@chakra-ui/react'
-import {LuChevronDown, LuChevronUp, LuCopy, LuX} from 'react-icons/lu'
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
+import {LuArrowRightLeft, LuCheck, LuChevronDown, LuChevronUp, LuCircleArrowUp, LuCopy, LuPower, LuSend} from 'react-icons/lu'
+import {useCallback, useEffect, useMemo, useState} from 'react'
 import {getChainName, getExplorerAccountURL} from "../../constants/chain";
 import {AppLink} from "../app-identity/app-button";
 import {WalletState} from "@interchain-kit/core";
@@ -45,12 +47,16 @@ import {BuyForm} from './buy-form';
 import {PendingTransactions} from './pending-transactions';
 import {TxDetailsModal} from './tx-details-modal';
 import {useSkipTxTracker} from '../../hooks/useSkipTxTracker';
+import {StatusPill, type NoticeStatus} from '../hive-glow/status';
+import {hgVariant} from '../../theme/variants';
+import {DrawerInset, DrawerMono, DrawerQuickAction, DrawerSectionTitle, DrawerViewHeader} from './drawer-kit';
 import {isCrossChainEnabled, isSkipEnabled} from '../../constants/cross_chain';
+import {useBridgeAvailability} from '../../hooks/useBridgeAvailability';
+import {MaxInputGroup} from '../max-input-group';
 
 type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
 
 interface WalletSidebarContentProps {
-    accentColor?: string
     skipWalletModal?: boolean
     // When set (communities token pages), this denom's balance is pinned at the top of the
     // balances list even when zero, every other balance is collapsed behind an expand control,
@@ -61,7 +67,6 @@ interface WalletSidebarContentProps {
 interface BalanceItemProps {
     asset: AssetBalance;
     onClick: () => void;
-    accentColor: string;
 }
 
 const validateAmount = (amount: string, coin: AssetBalance|undefined, onError:(msg: string) => void) => {
@@ -82,8 +87,7 @@ const validateAmount = (amount: string, coin: AssetBalance|undefined, onError:(m
     }
 }
 
-const BalanceItem = ({asset, onClick, accentColor}: BalanceItemProps) => {
-    const [showSendButton, setShowSendButton] = useState(false)
+const BalanceItem = ({asset, onClick}: BalanceItemProps) => {
     const formattedBalanceAmount = useMemo(() => {
         return prettyAmount(uAmountToBigNumberAmount(asset.amount, asset.decimals ?? 0))
     }, [asset.amount, asset.decimals])
@@ -93,59 +97,70 @@ const BalanceItem = ({asset, onClick, accentColor}: BalanceItemProps) => {
     }, [asset.USDValue])
 
     return (
-        <Box
-            p="3"
-            bgGradient="to-br"
-            gradientFrom={`${accentColor}.500/5`}
-            gradientTo={`${accentColor}.600/5`}
-            borderRadius="md"
+        <Flex
+            direction="column"
+            gap="6px"
+            px="12px"
+            py="10px"
+            bg="hg.inset"
+            borderRadius="12px"
             borderWidth="1px"
-            borderColor={`${accentColor}.500/15`}
-            _hover={{
-                gradientFrom: `${accentColor}.500/10`,
-                gradientTo: `${accentColor}.600/10`,
-                borderColor: `${accentColor}.500/25`
-            }}
-            transition="all 0.2s"
-            onMouseLeave={() => setShowSendButton(false)}
-            onMouseEnter={() => setShowSendButton(true)}
+            borderColor="hg.hairline"
+            _hover={{borderColor: 'app.border'}}
+            transition="border-color 0.2s"
+            data-testid="balance-row"
+            className="group"
         >
-            <HStack justify="space-between" mb="2">
-                <HStack>
+            <HStack justify="space-between" gap="8px" minH="26px">
+                <HStack gap="8px" minW="0">
                     <Image
                         src={asset.logo}
                         alt={asset.ticker}
                         width="20px"
                         height="20px"
                         borderRadius="full"
+                        flex="none"
                     />
-                    <Text fontSize="sm" fontWeight="medium">
+                    <chakra.strong fontSize="14px" color="fg">
                         {asset.ticker}
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
+                    </chakra.strong>
+                    <Text fontSize="12px" color="hg.text.faint" truncate>
                         {asset.name}
                     </Text>
                     {isIbcDenom(asset.denom) && (
-                        <Badge size="xs" colorPalette={accentColor}>
+                        <chakra.span fontSize="10px" fontWeight="700" letterSpacing="0.06em" px="6px" py="2px"
+                                     borderRadius="6px" color="hg.accent" bg="app.subtle">
                             IBC
-                        </Badge>
+                        </chakra.span>
                     )}
                 </HStack>
-                {showSendButton && (
-                    <HStack justify="end">
-                        <Button size='2xs' variant={'outline'} onClick={onClick}>Send</Button>
-                    </HStack>
-                )}
+                {/* Always shown on phones (no hover); revealed on hover or keyboard focus from md up. */}
+                <Button
+                    size="xs"
+                    h="26px"
+                    variant={hgVariant('secondary')}
+                    borderRadius="8px"
+                    gap="6px"
+                    onClick={onClick}
+                    opacity={{base: 1, md: 0}}
+                    _groupHover={{opacity: 1}}
+                    _groupFocusWithin={{opacity: 1}}
+                    transition="opacity 0.15s"
+                    data-testid="balance-row-send"
+                >
+                    <LuSend aria-hidden="true"/>
+                    Send
+                </Button>
             </HStack>
-            <HStack justify="space-between">
-                <HighlightText fontSize="sm" fontFamily="mono">
+            <HStack justify="space-between" align="baseline">
+                <HighlightText fontSize="14px" fontFamily="mono">
                     {formattedBalanceAmount}
                 </HighlightText>
-                <HighlightText fontSize="sm" color="fg.muted">
+                <HighlightText fontSize="13px" color="hg.text.faint">
                     ${formattedBalanceUSDValue}
                 </HighlightText>
             </HStack>
-        </Box>
+        </Flex>
     )
 }
 
@@ -156,15 +171,13 @@ export interface WalletSendFormProps {
     onClose: () => void;
     /** Ticker to preselect ('' = none). */
     selectedTicker: string;
-    /** App accent palette. */
-    accentColor: string;
 }
 
 /**
  * The wallet sidebar's "Send Coins" form. Exported on its own so it can be rendered (and
  * tested) outside the sidebar; the sidebar mounts it as `SendForm`.
  */
-export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}: WalletSendFormProps) => {
+export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFormProps) => {
     // Send form state
     const [isLoading, setIsLoading] = useState(false)
     const [selectedCoin, setSelectedCoin] = useState<AssetBalance|undefined>()
@@ -309,20 +322,8 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
     }, [onCoinSelectChange, selectedTicker])
 
     return (
-        <VStack gap="4" align="stretch">
-            <HStack justify="space-between" align="center">
-                <Text fontSize="sm" fontWeight="medium">
-                    Send Coins
-                </Text>
-                <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={handleCancel}
-                    disabled={isLoading}
-                >
-                    <LuX size="14" />
-                </Button>
-            </HStack>
+        <VStack gap="16px" align="stretch">
+            <DrawerViewHeader title="Send Coins" onClose={handleCancel} disabled={isLoading}/>
 
             <Box>
                 <Select.Root
@@ -365,50 +366,39 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
                 </Select.Root>
 
                 {selectedCoin && (
-                    <Box
-                        mt="2"
-                        p="3"
-                        bgGradient="to-br"
-                        gradientFrom={`${accentColor}.500/10`}
-                        gradientTo={`${accentColor}.600/10`}
-                        borderRadius="md"
-                        borderWidth="1px"
-                        borderColor={`${accentColor}.500/30`}
-                    >
-                        <HStack justify="space-between">
-                            <Text fontSize="xs" color="fg.muted">
+                    <DrawerInset mt="6px" px="12px" py="10px">
+                        <HStack justify="space-between" fontSize="13px">
+                            <Text color="hg.text.faint">
                                 Available:
                             </Text>
-                            <VStack gap="0" align="end">
-                                <Text fontSize="sm" fontWeight="medium">
+                            <VStack gap="2px" align="end">
+                                <DrawerMono size={14}>
                                     {uAmountToAmount(selectedCoin.amount, selectedCoin.decimals)} {selectedCoin.ticker}
-                                </Text>
+                                </DrawerMono>
                                 {selectedCoin.USDValue.gt(0) && (
-                                    <Text fontSize="xs" color="fg.muted">
+                                    <Text fontSize="12px" color="hg.text.faint">
                                         ≈ ${shortNumberFormat(selectedCoin.USDValue)}
                                     </Text>
                                 )}
                             </VStack>
                         </HStack>
-                    </Box>
+                    </DrawerInset>
                 )}
             </Box>
 
             <Box>
                 <Field.Root invalid={amountErrorText !== ""}>
                     <Field.Label>Amount</Field.Label>
-                    <Group attached w="full" maxW="sm">
+                    <MaxInputGroup w="full" maxW="sm" onMax={setMaxAmount} maxDisabled={isLoading}>
                         <Input
                             size="sm"
+                            fontFamily="mono"
                             placeholder="Amount to send"
                             value={sendAmount}
                             onChange={(e) => onAmountChange(e.target.value)}
                             onBlur={() => validateAmount(sendAmount, selectedCoin, setSendAmountError)}
                         />
-                        <Button variant="outline" size="sm" onClick={setMaxAmount} disabled={isLoading}>
-                            Max
-                        </Button>
-                    </Group>
+                    </MaxInputGroup>
                     <Field.ErrorText>{amountErrorText}</Field.ErrorText>
                     {maxSpendable.isReserving && amountErrorText === "" && (
                         <Field.HelperText>
@@ -422,6 +412,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
                     <Field.Label>Recipient Address</Field.Label>
                     <Input
                         size="sm"
+                        fontFamily="mono"
                         placeholder="bze...2a1b"
                         value={recipient}
                         onChange={(e) => onRecipientChange(e.target.value)}
@@ -435,7 +426,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
                     <Field.Label>Memo
                         <Field.RequiredIndicator
                             fallback={
-                                <Badge size="xs" variant="surface">
+                                <Badge size="xs" variant={hgVariant('neutral')} borderRadius="hg.pill">
                                     Optional
                                 </Badge>
                             }
@@ -453,12 +444,12 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
                 </Field.Root>
             </Box>
 
-            <HStack gap="2">
+            <HStack gap="10px">
                 <Button
-                    size="sm"
+                    size="lg"
                     flex="1"
+                    variant={hgVariant('primary')}
                     onClick={handleSend}
-                    colorPalette={accentColor}
                     disabled={!isValidForm || isLoading}
                     loading={isLoading}
                     loadingText={"Sending..."}
@@ -466,9 +457,9 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
                     Send
                 </Button>
                 <Button
-                    size="sm"
+                    size="lg"
                     flex="1"
-                    variant="outline"
+                    variant={hgVariant('secondary')}
                     onClick={handleCancel}
                     disabled={isLoading}
                 >
@@ -479,7 +470,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker, accentColor}:
     )
 }
 
-export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = false, featuredDenom }: WalletSidebarContentProps) => {
+export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }: WalletSidebarContentProps) => {
     const [viewState, setViewState] = useState<ViewState>('balances')
     const [showAllBalances, setShowAllBalances] = useState(false)
     const [selectedTxId, setSelectedTxId] = useState<string>('')
@@ -489,8 +480,8 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
     const [isDisconnecting, setIsDisconnecting] = useState(false)
     const [showCopiedTooltip, setShowCopiedTooltip] = useState(false)
     const [clickedBalance, setClickedBalance] = useState('')
-    const copyButtonRef = useRef<HTMLButtonElement>(null)
     const crossChainEnabled = useMemo(() => isCrossChainEnabled(), []);
+    const {isAvailable: bridgeAvailable} = useBridgeAvailability();
     const skipEnabled = useMemo(() => isSkipEnabled(), []);
 
     const {
@@ -577,6 +568,12 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
 
     const walletAddress = useMemo(() => stringTruncateFromCenter(address ?? "", 16), [address])
 
+    // A finished Latest Buy leaves after a minute; if its details are open, go back to the balances.
+    const selectedTxGone = viewState === 'txDetails' && !txTracker.transactions.some(t => t.id === selectedTxId)
+    useEffect(() => {
+        if (selectedTxGone) setViewState('balances')
+    }, [selectedTxGone])
+
     const handleCopyAddress = () => {
         navigator.clipboard.writeText(address)
         setShowCopiedTooltip(true)
@@ -606,192 +603,143 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
     }, [disconnect])
 
     const renderQuickActions = () => (
-        <VStack gap="2" w="full">
-            <HStack gap="2" w="full">
-                <Button
-                    flex="1"
-                    size="xs"
-                    variant="outline"
-                    onClick={() => setViewState('send')}
-                    disabled={assetsLoading}
-                >
+        <VStack gap="8px" w="full" align="stretch">
+            <HStack gap="8px" w="full">
+                <DrawerQuickAction icon={<LuSend/>} onClick={() => setViewState('send')} disabled={assetsLoading}>
                     Send
-                </Button>
-                {crossChainEnabled && (
-                    <Button
-                        flex="1"
-                        size="xs"
-                        variant="outline"
-                        onClick={() => setViewState('transfer')}
-                    >
+                </DrawerQuickAction>
+                {bridgeAvailable && (
+                    <DrawerQuickAction icon={<LuArrowRightLeft/>} onClick={() => setViewState('transfer')}>
                         Deposit / Withdraw
-                    </Button>
+                    </DrawerQuickAction>
                 )}
             </HStack>
             {skipEnabled && (
-                <Button
-                    w="full"
-                    size="xs"
-                    variant="outline"
-                    onClick={() => setViewState('buy')}
-                >
-                    Buy BZE
-                </Button>
+                <HStack w="full">
+                    <DrawerQuickAction icon={<LuCircleArrowUp/>} onClick={() => setViewState('buy')}>
+                        Buy BZE
+                    </DrawerQuickAction>
+                </HStack>
             )}
         </VStack>
     )
 
     const renderBalancesView = () => (
-        <VStack gap="6" align="stretch">
+        <VStack gap="22px" align="stretch">
             {/* Token Balances Section */}
-            <Box>
-                <Text fontSize="sm" fontWeight="medium" mb="3">
-                    Balances
-                </Text>
-                <VStack gap="2" align="stretch">
-                    {featuredDenom ? (
-                        <>
-                            {featuredBalance && (
-                                <BalanceItem
-                                    key={featuredBalance.denom}
-                                    asset={featuredBalance}
-                                    onClick={() => onBalanceClick(featuredBalance.ticker)}
-                                    accentColor={accentColor}
-                                />
-                            )}
-                            {otherBalances.length > 0 && (
-                                <>
-                                    <Button
-                                        size="xs"
-                                        variant="ghost"
-                                        colorPalette={accentColor}
-                                        onClick={() => setShowAllBalances(prev => !prev)}
-                                    >
-                                        {showAllBalances ? <LuChevronUp /> : <LuChevronDown />}
-                                        {showAllBalances ? 'Hide other balances' : `Show all balances (${otherBalances.length})`}
-                                    </Button>
-                                    {showAllBalances && otherBalances.map((bal) => (
-                                        <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)} accentColor={accentColor}/>
-                                    ))}
-                                </>
-                            )}
-                        </>
-                    ) : (
-                        sortedBalances.map((bal) => (
-                            <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)} accentColor={accentColor}/>
-                        ))
-                    )}
-                </VStack>
-            </Box>
+            <VStack gap="8px" align="stretch">
+                <DrawerSectionTitle>Balances</DrawerSectionTitle>
+                {featuredDenom ? (
+                    <>
+                        {featuredBalance && (
+                            <BalanceItem
+                                key={featuredBalance.denom}
+                                asset={featuredBalance}
+                                onClick={() => onBalanceClick(featuredBalance.ticker)}
+                            />
+                        )}
+                        {otherBalances.length > 0 && (
+                            <>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    color="hg.link"
+                                    onClick={() => setShowAllBalances(prev => !prev)}
+                                >
+                                    {showAllBalances ? <LuChevronUp /> : <LuChevronDown />}
+                                    {showAllBalances ? 'Hide other balances' : `Show all balances (${otherBalances.length})`}
+                                </Button>
+                                {showAllBalances && otherBalances.map((bal) => (
+                                    <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)}/>
+                                ))}
+                            </>
+                        )}
+                    </>
+                ) : (
+                    sortedBalances.map((bal) => (
+                        <BalanceItem key={bal.denom} asset={bal} onClick={() => onBalanceClick(bal.ticker)}/>
+                    ))
+                )}
+            </VStack>
 
             {/* Disconnect Button */}
-            <Box>
-                <Button
-                    size="sm"
-                    width="full"
-                    variant="outline"
-                    colorPalette="red"
-                    onClick={handleDisconnectAll}
-                    loading={isDisconnecting}
-                    loadingText={"Disconnecting..."}
-                >
-                    Disconnect Wallet
-                </Button>
-            </Box>
+            <Button
+                size="md"
+                width="full"
+                variant={hgVariant('danger')}
+                onClick={handleDisconnectAll}
+                loading={isDisconnecting}
+                loadingText={"Disconnecting..."}
+            >
+                <LuPower/>
+                Disconnect Wallet
+            </Button>
         </VStack>
     )
 
-    const statusColor = useMemo(() => {
+    // The pill prints the wallet state as the wallet library names it; only its tone is ours.
+    const statusTone = useMemo<NoticeStatus | 'neutral'>(() => {
         switch (status) {
             case WalletState.Connected:
-                return 'green'
+                return 'success'
             case WalletState.Connecting:
-                return 'yellow'
+                return 'warning'
             case WalletState.Disconnected:
-                return 'red'
+                return 'danger'
             default:
-                return 'gray'
+                return 'neutral'
         }
     }, [status])
 
     return (
-        <VStack gap="6" align="stretch">
+        <VStack gap="22px" align="stretch">
             {/* Wallet Status - Always at top */}
-            <Box>
+            <VStack gap="12px" align="stretch">
                 {!skipWalletModal && <InterchainWalletModal />}
-                <HStack justify="space-between" mb="3">
-                    <Text fontSize="sm" fontWeight="medium">
+                <HStack justify="space-between">
+                    <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">
                         Wallet Status
                     </Text>
-                    <Badge colorPalette={statusColor} size="sm">
+                    <StatusPill tone={statusTone} live={status === WalletState.Connecting}>
                         {status}
-                    </Badge>
+                    </StatusPill>
                 </HStack>
                 {status === WalletState.Connected &&
-                    <Box
-                        p="3"
-                        bgGradient="to-br"
-                        gradientFrom={`${accentColor}.500/8`}
-                        gradientTo={`${accentColor}.600/8`}
-                        borderRadius="md"
-                        borderWidth="1px"
-                        borderColor={`${accentColor}.500/20`}
-                    >
-                        <Text fontSize="xs" color="fg.muted" mb="1">
+                    <DrawerInset gap="2px" pt="12px" pb="8px" pl="14px" pr="12px" data-testid="wallet-address-card">
+                        <Text fontSize="12px" color="hg.text.faint">
                             {username ?? "Address"}
                         </Text>
-                        <HStack justify="space-between">
-                            <Text fontSize="sm" fontFamily="mono">
+                        <HStack justify="space-between" gap="8px">
+                            <DrawerMono size={14}>
                                 {walletAddress}
-                            </Text>
-                            <Box position="relative">
-                                <Button
-                                    ref={copyButtonRef}
-                                    size="xs"
-                                    variant="ghost"
-                                    onClick={handleCopyAddress}
-                                >
+                            </DrawerMono>
+                            {showCopiedTooltip ? (
+                                <HStack as="span" role="status" gap="4px" h="32px" px="6px" fontSize="12px" fontWeight="600" color="hg.success.text">
+                                    <LuCheck size="14"/>
+                                    Copied!
+                                </HStack>
+                            ) : (
+                                <IconButton aria-label="Copy address" size="sm" variant="ghost" color="hg.text.muted" onClick={handleCopyAddress}>
                                     <LuCopy />
-                                </Button>
-                                {showCopiedTooltip && (
-                                    <Box
-                                        position="absolute"
-                                        top="-35px"
-                                        right="0"
-                                        bgGradient="to-br"
-                                        gradientFrom={`${accentColor}.500`}
-                                        gradientTo={`${accentColor}.600`}
-                                        color="white"
-                                        px="3"
-                                        py="1.5"
-                                        borderRadius="md"
-                                        fontSize="xs"
-                                        fontWeight="semibold"
-                                        whiteSpace="nowrap"
-                                        zIndex="tooltip"
-                                        shadow="md"
-                                    >
-                                        Copied!
-                                    </Box>
-                                )}
-                            </Box>
+                                </IconButton>
+                            )}
                         </HStack>
-                        <HStack justify="center" mt="2" fontSize="xs">
+                        <HStack justify="center" mt="6px" pt="6px" borderTopWidth="1px" borderColor="hg.divider">
                             <AppLink app="explorer" href={getExplorerAccountURL(address)}>Explorer</AppLink>
                         </HStack>
-                    </Box>
+                    </DrawerInset>
                 }
                 {status !== WalletState.Connected &&
                     <Button
-                        size="sm"
-                        variant="solid"
+                        size="lg"
+                        variant={hgVariant('primary')}
                         w="full"
                         onClick={handleConnect}
                     >
                         Connect Wallet
                     </Button>
                 }
-            </Box>
+            </VStack>
 
             {/* Quick Actions + Content */}
             {status === WalletState.Connected && viewState === 'balances' && renderQuickActions()}
@@ -800,19 +748,17 @@ export const WalletSidebarContent = ({ accentColor = 'blue', skipWalletModal = f
                     transactions={txTracker.transactions}
                     onDismiss={txTracker.dismissTransaction}
                     onSelect={(tx) => { setSelectedTxId(tx.id); setViewState('txDetails'); }}
-                    accentColor={accentColor}
                 />
             )}
             {status === WalletState.Connected && viewState === 'balances' && renderBalancesView()}
-            {status === WalletState.Connected && viewState === 'send' && <WalletSendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')} accentColor={accentColor}/>}
-            {status === WalletState.Connected && crossChainEnabled && viewState === 'transfer' && <BridgeForm accentColor={accentColor} onClose={() => setViewState('balances')} />}
-            {status === WalletState.Connected && skipEnabled && viewState === 'buy' && <BuyForm accentColor={accentColor} onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
+            {status === WalletState.Connected && viewState === 'send' && <WalletSendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')}/>}
+            {status === WalletState.Connected && crossChainEnabled && viewState === 'transfer' && <BridgeForm onClose={() => setViewState('balances')} />}
+            {status === WalletState.Connected && skipEnabled && viewState === 'buy' && <BuyForm onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
             {status === WalletState.Connected && viewState === 'txDetails' && selectedTxId && (() => {
                 const tx = txTracker.transactions.find(t => t.id === selectedTxId);
                 if (!tx) return null;
-                return <TxDetailsModal tx={tx} onClose={() => setViewState('balances')} accentColor={accentColor}/>;
+                return <TxDetailsModal tx={tx} onClose={() => setViewState('balances')}/>;
             })()}
         </VStack>
     )
 }
-

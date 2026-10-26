@@ -16,10 +16,14 @@ import {
 } from "@bze/bzejs/bze/tradebin/tx";
 import {
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
-    MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward, MsgDeleteStakingReward,
+    MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
+    MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
 } from "@bze/bzejs/bze/rewards/tx";
 import {MsgFundBurner, MsgStartRaffle, MsgJoinRaffle} from "@bze/bzejs/bze/burner/tx";
-import {MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata} from "@bze/bzejs/bze/tokenfactory/tx";
+import {
+    MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata, MsgSetDenomBranding,
+} from "@bze/bzejs/bze/tokenfactory/tx";
 import {MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher} from "@bze/bzejs/bze/cointrunk/tx";
 
 // Cosmos modules
@@ -72,10 +76,17 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     // BZE rewards
     MsgCreateStakingReward, MsgUpdateStakingReward, MsgJoinStaking, MsgExitStaking,
     MsgClaimStakingRewards, MsgCreateTradingReward, MsgActivateTradingReward,
+    // BZE rewards — finished staking reward cleanup (chain v8.2.0)
+    MsgDeleteStakingReward,
+    // BZE rewards — denom rewards (chain v8.2.0)
+    MsgCreateDenomReward, MsgCreateDenomRewardSchedule, MsgUpdateDenomRewardSchedule,
+    MsgDistributeDenomRewards, MsgJoinDenomReward, MsgClaimDenomRewards, MsgExitDenomReward,
     // BZE burner
     MsgFundBurner, MsgStartRaffle, MsgJoinRaffle,
     // BZE tokenfactory
     MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata,
+    // BZE tokenfactory — token brand kit (chain v8.2.0)
+    MsgSetDenomBranding,
     // BZE cointrunk
     MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher,
     // Cosmos bank

@@ -42,6 +42,9 @@ export function createAppVitestConfig(appDir: string): UserConfig {
             // Apps that haven't written any tests yet still expose a `test`
             // script (so `turbo run test` covers them); don't fail on zero tests.
             passWithNoTests: true,
+            // CI runs every app's suite in parallel on a shared runner, so a test that takes
+            // ~1 s on a laptop can take several there: allow 20 s before calling it hung.
+            testTimeout: 20_000,
         },
     };
 }

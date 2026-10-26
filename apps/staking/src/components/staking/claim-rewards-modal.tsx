@@ -1,7 +1,7 @@
 'use client';
 
-import {useState, useMemo} from 'react';
-import {Box, Button, HStack, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
+import {useState, useMemo, type ReactNode} from 'react';
+import {Box, Button, chakra, Flex, Grid} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
@@ -13,6 +13,9 @@ import {
     useAssetPrice,
     formatUsdAmount,
     truncateAddress,
+    FeaturedCard,
+    hgVariant,
+    IconTile,
 } from '@bze/bze-ui-kit';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
@@ -20,6 +23,7 @@ import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import {LuGift, LuCheck, LuWallet} from 'react-icons/lu';
 import {ValidatorAvatar} from './validator-avatar';
+import {ProgressLine, StakingDialog} from '@/components/ui/staking/dialog';
 
 export interface ValidatorRewardEntry {
     validatorAddress: string;
@@ -130,177 +134,149 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW="md" p="6">
-                        <Dialog.Header pb="4">
-                            <Dialog.Title>Claim Staking Rewards</Dialog.Title>
-                        </Dialog.Header>
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                {/* Total selected rewards */}
-                                <Box
-                                    bg="purple.500/5"
-                                    p="4"
-                                    borderRadius="lg"
-                                    borderWidth="1px"
-                                    borderColor="purple.500/20"
-                                    textAlign="center"
-                                >
-                                    <VStack gap="1">
-                                        <Box color="purple.500">
-                                            <LuGift size={28} />
-                                        </Box>
-                                        <Text fontSize="xl" fontWeight="bold">
-                                            {prettyAmount(selectedRewardsHuman)} {nativeAsset?.ticker}
-                                        </Text>
-                                        {selectedRewardsUsd.gt(0) && (
-                                            <Text fontSize="xs" color="fg.muted">
-                                                ~{formatUsdAmount(selectedRewardsUsd)}
-                                            </Text>
-                                        )}
-                                        <Text fontSize="xs" color="fg.muted">
-                                            {selectedValidators.size} of {claimableEntries.length} validator{claimableEntries.length > 1 ? 's' : ''} selected
-                                        </Text>
-                                    </VStack>
-                                </Box>
+        <StakingDialog isOpen={isOpen} onClose={onClose} busy={isSubmitting} title="Claim Staking Rewards">
+            {/* Total selected rewards */}
+            <FeaturedCard p="18px" bg="hg.raised" display="flex" flexDirection="column" alignItems="center" gap="4px" textAlign="center">
+                <Box mb="6px"><IconTile icon={<LuGift />} size={44} /></Box>
+                <chakra.strong fontSize="24px">
+                    {prettyAmount(selectedRewardsHuman)} {nativeAsset?.ticker}
+                </chakra.strong>
+                {selectedRewardsUsd.gt(0) && (
+                    <chakra.span fontSize="12px" color="hg.text.faint">
+                        ~{formatUsdAmount(selectedRewardsUsd)}
+                    </chakra.span>
+                )}
+                <chakra.span fontSize="12px" color="hg.text.faint">
+                    {selectedValidators.size} of {claimableEntries.length} validator{claimableEntries.length > 1 ? 's' : ''} selected
+                </chakra.span>
+            </FeaturedCard>
 
-                                {/* Select all toggle */}
-                                {claimableEntries.length > 1 && (
-                                    <Box
-                                        px="3"
-                                        py="2"
-                                        cursor="pointer"
-                                        borderRadius="md"
-                                        bg={allSelected ? 'purple.500/10' : 'transparent'}
-                                        _hover={{bg: allSelected ? 'purple.500/15' : 'bg.subtle'}}
-                                        onClick={toggleAll}
-                                        transition="all 0.15s"
-                                    >
-                                        <HStack justify="space-between">
-                                            <Text fontSize="sm" fontWeight="semibold">
-                                                {allSelected ? 'Deselect All' : 'Select All'}
-                                            </Text>
-                                            <Box
-                                                w="18px"
-                                                h="18px"
-                                                borderRadius="sm"
-                                                borderWidth="2px"
-                                                borderColor={allSelected ? 'purple.500' : 'fg.muted'}
-                                                bg={allSelected ? 'purple.500' : 'transparent'}
-                                                display="flex"
-                                                alignItems="center"
-                                                justifyContent="center"
-                                                transition="all 0.15s"
-                                            >
-                                                {allSelected && <LuCheck size={12} color="white" />}
-                                            </Box>
-                                        </HStack>
-                                    </Box>
-                                )}
+            {/* Select all toggle */}
+            {claimableEntries.length > 1 && (
+                <CheckRow checked={allSelected} onToggle={toggleAll}>
+                    <chakra.span fontSize="14px" fontWeight="600">{allSelected ? 'Deselect All' : 'Select All'}</chakra.span>
+                </CheckRow>
+            )}
 
-                                {/* Validator list */}
-                                <Box maxH="250px" overflowY="auto">
-                                    <VStack gap="1" align="stretch">
-                                        {claimableEntries.map(entry => {
-                                            const rewardsHuman = uAmountToBigNumberAmount(entry.rewards, decimals);
-                                            const isSelected = selectedValidators.has(entry.validatorAddress);
+            {/* Validator list */}
+            <Flex direction="column" gap="4px" maxH="250px" overflowY="auto" role="group" aria-label="Validators">
+                {claimableEntries.map(entry => {
+                    const rewardsHuman = uAmountToBigNumberAmount(entry.rewards, decimals);
+                    const isSelected = selectedValidators.has(entry.validatorAddress);
 
-                                            return (
-                                                <Box
-                                                    key={entry.validatorAddress}
-                                                    px="3"
-                                                    py="2"
-                                                    cursor="pointer"
-                                                    borderRadius="md"
-                                                    bg={isSelected ? 'purple.500/10' : 'transparent'}
-                                                    _hover={{bg: isSelected ? 'purple.500/15' : 'bg.subtle'}}
-                                                    onClick={() => toggleValidator(entry.validatorAddress)}
-                                                    transition="all 0.15s"
-                                                >
-                                                    <HStack justify="space-between">
-                                                        <HStack gap="2" flex="1" minW="0">
-                                                            <ValidatorAvatar
-                                                                src={entry.logoUrl}
-                                                                name={entry.moniker}
-                                                                size="28px"
-                                                            />
-                                                            <Text fontSize="sm" lineClamp={1}>
-                                                                {entry.moniker || truncateAddress(entry.validatorAddress)}
-                                                            </Text>
-                                                        </HStack>
-                                                        <HStack gap="3" flexShrink={0}>
-                                                            <Text fontSize="xs" fontWeight="semibold" color="purple.500">
-                                                                +{prettyAmount(rewardsHuman)}
-                                                            </Text>
-                                                            <Box
-                                                                w="18px"
-                                                                h="18px"
-                                                                borderRadius="sm"
-                                                                borderWidth="2px"
-                                                                borderColor={isSelected ? 'purple.500' : 'fg.muted'}
-                                                                bg={isSelected ? 'purple.500' : 'transparent'}
-                                                                display="flex"
-                                                                alignItems="center"
-                                                                justifyContent="center"
-                                                                transition="all 0.15s"
-                                                            >
-                                                                {isSelected && <LuCheck size={12} color="white" />}
-                                                            </Box>
-                                                        </HStack>
-                                                    </HStack>
-                                                </Box>
-                                            );
-                                        })}
-                                    </VStack>
-                                </Box>
+                    return (
+                        <CheckRow
+                            key={entry.validatorAddress}
+                            checked={isSelected}
+                            onToggle={() => toggleValidator(entry.validatorAddress)}
+                            aside={
+                                <chakra.span fontSize="12px" fontWeight="600" color="hg.accent">
+                                    +{prettyAmount(rewardsHuman)}
+                                </chakra.span>
+                            }
+                        >
+                            <Flex align="center" gap="8px" minW="0">
+                                <ValidatorAvatar src={entry.logoUrl} name={entry.moniker} size="24px" />
+                                <chakra.span fontSize="14px" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+                                    {entry.moniker || truncateAddress(entry.validatorAddress)}
+                                </chakra.span>
+                            </Flex>
+                        </CheckRow>
+                    );
+                })}
+            </Flex>
 
-                                {feeCheck.message && (
-                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
-                                )}
+            {feeCheck.message && (
+                <chakra.span fontSize="12px" color="hg.danger.text" textAlign="center">{feeCheck.message}</chakra.span>
+            )}
 
-                                {progressTrack && (
-                                    <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
-                                )}
+            <ProgressLine>{progressTrack}</ProgressLine>
 
-                                {!isConnected ? (
-                                    <Button
-                                        colorPalette="purple"
-                                        w="full"
-                                        onClick={() => { onClose(); connect(); }}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                ) : (
-                                    <HStack gap="3">
-                                        <Button
-                                            variant="outline"
-                                            onClick={onClose}
-                                            flex="1"
-                                            disabled={isSubmitting}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            colorPalette="purple"
-                                            onClick={handleClaim}
-                                            loading={isSubmitting}
-                                            disabled={!address || selectedValidators.size === 0 || !feeCheck.canAfford}
-                                            flex="1"
-                                        >
-                                            Claim{selectedValidators.size > 0 ? ` (${selectedValidators.size})` : ''}
-                                        </Button>
-                                    </HStack>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
+            {!isConnected ? (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    w="full"
+                    onClick={() => { onClose(); connect(); }}
+                >
+                    <LuWallet /> Connect Wallet
+                </Button>
+            ) : (
+                <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="10px">
+                    <Button
+                        variant={hgVariant('secondary')}
+                        size="lg"
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant={hgVariant('primary')}
+                        size="lg"
+                        onClick={handleClaim}
+                        loading={isSubmitting}
+                        disabled={!address || selectedValidators.size === 0 || !feeCheck.canAfford}
+                    >
+                        Claim{selectedValidators.size > 0 ? ` (${selectedValidators.size})` : ''}
+                    </Button>
+                </Grid>
+            )}
+        </StakingDialog>
+    );
+}
 
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+interface CheckRowProps {
+    checked: boolean;
+    onToggle: () => void;
+    children: ReactNode;
+    /** Before the box: the row's rewards. */
+    aside?: ReactNode;
+}
+
+/** A selectable row with the Staking check box on the right; selected rows take the app tint. */
+function CheckRow({checked, onToggle, children, aside}: CheckRowProps) {
+    return (
+        <chakra.button
+            type="button"
+            role="checkbox"
+            aria-checked={checked}
+            onClick={onToggle}
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            gap="10px"
+            w="full"
+            px="12px"
+            py="10px"
+            borderRadius="hg.md"
+            bg={checked ? 'app.subtle' : 'transparent'}
+            color="fg"
+            textAlign="start"
+            cursor="pointer"
+            transition="background 0.15s"
+            _hover={{bg: checked ? 'app.muted' : 'hg.hoverFill'}}
+            focusVisibleRing="inside"
+        >
+            {children}
+            <Flex align="center" gap="12px" flex="none">
+                {aside}
+                <Flex
+                    as="span"
+                    aria-hidden
+                    boxSize="18px"
+                    borderRadius="5px"
+                    borderWidth="2px"
+                    borderColor={checked ? 'app.solid' : 'hg.text.faint'}
+                    bg={checked ? 'app.solid' : 'transparent'}
+                    color="hg.buttonText"
+                    align="center"
+                    justify="center"
+                    transition="all 0.15s"
+                >
+                    {checked && <LuCheck size={12} />}
+                </Flex>
+            </Flex>
+        </chakra.button>
     );
 }

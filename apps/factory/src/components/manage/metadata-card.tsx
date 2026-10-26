@@ -4,116 +4,66 @@ import React, { useMemo, useState } from 'react'
 import {
     Box,
     Button,
-    Card,
     Field,
     HStack,
     Input,
-    Separator,
-    Skeleton,
     Text,
     Textarea,
     VStack,
 } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
-import type { Metadata, MetadataSDKType } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
-import { LuArrowRight, LuPencil } from 'react-icons/lu'
-import { Asset, getChainName } from '@bze/bze-ui-kit'
+import type { MetadataSDKType } from '@bze/bzejs/cosmos/bank/v1beta1/bank'
+import { LuArrowRight, LuLock, LuWallet } from 'react-icons/lu'
+import { Asset, HgCard, IconTile, Shimmer, getChainName, hgVariant } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
-import { InfoBox } from '@/components/ui/info-box'
+import { softButton } from '@/components/ui/soft-button'
 import {
     MAX_DESCRIPTION_LENGTH,
     validateDescription,
     validateName,
 } from '@/components/token-wizard/validation'
+import { buildUpdatedMetadata, metadataChanges, type MetadataChange, type MetadataForm } from '@/lib/token-metadata'
+import type { AdminState } from '@/lib/workspace'
 
 const { setDenomMetadata } = bze.tokenfactory.MessageComposer.withTypeUrl
 
-interface MetadataForm {
-    name: string
-    description: string
-}
-
-/**
- * MsgSetDenomMetadata replaces the whole metadata object, so we rebuild it
- * from what's on-chain and swap only the editable fields. Symbol, base,
- * display, the denom units, and the URI are carried over untouched — they're
- * not editable here. Tokens that somehow have no metadata yet get the wizard's
- * canonical layout: base denom at exponent 0 + display unit at the asset's
- * decimals.
- */
-function buildUpdatedMetadata(current: MetadataSDKType | undefined, asset: Asset, form: MetadataForm): Metadata {
-    const shared = {
-        name: form.name.trim(),
-        description: form.description.trim(),
-    }
-
-    if (current && current.base) {
-        return {
-            ...shared,
-            denomUnits: current.denom_units.map(u => ({
-                denom: u.denom,
-                exponent: u.exponent,
-                aliases: u.aliases,
-            })),
-            base: current.base,
-            display: current.display,
-            symbol: current.symbol,
-            uri: current.uri,
-            uriHash: current.uri_hash,
-        }
-    }
-
-    const subdenom = asset.denom.split('/')[2] ?? asset.denom
-    const displayDenom = asset.ticker.toLowerCase()
-    return {
-        ...shared,
-        denomUnits: [
-            { denom: asset.denom, exponent: 0, aliases: [subdenom] },
-            { denom: displayDenom, exponent: asset.decimals, aliases: [] },
-        ],
-        base: asset.denom,
-        display: displayDenom,
-        symbol: asset.ticker,
-        uri: '',
-        uriHash: '',
-    }
-}
+/** A quiet text button in the link colour (Cancel, Back). */
+const linkButton = { variant: 'ghost' as const, size: 'lg' as const, color: 'hg.link', fontWeight: '600' }
 
 function MetadataRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
     return (
-        <HStack justify="space-between" align="start" gap={4}>
-            <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+        <VStack align="stretch" gap="3px">
+            <Text fontSize="12px" color="hg.text.faint">
                 {label}
             </Text>
             <Text
-                fontSize="sm"
-                fontWeight="medium"
-                textAlign="right"
+                fontSize="14px"
                 fontFamily={mono ? 'mono' : undefined}
-                wordBreak="break-all"
+                overflowWrap="anywhere"
+                whiteSpace="pre-wrap"
                 color={value ? undefined : 'fg.muted'}
             >
                 {value || '—'}
             </Text>
-        </HStack>
+        </VStack>
     )
 }
 
-function DiffRow({ label, oldValue, newValue }: { label: string; oldValue: string; newValue: string }) {
+function DiffRow({ label, oldValue, newValue }: MetadataChange) {
     return (
-        <VStack align="stretch" gap={1}>
-            <Text fontSize="sm" color="fg.muted">
+        <VStack align="stretch" gap="6px" data-testid={`metadata-diff-${label.toLowerCase()}`}>
+            <Text fontSize="13px" color="fg.muted">
                 {label}
             </Text>
-            <HStack gap={2} align="start" flexWrap="wrap">
-                <Text fontSize="sm" color="fg.muted" textDecoration="line-through" wordBreak="break-all">
+            <HStack gap="8px" align="start" flexWrap="wrap">
+                <Text fontSize="14px" color="hg.text.faint" textDecoration="line-through" overflowWrap="anywhere">
                     {oldValue || '—'}
                 </Text>
-                <Box color="fg.muted" mt="0.5">
+                <Box color="hg.text.faint" mt="3px" aria-hidden>
                     <LuArrowRight size={14} />
                 </Box>
-                <Text fontSize="sm" fontWeight="medium" wordBreak="break-all">
+                <Text fontSize="14px" fontWeight="600" overflowWrap="anywhere">
                     {newValue || '—'}
                 </Text>
             </HStack>
@@ -122,19 +72,21 @@ function DiffRow({ label, oldValue, newValue }: { label: string; oldValue: strin
 }
 
 /**
- * Admin-only card on the token manage panel: view the on-chain metadata,
- * edit the mutable fields (name, description), review an old → new diff,
- * and sign one MsgSetDenomMetadata.
+ * "What wallets show": the token's on-chain name and description next to the fixed ticker and
+ * token ID. The admin edits the two mutable fields in place, reviews an old → new diff and signs
+ * one MsgSetDenomMetadata; everyone else reads, and a renounced token says it's frozen.
  */
 export function MetadataCard({
     asset,
     metadata,
     isLoading,
+    access,
     onSaved,
 }: {
     asset: Asset;
     metadata: MetadataSDKType | undefined;
     isLoading: boolean;
+    access: AdminState;
     onSaved: () => void;
 }) {
     const { address } = useChain(getChainName())
@@ -145,26 +97,18 @@ export function MetadataCard({
     const [touched, setTouched] = useState<{ [K in keyof MetadataForm]?: boolean }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const currentName = metadata?.name ?? asset.name
-    const currentDescription = metadata?.description ?? ''
+    const isAdmin = access === 'admin'
+    const current: MetadataForm = { name: metadata?.name ?? asset.name, description: metadata?.description ?? '' }
 
     const errors = useMemo(() => ({
         name: validateName(form.name),
         description: validateDescription(form.description),
     }), [form])
     const isValid = Object.values(errors).every(e => e === '')
-
-    const changes = useMemo(() => {
-        const diff: Array<{ label: string; oldValue: string; newValue: string }> = []
-        if (form.name.trim() !== currentName) diff.push({ label: 'Name', oldValue: currentName, newValue: form.name.trim() })
-        if (form.description.trim() !== currentDescription) {
-            diff.push({ label: 'Description', oldValue: currentDescription, newValue: form.description.trim() })
-        }
-        return diff
-    }, [form, currentName, currentDescription])
+    const changes = metadataChanges(current, form)
 
     const startEditing = () => {
-        setForm({ name: currentName, description: currentDescription })
+        setForm(current)
         setTouched({})
         setMode('edit')
     }
@@ -191,98 +135,27 @@ export function MetadataCard({
     }
 
     return (
-        <Card.Root
-            variant="outline"
-            p="5"
-            bgGradient="to-br"
-            gradientFrom="yellow.500/8"
-            gradientTo="yellow.600/8"
-            borderColor="yellow.500/20"
-        >
-            <VStack align="stretch" gap={4}>
-                <HStack justify="space-between" gap={2}>
-                    <HStack gap={2}>
-                        <Box p={2} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                            <LuPencil size={18} />
-                        </Box>
-                        <Text fontWeight="semibold">Metadata</Text>
+        <HgCard as="section" aria-label="What wallets show" p="22px" minW={0} data-testid="metadata-card">
+            <VStack align="stretch" gap="16px">
+                <HStack justify="space-between" gap="10px" flexWrap="wrap">
+                    <HStack gap="10px">
+                        <IconTile icon={<LuWallet />} size={36} />
+                        <Text as="h2" fontSize="17px" fontWeight="700">What wallets show</Text>
                     </HStack>
-                    {mode === 'view' && (
-                        <Button size="sm" variant="outline" colorPalette="yellow" onClick={startEditing} disabled={isLoading}>
+                    {isAdmin && mode === 'view' && (
+                        <Button {...softButton} size="sm" h="34px" px="14px" onClick={startEditing} disabled={isLoading}>
                             Edit
                         </Button>
                     )}
                 </HStack>
 
-                {mode === 'view' && (
-                    isLoading ? (
-                        <VStack align="stretch" gap={2}>
-                            <Skeleton height="4" />
-                            <Skeleton height="4" />
-                            <Skeleton height="4" />
-                        </VStack>
-                    ) : (
-                        <VStack align="stretch" gap={3}>
-                            <MetadataRow label="Name" value={currentName} />
-                            <MetadataRow label="Description" value={currentDescription} />
-                        </VStack>
-                    )
-                )}
-
-                {mode === 'edit' && (
-                    <VStack align="stretch" gap={4}>
-                        <Field.Root invalid={Boolean(touched.name) && errors.name !== ''}>
-                            <Field.Label>Name</Field.Label>
-                            <Input
-                                value={form.name}
-                                onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                                onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
-                            />
-                            <Field.ErrorText>{errors.name}</Field.ErrorText>
-                        </Field.Root>
-
-                        <Field.Root invalid={Boolean(touched.description) && errors.description !== ''}>
-                            <Field.Label>Description</Field.Label>
-                            <Textarea
-                                placeholder="What is this token for?"
-                                rows={3}
-                                value={form.description}
-                                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                                onBlur={() => setTouched(prev => ({ ...prev, description: true }))}
-                            />
-                            <Field.HelperText>
-                                Optional — {MAX_DESCRIPTION_LENGTH} characters max.
-                            </Field.HelperText>
-                            <Field.ErrorText>{errors.description}</Field.ErrorText>
-                        </Field.Root>
-
-                        <InfoBox>
-                            The symbol ({asset.ticker}), denom, and decimals are immutable — only the
-                            fields above can change. Updates are public and take effect immediately.
-                        </InfoBox>
-
-                        <HStack gap={2}>
-                            <Button variant="ghost" colorPalette="yellow" onClick={() => setMode('view')} flex="1">
-                                Cancel
-                            </Button>
-                            <Button
-                                colorPalette="yellow"
-                                onClick={() => setMode('review')}
-                                disabled={!isValid || changes.length === 0}
-                                flex="1"
-                            >
-                                Review changes
-                            </Button>
-                        </HStack>
-                        {isValid && changes.length === 0 && (
-                            <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                Nothing changed yet.
-                            </Text>
-                        )}
+                {isLoading ? (
+                    <VStack align="stretch" gap="8px">
+                        <Shimmer h="16px" />
+                        <Shimmer h="16px" />
+                        <Shimmer h="16px" />
                     </VStack>
-                )}
-
-                {mode === 'review' && (
+                ) : mode === 'review' ? (
                     <VStack align="stretch" gap={4}>
                         <VStack align="stretch" gap={3}>
                             {changes.map(change => (
@@ -290,30 +163,97 @@ export function MetadataCard({
                             ))}
                         </VStack>
 
-                        <Separator />
-
-                        <InfoBox>
-                            Signing replaces the token&apos;s on-chain metadata with the values above.
-                            Wallets and explorers pick the change up right away.
-                        </InfoBox>
-
-                        <HStack gap={2}>
-                            <Button variant="ghost" colorPalette="yellow" onClick={() => setMode('edit')} flex="1">
+                        <HStack gap="10px">
+                            <Button {...linkButton} onClick={() => setMode('edit')} flex="1">
                                 Back
                             </Button>
                             <Button
-                                colorPalette="yellow"
+                                variant={hgVariant('primary')}
+                                size="lg"
                                 onClick={submit}
                                 loading={isSubmitting}
-                                loadingText="Waiting for signature..."
+                                loadingText="Confirm in your wallet"
                                 flex="1"
                             >
                                 Save on-chain
                             </Button>
                         </HStack>
                     </VStack>
+                ) : (
+                    <VStack align="stretch" gap={4}>
+                        {mode === 'edit' ? (
+                            <Field.Root invalid={Boolean(touched.name) && errors.name !== ''}>
+                                <Field.Label fontSize="14px" fontWeight="600">Name</Field.Label>
+                                <Input
+                                    h="44px"
+                                    borderRadius="12px"
+                                    value={form.name}
+                                    onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                                    onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
+                                />
+                                <Field.ErrorText>{errors.name}</Field.ErrorText>
+                            </Field.Root>
+                        ) : (
+                            <MetadataRow label="Name" value={current.name} />
+                        )}
+
+                        <MetadataRow label="Ticker" value={asset.ticker} />
+
+                        {mode === 'edit' ? (
+                            <Field.Root invalid={Boolean(touched.description) && errors.description !== ''}>
+                                <Field.Label fontSize="14px" fontWeight="600">Description</Field.Label>
+                                <Textarea
+                                    borderRadius="12px"
+                                    placeholder="What is this token for?"
+                                    rows={3}
+                                    value={form.description}
+                                    onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                                    onBlur={() => setTouched(prev => ({ ...prev, description: true }))}
+                                />
+                                <Field.HelperText fontSize="12px" fontFamily="mono" color="hg.text.faint" data-testid="metadata-description-counter">
+                                    {`${form.description.length} / ${MAX_DESCRIPTION_LENGTH}`}
+                                </Field.HelperText>
+                                <Field.ErrorText>{errors.description}</Field.ErrorText>
+                            </Field.Root>
+                        ) : (
+                            <MetadataRow label="Description" value={current.description} />
+                        )}
+
+                        <MetadataRow label="Token ID" value={asset.denom} mono />
+
+                        {access === 'renounced' && (
+                            <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="metadata-frozen">
+                                <LuLock />
+                                <Text>Frozen</Text>
+                            </HStack>
+                        )}
+
+                        {mode === 'edit' && (
+                            <VStack align="stretch" gap="8px">
+                                <HStack gap="10px">
+                                    <Button {...linkButton} onClick={() => setMode('view')} flex="1">
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant={hgVariant('primary')}
+                                        size="lg"
+                                        onClick={() => setMode('review')}
+                                        disabled={!isValid || changes.length === 0}
+                                        flex="1"
+                                    >
+                                        Review changes
+                                    </Button>
+                                </HStack>
+                                {isValid && changes.length === 0 && (
+                                    <Text fontSize="14px" color="fg.muted" textAlign="center">
+                                        Nothing changed yet.
+                                    </Text>
+                                )}
+                            </VStack>
+                        )}
+                    </VStack>
                 )}
             </VStack>
-        </Card.Root>
+        </HgCard>
     )
 }

@@ -18,10 +18,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     };
 });
 
-vi.mock("./delegate-modal", () => ({
-    DelegateModal: () => null,
-}));
 
+import { rulesFor } from "@/test-support/css-rules";
 import { ValidatorsList } from "./validators-list";
 
 function validator(operator: string, moniker: string, tokens: string): ValidatorSDKType {
@@ -41,7 +39,7 @@ const VALIDATORS = [
 
 function renderList(validators: ValidatorSDKType[] = VALIDATORS) {
     return render(
-        <ValidatorsList validators={validators} onActionComplete={vi.fn()} logos={{}} />,
+        <ValidatorsList validators={validators} onStake={vi.fn()} logos={{}} />,
         {
             wrapper: ({ children }: { children: ReactNode }) => (
                 <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
@@ -85,5 +83,22 @@ describe("ValidatorsList", () => {
 
         expect(screen.getByText(/No validators found matching/)).toBeInTheDocument();
         expect(screen.queryByText("Alice Node")).not.toBeInTheDocument();
+    });
+
+    it("keeps the search and its buttons (Refresh) on one row, on a phone too", () => {
+        render(
+            <ValidatorsList validators={VALIDATORS} onStake={vi.fn()} logos={{}} actions={<button type="button">Refresh</button>} />,
+            {
+                wrapper: ({ children }: { children: ReactNode }) => (
+                    <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+                ),
+            },
+        );
+
+        const search = screen.getByLabelText("Search validators");
+        const refresh = screen.getByRole("button", { name: "Refresh" });
+        const row = refresh.parentElement as HTMLElement;
+        expect(row.contains(search)).toBe(true);
+        expect(rulesFor(row)).not.toMatch(/flex-wrap:\s*wrap/);
     });
 });

@@ -1,11 +1,20 @@
 import type {Metadata, Viewport} from "next";
-import {Inter} from "next/font/google"
+import {Inter, JetBrains_Mono} from "next/font/google"
 
 import {Providers} from "./providers";
+import {SWAP_LAYOUT_SCRIPT} from "@/components/swap-layout/swap-layout";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+  variable: "--font-mono",
 })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://dex.getbze.com";
@@ -16,7 +25,12 @@ export const metadata: Metadata = {
   description: "BZE DEX is a comprehensive decentralized exchange platform on BeeZee blockchain. Swap tokens with AMM liquidity pools, trade on order book DEX, stake your coins, and provide liquidity to earn rewards. Fast, secure, and high-performance DeFi trading.",
   keywords: "BZE, BeeZee, DEX, decentralized exchange, AMM, automated market maker, order book, DeFi, swap tokens, stake, staking, liquidity provider, liquidity pools, crypto trading, blockchain, BZE coin",
   icons: {
-    icon: "/images/logo_320px.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/images/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
@@ -29,7 +43,7 @@ export const metadata: Metadata = {
         url: "/images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "BZE DEX - Decentralized Exchange Platform",
+        alt: "BeeZee DEX logo, dex.getbze.com",
       },
     ],
   },
@@ -48,7 +62,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({children}: { children: React.ReactNode }) {
     return (
-      <html className={inter.className} suppressHydrationWarning>
+      <html className={`${inter.className} ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+          <head>
+            {/* Puts the stored swap-page layout on <html> before the first paint (no flash of the default). */}
+            <script dangerouslySetInnerHTML={{__html: SWAP_LAYOUT_SCRIPT}} />
+          </head>
           <body suppressHydrationWarning>
             <Providers>{children}</Providers>
           </body>

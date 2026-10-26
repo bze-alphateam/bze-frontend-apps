@@ -7,7 +7,7 @@ import {
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Box, Text} from "@chakra-ui/react";
 import {useColorModeValue} from "@/components/ui/color-mode";
-import {getNoOfIntervalsNeeded} from "@bze/bze-ui-kit";
+import {getNoOfIntervalsNeeded, HIVE_GLOW_APPS, HIVE_GLOW_DARK, HIVE_GLOW_LIGHT} from "@bze/bze-ui-kit";
 import {VStack} from "@chakra-ui/react";
 import {LuChartBar} from "react-icons/lu";
 
@@ -25,17 +25,31 @@ interface ChartProps {
     chartType: string;
 }
 
+/** A hex colour at an opacity, for the canvas (it cannot read the CSS tokens). */
+const withAlpha = (hex: string, alpha: number) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+};
+
+// Volume bars: the DEX colour at 30 %.
+const VOLUME_COLOR = withAlpha(HIVE_GLOW_APPS.dex.gradient[0], 0.3);
+
 export const LightweightChart = (props: ChartProps) => {
     const {priceData} = props;
-    const [chartText, setChartText] = useState<string>('Loading chart...');
-    const [chartLoaded, setChartLoaded] = useState<boolean>(false);
+    // Set only from the timeout below, if drawing the chart failed. An empty series shows
+    // "No data available", derived in render.
+    const [chartError, setChartError] = useState<string>();
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
 
-    const vColor = useColorModeValue('rgba(113,119,117,0.4)', 'rgba(185,183,183,0.3)');
-    const gridColor = useColorModeValue('rgba(0,0,0,0.1)', 'rgba(255,255,255,0.05)');
-    const textColor = useColorModeValue('#666666', '#a0a0a0');
-    const bgColor = 'rgba(0,0,0,0)';
+    // The theme's data colours: candles up/down, the inset tone for the grid, faint text.
+    const neutrals = useColorModeValue(HIVE_GLOW_LIGHT, HIVE_GLOW_DARK);
+    const vColor = VOLUME_COLOR;
+    const gridColor = neutrals.inset;
+    const textColor = neutrals.textFaint;
+    const upColor = neutrals.up;
+    const downColor = neutrals.down;
+    const bgColor = 'transparent';
 
     const neededIntervals = useCallback(() => {
         if (!priceData || !props.chartType) {
@@ -119,7 +133,7 @@ export const LightweightChart = (props: ChartProps) => {
     useEffect(
         () => {
             const errorTimeout = setTimeout(() => {
-                setChartText("Error loading chart");
+                setChartError("Error loading chart");
             }, 10000);
 
             if (!chartContainerRef.current) {
@@ -128,7 +142,6 @@ export const LightweightChart = (props: ChartProps) => {
             }
 
             if (!priceData || priceData.length === 0) {
-                setChartText("No data available");
                 clearTimeout(errorTimeout);
                 return;
             }
@@ -179,11 +192,13 @@ export const LightweightChart = (props: ChartProps) => {
 
             // V5 API - pass the series definition
             const priceSeries = chart.addSeries(CandlestickSeries, {
-                upColor: '#26a69a',
-                downColor: '#ef5350',
+                upColor,
+                downColor,
                 borderVisible: true,
-                wickUpColor: '#26a69a',
-                wickDownColor: '#ef5350',
+                borderUpColor: upColor,
+                borderDownColor: downColor,
+                wickUpColor: upColor,
+                wickDownColor: downColor,
                 priceFormat: {
                     type: 'price',
                     precision: precision,
@@ -241,8 +256,6 @@ export const LightweightChart = (props: ChartProps) => {
                 });
             }
 
-            setChartText("");
-            setChartLoaded(true);
             clearTimeout(errorTimeout);
 
             window.addEventListener('resize', handleResize);
@@ -255,7 +268,7 @@ export const LightweightChart = (props: ChartProps) => {
         },
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [priceData, vColor, gridColor, textColor]
+        [priceData, vColor, gridColor, textColor, upColor, downColor]
     );
 
     return (
@@ -267,7 +280,7 @@ export const LightweightChart = (props: ChartProps) => {
                 position: 'relative',
             }}
         >
-            {(!chartLoaded || priceData.length === 0) && (
+            {(chartError || !priceData || priceData.length === 0) && (
                 <Box
                     position="absolute"
                     top="50%"
@@ -275,8 +288,8 @@ export const LightweightChart = (props: ChartProps) => {
                     transform="translate(-50%, -50%)"
                 >
                     <VStack>
-                        <LuChartBar size={32} color="gray" />
-                        <Text color="fg.muted" fontSize="sm">{chartText}</Text>
+                        <Box as="span" color="hg.text.faint"><LuChartBar size={32} /></Box>
+                        <Text color="fg.muted" fontSize="sm">{chartError ?? "No data available"}</Text>
                     </VStack>
                 </Box>
             )}

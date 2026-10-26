@@ -6,7 +6,6 @@ import {
     Button,
     createListCollection,
     Field,
-    Group,
     HStack,
     Input,
     Portal,
@@ -17,6 +16,8 @@ import {
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
 import {TokenLogo} from '../token-logo';
+import {hgVariant} from '../../theme/variants';
+import {DrawerChosenRow, DrawerKV, DrawerMono, DrawerRoute} from './drawer-kit';
 import {useBridgeableAssets, type BridgeableAsset} from '../../hooks/useBridgeableAssets';
 import {useBridgeTransfer} from '../../hooks/useBridgeTransfer';
 import {useCounterpartyBalance} from '../../hooks/useCounterpartyBalance';
@@ -24,10 +25,9 @@ import {sanitizeNumberInput} from '../../utils/number';
 import {formatDuration} from '../../utils/cross_chain';
 import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {getChainName} from '../../constants/chain';
-
-interface DepositFormProps {
-    accentColor: string;
-}
+import {LEGACY_ASSET_NOTICES} from '../../constants/assets';
+import {LegacyAssetNoticeBox} from '../legacy-asset-notice';
+import {MaxInputGroup} from '../max-input-group';
 
 /**
  * Deposit flow: move an asset from a foreign chain onto BeeZee.
@@ -37,12 +37,20 @@ interface DepositFormProps {
  * counterparties). Each asset has exactly one source chain, so no network
  * picker is needed — the source is shown as a read-only label after selection.
  */
-export const DepositForm = ({accentColor}: DepositFormProps) => {
+export const DepositForm = () => {
     const [selectedAsset, setSelectedAsset] = useState<BridgeableAsset | undefined>();
     const [amount, setAmount] = useState('');
     const [amountError, setAmountError] = useState('');
 
-    const {assets: bridgeableAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
+    const {assets: bridgeableAssets, blockedAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
+
+    // Assets the chain stopped accepting (e.g. USDC.n) vanish from the picker; when one
+    // has a wind-down notice, show it so users looking for it learn why it's gone.
+    const blockedNotices = useMemo(() => {
+        return blockedAssets
+            .filter(a => LEGACY_ASSET_NOTICES[a.denom] !== undefined)
+            .map(a => ({denom: a.denom, notice: LEGACY_ASSET_NOTICES[a.denom]}));
+    }, [blockedAssets]);
 
     // ─── Asset picker collection (flat list, sorted by ticker) ─────────────
     const assetsCollection = useMemo(() => {
@@ -190,15 +198,15 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
     }, [routePreview]);
 
     return (
-        <VStack gap="4" align="stretch">
-            <Text fontSize="sm" color="fg.muted">
+        <VStack gap="14px" align="stretch">
+            <Text fontSize="14px" color="fg.muted">
                 Deposit assets from other networks to BeeZee
             </Text>
 
             {/* Empty state */}
             {!isLoadingAssets && bridgeableAssets.length === 0 && (
-                <Box p="3" bg="fg.muted/5" borderRadius="md">
-                    <Text fontSize="sm" color="fg.muted">
+                <Box px="12px" py="10px" bg="hg.inset" borderRadius="14px">
+                    <Text fontSize="14px" color="fg.muted">
                         No depositable assets found. IBC assets will appear here once BeeZee
                         has active connections in the chain registry.
                     </Text>
@@ -248,26 +256,22 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
                 </Box>
             )}
 
+            {/* Wind-down notices for assets whose deposits the chain refuses */}
+            {!selectedAsset && blockedNotices.map(({denom, notice}) => (
+                <LegacyAssetNoticeBox key={denom} notice={notice}/>
+            ))}
+
             {/* Source chain — auto-resolved, read-only */}
             {selectedAsset && (
-                <Box>
-                    <Text fontSize="xs" fontWeight="medium" mb="1">Source</Text>
-                    <HStack
-                        gap="2"
-                        p="2"
-                        borderWidth="1px"
-                        borderColor={`${accentColor}.500/20`}
-                        borderRadius="md"
-                    >
-                        <TokenLogo src={selectedAsset.counterparty.logo} symbol={sourceDisplayName} size="16px"/>
-                        <Text fontSize="sm">{sourceDisplayName}</Text>
-                    </HStack>
-                </Box>
+                <DrawerChosenRow label="Source">
+                    <TokenLogo src={selectedAsset.counterparty.logo} symbol={sourceDisplayName} size="18px"/>
+                    {sourceDisplayName}
+                </DrawerChosenRow>
             )}
 
             {/* Transfer direction label */}
             {selectedAsset && (
-                <Text fontSize="xs" color="fg.muted">
+                <Text fontSize="13px" color="hg.text.faint">
                     From {sourceDisplayName} → BeeZee
                 </Text>
             )}
@@ -277,30 +281,23 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
                 <Box>
                     <Field.Root invalid={amountError !== ''}>
                         <Field.Label>Amount to deposit</Field.Label>
-                        <Group attached w="full">
+                        <MaxInputGroup w="full" onMax={setMaxAmount} maxDisabled={!sourceBalance || sourceBalance.status !== 'ready'}>
                             <Input
                                 size="sm"
+                                fontFamily="mono"
                                 placeholder="0.00"
                                 value={amount}
                                 onChange={(e) => onAmountChange(e.target.value)}
                                 onBlur={validateAmount}
                             />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={setMaxAmount}
-                                disabled={!sourceBalance || sourceBalance.status !== 'ready'}
-                            >
-                                Max
-                            </Button>
-                        </Group>
+                        </MaxInputGroup>
                         <Field.ErrorText>{amountError}</Field.ErrorText>
                     </Field.Root>
 
                     {/* Balance on source chain */}
                     {sourceBalance && (
-                        <HStack justify="space-between" mt="1.5">
-                            <Text fontSize="xs" color="fg.muted">
+                        <HStack justify="space-between" mt="6px" fontSize="12px">
+                            <Text color="hg.text.faint">
                                 Available on {sourceDisplayName}
                             </Text>
                             {sourceBalance.status === 'loading' && (
@@ -312,7 +309,7 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
                                 </Text>
                             )}
                             {sourceBalance.status === 'error' && (
-                                <Text fontSize="xs" color="orange.500">Couldn&apos;t fetch</Text>
+                                <Text fontSize="xs" color="hg.warning.text">Couldn&apos;t fetch</Text>
                             )}
                             {sourceBalance.status === 'unsupported' && (
                                 <Text fontSize="xs" color="fg.muted">Unavailable</Text>
@@ -321,7 +318,7 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
                     )}
 
                     {sourceBalance?.status === 'ready' && sourceBalance.display.isZero() && (
-                        <Text fontSize="xs" color="orange.500" mt="1">
+                        <Text fontSize="xs" color="hg.warning.text" mt="1">
                             You have no {selectedAsset.bzeAsset.ticker} on {sourceDisplayName}.
                         </Text>
                     )}
@@ -337,43 +334,22 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
 
             {/* Route preview */}
             {routePreview && amount && (
-                <Box
-                    p="3"
-                    bgGradient="to-br"
-                    gradientFrom={`${accentColor}.500/8`}
-                    gradientTo={`${accentColor}.600/8`}
-                    borderRadius="md"
-                    borderWidth="1px"
-                    borderColor={`${accentColor}.500/20`}
-                >
-                    <VStack gap="2" align="stretch">
-                        <HStack justify="space-between">
-                            <Text fontSize="sm" color="fg.muted">You receive on BeeZee</Text>
-                            <Text fontSize="sm" fontWeight="medium" fontFamily="mono">
-                                {routePreview.estimatedOutput} {routePreview.estimatedOutputTicker}
-                            </Text>
-                        </HStack>
-                        <HStack justify="space-between">
-                            <Text fontSize="xs" color="fg.muted">Estimated time</Text>
-                            <Text fontSize="xs">{formatDuration(routePreview.estimatedDurationSeconds)}</Text>
-                        </HStack>
-                        {feeDisplay && (
-                            <HStack justify="space-between">
-                                <Text fontSize="xs" color="fg.muted">Fee</Text>
-                                <Text fontSize="xs">{feeDisplay}</Text>
-                            </HStack>
-                        )}
-                    </VStack>
-                </Box>
+                <DrawerRoute>
+                    <DrawerKV label="You receive on BeeZee" size={14}><DrawerMono size={14}><b>{routePreview.estimatedOutput} {routePreview.estimatedOutputTicker}</b></DrawerMono></DrawerKV>
+                    <DrawerKV label="Estimated time" size={12}>{formatDuration(routePreview.estimatedDurationSeconds)}</DrawerKV>
+                    {feeDisplay && (
+                        <DrawerKV label="Fee" size={12}>{feeDisplay}</DrawerKV>
+                    )}
+                </DrawerRoute>
             )}
 
             {/* Wallet connect prompt */}
             {selectedAsset && sourceWalletStatus !== WalletState.Connected && (
-                <VStack gap="3">
-                    <Text fontSize="sm" color="fg.muted">
+                <VStack gap="10px" align="stretch">
+                    <Text fontSize="14px" color="fg.muted" textAlign="center">
                         Connect your wallet on {sourceDisplayName} to continue
                     </Text>
-                    <Button size="sm" w="full" colorPalette={accentColor} onClick={handleConnectSource}>
+                    <Button size="lg" w="full" variant={hgVariant('primary')} onClick={handleConnectSource}>
                         Connect to {sourceDisplayName}
                     </Button>
                 </VStack>
@@ -381,9 +357,9 @@ export const DepositForm = ({accentColor}: DepositFormProps) => {
 
             {/* Execute */}
             <Button
-                size="sm"
+                size="lg"
                 w="full"
-                colorPalette={accentColor}
+                variant={hgVariant('primary')}
                 disabled={!canExecute}
                 loading={isExecuting}
                 loadingText={progressMessage || "Transferring..."}

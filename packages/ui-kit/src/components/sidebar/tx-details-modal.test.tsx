@@ -30,7 +30,7 @@ const record = (over: Partial<CrossChainTxRecord>): CrossChainTxRecord => ({
 
 describe('TxDetailsModal explorer link', () => {
     it('opens a tx broadcast on BZE in the BZE Explorer', () => {
-        render(<TxDetailsModal tx={record({ broadcastChainId: 'beezee-1', explorerLink: 'https://mintscan.example/tx/ABC123' })} onClose={() => {}} accentColor="blue" />, { wrapper });
+        render(<TxDetailsModal tx={record({ broadcastChainId: 'beezee-1', explorerLink: 'https://mintscan.example/tx/ABC123' })} onClose={() => {}} />, { wrapper });
         const link = screen.getByRole('link', { name: 'Explorer' });
         expect(link.getAttribute('data-app')).toBe('explorer');
         expect(link.getAttribute('href')).toBe('https://explorer.getbze.com/txs/ABC123');
@@ -38,7 +38,7 @@ describe('TxDetailsModal explorer link', () => {
     });
 
     it("keeps Skip's link for a tx broadcast on another chain, without a BZE app identity", () => {
-        render(<TxDetailsModal tx={record({ broadcastChainId: 'osmosis-1', explorerLink: 'https://mintscan.example/tx/ABC123' })} onClose={() => {}} accentColor="blue" />, { wrapper });
+        render(<TxDetailsModal tx={record({ broadcastChainId: 'osmosis-1', explorerLink: 'https://mintscan.example/tx/ABC123' })} onClose={() => {}} />, { wrapper });
         expect(screen.getByRole('button', { name: /View on chain explorer/ })).toBeTruthy();
         expect(document.querySelector('[data-app]')).toBeNull();
     });

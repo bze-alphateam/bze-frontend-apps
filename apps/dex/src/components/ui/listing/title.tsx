@@ -12,7 +12,7 @@ export const ListingTitle = (props: ListingTitleProps) => {
             <Heading size="xl">
                 {props.title}
             </Heading>
-            <Text color="gray.600" fontSize="lg">
+            <Text color="fg.muted" fontSize="lg">
                 {props.subtitle}
             </Text>
         </VStack>

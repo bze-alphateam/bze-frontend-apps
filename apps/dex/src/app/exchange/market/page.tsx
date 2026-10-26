@@ -1,18 +1,14 @@
 "use client";
 
-import {KeyboardEvent, Suspense, useCallback, useEffect, useMemo, useState} from 'react';
+import {Suspense, useCallback, useEffect, useMemo, useState} from 'react';
 import {
     Box,
-    Container,
-    Grid,
-    HStack,
-    VStack,
-    Text,
     Button,
-    Badge,
-    Input,
+    chakra,
     Flex,
-    Table, Alert,
+    Grid,
+    IconButton,
+    VisuallyHidden,
 } from '@chakra-ui/react';
 import { LuTrendingUp, LuTrendingDown, LuActivity, LuArrowLeft, LuX, LuInfo } from 'react-icons/lu';
 import {useNavigationWithParams} from "@/hooks/useNavigation";
@@ -26,7 +22,6 @@ import {
     getChainName,
     formatUsdAmount, intlDateFormat,
     useBalance, useBZETx, useToast, useAssetPrice,
-    sanitizeNumberInput,
     calculateAmountFromPrice, calculatePricePerUnit, calculateTotalAmount, getMinAmount,
     TradeViewChart,
     CHART_1D, CHART_1Y, CHART_30D, CHART_4H, CHART_7D, getChartIntervalsLimit, getChartMinutes,
@@ -35,7 +30,9 @@ import {
     addDebounce, cancelDebounce,
     HighlightText,
     LPTokenLogo,
+    HgCard, hgVariant,
     FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
+    HaltedBadge, HaltedNotice, useHaltedDenoms,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {AggregatedOrderSDKType, HistoryOrderSDKType, OrderSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -44,6 +41,11 @@ import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
 import {balanceToFormValue} from "@/lib/trading-form";
+import {VenueTag} from "@/components/ui/trading/venue";
+import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
+import {
+    BalanceButton, Cell, DataTable, depthPercent, EmptyState, EmptyTableRow, MarketStat, OrderBookRow, OrderField, OrderForm, Panel,
+} from "@/components/ui/trading/market-parts";
 
 const {createOrder, fillOrders} = bze.tradebin.MessageComposer.withTypeUrl;
 
@@ -115,19 +117,6 @@ function getOrderTxMessages(activeOrders: ActiveOrders, marketId: string, addres
     return msgs;
 }
 
-interface EmptyTableRowProps {
-    colSpan: number;
-    message: string;
-}
-
-const EmptyTableRow = ({ colSpan, message }: EmptyTableRowProps) => (
-    <Table.Row>
-        <Table.Cell colSpan={colSpan} textAlign="center" py={8}>
-            <Text fontSize="sm" color="fg.muted">{message}</Text>
-        </Table.Cell>
-    </Table.Row>
-);
-
 const TradingPage = () => {
     return (
         <Suspense fallback={<div>Loading...</div>}>
@@ -161,6 +150,13 @@ const TradingPageContent = () => {
     const {marketData, market, marketId} = useMarket(idParam ?? '')
     const {asset: baseAsset} = useAsset(market?.base ?? '')
     const {asset: quoteAsset} = useAsset(market?.quote ?? '')
+    // A governance-halted market keeps its order book, history and "Your Orders" (cancel works);
+    // only the buy/sell forms give way to the notice, since the chain refuses new orders.
+    const {isDenomHalted, isMarketHalted} = useHaltedDenoms()
+    const isHalted = isMarketHalted(market)
+    const haltedTickers = [baseAsset, quoteAsset]
+        .filter(asset => asset && isDenomHalted(asset.denom))
+        .map(asset => asset!.ticker)
     const {address} = useChain(getChainName())
     const {balance: baseBalance} = useBalance(market?.base ?? '')
     const {balance: quoteBalance} = useBalance(market?.quote ?? '')
@@ -202,13 +198,14 @@ const TradingPageContent = () => {
     }, [baseAsset, quoteAsset]);
     const priceColor = useMemo(() => {
         if (!marketData || marketData.change === 0) {
-            return 'gray.500';
+            return 'hg.flat';
         }
 
-        return marketData.change < 0 ? 'red.500' : 'green.500';
+        return marketData.change < 0 ? 'hg.down' : 'hg.up';
     }, [marketData])
+    // Market History colours a buy trade red and a sell trade green, as it always has.
     const orderTypeColor = useCallback((type: string) => {
-        return type === ORDER_TYPE_BUY ? 'red.500' : 'green.500';
+        return type === ORDER_TYPE_BUY ? 'hg.down' : 'hg.up';
     }, [])
     const formattedDateFromTimestamp = useCallback((timestamp: BigNumber|bigint|string, ms?: boolean) => {
         return intlDateFormat.format(new Date(toBigNumber(timestamp).multipliedBy(ms ? 1000 : 1).toNumber()))
@@ -438,14 +435,6 @@ const TradingPageContent = () => {
         onBuyTotalChange(total);
         onSellTotalChange(total);
     }, [submittingOrder, quoteSpendable.amount, quoteAsset, onBuyTotalChange, onSellTotalChange])
-    const onBalanceKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, handler: () => void) => {
-        if (event.key !== 'Enter' && event.key !== ' ') {
-            return;
-        }
-
-        event.preventDefault();
-        handler();
-    }, [])
     const onOrderBookClick = useCallback((price: string, orderType: 'buy' | 'sell', index: number) => {
         const transformedPrice = uPriceToPrice(price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0);
         setBuyPrice(transformedPrice);
@@ -732,700 +721,432 @@ const TradingPageContent = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [connectionType, marketId]);
 
+    const maxAskAmount = useMemo(
+        () => BigNumber.max(0, ...(activeOrders?.sellOrders ?? []).map(o => o.amount)),
+        [activeOrders]
+    );
+    const maxBidAmount = useMemo(
+        () => BigNumber.max(0, ...(activeOrders?.buyOrders ?? []).map(o => o.amount)),
+        [activeOrders]
+    );
+
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="full" py={6}>
-                <VStack gap={6} align="stretch">
-                    {/* Market Header */}
-                    <Box
-                        p={6}
-                        bgGradient="to-br"
-                        gradientFrom="blue.500/8"
-                        gradientTo="blue.600/8"
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor="blue.500/20"
-                        shadow="sm"
-                    >
-                        <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
-
-                            <HStack gap={4}>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => toExchangePage()}
-                                    colorPalette="gray"
-                                >
-                                    <LuArrowLeft />
-                                    <Text display={{ base: 'none', md: 'inline' }}>Markets</Text>
-                                </Button>
-                                <Box h="6" w="1px" bg="border.subtle" />
-                                <HStack gap={3}>
-                                    <LPTokenLogo
-                                        baseAssetLogo={baseAsset?.logo || ''}
-                                        quoteAssetLogo={quoteAsset?.logo || ''}
-                                        baseAssetSymbol={baseAsset?.ticker || ''}
-                                        quoteAssetSymbol={quoteAsset?.ticker || ''}
-                                        size="10"
-                                    />
-                                    <VStack align="start" gap={1}>
-                                        <HStack gap={2}>
-                                            <Text fontSize="xl" fontWeight="bold" letterSpacing="tight">
-                                                {marketTicker}
-                                            </Text>
-                                            <Badge
-                                                colorPalette={(marketData?.change || 0) >= 0 ? 'green' : 'red'}
-                                                variant="subtle"
-                                                fontSize="xs"
-                                            >
-                                                {marketData?.change || 0}%
-                                            </Badge>
-                                        </HStack>
-                                        <HighlightText fontSize="2xl" fontWeight="bold" color={priceColor}>
-                                            {lastPrice} {quoteAsset?.ticker}
-                                        </HighlightText>
-                                        {shouldShowUsdValues && (
-                                            <HighlightText fontSize="sm" color="fg.muted" fontWeight="medium">
-                                                ${quoteUsdValue(marketData?.last_price)}
-                                            </HighlightText>
-                                        )}
-                                    </VStack>
-                                </HStack>
-                            </HStack>
-
-                        <HStack gap={8} display={{ base: 'none', lg: 'flex' }}>
-                            <VStack align="start" gap={1}>
-                                <Text fontSize="xs" color="fg.muted" fontWeight="medium">24h Volume</Text>
-                                <HighlightText fontSize="md" fontWeight="semibold">{dailyVolume} {quoteAsset?.ticker}</HighlightText>
-                                {shouldShowUsdValues && (
-                                    <HighlightText fontSize="xs" color="fg.muted">
-                                        ${quoteUsdValue(marketData?.quote_volume)}
-                                    </HighlightText>
-                                )}
-                            </VStack>
-                            <Box h="12" w="1px" bg="border.subtle" />
-                            <VStack align="start" gap={1}>
-                                <Text fontSize="xs" color="fg.muted" fontWeight="medium">24h High</Text>
-                                <HighlightText fontSize="md" fontWeight="semibold" color="green.500">
-                                    {marketData?.high || 0}
+        <Box maxW="1400px" mx="auto" px={{ base: '16px', md: '20px' }} pt="20px" pb="64px">
+            <Flex direction="column" gap="16px">
+                {/* Market Header */}
+                <HgCard
+                    as="section"
+                    aria-label="Market"
+                    position="relative"
+                    overflow="hidden"
+                    px={{ base: '16px', md: '22px' }}
+                    py="18px"
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    gap="20px"
+                    flexWrap="wrap"
+                >
+                    <Box aria-hidden position="absolute" inset="0" bgImage="heroGlowInner" bgRepeat="no-repeat" pointerEvents="none" />
+                    <Flex position="relative" align="center" gap={{ base: '10px', md: '18px' }} wrap={{ base: 'nowrap', md: 'wrap' }} minW="0" flex={{ base: '1', lg: 'initial' }}>
+                        {/* On a phone the back arrow is icon-only and flush with the card edge, so the
+                            price keeps its room and stays on one line. */}
+                        <Button
+                            size="md"
+                            variant="ghost"
+                            color="hg.text.secondary"
+                            px={{ base: '0', md: '12px' }}
+                            minW={{ base: '24px', md: '10' }}
+                            aria-label="Back to markets"
+                            data-testid="market-back"
+                            onClick={() => toExchangePage()}
+                        >
+                            <LuArrowLeft />
+                            <chakra.span display={{ base: 'none', md: 'inline' }}>Markets</chakra.span>
+                        </Button>
+                        <Box h="40px" w="1px" bg="hg.hairline" hideBelow="md" />
+                        <Flex
+                            boxSize={{ base: '40px', md: '44px' }}
+                            flex="none"
+                            align="center"
+                            justify="center"
+                            borderRadius="12px"
+                            bg="hg.inset"
+                            borderWidth="1px"
+                            borderColor="app.border"
+                        >
+                            <LPTokenLogo
+                                baseAssetLogo={baseAsset?.logo || ''}
+                                quoteAssetLogo={quoteAsset?.logo || ''}
+                                baseAssetSymbol={baseAsset?.ticker || ''}
+                                quoteAssetSymbol={quoteAsset?.ticker || ''}
+                                size="5"
+                            />
+                        </Flex>
+                        <Flex direction="column" gap="4px" minW="0" data-testid="market-title">
+                            <Flex align="center" gap={{ base: '6px', md: '8px' }} wrap="wrap">
+                                <chakra.h1 m="0" fontSize={{ base: '18px', md: '22px' }} fontWeight="800" letterSpacing="-0.01em">
+                                    {marketTicker}
+                                </chakra.h1>
+                                <VenueTag venue="orderbook" size="sm" />
+                                {isHalted && <HaltedBadge />}
+                                <ChangePill change={marketData?.change} />
+                            </Flex>
+                            <HighlightText fontSize={{ base: '20px', md: '26px' }} fontWeight="800" letterSpacing="-0.01em" color={priceColor}>
+                                {lastPrice} {quoteAsset?.ticker}
+                            </HighlightText>
+                            {shouldShowUsdValues && (
+                                <HighlightText fontSize="13px" color="hg.text.faint">
+                                    ${quoteUsdValue(marketData?.last_price)}
                                 </HighlightText>
-                                {shouldShowUsdValues && (
-                                    <HighlightText fontSize="xs" color="fg.muted">
-                                        ${quoteUsdValue(marketData?.high)}
-                                    </HighlightText>
-                                )}
-                            </VStack>
-                            <Box h="12" w="1px" bg="border.subtle" />
-                            <VStack align="start" gap={1}>
-                                <Text fontSize="xs" color="fg.muted" fontWeight="medium">24h Low</Text>
-                                <HighlightText fontSize="md" fontWeight="semibold" color="red.500">
-                                    {marketData?.low || 0}
-                                </HighlightText>
-                                {shouldShowUsdValues && (
-                                    <HighlightText fontSize="xs" color="fg.muted">
-                                        ${quoteUsdValue(marketData?.low)}
-                                    </HighlightText>
-                                )}
-                            </VStack>
-                        </HStack>
+                            )}
+                        </Flex>
                     </Flex>
-                </Box>
+
+                    <Flex position="relative" align="stretch" display={{ base: 'none', lg: 'flex' }}>
+                        <MarketStat label="24h Volume" usd={shouldShowUsdValues ? quoteUsdValue(marketData?.quote_volume) : undefined}>
+                            {dailyVolume} {quoteAsset?.ticker}
+                        </MarketStat>
+                        <MarketStat label="24h High" color="hg.up" usd={shouldShowUsdValues ? quoteUsdValue(marketData?.high) : undefined}>
+                            {marketData?.high || 0}
+                        </MarketStat>
+                        <MarketStat label="24h Low" color="hg.down" usd={shouldShowUsdValues ? quoteUsdValue(marketData?.low) : undefined} last>
+                            {marketData?.low || 0}
+                        </MarketStat>
+                    </Flex>
+                </HgCard>
 
                 {/* Main Trading Layout */}
-                <Grid templateColumns={{ base: '1fr', lg: '300px 1fr 360px' }} gap={4}>
+                <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: '300px minmax(0, 1fr) 360px' }} gap="16px" alignItems="start">
                     {/* Left: Order Book */}
-                    <Box
-                        p={5}
-                        bgGradient="to-br"
-                        gradientFrom="green.500/5"
-                        gradientTo="red.500/5"
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        borderColor="blue.500/15"
-                        shadow="sm"
-                    >
-                        <Text fontWeight="bold" mb={4} fontSize="md">Order Book</Text>
-                        <VStack gap={2} align="stretch">
-                            {/* Asks */}
-                            <Box>
-                                <HStack justify="space-between" mb={2}>
-                                    <Text fontSize="xs" color="fg.muted">Price ({quoteAsset?.ticker})</Text>
-                                    <Text fontSize="xs" color="fg.muted">Amount ({baseAsset?.ticker})</Text>
-                                </HStack>
-                                {activeOrders?.sellOrders.map((ask, i) => {
-                                    const transformedPrice = uPriceToPrice(ask.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)
-                                    const transformedAmount = uAmountToAmount(ask.amount, baseAsset?.decimals ?? 0)
-                                    return (
-                                        <HStack key={i} justify="space-between" fontSize="xs" onClick={() => onOrderBookClick(ask.price, ORDER_TYPE_SELL, i)}>
-                                            <Text color="red.600">{transformedPrice}</Text>
-                                            <HighlightText>{transformedAmount}</HighlightText>
-                                        </HStack>
-                                    )
-                                })}
-                                {(!activeOrders || activeOrders.sellOrders.length === 0) && (
-                                    <Box p={6} textAlign="center">
-                                        <Text fontSize="sm" color="fg.muted">No sell orders</Text>
-                                    </Box>
-                                )}
-                            </Box>
+                    <Panel label="Order Book" p="16px" gap="4px">
+                        <chakra.h2 m="0" mb="8px" fontSize="15px" fontWeight="700">Order Book</chakra.h2>
+                        <Flex justify="space-between" fontSize="11px" color="hg.text.faint" px="8px" pb="6px">
+                            <span>Price ({quoteAsset?.ticker})</span>
+                            <span>Amount ({baseAsset?.ticker})</span>
+                        </Flex>
 
-                            {/* Current Price */}
-                            <Box
-                                py={1}
-                                bgGradient="to-br"
-                                gradientFrom="blue.500/15"
-                                gradientTo="blue.600/15"
-                                borderRadius="md"
-                                borderWidth="1px"
-                                borderColor="blue.500/30"
-                            >
-                                <HStack justify="center" gap={2}>
-                                    <Text fontSize="lg" fontWeight="bold" color={priceColor}>
-                                        {lastPrice}
-                                    </Text>
-                                    {isNegative ? (
-                                        <LuTrendingDown color="red" size={18} />
-                                    ) : (
-                                        <LuTrendingUp color="green" size={18} />
-                                    )}
-                                </HStack>
-                            </Box>
+                        {/* Asks */}
+                        {activeOrders?.sellOrders.map((ask, i) => (
+                            <OrderBookRow
+                                key={i}
+                                side="sell"
+                                price={uPriceToPrice(ask.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
+                                amount={uAmountToAmount(ask.amount, baseAsset?.decimals ?? 0)}
+                                depth={depthPercent(ask.amount, maxAskAmount)}
+                                onClick={() => onOrderBookClick(ask.price, ORDER_TYPE_SELL, i)}
+                            />
+                        ))}
+                        {(!activeOrders || activeOrders.sellOrders.length === 0) && (
+                            <EmptyState>No sell orders</EmptyState>
+                        )}
 
-                            {/* Bids */}
-                            <Box>
-                                {activeOrders?.buyOrders.map((bid, i) => {
-                                    const transformedPrice = uPriceToPrice(bid.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)
-                                    const transformedAmount = uAmountToAmount(bid.amount, baseAsset?.decimals ?? 0)
-                                    return (
-                                        <HStack key={i} justify="space-between" fontSize="xs" onClick={() => onOrderBookClick(bid.price, ORDER_TYPE_BUY, i)}>
-                                            <Text color="green.600">{transformedPrice}</Text>
-                                            <HighlightText>{transformedAmount}</HighlightText>
-                                        </HStack>
-                                    )
-                                })}
-                                {(!activeOrders || activeOrders?.buyOrders.length === 0 ) && (
-                                    <Box p={6} textAlign="center">
-                                        <Text fontSize="sm" color="fg.muted">No buy orders</Text>
-                                    </Box>
-                                )}
-                            </Box>
-                        </VStack>
-                    </Box>
+                        {/* Current Price */}
+                        <Flex
+                            my="8px"
+                            p="10px"
+                            borderRadius="12px"
+                            bg="app.subtle"
+                            borderWidth="1px"
+                            borderColor="app.border"
+                            justify="center"
+                            align="center"
+                            gap="8px"
+                            color={priceColor}
+                        >
+                            <chakra.strong fontSize="17px" fontFamily="mono">{lastPrice}</chakra.strong>
+                            {isNegative ? <LuTrendingDown size={18} aria-hidden="true" /> : <LuTrendingUp size={18} aria-hidden="true" />}
+                        </Flex>
+
+                        {/* Bids */}
+                        {activeOrders?.buyOrders.map((bid, i) => (
+                            <OrderBookRow
+                                key={i}
+                                side="buy"
+                                price={uPriceToPrice(bid.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
+                                amount={uAmountToAmount(bid.amount, baseAsset?.decimals ?? 0)}
+                                depth={depthPercent(bid.amount, maxBidAmount)}
+                                onClick={() => onOrderBookClick(bid.price, ORDER_TYPE_BUY, i)}
+                            />
+                        ))}
+                        {(!activeOrders || activeOrders.buyOrders.length === 0) && (
+                            <EmptyState>No buy orders</EmptyState>
+                        )}
+                    </Panel>
 
                     {/* Center: Chart */}
-                    <VStack gap={4} align="stretch">
-                        <Box
-                            p={5}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/5"
-                            gradientTo="blue.600/5"
-                            borderRadius="lg"
-                            borderWidth="1px"
-                            borderColor="blue.500/15"
-                            shadow="sm"
-                            minH="450px"
-                        >
-                            <HStack justify="space-between" mb={4}>
-                                <HStack gap={2}>
-                                    <LuActivity size={18} />
-                                    <Text fontWeight="semibold" fontSize="md">Price Chart</Text>
-                                </HStack>
-                                <HStack gap={1}>
-                                    {timeframes.map((tf) => (
-                                        <Button
-                                            key={tf}
-                                            size="xs"
-                                            variant={timeframe === tf ? 'solid' : 'ghost'}
-                                            onClick={() => onTimeframeChange(tf)}
-                                        >
-                                            {tf}
-                                        </Button>
-                                    ))}
-                                </HStack>
-                            </HStack>
+                    <Flex direction="column" gap="16px" minW="0">
+                        <Panel label="Price Chart" p="16px" gap="12px">
+                            <Flex justify="space-between" align="center" gap="12px" wrap="wrap">
+                                <chakra.h2 m="0" fontSize="15px" fontWeight="700" display="inline-flex" alignItems="center" gap="8px">
+                                    <Box as="span" color="hg.link"><LuActivity size={16} aria-hidden="true" /></Box>
+                                    Price Chart
+                                </chakra.h2>
+                                <Flex role="group" aria-label="Timeframe" gap="2px" p="3px" borderRadius="10px" bg="hg.inset">
+                                    {timeframes.map((tf) => {
+                                        const active = timeframe === tf;
+                                        return (
+                                            <chakra.button
+                                                key={tf}
+                                                type="button"
+                                                aria-pressed={active}
+                                                onClick={() => onTimeframeChange(tf)}
+                                                h="28px"
+                                                px="10px"
+                                                border="0"
+                                                borderRadius="8px"
+                                                fontSize="12px"
+                                                fontWeight={active ? '700' : '600'}
+                                                cursor="pointer"
+                                                focusVisibleRing="inside"
+                                                {...(active
+                                                    ? { bgImage: 'appButton', color: 'hg.buttonText' }
+                                                    : { bg: 'transparent', color: 'hg.text.muted', _hover: { color: 'fg' } })}
+                                            >
+                                                {tf}
+                                            </chakra.button>
+                                        );
+                                    })}
+                                </Flex>
+                            </Flex>
 
-                            {/* Smaller Chart */}
-                            <Box h="350px" w="100%" borderRadius="md" overflow="hidden">
+                            <Box h="350px" w="100%" borderRadius="12px" overflow="hidden" bg="hg.ground">
                                 <LightweightChart priceData={chartData || []} chartType={timeframe} />
                             </Box>
-                        </Box>
+                        </Panel>
 
                         {/* Buy/Sell Forms */}
-                        <Grid templateColumns="1fr 1fr" gap={3}>
-                            {/* Buy Form */}
-                            <Box p={3} bg="bg.panel" borderRadius="md" borderWidth="1px">
-                                <Text fontWeight="bold" mb={3} color="green.500" fontSize="sm">Buy {baseAsset?.ticker}</Text>
-                                <VStack gap={2} align="stretch">
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Price</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={buyPrice}
-                                                onChange={(e) => onBuyPriceChange(sanitizeNumberInput(e.target.value))}
-                                                pr="12"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {quoteAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                        {buyPrice && shouldShowUsdValues && (
-                                            <Text fontSize="xs" color="fg.muted" mt={1}>
-                                                ≈ ${quoteUsdValue(buyPrice)}
-                                            </Text>
-                                        )}
-                                    </Box>
+                        {isHalted && (
+                            <HaltedNotice tickers={haltedTickers}>
+                                Resting orders on this market will not execute while trading is halted. Cancel them in Your Orders to get your funds back.
+                            </HaltedNotice>
+                        )}
+                        {!isHalted && (
+                        <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
+                            <OrderForm
+                                side="buy"
+                                title={`Buy ${baseAsset?.ticker ?? ''}`}
+                                fillMessage={buyFillMessage}
+                                disabled={submittingOrder}
+                                onSubmit={() => onOrderSubmit(ORDER_TYPE_BUY)}
+                            >
+                                <OrderField
+                                    label="Price"
+                                    unit={quoteAsset?.ticker}
+                                    value={buyPrice}
+                                    onChange={onBuyPriceChange}
+                                    disabled={submittingOrder}
+                                    usd={buyPrice && shouldShowUsdValues ? quoteUsdValue(buyPrice) : undefined}
+                                />
+                                <OrderField
+                                    label="Amount"
+                                    unit={baseAsset?.ticker}
+                                    value={buyAmount}
+                                    onChange={onBuyAmountChange}
+                                    disabled={submittingOrder}
+                                />
+                                <OrderField
+                                    label="Total"
+                                    unit={quoteAsset?.ticker}
+                                    value={buyTotal}
+                                    onChange={onBuyTotalChange}
+                                    disabled={submittingOrder}
+                                    usd={buyTotal && shouldShowUsdValues ? quoteUsdValue(buyTotal) : undefined}
+                                />
+                            </OrderForm>
 
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Amount</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={buyAmount}
-                                                onChange={(e) => onBuyAmountChange(sanitizeNumberInput(e.target.value))}
-                                                pr="10"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {baseAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                    </Box>
-
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Total</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={buyTotal}
-                                                onChange={(e) => onBuyTotalChange(sanitizeNumberInput(e.target.value))}
-                                                pr="12"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {quoteAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                        {buyTotal && shouldShowUsdValues && (
-                                            <Text fontSize="xs" color="fg.muted" mt={1}>
-                                                ≈ ${quoteUsdValue(buyTotal)}
-                                            </Text>
-                                        )}
-                                    </Box>
-                                    {buyFillMessage && (
-                                        <Alert.Root status={'neutral'} variant='subtle'>
-                                            <Alert.Indicator />
-                                            <VStack align="start" gap="2" flex="1">
-                                                <Text fontSize="xs" color="fg.muted" mt={1}>{buyFillMessage}</Text>
-                                            </VStack>
-                                        </Alert.Root>
-                                    )}
-                                    <Button
-                                        colorPalette="green"
-                                        size="sm"
-                                        mt={2}
-                                        disabled={submittingOrder}
-                                        variant={'outline'}
-                                        onClick={() => onOrderSubmit(ORDER_TYPE_BUY)}
-                                    >
-                                        Buy {baseAsset?.ticker}
-                                    </Button>
-                                </VStack>
-                            </Box>
-
-                            {/* Sell Form */}
-                            <Box p={3} bg="bg.panel" borderRadius="md" borderWidth="1px">
-                                <Text fontWeight="bold" mb={3} color="red.500" fontSize="sm">Sell {baseAsset?.ticker}</Text>
-                                <VStack gap={2} align="stretch">
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Price</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={sellPrice}
-                                                onChange={(e) => onSellPriceChange(sanitizeNumberInput(e.target.value))}
-                                                pr="12"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {quoteAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                        {sellPrice && shouldShowUsdValues && (
-                                            <Text fontSize="xs" color="fg.muted" mt={1}>
-                                                ≈ ${quoteUsdValue(sellPrice)}
-                                            </Text>
-                                        )}
-                                    </Box>
-
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Amount</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={sellAmount}
-                                                onChange={(e) => onSellAmountChange(sanitizeNumberInput(e.target.value))}
-                                                pr="10"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {baseAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                    </Box>
-
-                                    <Box>
-                                        <Text fontSize="xs" mb={1} color="fg.muted">Total</Text>
-                                        <Box position="relative">
-                                            <Input
-                                                size="sm"
-                                                placeholder="0.00000"
-                                                value={sellTotal}
-                                                onChange={(e) => onSellTotalChange(sanitizeNumberInput(e.target.value))}
-                                                pr="12"
-                                                disabled={submittingOrder}
-                                            />
-                                            <Text
-                                                position="absolute"
-                                                right="2"
-                                                top="50%"
-                                                transform="translateY(-50%)"
-                                                fontSize="xs"
-                                                color="fg.muted"
-                                            >
-                                                {quoteAsset?.ticker}
-                                            </Text>
-                                        </Box>
-                                        {sellTotal && shouldShowUsdValues && (
-                                            <Text fontSize="xs" color="fg.muted" mt={1}>
-                                                ≈ ${quoteUsdValue(sellTotal)}
-                                            </Text>
-                                        )}
-                                    </Box>
-                                    {sellFillMessage && (
-                                        <Alert.Root status={'neutral'} variant='subtle'>
-                                            <Alert.Indicator />
-                                            <VStack align="start" gap="2" flex="1">
-                                                <Text fontSize="xs" color="fg.muted" mt={1}>{sellFillMessage}</Text>
-                                            </VStack>
-                                        </Alert.Root>
-                                    )}
-                                    <Button
-                                        colorPalette="red"
-                                        size="sm"
-                                        mt={2}
-                                        disabled={submittingOrder}
-                                        variant={'outline'}
-                                        onClick={() => onOrderSubmit(ORDER_TYPE_SELL)}
-                                    >
-                                        Sell {baseAsset?.ticker}
-                                    </Button>
-                                </VStack>
-                            </Box>
+                            <OrderForm
+                                side="sell"
+                                title={`Sell ${baseAsset?.ticker ?? ''}`}
+                                fillMessage={sellFillMessage}
+                                disabled={submittingOrder}
+                                onSubmit={() => onOrderSubmit(ORDER_TYPE_SELL)}
+                            >
+                                <OrderField
+                                    label="Price"
+                                    unit={quoteAsset?.ticker}
+                                    value={sellPrice}
+                                    onChange={onSellPriceChange}
+                                    disabled={submittingOrder}
+                                    usd={sellPrice && shouldShowUsdValues ? quoteUsdValue(sellPrice) : undefined}
+                                />
+                                <OrderField
+                                    label="Amount"
+                                    unit={baseAsset?.ticker}
+                                    value={sellAmount}
+                                    onChange={onSellAmountChange}
+                                    disabled={submittingOrder}
+                                />
+                                <OrderField
+                                    label="Total"
+                                    unit={quoteAsset?.ticker}
+                                    value={sellTotal}
+                                    onChange={onSellTotalChange}
+                                    disabled={submittingOrder}
+                                    usd={sellTotal && shouldShowUsdValues ? quoteUsdValue(sellTotal) : undefined}
+                                />
+                            </OrderForm>
                         </Grid>
-                    </VStack>
+                        )}
+                    </Flex>
 
                     {/* Right: Market History/My History & Active Orders */}
-                    <VStack gap={4} align="stretch">
-                        {/* Market History - Improved */}
-                        <Box
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/5"
-                            gradientTo="blue.600/5"
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="blue.500/15"
-                            overflow="hidden"
-                        >
-                            <HStack p={3} borderBottomWidth="1px">
-                                <Button
-                                    size="xs"
-                                    variant={historyTab === 'market' ? 'solid' : 'ghost'}
-                                    onClick={() => setHistoryTab('market')}
-                                >
-                                    Market History
-                                </Button>
-                                <Button
-                                    size="xs"
-                                    variant={historyTab === 'my' ? 'solid' : 'ghost'}
-                                    onClick={() => setHistoryTab('my')}
-                                >
-                                    My History
-                                </Button>
-                            </HStack>
+                    <Flex direction="column" gap="16px" minW="0">
+                        <Panel label="Trade history" p="14px" gap="10px">
+                            <Flex role="tablist" aria-label="Trade history" gap="2px" p="3px" borderRadius="10px" bg="hg.inset" alignSelf="flex-start">
+                                {([['market', 'Market History'], ['my', 'My History']] as const).map(([tab, label]) => {
+                                    const selected = historyTab === tab;
+                                    return (
+                                        <chakra.button
+                                            key={tab}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={selected}
+                                            onClick={() => setHistoryTab(tab)}
+                                            h="30px"
+                                            px="12px"
+                                            border="0"
+                                            borderRadius="8px"
+                                            fontSize="12px"
+                                            fontWeight="600"
+                                            cursor="pointer"
+                                            focusVisibleRing="inside"
+                                            bg={selected ? 'hg.raised' : 'transparent'}
+                                            color={selected ? 'fg' : 'hg.text.muted'}
+                                        >
+                                            {label}
+                                        </chakra.button>
+                                    );
+                                })}
+                            </Flex>
 
                             <Box maxH="300px" overflowY="auto">
-                                <Table.Root size="sm" variant="outline">
-                                    <Table.Header position='sticky' top={0} bgGradient="to-br" gradientFrom="blue.500/5" gradientTo="blue.600/5">
-                                        <Table.Row>
-                                            <Table.ColumnHeader>
-                                                <Text fontSize="xs" color="fg.muted">Price</Text>
-                                            </Table.ColumnHeader>
-                                            <Table.ColumnHeader textAlign="right">
-                                                <Text fontSize="xs" color="fg.muted">Amount</Text>
-                                            </Table.ColumnHeader>
-                                            <Table.ColumnHeader textAlign="right">
-                                                <Text fontSize="xs" color="fg.muted">Time</Text>
-                                            </Table.ColumnHeader>
-                                        </Table.Row>
-                                    </Table.Header>
-                                    <Table.Body>
-                                        {historyTab === 'market' && historyOrders.map((trade, i) => (
-                                            <Table.Row key={i}>
-                                                <Table.Cell>
-                                                    <Text fontSize="xs" color={orderTypeColor(trade.order_type)} fontWeight="medium">
-                                                        {uPriceToPrice(trade.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
-                                                    </Text>
-                                                </Table.Cell>
-                                                <Table.Cell textAlign="right">
-                                                    <Text fontSize="xs">{uAmountToAmount(trade.amount, baseAsset?.decimals ?? 0)}</Text>
-                                                </Table.Cell>
-                                                <Table.Cell textAlign="right">
-                                                    <Text fontSize="xs" color="fg.muted">
-                                                        {formattedDateFromTimestamp(trade.executed_at, true)}
-                                                    </Text>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        ))}
-                                        {historyTab === 'market' && historyOrders.length === 0 && (
-                                            <EmptyTableRow colSpan={3} message={'No market history'} />
-                                        )}
-                                        {historyTab === 'my' && myHistory.map((trade, i) => (
-                                            <Table.Row key={i}>
-                                                <Table.Cell>
-                                                    <Text fontSize="xs" color={orderTypeColor(trade.order_type)} fontWeight="medium">
-                                                        {trade.price}
-                                                    </Text>
-                                                </Table.Cell>
-                                                <Table.Cell textAlign="right">
-                                                    <Text fontSize="xs">{trade.base_volume}</Text>
-                                                </Table.Cell>
-                                                <Table.Cell textAlign="right">
-                                                    <Text fontSize="xs" color="fg.muted">{formattedDateFromTimestamp(trade.executed_at)}</Text>
-                                                </Table.Cell>
-                                            </Table.Row>
-                                        ))}
-                                        {historyTab === 'my' && myHistory.length === 0 && (
-                                            <EmptyTableRow colSpan={3} message={'No history'}/>
-                                        )}
-                                    </Table.Body>
-                                </Table.Root>
+                                <DataTable headers={['Price', 'Amount', 'Time']}>
+                                    {historyTab === 'market' && historyOrders.map((trade, i) => (
+                                        <chakra.tr key={i} borderTopWidth="1px" borderColor="hg.divider">
+                                            <Cell mono color={orderTypeColor(trade.order_type)}>
+                                                {uPriceToPrice(trade.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
+                                            </Cell>
+                                            <Cell mono right>{uAmountToAmount(trade.amount, baseAsset?.decimals ?? 0)}</Cell>
+                                            <Cell mono right color="hg.text.faint">
+                                                {formattedDateFromTimestamp(trade.executed_at, true)}
+                                            </Cell>
+                                        </chakra.tr>
+                                    ))}
+                                    {historyTab === 'market' && historyOrders.length === 0 && (
+                                        <EmptyTableRow colSpan={3} message={'No market history'} />
+                                    )}
+                                    {historyTab === 'my' && myHistory.map((trade, i) => (
+                                        <chakra.tr key={i} borderTopWidth="1px" borderColor="hg.divider">
+                                            <Cell mono color={orderTypeColor(trade.order_type)}>{trade.price}</Cell>
+                                            <Cell mono right>{trade.base_volume}</Cell>
+                                            <Cell mono right color="hg.text.faint">{formattedDateFromTimestamp(trade.executed_at)}</Cell>
+                                        </chakra.tr>
+                                    ))}
+                                    {historyTab === 'my' && myHistory.length === 0 && (
+                                        <EmptyTableRow colSpan={3} message={'No history'}/>
+                                    )}
+                                </DataTable>
                             </Box>
-                        </Box>
+                        </Panel>
 
-                        {/* Active Orders - Improved */}
-                        <Box
-                            bgGradient="to-br"
-                            gradientFrom="orange.500/5"
-                            gradientTo="yellow.500/5"
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="orange.500/15"
-                            overflow="hidden"
-                        >
-                            <HStack justify="space-between" p={3} borderBottomWidth="1px">
-                                <Text fontWeight="bold" fontSize="sm">Your Orders</Text>
+                        {/* Active Orders */}
+                        <Panel label="Your Orders" p="14px" gap="10px">
+                            <Flex justify="space-between" align="center">
+                                <chakra.h2 m="0" fontSize="14px" fontWeight="700">Your Orders</chakra.h2>
                                 {myOrders.length > 0 && (
                                     <Button
-                                        size="xs"
-                                        variant="ghost"
+                                        size="sm"
+                                        h="30px"
+                                        px="10px"
+                                        fontSize="12px"
+                                        borderRadius="8px"
+                                        variant={hgVariant('secondary')}
                                         onClick={() => onOrderCancelClick(myOrders)}
                                         loading={submittingCancel}
                                     >
                                         Cancel All
                                     </Button>
                                 )}
-                            </HStack>
+                            </Flex>
 
                             {myOrders.length === 0 ? (
-                                <Box p={6} textAlign="center">
-                                    <Text fontSize="sm" color="fg.muted">No active orders</Text>
-                                </Box>
+                                <EmptyState>No active orders</EmptyState>
                             ) : (
                                 <Box maxH="300px" overflowY="auto">
-                                    <Table.Root size="sm" variant="outline">
-                                        <Table.Header position="sticky" top={0} bgGradient="to-br" gradientFrom="orange.500/5" gradientTo="yellow.500/5">
-                                            <Table.Row>
-                                                <Table.ColumnHeader>
-                                                    <Text fontSize="xs" color="fg.muted">Type</Text>
-                                                </Table.ColumnHeader>
-                                                <Table.ColumnHeader textAlign="right">
-                                                    <Text fontSize="xs" color="fg.muted">Price</Text>
-                                                </Table.ColumnHeader>
-                                                <Table.ColumnHeader textAlign="right">
-                                                    <Text fontSize="xs" color="fg.muted">Amount</Text>
-                                                </Table.ColumnHeader>
-                                                <Table.ColumnHeader textAlign="right" />
-                                            </Table.Row>
-                                        </Table.Header>
-                                        <Table.Body>
-                                            {myOrders.map((order, i) => (
-                                                <Table.Row key={i}>
-                                                    <Table.Cell>
-                                                        <Badge
-                                                            size="xs"
-                                                            colorPalette={order.order_type === ORDER_TYPE_BUY ? 'green' : 'red'}
-
-                                                        >
-                                                            {order.order_type === ORDER_TYPE_BUY ? 'BUY' : 'SELL'}
-                                                        </Badge>
-                                                    </Table.Cell>
-                                                    <Table.Cell textAlign="right">
-                                                        <Text fontSize="xs" fontWeight="medium">
-                                                            {uPriceToPrice(order.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
-                                                        </Text>
-                                                    </Table.Cell>
-                                                    <Table.Cell textAlign="right">
-                                                        <Text fontSize="xs">
-                                                            {uAmountToAmount(order.amount, baseAsset?.decimals ?? 0)}
-                                                        </Text>
-                                                    </Table.Cell>
-                                                    <Table.Cell textAlign="right">
-                                                        <Button
-                                                            size="xs"
-                                                            variant="ghost"
-                                                            colorScheme="red"
-                                                            onClick={() => onOrderCancelClick([order])}
-                                                            loading={submittingCancel}
-                                                        >
-                                                            <LuX size={12} />
-                                                        </Button>
-                                                    </Table.Cell>
-                                                </Table.Row>
-                                            ))}
-                                        </Table.Body>
-                                    </Table.Root>
+                                    <DataTable headers={['Type', 'Price', 'Amount', <VisuallyHidden key="cancel">Cancel</VisuallyHidden>]}>
+                                        {myOrders.map((order, i) => (
+                                            <chakra.tr key={i} borderTopWidth="1px" borderColor="hg.divider">
+                                                <Cell><SideBadge orderType={order.order_type} /></Cell>
+                                                <Cell mono right>
+                                                    {uPriceToPrice(order.price, quoteAsset?.decimals ?? 0, baseAsset?.decimals ?? 0)}
+                                                </Cell>
+                                                <Cell mono right>{uAmountToAmount(order.amount, baseAsset?.decimals ?? 0)}</Cell>
+                                                <Cell right>
+                                                    <IconButton
+                                                        aria-label="Cancel order"
+                                                        size="xs"
+                                                        variant="ghost"
+                                                        color="hg.text.muted"
+                                                        _hover={{ color: 'hg.danger.text', bg: 'hg.hoverFill' }}
+                                                        onClick={() => onOrderCancelClick([order])}
+                                                        loading={submittingCancel}
+                                                    >
+                                                        <LuX size={14} />
+                                                    </IconButton>
+                                                </Cell>
+                                            </chakra.tr>
+                                        ))}
+                                    </DataTable>
                                 </Box>
                             )}
-                        </Box>
+                        </Panel>
 
                         {/* Balance */}
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="green.500/5"
-                            gradientTo="blue.500/5"
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="green.500/15"
-                        >
-                            <Text fontWeight="bold" mb={3} fontSize="sm">Balance</Text>
-                            <VStack align="stretch" gap={2}>
-                                <HStack
-                                    justify="space-between"
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`Use my available ${baseAsset?.ticker ?? ''} balance as amount`}
-                                    cursor="pointer"
-                                    px={2}
-                                    mx={-2}
-                                    py={1}
-                                    borderRadius="sm"
-                                    _hover={{bg: "bg.muted"}}
-                                    onClick={onBaseBalanceClick}
-                                    onKeyDown={(e) => onBalanceKeyDown(e, onBaseBalanceClick)}
-                                >
-                                    <Text fontSize="xs" color="fg.muted">{baseAsset?.ticker}</Text>
-                                    <HighlightText fontSize="xs" fontWeight="medium">{displayBaseBalance}</HighlightText>
-                                </HStack>
-                                <HStack
-                                    justify="space-between"
-                                    role="button"
-                                    tabIndex={0}
-                                    aria-label={`Use my available ${quoteAsset?.ticker ?? ''} balance as total`}
-                                    cursor="pointer"
-                                    px={2}
-                                    mx={-2}
-                                    py={1}
-                                    borderRadius="sm"
-                                    _hover={{bg: "bg.muted"}}
-                                    onClick={onQuoteBalanceClick}
-                                    onKeyDown={(e) => onBalanceKeyDown(e, onQuoteBalanceClick)}
-                                >
-                                    <Text fontSize="xs" color="fg.muted">{quoteAsset?.ticker}</Text>
-                                    <HighlightText fontSize="xs" fontWeight="medium">{displayQuoteBalance}</HighlightText>
-                                </HStack>
-                            </VStack>
-                        </Box>
+                        <Panel label="Balance" p="14px" gap="4px">
+                            <chakra.h2 m="0" mb="6px" fontSize="14px" fontWeight="700">Balance</chakra.h2>
+                            <BalanceButton
+                                ticker={baseAsset?.ticker}
+                                aria-label={`Use my available ${baseAsset?.ticker ?? ''} balance as amount`}
+                                onClick={onBaseBalanceClick}
+                            >
+                                {displayBaseBalance}
+                            </BalanceButton>
+                            <BalanceButton
+                                ticker={quoteAsset?.ticker}
+                                aria-label={`Use my available ${quoteAsset?.ticker ?? ''} balance as total`}
+                                onClick={onQuoteBalanceClick}
+                            >
+                                {displayQuoteBalance}
+                            </BalanceButton>
+                        </Panel>
 
                         {/* Trading Fees Info */}
-                        <Box
-                            p={4}
-                            bgGradient="to-br"
-                            gradientFrom="blue.500/5"
-                            gradientTo="blue.600/5"
-                            borderRadius="md"
-                            borderWidth="1px"
-                            borderColor="blue.500/15"
-                        >
-                            <HStack gap={2} mb={2}>
-                                <LuInfo size={14} color="var(--chakra-colors-blue-500)" />
-                                <Text fontSize="xs" fontWeight="semibold" color="fg.muted">Trading Fees</Text>
-                            </HStack>
-                            <VStack gap={1} align="stretch">
-                                <FeeEstimateRow
-                                    size="xs"
-                                    label="Taker Fee"
-                                    fee={tradingFees.takerFee}
-                                    isLoading={tradingFeesLoading}
-                                    description="Fee paid to the network when your order is filled immediately (market order or matching existing orders)."
-                                    txKind="create-order"
-                                />
-                                <FeeEstimateRow
-                                    size="xs"
-                                    label="Maker Fee"
-                                    fee={tradingFees.makerFee}
-                                    isLoading={tradingFeesLoading}
-                                    description="Fee paid to the network when your order is placed in the order book and filled later."
-                                    txKind="create-order"
-                                />
-                            </VStack>
-                        </Box>
-                    </VStack>
+                        <Panel label="Trading Fees" p="14px" gap="10px">
+                            <Flex align="center" gap="6px" fontSize="12px" fontWeight="600" color="hg.text.faint">
+                                <LuInfo size={14} aria-hidden="true" />
+                                Trading Fees
+                            </Flex>
+                            <FeeEstimateRow
+                                size="xs"
+                                label="Taker Fee"
+                                fee={tradingFees.takerFee}
+                                isLoading={tradingFeesLoading}
+                                description="Fee paid to the network when your order is filled immediately (market order or matching existing orders)."
+                                txKind="create-order"
+                            />
+                            <FeeEstimateRow
+                                size="xs"
+                                label="Maker Fee"
+                                fee={tradingFees.makerFee}
+                                isLoading={tradingFeesLoading}
+                                description="Fee paid to the network when your order is placed in the order book and filled later."
+                                txKind="create-order"
+                            />
+                        </Panel>
+                    </Flex>
                 </Grid>
-            </VStack>
-        </Container>
+            </Flex>
         </Box>
     );
 };

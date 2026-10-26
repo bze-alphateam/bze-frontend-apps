@@ -1,19 +1,20 @@
 'use client';
 
 import {useState} from 'react';
-import {Box, Grid, HStack, IconButton, Link, Stack, Text} from '@chakra-ui/react';
+import {Box, chakra, Flex, Grid, IconButton, Link} from '@chakra-ui/react';
 import {LuCheck, LuCopy} from 'react-icons/lu';
 import {AppLink, getExplorerAccountURL, getExplorerProposalURL, truncateAddress, type GovParams, type GovProposal, type GovTally} from '@bze/bze-ui-kit';
 import {coinsText, depositFate, timeline, type DenomResolver, type TimelineState} from '@/lib/governance/details';
+import {Panel} from './panel';
 
 // Timeline, proposer and deposit.
 
 const DOT: Record<TimelineState, {bg: string; ring: string; weight: string}> = {
-    done: {bg: 'fg.muted', ring: 'transparent', weight: 'medium'},
-    now: {bg: 'purple.600', ring: 'purple.subtle', weight: 'bold'},
-    todo: {bg: 'border', ring: 'transparent', weight: 'medium'},
-    passed: {bg: 'green.600', ring: 'green.subtle', weight: 'bold'},
-    rejected: {bg: 'red.600', ring: 'red.subtle', weight: 'bold'},
+    done: {bg: 'hg.text.faint', ring: 'transparent', weight: '500'},
+    now: {bg: 'app.solid', ring: 'app.muted', weight: '700'},
+    todo: {bg: 'hg.lineStrong', ring: 'transparent', weight: '500'},
+    passed: {bg: 'hg.success', ring: 'hg.success/25', weight: '700'},
+    rejected: {bg: 'hg.danger', ring: 'hg.danger/25', weight: '700'},
 };
 
 function CopyAddress({address}: {address: string}) {
@@ -25,7 +26,7 @@ function CopyAddress({address}: {address: string}) {
         }).catch(() => undefined);
     };
     return (
-        <IconButton aria-label={copied ? 'Copied' : 'Copy proposer address'} size="2xs" variant="ghost" onClick={copy}>
+        <IconButton aria-label={copied ? 'Copied' : 'Copy proposer address'} size="2xs" variant="ghost" color="hg.text.faint" _hover={{color: 'fg', bg: 'hg.hoverFill'}} onClick={copy}>
             {copied ? <LuCheck /> : <LuCopy />}
         </IconButton>
     );
@@ -44,46 +45,45 @@ export function ProposalTimeline({proposal, tally, params, now, resolve}: Propos
     const deposit = `${coinsText(proposal.total_deposit, resolve)} · ${depositFate(proposal, tally, params)}`;
 
     return (
-        <Stack as="section" aria-labelledby="time-h" bg="bg.panel" borderWidth="1px" borderRadius="lg" p={{base: '4', md: '5'}} gap="3.5">
-            <Text as="h2" id="time-h" fontSize="md" fontWeight="bold">Timeline</Text>
+        <Panel headingId="time-h" title="Timeline">
             <Box as="ol" listStyleType="none" m="0" p="0" data-testid="timeline">
                 {items.map((item, i) => {
                     const dot = DOT[item.state];
                     const last = i === items.length - 1;
                     return (
-                        <HStack as="li" key={item.label} align="stretch" gap="3">
-                            <Stack align="center" gap="0" w="3" flex="none" aria-hidden>
-                                <Box w="2.5" h="2.5" mt="1.5" borderRadius="full" bg={dot.bg} outline="3px solid" outlineColor={dot.ring} />
-                                {!last && <Box flex="1" w="2px" minH="5" bg="border" />}
-                            </Stack>
-                            <Stack gap="0" pb={last ? '0' : '3'}>
-                                <Text fontSize="sm" fontWeight={dot.weight}>{item.label}</Text>
-                                <Text fontSize="xs" color="fg.muted">{item.detail}</Text>
-                            </Stack>
-                        </HStack>
+                        <Flex as="li" key={item.label} align="stretch" gap="12px">
+                            <Flex direction="column" align="center" w="12px" flex="none" aria-hidden>
+                                <Box boxSize="10px" mt="5px" borderRadius="full" bg={dot.bg} outline="3px solid" outlineColor={dot.ring} />
+                                {!last && <Box flex="1" w="2px" minH="18px" bg="hg.lineStrong" />}
+                            </Flex>
+                            <Flex direction="column" pb={last ? '0' : '12px'}>
+                                <chakra.span fontSize="14px" fontWeight={dot.weight}>{item.label}</chakra.span>
+                                <chakra.span fontSize="12px" color="hg.text.faint">{item.detail}</chakra.span>
+                            </Flex>
+                        </Flex>
                     );
                 })}
             </Box>
-            <Grid as="dl" templateColumns="auto minmax(0, 1fr)" columnGap="4" rowGap="2" fontSize="13px" borderTopWidth="1px" pt="3.5" m="0">
-                <Text as="dt" color="fg.muted">Proposer</Text>
+            <Grid as="dl" templateColumns="auto minmax(0, 1fr)" columnGap="16px" rowGap="8px" fontSize="13px" borderTopWidth="1px" borderColor="hg.divider" pt="14px" m="0">
+                <chakra.dt color="hg.text.faint">Proposer</chakra.dt>
                 <Box as="dd" m="0" textAlign="right">
                     {proposal.proposer ? (
-                        <HStack justify="flex-end" gap="1">
-                            <Link href={getExplorerAccountURL(proposal.proposer)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="purple.fg" title={proposal.proposer}>
+                        <Flex justify="flex-end" align="center" gap="4px">
+                            <Link href={getExplorerAccountURL(proposal.proposer)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={proposal.proposer}>
                                 {truncateAddress(proposal.proposer)}
                             </Link>
                             <CopyAddress address={proposal.proposer} />
-                        </HStack>
+                        </Flex>
                     ) : (
-                        <Text as="span" color="fg.muted">Not recorded</Text>
+                        <chakra.span color="fg.muted">Not recorded</chakra.span>
                     )}
                 </Box>
-                <Text as="dt" color="fg.muted">Deposit</Text>
-                <Text as="dd" m="0" textAlign="right" data-testid="deposit">{deposit}</Text>
+                <chakra.dt color="hg.text.faint">Deposit</chakra.dt>
+                <chakra.dd m="0" textAlign="right" data-testid="deposit">{deposit}</chakra.dd>
             </Grid>
             <Box hideFrom="md" fontSize="13px">
-                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)}>Explorer</AppLink>
+                <AppLink app="explorer" href={getExplorerProposalURL(proposal.id)} flush>Explorer</AppLink>
             </Box>
-        </Stack>
+        </Panel>
     );
 }

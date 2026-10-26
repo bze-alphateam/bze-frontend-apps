@@ -1,82 +1,90 @@
 'use client';
 
-import {Box, Button, ClientOnly, Container, HStack, Image, Skeleton, Spacer, Text} from '@chakra-ui/react'
-import {NavbarLinks} from './navbar-links'
-import {useColorModeValue} from "@/components/ui/color-mode";
-import {LuWallet} from "react-icons/lu";
-import {Sidebar, WalletSidebarContent, SettingsToggle, useBalance, getChainName, shortNumberFormat, uAmountToBigNumberAmount, getChainNativeAssetDenom, useAssets} from "@bze/bze-ui-kit";
-import {MobileNavbarLinks} from "@/components/ui/navigation/mobile-navbar-links";
-import {useChain} from "@interchain-kit/react";
-import {WalletState} from "@interchain-kit/core";
-import {useMemo} from "react";
+import NextLink from 'next/link'
+import {type ComponentProps, forwardRef} from 'react'
+import {AppHeader, AppHeaderNavItem, SettingsToggle, WalletSidebarContent, useWalletButtonLabel} from "@bze/bze-ui-kit";
+import {useNavigation} from "@/hooks/useNavigation";
+import {PendingTx, usePendingTx} from "@/contexts/pending-tx";
 
-interface TopNavBarProps {
-    appLabel?: string;
+const navItems = [
+    { label: 'Create', href: '/' },
+    { label: 'Tokens', href: '/tokens' },
+    { label: 'Rewards', href: '/rewards' },
+]
+
+// Every other page lights up the item it belongs to: wizards and Choose screens are Create, the
+// token page and the registry guide are Tokens, every reward page is Rewards.
+const navSubitems: { [key: string]: string } = {
+    '/create/market': '/',
+    '/create/rewards': '/',
+    '/create/grow': '/',
+    '/token/new': '/',
+    '/market/new': '/',
+    '/pool/new': '/',
+    '/reward/new': '/',
+    '/denom-reward/new': '/',
+    '/airdrop': '/',
+    '/raffle/new': '/',
+    '/tokens/token': '/tokens',
+    '/official': '/tokens',
+    '/brand-kit': '/tokens',
+    '/reward/extend': '/rewards',
+    '/denom-reward/schedule': '/rewards',
 }
 
-export const TopNavBar = ({ appLabel = "FACTORY" }: TopNavBarProps) => {
-    const {nativeAsset} = useAssets()
-    const {balance} = useBalance(getChainNativeAssetDenom())
-    const {status} = useChain(getChainName());
+/**
+ * Nav links without prefetch. The Tokens and Rewards items point at pages that read their view from
+ * the query; prefetching the bare path of the page being shown stopped its own `router.replace`
+ * of the query (the /rewards filters) from landing (BFE-260 e2e).
+ */
+const NavLink = forwardRef<HTMLAnchorElement, ComponentProps<typeof NextLink>>(function NavLink(props, ref) {
+    return <NextLink ref={ref} prefetch={false} {...props} />
+})
 
-    const walletButtonText = useMemo(() => {
-        if (status !== WalletState.Connected || !nativeAsset) {
-            return "";
+/** The nav item a wizard page belongs to. */
+const ownerOf = (href: string) => {
+    const path = href.split('?')[0]
+    return navItems.some(item => item.href === path) ? path : navSubitems[path]
+}
+
+/**
+ * The nav items with the "in progress" badge on the item that owns each wizard whose
+ * transaction is between broadcast and result; the item then leads back to that wizard.
+ */
+export function withPendingBadges(items: AppHeaderNavItem[], pending: readonly PendingTx[]): AppHeaderNavItem[] {
+    return items.map((item) => {
+        const mine = pending.filter(tx => tx.status === 'pending' && ownerOf(tx.href) === item.href)
+        if (mine.length === 0) return item
+        const count = mine.length
+        return {
+            ...item,
+            href: mine[mine.length - 1].href,
+            badge: {
+                count,
+                label: count === 1 ? '1 transaction in progress' : `${count} transactions in progress`,
+                caption: 'in progress',
+            },
         }
+    })
+}
 
-        const humanBalance = uAmountToBigNumberAmount(balance.amount, nativeAsset.decimals)
-
-        return `${shortNumberFormat(humanBalance)} ${nativeAsset.ticker}`
-    }, [status, nativeAsset, balance])
+export const TopNavBar = () => {
+    const {currentPathName} = useNavigation()
+    const walletLabel = useWalletButtonLabel()
+    const {entries} = usePendingTx()
 
     return (
-        <Box borderBottomWidth="1px" bg="bg.panel">
-            <Container py={{ base: '3.5', md: '4' }}>
-                <HStack justify="space-between">
-                    <HStack gap="2" align="center">
-                        <ClientOnly fallback={<Image height="28px" src="/images/beezee_light.svg"  alt="BZE application logo"/>}>
-                            <Image
-                                height={{base: "22px", md: "28px"}}
-                                src={useColorModeValue("/images/beezee_dark.svg", "/images/beezee_light.svg")}
-                                alt="BZE application logo"
-                            />
-                        </ClientOnly>
-                        <Text
-                            fontSize={{ base: "sm", md: "md" }}
-                            fontWeight="extrabold"
-                            color="#f5b301"
-                            letterSpacing="tighter"
-                            textTransform="uppercase"
-                            opacity="0.9"
-                            transition="all 0.3s ease"
-                            _hover={{ opacity: 1, color: "#d99f01" }}
-                        >
-                            {appLabel}
-                        </Text>
-                    </HStack>
-                    <Spacer hideFrom="md" />
-                    <NavbarLinks hideBelow="md" />
-                    <Box display={"flex"} gap={{ base: 1, md: 4}}>
-                        {/* Wallet Sidebar */}
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <Sidebar
-                                ariaLabel="Wallet"
-                                trigger={
-                                    <Button size={{ base: 'sm', md: 'md' }}>
-                                        <LuWallet /> <Text hideBelow="md">{walletButtonText}</Text>
-                                    </Button>
-                                }
-                            >
-                                <WalletSidebarContent accentColor="yellow" skipWalletModal />
-                            </Sidebar>
-                        </ClientOnly>
-                        <ClientOnly fallback={<Skeleton  w="10" h="10" rounded="md" />}>
-                            <SettingsToggle accentColor="yellow" />
-                        </ClientOnly>
-                    </Box>
-                    <MobileNavbarLinks />
-                </HStack>
-            </Container>
-        </Box>
+        <AppHeader
+            app="factory"
+            appName="BeeZee Factory"
+            linkAs={NavLink}
+            items={withPendingBadges(navItems.map((item) => ({
+                ...item,
+                active: currentPathName === item.href || item.href === navSubitems[currentPathName],
+            })), entries)}
+            walletLabel={walletLabel}
+            walletContent={<WalletSidebarContent skipWalletModal />}
+            settings={<SettingsToggle />}
+        />
     )
 }

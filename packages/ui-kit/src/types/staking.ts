@@ -5,6 +5,8 @@ import BigNumber from "bignumber.js";
 export interface NativeStakingData {
     averageApr: string;
     unlockDuration: string;
+    /** The unbonding period in seconds; `unlockDuration` is it in whole days, so a period under a day reads 0 there. */
+    unlockSeconds?: number;
     totalStaked: Balance;
     minAmount: Balance;
     averageDailyDistribution: Balance;

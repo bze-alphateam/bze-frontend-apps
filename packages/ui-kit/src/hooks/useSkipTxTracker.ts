@@ -11,7 +11,8 @@ import {generateTxRecordId} from '../utils/cross_chain';
 const STORAGE_KEY = 'skip:pending-txs';
 const TTL_SECONDS = 3600; // 1 hour
 const POLL_INTERVAL_MS = 10_000; // 10 seconds
-const MAX_AGE_MS = 3600_000; // 1 hour
+const MAX_AGE_MS = 3600_000; // 1 hour: a tx that never resolves is dropped after this
+const FINAL_VISIBLE_MS = 60_000; // a finished tx stays visible this long
 
 const TERMINAL_STATES: CrossChainTxState[] = ['completed', 'failed', 'abandoned'];
 
@@ -28,13 +29,22 @@ const mapSkipState = (skipState: string): CrossChainTxState => {
 
 const isTerminal = (state: CrossChainTxState): boolean => TERMINAL_STATES.includes(state);
 
+/** When a record leaves the wallet: 1 minute after it finished, or 1 hour after it was sent. */
+const expiresAt = (r: CrossChainTxRecord): number =>
+    r.finishedAt !== undefined ? r.finishedAt + FINAL_VISIBLE_MS : r.timestamp + MAX_AGE_MS;
+
+/** The latest record still visible, as a 0- or 1-item list. Older stored lists keep only their newest entry. */
 const loadRecords = (): CrossChainTxRecord[] => {
     const raw = getFromLocalStorage(STORAGE_KEY);
     if (!raw) return [];
     try {
         const records: CrossChainTxRecord[] = JSON.parse(raw);
         const now = Date.now();
-        return records.filter(r => now - r.timestamp < MAX_AGE_MS);
+        const latest = records.reduce<CrossChainTxRecord | undefined>(
+            (best, r) => (!best || r.timestamp > best.timestamp ? r : best),
+            undefined,
+        );
+        return latest && expiresAt(latest) > now ? [latest] : [];
     } catch {
         return [];
     }
@@ -45,11 +55,17 @@ const saveRecords = (records: CrossChainTxRecord[]) => {
 };
 
 export interface UseSkipTxTrackerReturn {
+    /** The latest Buy BZE transaction, when there is one still to show: never more than one record. */
     transactions: CrossChainTxRecord[];
     addTransaction: (partial: Omit<CrossChainTxRecord, 'id' | 'timestamp' | 'state'> & { state?: CrossChainTxState }) => void;
     dismissTransaction: (id: string) => void;
 }
 
+/**
+ * Tracks the latest Buy BZE (Skip) transaction. The wallet is not a history: a new transaction
+ * replaces the previous one. An unfinished one stays until it finishes (or for 1 hour at most);
+ * a finished one stays for 1 minute. Every transaction is in the Explorer.
+ */
 export function useSkipTxTracker(): UseSkipTxTrackerReturn {
     const [transactions, setTransactions] = useState<CrossChainTxRecord[]>(loadRecords);
     const {toast} = useToast();
@@ -69,6 +85,18 @@ export function useSkipTxTracker(): UseSkipTxTrackerReturn {
     // ─── Persist on every change ───────────────────────────────────────────
     useEffect(() => {
         saveRecords(transactions);
+    }, [transactions]);
+
+    // ─── Drop the record when it expires ───────────────────────────────────
+    useEffect(() => {
+        const record = transactions[0];
+        if (!record) return;
+
+        const timeout = setTimeout(() => {
+            setTransactions(prev => prev.filter(t => t.id !== record.id));
+        }, Math.max(0, expiresAt(record) - Date.now()));
+
+        return () => clearTimeout(timeout);
     }, [transactions]);
 
     // ─── On mount: re-track any non-terminal txs loaded from localStorage ──
@@ -155,6 +183,7 @@ export function useSkipTxTracker(): UseSkipTxTrackerReturn {
                     }
 
                     // Mutate in place — we'll clone the whole array below
+                    if (stateChanged && isTerminal(newState)) tx.finishedAt = Date.now();
                     tx.state = newState;
                     tx.lastStatus = status;
                     if (status.error?.message) tx.error = status.error.message;
@@ -183,11 +212,14 @@ export function useSkipTxTracker(): UseSkipTxTrackerReturn {
     const addTransaction = useCallback((
         partial: Omit<CrossChainTxRecord, 'id' | 'timestamp' | 'state'> & { state?: CrossChainTxState },
     ) => {
+        const now = Date.now();
+        const state = partial.state ?? 'submitted';
         const record: CrossChainTxRecord = {
             ...partial,
             id: generateTxRecordId(),
-            timestamp: Date.now(),
-            state: partial.state ?? 'submitted',
+            timestamp: now,
+            state,
+            ...(isTerminal(state) ? {finishedAt: now} : {}),
         };
         // Register with Skip's tracking API — required before status polling works
         if (record.txHash && record.broadcastChainId) {
@@ -201,7 +233,8 @@ export function useSkipTxTracker(): UseSkipTxTrackerReturn {
                 })
                 .catch(() => { /* Non-critical */ });
         }
-        setTransactions(prev => [record, ...prev]);
+        // Only the latest buy is kept.
+        setTransactions([record]);
     }, []);
 
     const dismissTransaction = useCallback((id: string) => {

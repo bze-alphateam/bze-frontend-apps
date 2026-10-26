@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
@@ -7,6 +7,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
 import { createAmmRouter, setInLocalStorage } from "@bze/bze-ui-kit";
 import { quoteExactInput } from "@/lib/swap-quote";
+import { rulesFor } from "@/test-support/css-rules";
 
 // The swap page reads its assets, balances and the shared gas engine through ui-kit hooks.
 // We mock those to feed state directly (no wallet / chain providers) and keep the rest of
@@ -16,8 +17,11 @@ const mocks = vi.hoisted(() => ({
     tx: vi.fn(),
     liquidAssets: [] as unknown[],
     pools: [] as unknown[],
+    halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
     usdPrices: new Map<string, BigNumber>(),
+    // A plain number: BigNumber is not imported yet when vi.hoisted runs.
+    bzePrice: 0,
 }));
 
 vi.mock("@interchain-kit/react", () => ({
@@ -50,6 +54,13 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             isLoading: false,
         }),
         useLiquidityPools: () => ({ pools: mocks.pools, liquidAssets: mocks.liquidAssets, isLoading: false }),
+        useHaltedDenoms: () => ({
+            haltedDenoms: mocks.halted,
+            isDenomHalted: (denom: string) => mocks.halted.has(denom),
+            isPoolHalted: (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote),
+            isMarketHalted: () => false,
+            isLoading: false,
+        }),
         useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
         useBZETx: () => ({ tx: mocks.tx, progressTrack: "" }),
         // Same contract as the real hook: USD price per whole token, amount in base (micro) units.
@@ -68,6 +79,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         }),
         useCanAffordTx: () => ({ canAfford: true, shortfalls: [], shortOnFees: false, message: "", gasFee: zeroGas, isLoading: false }),
         getAddressSwapHistory: async () => [],
+        // The home page's market list and BZE price; empty here, the swap card is under test.
+        useMarkets: () => ({ markets: [], getMarketData: () => undefined, isLoading: false }),
+        useAssetPrice: () => ({ price: new BigNumber(mocks.bzePrice), hasPrice: mocks.bzePrice > 0, isLoading: false }),
         FeeEstimateRow: () => null,
     };
 });
@@ -122,19 +136,23 @@ function renderSwap() {
 const fromInput = () => screen.getAllByPlaceholderText("0.0")[0] as HTMLInputElement;
 const toInput = () => screen.getAllByPlaceholderText("0.0")[1] as HTMLInputElement;
 
-/** 5,000,000 BZE against 1,000 USDC: ~0.0002 USDC per BZE, 0.3 % fee. */
-function bzeUsdcPool(reserveBase = "5000000000000", reserveQuote = "1000000000"): LiquidityPoolSDKType {
+function pool(id: string, base: string, quote: string, reserveBase: string, reserveQuote: string): LiquidityPoolSDKType {
     return {
-        id: "1",
-        base: "ubze",
-        quote: "uusdc",
-        lp_denom: "ulp1",
+        id,
+        base,
+        quote,
+        lp_denom: `ulp${id}`,
         creator: "bze1creator",
         fee: "0.003",
         reserve_base: reserveBase,
         reserve_quote: reserveQuote,
         stable: false,
     };
+}
+
+/** 5,000,000 BZE against 1,000 USDC: ~0.0002 USDC per BZE, 0.3 % fee. */
+function bzeUsdcPool(reserveBase = "5000000000000", reserveQuote = "1000000000"): LiquidityPoolSDKType {
+    return pool("1", "ubze", "uusdc", reserveBase, reserveQuote);
 }
 
 /** Both assets funded, BZE first ("from") and USDC second ("to"), one pool between them. */
@@ -154,10 +172,12 @@ beforeEach(() => {
     mocks.balances.clear();
     mocks.usdPrices.clear();
     mocks.pools = [];
+    mocks.halted = new Set();
+    mocks.bzePrice = 0;
     localStorage.clear();
 });
 
-describe("Swap page MAX button", () => {
+describe("Swap page Max button", () => {
     it("fills the spendable amount (balance minus gas) when selling the fee token", () => {
         // Both assets have a balance, so the list is alphabetical by ticker: BZE is "from".
         mocks.liquidAssets = [makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
@@ -168,7 +188,7 @@ describe("Swap page MAX button", () => {
         );
         renderSwap();
 
-        fireEvent.click(screen.getByRole("button", { name: "MAX" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
 
         expect(fromInput().value).toBe("9.9955");
         // The reserve is sized for the worst case: a 3-hop route.
@@ -185,13 +205,13 @@ describe("Swap page MAX button", () => {
         );
         renderSwap();
 
-        fireEvent.click(screen.getByRole("button", { name: "MAX" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
 
         expect(fromInput().value).toBe("10");
         expect(mocks.useMaxSpendable).toHaveBeenCalledWith("uatom", { kind: "swap", count: 3 });
     });
 
-    it("takes the percentage presets from the spendable balance, so 100 % equals MAX", () => {
+    it("takes the percentage presets from the spendable balance, the same one Max fills", () => {
         mocks.liquidAssets = [makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
         mocks.balances.set("ubze", new BigNumber(10).shiftedBy(6));
         mocks.balances.set("uusdc", new BigNumber(5).shiftedBy(6));
@@ -203,8 +223,57 @@ describe("Swap page MAX button", () => {
         fireEvent.click(screen.getByRole("button", { name: "75%" }));
         expect(fromInput().value).toBe("7.496625");
 
-        fireEvent.click(screen.getByRole("button", { name: "100%" }));
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
         expect(fromInput().value).toBe("9.9955");
+    });
+});
+
+describe("Swap page with a governance-halted denom", () => {
+    const HALTED = "factory/bze1creator/uhalt";
+
+    // ATOM reaches BZE only through the halted denom: ATOM -> HALTED -> BZE.
+    beforeEach(() => {
+        mocks.useMaxSpendable.mockImplementation(() => spendable("10", "0"));
+        mocks.liquidAssets = [makeAsset("AAA", HALTED), makeAsset("ATOM", "uatom"), makeAsset("BZE", "ubze")];
+        mocks.pools = [
+            pool("1", "uatom", HALTED, "1000000000", "1000000000"),
+            pool("2", HALTED, "ubze", "1000000000", "1000000000"),
+        ];
+        mocks.balances.set("uatom", new BigNumber(10).shiftedBy(6));
+        mocks.balances.set("ubze", new BigNumber(10).shiftedBy(6));
+    });
+
+    it("never offers the halted denom, even when it would sort first", () => {
+        // AAA (halted) holds the only balance, so without the halt it would be the default "from".
+        mocks.balances.clear();
+        mocks.balances.set(HALTED, new BigNumber(10).shiftedBy(6));
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        expect(screen.queryByText("AAA")).toBeNull();
+        expect(screen.getAllByText("ATOM").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("BZE").length).toBeGreaterThan(0);
+    });
+
+    it("never routes through a halted pool", () => {
+        mocks.halted = new Set([HALTED]);
+        renderSwap();
+
+        // ATOM is "from" and BZE "to"; the only path crosses the halted denom, so there is no route.
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+
+        expect(toInput().value).toBe("");
+        expect(screen.getByText("No Route Found")).toBeInTheDocument();
+    });
+
+    it("changes nothing when nothing is halted", () => {
+        renderSwap();
+
+        expect(screen.getAllByText("AAA").length).toBeGreaterThan(0);
+        // AAA sorts first and becomes "from"; its pool with ATOM gives a route.
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+        expect(toInput().value).not.toBe("");
+        expect(screen.getByRole("button", { name: "Swap" })).toBeEnabled();
     });
 });
 
@@ -421,8 +490,17 @@ describe("Swap page slippage", () => {
     });
 });
 
+describe("Swap page BZE price tile", () => {
+    it("shows the full price from md and 4 significant digits on a phone, so it fits one line", () => {
+        mocks.bzePrice = 0.764577;
+        renderSwap();
+        const value = screen.getAllByTestId("stat-value")[0];
+        expect(value.textContent).toBe("$0.764577$0.7646");
+    });
+});
+
 describe("Swap page USD values", () => {
-    const usdLines = () => screen.queryAllByText((_, el) => el?.tagName === "P" && /^≈ \$.* USD$/.test(el.textContent ?? ""));
+    const usdLines = () => screen.queryAllByText((_, el) => el?.tagName === "SPAN" && /^≈ \$.* USD$/.test(el.textContent ?? ""));
 
     it("prices the typed amounts as whole tokens, not as base units", () => {
         setupBzeUsdc();
@@ -448,3 +526,88 @@ describe("Swap page USD values", () => {
         expect(usdLines()).toHaveLength(0);
     });
 });
+
+/** Chakra's rules for `el`, one per line (each ends where its declarations end). */
+const ruleLines = (el: HTMLElement) => rulesFor(el).split("\n").map((rule) => rule.trim()).filter(Boolean);
+
+/** The declarations Chakra emitted for `el` while `layout` is on <html>, inside the lg media query. */
+function lgRulesIn(el: HTMLElement, layout: string): string {
+    const pattern = new RegExp(String.raw`@media[^{]*min-width:\s*64rem[^{]*\{[^{]*html\[data-swap-layout="?${layout}"?\][^{]*\{(.*)$`);
+    return ruleLines(el).map((rule) => pattern.exec(rule)?.[1]).filter(Boolean).join(";");
+}
+
+/** The element's own rules outside any media query or <html> attribute: what B and phones get. */
+const defaultRules = (el: HTMLElement) =>
+    ruleLines(el).filter((rule) => !rule.includes("@media") && !rule.includes("data-swap-layout")).join(";");
+
+describe("Swap page top layouts", () => {
+    afterEach(() => {
+        delete document.documentElement.dataset.swapLayout;
+    });
+
+    it("is B by default: one column, and no lg column rule without the <html> attribute", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const top = screen.getByTestId("swap-top");
+        expect(defaultRules(top)).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+        expect(defaultRules(top)).toMatch(/align-items:\s*start/);
+        const unconditionalLg = ruleLines(top).filter((rule) => rule.includes("@media") && !rule.includes("data-swap-layout") && rule.includes("grid-template-columns"));
+        expect(unconditionalLg).toEqual([]);
+    });
+
+    it("lays A out as two stretched columns, the card on the right, from lg up only", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const css = lgRulesIn(screen.getByTestId("swap-top"), "aligned");
+        expect(css).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\) 460px/);
+        expect(css).toMatch(/grid-template-areas:\s*"hero card" "stats card" "history history"/);
+        expect(css).toMatch(/align-items:\s*stretch/);
+    });
+
+    it("lays C-3 out as the card on the left and the activity on the right, from lg up only", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const css = lgRulesIn(screen.getByTestId("swap-top"), "split");
+        expect(css).toMatch(/grid-template-columns:\s*460px minmax\(0,\s*1fr\)/);
+        expect(css).toMatch(/grid-template-areas:\s*"hero hero" "card stats" "card history"/);
+        expect(css).toMatch(/align-items:\s*stretch/);
+    });
+
+    it("frames the swap card with the featured edge, 1.5 px wide in C-3", () => {
+        setupBzeUsdc();
+        renderSwap();
+        const edge = screen.getByTestId("swap-card-edge");
+        expect(defaultRules(edge)).toMatch(/background-image:[^;]*featured-?edge/i);
+        expect(defaultRules(edge)).toMatch(/padding:\s*1px/);
+        const split = lgRulesIn(edge, "split");
+        expect(split).toMatch(/padding:\s*1\.5px/);
+        expect(split).toMatch(/border-radius:\s*22px/);
+        expect(lgRulesIn(edge, "aligned")).toBe("");
+    });
+
+    it("renders the swap card once and keeps the typed amount across layout switches", () => {
+        setupBzeUsdc();
+        renderSwap();
+        expect(screen.getAllByPlaceholderText("0.0")).toHaveLength(2);
+
+        fireEvent.change(fromInput(), { target: { value: "12" } });
+        fireEvent.click(screen.getByRole("radio", { name: "Layout: swap left, activity right" }));
+        expect(document.documentElement.getAttribute("data-swap-layout")).toBe("split");
+        expect(localStorage.getItem("dex:swap-layout")).toBe("split");
+        fireEvent.click(screen.getByRole("radio", { name: "Layout: swap centre stage" }));
+        expect(document.documentElement.hasAttribute("data-swap-layout")).toBe(false);
+
+        expect(screen.getAllByPlaceholderText("0.0")).toHaveLength(2);
+        expect(fromInput().value).toBe("12");
+    });
+
+    it("shows B's stats as one figure box with the phone price, beside the stat cards", () => {
+        mocks.bzePrice = 0.764577;
+        renderSwap();
+        expect(screen.getAllByTestId("stat-card")).toHaveLength(3);
+        const figures = screen.getAllByTestId("figure-value");
+        expect(figures).toHaveLength(3);
+        expect(figures[0].textContent).toBe("$0.764577$0.7646");
+    });
+});
+

@@ -1,11 +1,19 @@
 import type {Metadata, Viewport} from "next";
-import {Inter} from "next/font/google"
+import {Inter, JetBrains_Mono} from "next/font/google"
 
 import {Providers} from "./providers";
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+  variable: "--font-mono",
 })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://staking.getbze.com";
@@ -15,7 +23,12 @@ export const metadata: Metadata = {
   title: "Staking | BeeZee Blockchain",
   description: "Stake your BZE tokens on the BeeZee blockchain. Delegate to validators, earn staking rewards, manage your delegations, and participate in network security.",
   icons: {
-    icon: "/images/logo_320px.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/images/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: "/images/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
@@ -28,7 +41,7 @@ export const metadata: Metadata = {
         url: "/images/og-image.png",
         width: 1200,
         height: 630,
-        alt: "BeeZee Staking",
+        alt: "BeeZee Staking logo, staking.getbze.com",
       },
     ],
   },
@@ -47,7 +60,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({children}: { children: React.ReactNode }) {
     return (
-      <html className={inter.className} suppressHydrationWarning>
+      <html className={`${inter.className} ${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
           <body>
             <Providers>{children}</Providers>
           </body>

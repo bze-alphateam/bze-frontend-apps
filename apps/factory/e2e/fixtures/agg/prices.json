@@ -1,0 +1,25 @@
+{
+  "source": "https://getbze.com/api/prices",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/api/prices",
+  "query": {},
+  "status": 200,
+  "body": [
+    {
+      "denom": "bzedge",
+      "price": 0.00017591,
+      "price_denom": "usd"
+    },
+    {
+      "denom": "osmosis",
+      "price": 0.03698537,
+      "price_denom": "usd"
+    },
+    {
+      "denom": "cosmos",
+      "price": 1.91,
+      "price_denom": "usd"
+    }
+  ]
+}

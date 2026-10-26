@@ -14,6 +14,7 @@ import {
     type AssetBalance,
     type AssetsContextType,
 } from "@bze/bze-ui-kit";
+import { forbidNetwork } from "@bze/vitest-preset/no-network";
 
 // The send form lives in ui-kit and runs the REAL gas engine (useMaxSpendable /
 // useCanAffordTx on top of GAS_ESTIMATES): only the wallet connection is mocked and the
@@ -34,8 +35,10 @@ vi.mock("@interchain-kit/react", () => ({
 // The fee hooks read chain params (tradebin / txfeecollector) through the query layer, which
 // serves them from its localStorage cache when present. Seed both caches so no request is
 // made and the gas price is the known default (0.02 ubze/gas).
+forbidNetwork();
+
 beforeAll(() => {
-    setInLocalStorage("tradebin_params", JSON.stringify({
+    setInLocalStorage("tradebin_params_v2", JSON.stringify({
         minNativeLiquidityForModuleSwap: "100000000000",
         createMarketFee: { denom: "ubze", amount: "1000000" },
         marketMakerFee: { denom: "ubze", amount: "1000" },
@@ -43,6 +46,7 @@ beforeAll(() => {
     }), 60_000);
     setInLocalStorage("txfeecollector_params", JSON.stringify({
         validatorMinGasFee: { denom: "ubze", amount: "0.02" },
+        blockedIbcInbound: [],
     }), 60_000);
 });
 
@@ -108,7 +112,7 @@ const EXPECTED_MAX_BZE = new BigNumber(10).minus(SEND_GAS_BZE).toFixed();
 
 function renderForm(selectedTicker: string) {
     return render(
-        <WalletSendForm balances={balances} onClose={vi.fn()} selectedTicker={selectedTicker} accentColor="blue" />,
+        <WalletSendForm balances={balances} onClose={vi.fn()} selectedTicker={selectedTicker} />,
         {
             wrapper: ({ children }: { children: ReactNode }) => (
                 <ChakraProvider value={defaultSystem}>

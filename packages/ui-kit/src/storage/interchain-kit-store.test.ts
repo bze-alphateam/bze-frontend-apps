@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WalletState } from '@interchain-kit/core'
 import { WalletManagerStore } from '@interchain-kit/store'
 
-// Regression tests for patches/@interchain-kit__store@0.9.3.patch (BFE-284).
-// Unpatched, one page load where the Keplr extension was injected late saved "NotExist"
+// Regression tests for BFE-284, fixed upstream in @interchain-kit/store 0.10.1
+// (hyperweb-io/interchain-kit#51). Before that, one page load where the Keplr extension was injected late saved "NotExist"
 // to localStorage; every later load restored it, so the wallet showed "not installed"
 // forever and connect() silently did nothing.
 
@@ -44,7 +44,7 @@ const pageLoad = async (injected: boolean) => {
 
 const savedStates = () => JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').chainWalletStates
 
-describe('interchain-kit store patch (BFE-284)', () => {
+describe('interchain-kit store NotExist restore (BFE-284)', () => {
     beforeEach(() => {
         vi.stubGlobal('localStorage', memoryStorage())
     })

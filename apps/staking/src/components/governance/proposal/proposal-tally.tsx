@@ -1,6 +1,6 @@
 'use client';
 
-import {Box, HStack, Stack, Text} from '@chakra-ui/react';
+import {Box, chakra, Flex} from '@chakra-ui/react';
 import {LuCircleCheck, LuCircleHelp, LuCircleX} from 'react-icons/lu';
 import {shortNumberFormat, uAmountToBigNumberAmount, type GovParams, type GovProposal, type GovTally} from '@bze/bze-ui-kit';
 import {passingChecks, quorumStatus, tallyShares} from '@/lib/governance/tally';
@@ -8,6 +8,7 @@ import {finalChecks, isOpen, tallyFootnote, wholeBze} from '@/lib/governance/det
 import {statusInfo} from '@/lib/governance/proposal';
 import {formatPct, fractionPct} from '@/lib/governance/format';
 import {TALLY_COLORS} from '../tally-bar';
+import {Panel} from './panel';
 
 // The tally panel: turnout against the quorum (while voting), each option's
 // votes, and the chain's three checks — "if voting ended now" while open, the
@@ -31,12 +32,12 @@ interface CheckRow {
 
 function CheckLine({row}: {row: CheckRow}) {
     const Icon = row.ok === null ? LuCircleHelp : row.ok ? LuCircleCheck : LuCircleX;
-    const color = row.ok === null ? 'fg.muted' : row.ok ? 'green.fg' : 'red.fg';
+    const color = row.ok === null ? 'hg.text.faint' : row.ok ? 'hg.success' : 'hg.danger';
     return (
-        <HStack as="li" align="flex-start" gap="2" fontSize="13px" color="fg.muted">
-            <Box color={color} mt="0.5" flex="none"><Icon size={15} aria-label={row.ok === null ? 'unknown' : row.ok ? 'met' : 'not met'} /></Box>
-            <Text as="span"><Text as="strong" color="fg">{row.name}</Text>{` ${row.text}`}</Text>
-        </HStack>
+        <Flex as="li" align="flex-start" gap="8px" fontSize="13px" lineHeight="1.45" color="fg.muted">
+            <Box color={color} mt="1px" flex="none"><Icon size={15} aria-label={row.ok === null ? 'unknown' : row.ok ? 'met' : 'not met'} /></Box>
+            <chakra.span><chakra.strong color="fg">{row.name}</chakra.strong>{` ${row.text}`}</chakra.span>
+        </Flex>
     );
 }
 
@@ -48,24 +49,24 @@ function Turnout({tally, params, bondedTokens}: Omit<ProposalTallyProps, 'propos
     const bonded = shortNumberFormat(uAmountToBigNumberAmount(bondedTokens, 6));
 
     return (
-        <Stack gap="1.5">
-            <HStack justify="space-between" fontSize="13px">
-                <Text color="fg.muted">Turnout</Text>
-                <Text>
-                    <Text as="strong">{formatPct(turnout)}</Text>
-                    <Text as="span" color="fg.muted">{` of ${bonded} staked BZE`}</Text>
-                </Text>
-            </HStack>
-            <Box role="img" aria-label={`Turnout ${formatPct(turnout)}, quorum line at ${formatPct(quorum)}`} position="relative" h="10px" borderRadius="full" bg="bg.muted">
-                <Box position="absolute" left="0" top="0" bottom="0" w={`${fill}%`} borderRadius="full" bg="purple.600" />
+        <Flex direction="column" gap="6px">
+            <Flex justify="space-between" fontSize="13px">
+                <chakra.span color="fg.muted">Turnout</chakra.span>
+                <chakra.span>
+                    <chakra.strong>{formatPct(turnout)}</chakra.strong>
+                    <chakra.span color="fg.muted">{` of ${bonded} staked BZE`}</chakra.span>
+                </chakra.span>
+            </Flex>
+            <Box role="img" aria-label={`Turnout ${formatPct(turnout)}, quorum line at ${formatPct(quorum)}`} position="relative" h="10px" borderRadius="full" bg="hg.inset">
+                <Box position="absolute" left="0" top="0" bottom="0" w={`${fill}%`} borderRadius="full" bgImage="app" />
                 <Box position="absolute" left={`${marker}%`} top="-4px" bottom="-4px" w="2px" bg="fg" />
             </Box>
-            <Box position="relative" h="4">
-                <Text position="absolute" left={`${marker}%`} transform="translateX(-50%)" fontSize="xs" color="fg.muted" whiteSpace="nowrap">
+            <Box position="relative" h="16px">
+                <chakra.span position="absolute" left={`${marker}%`} transform="translateX(-50%)" fontSize="12px" color="fg.muted" whiteSpace="nowrap">
                     {`▲ quorum ${formatPct(quorum)}`}
-                </Text>
+                </chakra.span>
             </Box>
-        </Stack>
+        </Flex>
     );
 }
 
@@ -115,61 +116,62 @@ export function ProposalTally(props: ProposalTallyProps) {
     const result = checkRows(props);
 
     return (
-        <Stack as="section" aria-labelledby="tally-h" bg="bg.panel" borderWidth="1px" borderRadius="lg" p={{base: '4', md: '5'}} gap="4">
-            <HStack justify="space-between" align="baseline">
-                <Text as="h2" id="tally-h" fontSize="md" fontWeight="bold">{open ? 'Current tally' : 'Final tally'}</Text>
-                {open && (
-                    <HStack gap="1.5" fontSize="xs" color="fg.muted">
-                        <Box w="2" h="2" borderRadius="full" bg={TALLY_COLORS.yes} aria-hidden />
-                        <Text as="span">Live</Text>
-                    </HStack>
-                )}
-            </HStack>
-
+        <Panel
+            headingId="tally-h"
+            title={open ? 'Current tally' : 'Final tally'}
+            gap="16px"
+            aside={open && (
+                <Flex align="center" gap="6px" fontSize="12px" color="fg.muted">
+                    <Box boxSize="8px" borderRadius="full" bg={TALLY_COLORS.yes} aria-hidden />
+                    <chakra.span>Live</chakra.span>
+                </Flex>
+            )}
+        >
             {open && tally === null ? (
-                <Text fontSize="sm" color="fg.muted" role="status">{"The live tally didn't load. It's retried every minute."}</Text>
+                <chakra.span fontSize="14px" color="fg.muted" role="status">{"The live tally didn't load. It's retried every minute."}</chakra.span>
             ) : (
                 <>
                     {open && <Turnout tally={tally} params={params} bondedTokens={bondedTokens} />}
-                    <Stack gap="3" data-testid="tally-rows">
+                    <Flex direction="column" gap="12px" data-testid="tally-rows">
                         {tallyShares(tally).map((s) => (
-                            <Stack key={s.option} gap="1">
-                                <HStack justify="space-between" align="baseline" fontSize="13px" gap="2">
-                                    <HStack gap="2" fontWeight="semibold">
-                                        <Box w="2.5" h="2.5" borderRadius="xs" bg={TALLY_COLORS[s.option]} aria-hidden />
-                                        <Text as="span">{s.label}</Text>
-                                    </HStack>
-                                    <Text textAlign="right">
-                                        <Text as="span" color="fg.muted">{`${wholeBze(s.amount)} BZE`}</Text>
+                            <Flex key={s.option} direction="column" gap="5px">
+                                <Flex justify="space-between" align="baseline" fontSize="13px" gap="8px">
+                                    <Flex align="center" gap="8px" fontWeight="600">
+                                        <Box boxSize="10px" borderRadius="3px" bg={TALLY_COLORS[s.option]} aria-hidden />
+                                        <chakra.span>{s.label}</chakra.span>
+                                    </Flex>
+                                    <chakra.span textAlign="right">
+                                        <chakra.span color="fg.muted">{`${wholeBze(s.amount)} BZE`}</chakra.span>
                                         {' · '}
-                                        <Text as="strong">{formatPct(s.pct ?? 0)}</Text>
-                                    </Text>
-                                </HStack>
-                                <Box h="6px" borderRadius="full" bg="bg.muted" overflow="hidden" aria-hidden>
+                                        <chakra.strong>{formatPct(s.pct ?? 0)}</chakra.strong>
+                                    </chakra.span>
+                                </Flex>
+                                <Box h="6px" borderRadius="full" bg="hg.inset" overflow="hidden" aria-hidden>
                                     <Box h="full" w={`${s.pct ? s.pct.toFixed(4) : 0}%`} bg={TALLY_COLORS[s.option]} />
                                 </Box>
-                            </Stack>
+                            </Flex>
                         ))}
-                    </Stack>
+                    </Flex>
 
-                    <Stack
+                    <Flex
+                        direction="column"
                         data-testid="tally-result"
-                        bg={result.good ? 'green.500/7' : 'orange.500/8'}
+                        data-good={result.good}
+                        bg={result.good ? 'hg.success/8' : 'hg.warning/8'}
                         borderWidth="1px"
-                        borderColor={result.good ? 'green.500/30' : 'orange.500/30'}
-                        borderRadius="lg"
-                        px="3.5"
-                        py="3"
-                        gap="2"
+                        borderColor={result.good ? 'hg.success/30' : 'hg.warning/30'}
+                        borderRadius="14px"
+                        p="14px"
+                        gap="8px"
                     >
-                        <Text fontSize="sm" fontWeight="bold" color={result.good ? 'green.fg' : 'orange.fg'}>{result.title}</Text>
-                        <Stack as="ul" gap="2" listStyleType="none" m="0" p="0">
+                        <chakra.strong fontSize="14px" color={result.good ? 'hg.success.text' : 'hg.warning.text'}>{result.title}</chakra.strong>
+                        <Flex as="ul" direction="column" gap="8px" listStyleType="none" m="0" p="0">
                             {result.rows.map((row) => <CheckLine key={row.name} row={row} />)}
-                        </Stack>
-                    </Stack>
+                        </Flex>
+                    </Flex>
                 </>
             )}
-            <Text fontSize="xs" color="fg.muted" data-testid="tally-footnote">{tallyFootnote(params)}</Text>
-        </Stack>
+            <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="tally-footnote">{tallyFootnote(params)}</chakra.span>
+        </Panel>
     );
 }

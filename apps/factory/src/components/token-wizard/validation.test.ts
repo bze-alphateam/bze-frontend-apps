@@ -5,7 +5,9 @@ import {
     MAX_NAME_LENGTH,
     MAX_SUBDENOM_LENGTH,
     MAX_SYMBOL_LENGTH,
+    MIN_SUBDENOM_LENGTH,
     suggestSubdenom,
+    validateAdminAddress,
     validateAmount,
     validateDescription,
     validateInitialSupply,
@@ -27,6 +29,13 @@ describe("suggestSubdenom", () => {
     it("is empty when nothing survives sanitisation", () => {
         expect(suggestSubdenom("$$$")).toBe("");
         expect(suggestSubdenom("")).toBe("");
+    });
+
+    it("always yields a subdenom the chain accepts for any valid symbol", () => {
+        for (const symbol of ["ABC", "abc", "Z99", "Bze2", "A".repeat(MAX_SYMBOL_LENGTH)]) {
+            expect(validateSymbol(symbol)).toBe("");
+            expect(validateSubdenom(suggestSubdenom(symbol))).toBe("");
+        }
     });
 });
 
@@ -58,22 +67,22 @@ describe("validateSymbol", () => {
     });
 
     it("requires a symbol", () => {
-        expect(validateSymbol("")).toBe("Symbol is required.");
+        expect(validateSymbol("")).toBe("Ticker is required.");
     });
 
     it("enforces min and max length", () => {
-        expect(validateSymbol("A")).toBe("Symbol must be at least 3 characters.");
+        expect(validateSymbol("A")).toBe("Ticker must be at least 3 characters.");
         // The lowercased symbol becomes the metadata display denom, which the chain
         // validates with sdk.ValidateDenom (minimum 3 characters).
-        expect(validateSymbol("AB")).toBe("Symbol must be at least 3 characters.");
+        expect(validateSymbol("AB")).toBe("Ticker must be at least 3 characters.");
         expect(validateSymbol("ABC")).toBe("");
         expect(validateSymbol("A".repeat(MAX_SYMBOL_LENGTH + 1))).toBe(
-            `Symbol must be at most ${MAX_SYMBOL_LENGTH} characters.`,
+            `Ticker must be at most ${MAX_SYMBOL_LENGTH} characters.`,
         );
     });
 
     it("must start with a letter and be alphanumeric", () => {
-        const err = "Symbol must start with a letter and contain only letters and digits.";
+        const err = "Ticker must start with a letter and contain only letters and digits.";
         expect(validateSymbol("1AB")).toBe(err);
         expect(validateSymbol("A-B")).toBe(err);
     });
@@ -83,6 +92,7 @@ describe("validateSubdenom", () => {
     it("accepts a valid subdenom", () => {
         expect(validateSubdenom("uhoney")).toBe("");
         expect(validateSubdenom("u.token-1")).toBe("");
+        expect(validateSubdenom("abc")).toBe("");
     });
 
     it("requires a subdenom", () => {
@@ -104,6 +114,19 @@ describe("validateSubdenom", () => {
         expect(validateSubdenom("u token")).toBe(
             "Subdenom can only contain letters, digits, dots, and dashes.",
         );
+    });
+
+    // bze v8.3.0 (BZE-215) runs sdk.ValidateDenom on the subdenom in CheckTx.
+    it("enforces the chain's minimum length", () => {
+        expect(validateSubdenom("ab")).toBe(
+            `Subdenom must be at least ${MIN_SUBDENOM_LENGTH} characters.`,
+        );
+    });
+
+    it("must start with a letter", () => {
+        for (const subdenom of ["2mars", "1000000000", ".abc", "-abc"]) {
+            expect(validateSubdenom(subdenom)).toBe("Subdenom must start with a letter.");
+        }
     });
 });
 
@@ -166,5 +189,29 @@ describe("validateInitialSupply", () => {
 
     it("leaves messages without the word 'Amount' unchanged", () => {
         expect(validateInitialSupply("abc", 6)).toBe("Enter a valid positive number.");
+    });
+});
+
+describe("validateAdminAddress", () => {
+    const OWN = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
+    const OTHER = "bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk";
+
+    it("accepts another BZE address, trimmed", () => {
+        expect(validateAdminAddress(OTHER, OWN)).toBe("");
+        expect(validateAdminAddress(`  ${OTHER} `, OWN)).toBe("");
+        expect(validateAdminAddress(OTHER, undefined)).toBe("");
+    });
+
+    it("requires an address", () => {
+        expect(validateAdminAddress("  ", OWN)).toBe("Enter the address that becomes the admin.");
+    });
+
+    it("rejects malformed and foreign addresses", () => {
+        expect(validateAdminAddress("bze1nope", OWN)).toBe("Invalid address");
+        expect(validateAdminAddress("cosmos1z3mkcr2jz424w6m49frgjmy9uhlrx69ptcgwkr", OWN)).not.toBe("");
+    });
+
+    it("refuses the connected wallet", () => {
+        expect(validateAdminAddress(OWN, OWN)).toBe("That's your own wallet. Pick My wallet instead.");
     });
 });

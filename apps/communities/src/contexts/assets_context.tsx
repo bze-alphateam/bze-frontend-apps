@@ -15,7 +15,7 @@ import {
     getBZEUSDPrice,
     getEpochsInfo,
     CONNECTION_TYPE_NONE, ConnectionType,
-    toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToBigNumberPrice,
+    toBigNumber, uAmountToBigNumberAmount, uPriceToBigNumberPrice,
     isLpDenom,
     addDebounce,
     LiquidityPoolData,
@@ -24,6 +24,7 @@ import {
     EXCLUDED_MARKETS,
     NextBurn,
     getAllBurnedCoins, getNextBurning,
+    poolData, poolTickers,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -47,25 +48,6 @@ export interface AssetsContextType extends BaseAssetsContextType {
 
 interface AssetsProviderProps {
     children: ReactNode;
-}
-
-const getPoolData = (pool: LiquidityPoolSDKType, prices: Map<string, BigNumber>, baseAsset?: Asset, quoteAsset?: Asset): LiquidityPoolData => {
-    const basePrice = prices.get(pool.base) || toBigNumber(0)
-    const quotePrice = prices.get(pool.quote) || toBigNumber(0)
-    const isComplete = basePrice.gt(0) && quotePrice.gt(0)
-
-    return {
-        poolId: pool.id,
-        base: pool.base,
-        quote: pool.quote,
-        usdValue: basePrice.multipliedBy(uAmountToAmount(pool.reserve_base, baseAsset?.decimals || 0)).plus(quotePrice.multipliedBy(uAmountToAmount(pool.reserve_quote, quoteAsset?.decimals || 0))),
-        usdVolume: toBigNumber(0),
-        baseVolume: toBigNumber(0),
-        quoteVolume: toBigNumber(0),
-        isComplete: isComplete,
-        apr: '0',
-        usdFees: toBigNumber(0)
-    }
 }
 
 export function AssetsProvider({ children }: AssetsProviderProps) {
@@ -225,11 +207,12 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         })
         setEpochs(newMap);
     }, []);
-    const doUpdateLiquidityPools = useCallback((newPools: LiquidityPoolSDKType[]) => {
+    const doUpdateLiquidityPools = useCallback((newPools: LiquidityPoolSDKType[], allTickers: MarketData[]) => {
         const poolsData = new Map<string, LiquidityPoolData>()
         const newPoolsMap = new Map<string, LiquidityPoolSDKType>()
-        newPools.map(pool => {
-            poolsData.set(pool.id, getPoolData(pool, usdPricesMap, assetsMap.get(pool.base), assetsMap.get(pool.quote)))
+        const tickers = poolTickers(allTickers)
+        newPools.forEach(pool => {
+            poolsData.set(pool.id, poolData(pool, usdPricesMap, assetsMap.get(pool.base), assetsMap.get(pool.quote), tickers.get(pool.id)))
             newPoolsMap.set(pool.id, pool)
         })
         setPoolsDataMap(poolsData)
@@ -261,8 +244,8 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         setConnectionType(conn)
     }, [])
     const updateLiquidityPools = useCallback(async () => {
-        const [pools] = await Promise.all([getLiquidityPools()])
-        doUpdateLiquidityPools(pools)
+        const [pools, tickers] = await Promise.all([getLiquidityPools(), getAllTickers()])
+        doUpdateLiquidityPools(pools, tickers)
     }, [doUpdateLiquidityPools])
     const updateNextBurn = useCallback(async () => {
         try {
@@ -294,7 +277,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
             doUpdateMarkets(markets)
             doUpdateMarketsData(tickers)
             doUpdateEpochs(epochsInfo.epochs)
-            doUpdateLiquidityPools(pools)
+            doUpdateLiquidityPools(pools, tickers)
             doUpdateNextBurn(nextBurn)
             doUpdateBurnHistory(burnHistory.burnedCoins)
             setIsLoading(false)

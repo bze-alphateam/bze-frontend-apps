@@ -1,218 +1,147 @@
 "use client"
 
 import React from 'react'
+import NextLink from 'next/link'
+import { Box, Flex, Grid, HStack, Link, Text, VStack } from '@chakra-ui/react'
 import {
-    Badge,
-    Box,
-    Container,
-    Grid,
-    HStack,
-    Text,
-    VStack,
-} from '@chakra-ui/react'
-import type { IconType } from 'react-icons'
-import {
-    LuArrowUpRight,
-    LuChartCandlestick,
+    LuArrowLeftRight,
     LuCoins,
-    LuDroplets,
-    LuFlame,
-    LuGift,
-    LuPlus,
-    LuWrench,
+    LuExternalLink,
+    LuLandmark,
+    LuSprout,
+    LuTrophy,
+    LuUsers,
 } from 'react-icons/lu'
 import {
-    CreationFees,
-    FeeCoin,
-    getBurnerApp,
-    prettyAmount,
-    uAmountToBigNumberAmount,
-    useAsset,
-    useCreationFees,
-} from "@bze/bze-ui-kit";
-import {useNavigation} from "@/hooks/useNavigation";
+    AppLink,
+    Eyebrow,
+    GradientText,
+    HeroGlow,
+    HgCard,
+    HomeHero,
+    IconTile,
+    PageContainer,
+    getDexApp,
+} from '@bze/bze-ui-kit'
+import { Chip, ChipRow, LinkCard } from '@/components/create/choose-parts'
+import { ContinueHint } from '@/components/home/continue-hint'
+import { useLastWizard } from '@/hooks/useLastWizard'
+import { DOCS_HREF, STARTING_POINTS, type StartingPoint, dexPoolsHref } from '@/lib/create-routes'
 
-interface CreationCard {
-    key: string;
-    title: string;
-    description: string;
-    icon: IconType;
-    /** Which creation fee (from chain params) this flow charges, if any. */
-    feeKey?: keyof CreationFees;
-    /** Internal route — flips the card live once its milestone ships. */
-    href?: string;
-    /** External link (opens in a new tab), e.g. the Burner. */
-    externalHref?: string;
+const ICONS: Record<StartingPoint['id'], React.ReactNode> = {
+    token: <LuCoins />,
+    market: <LuArrowLeftRight />,
+    rewards: <LuSprout />,
+    grow: <LuUsers />,
+    dao: <LuLandmark />,
+    contest: <LuTrophy />,
 }
 
-// Cards flip live per milestone: give them an `href` when the flow ships.
-const CREATION_CARDS: CreationCard[] = [
-    {
-        key: 'token',
-        title: 'Create Token',
-        description: 'Launch your own token on BeeZee — supply, metadata, and admin strategy in one guided flow.',
-        icon: LuCoins,
-        feeKey: 'createDenomFee',
-        href: '/token/new',
-    },
-    {
-        key: 'market',
-        title: 'Create Market',
-        description: 'Open an order-book market on the DEX for any pair of assets.',
-        icon: LuChartCandlestick,
-        feeKey: 'createMarketFee',
-        href: '/market/new',
-    },
-    {
-        key: 'pool',
-        title: 'Create Liquidity Pool',
-        description: 'Seed an AMM pool, set its swap fee, and decide where the fees go.',
-        icon: LuDroplets,
-        feeKey: 'createMarketFee',
-        href: '/pool/new',
-    },
-    {
-        key: 'add-liquidity',
-        title: 'Add Liquidity',
-        description: 'Provide liquidity to an existing pool and receive LP tokens.',
-        icon: LuPlus,
-        href: '/pool/add',
-    },
-    {
-        key: 'reward',
-        title: 'Create Staking Reward',
-        description: 'Fund a staking program — your community stakes a token and earns your prize.',
-        icon: LuGift,
-        feeKey: 'createStakingRewardFee',
-        href: '/reward/new',
-    },
-    {
-        key: 'burn',
-        title: 'Burn Tokens',
-        description: 'Permanently burn coins or LP tokens in the Burner dApp.',
-        icon: LuFlame,
-        externalHref: getBurnerApp().href,
-    },
-    {
-        key: 'manage',
-        title: 'Manage My Creations',
-        description: 'Everything you created, in one place — supply, admin status, and lifecycle actions.',
-        icon: LuWrench,
-        href: '/manage',
-    },
-]
-
-// Live creation fee (chain params) shown on the card — "fees disclosed upfront".
-function CardFeeLine({ fee }: { fee?: FeeCoin }) {
-    const { asset } = useAsset(fee?.denom ?? '')
-    if (!fee || !asset) return null
-
-    return (
-        <Text fontSize="xs" color="fg.muted" fontWeight="medium">
-            Creation fee: {prettyAmount(uAmountToBigNumberAmount(fee.amount, asset.decimals))} {asset.ticker}
-        </Text>
+/** One starting point; without a target it is a dashed "Coming soon" tile and not a link. */
+function StartTile({ point }: { point: StartingPoint }) {
+    const body = (
+        <VStack align="stretch" gap="12px" h="full">
+            <HStack justify="space-between" align="flex-start" gap="8px">
+                <IconTile icon={ICONS[point.id]} variant={point.href ? 'filled' : 'outline'} size={40} />
+                {point.featured && <Chip tone="gold">Start here</Chip>}
+                {!point.href && <Chip>Coming soon</Chip>}
+            </HStack>
+            <VStack align="stretch" gap="4px">
+                <Text as="h2" fontSize="18px" fontWeight="700">{point.title}</Text>
+                <Text fontSize="14px" lineHeight="1.5" color="fg.muted">{point.line}</Text>
+            </VStack>
+            <ChipRow chips={point.chips} />
+        </VStack>
     )
-}
 
-function CreationCardItem({ card, fee }: { card: CreationCard; fee?: FeeCoin }) {
-    const {navigate} = useNavigation()
-    const Icon = card.icon
-    const isLive = Boolean(card.href || card.externalHref)
-
-    const onClick = () => {
-        if (card.externalHref) {
-            window.open(card.externalHref, '_blank', 'noopener,noreferrer')
-            return
-        }
-        if (card.href) {
-            navigate(card.href)
-        }
+    const tile = {
+        p: { base: '18px', md: '22px' },
+        borderRadius: '18px',
+        minW: 0,
+        'data-testid': `start-${point.id}`,
     }
 
+    if (!point.href) {
+        return (
+            <HgCard {...tile} as="section" aria-label={point.title} borderStyle="dashed" borderColor="hg.lineStrong" boxShadow="none" bg="transparent" opacity={0.8}>
+                {body}
+            </HgCard>
+        )
+    }
     return (
-        <Box
-            p={6}
-            bgGradient="to-br"
-            gradientFrom="yellow.500/8"
-            gradientTo="yellow.600/8"
-            borderWidth="1px"
-            borderColor="yellow.500/20"
-            borderRadius="xl"
-            shadow="sm"
-            cursor={isLive ? 'pointer' : 'not-allowed'}
-            opacity={isLive ? 1 : 0.65}
-            transition="all 0.2s"
-            onClick={onClick}
-            _hover={isLive ? {
-                gradientFrom: "yellow.500/15",
-                gradientTo: "yellow.600/15",
-                borderColor: "yellow.500/35",
-                transform: "translateY(-2px)",
-                shadow: "md",
-            } : {}}
+        <HgCard
+            {...tile}
+            asChild
+            interactive
+            color="fg"
+            textDecoration="none"
+            focusVisibleRing="outside"
+            borderColor={point.featured ? 'app.border' : undefined}
+            borderWidth={point.featured ? '1.5px' : undefined}
         >
-            <VStack align="start" gap={3}>
-                <HStack justify="space-between" w="full">
-                    <Box
-                        p={2.5}
-                        borderRadius="lg"
-                        bg="yellow.500/15"
-                        color="yellow.600"
-                    >
-                        <Icon size={22} />
-                    </Box>
-                    {card.externalHref ? (
-                        <Badge colorPalette="yellow" size="sm" variant="surface">
-                            Burner <LuArrowUpRight size={12} />
-                        </Badge>
-                    ) : !isLive && (
-                        <Badge colorPalette="gray" size="sm" variant="surface">
-                            Coming soon
-                        </Badge>
-                    )}
-                </HStack>
-                <Text fontWeight="bold" fontSize="lg">
-                    {card.title}
-                </Text>
-                <Text fontSize="sm" color="fg.muted">
-                    {card.description}
-                </Text>
-                <CardFeeLine fee={fee} />
-            </VStack>
-        </Box>
+            <NextLink href={point.href}>{body}</NextLink>
+        </HgCard>
     )
 }
 
-export default function FactoryHubPage() {
-    const { fees } = useCreationFees()
+function WorkOnExisting() {
+    return (
+        <VStack as="section" aria-label="Work on something that exists" align="stretch" gap="14px">
+            <Text as="h2" fontSize="20px" fontWeight="700">Work on something that exists</Text>
+            <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(3, minmax(0, 1fr))' }} gap="16px">
+                <LinkCard title="Extend or fund a reward" line="Add days, a daily prize or an airdrop to any reward." href="/rewards" />
+                <LinkCard title="Manage a token" line="Mint, edit details, logo, permissions. Admins only, checked live." href="/tokens" />
+                <LinkCard title="Add or remove liquidity" line="Both live on the DEX, on each pool's page.">
+                    <Box>
+                        <AppLink app="dex" href={dexPoolsHref(getDexApp().href)} flush>DEX</AppLink>
+                    </Box>
+                </LinkCard>
+            </Grid>
+        </VStack>
+    )
+}
+
+function Footer() {
+    return (
+        <Flex as="footer" align="center" pt="20px" borderTopWidth="1px" borderColor="hg.divider" fontSize="14px">
+            <Link href={DOCS_HREF} target="_blank" rel="noopener noreferrer" color="hg.link" fontWeight="600" display="inline-flex" alignItems="center" gap="6px" _hover={{ color: 'hg.link.hover' }}>
+                Guides and strategies on docs.getbze.com <LuExternalLink size={12} aria-hidden />
+            </Link>
+        </Flex>
+    )
+}
+
+/**
+ * The Factory home (BFE-260, canvas A1 / E1): six starting points, then work on what exists. It looks
+ * the same whatever the user did before; the only extra is one slim line on top pointing back to the
+ * last wizard with a finished step.
+ */
+export default function FactoryHomePage() {
+    const { hint, dismiss } = useLastWizard()
 
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="7xl" py={12}>
-                <VStack align="stretch" gap={8}>
-                    {/* Page Header */}
-                    <VStack gap={3} align="center" mb={4}>
-                        <Text fontSize="3xl" fontWeight="bold" letterSpacing="tight">
-                            What do you want to create?
-                        </Text>
-                        <Text fontSize="md" color="fg.muted" textAlign="center" maxW="2xl">
-                            The BeeZee creation workshop — tokens, markets, liquidity pools, and staking
-                            rewards, each in a short guided flow with fees disclosed upfront.
-                        </Text>
-                    </VStack>
-
-                    {/* Creation Cards */}
-                    <Grid templateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }} gap={4}>
-                        {CREATION_CARDS.map(card => (
-                            <CreationCardItem
-                                key={card.key}
-                                card={card}
-                                fee={card.feeKey ? fees[card.feeKey] : undefined}
-                            />
-                        ))}
+        <Box position="relative" minH="100vh">
+            <HeroGlow />
+            <PageContainer as="main" position="relative" pt={{ base: '40px', md: '72px' }} pb="64px">
+                <VStack align="stretch" gap={{ base: '36px', md: '48px' }}>
+                    {hint && <ContinueHint hint={hint} onDismiss={dismiss} />}
+                    <HomeHero
+                        align="center"
+                        eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
+                        title={<>What are you <GradientText>building</GradientText> today?</>}
+                    />
+                    <Grid
+                        as="section"
+                        aria-label="Starting points"
+                        templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }}
+                        gap="16px"
+                    >
+                        {STARTING_POINTS.map(point => <StartTile key={point.id} point={point} />)}
                     </Grid>
+                    <WorkOnExisting />
+                    <Footer />
                 </VStack>
-            </Container>
+            </PageContainer>
         </Box>
     )
 }

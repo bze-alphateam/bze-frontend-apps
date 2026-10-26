@@ -1,5 +1,7 @@
 import {EncodeObject, StdFee} from "@bze/bzejs/types";
 import {TxBody, SignerInfo} from "@bze/bzejs/cosmos/tx/v1beta1/tx";
+import {SimulateRequest} from "@bze/bzejs/cosmos/tx/v1beta1/service";
+import {getSimulate} from "@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func";
 import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
@@ -21,15 +23,40 @@ import {calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {resolveGasPrice} from "../utils/gas_fee";
+import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 
 import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
 
 export type {TxSuccessResponse};
 
+/**
+ * Where a transaction stopped, handed to {@link TxOptions.onFailure} as its second argument:
+ * - `prepare`: refused before the wallet opened (no wallet connected, no signing client);
+ * - `sign`: the wallet did not sign or broadcast it (rejected in the wallet, or the signer failed);
+ * - `chain`: broadcast, then refused by the chain (`txHash` and the raw log, when known);
+ * - `timeout`: broadcast, but not found in a block before the wait gave up. It may still land.
+ */
+export type TxFailureStage = 'prepare' | 'sign' | 'chain' | 'timeout';
+
+export interface TxFailureDetails {
+    stage: TxFailureStage;
+    txHash?: string;
+    /** The chain's or the signer's own message, before prettyError. */
+    rawLog?: string;
+    code?: number;
+}
+
 export interface TxOptions {
     fee?: StdFee | null;
     onSuccess?: (res: TxSuccessResponse) => void;
-    onFailure?: (err: string) => void;
+    /** The reason in plain words (prettyError), and where the transaction stopped. */
+    onFailure?: (err: string, details?: TxFailureDetails) => void;
+    /**
+     * Called once the signed transaction is broadcast, before it is included in a block. A
+     * failure after this point may still have landed on chain (e.g. a confirmation timeout):
+     * callers that must never send twice look the hash up before retrying.
+     */
+    onBroadcast?: (txHash: string) => void;
     memo?: string;
     progressTrackerTimeout?: number;
     /**
@@ -50,6 +77,12 @@ export interface TxOptions {
      * `preferNoSetFee: false` so Keplr overrides it.
      */
     letWalletSetFee?: boolean;
+    /**
+     * Show the progress, success and failure toasts (default `true`). A page that draws its own
+     * transaction panel sets `false`; it then also gets `onFailure` for the checks that only
+     * toasted before the wallet opened (no wallet connected, no signing client).
+     */
+    toasts?: boolean;
 }
 
 export enum TxStatus {
@@ -181,7 +214,13 @@ const useTx = (chainName: string) => {
         // BZE ante handler checks sequence even in simulation — use the real sequence
         const sequence = await signer.getSequence(address);
         const signerInfo = SignerInfo.fromPartial({modeInfo: {single: {mode: 1}}, sequence});
-        const {gasInfo} = await signer.simulateByTxBody(txBody, [signerInfo]);
+        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why). The signer's
+        // own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
+        const simulationDenom = feeDenom !== nativeDenom && isValidFeeDenom(feeDenom) && getDenomsPool(feeDenom, nativeDenom)
+            ? feeDenom
+            : nativeDenom;
+        const txBytes = buildSimulationTxBytes(txBody, [signerInfo], simulationFeeCoins(simulationDenom, nativeDenom));
+        const {gasInfo} = await getSimulate(signer.config.queryClient, SimulateRequest.fromPartial({txBytes}));
         const gasEstimated = Number(gasInfo?.gasUsed ?? BigInt(0));
         if (gasEstimated === 0) {
             throw new Error("Gas simulation returned 0");
@@ -241,20 +280,33 @@ const useTx = (chainName: string) => {
     }, [simulateFee]);
 
     const tx = useCallback(async (msgs: EncodeObject[], options?: TxOptions|undefined): Promise<boolean> => {
+        const showToasts = options?.toasts !== false;
+        // Without toasts, the checks below report through onFailure so the reason is never lost.
+        const refuse = (reason: string) => {
+            if (showToasts) {
+                toast.error(TxStatus.Failed, reason)
+            } else if (options?.onFailure) {
+                options.onFailure(reason, {stage: 'prepare'})
+            }
+        }
+
         if (!address) {
-            toast.error(TxStatus.Failed, 'Please connect the wallet')
+            refuse('Please connect the wallet')
             return false;
         }
 
         if (!(await canUseClient())) {
-            toast.error(TxStatus.Failed, 'Can not find suitable signing client. Make sure your wallet is installed, connected and unlocked.')
+            refuse('Can not find suitable signing client. Make sure your wallet is installed, connected and unlocked.')
             disconnect()
             return false;
         }
 
         setProgressTrack("Getting fee")
-        const broadcastToastId = toast.loading(TxStatus.Broadcasting,'Waiting for transaction to be signed and included in block')
+        const broadcastToastId = showToasts
+            ? toast.loading(TxStatus.Broadcasting,'Waiting for transaction to be signed and included in block')
+            : undefined
         let success = false;
+        let broadcastHash: string | undefined;
         if (signingClient) {
             try {
                 // For IBC MsgTransfer (and similar) we must bypass amino and sign directly,
@@ -275,18 +327,24 @@ const useTx = (chainName: string) => {
                     : await getFee(msgs, options);
                 setProgressTrack("Signing transaction")
                 const broadcastResult = await (activeClient as any).signAndBroadcast(address, msgs, fee, options?.memo ?? getDefaultTxMemo())
+                broadcastHash = broadcastResult?.transactionHash || undefined
+                if (options?.onBroadcast && broadcastHash) {
+                    options.onBroadcast(broadcastHash)
+                }
                 setProgressTrack("Waiting for confirmation")
                 const resp = await broadcastResult.wait();
                 const txHash = resp?.txhash || broadcastResult.transactionHash;
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    // BZE Scan only knows BZE transactions: a tx signed on another
-                    // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
-                    if (chainName === defaultChainName) {
-                        toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
-                    } else {
-                        toast.success(TxStatus.Successful);
+                    if (showToasts) {
+                        // BZE Scan only knows BZE transactions: a tx signed on another
+                        // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
+                        if (chainName === defaultChainName) {
+                            toast.clickableSuccess(TxStatus.Successful, () => {openExternalLink(getExplorerTxURL(txHash))}, 'View on Explorer');
+                        } else {
+                            toast.success(TxStatus.Successful);
+                        }
                     }
 
                     if (options?.onSuccess) {
@@ -294,9 +352,16 @@ const useTx = (chainName: string) => {
                     }
                 } else {
                     setProgressTrack("Transaction failed")
-                    toast.error(TxStatus.Failed, prettyError(resp?.rawLog));
+                    if (showToasts) {
+                        toast.error(TxStatus.Failed, prettyError(resp?.rawLog));
+                    }
                     if (options?.onFailure) {
-                        options.onFailure(prettyError(resp?.rawLog) || "Unknown error")
+                        options.onFailure(prettyError(resp?.rawLog) || "Unknown error", {
+                            stage: 'chain',
+                            txHash,
+                            rawLog: resp?.rawLog,
+                            code: resp?.code === undefined ? undefined : Number(resp.code),
+                        })
                     }
                 }
             } catch (e) {
@@ -313,13 +378,21 @@ const useTx = (chainName: string) => {
                 if (isSignerError) {
                     disconnect();
                 }
-                toast.error(TxStatus.Failed, prettyError(errMsg));
+                if (showToasts) {
+                    toast.error(TxStatus.Failed, prettyError(errMsg));
+                }
                 if (options?.onFailure) {
-                    options.onFailure(prettyError(errMsg) || "Unknown error")
+                    // interchainjs' wait() gives up after 30 s with "... not found within timeout period".
+                    const stage: TxFailureStage = !broadcastHash
+                        ? 'sign'
+                        : errMsg.includes('not found within timeout') ? 'timeout' : 'chain'
+                    options.onFailure(prettyError(errMsg) || "Unknown error", {stage, txHash: broadcastHash, rawLog: errMsg || undefined})
                 }
             }
         }
-        toast.dismiss(broadcastToastId);
+        if (broadcastToastId !== undefined) {
+            toast.dismiss(broadcastToastId);
+        }
         setTimeout(() => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)

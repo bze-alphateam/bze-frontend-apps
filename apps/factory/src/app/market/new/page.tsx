@@ -1,257 +1,204 @@
 "use client"
 
-import React, { Suspense, useMemo, useState } from 'react'
-import {
-    Box,
-    Button,
-    Card,
-    Container,
-    HStack,
-    Separator,
-    Skeleton,
-    Text,
-    VStack,
-} from '@chakra-ui/react'
-import {
-    LuArrowLeft,
-    LuChartCandlestick,
-    LuCircleCheck,
-    LuDroplets,
-    LuPlus,
-} from 'react-icons/lu'
+import React, { useCallback, useMemo, useState } from 'react'
+import { VStack } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import {
     AppLink,
-    createMarketId,
-    getExplorerTxURL,
+    GradientText,
     getChainName,
     getDexApp,
+    prettyAmount,
+    uAmountToBigNumberAmount,
     useAsset,
+    useBalance,
     useCreationFees,
     useMarkets,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
-import { FeeDisclosure } from '@/components/ui/fee-disclosure'
-import { InfoBox } from '@/components/ui/info-box'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
+import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { MarketDone, type MarketDoneInput } from '@/components/market-wizard/market-done'
+import {
+    BlockerNote,
+    FormPage,
+    GuidedForm,
+    PayPanel,
+    Question,
+    ReviewStep,
+    SubmitNote,
+    TxPanel,
+    useGuidedSteps,
+} from '@/components/guided'
+import { dexMarketHref } from '@/lib/create-routes'
+import { notEnoughText } from '@/lib/format'
+import { createMarketMsgValue, marketPairProblem } from '@/lib/market-new'
+import { VOCABULARY } from '@/lib/vocabulary'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
 
+const CREATE_MARKET_TX_KIND = 'create-market'
+const STEP_KEYS = ['pair', 'review'] as const
 
 function MarketNewContent() {
-    const { getQueryParam, navigate } = useNavigationWithParams()
     const { address } = useChain(getChainName())
     const { marketExists, updateMarkets, isLoading: isMarketsLoading } = useMarkets()
     const { fees, isLoading: isFeeLoading } = useCreationFees()
-    const { tx } = useFactoryTx()
 
-    // Chaining links (e.g. the token wizard's success screen) preselect the pair.
+    // Chaining links (the token and pool Done screens, the Choose screen) preselect the pair.
+    const { getQueryParam } = useNavigationWithParams()
     const [baseDenom, setBaseDenom] = useState(() => getQueryParam('base') ?? '')
     const [quoteDenom, setQuoteDenom] = useState(() => getQueryParam('quote') ?? '')
-    // Looked up rather than captured from the picker, so query-param preselects
-    // (where onSelect never fires) resolve to full assets too.
+    // A deep link with both sides lands on Review (the pair still has to pass its checks).
+    const [pairAnswered, setPairAnswered] = useState(() => Boolean(getQueryParam('base') && getQueryParam('quote')))
+    const [done, setDone] = useState<{ input: MarketDoneInput; hash: string } | undefined>(undefined)
+
+    // Looked up rather than captured from the picker, so query-param preselects resolve too.
     const { asset: baseAsset } = useAsset(baseDenom)
     const { asset: quoteAsset } = useAsset(quoteDenom)
 
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [created, setCreated] = useState<{ txHash: string } | undefined>(undefined)
-
     const fee = fees.createMarketFee
-    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, 'create-market')
+    const { canPayFee, isLoading: isBalanceLoading } = useFeePayment(fee, CREATE_MARKET_TX_KIND)
+    const { asset: feeAsset } = useAsset(fee?.denom ?? '')
+    const { balance: feeBalance } = useBalance(fee?.denom ?? '')
 
-    // The pair must not exist in EITHER direction — the chain would reject the
-    // reversed pair too, so catch it here as a friendly form error instead.
-    const error = useMemo(() => {
-        if (!baseDenom || !quoteDenom) return ''
-        if (baseDenom === quoteDenom) {
-            return 'Base and quote must be different assets.'
-        }
-        if (marketExists(createMarketId(baseDenom, quoteDenom)) || marketExists(createMarketId(quoteDenom, baseDenom))) {
-            return 'A market for this pair already exists on the DEX — every pair can have only one order book.'
-        }
-        return ''
-    }, [baseDenom, quoteDenom, marketExists])
+    const connected = Boolean(address)
+    const baseTicker = baseAsset?.ticker ?? ''
+    const quoteTicker = quoteAsset?.ticker ?? ''
+    const pair = baseTicker && quoteTicker ? `${baseTicker}/${quoteTicker}` : ''
 
-    const isComplete = Boolean(baseDenom) && Boolean(quoteDenom) && error === ''
-    const canConfirm = isComplete && Boolean(address) && Boolean(fee) &&
-        !isBalanceLoading && canPayFee && !isMarketsLoading
+    const problem = useMemo(
+        () => marketPairProblem(baseDenom, quoteDenom, baseAsset, quoteAsset, marketExists),
+        [baseDenom, quoteDenom, baseAsset, quoteAsset, marketExists],
+    )
+    const isPairValid = Boolean(baseAsset) && Boolean(quoteAsset) && problem === undefined
 
-    const pairLabel = baseAsset && quoteAsset ? `${baseAsset.ticker}/${quoteAsset.ticker}` : ''
+    const steps = useGuidedSteps(STEP_KEYS, {
+        pair: pairAnswered && isPairValid,
+        review: false,
+    })
 
-    const submit = async () => {
-        if (!address || !canConfirm) return
-
-        const msg = createMarket({ creator: address, base: baseDenom, quote: quoteDenom })
-
-        setIsSubmitting(true)
-        try {
-            await tx([msg], {
-                onSuccess: (res) => {
-                    setCreated({ txHash: res.txhash })
-                    // Refresh the markets context so the duplicate check (and the
-                    // rest of the ecosystem data) knows about the new market.
-                    void updateMarkets()
-                },
-            })
-        } finally {
-            setIsSubmitting(false)
-        }
+    const answerPair = () => {
+        setPairAnswered(true)
+        steps.close()
     }
 
-    const createAnother = () => {
-        setCreated(undefined)
-        setBaseDenom('')
-        setQuoteDenom('')
+    const buildMsgs = useCallback(() => {
+        if (!address || !baseDenom || !quoteDenom) return undefined
+        return [createMarket(createMarketMsgValue({ creator: address, baseDenom, quoteDenom }))]
+    }, [address, baseDenom, quoteDenom])
+
+    const onDone = useCallback(({ input, hash }: WizardTxDone<MarketDoneInput>) => {
+        // The new market joins the list, so its pair now reads as taken.
+        void updateMarkets()
+        if (input) setDone({ input, hash })
+    }, [updateMarkets])
+    const { submit, panelProps } = useWizardTx<MarketDoneInput>(buildMsgs, { title: `Create market ${pair}`, onDone })
+
+    if (done) return <MarketDone input={done.input} hash={done.hash} />
+
+    const isComplete = steps.state.pair === 'done'
+    const canCreate = isComplete && connected && Boolean(fee) && !isBalanceLoading && canPayFee && !isMarketsLoading
+
+    const create = () => {
+        if (!canCreate) return
+        submit({ base: baseDenom, quote: quoteDenom, baseTicker, quoteTicker })
     }
 
-    if (created) {
-        const dexUrl = getDexApp().href
-        const marketUrl = `${dexUrl}/exchange/market?id=${encodeURIComponent(createMarketId(baseDenom, quoteDenom))}`
-        const txUrl = getExplorerTxURL(created.txHash)
+    const feeTicker = feeAsset?.ticker ?? fee?.denom ?? ''
+    const feeBalanceText = prettyAmount(uAmountToBigNumberAmount(feeBalance.amount, feeAsset?.decimals ?? 6))
+    const payRows = [{ label: 'Creation fee', coin: fee }]
 
-        return (
-            <VStack align="stretch" gap={6} py={{ base: 4, md: 8 }}>
-                <VStack gap={3} align="center">
-                    <Box color="green.500">
-                        <LuCircleCheck size={56} />
-                    </Box>
-                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        The {pairLabel} market is live!
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted" textAlign="center">
-                        Anyone can now place {baseAsset?.ticker ?? 'base'} orders priced
-                        in {quoteAsset?.ticker ?? 'quote'} on the DEX order book.
-                    </Text>
-                </VStack>
-
-                <HStack gap={3} justify="center" wrap="wrap">
-                    <AppLink app="dex" href={marketUrl}>DEX</AppLink>
-                    <AppLink app="explorer" href={txUrl}>Explorer</AppLink>
-                </HStack>
-
-                <VStack align="stretch" gap={3}>
-                    <Text fontSize="sm" color="fg.muted" fontWeight="medium" textAlign="center">
-                        What&apos;s next?
-                    </Text>
-                    {/* A market starts empty — the natural next step is liquidity. */}
-                    <HStack gap={3} justify="center" wrap="wrap">
-                        <Button
-                            variant="outline"
-                            colorPalette="yellow"
-                            size="sm"
-                            onClick={() => navigate(`/pool/new?base=${encodeURIComponent(baseDenom)}&quote=${encodeURIComponent(quoteDenom)}`)}
-                        >
-                            <LuDroplets />
-                            Create a liquidity pool
-                        </Button>
-                        <Button variant="outline" colorPalette="yellow" size="sm" onClick={createAnother}>
-                            <LuPlus />
-                            Create another market
-                        </Button>
-                    </HStack>
-                </VStack>
-
-                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => navigate('/')}>
-                    Back to hub
-                </Button>
-            </VStack>
-        )
-    }
+    const aside = (
+        <PayPanel
+            rows={payRows}
+            moduleFee={fee}
+            txKind={CREATE_MARKET_TX_KIND}
+            isLoading={isFeeLoading}
+            feeUnknown={!fee}
+        />
+    )
 
     return (
-        <VStack align="stretch" gap={6}>
-            <Box>
-                <Button variant="ghost" colorPalette="yellow" size="sm" onClick={() => navigate('/')}>
-                    <LuArrowLeft />
-                    Creation hub
-                </Button>
-            </Box>
-
-            <HStack gap={3}>
-                <Box p={2.5} borderRadius="lg" bg="yellow.500/15" color="yellow.600">
-                    <LuChartCandlestick size={22} />
-                </Box>
-                <VStack align="start" gap={0}>
-                    <Text fontSize="2xl" fontWeight="bold" letterSpacing="tight">
-                        Create Market
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted">
-                        Open an order-book market on the DEX for any pair of assets.
-                    </Text>
-                </VStack>
-            </HStack>
-
-            <Card.Root variant="outline" p={{ base: 5, md: 6 }}>
-                <VStack align="stretch" gap={5}>
+        <GuidedForm
+            crumb="Order-book market"
+            title={<>Create an <GradientText>order-book market</GradientText></>}
+            subtitle="Open an order book on the DEX."
+            aside={aside}
+        >
+            <Question
+                title="Pair"
+                question="Which pair?"
+                {...steps.step('pair')}
+                summary={baseTicker && quoteTicker ? `${baseTicker} priced in ${quoteTicker}` : ''}
+                action={{ label: 'Continue', onClick: answerPair, disabled: !isPairValid }}
+            >
+                <VStack align="stretch" gap="16px">
                     <AssetPicker
-                        label="Base asset — the one being traded"
+                        label="Base token"
                         value={baseDenom}
                         excludeDenoms={quoteDenom ? [quoteDenom] : undefined}
+                        excludeHalted
                         onSelect={(asset) => setBaseDenom(asset.denom)}
                     />
                     <AssetPicker
-                        label="Quote asset — the one it's priced in"
+                        label="Quote token"
                         value={quoteDenom}
                         excludeDenoms={baseDenom ? [baseDenom] : undefined}
+                        excludeHalted
                         ownFirst={false}
                         onSelect={(asset) => setQuoteDenom(asset.denom)}
                     />
 
-                    {error !== '' && (
-                        <Text fontSize="sm" color="fg.error" fontWeight="medium">
-                            {error}
-                        </Text>
-                    )}
-
-                    <InfoBox title="How a market works">
-                        Orders on the {pairLabel || 'pair'} order book trade the base asset, priced in
-                        the quote asset{quoteAsset ? ` (e.g. "1 ${baseAsset?.ticker ?? 'BASE'} costs X ${quoteAsset.ticker}")` : ''}.
-                        Anyone can place orders once the market exists — creating it is a one-time,
-                        permanent action, and every pair can have only one market.
-                    </InfoBox>
-
-                    <Separator />
-
-                    <FeeDisclosure fee={fee} isLoading={isFeeLoading} label="Market creation fee" txKind="create-market" />
-
-                    <VStack align="stretch" gap={2}>
-                        <Button
-                            size="lg"
-                            colorPalette="yellow"
-                            onClick={submit}
-                            disabled={!canConfirm}
-                            loading={isSubmitting}
-                            loadingText="Waiting for signature..."
+                    {problem && (
+                        <BlockerNote
+                            action={problem.existingMarketId && (
+                                <AppLink app="dex" href={dexMarketHref(getDexApp().href, problem.existingMarketId)}>
+                                    Open it on the DEX
+                                </AppLink>
+                            )}
                         >
-                            Create market
-                        </Button>
-                        {!address ? (
-                            <Text fontSize="sm" color="fg.muted" textAlign="center">
-                                Connect your wallet to create this market.
-                            </Text>
-                        ) : isComplete && !isBalanceLoading && !canPayFee && (
-                            <Text fontSize="sm" color="fg.error" textAlign="center">
-                                Not enough balance to cover the creation fee.
-                            </Text>
-                        )}
-                    </VStack>
+                            {problem.message}
+                        </BlockerNote>
+                    )}
                 </VStack>
-            </Card.Root>
-        </VStack>
+            </Question>
+
+            {panelProps ? (
+                <TxPanel {...panelProps} />
+            ) : (
+                <ReviewStep
+                    {...steps.step('review')}
+                    question="Everything right?"
+                    leaves={payRows}
+                    moduleFee={fee}
+                    txKind={CREATE_MARKET_TX_KIND}
+                    isLoading={isFeeLoading}
+                    feeUnknown={!fee}
+                    gets={[{ label: VOCABULARY.market.name, value: pair }]}
+                    permanent={["This action can't be undone"]}
+                    submitLabel="Create market"
+                    onSubmit={create}
+                    disabled={!canCreate}
+                    onBack={steps.back}
+                >
+                    {!address ? (
+                        <SubmitNote>Connect your wallet.</SubmitNote>
+                    ) : isComplete && !isBalanceLoading && !canPayFee && (
+                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
+                    )}
+                </ReviewStep>
+            )}
+        </GuidedForm>
     )
 }
 
 export default function MarketNewPage() {
     return (
-        <Box minH="100vh" bg="bg.subtle">
-            <Container maxW="2xl" py={{ base: 6, md: 10 }}>
-                <Suspense fallback={<Skeleton height="96" />}>
-                    <MarketNewContent />
-                </Suspense>
-            </Container>
-        </Box>
+        <FormPage>
+            <MarketNewContent />
+        </FormPage>
     )
 }

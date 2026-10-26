@@ -477,12 +477,12 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
                     const decimals = asset?.decimals || 6;
                     const amountBN = uAmountToBigNumberAmount(result.amount, decimals);
                     toast.success(`${ticker} Raffle Contribution #${contributionNumber}`,
-                        `🎉 You won ${amountBN.toFixed(2)} ${ticker}!`,
+                        `You won ${amountBN.toFixed(2)} ${ticker}!`,
                     );
                 } else {
                     toast.warning(
                     `${ticker} Raffle Contribution #${contributionNumber}`,
-                     `Better luck next time! 🍀`,
+                     `Better luck next time!`,
                     );
                 }
 
@@ -504,14 +504,14 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
                     // Show summary toast
                     if (winnersCount > 0) {
                         toast.success(
-                            `${ticker} Raffle Complete! 🎊`,
+                            `${ticker} Raffle Complete!`,
                            `Won ${winnersCount}/${contribution.tickets} contributions • Total: ${totalWon.toFixed(2)} ${ticker}`,
                             10 * 1000
                         );
                     } else {
                         toast.info(
                             `${ticker} Raffle Complete`,
-                           `All ${contribution.tickets} ${contribution.tickets === 1 ? 'contribution' : 'contributions'} processed. Better luck next time! 🍀`,
+                           `All ${contribution.tickets} ${contribution.tickets === 1 ? 'contribution' : 'contributions'} processed. Better luck next time!`,
                             10 * 1000
                         );
                     }
@@ -545,8 +545,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [address, pendingRaffleContributions, assetsMap, toast]);
 
     useEffect(() => {
-        setIsLoading(true)
-        //initial context loading
+        // Initial context loading; isLoading starts out true.
         const init = async () => {
             const [
                 assets,
@@ -601,12 +600,11 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [usdPricesMap, assetsMap]);
 
     useEffect(() => {
-        if (!address) {
-            doUpdateBalances([]);
-            return
-        }
-
         const fetchBalances = async () => {
+            if (!address) {
+                doUpdateBalances([]);
+                return
+            }
             setIsLoading(true)
             const balances = await getAddressBalances(address);
             doUpdateBalances(balances);

@@ -1,8 +1,9 @@
 'use client';
 
-import { Box, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
-import { LuX } from "react-icons/lu";
+import {Box, chakra, Flex, IconButton} from "@chakra-ui/react";
+import {useEffect, useState, type CSSProperties, type ReactNode} from "react";
+import {LuFlame, LuHeart, LuListChecks, LuTrophy, LuX} from "react-icons/lu";
+import {usePrefersReducedMotion} from "@/hooks/usePrefersReducedMotion";
 
 interface RaffleResultAnimationProps {
     result: 'win' | 'lose' | 'waiting' | 'summary';
@@ -19,39 +20,88 @@ interface RaffleResultAnimationProps {
     contributionPrice?: string;
 }
 
+/** The lines shown, one after another, while the chain decides a contribution. */
 const WAITING_MESSAGES = [
-    (ticker: string) => `Melting ${ticker} coins in the pot... 🔥`,
-    () => `The pot is hot, coins are melting! 🫠`,
-    () => `Flames are dancing, luck is brewing... ✨`,
-    () => `The fire god is deciding your fate... 🎲`,
-    () => `Coins swirling in the flames... 🌀`,
-    () => `The burning ceremony begins... 🕯️`,
-    () => `Checking if fortune favors you... 🍀`,
-    () => `The cosmic dice are rolling... 🎰`,
-    () => `Destiny is being forged in fire... ⚡`,
-    () => `Your fate is written in the flames... 📜`,
-    () => `The heat is rising, luck is cooking... 🌡️`,
-    () => `Fire spirits whisper your fortune... 👻`,
-    () => `Ashes to ashes, tokens to tokens... 💨`,
-    () => `The inferno decides who wins... 🌋`,
-    () => `Lady Luck is watching the flames... 👀`,
-    () => `Your tokens are dancing in the fire... 💃`,
-    () => `The phoenix of fortune is stirring... 🦅`,
-    () => `Burning bright, hoping for gold... ✨`,
-    () => `The flames hold all the answers... 🔮`,
-    () => `Fortune cookies are burning nicely... 🥠`,
-    () => `The lottery of fire is in motion... 🎪`,
-    () => `Sparks fly, winners emerge... 💫`,
-    () => `The embers glow with possibility... 🌟`,
-    () => `Your contribution fuels the fire... ⛽`,
-    () => `The universe is calculating odds... 🌌`,
-    () => `Smoke signals reveal your fate... 💭`,
-    () => `The furnace of fortune is hot... 🏭`,
-    () => `Probability waves through the flames... 🌊`,
-    () => `The wheel of fire is spinning... 🎡`,
-    () => `Luck is simmering in the cauldron... 🍲`,
+    (ticker: string) => `Melting ${ticker} coins in the pot...`,
+    () => `The pot is hot, coins are melting!`,
+    () => `Flames are dancing, luck is brewing...`,
+    () => `The fire god is deciding your fate...`,
+    () => `Coins swirling in the flames...`,
+    () => `The burning ceremony begins...`,
+    () => `Checking if fortune favors you...`,
+    () => `The cosmic dice are rolling...`,
+    () => `Destiny is being forged in fire...`,
+    () => `Your fate is written in the flames...`,
+    () => `The heat is rising, luck is cooking...`,
+    () => `Fire spirits whisper your fortune...`,
+    () => `Ashes to ashes, tokens to tokens...`,
+    () => `The inferno decides who wins...`,
+    () => `Lady Luck is watching the flames...`,
+    () => `Your tokens are dancing in the fire...`,
+    () => `The phoenix of fortune is stirring...`,
+    () => `Burning bright, hoping for gold...`,
+    () => `The flames hold all the answers...`,
+    () => `Fortune cookies are burning nicely...`,
+    () => `The lottery of fire is in motion...`,
+    () => `Sparks fly, winners emerge...`,
+    () => `The embers glow with possibility...`,
+    () => `Your contribution fuels the fire...`,
+    () => `The universe is calculating odds...`,
+    () => `Smoke signals reveal your fate...`,
+    () => `The furnace of fortune is hot...`,
+    () => `Probability waves through the flames...`,
+    () => `The wheel of fire is spinning...`,
+    () => `Luck is simmering in the cauldron...`,
 ];
 
+const SPARK_COUNT = 24;
+
+type Tone = 'ember' | 'success' | 'quiet';
+
+/** The 64 px state icon: ember gradient while waiting and on the summary, green on a win, an inset tile on a loss. */
+const StateIcon = ({tone, children}: { tone: Tone; children: ReactNode }) => (
+    <Flex
+        as="span"
+        aria-hidden
+        boxSize="64px"
+        align="center"
+        justify="center"
+        borderRadius="20px"
+        css={{'& svg': {width: '28px', height: '28px'}}}
+        {...(tone === 'ember'
+            ? {bgImage: 'app', color: 'hg.buttonText', boxShadow: 'hg.featured'}
+            : tone === 'success'
+                ? {bg: 'hg.success', color: 'hg.ground'}
+                : {bg: 'hg.inset', color: 'hg.link', borderWidth: '1px', borderColor: 'hg.hairline'})}
+    >
+        {children}
+    </Flex>
+);
+
+/** One Won / Lost count of the summary. */
+const ResultCount = ({value, label, success}: { value: number; label: string; success?: boolean }) => (
+    <Flex
+        direction="column"
+        gap="2px"
+        minW="96px"
+        px="14px"
+        py="10px"
+        borderRadius="14px"
+        borderWidth="1px"
+        {...(success
+            ? {bg: 'hg.success/10', borderColor: 'hg.success/30'}
+            : {bg: 'hg.secondaryFill', borderColor: 'hg.lineStrong'})}
+    >
+        <chakra.strong fontSize="20px" color={success ? 'hg.success.text' : 'hg.text.secondary'}>{value}</chakra.strong>
+        <chakra.span fontSize="12px" color="hg.text.secondary">{label}</chakra.span>
+    </Flex>
+);
+
+/**
+ * The full-screen overlay on the coin page after joining a raffle: waiting, then a win or a loss
+ * for each contribution, then the summary. Embers rise from the bottom unless the user prefers
+ * reduced motion, which also stills every other animation.
+ */
 export const RaffleResultAnimation = ({
     result,
     ticker,
@@ -65,17 +115,20 @@ export const RaffleResultAnimation = ({
     losersCount = 0,
     contributionPrice,
 }: RaffleResultAnimationProps) => {
+    const reducedMotion = usePrefersReducedMotion();
     const [showResult, setShowResult] = useState(false);
     const [currentMessage, setCurrentMessage] = useState(() => Math.floor(Math.random() * WAITING_MESSAGES.length));
-    const [coins] = useState(() => Array.from({ length: 20 }, (_, i) => ({
+    const [sparks] = useState(() => Array.from({length: SPARK_COUNT}, (_, i) => ({
         id: i,
-        delay: Math.random() * 0.5,
-        startX: Math.random() * 100,
-        duration: 1 + Math.random() * 0.5,
+        left: Math.random() * 100,
+        size: 3 + Math.random() * 5,
+        delay: Math.random() * 3,
+        duration: 2.5 + Math.random() * 2.5,
+        drift: (Math.random() - 0.5) * 80,
     })));
 
     useEffect(() => {
-        // If we're waiting, cycle through messages
+        // While waiting, rotate through the lines
         if (result === 'waiting') {
             const messageInterval = setInterval(() => {
                 setCurrentMessage((prev) => (prev + 1) % WAITING_MESSAGES.length);
@@ -84,20 +137,16 @@ export const RaffleResultAnimation = ({
             return () => clearInterval(messageInterval);
         }
 
-        // If we're showing summary, just wait for user to close
-        if (result === 'summary') {
-            setShowResult(true);
-            return;
-        }
+        // The summary shows at once and stays until the user closes it
+        if (result === 'summary') return;
 
         const resultTimer = setTimeout(() => {
             setShowResult(true);
         }, 500);
 
-        // After showing result, always move to next (which may trigger summary)
+        // After showing a result, always move on and let the parent decide what comes next
+        // (another result, waiting, or the summary)
         const nextActionTimer = setTimeout(() => {
-            // Always call onNextContribution to let parent decide what to show next
-            // (could be another result, waiting, or summary)
             onNextContribution?.();
         }, 3000);
 
@@ -107,387 +156,181 @@ export const RaffleResultAnimation = ({
         };
     }, [result, currentContribution, totalContributions, onComplete, onNextContribution]);
 
+    const animate = (value: string) => (reducedMotion ? undefined : value);
+    const glow = result === 'win' ? 'hg.success/30' : result === 'lose' ? 'app.subtle' : 'app.muted';
+
     return (
         <Box
+            // The overlay is dark in both colour modes.
+            className="dark"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Raffle result"
             position="fixed"
-            top="0"
-            left="0"
-            right="0"
-            bottom="0"
-            bg="rgba(0, 0, 0, 0.9)"
+            inset="0"
+            bg="hg.ground/90"
+            color="fg"
             zIndex={9999}
             display="flex"
             alignItems="center"
             justifyContent="center"
-            animation="fadeIn 0.3s ease-out"
+            animation={animate("hgRaffleFadeIn 0.3s ease-out")}
+            data-testid="raffle-result"
+            data-motion={reducedMotion ? 'reduced' : 'full'}
         >
-            {/* Contribution Counter */}
-            {totalContributions > 1 && (
-                <Box
-                    position="absolute"
-                    top="4"
-                    left="4"
-                    zIndex="10000"
-                    bg="whiteAlpha.200"
-                    backdropFilter="blur(10px)"
-                    px="4"
-                    py="2"
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor="whiteAlpha.300"
-                >
-                    <Text
-                        fontSize="sm"
-                        fontWeight="bold"
-                        color="white"
-                        textShadow="0 0 10px rgba(0, 0, 0, 0.5)"
-                    >
-                        {result === 'summary' ? 'Summary' : `Contribution ${currentContribution} of ${totalContributions}`}
-                    </Text>
+            <Box aria-hidden position="absolute" insetX="0" bottom="0" h="70%" pointerEvents="none"
+                 bgGradient="to-t" gradientFrom={glow} gradientTo="transparent"/>
+
+            {!reducedMotion && (
+                <Box aria-hidden position="absolute" inset="0" overflow="hidden" pointerEvents="none">
+                    {sparks.map((spark) => (
+                        <Box
+                            key={spark.id}
+                            data-testid="raffle-spark"
+                            position="absolute"
+                            bottom="-12px"
+                            left={`${spark.left}%`}
+                            boxSize={`${spark.size}px`}
+                            borderRadius="full"
+                            bgImage="app"
+                            boxShadow="hg.featured"
+                            animation={`hgEmberRise ${spark.duration}s ease-in ${spark.delay}s infinite`}
+                            style={{'--drift': `${spark.drift}px`} as CSSProperties}
+                        />
+                    ))}
                 </Box>
             )}
 
-            {/* Close Button */}
+            {totalContributions > 1 && (
+                <chakra.span
+                    position="absolute"
+                    top="14px"
+                    left="50%"
+                    transform="translateX(-50%)"
+                    fontSize="13px"
+                    fontWeight="600"
+                    px="12px"
+                    py="6px"
+                    borderRadius="hg.pill"
+                    bg="hg.secondaryFill"
+                    borderWidth="1px"
+                    borderColor="hg.lineStrong"
+                    whiteSpace="nowrap"
+                >
+                    {result === 'summary' ? 'Summary' : `Contribution ${currentContribution} of ${totalContributions}`}
+                </chakra.span>
+            )}
+
             <IconButton
                 position="absolute"
-                top="4"
-                right="4"
-                zIndex="10000"
+                top="10px"
+                right="10px"
                 aria-label="Close"
                 size="lg"
                 variant="ghost"
-                colorPalette="gray"
+                color="hg.text.secondary"
+                _hover={{bg: 'hg.hoverFill', color: 'fg'}}
                 onClick={onComplete}
-                _hover={{ bg: "whiteAlpha.200" }}
             >
-                <LuX size={24} color="white" />
+                <LuX/>
             </IconButton>
-            {/* Flames */}
-            <Box position="absolute" inset="0" overflow="hidden">
-                {[...Array(8)].map((_, i) => (
-                    <Box
-                        key={`flame-${i}`}
-                        position="absolute"
-                        bottom="-50px"
-                        left={`${i * 12.5}%`}
-                        width="100px"
-                        height="200px"
-                        bgGradient="to-t"
-                        gradientFrom="#ff4500"
-                        gradientVia="#ffa500"
-                        gradientTo="#ffff00"
-                        borderRadius="50% 50% 0 0"
-                        opacity="0.7"
-                        animation={`flame 1s ease-in-out infinite ${i * 0.1}s`}
-                        filter="blur(10px)"
-                    />
-                ))}
-            </Box>
 
-            {/* Falling Coins */}
-            {coins.map((coin) => (
-                <Box
-                    key={`coin-${coin.id}`}
-                    position="absolute"
-                    top="-50px"
-                    left={`${coin.startX}%`}
-                    width="30px"
-                    height="30px"
-                    borderRadius="full"
-                    bg="linear-gradient(135deg, #ffd700 0%, #ffed4e 50%, #ffd700 100%)"
-                    border="2px solid"
-                    borderColor="orange.400"
-                    animation={`fall ${coin.duration}s linear ${coin.delay}s infinite`}
-                    style={{
-                        animationDelay: `${coin.delay}s`,
-                    }}
-                />
-            ))}
-
-            {/* Waiting State */}
             {result === 'waiting' && (
-                <VStack
-                    gap="6"
-                    position="relative"
-                    zIndex="1"
-                    animation="fadeInOut 0.5s ease-in-out"
-                >
-                    <Text
-                        fontSize={{ base: "2xl", md: "3xl" }}
-                        fontWeight="bold"
-                        color="orange.400"
-                        textAlign="center"
-                        textShadow="0 0 20px rgba(251, 146, 60, 0.8)"
-                        animation="pulse 1.5s ease-in-out infinite"
-                        px="4"
+                <Flex direction="column" align="center" gap="16px" position="relative" px="24px" textAlign="center">
+                    <StateIcon tone="ember"><LuFlame/></StateIcon>
+                    <chakra.strong
                         key={currentMessage}
+                        fontSize={{base: '22px', md: '26px'}}
+                        fontWeight="800"
+                        letterSpacing="-0.01em"
+                        aria-live="polite"
+                        animation={animate("hgRaffleRise 0.5s ease-out")}
                     >
                         {WAITING_MESSAGES[currentMessage](ticker)}
-                    </Text>
-                </VStack>
+                    </chakra.strong>
+                </Flex>
             )}
 
-            {/* Explosion and Result */}
-            {result !== 'waiting' && showResult && (
-                <VStack
-                    gap="6"
+            {result !== 'waiting' && (showResult || result === 'summary') && (
+                <Flex
+                    direction="column"
+                    align="center"
+                    gap="12px"
                     position="relative"
-                    zIndex="1"
-                    animation="explosionScale 0.5s ease-out"
+                    px="24px"
+                    maxW="90%"
+                    textAlign="center"
+                    aria-live="polite"
+                    animation={animate("hgRaffleRise 0.5s ease-out")}
                 >
-                    {/* Explosion particles - only for win */}
-                    {result === 'win' && [...Array(12)].map((_, i) => (
-                        <Box
-                            key={`particle-${i}`}
-                            position="absolute"
-                            width="20px"
-                            height="20px"
-                            borderRadius="full"
-                            bg="yellow.400"
-                            animation={`explode-${i} 0.8s ease-out forwards`}
-                            style={{
-                                '--angle': `${i * 30}deg`,
-                            } as React.CSSProperties}
-                        />
-                    ))}
-
-                    {/* Result Text */}
-                    <VStack gap="4" animation="resultFadeIn 0.5s ease-out 0.3s backwards" maxW="90%">
-                        {result === 'win' ? (
-                            <>
-                                <Text
-                                    fontSize={{ base: "5xl", md: "7xl" }}
-                                    fontWeight="black"
-                                    color="green.400"
-                                    textShadow="0 0 20px rgba(34, 197, 94, 0.8), 0 0 40px rgba(34, 197, 94, 0.5)"
-                                    animation="pulse 1s ease-in-out infinite"
-                                    whiteSpace="nowrap"
-                                >
-                                    🎉 YOU WON! 🎉
-                                </Text>
-                                {amount && (
-                                    <VStack gap="1">
-                                        <Text
-                                            fontSize={{ base: "3xl", md: "4xl" }}
-                                            fontWeight="black"
-                                            color="yellow.400"
-                                            textShadow="0 0 20px rgba(251, 191, 36, 0.8)"
-                                        >
-                                            +{amount} {ticker}
-                                        </Text>
-                                        <Text fontSize="lg" color="gray.300">
-                                            Congratulations! 🏆
-                                        </Text>
-                                    </VStack>
-                                )}
-                            </>
-                        ) : result === 'summary' ? (
-                            <>
-                                <Text
-                                    fontSize={{ base: "2xl", md: "3xl" }}
-                                    fontWeight="black"
-                                    color="purple.400"
-                                    textAlign="center"
-                                    textShadow="0 0 20px rgba(192, 132, 252, 0.8)"
-                                    animation="pulse 1s ease-in-out infinite"
-                                    px="4"
-                                >
-                                    🎊 Your {totalContributions} {totalContributions === 1 ? 'contribution' : 'contributions'} {totalContributions === 1 ? 'is' : 'are'} complete 🎊
-                                </Text>
-                                {contributionPrice && (
-                                    <Text
-                                        fontSize={{ base: "lg", md: "xl" }}
-                                        fontWeight="semibold"
-                                        color="purple.300"
-                                        textAlign="center"
-                                    >
-                                        Total paid: {(parseFloat(contributionPrice) * totalContributions).toFixed(2)} {ticker}
-                                    </Text>
-                                )}
-                                <VStack gap="4" mt="4">
-                                    {winnersCount > 0 && totalWon && (
-                                        <VStack gap="1">
-                                            <Text fontSize="lg" color="gray.300" fontWeight="medium">
-                                                Total Won
-                                            </Text>
-                                            <Text
-                                                fontSize={{ base: "3xl", md: "4xl" }}
-                                                fontWeight="black"
-                                                color="green.400"
-                                                textShadow="0 0 20px rgba(34, 197, 94, 0.8)"
-                                            >
-                                                +{totalWon} {ticker}
-                                            </Text>
-                                        </VStack>
-                                    )}
-                                    {totalContributions > 1 && (
-                                        <VStack gap="2">
-                                            <Text fontSize="md" color="gray.400" fontWeight="medium">
-                                                Results
-                                            </Text>
-                                            <HStack gap="6">
-                                                <VStack gap="0">
-                                                    <Text fontSize="2xl" fontWeight="bold" color="green.400">
-                                                        ✓ {winnersCount}
-                                                    </Text>
-                                                    <Text fontSize="sm" color="gray.400">
-                                                        Won
-                                                    </Text>
-                                                </VStack>
-                                                <VStack gap="0">
-                                                    <Text fontSize="2xl" fontWeight="bold" color="gray.400">
-                                                        ✗ {losersCount}
-                                                    </Text>
-                                                    <Text fontSize="sm" color="gray.400">
-                                                        Lost
-                                                    </Text>
-                                                </VStack>
-                                            </HStack>
-                                        </VStack>
-                                    )}
-                                    {winnersCount === 0 && (
-                                        <Text fontSize="md" color="gray.400" textAlign="center" mt="2">
-                                            Better luck next time! 🍀
-                                        </Text>
-                                    )}
-                                </VStack>
-                            </>
-                        ) : (
-                            <>
-                                <Text
-                                    fontSize={{ base: "3xl", md: "4xl" }}
-                                    fontWeight="bold"
-                                    color="orange.400"
-                                    textAlign="center"
-                                    textShadow="0 0 20px rgba(251, 146, 60, 0.5)"
-                                    animation="pulse 1s ease-in-out infinite"
-                                >
-                                    Thank you for your contribution! 🙏
-                                </Text>
-                                <Text
-                                    fontSize={{ base: "xl", md: "2xl" }}
-                                    color="gray.300"
-                                    textAlign="center"
-                                    fontWeight="medium"
-                                >
-                                    You were not lucky this time
-                                </Text>
-                                <Text
-                                    fontSize={{ base: "lg", md: "xl" }}
-                                    color="gray.400"
-                                    textAlign="center"
-                                >
-                                    Maybe next time! 🍀
-                                </Text>
-                            </>
-                        )}
-                    </VStack>
-                </VStack>
+                    {result === 'win' ? (
+                        <>
+                            <StateIcon tone="success"><LuTrophy/></StateIcon>
+                            <chakra.strong fontSize={{base: '34px', md: '40px'}} fontWeight="800" letterSpacing="-0.01em">YOU WON!</chakra.strong>
+                            {amount && (
+                                <>
+                                    <chakra.span fontSize={{base: '28px', md: '34px'}} fontWeight="800" color="hg.success">+{amount} {ticker}</chakra.span>
+                                    <chakra.span fontSize="15px" color="hg.text.secondary">Congratulations!</chakra.span>
+                                </>
+                            )}
+                        </>
+                    ) : result === 'summary' ? (
+                        <>
+                            <StateIcon tone="ember"><LuListChecks/></StateIcon>
+                            <chakra.strong fontSize={{base: '22px', md: '24px'}} fontWeight="800" letterSpacing="-0.01em">
+                                {`Your ${totalContributions} ${totalContributions === 1 ? 'contribution is' : 'contributions are'} complete`}
+                            </chakra.strong>
+                            {contributionPrice && (
+                                <chakra.span fontSize="15px" color="hg.text.secondary">
+                                    Total paid: {(parseFloat(contributionPrice) * totalContributions).toFixed(2)} {ticker}
+                                </chakra.span>
+                            )}
+                            {winnersCount > 0 && totalWon && (
+                                <Flex direction="column" align="center" gap="2px">
+                                    <chakra.span fontSize="15px" color="hg.text.secondary">Total Won</chakra.span>
+                                    <chakra.span fontSize={{base: '28px', md: '34px'}} fontWeight="800" color="hg.success">+{totalWon} {ticker}</chakra.span>
+                                </Flex>
+                            )}
+                            {totalContributions > 1 && (
+                                <Flex gap="12px" mt="4px">
+                                    <ResultCount value={winnersCount} label="Won" success/>
+                                    <ResultCount value={losersCount} label="Lost"/>
+                                </Flex>
+                            )}
+                            {winnersCount === 0 && (
+                                <chakra.span fontSize="15px" color="hg.text.secondary">Better luck next time!</chakra.span>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <StateIcon tone="quiet"><LuHeart/></StateIcon>
+                            <chakra.strong fontSize={{base: '22px', md: '24px'}} fontWeight="800" letterSpacing="-0.01em">Thank you for your contribution!</chakra.strong>
+                            <chakra.span fontSize="15px" color="hg.text.secondary">You were not lucky this time</chakra.span>
+                            <chakra.span fontSize="15px" color="hg.text.secondary">Maybe next time!</chakra.span>
+                        </>
+                    )}
+                </Flex>
             )}
 
-            {/* CSS Animations */}
-            <style jsx global>{`
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
+            {!reducedMotion && (
+                <style jsx global>{`
+                    @keyframes hgRaffleFadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
                     }
-                    to {
-                        opacity: 1;
-                    }
-                }
 
-                @keyframes flame {
-                    0%, 100% {
-                        transform: scaleY(1) scaleX(1);
-                        opacity: 0.7;
+                    @keyframes hgRaffleRise {
+                        from { opacity: 0; transform: translateY(16px); }
+                        to { opacity: 1; transform: translateY(0); }
                     }
-                    50% {
-                        transform: scaleY(1.3) scaleX(0.8);
-                        opacity: 0.9;
-                    }
-                }
 
-                @keyframes fall {
-                    from {
-                        transform: translateY(0) rotate(0deg);
-                        opacity: 1;
+                    @keyframes hgEmberRise {
+                        0% { transform: translate(0, 0) scale(1); opacity: 0; }
+                        10% { opacity: 1; }
+                        100% { transform: translate(var(--drift), -85vh) scale(0.3); opacity: 0; }
                     }
-                    to {
-                        transform: translateY(100vh) rotate(360deg);
-                        opacity: 0.5;
-                    }
-                }
-
-                @keyframes explosionScale {
-                    from {
-                        transform: scale(0);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: scale(1);
-                        opacity: 1;
-                    }
-                }
-
-                @keyframes resultFadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes pulse {
-                    0%, 100% {
-                        transform: scale(1);
-                    }
-                    50% {
-                        transform: scale(1.05);
-                    }
-                }
-
-                @keyframes spin {
-                    from {
-                        transform: rotate(0deg);
-                    }
-                    to {
-                        transform: rotate(360deg);
-                    }
-                }
-
-                @keyframes fadeInOut {
-                    0% {
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                ${[...Array(12)].map((_, i) => {
-                    const angle = i * 30;
-                    const distance = 150;
-                    const x = Math.cos((angle * Math.PI) / 180) * distance;
-                    const y = Math.sin((angle * Math.PI) / 180) * distance;
-                    return `
-                        @keyframes explode-${i} {
-                            0% {
-                                transform: translate(0, 0) scale(1);
-                                opacity: 1;
-                            }
-                            100% {
-                                transform: translate(${x}px, ${y}px) scale(0);
-                                opacity: 0;
-                            }
-                        }
-                    `;
-                }).join('\n')}
-            `}</style>
+                `}</style>
+            )}
         </Box>
     );
 };

@@ -12,9 +12,10 @@ overrides:
   "@wagmi/core": "3.4.2"
   "@wagmi/connectors": "8.0.1"
   viem: "2.47.10"
-  # Keep a single @interchain-kit/store. 0.9.3 ships the signOptions fix (preferNoSetFee kept,
-  # so Keplr no longer overrides fees paid in non-native denoms) that we used to patch locally.
-  "@interchain-kit/store": "0.9.3"
+  # Keep a single @interchain-kit/store. Both fixes we used to patch locally are upstream:
+  # signOptions (preferNoSetFee kept, so Keplr no longer overrides fees paid in non-native
+  # denoms) since 0.9.3, and the stuck "NotExist" restore (BFE-284) since 0.10.1. Never go below 0.10.1.
+  "@interchain-kit/store": "0.10.1"
 
 # Single source of truth for the test-tooling versions (BFE-41). The shared
 # @bze/vitest-preset and every app reference these via `catalog:`, so vitest,
@@ -28,12 +29,7 @@ catalog:
   "@testing-library/react": "^16.1.0"
   "@testing-library/jest-dom": "^6.6.3"
   "@testing-library/user-event": "^14.5.2"
-
-# BFE-284: restore() no longer brings back a saved "NotExist" (it left browsers stuck on
-# "Keplr not installed" and made connect() a no-op), plus the swapped getChainWalletState args
-# in ChainWalletStore's walletState/errorMessage getters. Still unfixed upstream in store 0.10.0.
-patchedDependencies:
-  "@interchain-kit/store@0.9.3": "patches/@interchain-kit__store@0.9.3.patch"
+  "@playwright/test": "^1.64.0"
 
 # Native/postinstall build scripts we trust to run (all deps the apps already shipped).
 allowBuilds:
@@ -47,9 +43,9 @@ allowBuilds:
   utf-8-validate: true
 
 minimumReleaseAgeExclude:
-  - '@bze/bzejs@3.1.0'
-  - '@interchain-kit/react@0.10.3'
-  - '@interchain-kit/store@0.9.3'
   - '@chain-registry/types@2.0.281'
   - '@chain-registry/utils@2.0.281'
   - chain-registry@2.0.281
+  - '@bze/bzejs@3.2.0'
+  - '@interchain-kit/react@0.11.1'
+  - '@interchain-kit/store@0.10.1'

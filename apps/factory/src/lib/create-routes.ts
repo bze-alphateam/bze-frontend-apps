@@ -1,0 +1,107 @@
+import { AIRDROP_PATH } from '@/lib/airdrop'
+import { compoundedNewHref } from '@/lib/denom-reward'
+
+// The Create side of the Factory (BFE-260): the home's starting points, the three Choose
+// screens between a starting point and its wizard, and the query each Choose screen hands on.
+
+export const CHOOSE_MARKET_PATH = '/create/market'
+export const CHOOSE_REWARDS_PATH = '/create/rewards'
+export const CHOOSE_GROW_PATH = '/create/grow'
+
+/** Reads one query value; `URLSearchParams` and Next's `ReadonlyURLSearchParams` both fit. */
+export interface QueryReader {
+    get(name: string): string | null;
+}
+
+/** `path` with the non-empty values of `query`, in the order given. */
+function withQuery(path: string, query: Record<string, string | undefined>): string {
+    const q = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+        if (value) q.set(key, value)
+    }
+    const s = q.toString()
+    return s ? `${path}?${s}` : path
+}
+
+/** /create/rewards, optionally for one staked token. */
+export const chooseRewardsHref = ({ denom }: { denom?: string } = {}) => withQuery(CHOOSE_REWARDS_PATH, { denom })
+
+/**
+ * Where the two DEX market options go; a pair already picked (`?base=&quote=`) is handed on, and
+ * so is the way back to a token page (`?return=&returnLabel=`).
+ */
+export function marketTargets(query: QueryReader) {
+    const pair = {
+        base: query.get('base') ?? undefined,
+        quote: query.get('quote') ?? undefined,
+        return: query.get('return') ?? undefined,
+        returnLabel: query.get('returnLabel') ?? undefined,
+    }
+    return {
+        pool: withQuery('/pool/new', pair),
+        market: withQuery('/market/new', pair),
+    }
+}
+
+/**
+ * Where the reward options go. The staked token arrives as `?denom=` or `?staking=` (the simple
+ * reward form's name for it) and reaches every form in the name that form reads.
+ */
+export function rewardTargets(query: QueryReader) {
+    const staked = query.get('staking') || query.get('denom') || ''
+    return {
+        simple: withQuery('/reward/new', { staking: staked }),
+        compounded: compoundedNewHref(staked || undefined),
+    }
+}
+
+export const GROW_TARGETS = {
+    airdrop: AIRDROP_PATH,
+    raffle: '/raffle/new',
+} as const
+
+/** The DEX's pools page: adding and removing liquidity live there (BFE-257 decision 9). */
+export const dexPoolsHref = (dexHref: string) => `${dexHref.replace(/\/$/, '')}/pools`
+
+/** A pool's page on the DEX (its Add and Remove liquidity tabs); the DEX pool list without an id. */
+export const dexPoolHref = (dexHref: string, poolId?: string | null) =>
+    poolId ? `${dexPoolsHref(dexHref)}/details?id=${encodeURIComponent(poolId)}` : dexPoolsHref(dexHref)
+
+/** An order-book market's page on the DEX; `marketId` is `<base>/<quote>` in the market's stored direction. */
+export const dexMarketHref = (dexHref: string, marketId: string) =>
+    `${dexHref.replace(/\/$/, '')}/exchange/market?id=${encodeURIComponent(marketId)}`
+
+/** The DEX staking page, searched for the staked token: simple rewards are staked there. */
+export const dexStakingHref = (dexHref: string, ticker: string) =>
+    `${dexHref.replace(/\/$/, '')}/staking?search=${encodeURIComponent(ticker)}`
+
+/**
+ * A reward's page on the DEX, by the DEX staking row id: `simple:<reward_id>` or
+ * `compounded:<denom>` (the DEX's `rewardPagePath`).
+ */
+export const dexRewardHref = (dexHref: string, rowId: string) =>
+    `${dexHref.replace(/\/$/, '')}/staking/details?id=${encodeURIComponent(rowId)}`
+
+export const DOCS_HREF = 'https://docs.getbze.com'
+
+export interface StartingPoint {
+    id: 'token' | 'market' | 'rewards' | 'grow' | 'dao' | 'contest';
+    title: string;
+    line: string;
+    chips: string[];
+    /** The options in one line, for the connected home's compact list. */
+    options: string;
+    /** Without it the tile is "Coming soon" and not a link. */
+    href?: string;
+    featured?: boolean;
+}
+
+/** The six tiles of the home page, in grid order. */
+export const STARTING_POINTS: StartingPoint[] = [
+    { id: 'token', title: 'Create a token', line: 'Get your token created in seconds.', chips: ['Token'], options: 'Token', href: '/token/new', featured: true },
+    { id: 'market', title: 'Create a DEX market', line: 'Let people swap a pair instantly, or trade it with limit orders.', chips: ['Liquidity pool', 'Order book'], options: 'Liquidity pool · Order book', href: CHOOSE_MARKET_PATH },
+    { id: 'rewards', title: 'Create staking rewards', line: 'Reward people who hold a token or LP shares.', chips: ['Simple reward', 'Compounded reward'], options: 'Simple · Compounded', href: CHOOSE_REWARDS_PATH },
+    { id: 'grow', title: 'Grow a community', line: 'Airdrop tokens to wallets, stakers or liquidity providers, or run a raffle.', chips: ['Airdrop', 'Raffle'], options: 'Airdrop · Raffle', href: CHOOSE_GROW_PATH },
+    { id: 'dao', title: 'Create a DAO', line: 'Let holders decide together: proposals, votes and a shared treasury.', chips: [], options: '' },
+    { id: 'contest', title: 'Create a trading contest', line: 'Prizes for the top traders of a market over a set period.', chips: [], options: '' },
+]

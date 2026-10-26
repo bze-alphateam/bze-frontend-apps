@@ -8,13 +8,13 @@ import {
     Button,
     Separator,
     Box,
+    Flex,
     Input,
-    Badge,
     createListCollection,
 } from '@chakra-ui/react'
 import { Select, Portal } from '@chakra-ui/react'
 import { useTheme } from "next-themes"
-import {useState, useEffect, useMemo, useCallback} from 'react'
+import {useState, useEffect, useMemo, useCallback, useId} from 'react'
 import { useSettings } from '../../hooks/useSettings'
 import {convertToWebSocketUrl, validateEndpoints} from '../../utils/validation'
 import {
@@ -27,13 +27,13 @@ import {useToast} from "../../hooks/useToast"
 import {useConnectionType} from "../../hooks/useConnectionType"
 import {useFeeTokens} from "../../hooks/useFeeTokens"
 import {getChainNativeAssetDenom} from "../../constants/assets"
+import {Notice, StatusPill, type NoticeStatus} from "../hive-glow/status"
+import {hgVariant} from "../../theme/variants"
+import {DrawerHelper, DrawerSectionTitle} from "./drawer-kit"
 
-interface SettingsSidebarContentProps {
-    accentColor?: string
-}
-
-export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebarContentProps) => {
+export const SettingsSidebarContent = () => {
     const { setTheme, resolvedTheme} = useTheme()
+    const darkModeLabelId = useId()
     const {toast} = useToast()
     const { settings, isLoaded, updateEndpoints, updatePreferredFeeDenom, defaultSettings } = useSettings()
     const {connectionType} = useConnectionType()
@@ -121,14 +121,15 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
         }
     }, [connectionType])
 
-    const connectionStatusBadgeColor = useMemo(() => {
+    const connectionStatusTone = useMemo<NoticeStatus>(() => {
         switch(connectionType) {
             case CONNECTION_TYPE_NONE:
-                return 'red'
+                return 'danger'
             case CONNECTION_TYPE_POLLING:
-                return 'orange'
+                return 'warning'
             case CONNECTION_TYPE_WS:
-                return 'green'
+            default:
+                return 'success'
         }
     }, [connectionType])
 
@@ -150,185 +151,156 @@ export const SettingsSidebarContent = ({ accentColor = 'blue' }: SettingsSidebar
         rpcEndpoint !== settings.endpoints.rpcEndpoint ||
         preferredFeeDenom !== settings.preferredFeeDenom
 
-    return (
-        <VStack gap="6" align="stretch">
-            {/* Appearance Section */}
-            <Box>
-                <Text fontSize="sm" fontWeight="medium" mb="3">
-                    Appearance
-                </Text>
-                <VStack gap="3" align="stretch">
-                    <HStack justify="space-between">
-                        <Text fontSize="sm">Dark Mode</Text>
-                        <Switch.Root
-                            checked={resolvedTheme === 'dark'}
-                            onCheckedChange={(details) => {
-                                const newTheme = details.checked ? 'dark' : 'light'
-                                setTheme(newTheme)
-                            }}                        >
-                            <Switch.HiddenInput />
-                            <Switch.Control>
-                                <Switch.Thumb />
-                            </Switch.Control>
-                        </Switch.Root>
-                    </HStack>
-                </VStack>
-            </Box>
+    const fieldLabel = (text: string) => (
+        <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">{text}</Text>
+    )
 
-            <Separator />
+    const validationNotice = (result: { isValid: boolean; error?: string } | undefined, validText: string) => result && (
+        <Box role="status">
+            <Notice status={result.isValid ? 'success' : 'danger'}>{result.error || validText}</Notice>
+        </Box>
+    )
+
+    return (
+        <VStack gap="22px" align="stretch">
+            {/* Appearance Section */}
+            <VStack as="section" gap="6px" align="stretch">
+                <DrawerSectionTitle>Appearance</DrawerSectionTitle>
+                {/* Only the switch toggles: the text sits outside its label so a click on it does nothing. */}
+                <Flex justify="space-between" align="center" minH="40px">
+                    <Text id={darkModeLabelId} fontSize="14px" fontWeight="400" color="fg">Dark Mode</Text>
+                    <Switch.Root
+                        ids={{label: darkModeLabelId}}
+                        checked={resolvedTheme === 'dark'}
+                        onCheckedChange={(details) => {
+                            const newTheme = details.checked ? 'dark' : 'light'
+                            setTheme(newTheme)
+                        }}
+                    >
+                        <Switch.HiddenInput />
+                        <Switch.Control bg="hg.switchOff" _checked={{ bgImage: 'appButton' }} data-testid="dark-mode-switch">
+                            <Switch.Thumb />
+                        </Switch.Control>
+                    </Switch.Root>
+                </Flex>
+            </VStack>
+
+            <Separator borderColor="hg.divider" />
 
             {/* Fee Token Preference Section */}
-            <Box>
-                <Text fontSize="sm" fontWeight="medium" mb="3">
-                    Fee Token Preference
-                </Text>
-                <VStack gap="3" align="stretch">
-                    <Box>
-                        <Select.Root
-                            collection={feeTokensCollection}
-                            size="sm"
-                            value={preferredFeeDenom ? [preferredFeeDenom] : ['']}
-                            onValueChange={(details) => handleFeeTokenChange(details.value[0] || '')}
-                            disabled={feeTokensLoading}
-                        >
-                            <Select.Label>Preferred Fee Token</Select.Label>
-                            <Select.HiddenSelect />
-                            <Select.Control>
-                                <Select.Trigger>
-                                    <Select.ValueText placeholder="Native Token (default)" />
-                                </Select.Trigger>
-                                <Select.IndicatorGroup>
-                                    <Select.Indicator />
-                                </Select.IndicatorGroup>
-                            </Select.Control>
-                            <Portal>
-                                <Select.Positioner>
-                                    <Select.Content>
-                                        {feeTokensCollection.items.map((item) => (
-                                            <Select.Item key={item.value} item={item}>
-                                                <Text>{item.label}</Text>
-                                                <Select.ItemIndicator />
-                                            </Select.Item>
-                                        ))}
-                                    </Select.Content>
-                                </Select.Positioner>
-                            </Portal>
-                        </Select.Root>
-                        <Text fontSize="xs" color="fg.muted" mt="2">
-                            Select your preferred token for paying transaction fees. Only tokens with liquidity pools paired with the native token are available.
-                        </Text>
-                    </Box>
-                </VStack>
-            </Box>
+            <VStack as="section" gap="8px" align="stretch">
+                <DrawerSectionTitle>Fee Token Preference</DrawerSectionTitle>
+                <Select.Root
+                    collection={feeTokensCollection}
+                    size="sm"
+                    value={preferredFeeDenom ? [preferredFeeDenom] : ['']}
+                    onValueChange={(details) => handleFeeTokenChange(details.value[0] || '')}
+                    disabled={feeTokensLoading}
+                >
+                    <Select.Label fontSize="13px" fontWeight="600" color="hg.text.secondary">Preferred Fee Token</Select.Label>
+                    <Select.HiddenSelect />
+                    <Select.Control>
+                        <Select.Trigger>
+                            <Select.ValueText placeholder="Native Token (default)" />
+                        </Select.Trigger>
+                        <Select.IndicatorGroup>
+                            <Select.Indicator />
+                        </Select.IndicatorGroup>
+                    </Select.Control>
+                    <Portal>
+                        <Select.Positioner>
+                            <Select.Content>
+                                {feeTokensCollection.items.map((item) => (
+                                    <Select.Item key={item.value} item={item}>
+                                        <Text>{item.label}</Text>
+                                        <Select.ItemIndicator />
+                                    </Select.Item>
+                                ))}
+                            </Select.Content>
+                        </Select.Positioner>
+                    </Portal>
+                </Select.Root>
+                <DrawerHelper>
+                    Select your preferred token for paying transaction fees. Only tokens with liquidity pools paired with the native token are available.
+                </DrawerHelper>
+            </VStack>
 
-            <Separator />
+            <Separator borderColor="hg.divider" />
 
             {/* BeeZee Endpoints Section */}
-            <Box>
-                <Text fontSize="sm" fontWeight="medium" mb="3">
-                    BeeZee Endpoints
-                </Text>
+            <VStack as="section" gap="14px" align="stretch">
+                <DrawerSectionTitle>BeeZee Endpoints</DrawerSectionTitle>
 
-                <VStack gap="4" align="stretch">
-                    <Box>
-                        <HStack gap="2" align="center" justify="space-between">
-                            <Text fontSize="sm" mb="1">Status: </Text>
-                            <Badge colorPalette={connectionStatusBadgeColor}>{connectionStatusText}</Badge>
-                        </HStack>
-                    </Box>
-                    {/* REST Endpoint */}
-                    <Box>
-                        <Text fontSize="sm" mb="1">REST Endpoint</Text>
-                        <Text fontSize="xs" color="fg.muted" mb="2">
-                            Note: Endpoint must have CORS enabled to work in browser
-                        </Text>
-                        <Input
-                            size="sm"
-                            placeholder="https://rest.getbze.com"
-                            value={restEndpoint}
-                            onChange={(e) => setRestEndpoint(e.target.value)}                        />
-                        {validationResults.rest && (
-                            <Box
-                                mt="2"
-                                p="3"
-                                bgGradient="to-br"
-                                gradientFrom={validationResults.rest.isValid ? "green.500/15" : "red.500/15"}
-                                gradientTo={validationResults.rest.isValid ? "green.600/15" : "red.600/15"}
-                                borderWidth="1px"
-                                borderColor={validationResults.rest.isValid ? "green.500/30" : "red.500/30"}
-                                borderRadius="md"
-                            >
-                                <Text fontSize="sm" color={validationResults.rest.isValid ? "green.700" : "red.700"} _dark={{color: validationResults.rest.isValid ? "green.300" : "red.300"}}>
-                                    {validationResults.rest.error || 'REST endpoint is valid'}
-                                </Text>
-                            </Box>
-                        )}
-                    </Box>
+                <HStack justify="space-between" fontSize="14px" color="fg">
+                    <Text>Status:</Text>
+                    <StatusPill tone={connectionStatusTone}>{connectionStatusText}</StatusPill>
+                </HStack>
 
-                    {/* RPC Endpoint */}
-                    <Box>
-                        <Text fontSize="sm" mb="1">RPC Endpoint</Text>
-                        <Text fontSize="xs" color="fg.muted" mb="2">
-                            Note: Must support WebSocket (WS/WSS) connections
-                        </Text>
-                        <Input
-                            size="sm"
-                            placeholder="wss://rpc.getbze.com"
-                            value={rpcEndpoint}
-                            onChange={(e) => setRpcEndpoint(e.target.value)}                        />
-                        {validationResults.rpc && (
-                            <Box
-                                mt="2"
-                                p="3"
-                                bgGradient="to-br"
-                                gradientFrom={validationResults.rpc.isValid ? "green.500/15" : "red.500/15"}
-                                gradientTo={validationResults.rpc.isValid ? "green.600/15" : "red.600/15"}
-                                borderWidth="1px"
-                                borderColor={validationResults.rpc.isValid ? "green.500/30" : "red.500/30"}
-                                borderRadius="md"
-                            >
-                                <Text fontSize="sm" color={validationResults.rpc.isValid ? "green.700" : "red.700"} _dark={{color: validationResults.rpc.isValid ? "green.300" : "red.300"}}>
-                                    {validationResults.rpc.error || 'RPC endpoint is valid'}
-                                </Text>
-                            </Box>
-                        )}
-                    </Box>
-
-                    {/* Validation Button */}
-                    <Button
+                {/* REST Endpoint */}
+                <VStack gap="6px" align="stretch">
+                    {fieldLabel('REST Endpoint')}
+                    <DrawerHelper>Note: Endpoint must have CORS enabled to work in browser</DrawerHelper>
+                    <Input
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleValidateEndpoints(restEndpoint, rpcEndpoint)}
-                        loading={isValidating}
-                        disabled={!restEndpoint.trim() || !rpcEndpoint.trim()}
-                    >
-                        {isValidating ? 'Validating...' : 'Validate Endpoints'}
-                    </Button>
+                        fontFamily="mono"
+                        aria-label="REST Endpoint"
+                        placeholder="https://rest.getbze.com"
+                        value={restEndpoint}
+                        aria-invalid={validationResults.rest && !validationResults.rest.isValid ? true : undefined}
+                        onChange={(e) => setRestEndpoint(e.target.value)}
+                    />
+                    {validationNotice(validationResults.rest, 'REST endpoint is valid')}
                 </VStack>
-            </Box>
+
+                {/* RPC Endpoint */}
+                <VStack gap="6px" align="stretch">
+                    {fieldLabel('RPC Endpoint')}
+                    <DrawerHelper>Note: Must support WebSocket (WS/WSS) connections</DrawerHelper>
+                    <Input
+                        size="sm"
+                        fontFamily="mono"
+                        aria-label="RPC Endpoint"
+                        placeholder="wss://rpc.getbze.com"
+                        value={rpcEndpoint}
+                        aria-invalid={validationResults.rpc && !validationResults.rpc.isValid ? true : undefined}
+                        onChange={(e) => setRpcEndpoint(e.target.value)}
+                    />
+                    {validationNotice(validationResults.rpc, 'RPC endpoint is valid')}
+                </VStack>
+
+                {/* Validation Button */}
+                <Button
+                    size="md"
+                    variant={hgVariant('secondary')}
+                    onClick={() => handleValidateEndpoints(restEndpoint, rpcEndpoint)}
+                    loading={isValidating}
+                    loadingText="Validating..."
+                    disabled={!restEndpoint.trim() || !rpcEndpoint.trim()}
+                >
+                    Validate Endpoints
+                </Button>
+            </VStack>
 
             {/* Action Buttons */}
-            <Box>
-                <VStack gap="3">
-                    <Button
-                        size="sm"
-                        width="full"
-                        onClick={() => handleSaveSettings(restEndpoint, rpcEndpoint, preferredFeeDenom)}
-                        colorPalette={accentColor}
-                        disabled={!hasUnsavedChanges}
-                    >
-                        Save Settings
-                    </Button>
-                    <Button
-                        size="sm"
-                        width="full"
-                        variant="outline"
-                        onClick={handleResetToDefaults}
-                    >
-                        Reset to Defaults
-                    </Button>
-                </VStack>
-            </Box>
+            <VStack gap="10px" align="stretch">
+                <Button
+                    size="lg"
+                    width="full"
+                    variant={hgVariant('primary')}
+                    onClick={() => handleSaveSettings(restEndpoint, rpcEndpoint, preferredFeeDenom)}
+                    disabled={!hasUnsavedChanges}
+                >
+                    Save Settings
+                </Button>
+                <Button
+                    size="md"
+                    width="full"
+                    variant={hgVariant('secondary')}
+                    onClick={handleResetToDefaults}
+                >
+                    Reset to Defaults
+                </Button>
+            </VStack>
         </VStack>
     )
 }

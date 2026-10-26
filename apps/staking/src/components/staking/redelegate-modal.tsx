@@ -1,7 +1,7 @@
 'use client';
 
 import {useState, useMemo} from 'react';
-import {Box, Button, HStack, Input, Text, VStack, Dialog, Portal} from '@chakra-ui/react';
+import {Box, Button, chakra, Flex, Input, InputGroup} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
@@ -14,6 +14,7 @@ import {
     sanitizeNumberInput,
     getChainName,
     truncateAddress,
+    hgVariant,
 } from '@bze/bze-ui-kit';
 import {useChain} from '@interchain-kit/react';
 import {WalletState} from '@interchain-kit/core';
@@ -21,6 +22,7 @@ import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {LuSearch, LuWallet} from 'react-icons/lu';
+import {AmountField, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 import {ValidatorAvatar} from './validator-avatar';
 
 interface RedelegateModalProps {
@@ -68,7 +70,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
         const uAmount = amountToUAmount(amount, decimals);
         if (new BigNumber(uAmount).gt(delegatedAmount)) {
-            toast.error('Exceeds delegation', 'Amount exceeds your delegated balance');
+            toast.error('Exceeds your stake', 'Amount exceeds what you have staked with this validator');
             return;
         }
         if (!feeCheck.canAfford) {
@@ -91,12 +93,12 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
             const success = await tx([msg]);
             if (success) {
-                toast.success('Redelegation started', `Redelegated ${amount} ${nativeAsset?.ticker} to ${destValidator.description?.moniker}`);
+                toast.success('Stake moved', `Moved ${amount} ${nativeAsset?.ticker} to ${destValidator.description?.moniker}`);
                 onSuccess();
             }
         } catch (e) {
             console.error('Redelegate failed:', e);
-            toast.error('Redelegation failed', 'Transaction failed. Please try again.');
+            toast.error('Move failed', 'Transaction failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -108,138 +110,124 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
     };
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={(e) => !isSubmitting && !e.open && onClose()}>
-            <Portal>
-                <Dialog.Backdrop />
-                <Dialog.Positioner>
-                    <Dialog.Content maxW="lg" p="6">
-                        <Dialog.Header pb="4">
-                            <Dialog.Title>Redelegate from {sourceValidator?.description?.moniker}</Dialog.Title>
-                        </Dialog.Header>
-                        <Dialog.Body>
-                            <VStack gap="4" align="stretch">
-                                {/* Destination Validator Selection */}
-                                <VStack align="stretch" gap="2">
-                                    <Text fontSize="sm" fontWeight="medium">Destination Validator</Text>
-                                    {destValidator ? (
-                                        <HStack justify="space-between" bg="blue.500/5" p="3" borderRadius="md" borderWidth="1px" borderColor="blue.500/15">
-                                            <HStack gap="2">
-                                                <ValidatorAvatar
-                                                    src={logos[destValidator.operator_address]}
-                                                    name={destValidator.description?.moniker}
-                                                    size="24px"
-                                                />
-                                                <Text fontSize="sm" fontWeight="semibold">
-                                                    {destValidator.description?.moniker || truncateAddress(destValidator.operator_address)}
-                                                </Text>
-                                            </HStack>
-                                            <Button size="xs" variant="ghost" onClick={() => setDestValidator(null)}>Change</Button>
-                                        </HStack>
-                                    ) : (
-                                        <VStack align="stretch" gap="2">
-                                            <Box position="relative">
-                                                <Box position="absolute" left="3" top="50%" transform="translateY(-50%)" color="fg.muted">
-                                                    <LuSearch size={14} />
-                                                </Box>
-                                                <Input
-                                                    pl="9"
-                                                    placeholder="Search validators..."
-                                                    value={search}
-                                                    onChange={(e) => setSearch(e.target.value)}
-                                                    size="sm"
-                                                />
-                                            </Box>
-                                            <Box maxH="300px" overflowY="auto" borderWidth="1px" borderRadius="md">
-                                                {filteredValidators.map(v => (
-                                                    <Box
-                                                        key={v.operator_address}
-                                                        px="3"
-                                                        py="2"
-                                                        cursor="pointer"
-                                                        _hover={{bg: 'purple.500/5'}}
-                                                        onClick={() => {
-                                                            setDestValidator(v);
-                                                            setSearch('');
-                                                        }}
-                                                        borderBottomWidth="1px"
-                                                    >
-                                                        <HStack justify="space-between">
-                                                            <HStack gap="2">
-                                                                <ValidatorAvatar
-                                                                    src={logos[v.operator_address]}
-                                                                    name={v.description?.moniker}
-                                                                    size="24px"
-                                                                />
-                                                                <Text fontSize="sm">{v.description?.moniker || truncateAddress(v.operator_address)}</Text>
-                                                            </HStack>
-                                                            <Text fontSize="xs" color="fg.muted">
-                                                                {new BigNumber(v.commission?.commission_rates?.rate ?? '0').multipliedBy(100).decimalPlaces(1).toString()}% commission
-                                                            </Text>
-                                                        </HStack>
-                                                    </Box>
-                                                ))}
-                                            </Box>
-                                        </VStack>
-                                    )}
-                                </VStack>
+        <StakingDialog
+            isOpen={isOpen}
+            onClose={onClose}
+            busy={isSubmitting}
+            width="512px"
+            title={`Move stake from ${sourceValidator?.description?.moniker ?? ''}`}
+        >
+            {/* Destination Validator Selection */}
+            <Flex direction="column" gap="8px">
+                <chakra.span fontSize="14px" fontWeight="600">Destination Validator</chakra.span>
+                {destValidator ? (
+                    <Flex justify="space-between" align="center" gap="8px" px="12px" py="10px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+                        <Flex align="center" gap="8px" minW="0">
+                            <ValidatorAvatar
+                                src={logos[destValidator.operator_address]}
+                                name={destValidator.description?.moniker}
+                                size="24px"
+                            />
+                            <chakra.strong fontSize="14px" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+                                {destValidator.description?.moniker || truncateAddress(destValidator.operator_address)}
+                            </chakra.strong>
+                        </Flex>
+                        <Button size="xs" variant="ghost" color="hg.link" onClick={() => setDestValidator(null)}>Change</Button>
+                    </Flex>
+                ) : (
+                    <>
+                        <InputGroup startElement={<LuSearch size={14} />}>
+                            <Input
+                                placeholder="Search validators..."
+                                aria-label="Search validators"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                h="40px"
+                                borderRadius="hg.md"
+                            />
+                        </InputGroup>
+                        <Box maxH="300px" overflowY="auto" borderWidth="1px" borderColor="hg.hairline" borderRadius="hg.md" aria-label="Destination validator">
+                            {filteredValidators.map(v => (
+                                <chakra.button
+                                    key={v.operator_address}
+                                    type="button"
+                                    display="flex"
+                                    w="full"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                    gap="8px"
+                                    px="12px"
+                                    py="9px"
+                                    bg="transparent"
+                                    color="fg"
+                                    textAlign="start"
+                                    cursor="pointer"
+                                    borderBottomWidth="1px"
+                                    borderColor="hg.divider"
+                                    _hover={{bg: 'app.subtle'}}
+                                    _focusVisible={{bg: 'app.subtle', outline: 'none', boxShadow: 'inset 0 0 0 2px var(--chakra-colors-app-focus-ring)'}}
+                                    onClick={() => {
+                                        setDestValidator(v);
+                                        setSearch('');
+                                    }}
+                                >
+                                    <Flex align="center" gap="8px" minW="0">
+                                        <ValidatorAvatar
+                                            src={logos[v.operator_address]}
+                                            name={v.description?.moniker}
+                                            size="24px"
+                                        />
+                                        <chakra.span fontSize="14px" whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
+                                            {v.description?.moniker || truncateAddress(v.operator_address)}
+                                        </chakra.span>
+                                    </Flex>
+                                    <chakra.span fontSize="12px" color="hg.text.faint" flex="none">
+                                        {new BigNumber(v.commission?.commission_rates?.rate ?? '0').multipliedBy(100).decimalPlaces(1).toString()}% commission
+                                    </chakra.span>
+                                </chakra.button>
+                            ))}
+                        </Box>
+                    </>
+                )}
+            </Flex>
 
-                                {/* Amount Input */}
-                                <VStack align="stretch" gap="2">
-                                    <HStack justify="space-between">
-                                        <Text fontSize="sm" fontWeight="medium">Amount</Text>
-                                        <Text fontSize="xs" color="fg.muted">
-                                            Delegated: {prettyAmount(delegatedHuman)} {nativeAsset?.ticker}
-                                        </Text>
-                                    </HStack>
-                                    <Input
-                                        placeholder="0.00"
-                                        value={amount}
-                                        onChange={(e) => setAmount(sanitizeNumberInput(e.target.value))}
-                                        type="text"
-                                        disabled={!isConnected}
-                                    />
-                                    <HStack gap="2">
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.25)} disabled={!isConnected}>25%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.5)} disabled={!isConnected}>50%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(0.75)} disabled={!isConnected}>75%</Button>
-                                        <Button size="xs" variant="outline" onClick={() => setQuickAmount(1)} disabled={!isConnected}>Max</Button>
-                                    </HStack>
-                                </VStack>
+            <AmountField
+                value={amount}
+                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                aside={`Staked: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
+                ticker={nativeAsset?.ticker}
+                disabled={!isConnected}
+            >
+                <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
+            </AmountField>
 
-                                {feeCheck.message && (
-                                    <Text fontSize="xs" color="fg.error" textAlign="center">{feeCheck.message}</Text>
-                                )}
+            {feeCheck.message && (
+                <chakra.span fontSize="12px" color="hg.danger.text" textAlign="center">{feeCheck.message}</chakra.span>
+            )}
 
-                                {progressTrack && (
-                                    <Text fontSize="xs" color="fg.muted" textAlign="center">{progressTrack}</Text>
-                                )}
+            <ProgressLine>{progressTrack}</ProgressLine>
 
-                                {!isConnected ? (
-                                    <Button
-                                        colorPalette="blue"
-                                        w="full"
-                                        onClick={() => { onClose(); connect(); }}
-                                    >
-                                        <LuWallet /> Connect Wallet
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        colorPalette="blue"
-                                        onClick={handleRedelegate}
-                                        loading={isSubmitting}
-                                        disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator || !feeCheck.canAfford}
-                                        w="full"
-                                    >
-                                        Redelegate {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
-                                    </Button>
-                                )}
-                            </VStack>
-                        </Dialog.Body>
-
-                        <Dialog.CloseTrigger disabled={isSubmitting} />
-                    </Dialog.Content>
-                </Dialog.Positioner>
-            </Portal>
-        </Dialog.Root>
+            {!isConnected ? (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    w="full"
+                    onClick={() => { onClose(); connect(); }}
+                >
+                    <LuWallet /> Connect Wallet
+                </Button>
+            ) : (
+                <Button
+                    variant={hgVariant('primary')}
+                    size="lg"
+                    onClick={handleRedelegate}
+                    loading={isSubmitting}
+                    disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator || !feeCheck.canAfford}
+                    w="full"
+                >
+                    Move {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                </Button>
+            )}
+        </StakingDialog>
     );
 }
