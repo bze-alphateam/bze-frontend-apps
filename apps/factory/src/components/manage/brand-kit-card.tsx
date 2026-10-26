@@ -1,278 +1,21 @@
 "use client"
 
-import React, { useMemo, useState } from 'react'
-import { preinit } from 'react-dom'
-import {
-    Box,
-    Button,
-    Field,
-    Grid,
-    HStack,
-    Input,
-    NativeSelect,
-    Text,
-    VStack,
-} from '@chakra-ui/react'
+import React, { useState } from 'react'
+import { Box, Button, HStack, Text, VStack } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
-import { LuLock, LuPalette, LuRefreshCw } from 'react-icons/lu'
-import {
-    AppLink,
-    Asset,
-    HgCard,
-    IconTile,
-    Shimmer,
-    hgVariant,
-    BRANDING_COLOR_KEYS,
-    BRANDING_FONTS,
-    BRANDING_PALETTES,
-    BrandingColorKey,
-    BrandingField,
-    BrandingPalette,
-    DEFAULT_DENOM_BRANDING,
-    DenomBranding,
-    TokenLogo,
-    brandingFont,
-    brandingFontsStylesheetUrl,
-    getChainName,
-    getCommunitiesApp,
-    validateDenomBranding,
-} from '@bze/bze-ui-kit'
+import { LuLock, LuRefreshCw } from 'react-icons/lu'
+import { AppLink, Asset, Shimmer, getChainName, getCommunitiesApp, hgVariant } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
 import { useDenomBranding } from '@/hooks/useDenomBranding'
+import { BrandKitPreview } from '@/components/brand-kit/brand-kit-preview'
 import { InfoBox } from '@/components/ui/info-box'
 import { softButton } from '@/components/ui/soft-button'
-import { colorPickerValue, sameBranding, withBrandingColor } from '@/lib/brand-kit'
 
 const { setDenomBranding } = bze.tokenfactory.MessageComposer.withTypeUrl
 
-/** Who is looking at the card: the admin edits, everyone else only sees the kit. */
+/** Who is looking at the card: the admin may remove the kit, everyone else only sees it. */
 export type BrandKitAccess = 'admin' | 'not-admin' | 'renounced'
-
-const PALETTE_LABELS: Record<BrandingPalette, string> = { light: 'Light', dark: 'Dark' }
-const COLOR_LABELS: Record<BrandingColorKey, string> = {
-    background: 'Background',
-    text: 'Text',
-    primary: 'Primary',
-    secondary: 'Secondary',
-}
-
-/** A sample token card painted with one palette of the kit, in the kit's font. */
-function PalettePreview({ asset, branding, palette }: { asset: Asset; branding: DenomBranding; palette: BrandingPalette }) {
-    const colors = branding[palette]
-    const family = brandingFont(branding.font)?.family
-
-    return (
-        <VStack align="stretch" gap="6px" data-testid={`brand-kit-preview-${palette}`}>
-            <Text fontSize="12px" color="hg.text.faint">
-                {PALETTE_LABELS[palette]}
-            </Text>
-            <Box
-                bg={colors.background}
-                color={colors.text}
-                fontFamily={family}
-                borderRadius="14px"
-                borderWidth="1px"
-                borderColor="hg.lineStrong"
-                p="16px"
-            >
-                <VStack align="stretch" gap={3}>
-                    <HStack gap={2}>
-                        <TokenLogo src={asset.logo} symbol={asset.ticker} size="8" circular={true} />
-                        <VStack align="start" gap={0}>
-                            <Text fontWeight="bold" lineHeight="short">
-                                {asset.name}
-                            </Text>
-                            <Text fontSize="xs" color={colors.secondary}>
-                                {asset.ticker}
-                            </Text>
-                        </VStack>
-                    </HStack>
-                    <Text fontSize="sm">The community token, in its own colours.</Text>
-                    <HStack gap={2}>
-                        <Box as="span" bg={colors.primary} color={colors.background} px={3} py={1} borderRadius="md" fontSize="sm" fontWeight="semibold">
-                            Buy {asset.ticker}
-                        </Box>
-                        <Box as="span" borderWidth="1px" borderColor={colors.secondary} color={colors.secondary} px={3} py={1} borderRadius="md" fontSize="sm">
-                            Learn more
-                        </Box>
-                    </HStack>
-                </VStack>
-            </Box>
-        </VStack>
-    )
-}
-
-/** The Light and Dark sample cards; `stacked` keeps them in one column (the side-by-side edit preview). */
-function BrandKitPreview({ asset, branding, stacked = false }: { asset: Asset; branding: DenomBranding; stacked?: boolean }) {
-    // Load the curated fonts so the preview renders the real font. preinit dedupes and, unlike a
-    // `<link precedence>`, never suspends the page (inside a Suspense boundary) while it downloads.
-    preinit(brandingFontsStylesheetUrl(), { as: 'style', precedence: 'default' })
-
-    return (
-        <VStack align="stretch" gap={2}>
-            <Text fontSize="14px" color="fg.muted">
-                Font: <Text as="span" fontWeight="700" color="fg">{brandingFont(branding.font)?.label ?? `${branding.font} (not supported — shown in the default font)`}</Text>
-            </Text>
-            <Grid templateColumns={stacked ? 'minmax(0, 1fr)' : { base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
-                {BRANDING_PALETTES.map(palette => (
-                    <PalettePreview key={palette} asset={asset} branding={branding} palette={palette} />
-                ))}
-            </Grid>
-        </VStack>
-    )
-}
-
-function ColorInput({
-    label,
-    value,
-    error,
-    onChange,
-}: {
-    label: string;
-    value: string;
-    error: string | undefined;
-    onChange: (value: string) => void;
-}) {
-    return (
-        <Field.Root invalid={Boolean(error)}>
-            <Field.Label fontSize="13px" fontWeight="600">{label}</Field.Label>
-            <HStack gap={2} w="full">
-                <input
-                    type="color"
-                    aria-label={`${label} picker`}
-                    value={colorPickerValue(value)}
-                    onChange={(e) => onChange(e.target.value)}
-                    style={{ width: '2.5rem', height: '2.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0 }}
-                />
-                <Input
-                    aria-label={label}
-                    size="sm"
-                    borderRadius="10px"
-                    fontFamily="mono"
-                    maxLength={7}
-                    placeholder="#000000"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value.trim())}
-                />
-            </HStack>
-            <Field.ErrorText>{error}</Field.ErrorText>
-        </Field.Root>
-    )
-}
-
-function BrandKitForm({
-    asset,
-    initial,
-    onCancel,
-    onSaved,
-}: {
-    asset: Asset;
-    initial: DenomBranding | null;
-    onCancel: () => void;
-    onSaved: () => void;
-}) {
-    const { address } = useChain(getChainName())
-    const { tx } = useFactoryTx()
-
-    const [kit, setKit] = useState<DenomBranding>(initial ?? DEFAULT_DENOM_BRANDING)
-    const [isSubmitting, setIsSubmitting] = useState(false)
-
-    const errors = useMemo(() => validateDenomBranding(kit), [kit])
-    const isValid = Object.keys(errors).length === 0
-    const isUnchanged = sameBranding(kit, initial)
-
-    const submit = async () => {
-        if (!address || !isValid || isUnchanged) return
-
-        // Always the full kit: the chain has no partial updates.
-        const msg = setDenomBranding({ creator: address, denom: asset.denom, branding: kit })
-
-        setIsSubmitting(true)
-        try {
-            await tx([msg], { onSuccess: onSaved })
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
-    return (
-        <VStack align="stretch" gap={4}>
-            <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap={6} alignItems="start">
-                <VStack align="stretch" gap={4} minW="0">
-                    <Field.Root invalid={Boolean(errors.font)}>
-                        <Field.Label fontSize="14px" fontWeight="600">Font</Field.Label>
-                        <NativeSelect.Root size="sm">
-                            <NativeSelect.Field
-                                aria-label="Font"
-                                value={kit.font}
-                                onChange={(e) => setKit(prev => ({ ...prev, font: e.target.value }))}
-                            >
-                                {!brandingFont(kit.font) && <option value={kit.font}>{kit.font || 'Pick a font'}</option>}
-                                {BRANDING_FONTS.map(font => (
-                                    <option key={font.slug} value={font.slug}>{font.label}</option>
-                                ))}
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                        </NativeSelect.Root>
-                        <Field.ErrorText>{errors.font}</Field.ErrorText>
-                    </Field.Root>
-
-                    <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap={4}>
-                        {BRANDING_PALETTES.map(palette => (
-                            <VStack key={palette} align="stretch" gap={3}>
-                                <Text fontSize="14px" fontWeight="700">
-                                    {PALETTE_LABELS[palette]} palette
-                                </Text>
-                                {BRANDING_COLOR_KEYS.map(key => {
-                                    const field: BrandingField = `${palette}.${key}`
-                                    return (
-                                        <ColorInput
-                                            key={field}
-                                            label={`${PALETTE_LABELS[palette]} ${COLOR_LABELS[key].toLowerCase()}`}
-                                            value={kit[palette][key]}
-                                            error={errors[field]}
-                                            onChange={(value) => setKit(prev => withBrandingColor(prev, palette, key, value))}
-                                        />
-                                    )
-                                })}
-                            </VStack>
-                        ))}
-                    </Grid>
-                </VStack>
-
-                <VStack align="stretch" gap={2} minW="0" data-testid="brand-kit-live-preview">
-                    <Text fontSize="14px" fontWeight="700">Live preview</Text>
-                    {isValid
-                        ? <BrandKitPreview asset={asset} branding={kit} stacked />
-                        : <Text fontSize="14px" color="fg.muted">Fix the fields marked in red to see the preview.</Text>}
-                </VStack>
-            </Grid>
-
-            <HStack gap="10px">
-                <Button variant="ghost" size="lg" color="hg.link" fontWeight="600" onClick={onCancel} flex="1">
-                    Cancel
-                </Button>
-                <Button
-                    variant={hgVariant('primary')}
-                    size="lg"
-                    onClick={submit}
-                    disabled={!isValid || isUnchanged}
-                    loading={isSubmitting}
-                    loadingText="Confirm in your wallet"
-                    flex="1"
-                >
-                    Save brand kit
-                </Button>
-            </HStack>
-            {isValid && isUnchanged && (
-                <Text fontSize="14px" color="fg.muted" textAlign="center">
-                    Nothing changed yet.
-                </Text>
-            )}
-        </VStack>
-    )
-}
 
 function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: () => void; onRemoved: () => void }) {
     const { address } = useChain(getChainName())
@@ -318,91 +61,80 @@ function RemovePanel({ asset, onCancel, onRemoved }: { asset: Asset; onCancel: (
 }
 
 /**
- * The token's on-chain brand kit (chain v8.2.0): one font and a light and a dark palette that
- * apps supporting it use for the token's pages. The admin sets or removes it with
- * MsgSetDenomBranding; everyone else sees a read-only preview, frozen for good once the admin
- * was renounced.
+ * The token's on-chain brand kit (chain v8.2.0) on the token page, drawn small: the light and dark
+ * sample cards and the font. Editing happens on its own page (/brand-kit, BFE-293); here the admin
+ * can only remove the kit. Everyone else sees it read-only, frozen for good once the admin was
+ * renounced.
  */
 export function BrandKitCard({ asset, access }: { asset: Asset; access: BrandKitAccess }) {
-    const ticker = asset.ticker
     const communitiesHref = `${getCommunitiesApp().href}/token?denom=${encodeURIComponent(asset.denom)}`
     const { branding, isLoading, hasError, refresh } = useDenomBranding(asset.denom)
-    const [mode, setMode] = useState<'view' | 'edit' | 'remove'>('view')
+    const [isRemoving, setIsRemoving] = useState(false)
 
     const isAdmin = access === 'admin'
-    const backToView = () => {
-        setMode('view')
-        void refresh()
+
+    if (isLoading) {
+        return (
+            <VStack align="stretch" gap="8px" aria-busy="true">
+                <Shimmer h="14px" w="128px" />
+                <Shimmer h="88px" borderRadius="12px" />
+            </VStack>
+        )
+    }
+
+    if (hasError) {
+        return (
+            <VStack align="stretch" gap={3}>
+                <InfoBox title="Couldn't load the brand kit">
+                    The chain query failed — the node may be down or not on v8.2.0 yet, so
+                    whether this token has a brand kit is unknown.
+                </InfoBox>
+                <Box>
+                    <Button {...softButton} size="sm" onClick={() => void refresh()}>
+                        <LuRefreshCw />
+                        Retry
+                    </Button>
+                </Box>
+            </VStack>
+        )
     }
 
     return (
-        <HgCard as="section" aria-label={`How ${ticker} looks on Communities`} p="22px" data-testid="brand-kit-card">
-            <VStack align="stretch" gap="16px">
+        <VStack align="stretch" gap={3} data-testid="brand-kit-card">
+            {branding ? (
+                <BrandKitPreview asset={asset} branding={branding} compact />
+            ) : (
+                <Text fontSize="14px" color="fg.muted">
+                    No brand kit yet.
+                </Text>
+            )}
+            {access === 'renounced' && (
+                <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="brand-kit-frozen">
+                    <LuLock />
+                    <Text>
+                        Frozen
+                    </Text>
+                </HStack>
+            )}
+            {isRemoving ? (
+                <RemovePanel
+                    asset={asset}
+                    onCancel={() => setIsRemoving(false)}
+                    onRemoved={() => {
+                        setIsRemoving(false)
+                        void refresh()
+                    }}
+                />
+            ) : (
                 <HStack justify="space-between" gap="10px" flexWrap="wrap">
-                    <HStack gap="10px">
-                        <IconTile icon={<LuPalette />} size={36} />
-                        <Text as="h2" fontSize="17px" fontWeight="700">{`How ${ticker} looks on Communities`}</Text>
-                    </HStack>
-                    {isAdmin && mode === 'view' && !isLoading && !hasError && (
-                        <HStack gap="8px">
-                            {branding && (
-                                <Button size="sm" h="34px" variant="ghost" color="hg.danger.text" fontWeight="600" onClick={() => setMode('remove')}>
-                                    Remove brand kit
-                                </Button>
-                            )}
-                            <Button {...softButton} size="sm" h="34px" px="14px" onClick={() => setMode('edit')}>
-                                {branding ? 'Edit' : 'Set brand kit'}
-                            </Button>
-                        </HStack>
+                    <AppLink app="communities" href={communitiesHref}>Communities</AppLink>
+                    {isAdmin && branding && (
+                        <Button size="sm" h="34px" variant="ghost" color="hg.danger.text" fontWeight="600" onClick={() => setIsRemoving(true)}>
+                            Remove brand kit
+                        </Button>
                     )}
                 </HStack>
-
-                {isLoading ? (
-                    <VStack align="stretch" gap="8px">
-                        <Shimmer h="16px" />
-                        <Shimmer h="96px" borderRadius="14px" />
-                    </VStack>
-                ) : hasError ? (
-                    <VStack align="stretch" gap={3}>
-                        <InfoBox title="Couldn't load the brand kit">
-                            The chain query failed — the node may be down or not on v8.2.0 yet, so
-                            whether this token has a brand kit is unknown.
-                        </InfoBox>
-                        <Box>
-                            <Button {...softButton} size="sm" onClick={() => void refresh()}>
-                                <LuRefreshCw />
-                                Retry
-                            </Button>
-                        </Box>
-                    </VStack>
-                ) : isAdmin && mode === 'edit' ? (
-                    <BrandKitForm asset={asset} initial={branding} onCancel={() => setMode('view')} onSaved={backToView} />
-                ) : (
-                    <VStack align="stretch" gap={3}>
-                        {branding ? (
-                            <BrandKitPreview asset={asset} branding={branding} />
-                        ) : (
-                            <Text fontSize="14px" color="fg.muted">
-                                No brand kit yet.
-                            </Text>
-                        )}
-                        {access === 'renounced' && (
-                            <HStack gap="8px" color="fg.muted" fontSize="14px" data-testid="brand-kit-frozen">
-                                <LuLock />
-                                <Text>
-                                    Frozen
-                                </Text>
-                            </HStack>
-                        )}
-                        {isAdmin && mode === 'remove' && (
-                            <RemovePanel asset={asset} onCancel={() => setMode('view')} onRemoved={backToView} />
-                        )}
-                        <Box alignSelf="start">
-                            <AppLink app="communities" href={communitiesHref}>Communities</AppLink>
-                        </Box>
-                    </VStack>
-                )}
-            </VStack>
-        </HgCard>
+            )}
+        </VStack>
     )
 }

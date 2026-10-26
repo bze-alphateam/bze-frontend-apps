@@ -27,6 +27,7 @@ const navSubitems: { [key: string]: string } = {
     '/raffle/new': '/',
     '/tokens/token': '/tokens',
     '/official': '/tokens',
+    '/brand-kit': '/tokens',
     '/reward/extend': '/rewards',
     '/denom-reward/schedule': '/rewards',
 }

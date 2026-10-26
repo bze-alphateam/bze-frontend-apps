@@ -196,10 +196,11 @@ export {
 } from './query/epoch';
 export { getFactoryDenomAdmin, getFactoryDenomAdminAddress } from './query/factory';
 export { getDenomBranding, getAllDenomBranding } from './query/branding';
-export type { DenomBranding, BrandingColors, DenomBrandingRecord, BrandingPalette, BrandingColorKey } from './types/branding';
+export type { DenomBranding, BrandingColors, DenomBrandingRecord, BrandingPalette, BrandingColorKey, BrandingTemplate, BrandingTemplateMood } from './types/branding';
 export { BRANDING_FONTS, BRANDING_PALETTES, BRANDING_COLOR_KEYS, DEFAULT_DENOM_BRANDING } from './constants/branding';
 export type { BrandingFont } from './constants/branding';
-export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsStylesheetUrl, validateDenomBranding } from './utils/branding';
+export { BRANDING_TEMPLATES, BRANDING_TEMPLATE_MOODS, brandingFromTemplate } from './constants/branding_templates';
+export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsStylesheetUrl, validateDenomBranding, contrastRatio, contrastText } from './utils/branding';
 export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';

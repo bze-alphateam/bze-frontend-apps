@@ -91,7 +91,6 @@ describe("BrandKitCard", () => {
     it("links to the token's Communities page with the denom encoded", () => {
         renderCard("not-admin", { branding: KIT });
 
-        expect(screen.getByRole("region", { name: "How TOK looks on Communities" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Communities" }))
             .toHaveAttribute("href", "https://communities.example/token?denom=factory%2Fbze1admin%2Futok");
         expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("data-app", "communities");
@@ -121,82 +120,26 @@ describe("BrandKitCard", () => {
         renderCard("admin", { hasError: true });
 
         expect(screen.getByText("Couldn't load the brand kit")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /Set brand kit/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Remove brand kit" })).not.toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
         expect(refreshMock).toHaveBeenCalled();
     });
 
-    it("lets the admin save a full kit, refusing bad hex with a field message first", async () => {
-        renderCard("admin");
+    it("offers the admin Remove only when there is a kit, and never an inline editor", () => {
+        const { unmount } = renderCard("admin");
+        expect(screen.queryByRole("button", { name: "Remove brand kit" })).not.toBeInTheDocument();
+        unmount();
 
-        await userEvent.click(screen.getByRole("button", { name: "Set brand kit" }));
-        const save = screen.getByRole("button", { name: "Save brand kit" });
-        expect(save).toBeEnabled();
-
-        const darkPrimary = screen.getByRole("textbox", { name: "Dark primary" });
-        await userEvent.clear(darkPrimary);
-        await userEvent.type(darkPrimary, "#12ZZ56");
-        expect(screen.getByText("Use a 6-digit hex colour like #1A2B3C.")).toBeInTheDocument();
-        expect(save).toBeDisabled();
-
-        await userEvent.clear(darkPrimary);
-        expect(screen.getByText("Required.")).toBeInTheDocument();
-        await userEvent.type(darkPrimary, "#123456");
-        await userEvent.selectOptions(screen.getByRole("combobox", { name: "Font" }), "space-grotesk");
-        await userEvent.click(save);
-
-        expect(txMock).toHaveBeenCalledTimes(1);
-        const [msgs, options] = txMock.mock.calls[0];
-        expect(msgs).toEqual([{
-            typeUrl: "/bze.tokenfactory.MsgSetDenomBranding",
-            value: expect.objectContaining({
-                creator: "bze1admin",
-                denom: TOKEN.denom,
-                branding: expect.objectContaining({
-                    font: "space-grotesk",
-                    dark: expect.objectContaining({ primary: "#123456" }),
-                }),
-            }),
-        }]);
-        options.onSuccess();
-        expect(refreshMock).toHaveBeenCalledTimes(1);
+        renderCard("admin", { branding: KIT });
+        expect(screen.getByRole("button", { name: "Remove brand kit" })).toBeInTheDocument();
+        expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
 
-    it("keeps Save disabled until the loaded kit actually changes", async () => {
-        renderCard("admin", { branding: KIT });
+    it("labels the sample button black or white, whichever reads on primary", () => {
+        renderCard("not-admin", { branding: KIT });
 
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-        expect(screen.getByRole("button", { name: "Save brand kit" })).toBeDisabled();
-        expect(screen.getByText("Nothing changed yet.")).toBeInTheDocument();
-    });
-
-    it("previews the kit live while editing, and hides the preview while a field is invalid", async () => {
-        renderCard("admin", { branding: KIT });
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-
-        const preview = within(screen.getByTestId("brand-kit-live-preview"));
-        expect(preview.getByTestId("brand-kit-preview-light").querySelector("div")).toHaveStyle({ backgroundColor: "#FFFFFF" });
-
-        const lightBackground = screen.getByRole("textbox", { name: "Light background" });
-        await userEvent.clear(lightBackground);
-        await userEvent.type(lightBackground, "#123");
-        expect(preview.queryByTestId("brand-kit-preview-light")).not.toBeInTheDocument();
-        expect(preview.getByText("Fix the fields marked in red to see the preview.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Save brand kit" })).toBeDisabled();
-
-        await userEvent.type(lightBackground, "456");
-        expect(preview.getByTestId("brand-kit-preview-light").querySelector("div")).toHaveStyle({ backgroundColor: "#123456" });
-    });
-
-    it("counts a case-only colour change as a change", async () => {
-        renderCard("admin", { branding: KIT });
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-
-        const lightPrimary = screen.getByRole("textbox", { name: "Light primary" });
-        await userEvent.clear(lightPrimary);
-        await userEvent.type(lightPrimary, "#aa0000");
-        expect(screen.getByRole("button", { name: "Save brand kit" })).toBeEnabled();
-        expect(screen.queryByText("Nothing changed yet.")).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("brand-kit-preview-light")).getByText("Buy TOK")).toHaveStyle({ color: "#FFFFFF" });
+        expect(within(screen.getByTestId("brand-kit-preview-dark")).getByText("Buy TOK")).toHaveStyle({ color: "#000000" });
     });
 
     it("removes the kit with an empty branding after a confirm step", async () => {
@@ -206,8 +149,7 @@ describe("BrandKitCard", () => {
         expect(screen.getByTestId("brand-kit-remove-panel")).toBeInTheDocument();
         expect(txMock).not.toHaveBeenCalled();
 
-        const buttons = screen.getAllByRole("button", { name: "Remove brand kit" });
-        await userEvent.click(buttons[buttons.length - 1]);
+        await userEvent.click(within(screen.getByTestId("brand-kit-remove-panel")).getByRole("button", { name: "Remove brand kit" }));
 
         expect(txMock).toHaveBeenCalledTimes(1);
         const [[msg]] = txMock.mock.calls[0];

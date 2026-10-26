@@ -1,6 +1,7 @@
 import { type AppKey, getDexApp } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
 import { dexPoolHref } from '@/lib/create-routes'
+import { brandKitHref } from '@/lib/brand-kit'
 import { officialHref } from '@/lib/registry-entry'
 import { VOCABULARY } from '@/lib/vocabulary'
 import { workspaceHref } from '@/lib/workspace'
@@ -92,7 +93,7 @@ export const SETUP_ITEMS: SetupItemDefinition[] = [
         key: 'brandKit',
         needsAdmin: true,
         build: f => {
-            const href = workspaceHref(f.denom, 'details')
+            const href = withReturn(brandKitHref(f.denom), backTo(f))
             const title = `${VOCABULARY.brandKit.name} · colours and a font for ${f.ticker}'s Communities page`
             if (f.brandKit === 'error') {
                 return { title, detail: "Couldn't check the brand kit.", state: 'unknown', href }

@@ -3,6 +3,7 @@ import { airdropHref } from '@/lib/airdrop'
 import { chooseRewardsHref } from '@/lib/create-routes'
 import { scheduleFormHref } from '@/lib/denom-reward'
 import { burnerCoinHref } from '@/lib/raffle-new'
+import { brandKitHref } from '@/lib/brand-kit'
 import { officialHref } from '@/lib/registry-entry'
 import { workspaceHref } from '@/lib/workspace'
 
@@ -106,8 +107,8 @@ const ROUTES = {
     airdrop: (prize: string) => airdropHref({ prize }),
     registry: officialHref,
     tokenPage: (denom: string) => workspaceHref(denom),
-    // BFE-271 moves the brand kit to the token page's details.
-    brandKit: (denom: string) => workspaceHref(denom, 'details'),
+    // The brand kit editor's own page (BFE-293); it goes back to the token page.
+    brandKit: brandKitHref,
     dexPool: (poolId: string) => `${getDexApp().href}/pools/details?id=${q(poolId)}`,
     dexMarket: (base: string, quote: string) => `${getDexApp().href}/exchange/market?id=${q(createMarketId(base, quote))}`,
     dexStaking: (ticker: string) => `${getDexApp().href}/staking?search=${q(ticker)}`,

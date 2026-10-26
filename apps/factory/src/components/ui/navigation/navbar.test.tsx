@@ -30,7 +30,7 @@ const renderNav = () => render(
 );
 
 const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/reward/new", "/denom-reward/new", "/airdrop", "/raffle/new"];
-const TOKENS = ["/tokens", "/tokens/token", "/official"];
+const TOKENS = ["/tokens", "/tokens/token", "/official", "/brand-kit"];
 const REWARDS = ["/rewards", "/reward/extend", "/denom-reward/schedule"];
 
 // The desktop nav's links (the logo links home too).
