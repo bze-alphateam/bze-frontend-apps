@@ -24,6 +24,7 @@ import {
     EXCLUDED_MARKETS,
     NextBurn,
     getAllBurnedCoins, getNextBurning,
+    poolData, poolTickers,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -33,8 +34,6 @@ import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
 import {BurnedCoinsSDKType} from "@bze/bzejs/bze/burner/burned_coins";
 
 import type { AssetsContextType as BaseAssetsContextType } from "@bze/bze-ui-kit";
-
-import {poolData, poolTickers} from "@/lib/pool-data";
 
 export interface AssetsContextType extends BaseAssetsContextType {
     nextBurn: NextBurn | undefined;

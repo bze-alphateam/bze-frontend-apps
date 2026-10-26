@@ -16,7 +16,7 @@ import {
     getBZEUSDPrice,
     getEpochsInfo,
     CONNECTION_TYPE_NONE, ConnectionType,
-    toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToBigNumberPrice,
+    toBigNumber, uAmountToBigNumberAmount, uPriceToBigNumberPrice,
     isLpDenom,
     addDebounce,
     LiquidityPoolData,
@@ -24,7 +24,7 @@ import {
     calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
     EXCLUDED_MARKETS,
     EXCLUDED_ASSETS,
-    calculateRewardsStakingApr,
+    poolData, poolTickers,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -75,41 +75,6 @@ export interface AssetsContextType {
 
 interface AssetsProviderProps {
     children: ReactNode;
-}
-
-const getPoolData = (pool: LiquidityPoolSDKType, prices: Map<string, BigNumber>, baseAsset?: Asset, quoteAsset?: Asset, marketData?: MarketData): LiquidityPoolData => {
-    const basePrice = prices.get(pool.base) || toBigNumber(0)
-    const quotePrice = prices.get(pool.quote) || toBigNumber(0)
-    const isComplete = basePrice.gt(0) && quotePrice.gt(0)
-    const usdValue = basePrice.multipliedBy(uAmountToAmount(pool.reserve_base, baseAsset?.decimals || 0)).plus(quotePrice.multipliedBy(uAmountToAmount(pool.reserve_quote, quoteAsset?.decimals || 0)))
-    const baseVolume = toBigNumber(marketData?.base_volume || 0)
-    const quoteVolume = toBigNumber(marketData?.quote_volume || 0)
-    let usdVolume = basePrice.multipliedBy(baseVolume)
-    if (!usdVolume.isPositive()) {
-       usdVolume = quotePrice.multipliedBy(quoteVolume)
-    }
-
-    let usdFees = toBigNumber(marketData?.base_volume || 0).multipliedBy(pool.fee).multipliedBy(basePrice)
-    if (!usdFees.isPositive()) {
-        usdFees = toBigNumber(marketData?.quote_volume || 0).multipliedBy(pool.fee).multipliedBy(quotePrice)
-    }
-
-    const feeToLp = usdFees.multipliedBy(pool.fee_dest?.providers || 0)
-    let apr = calculateRewardsStakingApr(feeToLp.dividedBy(usdVolume), usdValue)
-    if (apr.isNaN()) apr = toBigNumber(0)
-
-    return {
-        usdValue: usdValue,
-        usdVolume: usdVolume,
-        isComplete: isComplete,
-        apr: apr.toFixed(2),
-        usdFees: usdFees,
-        poolId: pool.id,
-        base: pool.base,
-        quote: pool.quote,
-        baseVolume: baseVolume,
-        quoteVolume: quoteVolume,
-    }
 }
 
 export function AssetsProvider({ children }: AssetsProviderProps) {
@@ -309,24 +274,10 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         const poolsData = new Map<string, LiquidityPoolData>()
         const poolsMap = new Map<string, LiquidityPoolSDKType>()
 
-        //filter only LPs from ticker
-        const tickers = new Map<string, MarketData>
-        allTickers.forEach(ticker => {
-            //create a order book market id from the ticker
-            const marketId = createMarketId(ticker.base, ticker.quote)
-            // if the order book market id is equal to the ticker market id, it means it's an order book market,
-            // not a liquidity pool
-            if (marketId === ticker.market_id) {
-                //this is an order book market, not a liquidity pool
-                return
-            }
-
-            tickers.set(ticker.market_id, ticker)
-        })
-
+        const tickers = poolTickers(allTickers)
 
         newPools.map(pool => {
-            poolsData.set(pool.id, getPoolData(pool, usdPricesMap, assetsMap.get(pool.base), assetsMap.get(pool.quote), tickers.get(pool.id)))
+            poolsData.set(pool.id, poolData(pool, usdPricesMap, assetsMap.get(pool.base), assetsMap.get(pool.quote), tickers.get(pool.id)))
             poolsMap.set(pool.id, pool)
         })
 
@@ -367,9 +318,9 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [doUpdateLiquidityPools])
 
     useEffect(() => {
-        setIsLoading(true)
         //initial context loading
         const init = async () => {
+            setIsLoading(true)
             const [assets, markets, tickers, epochsInfo, pools] = await Promise.all([getChainAssets(), getMarkets(), getAllTickers(), getEpochsInfo(), getLiquidityPools()])
             doUpdateAssets(assets)
             doUpdateMarkets(markets)
@@ -395,12 +346,12 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     }, [usdPricesMap, assetsMap]);
 
     useEffect(() => {
-        if (!address) {
-            doUpdateBalances([]);
-            return
-        }
-
         const fetchBalances = async () => {
+            if (!address) {
+                doUpdateBalances([]);
+                return
+            }
+
             setIsLoading(true)
             const balances = await getAddressBalances(address);
             doUpdateBalances(balances);

@@ -1,9 +1,10 @@
 import {describe, expect, it} from "vitest";
 import BigNumber from "bignumber.js";
-import type {Asset, MarketData} from "@bze/bze-ui-kit";
 import type {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
+import type {Asset} from "../types/asset";
+import type {MarketData} from "../types/market";
 
-import {poolData, poolTickers} from "./pool-data";
+import {poolData, poolTickers} from "./pool_data";
 
 const TOKEN = "factory/bze1owner/upage";
 
@@ -54,6 +55,23 @@ describe("poolData", () => {
         expect(data.usdFees.toString()).toBe("0.06");
         expect(data.apr).toBe("5.48");
         expect(data.isComplete).toBe(true);
+    });
+
+    it("annualises the providers' daily USD fees over the TVL, not the fee rate", () => {
+        // TVL $10,000 (5,000 BZE + 5,000 USDC at $1), $1,000 traded in 24h, 0.3% fee, providers 100%:
+        // LPs earn $3 a day → 3 / 10,000 × 365 × 100 = 10.95%. Dividing the fees by the volume
+        // first (the old DEX formula) gave 0.003 / 10,000 × 36,500 ≈ 0.01%.
+        const pool: LiquidityPoolSDKType = {
+            ...POOL, base: "ubze", quote: "uusdc", id: "ubze_uusdc",
+            fee_dest: {treasury: "0", burner: "0", providers: "1", liquidity: "0"},
+            reserve_base: "5000000000", reserve_quote: "5000000000",
+        };
+        const data = poolData(pool, prices([["ubze", 1], ["uusdc", 1]]), asset("ubze"), asset("uusdc"),
+            ticker({base: "ubze", quote: "uusdc", market_id: pool.id, base_volume: 1000, quote_volume: 1000}));
+
+        expect(data.usdValue.toString()).toBe("10000");
+        expect(data.usdFees.toString()).toBe("3");
+        expect(data.apr).toBe("10.95");
     });
 
     it("falls back to the quote side when the base has no USD price", () => {
