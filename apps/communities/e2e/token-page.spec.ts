@@ -91,6 +91,7 @@ test("Get on a token in no pool says it is not tradable yet", async ({page}) => 
 
     const drawer = page.getByRole("dialog", {name: "Your Vidulum wallet"});
     await expect(drawer.getByTestId("get-not-tradable")).toHaveText(/Not tradable yet/);
+    await expect(drawer.getByTestId("get-not-tradable")).toContainText("VDL isn't in any liquidity pool");
     await expect(drawer.getByTestId("wallet-connect-prompt")).toBeVisible();
 });
 

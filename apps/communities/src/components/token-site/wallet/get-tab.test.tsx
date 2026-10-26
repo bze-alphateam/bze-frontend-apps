@@ -175,6 +175,7 @@ describe("GetTab", () => {
         renderTab();
 
         expect(screen.getByTestId("get-not-tradable")).toHaveTextContent("Not tradable yet");
+        expect(screen.getByTestId("get-not-tradable")).toHaveTextContent("PAGE isn't in any liquidity pool");
         expect(screen.queryByRole("button", {name: "Get PAGE"})).not.toBeInTheDocument();
     });
 
