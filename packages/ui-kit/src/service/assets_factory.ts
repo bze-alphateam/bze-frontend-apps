@@ -8,7 +8,8 @@ import {
     getAssetLists, getChainByChainId,
     getChainName,
     getChains,
-    getIBCAssetList
+    getIBCAssetList,
+    getIBCConnections
 } from "../constants/chain";
 import {getExponentByDenomFromAsset} from "@chain-registry/utils";
 import {counterpartyChainForChannel, getHashIBCTrace} from "../query/ibc";
@@ -17,6 +18,13 @@ import {denomOnFirstHopChainFromTrace} from "../utils/ibc";
 import {createLpDenomPoolsMap} from "../utils/liquidity_pool";
 import {getLiquidityPools} from "../query/liquidity_pools";
 import {getHaltedDenoms} from "../query/halted_denoms";
+import {
+    ibcOriginFromRegistry,
+    ibcOriginFromTrace,
+    IbcOrigin,
+    RegistryAssetList,
+    unverifyIndirectIbcDuplicates
+} from "../utils/ibc_duplicates";
 
 const ORIGIN_CHAIN_PLACEHOLDER = "Unknown chain"
 
@@ -47,6 +55,7 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
 
     const filtered = supply.filter(asset => !EXCLUDED_ASSETS[asset.denom])
     const lpAssets = []
+    const ibcOrigins = new Map<string, IbcOrigin>()
     for (const asset of filtered) {
         const baseAsset = createAsset(asset.denom, BigInt(asset.amount));
         baseAsset.halted = halted.has(asset.denom)
@@ -54,7 +63,7 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
             lpAssets.push(baseAsset)
             continue
         }
-        let finalAsset = await populateAssetFromChainRegistry(baseAsset);
+        let finalAsset = await populateAssetFromChainRegistry(baseAsset, ibcOrigins);
 
         if (!finalAsset) {
             const metadataEntry = metadata[asset.denom]
@@ -66,6 +75,8 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
             result.ibcData.set(finalAsset.IBCData.chain.channelId, finalAsset.IBCData)
         }
     }
+
+    unverifyIndirectIbcDuplicates(result.assets, ibcOrigins)
 
     // Resolve each LP asset's base/quote from the pools list (works for both legacy
     // ulp_<base>_<quote> and hashed ulp/<hash> denoms). Fall back to parsing legacy
@@ -102,7 +113,9 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
     return result
 }
 
-const populateIBCAsset = async (asset: Asset): Promise<Asset | undefined> => {
+// ibcOrigins collects the origin of every IBC asset resolved here, so the
+// caller can spot multi-hop duplicates of directly bridged tokens.
+const populateIBCAsset = async (asset: Asset, ibcOrigins: Map<string, IbcOrigin>): Promise<Asset | undefined> => {
     const ibcList = getIBCAssetList()
     const ibcData = ibcList.find((item) => item.base === asset.denom)
 
@@ -116,6 +129,10 @@ const populateIBCAsset = async (asset: Asset): Promise<Asset | undefined> => {
                 asset.decimals = getExponentByDenomFromAsset(ibcData, ibcData.display) ?? 0
                 asset.logo = getAssetLogo(ibcData as unknown as ChainRegistryAsset)
                 asset.verified = true
+                const origin = ibcOriginFromRegistry(firstTrace.counterparty.chain_name, firstTrace.counterparty.base_denom, getAssetLists() as unknown as RegistryAssetList[])
+                if (origin) {
+                    ibcOrigins.set(asset.denom, origin)
+                }
                 asset.IBCData = {
                     chain: {
                         channelId: firstTrace.chain.channel_id
@@ -177,6 +194,15 @@ const populateIBCAsset = async (asset: Asset): Promise<Asset | undefined> => {
         }
     }
 
+    // A direct channel missing from the registry still resolves through the
+    // counterparty chain found above.
+    const counterpartyChainName = asset.IBCData.counterparty.chainName
+    const origin = ibcOriginFromTrace(ibcTrace, getChainName(), getIBCConnections())
+        ?? (splitPath.length === 2 && counterpartyChainName ? {chainName: counterpartyChainName, baseDenom: ibcTrace.base_denom, hops: 1} : undefined)
+    if (origin) {
+        ibcOrigins.set(asset.denom, origin)
+    }
+
     const registryAssetChain = getAssetLists().find((item) => {
         const a = item.assets.find((i) => i.base === ibcTrace.base_denom)
         return !!a;
@@ -222,9 +248,9 @@ const populateIBCAsset = async (asset: Asset): Promise<Asset | undefined> => {
     return asset;
 }
 
-const populateAssetFromChainRegistry = async (asset: Asset): Promise<Asset | undefined> => {
+const populateAssetFromChainRegistry = async (asset: Asset, ibcOrigins: Map<string, IbcOrigin>): Promise<Asset | undefined> => {
     if (isIbcDenom(asset.denom)) {
-        return populateIBCAsset(asset)
+        return populateIBCAsset(asset, ibcOrigins)
     }
 
     if (isNativeDenom(asset.denom) || isFactoryDenom(asset.denom)) {
