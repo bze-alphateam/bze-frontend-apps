@@ -41,6 +41,7 @@ import {
 import type { PayRow } from '@/components/guided'
 import {
     MAX_ONE_IN,
+    MIN_ONE_IN,
     MAX_PRIZE_PERCENT,
     MAX_RAFFLE_DAYS,
     MIN_PRIZE_PERCENT,
@@ -238,7 +239,7 @@ function RaffleFormContent() {
     )
 
     const payRows: PayRow[] = [
-        potBase ? { label: 'Prize pot', coin: { denom, amount: potBase.toFixed() } } : { label: 'Prize pot', text: '—' },
+        potBase ? { label: 'Starting pot', coin: { denom, amount: potBase.toFixed() } } : { label: 'Starting pot', text: '—' },
     ]
 
     const aside = <PayPanel rows={payRows} txKind="start-raffle" />
@@ -247,8 +248,7 @@ function RaffleFormContent() {
         <GuidedForm
             crumb="Burning raffle"
             title={<>Start a burning <GradientText>raffle</GradientText></>}
-            subtitle="Fund a prize pot. What's left at the end is burned."
-            techTag="burner · raffle"
+            subtitle="Fund the starting pot. What's left at the end is burned."
             aside={aside}
         >
             <Question
@@ -290,8 +290,8 @@ function RaffleFormContent() {
             </Question>
 
             <Question
-                title="Prize pot"
-                question="How big is the prize pot?"
+                title="Starting pot"
+                question="How big is the starting pot?"
                 {...steps.step('pot')}
                 summary={potText && potSummary(potText)}
                 onBack={steps.back}
@@ -299,7 +299,7 @@ function RaffleFormContent() {
             >
                 <VStack align="stretch" gap="12px">
                     <TextField
-                        label={`Prize pot (${ticker})`}
+                        label={`Starting pot (${ticker})`}
                         helper={address
                             ? minMaxHint(displayAmount('100000', decimals), displayAmount(max.amount, decimals), ticker)
                             : `Min ${displayAmount('100000', decimals)} ${ticker}`}
@@ -354,7 +354,7 @@ function RaffleFormContent() {
                         <Presets values={ONE_IN_PRESETS} current={oneInInput} label={n => `1 in ${fmt(n)}`} onPick={n => setOneInInput(String(n))} />
                         <TextField
                             label="Win chance (1 in N)"
-                            helper={minMaxHint(1, MAX_ONE_IN)}
+                            helper={minMaxHint(MIN_ONE_IN, MAX_ONE_IN)}
                             error={oneInError}
                             value={oneInInput}
                             onChange={setOneInInput}
@@ -388,12 +388,12 @@ function RaffleFormContent() {
                     question="Everything right?"
                     leaves={payRows}
                     txKind="start-raffle"
-                    gets={[{ label: 'Burning raffle', value: 'A raffle on Burner' }]}
+                    gets={[{ label: 'Burning raffle', value: `${ticker} raffle on Burner` }]}
                     extra={[
                         ...(endText ? [{ label: 'End date', value: endText }] : []),
                         ...(trend ? [{ label: 'Pot trend', value: POT_TREND_TEXT[trend] }] : []),
                     ]}
-                    permanent={["The pot can't be taken back", "What's left in the pot at the end is burned", "Raffle settings can't change once started"]}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Start raffle"
                     onSubmit={() => void sign()}
                     disabled={!canSign}

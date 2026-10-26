@@ -67,7 +67,7 @@ describe("ReviewStep", () => {
 
         expect(screen.getByRole("region", { name: "Review" })).toHaveTextContent("Step 4 of 4 · Review");
         expect(screen.getByText("Everything right?")).toBeInTheDocument();
-        const leaves = within(screen.getByRole("region", { name: "Leaves your wallet" }));
+        const leaves = within(screen.getByRole("region", { name: "You pay" }));
         expect(leaves.getByText("Factory fee")).toBeInTheDocument();
         expect(leaves.getByText("25,000 BZE")).toBeInTheDocument();
         expect(leaves.getByText("1 TOK")).toBeInTheDocument();
@@ -75,6 +75,8 @@ describe("ReviewStep", () => {
         expect(within(screen.getByRole("region", { name: "You get" })).getByText("HONEY")).toBeInTheDocument();
         expect(screen.getByText("Admin")).toBeInTheDocument();
         expect(within(screen.getByRole("region", { name: "Permanent" })).getByText("The ticker can never change.")).toBeInTheDocument();
+        // One amber line per warning, without a box or a title.
+        expect(screen.queryByRole("heading", { name: "Permanent" })).not.toBeInTheDocument();
     });
 
     it("the final button sends", async () => {

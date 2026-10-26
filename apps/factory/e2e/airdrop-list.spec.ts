@@ -40,7 +40,7 @@ test("checks a pasted list with an invalid and a duplicate line, then reaches Re
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("2 wallets receive TBZE");
-    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("Sent tokens can't be taken back");
+    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("This action can't be undone");
     await expect(review.getByRole("button", {name: "Airdrop to 2 wallets"})).toBeDisabled();
     await expect(review.getByText("Connect your wallet.")).toBeVisible();
 });

@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import BigNumber from 'bignumber.js'
-import { Box, Button, chakra, Grid, Text, VStack } from '@chakra-ui/react'
+import { Box, Button, Grid, Text, VStack } from '@chakra-ui/react'
 import { LuRefreshCw } from 'react-icons/lu'
 import {
     GradientText,
@@ -13,15 +12,12 @@ import {
     useBalance,
     useCanAffordTx,
     useCreationFees,
-    type Asset,
-    type DenomReward,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
-import { StakedTokenPicker, type TokenState } from '@/components/pickers/staked-token-picker'
 import { TextField } from '@/components/manage/denom-reward-form-parts'
 import { PrizeTokenQuestion } from '@/components/rewards/prize-token-question'
-import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { CompoundedDone, type CompoundedDoneInput } from '@/components/reward-wizard/compounded-done'
+import { AssetPicker } from '@/components/ui/asset-picker'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
@@ -65,15 +61,6 @@ const PRIZE_CHOICES: { value: PrizeChoice; label: string }[] = [
 ]
 
 const fmtDays = (n: number) => `${n.toLocaleString('en-US')} day${n === 1 ? '' : 's'}`
-
-/** A token's state in the picker: what its compounded reward stakes, or that it has none. */
-function stakeState(asset: Asset, dr?: DenomReward): TokenState {
-    if (!dr) return { text: 'Not stakable yet', tone: 'muted' }
-    const staked = uAmountToBigNumberAmount(dr.staked_amount, asset.decimals)
-    return staked.gt(0)
-        ? { text: `${prettyAmount(staked)} staked`, tone: 'good' }
-        : { text: 'Nothing staked', tone: 'warn' }
-}
 
 function Fact({ label, value }: { label: string; value: string }) {
     return (
@@ -159,10 +146,6 @@ function CompoundedNewContent() {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))
         steps.close()
     }
-    const skipPrize = () => {
-        setPrizeChoice('none')
-        answer('prize')
-    }
 
     const dailyText = check.dailyUAmount !== undefined && prizeAsset
         ? prettyAmount(uAmountToBigNumberAmount(check.dailyUAmount, prizeAsset.decimals))
@@ -213,14 +196,8 @@ function CompoundedNewContent() {
             : { denom, ticker })
     }
 
-    // Several charged fees: show their per-denom totals too, the amounts the wallet is charged.
-    const chargedCount = costs.fees.filter(f => new BigNumber(f.coin.amount).gt(0)).length
-    const totalRows: PayRow[] = chargedCount > 1
-        ? costs.feeTotals.map((c, i) => ({ label: i === 0 ? 'Fees total' : 'Also charged', coin: c }))
-        : extraFees.map(c => ({ label: 'Also charged', coin: c }))
     const payRows: PayRow[] = [
         ...costs.fees.map(f => ({ label: f.label, coin: f.coin })),
-        ...totalRows,
         ...(costs.escrow ? [{ label: 'Rewards', coin: costs.escrow }] : []),
     ]
 
@@ -240,11 +217,9 @@ function CompoundedNewContent() {
             title={
                 <>
                     Create a <GradientText>compounded reward</GradientText>
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
-            subtitle="Make a token stakable."
-            techTag={VOCABULARY.holderRewards.tech}
+            subtitle="Creating a compounded reward for a token makes it stakable."
             aside={aside}
         >
             <Question
@@ -257,12 +232,11 @@ function CompoundedNewContent() {
                     : { label: 'Continue', onClick: () => answer('token'), disabled: !tokenOk }}
             >
                 <VStack align="stretch" gap="16px">
-                    <StakedTokenPicker
-                        mode="makeStakable"
+                    <AssetPicker
+                        label="Token"
                         includeLP={true}
                         value={denom}
-                        onChange={(picked) => setDenom(picked.denom)}
-                        stateOf={stakeState}
+                        onSelect={(picked) => setDenom(picked.denom)}
                     />
                     {asset && existing.hasError && (
                         <BlockerNote
@@ -291,7 +265,7 @@ function CompoundedNewContent() {
 
             <Question
                 title="First daily prize"
-                question="Fund it now?"
+                question="Add a reward for stakers?"
                 {...steps.step('prize')}
                 summary={withPrize ? prize : 'No prize yet'}
                 onBack={steps.back}
@@ -334,7 +308,7 @@ function CompoundedNewContent() {
                             )}
                         </>
                     )}
-                    <ContinueRow disabled={withPrize && !check.valid} onContinue={() => answer('prize')} onSkip={skipPrize} />
+                    <ContinueRow disabled={withPrize && !check.valid} onContinue={() => answer('prize')} />
                 </VStack>
             </Question>
 
@@ -349,16 +323,18 @@ function CompoundedNewContent() {
                     txKind={txKind}
                     isLoading={isFeeLoading}
                     feeUnknown={feeUnknown}
-                    gets={[{ label: VOCABULARY.holderRewards.name, value: `${ticker} becomes stakable for everyone` }]}
+                    gets={[
+                        { label: VOCABULARY.holderRewards.name, value: `${ticker} becomes stakable` },
+                        ...(withPrize ? [
+                            { label: 'Daily reward', value: prize },
+                            { label: 'New prize token', value: prizeTicker },
+                        ] : []),
+                    ]}
                     extra={[
                         { label: 'Unstaking lock', value: lockValue },
                         { label: 'Minimum stake', value: minStakeValue },
-                        { label: 'Daily reward', value: withPrize ? prize : 'None yet' },
                     ]}
-                    permanent={[
-                        'The compounded reward (one per token)',
-                        ...(withPrize ? ['Rewards are committed to stakers'] : []),
-                    ]}
+                    permanent={["This action can't be undone"]}
                     submitLabel={ticker ? `Make ${ticker} stakable` : 'Make a token stakable'}
                     onSubmit={create}
                     disabled={!canCreate}

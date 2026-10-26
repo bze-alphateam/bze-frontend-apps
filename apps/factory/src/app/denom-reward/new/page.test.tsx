@@ -8,7 +8,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 
 // The page runs on mocked hooks: query params, wallet, fees, balances, the fee engine, the token's
 // compounded reward and the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx
-// store, the Review step and the Done screen are real. The staked-token picker and the asset picker
+// store, the Review step and the Done screen are real. The asset pickers (token and prize)
 // become plain buttons per denom; both have their own coverage.
 type TxOpts = {
     onBroadcast?: (hash: string) => void;
@@ -69,18 +69,13 @@ vi.mock("@/components/guided/pay-panel", async (importActual) => ({
         <div data-testid="pay-panel">{feeUnknown ? "fee unknown" : rows.map(r => `${r.label}: ${r.coin?.amount} ${r.coin?.denom}`).join(", ")}</div>
     ),
 }));
-vi.mock("@/components/pickers/staked-token-picker", () => ({
-    StakedTokenPicker: ({ mode, onChange }: { mode: string; onChange: (a: { denom: string }) => void }) => (
-        <div data-testid="staked-picker" data-mode={mode}>
-            {["uhoney", "upage"].map(d => <button key={d} onClick={() => onChange({ denom: d })}>{`Stake ${d}`}</button>)}
-        </div>
-    ),
-}));
 vi.mock("@/components/ui/asset-picker", () => ({
     AssetPicker: ({ label, onSelect }: { label: string; onSelect: (a: { denom: string }) => void }) => (
-        <div>
+        <div data-testid={label === "Token" ? "token-picker" : undefined}>
             <span>{label}</span>
-            {["ubze", "uwax"].map(d => <button key={d} onClick={() => onSelect({ denom: d })}>{`Prize ${d}`}</button>)}
+            {(label === "Token" ? ["uhoney", "upage"] : ["ubze", "uwax"]).map(d => (
+                <button key={d} onClick={() => onSelect({ denom: d })}>{`${label === "Token" ? "Stake" : "Prize"} ${d}`}</button>
+            ))}
         </div>
     ),
 }));
@@ -176,13 +171,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, () => {
-    it("shows the three steps with Stake open and the picker in makeStakable mode", () => {
+    it("shows the three steps with Stake open and the searchable token picker", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Create a compounded reward/ })).toBeInTheDocument();
-        expect(screen.getByText("rewards · denom reward")).toBeInTheDocument();
+        expect(screen.queryByText("rewards · denom reward")).not.toBeInTheDocument();
+        expect(screen.getByText("Creating a compounded reward for a token makes it stakable.")).toBeInTheDocument();
         expect(step("Stake")).toHaveAttribute("data-state", "active");
         expect(within(step("Stake")).getByRole("heading", { name: "Which token?" })).toBeInTheDocument();
-        expect(screen.getByTestId("staked-picker")).toHaveAttribute("data-mode", "makeStakable");
+        expect(screen.getByTestId("token-picker")).toBeInTheDocument();
         expect(step("First daily prize")).toHaveAttribute("data-state", "todo");
         expect(step("Review")).toHaveAttribute("data-state", "todo");
         expect(screen.queryByRole("region", { name: "What will happen" })).not.toBeInTheDocument();
@@ -241,13 +237,14 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
     });
 
     describe("First daily prize", () => {
-        it("Not now is the default, without a hint, and Skip answers it", async () => {
+        it("Not now is the default, without a hint or Skip, and Continue answers it", async () => {
             renderPage();
             await pickToken();
             const q = step("First daily prize");
             expect(within(q).getByRole("button", { name: "Not now" })).toHaveAttribute("aria-pressed", "true");
             expect(within(q).queryByText("Stakers earn nothing until someone adds a prize. You can add one right after.")).not.toBeInTheDocument();
-            await userEvent.click(button(q, "Skip"));
+            expect(within(q).queryByRole("button", { name: "Skip" })).not.toBeInTheDocument();
+            await userEvent.click(button(q, "Continue"));
             expect(step("First daily prize")).toHaveAttribute("data-state", "done");
             expect(step("First daily prize")).toHaveTextContent("No prize yet");
             expect(step("Review")).toHaveAttribute("data-state", "active");
@@ -271,7 +268,7 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             expect(within(q).queryByTestId("escrow-line")).not.toBeInTheDocument();
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards: 1500000000 ubze");
             await userEvent.click(button(q, "Continue"));
-            expect(step("First daily prize")).toHaveTextContent("50 BZE a day for 30 days");
+            expect(step("First daily prize")).toHaveTextContent("50 BZE/day × 30 days");
         });
 
         it("checks the prize balance", async () => {
@@ -298,12 +295,14 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             await pickToken();
             await userEvent.click(button(step("First daily prize"), "Continue"));
             const review = step("Review");
-            expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Compounded reward fee");
-            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("HONEY becomes stakable for everyone");
+            expect(within(review).getByRole("region", { name: "You pay" })).toHaveTextContent("Compounded reward fee");
+            expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("HONEY becomes stakable");
+            expect(within(review).getByRole("region", { name: "You get" })).not.toHaveTextContent("for everyone");
             expect(review).toHaveTextContent("Unstaking lock7 days");
-            expect(review).toHaveTextContent("Daily rewardNone yet");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("The compounded reward (one per token)");
-            expect(within(review).getByRole("region", { name: "Permanent" })).not.toHaveTextContent("Rewards are committed to stakers");
+            expect(review).not.toHaveTextContent("Daily reward");
+            expect(review).not.toHaveTextContent("New prize token");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
+            expect(within(review).getByRole("region", { name: "Permanent" })).not.toHaveTextContent("one per token");
             expect(screen.getByTestId("pay-panel")).toHaveTextContent(`Compounded reward fee: ${FEE.amount} ubze`);
 
             await userEvent.click(button(review, "Make HONEY stakable"));
@@ -317,11 +316,14 @@ describe("Create a compounded reward (/denom-reward/new)", { timeout: 20_000 }, 
             await fillPrize("50", "30");
             await userEvent.click(button(step("First daily prize"), "Continue"));
             expect(screen.getByTestId("pay-panel")).toHaveTextContent(
-                "Compounded reward fee: 25000000000 ubze, Daily prize fee: 25000000000 ubze, New prize fee: 25000000000 ubze, Fees total: 75000000000 ubze, Rewards: 1500000000 ubze",
+                "Compounded reward fee: 25000000000 ubze, Daily prize fee: 25000000000 ubze, New prize fee: 25000000000 ubze, Rewards: 1500000000 ubze",
             );
             const review = step("Review");
-            expect(review).toHaveTextContent("Daily reward50 BZE a day for 30 days");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Rewards are committed to stakers");
+            const gets = within(within(review).getByRole("region", { name: "You get" }));
+            expect(gets.getByText("HONEY becomes stakable")).toBeInTheDocument();
+            expect(gets.getByText("50 BZE/day × 30 days")).toBeInTheDocument();
+            expect(gets.getByText("New prize token")).toBeInTheDocument();
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
 
             await userEvent.click(button(review, "Make HONEY stakable"));
             expect(sentMsgs().map(m => m.typeUrl)).toEqual(["/bze.rewards.MsgCreateDenomReward", "/bze.rewards.MsgCreateDenomRewardSchedule"]);

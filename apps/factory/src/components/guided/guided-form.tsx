@@ -5,7 +5,6 @@ import { Box, chakra, Flex, Grid, GridItem, VStack } from '@chakra-ui/react'
 import { PageContainer } from '@bze/bze-ui-kit'
 import { useNavigation } from '@/hooks/useNavigation'
 import { useReturnTo } from './return-to'
-import { TechTag } from './tech-tag'
 
 interface GuidedFormProps {
     /**
@@ -19,7 +18,6 @@ interface GuidedFormProps {
     title: React.ReactNode;
     subtitle?: React.ReactNode;
     /** The technical name of the tool, shown under the title (e.g. `tradebin · order-book market`). */
-    techTag?: React.ReactNode;
     /** Optional top-right slot, e.g. "Draft saved in this browser". */
     status?: React.ReactNode;
     /** The steps. */
@@ -43,7 +41,7 @@ export function FormFrame({ children, narrow }: { children: React.ReactNode; nar
  * column beside them, sticky, from `lg` up; one column below that, with the panels after the
  * steps. Reads search params (return path), so render it inside a <Suspense> boundary.
  */
-export function GuidedForm({ parent, crumb, title, subtitle, techTag, status, children, aside }: GuidedFormProps) {
+export function GuidedForm({ parent, crumb, title, subtitle, status, children, aside }: GuidedFormProps) {
     const { navigate } = useNavigation()
     const returnTo = useReturnTo()
 
@@ -89,7 +87,6 @@ export function GuidedForm({ parent, crumb, title, subtitle, techTag, status, ch
                 <chakra.h1 m="0" textStyle="pageTitle" fontSize={{ base: '26px', md: '34px' }}>
                     {title}
                 </chakra.h1>
-                {techTag && <TechTag>{techTag}</TechTag>}
                 {subtitle && (
                     <chakra.p m="0" fontSize={{ base: '14px', md: '16px' }} lineHeight="1.6" color="fg.muted" maxW="860px">
                         {subtitle}

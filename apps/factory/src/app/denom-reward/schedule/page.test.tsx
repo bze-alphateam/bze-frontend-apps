@@ -188,7 +188,7 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
     it("asks whose stakers first, with the picker in hasCompounded mode and the way to make one stakable", () => {
         renderPage();
         expect(screen.getByRole("heading", { name: /Add a daily prize/ })).toBeInTheDocument();
-        expect(screen.getByText("rewards · denom reward schedule")).toBeInTheDocument();
+        expect(screen.queryByText("rewards · denom reward schedule")).not.toBeInTheDocument();
         expect(step("Stake")).toHaveAttribute("data-state", "active");
         expect(within(step("Stake")).getByRole("heading", { name: "Which token?" })).toBeInTheDocument();
         expect(screen.getByTestId("staked-picker")).toHaveAttribute("data-mode", "hasCompounded");
@@ -248,7 +248,7 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             expect(within(q).getByText("Min 1 · Max 36500 days")).toBeInTheDocument();
             expect(screen.getByTestId("pay-panel")).toHaveTextContent("Rewards: 1500000000 ubze");
             await userEvent.click(button(q, "Continue"));
-            expect(step("Prize")).toHaveTextContent("50 BZE a day for 30 days");
+            expect(step("Prize")).toHaveTextContent("50 BZE/day × 30 days");
             expect(step("Review")).toHaveAttribute("data-state", "active");
         });
 
@@ -300,14 +300,14 @@ describe("Daily prize, add (/denom-reward/schedule)", { timeout: 20_000 }, () =>
             await userEvent.click(button(step("Prize"), "Continue"));
 
             expect(screen.getByTestId("pay-panel")).toHaveTextContent(
-                "Rewards: 150000000 uwax, Daily prize fee: 25000000000 ubze, New prize fee: 25000000000 ubze, Fees total: 50000000000 ubze",
+                "Rewards: 150000000 uwax, Daily prize fee: 25000000000 ubze, New prize fee: 25000000000 ubze",
             );
             const review = step("Review");
-            expect(within(review).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Daily prize fee");
+            expect(within(review).getByRole("region", { name: "You pay" })).toHaveTextContent("Daily prize fee");
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("HONEY stakers");
             expect(within(review).getByRole("region", { name: "You get" })).not.toHaveTextContent("A daily prize for");
-            expect(review).toHaveTextContent("Daily reward5 WAX a day for 30 days");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Rewards are committed to stakers");
+            expect(review).toHaveTextContent("Daily reward5 WAX/day × 30 days");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
             expect(review).not.toHaveTextContent("daily amount can't change");
             expect(review).not.toHaveTextContent("doesn't make you the reward's owner");
 
@@ -415,7 +415,7 @@ describe("Daily prize, extend (&schedule=)", { timeout: 20_000 }, () => {
         expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("10 more days");
         expect(within(review).getByRole("region", { name: "You get" })).not.toHaveTextContent("for everyone staking");
         expect(review).toHaveTextContent("New end date20 Nov");
-        expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Rewards are committed to stakers");
+        expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
         await userEvent.click(button(review, "Extend"));
         expect(sentMsgs().map(m => m.typeUrl)).toEqual(["/bze.rewards.MsgUpdateDenomRewardSchedule"]);
         expect(sentMsgs()[0].value).toMatchObject({ creator: "bze1me", denom: "uhoney", scheduleId: "000000000007", duration: "10" });

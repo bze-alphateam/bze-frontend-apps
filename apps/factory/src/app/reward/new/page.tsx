@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useMemo, useState } from 'react'
-import { chakra, Field, Input, Text, VStack } from '@chakra-ui/react'
+import { Field, Input, Text, VStack } from '@chakra-ui/react'
 import BigNumber from 'bignumber.js'
 import { bze } from '@bze/bzejs'
 import {
@@ -16,7 +16,6 @@ import {
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { AssetPicker } from '@/components/ui/asset-picker'
-import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { SimpleRewardDone, type SimpleRewardDoneInput } from '@/components/reward-wizard/simple-reward-done'
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
@@ -164,7 +163,7 @@ function RewardNewContent() {
 
     const perDayText = prizeAsset && prizeError === '' && prizePerDay.trim() ? prettyAmount(new BigNumber(prizePerDay)) : ''
     const budget = escrowDisplay && prizeTicker ? prizeSummary(perDayText, prizeTicker, duration) : ''
-    const daysCount = Number(duration.trim())
+    const lockDays = Number(lock.trim() || '0')
     const minStakeText = hasNoMinStake(minStake) || minStakeError !== ''
         ? undefined
         : `${prettyAmount(new BigNumber(minStake.trim()))} ${stakeTicker}`
@@ -228,11 +227,9 @@ function RewardNewContent() {
             title={
                 <>
                     Create a <GradientText>simple reward</GradientText>
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
             subtitle="Pay stakers a daily reward for a set number of days."
-            techTag={VOCABULARY.stakingProgram.tech}
             aside={aside}
         >
             <Question
@@ -340,15 +337,15 @@ function RewardNewContent() {
                     txKind={TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Reward', value: `Stake ${stakeTicker} · earn ${perDayText} ${prizeTicker} a day` }]}
+                    gets={[
+                        { label: VOCABULARY.stakingProgram.name, value: `${stakeTicker} becomes stakable` },
+                        { label: 'Daily reward', value: budget },
+                    ]}
                     extra={[
-                        { label: 'Days', value: `${daysCount.toLocaleString('en-US')} day${daysCount === 1 ? '' : 's'}` },
-                        { label: 'Rules', value: rules },
+                        { label: 'Unstaking lock', value: lockDays > 0 ? `${lockDays.toLocaleString('en-US')} day${lockDays === 1 ? '' : 's'}` : 'No lock' },
+                        { label: 'Minimum stake', value: minStakeText ?? 'No minimum' },
                     ]}
-                    permanent={[
-                        'Daily reward and rules',
-                        'Rewards are committed to stakers',
-                    ]}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Create simple reward"
                     onSubmit={create}
                     disabled={!canCreate}

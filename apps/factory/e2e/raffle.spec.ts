@@ -11,7 +11,7 @@ test("Grow a community offers a burning raffle", async ({page}) => {
     await expect(card.getByRole("link", {name: /Start raffle/})).toHaveAttribute("href", "/raffle/new");
 });
 
-test("Token, Prize pot and How it plays, then Review with the connect message", async ({page}) => {
+test("Token, Starting pot and How it plays, then Review with the connect message", async ({page}) => {
     await page.goto("/raffle/new?denom=ubze");
 
     await expect(page.getByRole("heading", {name: "Start a burning raffle"})).toBeVisible();
@@ -19,9 +19,9 @@ test("Token, Prize pot and How it plays, then Review with the connect message", 
     await expect(token).toHaveAttribute("data-state", "done");
     await expect(token).toContainText("TBZE");
 
-    const pot = page.getByRole("region", {name: "Prize pot"});
+    const pot = page.getByRole("region", {name: "Starting pot"});
     await expect(pot).toHaveAttribute("data-state", "active");
-    await pot.getByLabel(/Prize pot/).fill("1000");
+    await pot.getByLabel(/Starting pot/).fill("1000");
     await pot.getByRole("button", {name: "Continue"}).click();
     await expect(pot).toContainText("1,000 TBZE in the pot");
 
@@ -39,11 +39,10 @@ test("Token, Prize pot and How it plays, then Review with the connect message", 
     await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("1,000 TBZE");
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("A raffle on Burner");
-    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("What's left in the pot at the end is burned");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("1,000 TBZE");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("TBZE raffle on Burner");
     await expect(review).toContainText("Grows on average");
-    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("Raffle settings can't change once started");
+    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("This action can't be undone");
     await expect(review.getByText("Once started, a raffle can't be stopped or changed.")).toHaveCount(0);
     await expect(review.getByRole("button", {name: "Start raffle"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
@@ -53,7 +52,7 @@ test("fits a 390 px phone without horizontal scroll", async ({page}) => {
     await page.setViewportSize({width: 390, height: 844});
     await page.goto("/raffle/new?denom=ubze");
 
-    await expect(page.getByRole("region", {name: "Prize pot"})).toHaveAttribute("data-state", "active");
+    await expect(page.getByRole("region", {name: "Starting pot"})).toHaveAttribute("data-state", "active");
     await expect(page.getByRole("region", {name: "You will pay"})).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);

@@ -24,7 +24,7 @@ test("walks from the preselected token to Review without a prize, with the fee a
     await page.goto(`/denom-reward/new?denom=${encodeURIComponent(TESTUSD)}`);
 
     await expect(page.getByRole("heading", {name: /Create a compounded reward/})).toBeVisible();
-    await expect(page.getByText("rewards · denom reward")).toBeVisible();
+    await expect(page.getByText("rewards · denom reward", {exact: true})).toHaveCount(0);
 
     // The deep link answers step 1.
     const token = page.getByRole("region", {name: "Stake", exact: true});
@@ -34,15 +34,16 @@ test("walks from the preselected token to Review without a prize, with the fee a
     const prize = page.getByRole("region", {name: "First daily prize"});
     await expect(prize).toHaveAttribute("data-state", "active");
     await expect(prize.getByText("Stakers earn nothing until someone adds a prize. You can add one right after.")).toHaveCount(0);
-    await prize.getByRole("button", {name: "Skip"}).click();
+    await expect(prize.getByRole("button", {name: "Skip"})).toHaveCount(0);
+    await prize.getByRole("button", {name: "Continue"}).click();
     await expect(prize).toContainText("No prize yet");
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("Compounded reward fee");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("25,000 TBZE");
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("TUSDC becomes stakable for everyone");
-    await expect(review).toContainText("The compounded reward (one per token)");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("Compounded reward fee");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("25,000 TBZE");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("TUSDC becomes stakable");
+    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("This action can't be undone");
     await expect(review.getByRole("button", {name: "Make TUSDC stakable"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });
@@ -61,15 +62,15 @@ test("with a first daily prize, Review lists the prize fees and the locked prize
     await prize.getByLabel("Days", {exact: true}).fill("30");
     await expect(prize.getByTestId("escrow-line")).toHaveCount(0);
     await prize.getByRole("button", {name: "Continue"}).click();
-    await expect(prize).toContainText("100 VDL a day for 30 days");
+    await expect(prize).toContainText("100 VDL/day × 30 days");
 
-    const leaves = page.getByRole("region", {name: "Review"}).getByRole("region", {name: "Leaves your wallet"});
+    const leaves = page.getByRole("region", {name: "Review"}).getByRole("region", {name: "You pay"});
     await expect(leaves).toContainText("Daily prize fee");
     await expect(leaves).toContainText("New prize fee");
-    await expect(leaves).toContainText("75,000 TBZE");
+    await expect(page.getByTestId("pay-total")).toContainText("75,000");
     await expect(leaves).toContainText("Rewards");
     await expect(leaves).toContainText("3,000 VDL");
-    await expect(page.getByRole("region", {name: "Review"})).toContainText("Rewards are committed to stakers");
+    await expect(page.getByRole("region", {name: "Review"})).toContainText("This action can't be undone");
 });
 
 test("picking a token that is already stakable continues to adding a prize to it", async ({page}) => {
@@ -77,10 +78,9 @@ test("picking a token that is already stakable continues to adding a prize to it
 
     const token = page.getByRole("region", {name: "Stake", exact: true});
     await expect(token).toHaveAttribute("data-state", "active");
-    await token.getByRole("textbox", {name: "Search tokens"}).fill("noadmin");
-    const row = token.getByRole("radio").filter({hasText: "NOAD"}).first();
-    await expect(row).toContainText("Stakable · add a prize");
-    await row.click();
+    await token.getByRole("combobox").click();
+    await page.getByPlaceholder("Search by name or ticker...").fill("noadmin");
+    await page.getByRole("option").filter({hasText: "NOAD"}).first().click();
 
     await expect(token.getByTestId("already-stakable")).toContainText("NOAD is already stakable.");
     await token.getByRole("button", {name: "Continue to add a prize"}).click();

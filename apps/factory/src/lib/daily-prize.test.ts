@@ -62,9 +62,9 @@ describe("checkDailyPrize", () => {
 
 describe("dailyPrizeSummary", () => {
     it("reads as the announcement number", () => {
-        expect(dailyPrizeSummary("50", "BZE", 30)).toBe("50 BZE a day for 30 days");
-        expect(dailyPrizeSummary("1,000", "WAX", 1)).toBe("1,000 WAX a day for 1 day");
-        expect(dailyPrizeSummary("1", "WAX", 36500)).toBe("1 WAX a day for 36,500 days");
+        expect(dailyPrizeSummary("50", "BZE", 30)).toBe("50 BZE/day × 30 days");
+        expect(dailyPrizeSummary("1,000", "WAX", 1)).toBe("1,000 WAX/day × 1 day");
+        expect(dailyPrizeSummary("1", "WAX", 36500)).toBe("1 WAX/day × 36,500 days");
     });
 });
 

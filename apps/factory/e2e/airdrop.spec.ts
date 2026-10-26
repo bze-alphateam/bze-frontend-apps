@@ -51,9 +51,9 @@ test("through NOAD's compounded reward: any token, then Review with the connect 
 
     const review = page.getByRole("region", {name: "Review", exact: true});
     await expect(review).toHaveAttribute("data-state", "active");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("100 VDL");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("100 VDL");
     await expect(review.getByRole("region", {name: "You get"})).toContainText("100 VDL to NOAD stakers");
-    await expect(review).toContainText("An airdrop can't be undone");
+    await expect(review).toContainText("This action can't be undone");
     await expect(review.getByRole("button", {name: "Airdrop", exact: true})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });

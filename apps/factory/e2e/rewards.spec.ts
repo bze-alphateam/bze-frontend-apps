@@ -66,7 +66,8 @@ test("lists one row per staked token; open, the actions anyone can take", async 
     // 37 VDL staked: the finished reward can't be deleted yet.
     await expect(simple.getByRole("button", {name: "Delete"})).toHaveCount(0);
     // No compounded reward on VDL: anyone can make it stakable.
-    await expect(row(page, VIDULUM).getByRole("link", {name: "Make VDL stakable"})).toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(VIDULUM)}`);
+    await row(page, VIDULUM).getByRole("button", {name: "Make VDL stakable"}).click();
+    await expect(page.getByRole("dialog").getByRole("link", {name: "Create compounded reward"})).toHaveAttribute("href", `/denom-reward/new?denom=${encodeURIComponent(VIDULUM)}`);
 });
 
 test("the kind chips keep one kind and write it to the URL; an old tab= maps to its kind", async ({page}) => {

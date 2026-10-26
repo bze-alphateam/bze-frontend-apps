@@ -13,6 +13,8 @@ export const MIN_POT = new BigNumber(100_000)
 export const MIN_RAFFLE_DAYS = 1
 export const MAX_RAFFLE_DAYS = 180
 export const MAX_CHANCES = 1_000_000
+/** A raffle where most tickets win isn't a raffle: at best 1 in 5 tickets wins. */
+export const MIN_ONE_IN = 5
 export const MAX_ONE_IN = 1_000_000
 export const MIN_PRIZE_PERCENT = 1
 export const MAX_PRIZE_PERCENT = 100
@@ -70,7 +72,7 @@ export function validateOneIn(value: string): string {
     if (!trimmed) return 'Required.'
     if (!/^\d+$/.test(trimmed)) return 'Enter a whole number.'
     const n = Number(trimmed)
-    if (n < 1 || n > MAX_ONE_IN) return `${minMaxHint(1, MAX_ONE_IN)}.`
+    if (n < MIN_ONE_IN || n > MAX_ONE_IN) return `${minMaxHint(MIN_ONE_IN, MAX_ONE_IN)}.`
     return ''
 }
 

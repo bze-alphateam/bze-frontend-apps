@@ -97,9 +97,9 @@ export const DURATION_PRESETS = ['7', '30', '90', '180'] as const
 
 const days = (n: number | string) => `${Number(n).toLocaleString('en-US')} day${Number(n) === 1 ? '' : 's'}`
 
-/** "100 HONEY a day for 30 days": the budget step's summary and the announcement number. */
+/** "100 HONEY/day × 30 days": the budget step's summary and the announcement number. */
 export const prizeSummary = (perDay: string, ticker: string, duration: string) =>
-    `${perDay} ${ticker} a day for ${days(duration.trim())}`
+    `${perDay} ${ticker}/day × ${days(duration.trim())}`
 
 /** The rules step's summary: "No lock · no minimum", "7-day lock · min 100 TOK". */
 export function rulesSummary(lock: string, minStake?: string): string {

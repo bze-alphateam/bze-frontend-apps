@@ -3,7 +3,7 @@
 import React from 'react'
 import { Flex, Text } from '@chakra-ui/react'
 import { AppLink, getDexApp, useCreationFees } from '@bze/bze-ui-kit'
-import { CardGrid, CareLine, ChooseFrame, ChoosePage, CreationFeeLine, OptionCard, Points } from '@/components/create/choose-parts'
+import { CardGrid, ChooseFrame, ChoosePage, CreationFeeLine, OptionCard, Points } from '@/components/create/choose-parts'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { dexPoolsHref, marketTargets } from '@/lib/create-routes'
 
@@ -18,40 +18,36 @@ function ChooseMarket() {
     return (
         <ChoosePage
             crumb="DEX market"
-            title="How should people trade it?"
-            intro="Both work for any pair of tokens, yours or not. Most new tokens start with a pool and add an order book once there are regular traders."
+            title="What kind of market do you want to create?"
+            intro="Both work for any pair of tokens. Pools suit new tokens best: anyone can swap from the first minute. Order books need people placing buy and sell orders, so they suit tokens with an active community."
         >
             <CardGrid>
                 <OptionCard
                     title="Liquidity pool"
-                    featuredTag="Most common first step"
-                    line="People swap instantly. The price follows what you put in the pool."
+                    featuredTag="Most common"
                     action={{ label: 'Create liquidity pool', href: targets.pool }}
                 >
                     <Points points={[
-                        'Works from the first minute.',
-                        'You set the starting price with your first deposit.',
-                        'Anyone can add liquidity later and earn swap fees.',
+                        'Swaps happen instantly, at the pool\'s price.',
+                        'Your first deposit sets the starting price.',
+                        'Anyone can add liquidity and earn swap fees.',
                     ]} />
-                    <CareLine>Your first deposit stays in the pool forever. You get no withdrawable share for it.</CareLine>
                     {fee}
                 </OptionCard>
                 <OptionCard
                     title="Order-book market"
-                    line="Traders post buy and sell orders at the price they choose."
                     action={{ label: 'Create order-book market', href: targets.market }}
                 >
                     <Points points={[
-                        'Limit orders, like a classic exchange.',
-                        'Nothing to deposit, only the creation fee.',
-                        'Fits pairs that already have active traders.',
+                        'A trade happens only when a buy and a sell order match.',
+                        'No deposit needed.',
+                        'Buyers and sellers each set their own price.',
                     ]} />
-                    <CareLine>A new market is empty. Nothing trades until people place orders.</CareLine>
                     {fee}
                 </OptionCard>
             </CardGrid>
             <Flex align="center" gap="4px 8px" wrap="wrap" fontSize="14px" color="fg.muted">
-                <Text>Want to add to a pool that already exists, or take your liquidity out?</Text>
+                <Text>Want to manage the liquidity of an existing pool? Visit the</Text>
                 <AppLink app="dex" href={dexPoolsHref(getDexApp().href)}>DEX</AppLink>
             </Flex>
         </ChoosePage>

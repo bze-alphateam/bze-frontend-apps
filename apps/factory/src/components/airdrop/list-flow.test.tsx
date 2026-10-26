@@ -206,7 +206,7 @@ describe("Airdrop tokens to a list of wallets", { timeout: 20_000 }, () => {
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Airdrop tokens");
         expect(question("Who")).toHaveAttribute("data-state", "done");
         expect(question("Who")).toHaveTextContent("A list of wallets");
-        expect(screen.getAllByText("bank · multi-send").length).toBeGreaterThan(0);
+        expect(screen.queryByText("bank · multi-send")).not.toBeInTheDocument();
         expect(screen.getByText("List saved in this browser")).toBeInTheDocument();
         expect(within(question(TOKEN)).getByText("What are you sending?")).toBeInTheDocument();
         // Only what the wallet holds, LP shares included, own tokens first.
@@ -232,9 +232,9 @@ describe("Airdrop tokens to a list of wallets", { timeout: 20_000 }, () => {
         expect(screen.getByText("Left in your wallet").nextSibling).toHaveTextContent("996 TOK");
 
         const r = review();
-        expect(within(r).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("Sent to 2 wallets");
+        expect(within(r).getByRole("region", { name: "You pay" })).toHaveTextContent("Sent to 2 wallets");
         expect(within(r).getByRole("region", { name: "You get" })).toHaveTextContent("2 wallets receive TOK");
-        expect(within(r).getByRole("region", { name: "Permanent" })).toHaveTextContent("Sent tokens can't be taken back");
+        expect(within(r).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
         expect(screen.queryByTestId("batch-note")).not.toBeInTheDocument();
 
         await userEvent.click(sendButton());
@@ -318,7 +318,7 @@ describe("Airdrop tokens to a list of wallets", { timeout: 20_000 }, () => {
     it("a long list: Review says K transactions, then each click signs one batch of 100 and the run ends on Done with the report", async () => {
         await longList();
         expect(screen.getByTestId("batch-note")).toHaveTextContent("3 transactions · one approval each");
-        expect(within(review()).getByRole("region", { name: "Leaves your wallet" })).toHaveTextContent("3, one network fee each");
+        expect(within(review()).getByRole("region", { name: "You pay" })).toHaveTextContent("3, one network fee each");
         // The network fee covers the three transactions.
         expect(JSON.parse(screen.getByTestId("tx-kind").textContent!)).toEqual([
             { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 100 }, { kind: "multi-send", count: 50 },

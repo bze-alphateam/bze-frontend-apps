@@ -52,6 +52,7 @@ import {
     validateSwapFee,
 } from '@/lib/pool-new'
 import { notEnoughText } from '@/lib/format'
+import { VOCABULARY } from '@/lib/vocabulary'
 
 const { createLiquidityPool } = bze.tradebin.MessageComposer.withTypeUrl
 
@@ -212,7 +213,6 @@ function PoolNewContent() {
             crumb="Liquidity pool"
             title={<>Create a <GradientText>liquidity pool</GradientText></>}
             subtitle="Pair two tokens and set the starting price."
-            techTag="tradebin · liquidity pool"
             aside={aside}
         >
             <Question
@@ -331,9 +331,9 @@ function PoolNewContent() {
                     txKind={CREATE_POOL_TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Pool', value: `${pair} pool` }]}
+                    gets={[{ label: VOCABULARY.pool.name, value: pair }]}
                     extra={[{ label: 'Swap fee', value: feeSummary }]}
-                    permanent={[`The first deposit (${deposit})`, 'The pair']}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Create pool"
                     onSubmit={create}
                     disabled={!canCreate}

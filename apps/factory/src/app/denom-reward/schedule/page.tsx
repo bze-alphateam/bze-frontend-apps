@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Box, chakra, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
+import { Box, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import {
     GradientText,
     Shimmer,
@@ -21,7 +21,6 @@ import { Notice, TextField } from '@/components/manage/denom-reward-form-parts'
 import { PrizeDone } from '@/components/reward-wizard/prize-done'
 import { PrizeSlotNote } from '@/components/reward-wizard/prize-slot-note'
 import { StakedTokenStep } from '@/components/reward-wizard/staked-token-step'
-import { RewardKindsLink } from '@/components/rewards/reward-kinds-link'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import {
     FormFrame,
@@ -231,7 +230,7 @@ function ScheduleFormContent() {
             extra={isExtend
                 ? (ext?.newEnd ? [{ label: 'New end date', value: ext.newEnd }] : [])
                 : (prize ? [{ label: 'Daily reward', value: prize }] : [])}
-            permanent={['Rewards are committed to stakers']}
+            permanent={["This action can't be undone"]}
             submitLabel={isExtend ? 'Extend' : 'Start daily prize'}
             onSubmit={sign}
             disabled={!canSign}
@@ -252,11 +251,9 @@ function ScheduleFormContent() {
             title={
                 <>
                     {isExtend ? <>Extend a <GradientText>daily prize</GradientText></> : <>Add a <GradientText>daily prize</GradientText></>}
-                    <chakra.span display="inline-flex" verticalAlign="middle" ms="4px"><RewardKindsLink /></chakra.span>
                 </>
             }
             subtitle={isExtend ? 'Pay for more days of a daily prize.' : "Pay a token's stakers a daily reward."}
-            techTag={VOCABULARY.dailyPrize.tech}
             aside={aside}
         >
             {isExtend ? schedule && ext && (

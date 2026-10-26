@@ -102,10 +102,12 @@ describe("win chance", () => {
     });
 
     it("N must be a whole number from 1 to 1,000,000", () => {
-        expect(validateOneIn("0")).toBe("Min 1 · Max 1000000.");
-        expect(validateOneIn("1")).toBe("");
+        expect(validateOneIn("0")).toBe("Min 5 · Max 1000000.");
+        expect(validateOneIn("1")).toBe("Min 5 · Max 1000000.");
+        expect(validateOneIn("4")).toBe("Min 5 · Max 1000000.");
+        expect(validateOneIn("5")).toBe("");
         expect(validateOneIn("1000000")).toBe("");
-        expect(validateOneIn("1000001")).toBe("Min 1 · Max 1000000.");
+        expect(validateOneIn("1000001")).toBe("Min 5 · Max 1000000.");
         expect(validateOneIn("2.5")).toBe("Enter a whole number.");
     });
 });

@@ -84,22 +84,10 @@ function StartTile({ point }: { point: StartingPoint }) {
     )
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
-    return (
-        <VStack align="stretch" gap="4px">
-            <Text as="h2" fontSize="20px" fontWeight="700">{title}</Text>
-            {subtitle && <Text fontSize="14px" color="fg.muted">{subtitle}</Text>}
-        </VStack>
-    )
-}
-
 function WorkOnExisting() {
     return (
         <VStack as="section" aria-label="Work on something that exists" align="stretch" gap="14px">
-            <SectionTitle
-                title="Work on something that exists"
-                subtitle="For any token or reward on BeeZee. You don't have to be the one who created it."
-            />
+            <Text as="h2" fontSize="20px" fontWeight="700">Work on something that exists</Text>
             <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(3, minmax(0, 1fr))' }} gap="16px">
                 <LinkCard title="Extend or fund a reward" line="Add days, a daily prize or an airdrop to any reward." href="/rewards" />
                 <LinkCard title="Manage a token" line="Mint, edit details, logo, permissions. Admins only, checked live." href="/tokens" />
@@ -141,7 +129,6 @@ export default function FactoryHomePage() {
                         align="center"
                         eyebrow={<Eyebrow app="factory">BeeZee Factory</Eyebrow>}
                         title={<>What are you <GradientText>building</GradientText> today?</>}
-                        subtitle="Pick a starting point. We guide you step by step, show you exactly what happens before you sign, and suggest what to do next."
                     />
                     <Grid
                         as="section"

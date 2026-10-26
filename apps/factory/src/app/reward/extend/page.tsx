@@ -276,7 +276,6 @@ function ExtendContent() {
             crumb="Extend"
             title={<>Extend a <GradientText>reward</GradientText></>}
             subtitle="Pay for more days of a simple reward."
-            techTag="rewards · update staking reward"
             aside={aside}
         >
             <Question
@@ -342,7 +341,7 @@ function ExtendContent() {
                     txKind={TX_KIND}
                     gets={[{ label: 'Extension', value: `${daysCount.toLocaleString('en-US')} more day${daysCount === 1 ? '' : 's'}` }]}
                     extra={newEnd ? [{ label: 'New end date', value: newEnd }] : []}
-                    permanent={['Rewards are committed to stakers']}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Extend"
                     onSubmit={extend}
                     disabled={!canExtend}

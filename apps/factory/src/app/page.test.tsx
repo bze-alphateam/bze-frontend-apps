@@ -21,10 +21,10 @@ const tile = (id: string) => screen.getByTestId(`start-${id}`);
 describe("Home: What are you building today?", () => {
     beforeEach(() => { localStorage.clear(); });
 
-    it("shows the hero with one question and the promise", () => {
+    it("shows the hero with one question and no intro line", () => {
         renderPage();
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("What are you building today?");
-        expect(screen.getByText(/Pick a starting point\. We guide you step by step/)).toBeInTheDocument();
+        expect(screen.queryByText(/Pick a starting point/)).not.toBeInTheDocument();
     });
 
     it.each([
@@ -66,7 +66,7 @@ describe("Home: What are you building today?", () => {
     it("offers work on what exists: rewards, tokens and liquidity on the DEX", () => {
         renderPage();
         const row = within(screen.getByRole("region", { name: "Work on something that exists" }));
-        expect(row.getByText("For any token or reward on BeeZee. You don't have to be the one who created it.")).toBeInTheDocument();
+        expect(row.queryByText(/You don't have to be the one who created it/)).not.toBeInTheDocument();
         expect(row.getByRole("link", { name: /Extend or fund a reward/ })).toHaveAttribute("href", "/rewards");
         expect(row.getByRole("link", { name: /Manage a token/ })).toHaveAttribute("href", "/tokens");
         expect(row.getByText("Mint, edit details, logo, permissions. Admins only, checked live.")).toBeInTheDocument();

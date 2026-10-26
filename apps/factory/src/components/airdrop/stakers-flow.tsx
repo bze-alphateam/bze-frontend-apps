@@ -319,7 +319,7 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
     }
 
     return (
-        <AirdropForm techTag={viaCompounded ? 'rewards · distribute denom rewards' : reward ? 'rewards · distribute staking rewards' : 'rewards · distribute'} aside={aside}>
+        <AirdropForm aside={aside}>
             <TargetQuestion
                 {...steps.step('target')}
                 value={target}
@@ -438,7 +438,7 @@ export function StakersAirdrop({ target, initialDenom = '', initialRewardId, ini
                     isLoading={feeLoading}
                     feeUnknown={feeUnknown}
                     gets={[{ label: 'Airdrop', value: giftText ? `${giftText} to ${people}` : people }]}
-                    permanent={["An airdrop can't be undone"]}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Airdrop"
                     onSubmit={() => void sign()}
                     disabled={!canSign}

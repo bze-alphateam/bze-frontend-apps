@@ -10,8 +10,7 @@ test("walks from the preselected LP token to Review, with the fee and the connec
     await page.goto(`/reward/new?staking=${TUSDC_TBZE_LP}`);
 
     await expect(page.getByRole("heading", {name: /Create a simple reward/})).toBeVisible();
-    await expect(page.getByText("rewards · staking reward")).toBeVisible();
-    await expect(page.getByRole("link", {name: "Compare the kinds of reward"})).toHaveAttribute("href", "/create/rewards");
+    await expect(page.getByText("rewards · staking reward")).toHaveCount(0);
 
     // The deep link answers step 1.
     const stake = page.getByRole("region", {name: "Stake", exact: true});
@@ -28,7 +27,7 @@ test("walks from the preselected LP token to Review, with the fee and the connec
     await budget.getByRole("button", {name: "30 days"}).click();
     await expect(budget.getByTestId("budget-line")).toHaveCount(0);
     await budget.getByRole("button", {name: "Continue", exact: true}).click();
-    await expect(budget).toContainText("100 VDL a day for 30 days");
+    await expect(budget).toContainText("100 VDL/day × 30 days");
 
     const rules = page.getByRole("region", {name: "Rules"});
     await expect(rules.getByText("Stakers can leave any time.")).toHaveCount(0);
@@ -37,9 +36,10 @@ test("walks from the preselected LP token to Review, with the fee and the connec
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("25,000 TBZE");
-    await expect(review.getByRole("region", {name: "Leaves your wallet"})).toContainText("3,000 VDL");
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("Stake TUSDC/TBZE LP · earn 100 VDL a day");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("25,000 TBZE");
+    await expect(review.getByRole("region", {name: "You pay"})).toContainText("3,000 VDL");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("TUSDC/TBZE LP becomes stakable");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("100 VDL/day × 30 days");
     await expect(review.getByRole("button", {name: "Create simple reward"})).toBeDisabled();
     await expect(page.getByText("Connect your wallet.")).toBeVisible();
 });

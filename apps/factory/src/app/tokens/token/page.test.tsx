@@ -198,7 +198,7 @@ describe("token page: the seven admin states", () => {
         expect(screen.queryByTestId("renounce-admin-item")).not.toBeInTheDocument();
         // Permissionless actions are offered to everyone.
         expect(screen.getByRole("link", { name: "Start raffle" })).toBeInTheDocument();
-        expect(within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).getByRole("button", { name: "Create" })).toBeInTheDocument();
         expect(within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" })).toBeInTheDocument();
         expect(within(screen.getByTestId("pair-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
         expectBurnOnBurner();
@@ -320,7 +320,7 @@ describe("token page", () => {
         const pair = within(screen.getByTestId("pair-item"));
         expect(pair.getByText("Create DEX market")).toBeInTheDocument();
         expect(screen.queryByText("Pair with another token")).not.toBeInTheDocument();
-        expect(within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" })).toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).getByRole("button", { name: "Create" })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Make TOK stakable" })).not.toBeInTheDocument();
         expect(within(screen.getByTestId("metadata-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
         expect(within(screen.getByTestId("brand-kit-item")).getByRole("button", { name: "View" })).toBeInTheDocument();
@@ -335,10 +335,13 @@ describe("token page", () => {
         const hrefs = [
             screen.getByRole("link", { name: "Start raffle" }),
             within(screen.getByTestId("registry-item")).getByRole("link", { name: "View" }),
-            screen.getByRole("link", { name: "Reward LPs" }),
             within(screen.getByTestId("pair-item")).getByRole("link", { name: "Create" }),
-            within(screen.getByTestId("compounded-item")).getByRole("link", { name: "Create" }),
         ].map(link => link.getAttribute("href"));
+        // Make TOK stakable explains first; its dialog leads to the compounded reward form.
+        await userEvent.click(within(screen.getByTestId("compounded-item")).getByRole("button", { name: "Create" }));
+        const dialog = within(await screen.findByRole("dialog"));
+        expect(dialog.getByText("For TOK to be stakable, it needs a staking reward. Create a compounded staking reward for it.")).toBeInTheDocument();
+        hrefs.push(dialog.getByRole("link", { name: "Create compounded reward" }).getAttribute("href"));
 
         for (const href of hrefs) {
             expect(returnOf(href).get("return")).toBe(TOKEN_PAGE);
@@ -346,9 +349,8 @@ describe("token page", () => {
         }
         expect(hrefs[0]).toMatch(/^\/raffle\/new\?denom=/);
         expect(hrefs[1]).toMatch(/^\/official\?denom=/);
-        expect(hrefs[2]).toMatch(/^\/reward\/new\?staking=ulp_tok_ubze&/);
-        expect(hrefs[3]).toMatch(new RegExp(`^/create/market\\?base=${ENCODED}&`));
-        expect(hrefs[4]).toMatch(new RegExp(`^/denom-reward/new\\?denom=${ENCODED}&`));
+        expect(hrefs[2]).toMatch(new RegExp(`^/create/market\\?base=${ENCODED}&`));
+        expect(hrefs[3]).toMatch(new RegExp(`^/denom-reward/new\\?denom=${ENCODED}&`));
     });
 
     it("trading: a pool with its price, You created it, DEX; a halted token gets no create buttons", async () => {
@@ -361,6 +363,7 @@ describe("token page", () => {
         expect(pool).toHaveTextContent("You created it");
         expect(pool).toHaveTextContent("1 TOK = 0.500000 BZE · 2 TOK + 1 BZE in the pool");
         expect(within(pool).getByRole("link", { name: /DEX/ })).toHaveAttribute("href", "https://dex.example/pools/details?id=p1");
+        expect(within(pool).queryByRole("link", { name: "Reward LPs" })).not.toBeInTheDocument();
         const market = screen.getByTestId(`trading-market-ubze/${DENOM}`);
         expect(market).not.toHaveTextContent("You created it");
         unmount();
@@ -388,7 +391,7 @@ describe("token page", () => {
         expect(actions.queryByRole("button", { name: "Airdrop" })).not.toBeInTheDocument();
         expect(actions.queryByRole("link", { name: "Airdrop" })).not.toBeInTheDocument();
         expect(screen.queryByTestId("airdrop-disabled")).not.toBeInTheDocument();
-        expect(within(screen.getByTestId("compounded-item")).queryByRole("link", { name: "Create" })).not.toBeInTheDocument();
+        expect(within(screen.getByTestId("compounded-item")).queryByRole("button", { name: "Create" })).not.toBeInTheDocument();
 
         expect(screen.queryByRole("link", { name: /Details/ })).not.toBeInTheDocument();
         const details = actions.getByRole("link", { name: /DEX/ });

@@ -20,7 +20,6 @@ import {
     AnswerChips,
     FormPage,
     GuidedForm,
-    Hint,
     Optional,
     PayPanel,
     Question,
@@ -170,7 +169,6 @@ function TokenNewContent() {
     if (done) return <TokenDone input={done.input} hash={done.hash} />
 
     const ticker = form.symbol || 'TICKER'
-    const denomPreview = form.symbol ? createdDenom(address ?? '<you>', form.symbol) : `factory/${address ?? '<you>'}/u<ticker>`
     const supplyText = isSupplyValid ? prettyAmount(toBigNumber(form.initialSupply)) : ''
     const otherAdmin = form.adminAddress.trim()
     const handsOver = form.adminChoice === 'other'
@@ -209,7 +207,6 @@ function TokenNewContent() {
             crumb="Token"
             title={<>Create a <GradientText>token</GradientText></>}
             subtitle="Name it, set the supply and the admin."
-            techTag="tokenfactory · create denom"
             status={!isEmptyTokenForm(form) && <Text as="span">Draft saved in this browser</Text>}
             aside={aside}
         >
@@ -243,12 +240,11 @@ function TokenNewContent() {
                             <Field.ErrorText>{errorFor('symbol')}</Field.ErrorText>
                         </Field.Root>
                     </Grid>
-                    <Hint mono>{denomPreview}</Hint>
                     <Field.Root invalid={errorFor('description') !== ''}>
                         <Field.Label>Description <Optional /></Field.Label>
                         <Textarea
                             rows={3}
-                            placeholder="What is it for?"
+                            placeholder="Describe your token…"
                             value={form.description}
                             onChange={(e) => update({ description: e.target.value })}
                             onBlur={() => touch('description')}
@@ -343,14 +339,16 @@ function TokenNewContent() {
                     txKind={txKind}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'In your wallet', value: `${supplyText} ${ticker}` }]}
+                    gets={[
+                        { label: 'New token', value: `${form.name.trim()} · ${ticker}` },
+                        { label: 'Minted to you', value: `${supplyText} ${ticker}` },
+                    ]}
                     extra={[{
                         label: 'Admin',
                         value: handsOver
-                            ? <><chakra.span fontFamily="mono" overflowWrap="anywhere">{otherAdmin}</chakra.span> · {ADMIN_POWERS.toLowerCase()}</>
-                            : `Your wallet · ${ADMIN_POWERS.toLowerCase()}`,
+                            ? <chakra.span fontFamily="mono" overflowWrap="anywhere">{otherAdmin}</chakra.span>
+                            : 'You',
                     }]}
-                    permanent={['The ticker in its address']}
                     submitLabel="Create token"
                     onSubmit={create}
                     disabled={!address || !isComplete}

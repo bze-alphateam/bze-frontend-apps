@@ -32,7 +32,7 @@ test("home → Create a DEX market → Liquidity pool lands on the pool wizard",
 
     await page.getByTestId("start-market").click();
     await expect(page).toHaveURL(/\/create\/market$/);
-    await expect(page.getByRole("heading", {level: 1, name: "How should people trade it?"})).toBeVisible();
+    await expect(page.getByRole("heading", {level: 1, name: "What kind of market do you want to create?"})).toBeVisible();
     // Pools and markets pay the same tradebin fee: fixtures/lcd/tradebin.params.json (25,000 TBZE).
     await expect(page.getByRole("region", {name: "Liquidity pool"}).getByTestId("fee-line")).toHaveText("Creation fee 25,000 TBZE + network fee");
 

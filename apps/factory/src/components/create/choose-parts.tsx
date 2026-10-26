@@ -141,13 +141,13 @@ export function Facts({ facts }: { facts: [string, string][] }) {
 interface OptionCardProps {
     /** Region name and h2. */
     title: string;
-    line: string;
-    /** A gold edge and a tag ("Most common first step"). */
+    line?: string;
+    /** A gold edge and a tag ("Most common"). */
     featuredTag?: string;
     tag?: React.ReactNode;
     children?: React.ReactNode;
-    /** The card's one action. */
-    action: { label: string; href: string };
+    /** The card's one action; `onClick` may stop the navigation (e.g. to confirm first). */
+    action: { label: string; href: string; onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void; muted?: boolean };
 }
 
 /** One option on a Choose screen: what it is, how it works, what to watch, what it costs, the way in. */
@@ -167,19 +167,17 @@ export function OptionCard({ title, line, featuredTag, tag, children, action }: 
             data-testid="option-card"
         >
             <VStack align="stretch" gap="6px">
-                {(featuredTag || tag) && (
-                    <HStack gap="6px" flexWrap="wrap">
-                        {featuredTag && <Chip tone="gold">{featuredTag}</Chip>}
-                        {tag}
-                    </HStack>
-                )}
-                <Text as="h2" fontSize="20px" fontWeight="700">{title}</Text>
-                <Text fontSize="14px" lineHeight="1.5" color="fg.muted">{line}</Text>
+                <Flex align="center" gap="6px 10px" wrap="wrap">
+                    <Text as="h2" fontSize="20px" fontWeight="700">{title}</Text>
+                    {featuredTag && <Chip tone="gold">{featuredTag}</Chip>}
+                    {tag}
+                </Flex>
+                {line && <Text fontSize="14px" lineHeight="1.5" color="fg.muted">{line}</Text>}
             </VStack>
             {children}
             <Box flex="1" />
-            <Button asChild variant={hgVariant('primary')} size="lg" w={{ base: 'full', sm: 'auto' }} alignSelf="flex-start">
-                <NextLink href={action.href}>{action.label} <LuArrowRight aria-hidden /></NextLink>
+            <Button asChild variant={hgVariant(action.muted ? 'secondary' : 'primary')} size="lg" w={{ base: 'full', sm: 'auto' }} alignSelf="flex-start">
+                <NextLink href={action.href} onClick={action.onClick}>{action.label} <LuArrowRight aria-hidden /></NextLink>
             </Button>
         </HgCard>
     )

@@ -214,12 +214,12 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             await userEvent.click(button(step("Extra days"), "Review extension"));
 
             const review = step("Review");
-            const leaves = within(review).getByRole("region", { name: "Leaves your wallet" });
+            const leaves = within(review).getByRole("region", { name: "You pay" });
             expect(leaves).toHaveTextContent(/Extra rewards\s*HONEY\s*1,000 HONEY/);
             expect(within(review).getByRole("region", { name: "You get" })).toHaveTextContent("10 more days");
             expect(within(review).getByRole("region", { name: "You get" })).not.toHaveTextContent("for everyone staking");
             expect(review).toHaveTextContent("New end date5 Nov");
-            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("Rewards are committed to stakers");
+            expect(within(review).getByRole("region", { name: "Permanent" })).toHaveTextContent("This action can't be undone");
 
             await userEvent.click(extendButton());
             expect(sentMsgs()).toEqual([{

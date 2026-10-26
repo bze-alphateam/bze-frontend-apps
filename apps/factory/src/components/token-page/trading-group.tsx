@@ -38,33 +38,23 @@ function PairTitle({ base, quote, isMine, kind }: { base: string; quote: string;
     )
 }
 
-function PoolRow({ pool, denom, address, back, isHalted }: {
+function PoolRow({ pool, denom, address }: {
     pool: LiquidityPoolSDKType;
     denom: string;
     address?: string;
-    back: GroupProps['back'];
-    isHalted: boolean;
 }) {
     const { asset: baseAsset } = useAsset(pool.base)
     const { asset: quoteAsset } = useAsset(pool.quote)
     const base = { ticker: baseAsset?.ticker ?? pool.base, decimals: baseAsset?.decimals ?? 0 }
     const quote = { ticker: quoteAsset?.ticker ?? pool.quote, decimals: quoteAsset?.decimals ?? 0 }
-    const pairHalted = isHalted || Boolean(baseAsset?.halted || quoteAsset?.halted)
 
     return (
         <ActionItem
             testId={`trading-pool-${pool.id}`}
             title={<PairTitle base={base.ticker} quote={quote.ticker} kind="pool" isMine={Boolean(address) && pool.creator === address} />}
             line={poolLine(pool, denom, base, quote)}
-            action={(
-                <HStack gap="6px" flexWrap="wrap">
-                    {!pairHalted && (
-                        <ItemLink href={withReturn(`/reward/new?staking=${encodeURIComponent(pool.lp_denom)}`, back)}>Reward LPs</ItemLink>
-                    )}
-                    {/* Adding and removing liquidity live on the DEX pool page (BFE-262). */}
-                    <AppLink app="dex" href={dexPoolHref(getDexApp().href, pool.id)}>DEX</AppLink>
-                </HStack>
-            )}
+            // Adding and removing liquidity live on the DEX pool page (BFE-262).
+            action={<AppLink app="dex" href={dexPoolHref(getDexApp().href, pool.id)}>DEX</AppLink>}
         />
     )
 }
@@ -123,7 +113,7 @@ export function TradingGroup({ asset, back }: GroupProps) {
             ) : (
                 <>
                     {pools.map(pool => (
-                        <PoolRow key={pool.id} pool={pool} denom={denom} address={address} back={back} isHalted={isHalted} />
+                        <PoolRow key={pool.id} pool={pool} denom={denom} address={address} />
                     ))}
                     {markets.map(market => (
                         <MarketRow key={createMarketId(market.base, market.quote)} market={market} address={address} />

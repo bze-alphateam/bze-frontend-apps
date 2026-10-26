@@ -22,6 +22,7 @@ import {
 import type { StakingRewardSDKType } from '@bze/bzejs/bze/rewards/store'
 import { useChain } from '@interchain-kit/react'
 import { useFactoryTx } from '@/hooks/useFactoryTx'
+import { MakeStakableDialog } from '@/components/rewards/make-stakable-dialog'
 import { softButton } from '@/components/ui/soft-button'
 import { stakersAirdropHref } from '@/lib/airdrop'
 import { dexRewardHref } from '@/lib/create-routes'
@@ -311,6 +312,7 @@ export function SimpleRewardItem({ reward, link = sameHref, onChanged, showStake
 
 /** A token with no compounded reward yet: the way to make it stakable. */
 export function StakableOffer({ ticker, href }: { ticker: string; href: string }) {
+    const [isExplaining, setExplaining] = useState(false)
     return (
         <Flex
             borderWidth="1px"
@@ -326,7 +328,8 @@ export function StakableOffer({ ticker, href }: { ticker: string; href: string }
             data-testid="stakable-offer"
         >
             <Text fontSize="13px" color="hg.text.faint">No compounded reward yet.</Text>
-            <RewardLink href={href}>{`Make ${ticker} stakable`}</RewardLink>
+            <Button {...softButton} {...smallButton} onClick={() => setExplaining(true)}>{`Make ${ticker} stakable`}</Button>
+            <MakeStakableDialog open={isExplaining} onClose={() => setExplaining(false)} ticker={ticker} href={href} />
         </Flex>
     )
 }

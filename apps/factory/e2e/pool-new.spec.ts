@@ -13,7 +13,7 @@ test("walks Pair · Starting amounts · Fees up to Review with the pool fee", as
     await page.goto(`/pool/new?base=${VDL}&quote=ubze`);
 
     await expect(page.getByRole("heading", {name: "Create a liquidity pool"})).toBeVisible();
-    await expect(page.getByText("tradebin · liquidity pool")).toBeVisible();
+    await expect(page.getByText("tradebin · liquidity pool")).toHaveCount(0);
 
     // The deep link answers the pair.
     const pair = page.getByRole("region", {name: "Pair"});
@@ -36,11 +36,11 @@ test("walks Pair · Starting amounts · Fees up to Review with the pool fee", as
 
     const review = page.getByRole("region", {name: "Review"});
     await expect(review).toHaveAttribute("data-state", "active");
-    const leaves = review.getByRole("region", {name: "Leaves your wallet"});
+    const leaves = review.getByRole("region", {name: "You pay"});
     await expect(leaves.getByText("Creation fee", {exact: true})).toBeVisible();
     await expect(leaves.getByText("25,000 TBZE", {exact: true})).toBeVisible();
-    await expect(review.getByRole("region", {name: "You get"})).toContainText("VDL/TBZE pool");
-    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("The first deposit (1,000 VDL + 2 TBZE)");
+    await expect(review.getByRole("region", {name: "You get"})).toContainText("Liquidity pool");
+    await expect(review.getByRole("region", {name: "Permanent"})).toContainText("This action can't be undone");
 
     await expect(page.getByRole("region", {name: "What will happen"})).toHaveCount(0);
     const pay = page.getByRole("region", {name: "You will pay"});

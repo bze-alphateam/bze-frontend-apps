@@ -35,6 +35,7 @@ import {
 import { dexMarketHref } from '@/lib/create-routes'
 import { notEnoughText } from '@/lib/format'
 import { createMarketMsgValue, marketPairProblem } from '@/lib/market-new'
+import { VOCABULARY } from '@/lib/vocabulary'
 
 const { createMarket } = bze.tradebin.MessageComposer.withTypeUrl
 
@@ -125,7 +126,6 @@ function MarketNewContent() {
             crumb="Order-book market"
             title={<>Create an <GradientText>order-book market</GradientText></>}
             subtitle="Open an order book on the DEX."
-            techTag="tradebin · order-book market"
             aside={aside}
         >
             <Question
@@ -177,8 +177,8 @@ function MarketNewContent() {
                     txKind={CREATE_MARKET_TX_KIND}
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
-                    gets={[{ label: 'Market', value: `${pair} order book` }]}
-                    permanent={["One market per pair, and it can't be deleted"]}
+                    gets={[{ label: VOCABULARY.market.name, value: pair }]}
+                    permanent={["This action can't be undone"]}
                     submitLabel="Create market"
                     onSubmit={create}
                     disabled={!canCreate}
