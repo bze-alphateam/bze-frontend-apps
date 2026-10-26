@@ -88,6 +88,7 @@ export {
     calculateUserPoolData, calculatePoolOppositeAmount, calculatePoolPrice,
     createPoolId, poolIdFromPoolDenom, createLpDenomPoolsMap
 } from './utils/liquidity_pool';
+export { poolData, poolTickers } from './utils/pool_data';
 export {
     calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
 } from './utils/fee_conversion';

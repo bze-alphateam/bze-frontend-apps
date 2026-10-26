@@ -1,14 +1,11 @@
 import BigNumber from "bignumber.js";
-import {
-    type Asset,
-    calculateRewardsStakingApr,
-    createMarketId,
-    type LiquidityPoolData,
-    type MarketData,
-    toBigNumber,
-    uAmountToAmount,
-} from "@bze/bze-ui-kit";
 import type {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
+import type {Asset} from "../types/asset";
+import type {LiquidityPoolData} from "../types/liquidity_pool";
+import type {MarketData} from "../types/market";
+import {toBigNumber, uAmountToAmount} from "./amount";
+import {createMarketId} from "./market";
+import {calculateRewardsStakingApr} from "./staking";
 
 /**
  * The aggregator tickers of liquidity pools, by pool id. The tickers endpoint returns order-book
@@ -27,7 +24,7 @@ export function poolTickers(tickers: MarketData[]): Map<string, MarketData> {
 
 /**
  * USD value, 24h volume, fees and APR of a pool: volume and fees are read from the base side and
- * fall back to the quote side when the base has no USD price, as in the DEX app; the APR is the
+ * fall back to the quote side when the base has no USD price; the APR is the
  * providers' share of a day's fees over the pool's USD value. Without a ticker the volumes, fees
  * and APR are 0.
  */
@@ -56,8 +53,8 @@ export function poolData(
         usdFees = quoteVolume.multipliedBy(pool.fee).multipliedBy(quotePrice);
     }
 
-    // The providers' cut of a day's fees, annualised over the pool's USD value. (The DEX divides
-    // the fees by the volume first, which yields the fee rate instead of USD and a near-zero APR.)
+    // The providers' cut of a day's fees (USD), annualised over the pool's USD value. Dividing the
+    // fees by the volume first would yield the fee rate instead of USD and a near-zero APR.
     const feeToLp = usdFees.multipliedBy(pool.fee_dest?.providers || 0);
     let apr = calculateRewardsStakingApr(feeToLp, usdValue);
     if (!apr.isFinite()) apr = toBigNumber(0);
