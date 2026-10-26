@@ -88,15 +88,14 @@ export function BalanceCard({asset, address, positions}: { asset: Asset; address
                 )}
             </Flex>
             <Grid
-                templateColumns="repeat(3, minmax(0, 1fr))"
+                templateColumns="repeat(2, minmax(0, 1fr))"
                 gap="12px"
                 pt="14px"
                 borderTopWidth="1px"
                 borderStyle="solid"
                 borderColor={ts.border}
             >
-                <Position label="Staked in holders pool" value={display(positions.holdersPool)} testId="wallet-holders-pool"/>
-                <Position label="Staked in programs" value={display(positions.programs)} testId="wallet-programs"/>
+                <Position label="Staked" value={display(positions.staked)} testId="wallet-staked"/>
                 <Position label="Unlocking" value={display(positions.unlocking)} testId="wallet-unlocking"/>
             </Grid>
         </TsFeaturedCard>
