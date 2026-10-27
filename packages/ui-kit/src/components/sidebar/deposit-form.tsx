@@ -32,10 +32,12 @@ import {MaxInputGroup} from '../max-input-group';
 /**
  * Deposit flow: move an asset from a foreign chain onto BeeZee.
  *
- * Asset-first picker mirroring the withdraw form. The flat list contains every
- * BZE IBC voucher with a complete trace (1-hop native assets from direct
- * counterparties). Each asset has exactly one source chain, so no network
- * picker is needed — the source is shown as a read-only label after selection.
+ * Asset-first picker mirroring the withdraw form. The list holds every BZE IBC
+ * voucher with a complete trace (1-hop native assets from direct
+ * counterparties) plus BZE's own coins (BZE + factory tokens) coming back.
+ * A voucher has exactly one source chain, shown read-only after selection;
+ * a BZE coin can come back from any chain BZE has a channel with, so it gets
+ * a source picker (Osmosis preselected).
  */
 export const DepositForm = () => {
     const [selectedAsset, setSelectedAsset] = useState<BridgeableAsset | undefined>();
@@ -52,18 +54,48 @@ export const DepositForm = () => {
             .map(a => ({denom: a.denom, notice: LEGACY_ASSET_NOTICES[a.denom]}));
     }, [blockedAssets]);
 
-    // ─── Asset picker collection (flat list, sorted by ticker) ─────────────
+    // Routes grouped by BZE denom, in the hook's order: one per voucher, one per
+    // counterparty for a BZE coin (Osmosis first).
+    const routesByDenom = useMemo(() => {
+        const map = new Map<string, BridgeableAsset[]>();
+        for (const a of bridgeableAssets) {
+            const routes = map.get(a.bzeAsset.denom);
+            if (routes) routes.push(a);
+            else map.set(a.bzeAsset.denom, [a]);
+        }
+        return map;
+    }, [bridgeableAssets]);
+
+    // ─── Asset picker collection (one row per asset) ───────────────────────
     const assetsCollection = useMemo(() => {
         return createListCollection({
-            items: bridgeableAssets.map(a => ({
-                label: a.bzeAsset.ticker,
-                value: a.bzeAsset.denom,
-                logo: a.bzeAsset.logo,
-                displayName: a.bzeAsset.name,
-                chainDisplayName: a.counterparty.displayName,
+            items: Array.from(routesByDenom.values()).map(routes => {
+                const a = routes[0];
+                return {
+                    label: a.bzeAsset.ticker,
+                    value: a.bzeAsset.denom,
+                    logo: a.bzeAsset.logo,
+                    displayName: a.bzeAsset.name,
+                    chainDisplayName: routes.length === 1 ? a.counterparty.displayName : `${routes.length} networks`,
+                };
+            }),
+        });
+    }, [routesByDenom]);
+
+    // ─── Source picker collection (BZE coins only) ─────────────────────────
+    const selectedRoutes = useMemo(
+        () => (selectedAsset ? routesByDenom.get(selectedAsset.bzeAsset.denom) ?? [] : []),
+        [selectedAsset, routesByDenom],
+    );
+    const sourcesCollection = useMemo(() => {
+        return createListCollection({
+            items: selectedRoutes.map(r => ({
+                label: r.counterparty.displayName,
+                value: r.counterparty.chainName,
+                logo: r.counterparty.logo,
             })),
         });
-    }, [bridgeableAssets]);
+    }, [selectedRoutes]);
 
     // ─── Counterparty wallet ───────────────────────────────────────────────
     const sourceChainName = selectedAsset?.counterparty.chainName ?? getChainName();
@@ -82,7 +114,7 @@ export const DepositForm = () => {
     } = useCounterpartyBalance(
         selectedAsset?.counterparty.chainName,
         sourceAddress,
-        selectedAsset?.ibcData.counterparty.baseDenom,
+        selectedAsset?.sourceDenom,
     );
 
     const sourceBalance = useMemo(() => {
@@ -161,11 +193,19 @@ export const DepositForm = () => {
     // ─── Callbacks ─────────────────────────────────────────────────────────
     const onAssetChange = useCallback((denom: string) => {
         if (!denom) return;
-        const asset = bridgeableAssets.find(a => a.bzeAsset.denom === denom);
-        setSelectedAsset(asset);
+        setSelectedAsset(routesByDenom.get(denom)?.[0]);
         setAmount('');
         setAmountError('');
-    }, [bridgeableAssets]);
+    }, [routesByDenom]);
+
+    const onSourceChange = useCallback((chainName: string) => {
+        if (!chainName) return;
+        const route = selectedRoutes.find(r => r.counterparty.chainName === chainName);
+        if (!route) return;
+        setSelectedAsset(route);
+        setAmount('');
+        setAmountError('');
+    }, [selectedRoutes]);
 
     const onAmountChange = useCallback((value: string) => {
         setAmount(sanitizeNumberInput(value));
@@ -261,12 +301,49 @@ export const DepositForm = () => {
                 <LegacyAssetNoticeBox key={denom} notice={notice}/>
             ))}
 
-            {/* Source chain — auto-resolved, read-only */}
-            {selectedAsset && (
+            {/* Source chain — read-only for a voucher, picker for a BZE coin */}
+            {selectedAsset && selectedRoutes.length <= 1 && (
                 <DrawerChosenRow label="Source">
                     <TokenLogo src={selectedAsset.counterparty.logo} symbol={sourceDisplayName} size="18px"/>
                     {sourceDisplayName}
                 </DrawerChosenRow>
+            )}
+
+            {selectedAsset && selectedRoutes.length > 1 && (
+                <Box>
+                    <Select.Root
+                        collection={sourcesCollection}
+                        size="sm"
+                        value={[selectedAsset.counterparty.chainName]}
+                        onValueChange={(details) => onSourceChange(details.value[0] || '')}
+                    >
+                        <Select.Label>Source</Select.Label>
+                        <Select.HiddenSelect/>
+                        <Select.Control>
+                            <Select.Trigger>
+                                <Select.ValueText placeholder="Select source network"/>
+                            </Select.Trigger>
+                            <Select.IndicatorGroup>
+                                <Select.Indicator/>
+                            </Select.IndicatorGroup>
+                        </Select.Control>
+                        <Portal>
+                            <Select.Positioner>
+                                <Select.Content>
+                                    {sourcesCollection.items.map((item) => (
+                                        <Select.Item key={item.value} item={item}>
+                                            <HStack gap="2">
+                                                <TokenLogo src={item.logo} symbol={item.label} size="16px"/>
+                                                <Text>{item.label}</Text>
+                                            </HStack>
+                                            <Select.ItemIndicator/>
+                                        </Select.Item>
+                                    ))}
+                                </Select.Content>
+                            </Select.Positioner>
+                        </Portal>
+                    </Select.Root>
+                </Box>
             )}
 
             {/* Transfer direction label */}

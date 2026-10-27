@@ -4,12 +4,15 @@ import {useMemo} from "react";
 import type {Asset, IBCData} from "../types/asset";
 import {useAssetsContext} from "./useAssets";
 import {isAssetDenied, isChainDenied} from "../constants/cross_chain";
-import {isIbcDenom} from "../utils/denom";
+import {isFactoryDenom, isIbcDenom, isLpDenom} from "../utils/denom";
+import {ibcVoucherDenom} from "../utils/ibc";
 import {DEPOSIT_EXCLUDED_ASSETS} from "../constants/assets";
 import {getChains, getChainName, getAssetLists} from "../constants/chain";
 import {ibcData as registryIbcData} from "chain-registry";
 import {useBlockedIbcInbound} from "./useBlockedIbcInbound";
 import {isIbcInboundBlocked} from "../utils/ibc_inbound";
+
+export type BridgeableAssetKind = 'ibc' | 'native' | 'factory';
 
 /**
  * A single asset that can be bridged between BZE and a Cosmos counterparty
@@ -18,12 +21,23 @@ import {isIbcInboundBlocked} from "../utils/ibc_inbound";
  *
  * Everything the bridge form, balance lookup, and MsgTransfer builder need
  * lives on this one object.
+ *
+ * An IBC voucher has exactly one entry (the chain it came from). A BZE coin
+ * (native or factory) can come back from any chain BZE has a channel with, so
+ * it has one entry per such chain, all sharing the same `bzeAsset`.
  */
 export interface BridgeableAsset {
     /** The full Asset record from BZE's assets map (has the voucher denom, ticker, logo, decimals, etc). */
     bzeAsset: Asset;
-    /** Resolved IBC trace — guaranteed to have both sides populated. */
+    kind: BridgeableAssetKind;
+    /**
+     * Channels of the route — guaranteed to have both sides populated. For a
+     * BZE coin the trace is the one its voucher has on the counterparty, so
+     * `counterparty.baseDenom` is the BZE denom, not what the user holds there.
+     */
     ibcData: IBCData;
+    /** The denom the user holds and sends on the counterparty chain. */
+    sourceDenom: string;
     /** Counterparty chain metadata pulled from chain-registry (pretty name, logo, bech32 prefix). */
     counterparty: {
         chainName: string;
@@ -208,6 +222,40 @@ const isBridgeable = (asset: Asset): boolean => {
     return true;
 };
 
+// ─── BZE coins coming back ─────────────────────────────────────────────
+
+const OSMOSIS_CHAIN_NAME = 'osmosis';
+
+/** BZE's own coins (native + factory) that can be sent back from a counterparty. */
+const isReturnable = (asset: Asset): boolean => {
+    if (!asset.denom || isIbcDenom(asset.denom) || isLpDenom(asset.denom)) return false;
+    return !!asset.decimals && asset.decimals > 0;
+};
+
+/**
+ * One route per counterparty chain, from the channels BZE's IBC vouchers came
+ * through (the same pool the withdraw form offers BZE coins). Osmosis first:
+ * it's where BZE coins are traded, so it's the usual way back.
+ */
+const returnRoutes = (ibcChains: IBCData[]): IBCData[] => {
+    const bzeName = getChainName();
+    const seen = new Set<string>();
+    const out: IBCData[] = [];
+    for (const entry of ibcChains) {
+        const cpName = entry.counterparty?.chainName;
+        if (!cpName || cpName === bzeName || seen.has(cpName)) continue;
+        if (!entry.chain?.channelId || !entry.counterparty.channelId) continue;
+        seen.add(cpName);
+        out.push(entry);
+    }
+    const rank = (c: string) => (c === OSMOSIS_CHAIN_NAME ? 0 : 1);
+    out.sort((a, b) =>
+        rank(a.counterparty.chainName) - rank(b.counterparty.chainName)
+        || a.counterparty.chainName.localeCompare(b.counterparty.chainName),
+    );
+    return out;
+};
+
 // ─── Public hook ──────────────────────────────────────────────────────────
 
 export interface UseBridgeableAssetsResult {
@@ -242,19 +290,81 @@ export interface UseBridgeableAssetsResult {
  *      denom. While that param is loading or unavailable nothing is
  *      filtered (fail open). Withdrawals are never affected.
  *
+ * BZE's own coins (BZE + factory tokens, not LP shares) are added too, once
+ * per counterparty chain BZE has a channel with: holders bring them back
+ * from Osmosis and co. The denylist and `DEPOSIT_EXCLUDED_ASSETS` apply.
+ * Order: BZE, then IBC vouchers, then factory tokens (verified first).
+ *
  * Grouped by counterparty chain for convenience, though the deposit form
  * currently uses the flat `assets` list as an asset-first picker.
  */
 export function useBridgeableAssets(): UseBridgeableAssetsResult {
-    const {assetsMap, isLoading} = useAssetsContext();
+    const {assetsMap, ibcChains, isLoading} = useAssetsContext();
     const blockedIbcInbound = useBlockedIbcInbound();
 
     const {assets, chains, blockedAssets} = useMemo(() => {
-        const allAssets: BridgeableAsset[] = [];
+        const ibcAssets: BridgeableAsset[] = [];
+        const nativeAssets: BridgeableAsset[] = [];
+        const factoryAssets: BridgeableAsset[] = [];
         const blocked: Asset[] = [];
         const byChain = new Map<string, BridgeableChain>();
 
+        const toCounterparty = (cpName: string, fallbackDisplayName: string) => {
+            const registryChain = registryChainFor(cpName);
+            if (!registryChain) return undefined;
+            const chainId = registryChain.chainId || '';
+            const addressPrefix = registryChain.bech32Prefix || '';
+            if (!chainId || !addressPrefix) return undefined;
+            return {
+                chainName: cpName,
+                chainId,
+                displayName: registryChain.prettyName || fallbackDisplayName || cpName,
+                logo: pickLogo(registryChain),
+                addressPrefix,
+            };
+        };
+
+        const addToChain = (bridgeable: BridgeableAsset) => {
+            const cp = bridgeable.counterparty;
+            const existing = byChain.get(cp.chainName);
+            if (existing) {
+                existing.assets.push(bridgeable);
+            } else {
+                byChain.set(cp.chainName, {...cp, assets: [bridgeable]});
+            }
+        };
+
+        const routes = returnRoutes(ibcChains ?? [])
+            .filter(r => !isChainDenied(r.counterparty.chainName));
+
         for (const asset of assetsMap.values()) {
+            if (isReturnable(asset)) {
+                if (isAssetDenied(asset.denom) || DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
+                const kind: BridgeableAssetKind = isFactoryDenom(asset.denom) ? 'factory' : 'native';
+                for (const route of routes) {
+                    const counterparty = toCounterparty(route.counterparty.chainName, route.counterparty.chainPrettyName);
+                    if (!counterparty) continue;
+                    const bridgeable: BridgeableAsset = {
+                        bzeAsset: asset,
+                        kind,
+                        ibcData: {
+                            chain: {channelId: route.chain.channelId},
+                            counterparty: {
+                                chainName: route.counterparty.chainName,
+                                chainPrettyName: route.counterparty.chainPrettyName,
+                                channelId: route.counterparty.channelId,
+                                baseDenom: asset.denom,
+                            },
+                        },
+                        sourceDenom: ibcVoucherDenom(route.counterparty.channelId, asset.denom),
+                        counterparty,
+                    };
+                    (kind === 'factory' ? factoryAssets : nativeAssets).push(bridgeable);
+                    addToChain(bridgeable);
+                }
+                continue;
+            }
+
             if (!isBridgeable(asset)) continue;
             if (isAssetDenied(asset.denom)) continue;
             if (DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
@@ -275,47 +385,28 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
             const cpBaseDenom = asset.IBCData!.counterparty.baseDenom;
             if (is2HopWithDirectAlternative(cpName, cpBaseDenom)) continue;
 
-            const registryChain = registryChainFor(cpName);
-            if (!registryChain) continue;
-
-            const chainId = registryChain.chainId || '';
-            const displayName =
-                registryChain.prettyName ||
-                asset.IBCData!.counterparty.chainPrettyName ||
-                cpName;
-            const addressPrefix = registryChain.bech32Prefix || '';
-            const logo = pickLogo(registryChain);
-
-            if (!chainId || !addressPrefix) continue;
+            const counterparty = toCounterparty(cpName, asset.IBCData!.counterparty.chainPrettyName);
+            if (!counterparty) continue;
 
             const bridgeable: BridgeableAsset = {
                 bzeAsset: asset,
+                kind: 'ibc',
                 ibcData: asset.IBCData!,
-                counterparty: {
-                    chainName: cpName,
-                    chainId,
-                    displayName,
-                    logo,
-                    addressPrefix,
-                },
+                sourceDenom: cpBaseDenom,
+                counterparty,
             };
 
-            allAssets.push(bridgeable);
-
-            const existing = byChain.get(cpName);
-            if (existing) {
-                existing.assets.push(bridgeable);
-            } else {
-                byChain.set(cpName, {
-                    chainName: cpName,
-                    chainId,
-                    displayName,
-                    logo,
-                    addressPrefix,
-                    assets: [bridgeable],
-                });
-            }
+            ibcAssets.push(bridgeable);
+            addToChain(bridgeable);
         }
+
+        // Verified factory tokens first; Array.sort is stable, so each token's
+        // routes keep their Osmosis-first order.
+        factoryAssets.sort((a, b) =>
+            Number(b.bzeAsset.verified) - Number(a.bzeAsset.verified)
+            || (a.bzeAsset.ticker || '').localeCompare(b.bzeAsset.ticker || ''),
+        );
+        const allAssets = [...nativeAssets, ...ibcAssets, ...factoryAssets];
 
         // Stable, deterministic order: chains by displayName, assets by ticker.
         const sortedChains = Array.from(byChain.values()).sort((a, b) =>
@@ -326,7 +417,7 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
         }
 
         return {assets: allAssets, chains: sortedChains, blockedAssets: blocked};
-    }, [assetsMap, blockedIbcInbound]);
+    }, [assetsMap, ibcChains, blockedIbcInbound]);
 
     return {assets, chains, blockedAssets, isLoading};
 }

@@ -42,6 +42,29 @@ const ibcAsset = (denom: string, ticker: string, bzeChannel: string, chainName: 
 const USDC_N = ibcAsset(USDC_N_DENOM, 'USDC.n', 'channel-3', 'noble', 'channel-95', 'uusdc')
 const USDC_INJ = ibcAsset(USDC_INJ_DENOM, 'USDC.inj', 'channel-13', 'injective', 'channel-496', 'erc20:0xa00C59fF5a080D2b954d0c75e46E22a0c371235a')
 
+const bzeCoin = (denom: string, ticker: string, type: string, verified = true): Asset => ({
+    type,
+    denom,
+    decimals: 6,
+    name: ticker,
+    ticker,
+    logo: '',
+    stable: false,
+    verified,
+    supply: BigInt(1000),
+})
+
+const BZE = bzeCoin('ubze', 'BZE', 'Native')
+const GGE_DENOM = 'factory/bze12gyp30f29zg26nuqrwdhl26ej4q066pt572fhm/GGE'
+const GGE = bzeCoin(GGE_DENOM, 'GGE', 'Factory')
+const AAA = bzeCoin('factory/bze1aaa/uaaa', 'AAA', 'Factory', false)
+const LP = bzeCoin('ulp_1', 'LP', 'LP')
+
+// BZE ↔ Osmosis is channel-0 ↔ channel-340; the vouchers are the ones chain-registry lists on Osmosis.
+const OSMO_ROUTE = { chain: { channelId: 'channel-0' }, counterparty: { chainName: 'osmosis', chainPrettyName: 'Osmosis', channelId: 'channel-340', baseDenom: 'uosmo' } }
+const BZE_ON_OSMOSIS = 'ibc/C822645522FC3EECF817609AA38C24B64D04F5C267A23BCCF8F2E3BC5755FA88'
+const GGE_ON_OSMOSIS = 'ibc/AAC5DA36E48226B906DE694EA8B0464DE5EE45D7449984E4D799F33B8089CD6B'
+
 const params = (blockedIbcInbound: TxFeeCollectorParamsCache['blockedIbcInbound']): TxFeeCollectorParamsCache => ({
     validatorMinGasFee: { denom: 'ubze', amount: '0.01' },
     blockedIbcInbound,
@@ -94,5 +117,76 @@ describe('useBridgeableAssets', () => {
         const { result } = renderHook(() => useBridgeableAssets())
 
         expect(depositDenoms(result.current.assets)).toEqual([USDC_N_DENOM, USDC_INJ_DENOM].sort())
+    })
+})
+
+describe('useBridgeableAssets — BZE coins coming back', () => {
+    beforeEach(() => {
+        getTxFeeCollectorParamsMock.mockReset()
+        getTxFeeCollectorParamsMock.mockResolvedValue(params([]))
+        useAssetsContextMock.mockReturnValue({
+            assetsMap: new Map<string, Asset>([
+                [AAA.denom, AAA], [GGE_DENOM, GGE], [USDC_INJ_DENOM, USDC_INJ], [LP.denom, LP], ['ubze', BZE],
+            ]),
+            ibcChains: [USDC_INJ.IBCData, USDC_N.IBCData, OSMO_ROUTE],
+            isLoading: false,
+        })
+    })
+
+    it('offers BZE and factory tokens from every channel, sending their voucher there', async () => {
+        const { result } = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+
+        const fromOsmosis = result.current.assets.filter(a => a.counterparty.chainName === 'osmosis')
+        expect(fromOsmosis.map(a => [a.bzeAsset.ticker, a.kind, a.sourceDenom])).toEqual([
+            ['BZE', 'native', BZE_ON_OSMOSIS],
+            ['GGE', 'factory', GGE_ON_OSMOSIS],
+            ['AAA', 'factory', expect.stringMatching(/^ibc\/[0-9A-F]{64}$/)],
+        ])
+        // Signed on Osmosis through its end of the channel; arrives on BZE's channel-0.
+        expect(fromOsmosis[0].ibcData).toEqual({
+            chain: { channelId: 'channel-0' },
+            counterparty: { chainName: 'osmosis', chainPrettyName: 'Osmosis', channelId: 'channel-340', baseDenom: 'ubze' },
+        })
+    })
+
+    it('orders BZE first, then vouchers, then factory tokens verified first, Osmosis first per coin', async () => {
+        const { result } = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+
+        expect(result.current.assets.map(a => `${a.bzeAsset.ticker}@${a.counterparty.chainName}`)).toEqual([
+            'BZE@osmosis', 'BZE@injective', 'BZE@noble',
+            'USDC.inj@injective',
+            'GGE@osmosis', 'GGE@injective', 'GGE@noble',
+            'AAA@osmosis', 'AAA@injective', 'AAA@noble',
+        ])
+    })
+
+    it('never offers LP shares', async () => {
+        const { result } = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+
+        expect(result.current.assets.some(a => a.bzeAsset.denom === LP.denom)).toBe(false)
+    })
+
+    it('offers no BZE coin route when no channel is known', async () => {
+        useAssetsContextMock.mockReturnValue({
+            assetsMap: new Map<string, Asset>([['ubze', BZE], [USDC_INJ_DENOM, USDC_INJ]]),
+            ibcChains: [],
+            isLoading: false,
+        })
+        const { result } = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+
+        expect(depositDenoms(result.current.assets)).toEqual([USDC_INJ_DENOM])
+    })
+
+    it('keeps the voucher base denom as the source denom of an IBC asset', async () => {
+        const { result } = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+
+        const usdc = result.current.assets.find(a => a.bzeAsset.denom === USDC_INJ_DENOM)
+        expect(usdc?.kind).toBe('ibc')
+        expect(usdc?.sourceDenom).toBe(USDC_INJ.IBCData!.counterparty.baseDenom)
     })
 })
