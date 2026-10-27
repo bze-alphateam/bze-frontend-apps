@@ -89,13 +89,15 @@ export function useBridgeTransfer(input: UseBridgeTransferInput): UseBridgeTrans
         let plan: IbcTransferPlan;
 
         if (input.direction === 'deposit') {
-            // Deposit: sign on the counterparty chain, send the base denom on
-            // that chain through the counterparty-side channel, receiver = BZE.
+            // Deposit: sign on the counterparty chain, send the denom held on
+            // that chain (base denom for a voucher, the BZE coin's own voucher
+            // there for BZE/factory tokens) through the counterparty-side
+            // channel, receiver = BZE.
             const {asset} = input;
             plan = {
                 isDeposit: true,
                 sourceChannel: asset.ibcData.counterparty.channelId,
-                tokenDenom: asset.ibcData.counterparty.baseDenom,
+                tokenDenom: asset.sourceDenom,
                 decimals: asset.bzeAsset.decimals,
                 sourceAddress: counterpartyChain.address,
                 destAddress: bzeChain.address,
