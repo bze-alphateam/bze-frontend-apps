@@ -76,7 +76,7 @@ export {
 } from './utils/formatter';
 export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
-export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout } from './utils/ibc';
+export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout, ibcVoucherDenom } from './utils/ibc';
 export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
 export { ibcOriginFromTrace, ibcOriginFromRegistry, unverifyIndirectIbcDuplicates } from './utils/ibc_duplicates';
 export type { IbcOrigin } from './utils/ibc_duplicates';
@@ -318,7 +318,7 @@ export type { UseBuyBzeOptions, UseBuyBzeResult, SkipAssetWithBalance } from './
 export type { UseBuyRouteResult } from './hooks/useBuyRoute';
 export { useBridgeableAssets } from './hooks/useBridgeableAssets';
 export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';
-export type { BridgeableAsset, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
+export type { BridgeableAsset, BridgeableAssetKind, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
 export { useWithdrawableBalances } from './hooks/useWithdrawableBalances';
 export { useBridgeAvailability } from './hooks/useBridgeAvailability';
 export type { BridgeAvailability } from './hooks/useBridgeAvailability';
