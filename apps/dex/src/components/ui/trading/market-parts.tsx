@@ -59,7 +59,10 @@ export const depthPercent = (amount: BigNumber.Value, max: BigNumber.Value): num
     return Math.min(100, new BigNumber(amount).dividedBy(top).multipliedBy(100).toNumber());
 };
 
-/** A row of the order book; a click fills both forms with its price and the amount up to it. */
+/**
+ * A row of the order book; a click fills both forms with its price and the amount up to it.
+ * Kept about as dense as the old book (~18px) so 15 orders a side fit beside the chart.
+ */
 export const OrderBookRow = ({side, price, amount, depth, onClick}: {
     side: TradeSide;
     price: string;
@@ -74,12 +77,13 @@ export const OrderBookRow = ({side, price, amount, depth, onClick}: {
         justifyContent="space-between"
         gap="8px"
         px="8px"
-        py="4px"
+        py="1px"
         border="0"
         borderRadius="6px"
         bg="transparent"
         fontFamily="mono"
         fontSize="12px"
+        lineHeight="16px"
         fontWeight="500"
         color="fg"
         cursor="pointer"

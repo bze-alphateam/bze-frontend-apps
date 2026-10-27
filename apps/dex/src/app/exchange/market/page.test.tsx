@@ -142,6 +142,13 @@ describe("market header", () => {
         expect(rulesFor(logo.parentElement as HTMLElement)).not.toMatch(/border-width/);
     });
 
+    it("stacks the order book rows tightly, as the old book did", async () => {
+        renderPage();
+
+        const book = await screen.findByRole("region", { name: "Order Book" });
+        expect(rulesFor(book)).toMatch(/gap:\s*1px/);
+    });
+
     it("draws the back arrow icon-only and flush on phones, leaving the price its room", async () => {
         renderPage();
 
