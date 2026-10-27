@@ -23,7 +23,7 @@ import { useChain } from '@interchain-kit/react'
 import { ExtendDone, type ExtendDoneInput } from '@/components/reward-wizard/extend-done'
 import { useNavigation, useNavigationWithParams } from '@/hooks/useNavigation'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import {
     FormFrame,
     FormPage,
@@ -178,11 +178,13 @@ function ExtendContent() {
     // Without a wallet the wizard can still be walked to Review; the balance check needs one.
     const daysValid = daysError === '' && (!connected || hasEnough)
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast(rewardId ? extendHref(rewardId) : undefined)
     const steps = useGuidedSteps(STEP_KEYS, {
         reward: rewardAnswered && Boolean(reward),
         days: daysAnswered && daysValid,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const pick = (id: string) => {
         setRewardId(id)

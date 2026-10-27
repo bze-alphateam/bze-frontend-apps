@@ -21,7 +21,7 @@ import {
 import { useChain } from '@interchain-kit/react'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import { useTokenRaffle } from '@/hooks/useTokenRaffle'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { TextField } from '@/components/manage/denom-reward-form-parts'
 import { RaffleDone } from '@/components/raffle-wizard/raffle-done'
@@ -147,12 +147,14 @@ function RaffleFormContent() {
         : undefined
 
     const tokenReady = Boolean(asset) && tokenBlock === '' && raffle.status === 'none' && !isRunning
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEPS, {
         token: answered.includes('token') && tokenReady,
         pot: answered.includes('pot') && potBase !== undefined,
         play: answered.includes('play') && play !== undefined && chances !== undefined,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))

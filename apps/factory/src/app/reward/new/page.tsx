@@ -20,7 +20,7 @@ import { SimpleRewardDone, type SimpleRewardDoneInput } from '@/components/rewar
 import { validateAmount } from '@/components/token-wizard/validation'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import {
     AnswerChip,
     AnswerChips,
@@ -149,12 +149,14 @@ function RewardNewContent() {
     const prizeValid = Boolean(prizeAsset) && Boolean(escrow) && (!connected || coversRewards)
     const rulesValid = lockError === '' && minStakeError === ''
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
         stake: answered.includes('stake') && Boolean(stakingAsset),
         prize: answered.includes('prize') && prizeValid,
         rules: answered.includes('rules') && rulesValid,
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))

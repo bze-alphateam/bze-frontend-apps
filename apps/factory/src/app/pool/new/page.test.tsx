@@ -445,6 +445,26 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await userEvent.click(screen.getByRole("button", { name: "Continue" }));
         }
 
+        it("keeps every step answered under Confirmed while the chain changes under the form", async () => {
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            const { rerender } = renderPage();
+            await answerAmounts("1000", "2");
+            await answerFees();
+            await userEvent.click(createButton());
+            expect(screen.getByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+
+            // The chain spent the starting amounts and now holds the pool.
+            balances.current = { utok: "0", ubze: "0" };
+            existingPools.current = new Map([["ubze_utok", { id: "ubze_utok" }]]);
+            rerender(<PoolNewPage />);
+
+            expect(step("Pair")).toHaveAttribute("data-state", "done");
+            expect(step("Starting amounts")).toHaveAttribute("data-state", "done");
+            expect(step("Fees")).toHaveAttribute("data-state", "done");
+            expect(screen.getByRole("heading", { name: "Confirmed" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+        });
+
         it("shows the open pool, its links and only adding liquidity on the DEX next", async () => {
             let resolvePool: (p: { lp_denom: string }) => void = () => {};
             getLiquidityPoolMock.mockReturnValue(new Promise(r => { resolvePool = r; }));

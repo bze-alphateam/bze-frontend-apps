@@ -23,7 +23,7 @@ import { useChain } from '@interchain-kit/react'
 import { AssetPicker } from '@/components/ui/asset-picker'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import { DEFAULT_FEE_SPLIT, type FeeSplit, FeeSplitSlider } from '@/components/pool-form/fee-split-slider'
 import { PoolDone, type PoolDoneInput } from '@/components/pool-wizard/pool-done'
 import { CREATE_POOL_TX_KIND, ReserveField } from '@/components/pool-wizard/reserve-field'
@@ -114,12 +114,14 @@ function PoolNewContent() {
     const swapFeeError = validateSwapFee(swapFee)
     const feeSummary = swapFeeSummary(swapFee, feeSplit)
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
         pair: answered.includes('pair') && isPairValid,
         amounts: answered.includes('amounts') && amountsValid,
         fees: answered.includes('fees') && swapFeeError === '',
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))

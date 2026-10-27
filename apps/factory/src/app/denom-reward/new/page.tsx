@@ -21,7 +21,7 @@ import { AssetPicker } from '@/components/ui/asset-picker'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
-import { type WizardTxDone, useWizardTx } from '@/hooks/useWizardTx'
+import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import {
     BlockerNote,
     ContinueRow,
@@ -136,11 +136,13 @@ function CompoundedNewContent() {
     })
     const feeUnknown = !isFeeLoading && !costs.feesKnown
 
+    // Once broadcast, the chain changes under the form: keep the answers until Done.
+    const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
         token: answered.includes('token') && tokenOk,
         prize: answered.includes('prize') && (!withPrize || check.valid),
         review: false,
-    })
+    }, { frozen: broadcast })
 
     const answer = (key: FormStep) => {
         setAnswered(prev => (prev.includes(key) ? prev : [...prev, key]))

@@ -55,6 +55,17 @@ function failedPanel(entry: PendingTx): TxPanelError {
 }
 
 /**
+ * True from the moment this wizard's transaction is broadcast until Continue, Retry or Edit
+ * clears it. Pass the same `href` as to `useWizardTx` when it gets one.
+ */
+export function useWizardTxBroadcast(href?: string): boolean {
+    const { entries } = usePendingTx()
+    const currentHref = useCurrentHref()
+    const target = href ?? currentHref
+    return entries.some(e => e.href === target)
+}
+
+/**
  * The wizard's transaction: signs `buildMsgs()` through `useFactoryTx` (gas pre-flight kept,
  * toasts off) and drives the TxPanel's six states. Once broadcast, the hash goes to the
  * PendingTxProvider, so the header shows the "in progress" pill and the panel comes back

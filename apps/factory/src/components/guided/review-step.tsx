@@ -5,7 +5,7 @@ import { Box, chakra, HStack, Text, VStack } from '@chakra-ui/react'
 import { LuCircleAlert, LuTriangleAlert } from 'react-icons/lu'
 import { FeeCoin, TxSpec, prettyAmount } from '@bze/bze-ui-kit'
 import { useFeePayment } from '@/hooks/useFeePayment'
-import { CoinRow, PayRow, TextRow } from './pay-panel'
+import { CoinRow, PayRow, TextRow, spentBesidesFee } from './pay-panel'
 import { Question } from './question'
 import type { StepDirection, StepState } from './use-guided-steps'
 
@@ -75,7 +75,7 @@ export function ReviewStep({
     leaves, moduleFee, txKind, isLoading, feeUnknown, gets, extra = [], permanent = [],
     submitLabel, onSubmit, disabled, onBack, blocker, children,
 }: ReviewStepProps) {
-    const payment = useFeePayment(moduleFee, txKind)
+    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(leaves, moduleFee))
     const cantPay = Boolean(moduleFee) && !payment.isLoading && payment.method === 'insufficient'
     const hasGas = Boolean(txKind) && payment.gasFee.amount.gt(0)
 

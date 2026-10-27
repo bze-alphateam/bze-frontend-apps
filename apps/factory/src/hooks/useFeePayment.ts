@@ -21,11 +21,12 @@ export type FeePaymentMethod = 'native' | 'alt' | 'fallback' | 'insufficient'
 /**
  * Thin factory-flavoured view over ui-kit's shared fee engine (`useFeeEstimate`, pool
  * math) plus the gas estimate of `txKind` (`useGasFeeEstimate`). Pass the kind(s) of the
- * message(s) the form will send so the balance check accounts for the gas fee too.
+ * message(s) the form will send so the balance check accounts for the gas fee too, and in
+ * `spent` every other coin the transaction takes from the wallet (starting amounts, budgets).
  */
-export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec) {
+export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec, spent?: FeeCoin[]) {
     const gasFee = useGasFeeEstimate(txKind)
-    const estimate = useFeeEstimate(fee, { gasFee: txKind ? gasFee.estimate : undefined })
+    const estimate = useFeeEstimate(fee, { gasFee: txKind ? gasFee.estimate : undefined, reserved: spent })
 
     const method: FeePaymentMethod = estimate.method === 'preferred'
         ? 'alt'
