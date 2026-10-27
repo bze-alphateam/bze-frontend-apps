@@ -82,6 +82,23 @@ describe("Liquidity pools page", () => {
         expect(screen.queryByText("No pools found")).not.toBeInTheDocument();
     });
 
+    it("shows the loading rows, not an empty state, while the first load is in flight", () => {
+        useLiquidityPoolsMock.mockReturnValue({ pools: [], poolsData: new Map(), isLoading: true });
+        renderPools();
+
+        expect(screen.getByTestId("list-loading")).toBeInTheDocument();
+        expect(screen.queryByText("No pools created yet")).not.toBeInTheDocument();
+        expect(screen.queryByText("No pools found")).not.toBeInTheDocument();
+    });
+
+    it("keeps the pools on screen while a later refresh is loading", () => {
+        useLiquidityPoolsMock.mockReturnValue({ pools: POOLS, poolsData: new Map(), isLoading: true });
+        renderPools();
+
+        expect(screen.queryByTestId("list-loading")).not.toBeInTheDocument();
+        expect(screen.getByText(/Showing 2 of 2 pools/)).toBeInTheDocument();
+    });
+
     it("lists pools with the total count and a footer summary", () => {
         useLiquidityPoolsMock.mockReturnValue({ pools: POOLS, poolsData: new Map() });
         renderPools();

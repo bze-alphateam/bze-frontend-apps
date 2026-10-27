@@ -29,7 +29,6 @@ import {
     blockchainEventManager, getMarketOrderBookChangedEvent,
     addDebounce, cancelDebounce,
     HighlightText,
-    LPTokenLogo,
     HgCard, hgVariant,
     FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
     HaltedBadge, HaltedNotice, useHaltedDenoms,
@@ -43,6 +42,7 @@ import {LightweightChart} from "@/components/ui/trading/chart";
 import {balanceToFormValue} from "@/lib/trading-form";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
+import {PairLogo} from "@/components/ui/trading/pair-logo";
 import {
     BalanceButton, Cell, DataTable, depthPercent, EmptyState, EmptyTableRow, MarketStat, OrderBookRow, OrderField, OrderForm, Panel,
 } from "@/components/ui/trading/market-parts";
@@ -765,24 +765,12 @@ const TradingPageContent = () => {
                             <chakra.span display={{ base: 'none', md: 'inline' }}>Markets</chakra.span>
                         </Button>
                         <Box h="40px" w="1px" bg="hg.hairline" hideBelow="md" />
-                        <Flex
-                            boxSize={{ base: '40px', md: '44px' }}
-                            flex="none"
-                            align="center"
-                            justify="center"
-                            borderRadius="12px"
-                            bg="hg.inset"
-                            borderWidth="1px"
-                            borderColor="app.border"
-                        >
-                            <LPTokenLogo
-                                baseAssetLogo={baseAsset?.logo || ''}
-                                quoteAssetLogo={quoteAsset?.logo || ''}
-                                baseAssetSymbol={baseAsset?.ticker || ''}
-                                quoteAssetSymbol={quoteAsset?.ticker || ''}
-                                size="5"
-                            />
-                        </Flex>
+                        <PairLogo
+                            baseLogo={baseAsset?.logo}
+                            quoteLogo={quoteAsset?.logo}
+                            baseTicker={baseAsset?.ticker || ''}
+                            quoteTicker={quoteAsset?.ticker || ''}
+                        />
                         <Flex direction="column" gap="4px" minW="0" data-testid="market-title">
                             <Flex align="center" gap={{ base: '6px', md: '8px' }} wrap="wrap">
                                 <chakra.h1 m="0" fontSize={{ base: '18px', md: '22px' }} fontWeight="800" letterSpacing="-0.01em">

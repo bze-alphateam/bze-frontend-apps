@@ -7,7 +7,7 @@ import NextLink from "next/link";
 import {
     useAsset, useAssets, createMarketId, useAssetPrice, prettyAmount, formatUsdAmount, HighlightText, MarketData,
     useAssetsValue, useMarkets, HaltedBadge, useHaltedDenoms,
-    PageContainer, HeroGlow, PageHero, Eyebrow, HgCard, Shimmer,
+    PageContainer, HeroGlow, PageHero, Eyebrow, HgCard,
 } from "@bze/bze-ui-kit";
 import {MarketSDKType} from "@bze/bzejs/bze/tradebin/store";
 import BigNumber from "bignumber.js";
@@ -16,6 +16,7 @@ import {marketPagePath} from "@/hooks/useNavigation";
 import {VenueTag, VENUE_SUBTITLE} from "@/components/ui/trading/venue";
 import {ChangePill} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
+import {LoadingRows} from "@/components/ui/listing/loading-rows";
 import {sortMarkets} from "@/lib/market-list";
 import {marketPriceLabel} from "@/lib/market-price";
 
@@ -167,20 +168,6 @@ const TradeLabel = ({full}: { full?: boolean }) => (
         color="fg"
     >
         Trade <LuArrowRight size={14} aria-hidden="true"/>
-    </Flex>
-)
-
-const LoadingRows = () => (
-    <Flex direction="column" px="22px" py="12px" aria-busy="true">
-        {[140, 110, 125].map((w, i) => (
-            <Flex key={i} justify="space-between" align="center" py="10px" borderTopWidth={i > 0 ? '1px' : 0} borderColor="hg.divider">
-                <Flex gap="12px" align="center">
-                    <Shimmer w="52px" h="32px" borderRadius="full"/>
-                    <Shimmer w={`${w}px`} h="12px"/>
-                </Flex>
-                <Shimmer w="90px" h="36px" borderRadius="10px"/>
-            </Flex>
-        ))}
     </Flex>
 )
 
