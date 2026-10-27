@@ -807,7 +807,7 @@ const TradingPageContent = () => {
                 {/* Main Trading Layout */}
                 <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: '300px minmax(0, 1fr) 360px' }} gap="16px" alignItems="start">
                     {/* Left: Order Book */}
-                    <Panel label="Order Book" p="16px" gap="4px">
+                    <Panel label="Order Book" p="16px" gap="1px">
                         <chakra.h2 m="0" mb="8px" fontSize="15px" fontWeight="700">Order Book</chakra.h2>
                         <Flex justify="space-between" fontSize="11px" color="hg.text.faint" px="8px" pb="6px">
                             <span>Price ({quoteAsset?.ticker})</span>
