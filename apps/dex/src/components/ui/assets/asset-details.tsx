@@ -25,12 +25,12 @@ import {
     useAssetLiquidityPools,
     useAssetMarkets,
     useMarket,
-    LPTokenLogo,
     Notice,
 } from "@bze/bze-ui-kit";
 import {useNavigation} from "@/hooks/useNavigation";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
 import {PriceChange} from "@/components/ui/assets/price-change";
+import {PairLogo} from "@/components/ui/trading/pair-logo";
 
 const MAX_MARKETS_PER_ASSET = 5;
 
@@ -59,12 +59,7 @@ function AssetItemLiquidityPool({ pool, asset, poolData, surface }: { pool: Liqu
             <Flex align="center" gap="12px" flex="1" minW="0">
                 <Skeleton asChild loading={baseLoading || quoteLoading}>
                     <Box flexShrink={0}>
-                        <LPTokenLogo
-                            baseAssetLogo={base?.logo ?? ""}
-                            quoteAssetLogo={quote?.logo ?? ""}
-                            baseAssetSymbol={base?.ticker ?? ""}
-                            quoteAssetSymbol={quote?.ticker ?? ""}
-                        />
+                        <PairLogo baseLogo={base?.logo} quoteLogo={quote?.logo} baseTicker={base?.ticker ?? ""} quoteTicker={quote?.ticker ?? ""}/>
                     </Box>
                 </Skeleton>
                 <RowName title={`${base?.ticker}/${quote?.ticker}`} kind="Liquidity Pool"/>
@@ -116,16 +111,10 @@ function AssetItemMarkets({ marketId, surface }: { marketId: string, surface: Ro
     return (
         <LinkRow surface={surface} onClick={() => toMarketPage(base?.denom ?? "", quote?.denom ?? "")} label={`${marketSymbol} market`}>
             <Flex align="center" gap="12px" flex="1" minW="0">
-                <Skeleton asChild loading={baseLoading}>
-                    <Flex boxSize="36px" flex="none" align="center" justify="center" borderRadius="10px" bg="hg.ground" borderWidth="1px" borderColor="app.border">
-                        <LPTokenLogo
-                            baseAssetLogo={base?.logo ?? ""}
-                            quoteAssetLogo={quote?.logo ?? ""}
-                            baseAssetSymbol={base?.ticker ?? ""}
-                            quoteAssetSymbol={quote?.ticker ?? ""}
-                            size="4"
-                        />
-                    </Flex>
+                <Skeleton asChild loading={baseLoading || quoteLoading}>
+                    <Box flexShrink={0}>
+                        <PairLogo baseLogo={base?.logo} quoteLogo={quote?.logo} baseTicker={base?.ticker ?? ""} quoteTicker={quote?.ticker ?? ""}/>
+                    </Box>
                 </Skeleton>
                 <RowName title={marketSymbol} kind="Market"/>
             </Flex>
