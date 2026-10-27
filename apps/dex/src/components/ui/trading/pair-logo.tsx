@@ -2,10 +2,10 @@
 
 import {LPTokenLogo} from "@bze/bze-ui-kit";
 
-/** Logo size of a pair in the markets and pools lists and on the market page, so all three draw it alike. */
+/** Logo size of a pair in the markets and pools lists, an asset's pairs and the market page, so all of them draw it alike. */
 export const PAIR_LOGO_SIZE = "8"
 
-/** The two overlapping token logos naming a pair: in a listing row and in the market page header. */
+/** The two overlapping token logos naming a pair: in a listing row, an asset's pairs and the market page header. */
 export const PairLogo = ({baseLogo, quoteLogo, baseTicker, quoteTicker}: {
     baseLogo?: string;
     quoteLogo?: string;
