@@ -1,6 +1,7 @@
 import {IBCData} from "../types/asset";
 import {DenomTrace} from "../types/ibc";
 import BigNumber from "bignumber.js";
+import {sha256, stringToBytes} from "viem";
 
 export const canDepositFromIBC = (ibcData: IBCData): boolean => {
     return ibcData.counterparty.baseDenom !== "" && ibcData.counterparty.channelId !== "" && ibcData.counterparty.chainName != ""
@@ -44,6 +45,17 @@ export async function denomOnFirstHopChainFromTrace(trace: DenomTrace): Promise<
         return undefined;
     }
 }
+
+/**
+ * The denom a BZE coin (native or factory) carries on a counterparty chain after one
+ * hop: `ibc/` + upper-case SHA-256 of `transfer/<counterparty-side channel>/<denom on BZE>`.
+ * The receiving chain prefixes its own port and channel, so the channel is the
+ * counterparty's end of the connection (Osmosis channel-340 for BZE, not channel-0).
+ */
+export const ibcVoucherDenom = (counterpartyChannelId: string, denom: string): string => {
+    const hash = sha256(stringToBytes(`transfer/${counterpartyChannelId}/${denom}`));
+    return `ibc/${hash.slice(2).toUpperCase()}`;
+};
 
 export const getIbcTransferTimeout = (): BigNumber => {
     return new BigNumber(Date.now() + 600_000).multipliedBy(1_000_000)
