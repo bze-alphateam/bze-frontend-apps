@@ -1404,9 +1404,14 @@ export default function SwapPage() {
                     <ListRow
                       key={market.base + market.quote}
                       lead={
-                        <Flex boxSize="26px" flex="none" align="center" justify="center" borderRadius="8px" bg="hg.inset" borderWidth="1px" borderColor="app.border">
-                          <TokenLogo src={getAsset(market.base)?.logo || ''} symbol={denomTicker(market.base)} size="4" circular={true} />
-                        </Flex>
+                        <LPTokenLogo
+                          data-testid="market-pair-logo"
+                          baseAssetLogo={getAsset(market.base)?.logo || ''}
+                          quoteAssetLogo={getAsset(market.quote)?.logo || ''}
+                          baseAssetSymbol={denomTicker(market.base)}
+                          quoteAssetSymbol={denomTicker(market.quote)}
+                          size="6"
+                        />
                       }
                       title={pair}
                       meta={lastPrice ? `Last ${lastPrice} ${denomTicker(market.quote)}` : null}

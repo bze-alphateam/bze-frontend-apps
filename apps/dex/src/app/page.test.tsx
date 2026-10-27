@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     tx: vi.fn(),
     liquidAssets: [] as unknown[],
     pools: [] as unknown[],
+    markets: [] as unknown[],
     halted: new Set<string>(),
     balances: new Map<string, BigNumber>(),
     usdPrices: new Map<string, BigNumber>(),
@@ -45,6 +46,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             denomDecimals: () => 6,
             getAsset: (denom: string) => (mocks.liquidAssets as Asset[]).find(a => a.denom === denom),
             nativeAsset: undefined,
+            isVerifiedAsset: () => true,
             isLoading: false,
         }),
         useBalances: () => ({
@@ -80,7 +82,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useCanAffordTx: () => ({ canAfford: true, shortfalls: [], shortOnFees: false, message: "", gasFee: zeroGas, isLoading: false }),
         getAddressSwapHistory: async () => [],
         // The home page's market list and BZE price; empty here, the swap card is under test.
-        useMarkets: () => ({ markets: [], getMarketData: () => undefined, isLoading: false }),
+        useMarkets: () => ({ markets: mocks.markets, getMarketData: () => undefined, isLoading: false }),
         useAssetPrice: () => ({ price: new BigNumber(mocks.bzePrice), hasPrice: mocks.bzePrice > 0, isLoading: false }),
         FeeEstimateRow: () => null,
     };
@@ -172,6 +174,7 @@ beforeEach(() => {
     mocks.balances.clear();
     mocks.usdPrices.clear();
     mocks.pools = [];
+    mocks.markets = [];
     mocks.halted = new Set();
     mocks.bzePrice = 0;
     localStorage.clear();
@@ -487,6 +490,19 @@ describe("Swap page slippage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Close" }));
         expect(screen.queryByRole("group", { name: "Max slippage" })).toBeNull();
+    });
+});
+
+describe("Swap home order-book markets list", () => {
+    it("draws each market with both of its pair's logos, like the pools list beside it", () => {
+        setupBzeUsdc();
+        mocks.markets = [{ base: "ubze", quote: "uusdc" }];
+        renderSwap();
+
+        const logo = screen.getByTestId("market-pair-logo");
+        expect(logo.children).toHaveLength(2);
+        const token = logo.firstElementChild!.firstElementChild as HTMLElement;
+        expect(rulesFor(token)).toMatch(/width:\s*var\(--chakra-sizes-6\)/);
     });
 });
 
