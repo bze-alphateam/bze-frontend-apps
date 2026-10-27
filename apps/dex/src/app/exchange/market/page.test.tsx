@@ -132,6 +132,16 @@ describe("market header", () => {
         expect(rulesFor(screen.getByRole("heading", { level: 1 }))).toMatch(/font-size:\s*18px/);
     });
 
+    it("draws the pair logo the way the markets and pools lists do, untiled", async () => {
+        renderPage();
+
+        const logo = await screen.findByTestId("pair-logo");
+        const token = logo.firstElementChild!.firstElementChild as HTMLElement;
+        expect(rulesFor(token)).toMatch(/width:\s*var\(--chakra-sizes-8\)/);
+        // The old header framed a smaller pair in its own bordered tile.
+        expect(rulesFor(logo.parentElement as HTMLElement)).not.toMatch(/border-width/);
+    });
+
     it("draws the back arrow icon-only and flush on phones, leaving the price its room", async () => {
         renderPage();
 

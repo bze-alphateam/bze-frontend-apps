@@ -26,6 +26,7 @@ import {InnerHero, CountPill} from "@/components/ui/layout/inner-hero";
 import {AprChip} from "@/components/ui/pools/apr-chip";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
+import {LoadingRows} from "@/components/ui/listing/loading-rows";
 
 
 type SortField = 'volume24h' | 'totalLiquidity' | 'apr'
@@ -293,7 +294,7 @@ export default function LiquidityPoolsPage() {
     const [sortField, setSortField] = useState<SortField>('totalLiquidity')
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
-    const {pools, poolsData} = useLiquidityPools()
+    const {pools, poolsData, isLoading} = useLiquidityPools()
     const {denomTicker} = useAssets()
     const {getBalanceByDenom} = useBalances()
 
@@ -307,6 +308,8 @@ export default function LiquidityPoolsPage() {
     ]
 
     const allPoolsCount = useMemo(() => pools.length, [pools])
+    // Until the first load lands there are no pools yet, which is not the same as none existing.
+    const isFirstLoad = isLoading && pools.length === 0
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -501,7 +504,10 @@ export default function LiquidityPoolsPage() {
                             </Button>
                         </StateCard>
                     )}
-                    {sortedPools.length === 0 && (
+                    {isFirstLoad && (
+                        <HgCard p="0" overflow="hidden"><LoadingRows/></HgCard>
+                    )}
+                    {sortedPools.length === 0 && !isFirstLoad && (
                         <StateCard title="No pools created yet"/>
                     )}
 
