@@ -174,10 +174,23 @@ export function moduleFeeRowIndex(rows: PayRow[], moduleFee?: FeeCoin): number {
         : -1
 }
 
-/** Every coin the rows take from the wallet besides the module fee: the balance check reserves them. */
+/**
+ * Every coin the rows take from the wallet besides the module fee: the balance check reserves them.
+ * The module fee is either one row or the merged total of several fee rows in its denom
+ * (`feeTotals[0]`: compounded reward + daily prize + new prize), so it is taken off the rows
+ * in its denom, in order, until it is used up.
+ */
 export function spentBesidesFee(rows: PayRow[], moduleFee?: FeeCoin): FeeCoin[] {
-    const feeIndex = moduleFeeRowIndex(rows, moduleFee)
-    return rows.flatMap((row, i) => (row.coin && i !== feeIndex ? [row.coin] : []))
+    let feeLeft = toBigNumber(moduleFee?.amount ?? 0)
+    return rows.flatMap(row => {
+        if (!row.coin) return []
+        if (row.coin.denom !== moduleFee?.denom || !feeLeft.gt(0)) return [row.coin]
+        const amount = toBigNumber(row.coin.amount)
+        const taken = amount.lt(feeLeft) ? amount : feeLeft
+        feeLeft = feeLeft.minus(taken)
+        const rest = amount.minus(taken)
+        return rest.gt(0) ? [{ denom: row.coin.denom, amount: rest.toFixed(0) }] : []
+    })
 }
 
 /**

@@ -111,6 +111,26 @@ describe("PayPanel", () => {
         expect(feePaymentArgs.current).toEqual([FEE, "create-pool", [startingBze, startingTok]]);
     });
 
+    it("does not reserve the fees again when the module fee is their merged total", () => {
+        // Compounded reward with a first prize: three 25,000 BZE fees charged as one 75,000 BZE module fee.
+        const merged = { denom: "ubze", amount: "75000000000" };
+        const rewards = { denom: "utok", amount: "365000000000000" };
+        render(
+            <PayPanel
+                rows={[
+                    { label: "Compounded reward fee", coin: FEE },
+                    { label: "Daily prize fee", coin: FEE },
+                    { label: "New prize fee", coin: FEE },
+                    { label: "Rewards", coin: rewards },
+                ]}
+                moduleFee={merged}
+                txKind={["create-denom-reward", "create-denom-reward-schedule"]}
+            />,
+            { wrapper },
+        );
+        expect(feePaymentArgs.current).toEqual([merged, ["create-denom-reward", "create-denom-reward-schedule"], [rewards]]);
+    });
+
     it("shows a skeleton while fees load", () => {
         renderPanel({ isLoading: true });
         expect(screen.queryByText("Market creation fee")).not.toBeInTheDocument();
