@@ -2,9 +2,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 
-// The wallet, signing client and toasts are fed directly; a fixed fee skips simulation,
-// so a tx only signs, broadcasts and reports the result.
-const { toastMock, signAndBroadcastMock } = vi.hoisted(() => ({
+// The wallet, signing client and toasts are fed directly. Most tests pass a fixed fee, which
+// skips simulation, so a tx only signs, broadcasts and reports the result; the simulateFee
+// tests leave the fee out and feed the simulate query and the chain params instead.
+const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings, getDenomsPoolMock } = vi.hoisted(() => ({
     toastMock: {
         loading: vi.fn(() => 'toast-id'),
         dismiss: vi.fn(),
@@ -13,6 +14,10 @@ const { toastMock, signAndBroadcastMock } = vi.hoisted(() => ({
         clickableSuccess: vi.fn(),
     },
     signAndBroadcastMock: vi.fn(),
+    simulateMock: vi.fn(),
+    txFeeParamsMock: vi.fn(),
+    settings: { feeDenom: 'ubze' },
+    getDenomsPoolMock: vi.fn(),
 }))
 
 vi.mock('@interchain-kit/react', () => ({
@@ -20,15 +25,24 @@ vi.mock('@interchain-kit/react', () => ({
 }))
 vi.mock('./useSigningClient', () => ({
     useSigningClient: () => ({
-        signingClient: { signAndBroadcast: signAndBroadcastMock },
+        signingClient: {
+            signAndBroadcast: signAndBroadcastMock,
+            // What simulateFee needs from the interchainjs signer: an encoder per message type,
+            // the account sequence and the query client the simulate call is sent through.
+            getEncoder: () => ({ encode: () => ({ finish: () => new Uint8Array([1, 2, 3]) }) }),
+            getSequence: async () => BigInt(7),
+            config: { queryClient: {} },
+        },
         isSigningClientReady: true,
         signingClientError: undefined,
     }),
 }))
 vi.mock('./useToast', () => ({ useToast: () => ({ toast: toastMock }) }))
-vi.mock('./useLiquidityPools', () => ({ useLiquidityPools: () => ({ getDenomsPool: vi.fn() }) }))
-vi.mock('./useSettings', () => ({ useSettings: () => ({ feeDenom: 'ubze' }) }))
+vi.mock('./useLiquidityPools', () => ({ useLiquidityPools: () => ({ getDenomsPool: getDenomsPoolMock }) }))
+vi.mock('./useSettings', () => ({ useSettings: () => settings }))
 vi.mock('./useFeeTokens', () => ({ useFeeTokens: () => ({ isValidFeeDenom: () => true }) }))
+vi.mock('@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func', () => ({ getSimulate: simulateMock }))
+vi.mock('../query/txfeecollector_params', () => ({ getTxFeeCollectorParams: txFeeParamsMock }))
 vi.mock('../constants/chain', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../constants/chain')>()),
     getChainName: () => 'beezee',
@@ -135,5 +149,75 @@ describe('useTx toasts and failure details', () => {
         await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure, toasts: false }) })
 
         expect(onFailure).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ stage: 'timeout', txHash: 'HASH' }))
+    })
+})
+
+describe('useTx simulateFee', () => {
+    // Mainnet's validator_min_gas_fee; the env multipliers are the defaults (1.5 / 1.5 / 1.1).
+    const CHAIN_GAS_PRICE = 0.01
+    // 1M BZE : 10k USDC → spot = 100 ubze per uusdc
+    const pool = { base: 'ubze', quote: 'uusdc', fee: '0.003', reserve_base: '1000000000000', reserve_quote: '10000000000' }
+
+    const sentFee = async () => {
+        const { result } = renderHook(() => useBZETx())
+        await act(async () => { await result.current.tx([MSG], { toasts: false }) })
+        expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        return signAndBroadcastMock.mock.calls[0][2] as { amount: { denom: string; amount: string }[]; gas: string }
+    }
+
+    beforeEach(() => {
+        Object.values(toastMock).forEach(m => m.mockClear())
+        signAndBroadcastMock.mockReset().mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 0, txhash: 'HASH', height: 10, events: [] }),
+        })
+        simulateMock.mockReset().mockResolvedValue({ gasInfo: { gasUsed: BigInt(123_410), gasWanted: BigInt(0) } })
+        txFeeParamsMock.mockReset().mockResolvedValue({
+            validatorMinGasFee: { denom: 'ubze', amount: '0.010000000000000000' },
+            blockedIbcInbound: [],
+        })
+        getDenomsPoolMock.mockReset().mockReturnValue(undefined)
+        settings.feeDenom = 'ubze'
+    })
+
+    // Regression: gasUsed 123410 × 1.5 = 185115 gas; 185115 × 0.01 = 1851.15 was rounded half-up
+    // to 1851 ubze, one short of the ceil(gas × minGasPrice) = 1852 the ante handler requires.
+    it('sends ceil(gasLimit × chain gas price) in the native denom', async () => {
+        const fee = await sentFee()
+
+        expect(fee.gas).toBe('185115')
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1852' }])
+    })
+
+    it('uses the chain gas price, not the env default', async () => {
+        txFeeParamsMock.mockResolvedValue({ validatorMinGasFee: { denom: 'ubze', amount: '0.05' }, blockedIbcInbound: [] })
+
+        const fee = await sentFee()
+
+        // ceil(185115 × 0.05) = ceil(9255.75)
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '9256' }])
+    })
+
+    // Regression: the foreign fee was converted from gas × 0.01 (1851 ubze → 18.51 uusdc × 1.1 → 21)
+    // while the gas limit sent was gas × 1.5, so the chain's ceil(277673 × 0.01 / 100) = 28 was not met.
+    it('prices a foreign fee from the multiplied gas limit the tx is sent with', async () => {
+        settings.feeDenom = 'uusdc'
+        getDenomsPoolMock.mockReturnValue(pool)
+
+        const fee = await sentFee()
+
+        expect(fee.gas).toBe('277673')                                   // ceil(185115 × 1.5)
+        expect(fee.amount).toEqual([{ denom: 'uusdc', amount: '31' }])   // ceil(ceil(277673 × 0.01) / 100 × 1.1)
+        const required = Math.ceil(Number(fee.gas) * CHAIN_GAS_PRICE / 100)
+        expect(Number(fee.amount[0].amount)).toBeGreaterThanOrEqual(required)
+    })
+
+    it('falls back to the native fee when the fee token has no pool', async () => {
+        settings.feeDenom = 'uusdc'
+
+        const fee = await sentFee()
+
+        expect(fee.gas).toBe('185115')
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1852' }])
     })
 })

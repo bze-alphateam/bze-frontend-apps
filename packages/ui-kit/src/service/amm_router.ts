@@ -70,10 +70,12 @@ export class AmmRouter {
         if (useCache) {
             const cached = this.routeCache.get(cacheKey);
             if (cached) {
-                return {
-                    ...cached.result,
-                    ...this.calculateRouteOutput(cached.result.pools, cached.result.path, amountIn)
-                };
+                const output = this.calculateRouteOutput(cached.result.pools, cached.result.path, amountIn);
+                // Priced like the search: a route the chain would refuse for this input is no route.
+                if (output.expectedOutput.lte(0)) {
+                    return null;
+                }
+                return { ...cached.result, ...output };
             }
         }
 
@@ -175,6 +177,12 @@ export class AmmRouter {
         };
     }
 
+    /**
+     * One hop priced the way the chain's `swapTokens` prices it: the fee and the output are
+     * truncated to whole micro units, so the quote never promises a fraction the chain does not
+     * pay out. A hop the chain would refuse (no fee left on a fee-bearing pool, or no output)
+     * yields an output of 0, which the route search drops.
+     */
     private calculateSwapOutput(
         pool: LiquidityPoolSDKType,
         amountIn: BigNumber,
@@ -184,12 +192,16 @@ export class AmmRouter {
         const reserveIn = toBigNumber(isBaseToQuote ? pool.reserve_base : pool.reserve_quote);
         const reserveOut = toBigNumber(isBaseToQuote ? pool.reserve_quote : pool.reserve_base);
 
-        const feeAmount = amountIn.multipliedBy(fee);
+        const feeAmount = amountIn.multipliedBy(fee).integerValue(BigNumber.ROUND_FLOOR);
+        if (fee.gt(0) && feeAmount.lte(0)) {
+            return { amountOut: toBigNumber(0), fee: feeAmount };
+        }
         const amountInAfterFee = amountIn.minus(feeAmount);
 
         const amountOut = amountInAfterFee
             .multipliedBy(reserveOut)
-            .dividedBy(reserveIn.plus(amountInAfterFee));
+            .dividedBy(reserveIn.plus(amountInAfterFee))
+            .integerValue(BigNumber.ROUND_FLOOR);
 
         return { amountOut, fee: feeAmount };
     }

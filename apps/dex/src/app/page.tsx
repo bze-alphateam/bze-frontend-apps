@@ -23,7 +23,7 @@ import { useState, useMemo, memo, useEffect, useCallback, useId, type ComponentP
 import NextLink from "next/link";
 import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms, useMarkets, useAssetPrice, getChainNativeAssetDenom, createMarketId, formatUsdAmount, shortNumberFormat, LPTokenLogo, PageContainer, HeroGlow, Eyebrow, GradientText, HgCard, StatCard, StatStrip, Notice, hgVariant} from "@bze/bze-ui-kit";
 import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
-import {SLIPPAGE_PRESETS, isSlippagePreset, parseCustomSlippage} from "@/lib/slippage";
+import {SLIPPAGE_PRESETS, isSlippagePreset, minimumSwapOutput, parseCustomSlippage} from "@/lib/slippage";
 import {AMM_SLIPPAGE_KEY, createLocalSlippageStore} from "@/lib/slippage-store";
 import {sortPools} from "@/lib/pool-list";
 import {sortMarkets} from "@/lib/market-list";
@@ -629,10 +629,13 @@ export default function SwapPage() {
       // 1. The quote already holds the exact micro input the route was priced with
       const amountIn = quote.amountIn;
 
-      // 2. Calculate minimum output based on slippage tolerance
-      // slippage is in percentage (e.g., 2 for 2%)
-      const slippageMultiplier = toBigNumber(1).minus(toBigNumber(slippage).dividedBy(100));
-      const minAmountOut = quote.amountOut.multipliedBy(slippageMultiplier);
+      // 2. The least output accepted: the quote minus the slippage (percent), rounded down to
+      // whole micro units like the chain's own output, and at least 1 (the chain rejects 0)
+      const minAmountOut = minimumSwapOutput(quote.amountOut, slippage);
+      if (!minAmountOut) {
+        toast.error(`Amount too small: it would not buy a single unit of ${toAsset.ticker}`);
+        return;
+      }
 
       // 3. Create multiSwap message
       const {multiSwap} = bze.tradebin.MessageComposer.withTypeUrl;
@@ -1098,9 +1101,7 @@ export default function SwapPage() {
                           </Flex>
                           <chakra.strong textAlign="right">
                             {prettyAmount(uAmountToBigNumberAmount(
-                              routeResult.expectedOutput.multipliedBy(
-                                toBigNumber(1).minus(toBigNumber(slippage).dividedBy(100))
-                              ),
+                              minimumSwapOutput(routeResult.expectedOutput, slippage) ?? toBigNumber(0),
                               toAsset?.decimals ?? 6
                             ).toFixed(toAsset?.decimals ?? 6))} {toAsset?.ticker || ''}
                           </chakra.strong>

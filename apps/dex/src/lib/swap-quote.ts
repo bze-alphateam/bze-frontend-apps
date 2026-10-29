@@ -89,24 +89,25 @@ export function quoteExactOutput(
         return null;
     }
 
-    const outputFor = (amountIn: BigNumber): BigNumber | null =>
-        router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS, true)?.expectedOutput ?? null;
+    // An input the router has no route for buys nothing: either no pool connects the pair, or the
+    // input is dust the chain would refuse (a hop with no fee or no whole-unit output), which a
+    // larger input may still cure.
+    const outputFor = (amountIn: BigNumber): BigNumber =>
+        router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS, true)?.expectedOutput ?? new BigNumber(0);
 
     // Bracket: `low` buys less than the target, `high` at least the target.
     let low = new BigNumber(0);
     let high = target;
     let highOut = outputFor(high);
-    if (highOut === null) {
-        return null;
-    }
     for (let step = 0; highOut.lt(target); step++) {
         if (step >= MAX_BRACKET_STEPS) {
             return null;
         }
         const next = high.multipliedBy(10);
         const nextOut = outputFor(next);
-        // Output must keep growing with input; if it does not, the pools cannot deliver the target.
-        if (nextOut === null || nextOut.lte(highOut)) {
+        // Once something is bought, the output must keep growing with the input; if it does not,
+        // the pools cannot deliver the target.
+        if (highOut.gt(0) && nextOut.lte(highOut)) {
             return null;
         }
         low = high;
@@ -117,8 +118,7 @@ export function quoteExactOutput(
     // Bisect down to the smallest whole-micro input that still reaches the target.
     while (high.minus(low).gt(1)) {
         const mid = low.plus(high).dividedBy(2).integerValue(BigNumber.ROUND_FLOOR);
-        const out = outputFor(mid);
-        if (out !== null && out.gte(target)) {
+        if (outputFor(mid).gte(target)) {
             high = mid;
         } else {
             low = mid;
