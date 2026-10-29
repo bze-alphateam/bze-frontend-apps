@@ -122,15 +122,22 @@ describe("quoteExactOutput", () => {
         expect(constantProductOut(bzeUsdc.reserve_base, bzeUsdc.reserve_quote, quote!.amountIn.minus(1)).lt(target)).toBe(true);
     });
 
-    it("routes through several pools", () => {
+    it("routes through several pools, growing past a first guess the chain would refuse", () => {
         const router = createAmmRouter([bzeUsdc, usdcAtom]);
         const target = new BigNumber("1000000"); // 1 ATOM
+
+        // The first guess, 1 BZE, buys 199 uusdc whose second-hop fee truncates to 0: no route for
+        // that input, which must not end the search.
+        expect(router.findOptimalRoute("ubze", "uatom", target, SWAP_MAX_HOPS)).toBeNull();
 
         const quote = quoteExactOutput(router, "ubze", "uatom", target);
 
         expect(quote).not.toBeNull();
         expect(quote!.route.route).toEqual(["1", "2"]);
+        expect(quote!.amountOut.isInteger()).toBe(true);
         expect(quote!.amountOut.gte(target)).toBe(true);
+        const oneLess = quoteExactInput(router, "ubze", "uatom", quote!.amountIn.minus(1));
+        expect(oneLess!.amountOut.lt(target)).toBe(true);
     });
 
     it("is null when the pools cannot deliver the target at any price", () => {
