@@ -85,7 +85,6 @@ function PoolNewContent() {
     const fee = fees.createMarketFee
     const { asset: feeAsset } = useAsset(fee?.denom ?? '')
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
-    const feePayment = useFeePayment(fee, CREATE_POOL_TX_KIND)
 
     const connected = Boolean(address)
     const baseTicker = baseAsset?.ticker ?? ''
@@ -128,33 +127,18 @@ function PoolNewContent() {
         steps.close()
     }
 
-    // The creation fee comes on top of the starting amounts: when one of them IS the fee denom,
-    // the wallet must cover both together.
-    const feeDenomReserve = useMemo(() => {
-        if (!fee) return new BigNumber(0)
-        let total = new BigNumber(0)
-        if (baseAsset && baseDenom === fee.denom && validateAmount(baseAmount, baseAsset.decimals) === '') {
-            total = total.plus(amountToUAmount(baseAmount, baseAsset.decimals))
-        }
-        if (quoteAsset && quoteDenom === fee.denom && validateAmount(quoteAmount, quoteAsset.decimals) === '') {
-            total = total.plus(amountToUAmount(quoteAmount, quoteAsset.decimals))
-        }
-        return total
-    }, [fee, baseAsset, quoteAsset, baseDenom, quoteDenom, baseAmount, quoteAmount])
-
-    const hasEnoughForFee = useMemo(() => {
-        if (!fee) return false
-        let needed = new BigNumber(fee.amount).plus(feeDenomReserve)
-        // The gas fee is deducted first, from the same balance when it is paid in the fee denom.
-        if (feePayment.gasFee.denom === fee.denom) needed = needed.plus(feePayment.gasFee.amount)
-        return feeBalance.amount.gte(needed)
-    }, [fee, feeBalance, feeDenomReserve, feePayment.gasFee.denom, feePayment.gasFee.amount])
-
-    // Paying the fee in the Settings fee token keeps the native balance for the starting amounts.
-    const canPayFee = hasEnoughForFee || feePayment.paysWithAlt
-
     const uBase = baseAsset && amountsValid ? amountToUAmount(baseAmount, baseAsset.decimals) : ''
     const uQuote = quoteAsset && amountsValid ? amountToUAmount(quoteAmount, quoteAsset.decimals) : ''
+    const reserves = [
+        ...(uBase ? [{ denom: baseDenom, amount: uBase }] : []),
+        ...(uQuote ? [{ denom: quoteDenom, amount: uQuote }] : []),
+    ]
+
+    // MsgCreateLiquidityPool captures the creation fee BEFORE it moves the starting amounts: the
+    // chain picks the fee token on the balance left after gas, then the reserves must fit in what
+    // is left. A fee token that is one of the pair can cover the fee and still leave too little.
+    const feePayment = useFeePayment(fee, CREATE_POOL_TX_KIND, reserves, { feeFirst: true })
+    const canPayFee = feePayment.canPayFee
 
     const buildMsgs = useCallback(() => {
         if (!address || !uBase || !uQuote) return undefined
@@ -179,7 +163,7 @@ function PoolNewContent() {
     if (done) return <PoolDone input={done.input} hash={done.hash} />
 
     const isComplete = FORM_STEPS.every(k => steps.state[k] === 'done')
-    const canCreate = isComplete && connected && Boolean(fee) && !isFeeBalanceLoading && canPayFee && !isPoolsLoading
+    const canCreate = isComplete && connected && Boolean(fee) && !isFeeBalanceLoading && !feePayment.isLoading && canPayFee && !isPoolsLoading
 
     const create = () => {
         if (!canCreate) return
@@ -205,6 +189,7 @@ function PoolNewContent() {
             rows={payRows}
             moduleFee={fee}
             txKind={CREATE_POOL_TX_KIND}
+            feeFirst
             isLoading={isFeeLoading}
             feeUnknown={!fee}
         />
@@ -331,6 +316,7 @@ function PoolNewContent() {
                     leaves={payRows}
                     moduleFee={fee}
                     txKind={CREATE_POOL_TX_KIND}
+                    feeFirst
                     isLoading={isFeeLoading}
                     feeUnknown={!fee}
                     gets={[{ label: VOCABULARY.pool.name, value: pair }]}
@@ -343,8 +329,8 @@ function PoolNewContent() {
                 >
                     {!address ? (
                         <SubmitNote>Connect your wallet.</SubmitNote>
-                    ) : isComplete && !isFeeBalanceLoading && !canPayFee && (
-                        <SubmitNote tone="error">{notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
+                    ) : isComplete && !isFeeBalanceLoading && !feePayment.isLoading && !canPayFee && (
+                        <SubmitNote tone="error">{feePayment.shortMessage ?? notEnoughText(feeTicker, feeBalanceText)}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

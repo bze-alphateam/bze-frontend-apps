@@ -108,7 +108,7 @@ describe("PayPanel", () => {
             />,
             { wrapper },
         );
-        expect(feePaymentArgs.current).toEqual([FEE, "create-pool", [startingBze, startingTok]]);
+        expect(feePaymentArgs.current).toEqual([FEE, "create-pool", [startingBze, startingTok], { feeFirst: undefined }]);
     });
 
     it("does not reserve the fees again when the module fee is their merged total", () => {
@@ -128,7 +128,7 @@ describe("PayPanel", () => {
             />,
             { wrapper },
         );
-        expect(feePaymentArgs.current).toEqual([merged, ["create-denom-reward", "create-denom-reward-schedule"], [rewards]]);
+        expect(feePaymentArgs.current).toEqual([merged, ["create-denom-reward", "create-denom-reward-schedule"], [rewards], { feeFirst: undefined }]);
     });
 
     it("shows a skeleton while fees load", () => {
@@ -210,6 +210,19 @@ describe("PayPanel", () => {
         payment.current = pay({ method: "insufficient", canPayFee: false });
         renderPanel();
         expect(screen.getByText("Not enough BZE: you hold 3 BZE.")).toBeInTheDocument();
+    });
+
+    // Regression: pool creation takes its fee before the starting amounts, so the panel must
+    // resolve the fee token on the balance left after gas only, then sum fee + gas + reserves.
+    it("passes feeFirst to the fee check and words what the wallet is short of", () => {
+        payment.current = pay({ method: "insufficient", canPayFee: false, shortMessage: "Not enough TOK: 6 TOK short." });
+        const reserve = { denom: "utok", amount: "95000000" };
+        render(
+            <PayPanel rows={[{ label: "Creation fee", coin: FEE }, { label: "Starting TOK", coin: reserve }]} moduleFee={FEE} txKind="create-pool" feeFirst />,
+            { wrapper },
+        );
+        expect(feePaymentArgs.current).toEqual([FEE, "create-pool", [reserve], { feeFirst: true }]);
+        expect(screen.getByText("Not enough TOK: 6 TOK short.")).toBeInTheDocument();
     });
 
     it("several fee denoms: one row per denom, the ≈ ALT estimate only on the module fee row", () => {

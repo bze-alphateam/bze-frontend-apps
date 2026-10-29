@@ -52,7 +52,7 @@ export {
 export {
     toBigNumber, uAmountToAmount, uAmountToBigNumberAmount,
     amountToBigNumberUAmount, amountToUAmount, prettyAmount,
-    priceToUPrice, priceToBigNumberUPrice, uPriceToPrice, uPriceToBigNumberPrice
+    priceToUPrice, priceToBigNumberUPrice, uPriceToPrice, uPriceToBigNumberPrice, uPriceToMsgPrice
 } from './utils/amount';
 export { truncateAddress, validateBech32Address, validateBZEBech32Address, valoperToAccountAddress } from './utils/address';
 export {

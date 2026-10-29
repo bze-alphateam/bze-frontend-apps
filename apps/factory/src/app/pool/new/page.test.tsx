@@ -6,9 +6,10 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 
-// The page runs on mocked hooks: query params, wallet, pools, fees, balances, the fee engine and
-// the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store, the Review
-// step and the Done screen are real. The asset picker becomes a plain button per denom; PayPanel
+// The page runs on mocked hooks: query params, wallet, pools, fees, balances, ui-kit's fee engine
+// (useFeeEstimate, a fake that follows the chain's rule: fee token first, BZE fallback) and the
+// wallet side of the tx (useFactoryTx). useFeePayment, the wizard's tx hook, the pending-tx store,
+// the Review step and the Done screen are real. The asset picker becomes a plain button per denom; PayPanel
 // and the fee split slider have their own coverage.
 type TxOpts = {
     onBroadcast?: (hash: string) => void;
@@ -25,7 +26,8 @@ const {
     feeState: { fee: { denom: "ubze", amount: "25000000" } as { denom: string; amount: string } | undefined, isLoading: false },
     balances: { current: {} as Record<string, string> },
     maxSpendable: { current: {} as Record<string, string> },
-    payment: { paysWithAlt: false, gasAmount: "0" },
+    // altDenom: the Settings fee token (gas is paid in it too), altAmount: the fee converted to it
+    payment: { altDenom: undefined as string | undefined, altAmount: "0", gasAmount: "0" },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
     updatePoolsMock: vi.fn(),
@@ -44,21 +46,6 @@ vi.mock("@/hooks/useNavigation", () => ({
     }),
 }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: txMock, progressTrack: "" }) }));
-vi.mock("@/hooks/useFeePayment", () => ({
-    useFeePayment: () => ({
-        paysWithAlt: payment.paysWithAlt,
-        canPayFee: true,
-        isLoading: false,
-        method: "native",
-        gasFee: {
-            denom: "ubze",
-            amount: new BigNumber(payment.gasAmount),
-            displayAmount: new BigNumber(payment.gasAmount).div(1e6),
-            ticker: "BZE",
-            isLoading: false,
-        },
-    }),
-}));
 vi.mock("@/components/guided/pay-panel", async (importActual) => ({
     ...await importActual<typeof import("@/components/guided/pay-panel")>(),
     PayPanel: ({ rows, footer }: { rows: { label: string; coin?: { amount: string } }[]; footer?: ReactNode }) => (
@@ -97,6 +84,48 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useBalance: (denom: string) => ({ balance: { denom, amount: toBn(balances.current[denom]) }, isLoading: false }),
         useMaxSpendable: (denom: string) => ({ amount: toBn(maxSpendable.current[denom]), isLoading: false }),
+        useBalances: () => ({
+            getBalanceByDenom: (denom: string) => ({ denom, amount: toBn(balances.current[denom]) }),
+            isLoading: false,
+        }),
+        useAssets: () => ({
+            denomTicker: (denom: string) => assets[denom]?.ticker ?? denom,
+            denomDecimals: (denom: string) => assets[denom]?.decimals ?? 6,
+        }),
+        useGasFeeEstimate: (spec?: unknown) => {
+            const denom = payment.altDenom ?? "ubze";
+            const amount = spec === undefined ? new BN(0) : toBn(payment.gasAmount);
+            return {
+                denom,
+                amount,
+                displayAmount: amount.div(1e6),
+                ticker: assets[denom]?.ticker ?? denom,
+                estimate: spec === undefined ? undefined : { denom, amount, gas: new BN(200000), nativeAmount: amount, isNative: denom === "ubze" },
+                isNative: denom === "ubze",
+                isLoading: false,
+            };
+        },
+        // The chain's CaptureAndSwapUserFee: the fee token when what is left of it covers the
+        // converted fee, else the native fee, else nothing.
+        useFeeEstimate: (fee?: { denom: string; amount: string }, opts: { gasFee?: { denom: string; amount: BigNumber }; reserved?: { denom: string; amount: string }[] } = {}) => {
+            const taken = [...(opts.reserved ?? []), ...(opts.gasFee ? [opts.gasFee] : [])];
+            const left = (denom: string) => taken
+                .filter(c => c.denom === denom)
+                .reduce((b, c) => b.minus(c.amount), toBn(balances.current[denom]));
+            const alt = payment.altDenom;
+            let method: string | undefined;
+            let resolvedFee: { denom: string; amount: string } | undefined;
+            if (fee) {
+                if (alt && left(alt).gte(payment.altAmount)) {
+                    method = "preferred";
+                    resolvedFee = { denom: alt, amount: payment.altAmount };
+                } else {
+                    method = left(fee.denom).gte(fee.amount) ? (alt ? "fallback" : "native") : "insufficient";
+                    resolvedFee = fee;
+                }
+            }
+            return { method, resolvedFee, isPreferredSelected: Boolean(alt), isLoading: false, preferredBalanceDisplay: new BN(0) };
+        },
         useAssetPrice: (denom: string) => ({
             hasPrice: denom === "ubze",
             totalUsdValue: (x: BigNumber) => x.times(2),
@@ -166,7 +195,8 @@ beforeEach(() => {
     feeState.isLoading = false;
     balances.current = { utok: "1000000000", ubze: "1000000000" };
     maxSpendable.current = { utok: "1000000000", ubze: "999000000" };
-    payment.paysWithAlt = false;
+    payment.altDenom = undefined;
+    payment.altAmount = "0";
     payment.gasAmount = "0";
     navigateMock.mockReset();
     updatePoolsMock.mockReset();
@@ -388,7 +418,7 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
         });
 
         it("needs the fee on top of a starting amount in the fee denom, unless the fee token pays it", async () => {
-            balances.current = { utok: "1000000000", ubze: "100000000" };
+            balances.current = { utok: "1000000000", ubze: "100000000", uusdc: "100000000" };
             payment.gasAmount = "1000000";
             queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
             const { unmount } = renderPage();
@@ -397,12 +427,44 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await answerFees();
             expect(screen.getByTestId("pay-panel")).not.toHaveTextContent("needed in total");
             expect(createButton()).toBeDisabled();
-            expect(screen.getByText("Not enough BZE: you hold 100 BZE.")).toBeInTheDocument();
+            expect(screen.getByText("Not enough BZE: 6 BZE short.")).toBeInTheDocument();
             unmount();
 
-            payment.paysWithAlt = true;
+            // A fee token outside the pair pays the fee and the gas, BZE keeps the 80 for the pool.
+            payment.altDenom = "uusdc";
+            payment.altAmount = "5000000";
             renderPage();
             await answerAmounts("10", "80");
+            await answerFees();
+            expect(createButton()).toBeEnabled();
+        });
+
+        // Regression: the chain takes the creation fee before the starting amounts. With the fee
+        // token one of the pair, holding enough of it for the fee (after gas) made the chain take
+        // the fee in it, and the reserve transfer then failed. The page used to enable Create as
+        // soon as the fee token could pay the fee.
+        it("refuses a fee-token reserve that the fee taken first would leave short", async () => {
+            balances.current = { utok: "100000000", ubze: "1000000000" };
+            payment.altDenom = "utok";
+            payment.altAmount = "10000000";
+            payment.gasAmount = "1000000";
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            // 1 TOK gas, then 10 TOK fee (99 TOK left covers it), then 95 TOK reserve: 106 > 100.
+            await answerAmounts("95", "10");
+            await answerFees();
+            expect(createButton()).toBeDisabled();
+            expect(screen.getByText("Not enough TOK: 6 TOK short.")).toBeInTheDocument();
+        });
+
+        it("lets the same pool through once the fee-token reserve leaves room for the fee and gas", async () => {
+            balances.current = { utok: "100000000", ubze: "1000000000" };
+            payment.altDenom = "utok";
+            payment.altAmount = "10000000";
+            payment.gasAmount = "1000000";
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("89", "10");
             await answerFees();
             expect(createButton()).toBeEnabled();
         });

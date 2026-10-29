@@ -193,9 +193,9 @@ export const WithdrawForm = () => {
     }, [selectedAsset]);
 
     const onAmountChange = useCallback((value: string) => {
-        setAmount(sanitizeNumberInput(value));
+        setAmount(sanitizeNumberInput(value, selectedAsset?.balance.decimals));
         setAmountError('');
-    }, []);
+    }, [selectedAsset?.balance.decimals]);
 
     const setMaxAmount = useCallback(() => {
         if (!sourceBalance) return;

@@ -179,13 +179,15 @@ export const OrderForm = ({side, title, fillMessage, disabled, onSubmit, childre
 };
 
 /** A labelled number field of an order form, with its unit inside on the right. */
-export const OrderField = ({label, unit, value, onChange, disabled, usd}: {
+export const OrderField = ({label, unit, value, onChange, disabled, usd, maxDecimals}: {
     label: string;
     unit?: string;
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
     usd?: string;
+    // the asset's decimals for an amount field: typed digits past them are dropped
+    maxDecimals?: number;
 }) => {
     const id = useId();
 
@@ -221,7 +223,7 @@ export const OrderField = ({label, unit, value, onChange, disabled, usd}: {
                     fontWeight="500"
                     _placeholder={{color: 'hg.text.faint'}}
                     value={value}
-                    onChange={(e) => onChange(sanitizeNumberInput(e.target.value))}
+                    onChange={(e) => onChange(sanitizeNumberInput(e.target.value, maxDecimals))}
                     disabled={disabled}
                 />
                 <chakra.span flex="none" fontSize="12px" color="hg.text.faint">{unit}</chakra.span>

@@ -18,6 +18,7 @@ import {
     useAsset,
     useAssets,
     useBalance,
+    useCanAffordTx,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { ExtendDone, type ExtendDoneInput } from '@/components/reward-wizard/extend-done'
@@ -174,7 +175,15 @@ function ExtendContent() {
 
     const daysError = reward ? validateExtraDays(extraDays, reward) : 'Required.'
     const cost = reward && daysError === '' ? extendCost(reward, extraDays.trim()) : undefined
-    const hasEnough = Boolean(cost) && prizeBalance.amount.gte(cost ?? 0)
+    // The ante handler takes the network fee first, from the prize balance when gas is paid in the
+    // prize token (BZE prize, or the Settings fee token as prize): the escrow must fit after it.
+    // MsgUpdateStakingReward has no module fee.
+    const afford = useCanAffordTx({
+        spec: cost && reward ? TX_KIND : undefined,
+        spend: cost && reward ? { denom: reward.prize_denom, amount: cost } : undefined,
+    })
+    const hasEnough = Boolean(cost) && !afford.isLoading && afford.canAfford
+    const shortText = afford.shortOnFees ? afford.message : notEnoughText(prizeTicker, display(prizeBalance.amount))
     // Without a wallet the wizard can still be walked to Review; the balance check needs one.
     const daysValid = daysError === '' && (!connected || hasEnough)
 
@@ -326,7 +335,7 @@ function ExtendContent() {
 
                         {cost && connected && !hasEnough && (
                             <Text fontSize="14px" color="hg.danger.text" fontWeight="600" role="alert">
-                                {notEnoughText(prizeTicker, display(prizeBalance.amount))}
+                                {shortText}
                             </Text>
                         )}
                     </VStack>
@@ -352,7 +361,7 @@ function ExtendContent() {
                     {!address ? (
                         <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !hasEnough && (
-                        <SubmitNote tone="error">{notEnoughText(prizeTicker, display(prizeBalance.amount))}</SubmitNote>
+                        <SubmitNote tone="error">{shortText}</SubmitNote>
                     )}
                 </ReviewStep>
             )}

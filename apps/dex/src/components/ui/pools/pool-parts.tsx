@@ -14,10 +14,12 @@ interface AmountFieldProps {
     onMax: () => void;
     disabled?: boolean;
     maxDisabled?: boolean;
+    // the asset's decimals: typed digits past them are dropped
+    maxDecimals?: number;
 }
 
 /** A labelled amount with its available balance, Max inside the field like every other amount. */
-export const AmountField = ({label, available, value, onChange, onMax, disabled, maxDisabled}: AmountFieldProps) => {
+export const AmountField = ({label, available, value, onChange, onMax, disabled, maxDisabled, maxDecimals}: AmountFieldProps) => {
     const id = useId();
 
     return (
@@ -31,7 +33,7 @@ export const AmountField = ({label, available, value, onChange, onMax, disabled,
                     id={id}
                     placeholder="0.0"
                     value={value}
-                    onChange={(e) => onChange(sanitizeNumberInput(e.target.value))}
+                    onChange={(e) => onChange(sanitizeNumberInput(e.target.value, maxDecimals))}
                     h="46px"
                     borderRadius="12px"
                     bg="hg.inset"
