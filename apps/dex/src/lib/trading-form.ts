@@ -23,6 +23,13 @@ export const balanceToFormValue = (uAmount: BigNumber | string | number | undefi
 }
 
 /**
+ * True when an order amount or price (micro units) can go into a message: finite and above zero.
+ * BigNumber's isPositive() is true for 0, so a 0 price used to reach the chain and fail its
+ * ValidateBasic after signing.
+ */
+export const isPositiveOrderValue = (value: BigNumber): boolean => value.isFinite() && value.gt(0);
+
+/**
  * The price an order submit actually sends, in chain units: the user's price for a fresh order
  * or a multi-order fill, but the matched order's own price when exactly one order gets filled
  * (that fill is sent as a create at the maker's price). The chain's minimum amount is computed

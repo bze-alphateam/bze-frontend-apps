@@ -3,6 +3,7 @@ import BigNumber from "bignumber.js";
 
 import {
     exceedsSpendable,
+    isPositiveAmount,
     quickAmount,
     validateDelegationAmount,
 } from "./delegate-amount";
@@ -29,6 +30,12 @@ describe("validateDelegationAmount", () => {
     it("rejects zero and negative amounts", () => {
         expect(validateDelegationAmount("0", TEN_BZE_UAMOUNT, DECIMALS)).toBe("not-positive");
         expect(validateDelegationAmount("-1", TEN_BZE_UAMOUNT, DECIMALS)).toBe("not-positive");
+    });
+
+    // sanitizeNumberInput lets a lone "." through; BigNumber reads it as NaN.
+    it("rejects an amount that is not a number", () => {
+        expect(validateDelegationAmount(".", TEN_BZE_UAMOUNT, DECIMALS)).toBe("not-positive");
+        expect(validateDelegationAmount(".", TEN_BZE_UAMOUNT, DECIMALS, SPENDABLE_UAMOUNT)).toBe("not-positive");
     });
 
     it("rejects an amount above the wallet balance", () => {
@@ -66,8 +73,28 @@ describe("exceedsSpendable", () => {
         expect(exceedsSpendable("5", spendable, available)).toBe(false);
     });
 
+    it("is true for an amount that is not a number", () => {
+        expect(exceedsSpendable(".", spendable, available)).toBe(true);
+    });
+
     it("is false when there is no balance at all", () => {
         expect(exceedsSpendable("1", new BigNumber(0), new BigNumber(0))).toBe(false);
+    });
+});
+
+describe("isPositiveAmount", () => {
+    it("accepts finite amounts above zero", () => {
+        expect(isPositiveAmount("1")).toBe(true);
+        expect(isPositiveAmount("0.000001")).toBe(true);
+        expect(isPositiveAmount("1.")).toBe(true);
+    });
+
+    it("rejects empty, zero, negative and non-numeric amounts", () => {
+        expect(isPositiveAmount("")).toBe(false);
+        expect(isPositiveAmount("0")).toBe(false);
+        expect(isPositiveAmount("0.")).toBe(false);
+        expect(isPositiveAmount("-1")).toBe(false);
+        expect(isPositiveAmount(".")).toBe(false);
     });
 });
 
