@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import {WalletState} from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
-import {type Asset, DEFAULT_DENOM_BRANDING} from "@bze/bze-ui-kit";
+import {type Asset, DEFAULT_DENOM_BRANDING, maxSpendableAmount} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 const T = "factory/bze1owner/upage";
@@ -21,23 +21,38 @@ const useMaxSpendable = vi.fn();
 let balances: Record<string, BigNumber> = {};
 let pools: { base: string; quote: string }[] = [];
 let feeMessage = "";
+// The fees as the chain charges them here: 0.02 BZE gas and the 0.1 BZE taker fee, both in BZE.
+const GAS_FEE = {denom: "ubze", amount: "20000"};
+const TAKER_FEE = {denom: "ubze", amount: "100000"};
+const useFeeEstimate = vi.fn();
 
-vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
-    ammRouter: {updatePools: vi.fn(), findOptimalRoute: (...args: unknown[]) => findOptimalRoute(...args)},
-    useBalances: () => ({
-        assetsBalances: Object.entries(balances).map(([denom, amount]) => ({
-            denom, amount, ticker: TICKERS[denom], decimals: 6,
-            USDValue: amount.dividedBy(1e6).multipliedBy(PRICES[denom] ?? 0),
-        })),
-    }),
-    useLiquidityPools: () => ({pools, isLoading: false}),
-    useAssets: () => ({denomDecimals: () => 6, denomTicker: (denom: string) => TICKERS[denom] ?? denom}),
-    useBZETx: () => ({tx, progressTrack: ""}),
-    useMaxSpendable: (denom: string, spec: unknown) => useMaxSpendable(denom, spec),
-    useGasFeeEstimate: () => ({displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
-    useCanAffordTx: () => ({canAfford: feeMessage === "", message: feeMessage, isLoading: false}),
-}));
+vi.mock("@bze/bze-ui-kit", async (importOriginal) => {
+    const kit = await importOriginal<typeof import("@bze/bze-ui-kit")>();
+    return {
+        ...kit,
+        ammRouter: {updatePools: vi.fn(), findOptimalRoute: (...args: unknown[]) => findOptimalRoute(...args)},
+        useBalances: () => ({
+            assetsBalances: Object.entries(balances).map(([denom, amount]) => ({
+                denom, amount, ticker: TICKERS[denom], decimals: 6,
+                USDValue: amount.dividedBy(1e6).multipliedBy(PRICES[denom] ?? 0),
+            })),
+        }),
+        useLiquidityPools: () => ({pools, isLoading: false}),
+        useAssets: () => ({denomDecimals: () => 6, denomTicker: (denom: string) => TICKERS[denom] ?? denom}),
+        useBZETx: () => ({tx, progressTrack: ""}),
+        useMaxSpendable: (denom: string, spec: unknown, options?: unknown) => useMaxSpendable(denom, spec, options),
+        useGasFeeEstimate: () => ({estimate: GAS_FEE, displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
+        useTradingFees: () => ({fees: {takerFee: TAKER_FEE}, isLoading: false}),
+        useFeeEstimate: (fee: unknown, options: unknown) => useFeeEstimate(fee, options),
+        // The real balance check (kit.canAffordTx) over the mocked balances and fees.
+        useCanAffordTx: ({spend, moduleFee}: {spend?: {denom: string; amount: string}; moduleFee?: {denom: string; amount: string}}) => {
+            if (feeMessage) return {canAfford: false, message: feeMessage, isLoading: false};
+            const result = kit.canAffordTx({spend, gasFee: GAS_FEE, moduleFee, balanceOf: (denom) => balances[denom] ?? new BigNumber(0)});
+            const message = result.canAfford ? "" : result.shortOnFees ? "Not enough BZE left for the network fee" : "Insufficient balance";
+            return {...result, message, isLoading: false};
+        },
+    };
+});
 
 vi.mock("@interchain-kit/react", () => ({
     useChain: () => ({status: WalletState.Connected, address: ME}),
@@ -90,9 +105,10 @@ beforeEach(() => {
     };
     feeMessage = "";
     findOptimalRoute.mockReturnValue(route(["pool-usdc-bze", "pool-bze-page"], "1234567.9"));
-    useMaxSpendable.mockImplementation((denom: string) => {
-        // Paying the fee in BZE keeps 0.02 BZE back.
-        const amount = denom === "ubze" ? balances.ubze.minus(20000) : balances[denom] ?? new BigNumber(0);
+    // The taker fee resolves to BZE, the denom the chain takes it in here.
+    useFeeEstimate.mockImplementation((fee?: { denom: string; amount: string }) => ({resolvedFee: fee, isLoading: false}));
+    useMaxSpendable.mockImplementation((denom: string, _spec: unknown, options?: { moduleFee?: { denom: string; amount: string } }) => {
+        const amount = maxSpendableAmount(balances[denom] ?? 0, denom, GAS_FEE, options?.moduleFee);
         return {amount, inputValue: amount.dividedBy(1e6).toFixed(), isLoading: false};
     });
     tx.mockResolvedValue(true);
@@ -160,14 +176,31 @@ describe("GetTab", () => {
         });
     });
 
-    it("keeps the network fee back on Max when paying with the fee token", async () => {
+    it("keeps the network fee and the taker fee back on Max when paying with the fee token", async () => {
         const user = renderTab();
 
         await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "ubze");
         await user.click(screen.getByRole("button", {name: "Max"}));
 
-        expect(amountField()).toHaveValue("4999.98");
-        expect(useMaxSpendable).toHaveBeenLastCalledWith("ubze", {kind: "swap", count: 2});
+        expect(amountField()).toHaveValue("4999.88");
+        expect(useMaxSpendable).toHaveBeenLastCalledWith("ubze", {kind: "swap", count: 2}, {moduleFee: TAKER_FEE});
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(getButton()).toBeEnabled();
+    });
+
+    it("refuses the whole fee-token balance when nothing is left for the taker fee", async () => {
+        // Regression: the check counted the network fee only, so paying 5,000 BZE minus gas passed
+        // here and failed on chain, where the taker fee is taken in BZE after the swap.
+        const user = renderTab();
+
+        await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "ubze");
+        await user.type(amountField(), "4999.98");
+
+        expect(useFeeEstimate).toHaveBeenLastCalledWith(TAKER_FEE, {gasFee: GAS_FEE});
+        expect(screen.getByRole("alert")).toHaveTextContent("Not enough BZE left for the network fee");
+        expect(getButton()).toBeDisabled();
+        await user.click(getButton());
+        expect(tx).not.toHaveBeenCalled();
     });
 
     it("says T is not tradable yet when it sits in no pool", () => {

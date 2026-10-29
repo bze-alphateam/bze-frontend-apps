@@ -295,7 +295,7 @@ export type { UseTxFeeDenomResult } from './hooks/useTxFeeDenom';
 export { useGasPrice, useGasFeeEstimator, useGasFeeEstimate } from './hooks/useGasFeeEstimate';
 export type { UseGasFeeEstimatorResult, UseGasFeeEstimateResult } from './hooks/useGasFeeEstimate';
 export { useMaxSpendable } from './hooks/useMaxSpendable';
-export type { UseMaxSpendableResult } from './hooks/useMaxSpendable';
+export type { UseMaxSpendableResult, UseMaxSpendableOptions } from './hooks/useMaxSpendable';
 export { useCanAffordTx } from './hooks/useCanAffordTx';
 export type { UseCanAffordTxInput, UseCanAffordTxResult } from './hooks/useCanAffordTx';
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';

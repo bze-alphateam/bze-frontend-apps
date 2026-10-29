@@ -267,22 +267,28 @@ export interface GasFeeCoin {
 }
 
 /**
- * How much of `denom` a MAX button may fill in: the balance minus the gas fee when `denom`
- * is the one the fee is paid in (floored at 0), the full balance otherwise.
+ * How much of `denom` a MAX button may fill in: the balance minus the gas fee and the module
+ * fee, each only when it is paid in `denom` (floored at 0). `moduleFee` must already be
+ * resolved to the denom the chain will take it in (`useFeeEstimate`'s `resolvedFee`), so the
+ * result is exactly what `canAffordTx` accepts for the same fees.
  */
 export function maxSpendableAmount(
     balance: BigNumber | string | number,
     denom: string,
     gasFee?: GasFeeCoin,
+    moduleFee?: GasFeeCoin,
 ): BigNumber {
     const available = toBigNumber(balance);
     if (available.isNaN() || available.lte(0)) {
         return toBigNumber(0);
     }
-    if (!gasFee || gasFee.denom !== denom) {
-        return available;
-    }
-    const spendable = available.minus(gasFee.amount);
+    const reserved = [gasFee, moduleFee]
+        .filter((fee): fee is GasFeeCoin => fee !== undefined && fee.denom === denom)
+        .reduce((sum, fee) => {
+            const amount = toBigNumber(fee.amount);
+            return amount.isNaN() || amount.lte(0) ? sum : sum.plus(amount);
+        }, toBigNumber(0));
+    const spendable = available.minus(reserved);
     return spendable.gt(0) ? spendable : toBigNumber(0);
 }
 

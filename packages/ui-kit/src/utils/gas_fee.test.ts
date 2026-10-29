@@ -169,6 +169,42 @@ describe('maxSpendableAmount', () => {
         expect(maxSpendableAmount('-5', USDC, gasFee).toString()).toBe('0')
         expect(maxSpendableAmount('abc', USDC, gasFee).toString()).toBe('0')
     })
+
+    // 0.1 BZE taker fee, paid in BZE (the fee token, or the fallback when it is short).
+    const takerFee = { denom: NATIVE, amount: '100000' }
+
+    it('also leaves the module fee behind when it is paid in the same denom', () => {
+        expect(maxSpendableAmount('1000000', NATIVE, gasFee, takerFee).toString()).toBe('895500')
+    })
+
+    it('leaves a module fee paid in another denom alone', () => {
+        expect(maxSpendableAmount('1000000', USDC, gasFee, takerFee).toString()).toBe('1000000')
+        expect(maxSpendableAmount('1000000', USDC, gasFee, { denom: USDC, amount: '300' }).toString()).toBe('999700')
+    })
+
+    it('floors at zero when the balance does not cover gas plus module fee', () => {
+        expect(maxSpendableAmount('100000', NATIVE, gasFee, takerFee).toString()).toBe('0')
+    })
+
+    it('fills an amount canAffordTx accepts with the same gas and module fee', () => {
+        // Regression: MAX on the fee coin used to keep only the gas back, so the swap / order
+        // form refused its own MAX ("Not enough BZE left for the network fee").
+        const balance = '1000000'
+        const max = maxSpendableAmount(balance, NATIVE, gasFee, takerFee)
+        const result = canAffordTx({
+            spend: { denom: NATIVE, amount: max },
+            gasFee,
+            moduleFee: takerFee,
+            balanceOf: () => balance,
+        })
+        expect(result.canAfford).toBe(true)
+        expect(canAffordTx({
+            spend: { denom: NATIVE, amount: max.plus(1) },
+            gasFee,
+            moduleFee: takerFee,
+            balanceOf: () => balance,
+        }).canAfford).toBe(false)
+    })
 })
 
 describe('canAffordTx', () => {

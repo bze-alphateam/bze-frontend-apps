@@ -526,16 +526,17 @@ export default function SwapPage() {
     return amount.gt(fromAsset.balance);
   }, [fromAsset, fromAmount]);
 
-  // Shared gas engine: MAX / 100 % keep the gas fee back when the sold asset is the fee coin
-  // (sized for the worst case, a 3-hop route, since the route is only known after the amount),
-  // and the submit check covers amount + gas + taker fee in the chain's charging order.
-  const maxSpendable = useMaxSpendable(fromAsset?.denom ?? '', {kind: 'swap', count: 3});
+  // Shared gas engine: the submit check covers amount + gas + taker fee in the chain's charging
+  // order, and MAX / 100 % keep the gas fee and the taker fee back when the sold asset is the coin
+  // they are paid in (gas sized for the worst case, a 3-hop route, since the route is only known
+  // after the amount), so MAX always passes that check.
   const swapSpec = useMemo(
     () => ({kind: 'swap' as const, count: Math.max(1, routeResult?.route.length ?? 1)}),
     [routeResult]
   );
   const swapGasFee = useGasFeeEstimate(swapSpec);
   const takerFeeEstimate = useFeeEstimate(tradingFees.takerFee, {gasFee: swapGasFee.estimate});
+  const maxSpendable = useMaxSpendable(fromAsset?.denom ?? '', {kind: 'swap', count: 3}, {moduleFee: takerFeeEstimate.resolvedFee});
   const affordability = useCanAffordTx({
     spec: fromAsset && fromAmount ? swapSpec : undefined,
     spend: fromAsset && fromAmount

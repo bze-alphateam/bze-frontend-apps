@@ -165,17 +165,18 @@ const TradingPageContent = () => {
     const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
     const {toast} = useToast()
     const {connectionType} = useConnectionType()
-    // Shared gas engine: a balance click fills the spendable amount (gas kept back when the
-    // clicked balance is the fee coin) and submitting checks amount + gas + trading fee in the
-    // chain's charging order. The gas is estimated for the final shape (one MsgCreateOrder, or
-    // one MsgFillOrders with N orders) right before sending.
-    const baseSpendable = useMaxSpendable(market?.base ?? '', 'create-order')
-    const quoteSpendable = useMaxSpendable(market?.quote ?? '', 'create-order')
+    // Shared gas engine: submitting checks amount + gas + trading fee in the chain's charging
+    // order, and a balance click fills the spendable amount: gas and the taker fee (the larger
+    // trading fee, since maker or taker is only known at submit) kept back when the clicked
+    // balance is the coin they are paid in. The gas is estimated for the final shape (one
+    // MsgCreateOrder, or one MsgFillOrders with N orders) right before sending.
     const {estimate: estimateGasFee} = useGasFeeEstimator()
     const {getBalanceByDenom} = useBalances()
     const orderGasFee = useMemo(() => estimateGasFee('create-order'), [estimateGasFee])
     const takerFeeEstimate = useFeeEstimate(tradingFees.takerFee, {gasFee: orderGasFee})
     const makerFeeEstimate = useFeeEstimate(tradingFees.makerFee, {gasFee: orderGasFee})
+    const baseSpendable = useMaxSpendable(market?.base ?? '', 'create-order', {moduleFee: takerFeeEstimate.resolvedFee})
+    const quoteSpendable = useMaxSpendable(market?.quote ?? '', 'create-order', {moduleFee: takerFeeEstimate.resolvedFee})
 
     const timeframes = [CHART_4H, CHART_1D, CHART_7D, CHART_30D, CHART_1Y];
 

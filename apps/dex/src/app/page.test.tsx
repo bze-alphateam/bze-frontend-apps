@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
     usdPrices: new Map<string, BigNumber>(),
     // A plain number: BigNumber is not imported yet when vi.hoisted runs.
     bzePrice: 0,
+    // The taker fee useFeeEstimate resolves (in the denom the chain takes it in).
+    takerFee: undefined as { denom: string; amount: string } | undefined,
 }));
 
 vi.mock("@interchain-kit/react", () => ({
@@ -71,9 +73,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
                 (mocks.usdPrices.get(denom) ?? new BigNumber(0)).multipliedBy(uAmount.shiftedBy(-6)),
         }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
-        useMaxSpendable: (denom: string, spec: unknown) => mocks.useMaxSpendable(denom, spec),
+        useMaxSpendable: (denom: string, spec: unknown, options?: unknown) => mocks.useMaxSpendable(denom, spec, options),
         useGasFeeEstimate: () => zeroGas,
         useFeeEstimate: () => ({
+            resolvedFee: mocks.takerFee,
             isPreferredSelected: false,
             nativeBalanceDisplay: new BigNumber(0),
             preferredBalanceDisplay: new BigNumber(0),
@@ -170,6 +173,7 @@ function setupBzeUsdc(pools: LiquidityPoolSDKType[] = [bzeUsdcPool()]) {
 
 beforeEach(() => {
     mocks.useMaxSpendable.mockReset();
+    mocks.takerFee = undefined;
     mocks.tx.mockReset();
     mocks.balances.clear();
     mocks.usdPrices.clear();
@@ -195,7 +199,24 @@ describe("Swap page Max button", () => {
 
         expect(fromInput().value).toBe("9.9955");
         // The reserve is sized for the worst case: a 3-hop route.
-        expect(mocks.useMaxSpendable).toHaveBeenCalledWith("ubze", { kind: "swap", count: 3 });
+        expect(mocks.useMaxSpendable).toHaveBeenCalledWith("ubze", { kind: "swap", count: 3 }, { moduleFee: undefined });
+    });
+
+    it("keeps the taker fee back on Max too, so the affordability check accepts it", () => {
+        // Regression: MAX reserved the gas only and the same form refused it for the taker fee.
+        mocks.liquidAssets = [makeAsset("BZE", "ubze"), makeAsset("USDC", "uusdc")];
+        mocks.balances.set("ubze", new BigNumber(10).shiftedBy(6));
+        mocks.balances.set("uusdc", new BigNumber(5).shiftedBy(6));
+        mocks.takerFee = { denom: "ubze", amount: "100000" };
+        mocks.useMaxSpendable.mockImplementation((denom: string) =>
+            denom === "ubze" ? spendable("10", "0.1045") : spendable("5", "0"),
+        );
+        renderSwap();
+
+        fireEvent.click(screen.getByRole("button", { name: "Max" }));
+
+        expect(fromInput().value).toBe("9.8955");
+        expect(mocks.useMaxSpendable).toHaveBeenCalledWith("ubze", { kind: "swap", count: 3 }, { moduleFee: { denom: "ubze", amount: "100000" } });
     });
 
     it("fills the full balance when the sold asset is not the fee token", () => {
@@ -211,7 +232,7 @@ describe("Swap page Max button", () => {
         fireEvent.click(screen.getByRole("button", { name: "Max" }));
 
         expect(fromInput().value).toBe("10");
-        expect(mocks.useMaxSpendable).toHaveBeenCalledWith("uatom", { kind: "swap", count: 3 });
+        expect(mocks.useMaxSpendable).toHaveBeenCalledWith("uatom", { kind: "swap", count: 3 }, { moduleFee: undefined });
     });
 
     it("takes the percentage presets from the spendable balance, the same one Max fills", () => {
