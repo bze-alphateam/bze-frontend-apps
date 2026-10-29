@@ -29,14 +29,17 @@ export const calculateAmountFromPrice = (price: string|BigNumber, totalPrice: st
     return total.div(priceNum).decimalPlaces(decimals).toString();
 }
 
-export const getMinAmount = (uPrice: string|BigNumber, noOfDecimals: number): BigNumber => {
+/**
+ * The smallest order amount the chain accepts at `uPrice`, in micro units of the base asset:
+ * `ceil(1 / uPrice) * 2`, exactly the tradebin keeper's `CalculateMinAmount`. `uPrice` is the
+ * chain price (quote micro units per base micro unit), so the result needs no decimals shift;
+ * convert it with `uAmountToAmount` only to show it.
+ */
+export const getMinAmount = (uPrice: string|BigNumber): BigNumber => {
     const uPriceDec = toBigNumber(uPrice);
-    if (uPriceDec.lte(0)) {
+    if (uPriceDec.isNaN() || uPriceDec.lte(0)) {
         return new BigNumber(0);
     }
 
-    const oneDec = new BigNumber(1);
-    const amtDec = oneDec.dividedBy(uPriceDec).decimalPlaces(0, BigNumber.ROUND_CEIL).multipliedBy(2);
-
-    return amtDec.shiftedBy((-1) * noOfDecimals).decimalPlaces(noOfDecimals || 6).multipliedBy(2);
+    return new BigNumber(1).dividedBy(uPriceDec).integerValue(BigNumber.ROUND_CEIL).multipliedBy(2);
 }

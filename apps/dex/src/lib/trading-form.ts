@@ -21,3 +21,12 @@ export const balanceToFormValue = (uAmount: BigNumber | string | number | undefi
 
     return amount.toFixed();
 }
+
+/**
+ * The price an order submit actually sends, in chain units: the user's price for a fresh order
+ * or a multi-order fill, but the matched order's own price when exactly one order gets filled
+ * (that fill is sent as a create at the maker's price). The chain's minimum amount is computed
+ * from the price in the message, so any amount check must use this price.
+ */
+export const orderPriceSent = (uPrice: BigNumber, matchedPrices: string[]): BigNumber =>
+    matchedPrices.length === 1 ? new BigNumber(matchedPrices[0]) : uPrice;

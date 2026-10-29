@@ -39,7 +39,7 @@ import {bze} from "@bze/bzejs";
 import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
-import {balanceToFormValue} from "@/lib/trading-form";
+import {balanceToFormValue, orderPriceSent} from "@/lib/trading-form";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -630,7 +630,9 @@ const TradingPageContent = () => {
             return;
         }
 
-        const minAmount = getMinAmount(price, baseAsset.decimals)
+        // Both sides in micro units: the chain rejects an order below ceil(1 / price) * 2 base units,
+        // computed from the price in the message, which for a single fill is the matched order's.
+        const minAmount = getMinAmount(orderPriceSent(price, toFill.map((order) => order.price)))
         if (amount.lt(minAmount)) {
             toast.error(`Minimum amount is ${prettyAmount(uAmountToAmount(minAmount, baseAsset.decimals))} ${baseAsset.ticker}`);
             return;

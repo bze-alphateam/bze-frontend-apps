@@ -376,8 +376,12 @@ describe("Swap page quoting", () => {
         expect(msg.value.routes).toEqual(["1"]);
         expect(msg.value.input).toEqual({ denom: "ubze", amount: soldMicro.toFixed(0) });
         expect(msg.value.minOutput.denom).toBe("uusdc");
-        // Default slippage is 0.5 % under the quoted output, which is at least the 0.1 USDC typed.
-        expect(new BigNumber(msg.value.minOutput.amount).gte(new BigNumber(100000).multipliedBy(0.995).integerValue(BigNumber.ROUND_FLOOR))).toBe(true);
+        // Default slippage is 0.5 % under the chain's whole-unit output for the sold amount, rounded
+        // down; the quote reaches at least the 0.1 USDC typed.
+        const chainOut = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", soldMicro)!.amountOut;
+        expect(chainOut.isInteger()).toBe(true);
+        expect(chainOut.gte(100000)).toBe(true);
+        expect(msg.value.minOutput.amount).toBe(chainOut.multipliedBy(0.995).integerValue(BigNumber.ROUND_FLOOR).toFixed());
         expect(fromInput().value).toBe("");
         expect(toInput().value).toBe("");
     });
@@ -412,8 +416,40 @@ describe("Swap page slippage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Swap" }));
         await vi.waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+        // 1,000 BZE buys 199,360 uusdc on chain; 0.1 % under it, rounded down, is 199,160.
         const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
-        expect(submittedMinOutput().toFixed()).toBe(expected.amountOut.multipliedBy(0.999).toFixed(0));
+        expect(expected.amountOut.toFixed()).toBe("199360");
+        expect(submittedMinOutput().toFixed()).toBe("199160");
+        expect(submittedMinOutput().toFixed()).toBe(expected.amountOut.multipliedBy(0.999).integerValue(BigNumber.ROUND_FLOOR).toFixed());
+    });
+
+    it("sends exactly the chain's whole-unit output as the minimum at 0% slippage", async () => {
+        setupBzeUsdc();
+        renderSwap();
+        // 777 BZE: fee 2,331,000, real 774,669,000, floor(774669000 * 1e9 / (5e12 + 774669000)) = 154,909
+        // uusdc; the un-truncated quote (154,909.8) rounded half-up would ask for 154,910 and fail.
+        fireEvent.change(fromInput(), { target: { value: "777" } });
+        openEditor();
+        fireEvent.change(customInput(), { target: { value: "0" } });
+        fireEvent.click(screen.getByRole("button", { name: "Done" }));
+        expect(screen.getByText(/0% max slippage/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Swap" }));
+        await vi.waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+
+        expect(submittedMinOutput().toFixed()).toBe("154909");
+    });
+
+    it("offers no route when the swap would pay nothing out on chain", () => {
+        setupBzeUsdc();
+        renderSwap();
+
+        // 0.001 BZE = 1,000 ubze: fee 3, real 997, output floor(0.1994) = 0 -> the chain refuses it.
+        fireEvent.change(fromInput(), { target: { value: "0.001" } });
+
+        expect(toInput().value).toBe("");
+        expect(screen.getByText("No Route Found")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "No Route Available" })).toBeDisabled();
     });
 
     it("remembers a chosen preset after the page is opened again", () => {

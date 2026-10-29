@@ -31,10 +31,11 @@ const bzeUsdc = pool("1", "ubze", "uusdc", "5000000000000", "1000000000");
 // A second hop for multi-hop quotes: 1,000 USDC against 100 ATOM.
 const usdcAtom = pool("2", "uusdc", "uatom", "1000000000", "100000000");
 
-/** Constant-product output after the pool fee, for the single-pool checks. */
+/** The chain's single-hop output: fee and output truncated to whole micro units, like `swapTokens`. */
 function constantProductOut(reserveIn: string, reserveOut: string, amountIn: BigNumber, fee = "0.003"): BigNumber {
-    const inAfterFee = amountIn.multipliedBy(new BigNumber(1).minus(fee));
-    return inAfterFee.multipliedBy(reserveOut).dividedBy(new BigNumber(reserveIn).plus(inAfterFee));
+    const feeAmount = amountIn.multipliedBy(fee).integerValue(BigNumber.ROUND_FLOOR);
+    const inAfterFee = amountIn.minus(feeAmount);
+    return inAfterFee.multipliedBy(reserveOut).dividedBy(new BigNumber(reserveIn).plus(inAfterFee)).integerValue(BigNumber.ROUND_FLOOR);
 }
 
 describe("parseAmountInput", () => {
@@ -58,7 +59,9 @@ describe("quoteExactInput", () => {
 
         expect(quote).not.toBeNull();
         expect(quote!.amountIn).toBe(amountIn);
-        expect(quote!.amountOut.toFixed(6)).toBe(constantProductOut(bzeUsdc.reserve_base, bzeUsdc.reserve_quote, amountIn).toFixed(6));
+        // 1,000 BZE: fee 3,000,000, real 997,000,000, floor(997e6 * 1e9 / (5e12 + 997e6)) = 199,360.
+        expect(quote!.amountOut.toFixed()).toBe("199360");
+        expect(quote!.amountOut.toFixed()).toBe(constantProductOut(bzeUsdc.reserve_base, bzeUsdc.reserve_quote, amountIn).toFixed());
         expect(quote!.route.route).toEqual(["1"]);
     });
 
@@ -106,15 +109,35 @@ describe("quoteExactOutput", () => {
         expect(quote!.amountOut.gte("1000000001")).toBe(true);
     });
 
-    it("routes through several pools", () => {
+    it("bisects on whole-unit outputs, so the input bought is what the chain pays", () => {
+        const router = createAmmRouter([bzeUsdc]);
+        const target = new BigNumber("199360");
+
+        const quote = quoteExactOutput(router, "ubze", "uusdc", target);
+
+        expect(quote).not.toBeNull();
+        expect(quote!.amountOut.isInteger()).toBe(true);
+        expect(quote!.amountOut.toFixed()).toBe(constantProductOut(bzeUsdc.reserve_base, bzeUsdc.reserve_quote, quote!.amountIn).toFixed());
+        expect(quote!.amountOut.gte(target)).toBe(true);
+        expect(constantProductOut(bzeUsdc.reserve_base, bzeUsdc.reserve_quote, quote!.amountIn.minus(1)).lt(target)).toBe(true);
+    });
+
+    it("routes through several pools, growing past a first guess the chain would refuse", () => {
         const router = createAmmRouter([bzeUsdc, usdcAtom]);
         const target = new BigNumber("1000000"); // 1 ATOM
+
+        // The first guess, 1 BZE, buys 199 uusdc whose second-hop fee truncates to 0: no route for
+        // that input, which must not end the search.
+        expect(router.findOptimalRoute("ubze", "uatom", target, SWAP_MAX_HOPS)).toBeNull();
 
         const quote = quoteExactOutput(router, "ubze", "uatom", target);
 
         expect(quote).not.toBeNull();
         expect(quote!.route.route).toEqual(["1", "2"]);
+        expect(quote!.amountOut.isInteger()).toBe(true);
         expect(quote!.amountOut.gte(target)).toBe(true);
+        const oneLess = quoteExactInput(router, "ubze", "uatom", quote!.amountIn.minus(1));
+        expect(oneLess!.amountOut.lt(target)).toBe(true);
     });
 
     it("is null when the pools cannot deliver the target at any price", () => {

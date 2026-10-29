@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vitest";
 import BigNumber from "bignumber.js";
-import {balanceToFormValue} from "./trading-form";
+import {getMinAmount} from "@bze/bze-ui-kit";
+import {balanceToFormValue, orderPriceSent} from "./trading-form";
 
 describe("balanceToFormValue", () => {
     it("converts a micro amount to its display amount", () => {
@@ -29,5 +30,22 @@ describe("balanceToFormValue", () => {
         expect(balanceToFormValue("", 6)).toBe("");
         expect(balanceToFormValue(new BigNumber(0), 6)).toBe("");
         expect(balanceToFormValue("not-a-number", 6)).toBe("");
+    });
+});
+
+describe("orderPriceSent", () => {
+    it("is the user's price for a fresh order or a multi-order fill", () => {
+        expect(orderPriceSent(new BigNumber("0.03"), []).toFixed()).toBe("0.03");
+        expect(orderPriceSent(new BigNumber("0.03"), ["0.02", "0.025"]).toFixed()).toBe("0.03");
+    });
+
+    it("is the matched order's price when exactly one order is filled", () => {
+        // A buy at 0.03 against a single sell at 0.02 is sent at 0.02, where the chain's minimum
+        // (ceil(1 / price) * 2) is 100 base units instead of 68: 80 passes at 0.03 but not at 0.02.
+        const sent = orderPriceSent(new BigNumber("0.03"), ["0.02"]);
+        expect(sent.toFixed()).toBe("0.02");
+        expect(getMinAmount(sent).toFixed()).toBe("100");
+        expect(getMinAmount("0.03").toFixed()).toBe("68");
+        expect(new BigNumber(80).lt(getMinAmount(sent))).toBe(true);
     });
 });
