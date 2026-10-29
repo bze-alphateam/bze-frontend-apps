@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
 import {LiquidityPoolSDKType} from "@bze/bzejs/bze/tradebin/store";
 import {toBigNumber} from "./amount";
-import {estimateFeeInPreferredDenom} from "./fee_conversion";
+import {calculatePoolOppositeAmount} from "./liquidity_pool";
 import {FeeCoin} from "../types/fees";
 
 /**
@@ -13,15 +13,20 @@ import {FeeCoin} from "../types/fees";
  * user "you can't afford this" before the wallet pops up. Everything here is pure so it can
  * be unit-tested; the hooks in `src/hooks/useGasFeeEstimate.ts` feed it live chain data.
  *
- * The math mirrors `useTx.simulateFee` step by step:
- *   gas        = gasUsed × gasMultiplier
- *   nativeFee  = gas × gasPrice                                (in the native denom)
- *   foreignFee = poolInput(nativeFee) × foreignFeeSlippage     (when paying in another token)
- *   foreignGas = gas × nonNativeGasMultiplier
- * with `gasUsed` taken from the measured table below instead of a simulation. The foreign
- * amount uses the chain's constant-product input formula (`estimateFeeInPreferredDenom`),
- * which is never below the spot ratio `useTx` uses, so the estimate is never lower than what
- * `useTx` will actually send.
+ * The math is shared with `useTx.simulateFee` ({@link computeNativeGasFee} and
+ * {@link computeForeignGasFee} are what it calls), with `gasUsed` taken from the measured
+ * table below instead of a simulation. The chain rules it satisfies (x/txfeecollector ante,
+ * `DeductFeeDecorator`):
+ *   native:  fee >= ceil(gasLimit × minGasPrice)
+ *   foreign: fee >= ceil(gasLimit × minGasPrice / spot),  spot = nativeReserve / foreignReserve
+ * so
+ *   gas        = ceil(gasUsed × gasMultiplier)
+ *   nativeFee  = ceil(gas × gasPrice)                                   (paying in the native denom)
+ *   foreignGas = ceil(gas × nonNativeGasMultiplier)                     (paying in another token)
+ *   foreignFee = ceil(spot⁻¹(ceil(foreignGas × gasPrice)) × foreignFeeSlippage)
+ * Every rounding is up: a fee one micro-unit short is rejected with "insufficient fees". The
+ * foreign fee is derived from the gas limit the transaction is actually sent with (the
+ * multiplied one), and the slippage buffer absorbs pool drift between simulation and inclusion.
  */
 
 /** Every kind of message the apps send. One entry per message type, not per form. */
@@ -188,6 +193,74 @@ export function resolveGasPrice(
     return fallbackGasPrice;
 }
 
+/** Gas limit and fee of a transaction paid in the native denom. */
+export interface NativeGasFee {
+    /** Gas limit the transaction is sent with: `ceil(gasUsed × gasMultiplier)`. */
+    gas: BigNumber;
+    /** Fee in native micro-units: `ceil(gas × gasPrice)`, the chain's minimum. */
+    amount: BigNumber;
+}
+
+/**
+ * The native gas fee `useTx.simulateFee` sends: the gas limit is rounded up first, then the fee
+ * is `ceil(gasLimit × gasPrice)` — exactly the ante handler's `fee >= ceil(gasLimit × minGasPrice)`.
+ * Rounding half-up would be one micro-unit short whenever `gasLimit × gasPrice` ends in .01–.49
+ * (gasUsed 123410 → gas 185115 → 1851.15: the chain requires 1852).
+ */
+export function computeNativeGasFee(
+    gasUsed: BigNumber | string | number,
+    gasPrice: number,
+    gasMultiplier: number,
+): NativeGasFee {
+    const gas = toBigNumber(gasUsed).multipliedBy(gasMultiplier).integerValue(BigNumber.ROUND_CEIL);
+    const amount = gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_CEIL);
+    return {gas, amount};
+}
+
+/** Gas limit and fee of a transaction paid in a non-native token. */
+export interface ForeignGasFee {
+    /** Gas limit the transaction is sent with: `ceil(nativeGas × nonNativeGasMultiplier)`. */
+    gas: BigNumber;
+    /** Fee in micro-units of the foreign denom, slippage buffer included. */
+    amount: BigNumber;
+    /** The native fee that gas limit needs — `ceil(gas × gasPrice)` — which the foreign fee covers. */
+    nativeAmount: BigNumber;
+}
+
+/**
+ * The fee `useTx.simulateFee` sends when the user pays in another token. The chain prices gas
+ * in that token at `minGasPrice / spot`, where `spot = nativeReserve / foreignReserve` of the
+ * token's pool with the native denom (x/tradebin `GetDenomSpotPriceInNativeCoin`), and requires
+ * `fee >= ceil(gasLimit × minGasPrice / spot)`. The gas limit of a foreign-fee transaction is
+ * the native one times `nonNativeGasMultiplier`, so the fee is derived from *that* limit:
+ * `ceil(finalGas × gasPrice)` native, converted at the spot ratio, times the slippage buffer,
+ * rounded up. Computing it from the pre-multiplier gas would send only `slippage / multiplier`
+ * of what the chain requires.
+ *
+ * `nativeGas` is the gas limit of {@link computeNativeGasFee}. Returns undefined when the pool
+ * cannot price the fee (empty reserves), in which case the native fee must be sent instead.
+ */
+export function computeForeignGasFee(
+    nativeGas: BigNumber,
+    gasPrice: number,
+    nonNativeGasMultiplier: number,
+    foreignFeeSlippage: number,
+    pool: LiquidityPoolSDKType,
+    nativeDenom: string,
+): ForeignGasFee | undefined {
+    const gas = nativeGas.multipliedBy(nonNativeGasMultiplier).integerValue(BigNumber.ROUND_CEIL);
+    const nativeAmount = gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_CEIL);
+    // spot⁻¹: native amount × foreignReserve / nativeReserve
+    const spot = calculatePoolOppositeAmount(pool, nativeAmount, pool.base === nativeDenom);
+    if (spot.isNaN() || !spot.gt(0)) {
+        return undefined;
+    }
+    // ROUND_CEIL also guarantees at least 1 unit of the foreign denom; if the swap rounds to 0
+    // on-chain, the txfeecollector module accumulates the dust until it can be swapped.
+    const amount = spot.multipliedBy(foreignFeeSlippage).integerValue(BigNumber.ROUND_CEIL);
+    return {gas, amount, nativeAmount};
+}
+
 export interface GasFeeEstimateInput {
     /** What the transaction is made of. */
     spec: TxSpec;
@@ -215,7 +288,7 @@ export interface GasFeeEstimateInput {
 export interface GasFeeEstimate {
     /** Denom the fee is charged in. Equals `nativeDenom` when the preferred token can't be used. */
     denom: string;
-    /** Fee amount in micro-units of `denom`, rounded the way `useTx` rounds it. */
+    /** Fee amount in micro-units of `denom`, rounded up the way `useTx` rounds it. */
     amount: BigNumber;
     /** Gas limit the transaction would be sent with. */
     gas: BigNumber;
@@ -232,32 +305,43 @@ export interface GasFeeEstimate {
 export function estimateGasFee(input: GasFeeEstimateInput): GasFeeEstimate {
     const {spec, nativeDenom, txFeeDenom, gasPrice, gasMultiplier, nonNativeGasMultiplier, foreignFeeSlippage, pool, minNativeLiquidity} = input;
 
-    const gas = estimateGasUsed(spec).multipliedBy(gasMultiplier).integerValue(BigNumber.ROUND_CEIL);
-    const nativeAmount = gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_HALF_UP);
+    const {gas, amount: nativeAmount} = computeNativeGasFee(estimateGasUsed(spec), gasPrice, gasMultiplier);
     const native: GasFeeEstimate = {denom: nativeDenom, amount: nativeAmount, gas, nativeAmount, isNative: true};
 
-    if (!txFeeDenom || txFeeDenom === nativeDenom || !pool) {
+    if (!txFeeDenom || txFeeDenom === nativeDenom || !pool || !poolAcceptsFeeDenom(pool, nativeDenom, txFeeDenom, minNativeLiquidity)) {
         return native;
     }
 
-    const converted = estimateFeeInPreferredDenom({
-        fee: {denom: nativeDenom, amount: nativeAmount.toFixed(0)},
-        nativeDenom,
-        preferredDenom: txFeeDenom,
-        pool,
-        minNativeLiquidity,
-    });
-    if (converted.reason !== 'estimated' || !converted.preferredAmount || !converted.preferredAmount.gt(0)) {
+    const foreign = computeForeignGasFee(gas, gasPrice, nonNativeGasMultiplier, foreignFeeSlippage, pool, nativeDenom);
+    if (!foreign) {
         return native;
     }
 
     return {
         denom: txFeeDenom,
-        amount: converted.preferredAmount.multipliedBy(foreignFeeSlippage).integerValue(BigNumber.ROUND_CEIL),
-        gas: gas.multipliedBy(nonNativeGasMultiplier).integerValue(BigNumber.ROUND_CEIL),
-        nativeAmount,
+        amount: foreign.amount,
+        gas: foreign.gas,
+        nativeAmount: foreign.nativeAmount,
         isNative: false,
     };
+}
+
+/**
+ * Same rule as `useFeeTokens.isValidFeeDenom` / the chain's `HasDeepLiquidityWithNativeDenom`:
+ * the token's pool with the native denom must hold *more* than the minimum native liquidity.
+ */
+function poolAcceptsFeeDenom(
+    pool: LiquidityPoolSDKType,
+    nativeDenom: string,
+    feeDenom: string,
+    minNativeLiquidity: BigNumber | string | number,
+): boolean {
+    const pairs = (pool.base === nativeDenom && pool.quote === feeDenom) || (pool.base === feeDenom && pool.quote === nativeDenom);
+    if (!pairs) {
+        return false;
+    }
+    const nativeReserve = toBigNumber(pool.base === nativeDenom ? pool.reserve_base : pool.reserve_quote);
+    return nativeReserve.gt(toBigNumber(minNativeLiquidity));
 }
 
 /** The part of a fee estimate a balance check needs (micro-units). */

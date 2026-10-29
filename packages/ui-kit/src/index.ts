@@ -96,10 +96,11 @@ export {
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {
-    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, maxSpendableAmount, canAffordTx
+    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
+    maxSpendableAmount, canAffordTx
 } from './utils/gas_fee';
 export type {
-    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin,
+    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
     SpendCoin, CanAffordTxInput, CanAffordTxResult, TxShortfall
 } from './utils/gas_fee';
 export {

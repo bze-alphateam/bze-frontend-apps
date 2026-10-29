@@ -19,7 +19,14 @@ vi.mock('../storage/storage', () => ({
 
 import { getTxFeeCollectorParams } from './txfeecollector_params'
 
-const MIN_GAS_FEE = { denom: 'ubze', amount: '0.01' }
+// The LCD payload exactly as mainnet and testnet return it: the params message has no
+// json tags (PascalCase Go names), only the nested Coin / BlockedIbcInbound are snake_case.
+const LIVE_PARAMS = {
+    ValidatorMinGasFee: { denom: 'ubze', amount: '0.010000000000000000' },
+    MaxBalanceIterations: '100',
+    BlockedIbcInbound: [{ channel_id: 'channel-3', base_denom: 'uusdc' }],
+}
+const MIN_GAS_FEE = LIVE_PARAMS.ValidatorMinGasFee
 
 const respond = (params: Record<string, unknown>) => paramsMock.mockResolvedValue({ params })
 
@@ -31,36 +38,48 @@ describe('getTxFeeCollectorParams', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
-    it('reads the snake_case blocked_ibc_inbound list', async () => {
+    // Regression: the parser read snake_case top-level keys, which the chain never sends,
+    // so it always returned undefined — the gas price fell back to the env default (0.02
+    // instead of the chain's 0.01) and the blocked IBC list was never applied.
+    it('parses the live PascalCase payload', async () => {
+        respond(LIVE_PARAMS)
+
+        const params = await getTxFeeCollectorParams()
+
+        expect(params).toEqual({
+            validatorMinGasFee: { denom: 'ubze', amount: '0.010000000000000000' },
+            blockedIbcInbound: [{ channelId: 'channel-3', baseDenom: 'uusdc' }],
+        })
+    })
+
+    it('still accepts snake_case top-level keys as a fallback', async () => {
         respond({
             validator_min_gas_fee: MIN_GAS_FEE,
             blocked_ibc_inbound: [{ channel_id: 'channel-3', base_denom: 'uusdc' }],
         })
 
-        const params = await getTxFeeCollectorParams()
-
-        expect(params).toEqual({
+        expect(await getTxFeeCollectorParams()).toEqual({
             validatorMinGasFee: MIN_GAS_FEE,
             blockedIbcInbound: [{ channelId: 'channel-3', baseDenom: 'uusdc' }],
         })
     })
 
     it('defaults to an empty list when the field is missing (chain before v8.2.0)', async () => {
-        respond({ validator_min_gas_fee: MIN_GAS_FEE })
+        respond({ ValidatorMinGasFee: MIN_GAS_FEE, MaxBalanceIterations: '100' })
 
         expect((await getTxFeeCollectorParams())?.blockedIbcInbound).toEqual([])
     })
 
     it('defaults to an empty list when the field is not an array', async () => {
-        respond({ validator_min_gas_fee: MIN_GAS_FEE, blocked_ibc_inbound: { channel_id: 'channel-3' } })
+        respond({ ValidatorMinGasFee: MIN_GAS_FEE, BlockedIbcInbound: { channel_id: 'channel-3' } })
 
         expect((await getTxFeeCollectorParams())?.blockedIbcInbound).toEqual([])
     })
 
     it('ignores malformed entries and keeps the valid ones', async () => {
         respond({
-            validator_min_gas_fee: MIN_GAS_FEE,
-            blocked_ibc_inbound: [
+            ValidatorMinGasFee: MIN_GAS_FEE,
+            BlockedIbcInbound: [
                 null,
                 'channel-3/uusdc',
                 { channel_id: 'channel-3' },
@@ -81,7 +100,7 @@ describe('getTxFeeCollectorParams', () => {
     // caching the params for ~3.5 days instead of 5 minutes — a chain-side block would
     // have stayed invisible to returning users for days.
     it('caches a successful read for five minutes', async () => {
-        respond({ validator_min_gas_fee: MIN_GAS_FEE, blocked_ibc_inbound: [] })
+        respond(LIVE_PARAMS)
 
         await getTxFeeCollectorParams()
 
@@ -102,10 +121,7 @@ describe('getTxFeeCollectorParams', () => {
 
     it('refetches when the cached entry predates blockedIbcInbound', async () => {
         getFromLocalStorageMock.mockReturnValue(JSON.stringify({ validatorMinGasFee: MIN_GAS_FEE }))
-        respond({
-            validator_min_gas_fee: MIN_GAS_FEE,
-            blocked_ibc_inbound: [{ channel_id: 'channel-3', base_denom: 'uusdc' }],
-        })
+        respond(LIVE_PARAMS)
 
         const params = await getTxFeeCollectorParams()
 
@@ -121,7 +137,7 @@ describe('getTxFeeCollectorParams', () => {
     })
 
     it('returns undefined and caches nothing when the min gas fee is missing', async () => {
-        respond({ blocked_ibc_inbound: [{ channel_id: 'channel-3', base_denom: 'uusdc' }] })
+        respond({ MaxBalanceIterations: '100', BlockedIbcInbound: [{ channel_id: 'channel-3', base_denom: 'uusdc' }] })
 
         expect(await getTxFeeCollectorParams()).toBeUndefined()
         expect(setInLocalStorageMock).not.toHaveBeenCalled()
