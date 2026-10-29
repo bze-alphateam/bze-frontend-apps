@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: new BigNumber(0) },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0" },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -39,7 +39,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useMarket: () => ({ market: MARKET, marketId: MARKET_ID, marketData: undefined }),
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useBalance: (denom: string) => ({ balance: { denom, amount: new BigNumber(0) } }),
-        useBalances: () => ({ getBalanceByDenom: (denom: string) => ({ denom, amount: mocks.balance }) }),
+        useBalances: () => ({ getBalanceByDenom: (denom: string) => ({ denom, amount: new BigNumber(mocks.balance) }) }),
         useAssetPrice: () => ({ totalUsdValue: () => new BigNumber(0), hasPrice: false }),
         useBZETx: () => ({ tx: mocks.tx }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
@@ -84,7 +84,7 @@ beforeEach(() => {
     mocks.halted = new Set();
     mocks.tx.mockReset();
     mocks.myOrders = [ORDER];
-    mocks.balance = new BigNumber(0);
+    mocks.balance = "0";
 });
 
 describe("trading page on a governance-halted market", () => {
@@ -130,7 +130,7 @@ describe("order guards", () => {
         fireEvent.change(within(form).getByLabelText(label), { target: { value } });
 
     it("sends no order whose price rounds to 0", async () => {
-        mocks.balance = new BigNumber("1000000000000");
+        mocks.balance = "1000000000000";
         renderPage();
 
         // A valid buy first: proves the book has loaded and the form reaches tx().
