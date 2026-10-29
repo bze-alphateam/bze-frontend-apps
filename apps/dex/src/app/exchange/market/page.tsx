@@ -14,7 +14,7 @@ import { LuTrendingUp, LuTrendingDown, LuActivity, LuArrowLeft, LuX, LuInfo } fr
 import {useNavigationWithParams} from "@/hooks/useNavigation";
 import {
     useMarket, useAsset,
-    amountToBigNumberUAmount, prettyAmount, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice,
+    amountToBigNumberUAmount, prettyAmount, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
     getAddressFullMarketOrders, getMarketBuyOrders, getMarketHistory, getMarketSellOrders,
     ActiveOrders, ORDER_TYPE_BUY, ORDER_TYPE_SELL,
     HistoryOrder,
@@ -40,6 +40,7 @@ import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
 import {balanceToFormValue, isPositiveOrderValue, orderPriceSent} from "@/lib/trading-form";
+import {isAboveChainMinPrice} from "@/lib/order-price";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -83,7 +84,7 @@ function getOrderTxMessages(activeOrders: ActiveOrders, marketId: string, addres
         const orderUAmountNum = new BigNumber(ordersToSearch[i].amount);
         let msgAmount = ordersToSearch[i].amount;
         if (orderUAmountNum.gt(uAmountNum)) {
-            msgAmount = uAmountNum.toString();
+            msgAmount = uAmountNum.toFixed(0);
         }
 
         msgs.push(
@@ -108,7 +109,7 @@ function getOrderTxMessages(activeOrders: ActiveOrders, marketId: string, addres
                 creator: address,
                 marketId: marketId,
                 orderType: orderType,
-                amount: uAmountNum.toString(),
+                amount: uAmountNum.toFixed(0),
                 price: uPrice,
             })
         )
@@ -576,7 +577,7 @@ const TradingPageContent = () => {
         }
 
         setSubmittingOrder(true);
-        const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toString(), uPrice.toString());
+        const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toFixed(0), uPriceToMsgPrice(uPrice));
 
         await tx(msgs);
 
@@ -606,6 +607,10 @@ const TradingPageContent = () => {
         }
         if (!isPositiveOrderValue(price)) {
             toast.error('Invalid price');
+            return;
+        }
+        if (!isAboveChainMinPrice(price)) {
+            toast.error('Price is too low');
             return;
         }
 
@@ -934,6 +939,7 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={buyAmount}
                                     onChange={onBuyAmountChange}
+                                    maxDecimals={baseAsset?.decimals}
                                     disabled={submittingOrder}
                                 />
                                 <OrderField
@@ -941,6 +947,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={buyTotal}
                                     onChange={onBuyTotalChange}
+                                    maxDecimals={quoteAsset?.decimals}
                                     disabled={submittingOrder}
                                     usd={buyTotal && shouldShowUsdValues ? quoteUsdValue(buyTotal) : undefined}
                                 />
@@ -966,6 +973,7 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={sellAmount}
                                     onChange={onSellAmountChange}
+                                    maxDecimals={baseAsset?.decimals}
                                     disabled={submittingOrder}
                                 />
                                 <OrderField
@@ -973,6 +981,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={sellTotal}
                                     onChange={onSellTotalChange}
+                                    maxDecimals={quoteAsset?.decimals}
                                     disabled={submittingOrder}
                                     usd={sellTotal && shouldShowUsdValues ? quoteUsdValue(sellTotal) : undefined}
                                 />
