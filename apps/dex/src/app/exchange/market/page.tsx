@@ -630,7 +630,8 @@ const TradingPageContent = () => {
             return;
         }
 
-        const minAmount = getMinAmount(price, baseAsset.decimals)
+        // Both sides in micro units: the chain rejects an order below ceil(1 / uPrice) * 2 base units.
+        const minAmount = getMinAmount(price)
         if (amount.lt(minAmount)) {
             toast.error(`Minimum amount is ${prettyAmount(uAmountToAmount(minAmount, baseAsset.decimals))} ${baseAsset.ticker}`);
             return;
