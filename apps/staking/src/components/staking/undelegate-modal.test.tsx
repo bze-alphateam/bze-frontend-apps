@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
@@ -66,5 +67,25 @@ describe("UndelegateModal", () => {
             await screen.findByText("Unstaked tokens will be locked for the unbonding period before becoming available."),
         ).toBeInTheDocument();
         expect(screen.queryByText(/days/)).not.toBeInTheDocument();
+    });
+
+    // sanitizeNumberInput lets a lone "." through; BigNumber reads it as NaN, which is not
+    // lte(0), so the button used to enable and send amount "NaN".
+    it("keeps Unstake disabled for a lone decimal point", async () => {
+        const user = userEvent.setup();
+        renderModal("14");
+
+        await user.type(await screen.findByPlaceholderText("0.00"), ".");
+
+        expect(screen.getByRole("button", { name: /^Unstake/ })).toBeDisabled();
+    });
+
+    it("enables Unstake for a positive amount", async () => {
+        const user = userEvent.setup();
+        renderModal("14");
+
+        await user.type(await screen.findByPlaceholderText("0.00"), "1");
+
+        expect(screen.getByRole("button", { name: "Unstake 1 BZE" })).toBeEnabled();
     });
 });
