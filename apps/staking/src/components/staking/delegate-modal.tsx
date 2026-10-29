@@ -1,12 +1,13 @@
 'use client';
 
 import {useState, useMemo, useRef} from 'react';
-import {Button} from '@chakra-ui/react';
+import {Button, chakra} from '@chakra-ui/react';
 import {LuWallet} from 'react-icons/lu';
 import {
     useAssets,
     useBalance,
     useMaxSpendable,
+    useCanAffordTx,
     useSDKTx,
     useToast,
     getChainNativeAssetDenom,
@@ -62,6 +63,14 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
     // delegated coin and, by default, the fee coin).
     const maxSpendable = useMaxSpendable(getChainNativeAssetDenom(), 'delegate');
     const spendableHuman = maxSpendable.displayAmount;
+    const amountValid = isPositiveAmount(amount);
+    // The network fee is charged in the Settings fee token, which may not be BZE: MAX above only
+    // keeps BZE back, so check that the wallet holds the fee in its own token too. Without it the
+    // fee simulation fails and the tx silently falls back to a default fee in BZE.
+    const feeCheck = useCanAffordTx({
+        spec: isConnected ? 'delegate' : undefined,
+        spend: amountValid ? {denom: getChainNativeAssetDenom(), amount: amountToUAmount(amount, decimals)} : undefined,
+    });
     const commission = formatCommissionRate(validator?.commission?.commission_rates?.rate);
     const earnsNoRewards = !!validator
         && (validator.jailed || bondStatusFromJSON(validator.status) !== BondStatus.BOND_STATUS_BONDED);
@@ -81,6 +90,10 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
             } else {
                 toast.error('Invalid amount', 'Please enter a valid amount to stake');
             }
+            return;
+        }
+        if (!feeCheck.canAfford) {
+            toast.error('Not enough for the network fee', feeCheck.message);
             return;
         }
 
@@ -111,7 +124,6 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
         }
     };
 
-    const amountValid = isPositiveAmount(amount);
     const exceedsSpendable = useMemo(
         () => computeExceedsSpendable(amount, spendableHuman, availableHuman),
         [amount, spendableHuman, availableHuman],
@@ -187,6 +199,10 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                 </Notice>
             )}
 
+            {!feeCheck.canAfford && !exceedsSpendable && feeCheck.message && (
+                <chakra.span fontSize="12px" color="hg.danger.text" textAlign="center">{feeCheck.message}</chakra.span>
+            )}
+
             <ProgressLine>{progressTrack}</ProgressLine>
 
             {!isConnected ? (
@@ -204,7 +220,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                     size="lg"
                     onClick={handleDelegate}
                     loading={isSubmitting}
-                    disabled={!amountValid || !address || exceedsSpendable}
+                    disabled={!amountValid || !address || exceedsSpendable || feeCheck.isLoading || !feeCheck.canAfford}
                     w="full"
                 >
                     Stake {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}
