@@ -6,6 +6,17 @@ import { amountToUAmount } from "@bze/bze-ui-kit";
 // comes from ui-kit's shared engine (useMaxSpendable / useCanAffordTx); these
 // helpers only turn its numbers into form values and error codes.
 
+/**
+ * True when a human-entered amount is a finite number above zero. Inputs pass
+ * through `sanitizeNumberInput`, which lets a lone "." through: BigNumber parses
+ * it as NaN, and NaN is neither `lte(0)` nor `gt(x)`, so a NaN check is needed
+ * on top of the comparison.
+ */
+export function isPositiveAmount(amount: string): boolean {
+    const value = new BigNumber(amount);
+    return value.isFinite() && value.gt(0);
+}
+
 export type DelegationAmountError = "empty" | "not-positive" | "insufficient-balance" | "no-fee-reserve";
 
 /**
@@ -26,7 +37,7 @@ export function validateDelegationAmount(
     if (!amount) {
         return "empty";
     }
-    if (new BigNumber(amount).lte(0)) {
+    if (!isPositiveAmount(amount)) {
         return "not-positive";
     }
     const uAmount = new BigNumber(amountToUAmount(amount, decimals));
@@ -42,14 +53,15 @@ export function validateDelegationAmount(
 /**
  * True when the entered amount leaves less than the gas fee behind — the cue to
  * warn and offer the spendable maximum instead. Only meaningful when there is
- * a balance to delegate.
+ * a balance to delegate. An amount that is not a finite number (a lone ".")
+ * cannot be shown to fit, so it counts as exceeding.
  */
 export function exceedsSpendable(amount: string, spendableHuman: BigNumber, availableHuman: BigNumber): boolean {
     if (!amount || !availableHuman.gt(0)) {
         return false;
     }
     const entered = new BigNumber(amount);
-    return !entered.isNaN() && entered.gt(spendableHuman);
+    return !entered.isFinite() || entered.gt(spendableHuman);
 }
 
 /**
