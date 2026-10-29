@@ -13,16 +13,14 @@ import {prettyError} from "../utils/user_errors";
 import {getChainNativeAssetDenom} from "../constants/assets";
 import {useSigningClient} from "./useSigningClient";
 import {openExternalLink, sleep} from "../utils/functions";
-import BigNumber from "bignumber.js";
 import {getDefaultTxMemo} from "../constants/placeholders";
 import {useCallback, useMemo, useState} from "react";
 import {useLiquidityPools} from "./useLiquidityPools";
 import {useSettings} from "./useSettings";
 import {useFeeTokens} from "./useFeeTokens";
-import {calculatePoolOppositeAmount} from "../utils/liquidity_pool";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
-import {resolveGasPrice} from "../utils/gas_fee";
+import {computeForeignGasFee, computeNativeGasFee, resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 
 import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
@@ -226,11 +224,12 @@ const useTx = (chainName: string) => {
             throw new Error("Gas simulation returned 0");
         }
 
-        const gasAmount = BigNumber(gasEstimated).multipliedBy(getGasMultiplier());
-        const gasPayment = gasAmount.multipliedBy(gasPrice);
+        // Gas limit rounded up, then fee = ceil(gas × price): the ante handler requires
+        // fee >= ceil(gasLimit × minGasPrice) and rejects anything a micro-unit short.
+        const nativeGasFee = computeNativeGasFee(gasEstimated, gasPrice, getGasMultiplier());
         const nativeFee = {
-            amount: coins(gasPayment.toFixed(0).toString(), nativeDenom),
-            gas: gasAmount.toFixed(0)
+            amount: coins(nativeGasFee.amount.toFixed(0), nativeDenom),
+            gas: nativeGasFee.gas.toFixed(0)
         }
 
         //user wants to pay in the fee in native denomination
@@ -249,19 +248,17 @@ const useTx = (chainName: string) => {
             return nativeFee;
         }
 
-        //calculate how much amount we need to pay for fee in the opposite denomination
-        let expectedAmount = calculatePoolOppositeAmount(pool, gasPayment, pool.base === nativeDenom)
-        if (!expectedAmount.isPositive()) {
+        // The foreign fee is priced from the gas limit the tx is actually sent with (native gas ×
+        // non-native multiplier) at the pool's spot ratio, with the slippage buffer (default 10%)
+        // to absorb pool drift between simulation and inclusion. See computeForeignGasFee.
+        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getNonNativeGasMultiplier(), getForeignFeeSlippage(), pool, nativeDenom);
+        if (!foreignGasFee) {
             return nativeFee;
         }
-        // Apply slippage buffer (default 10%) to absorb pool drift between simulation and inclusion.
-        // ROUND_CEIL guarantees at least 1 unit of the foreign denom; if the swap fee rounds to 0
-        // on-chain, the txfeecollector module accumulates the dust until it can be swapped.
-        expectedAmount = expectedAmount.multipliedBy(getForeignFeeSlippage()).integerValue(BigNumber.ROUND_CEIL)
 
         return {
-            amount: coins(expectedAmount.toFixed(0).toString(), feeDenom),
-            gas: gasAmount.multipliedBy(getNonNativeGasMultiplier()).toFixed(0)
+            amount: coins(foreignGasFee.amount.toFixed(0), feeDenom),
+            gas: foreignGasFee.gas.toFixed(0)
         };
     }, [signingClient, address, feeDenom, getDenomsPool, isValidFeeDenom]);
 
