@@ -63,18 +63,23 @@ export interface ProgramBalanceInput {
     gasFee: { denom: string; amount: BigNumber };
     /** The fee is paid in the alternate token picked in Settings. */
     paysWithAlt: boolean;
+    /** With `paysWithAlt`: the fee converted to that token, as the chain will take it. */
+    altFee?: { denom: string; amount: string };
 }
 
 /**
- * The escrow and the creation fee both leave the wallet at creation. When the prize IS
- * the fee denom, the balance must cover them together; when the fee is paid in the
- * Settings fee token instead, it never touches the prize balance.
+ * The escrow and the creation fee both leave the wallet at creation, after the gas fee.
+ * Every one of them paid in the prize token comes out of the prize balance: the native fee
+ * when the prize IS the fee denom, the converted fee when the Settings fee token is the
+ * prize, and the gas when it is charged in the prize token.
  */
-export function programBalances({ escrow, prizeDenom, prizeBalance, fee, feeBalance, gasFee, paysWithAlt }: ProgramBalanceInput) {
+export function programBalances({ escrow, prizeDenom, prizeBalance, fee, feeBalance, gasFee, paysWithAlt, altFee }: ProgramBalanceInput) {
     let hasEnoughForEscrow = false
     if (escrow) {
         let needed = escrow
         if (fee && prizeDenom === fee.denom && !paysWithAlt) needed = needed.plus(fee.amount)
+        if (paysWithAlt && altFee && altFee.denom === prizeDenom) needed = needed.plus(altFee.amount)
+        if (gasFee.denom === prizeDenom) needed = needed.plus(gasFee.amount)
         hasEnoughForEscrow = prizeBalance.gte(needed)
     }
 

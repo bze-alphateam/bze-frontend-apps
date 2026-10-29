@@ -8,18 +8,20 @@ import type { Asset } from "@bze/bze-ui-kit";
 import type { StakingRewardSDKType } from "@bze/bzejs/bze/rewards/store";
 
 // The page runs on mocked hooks: query params, wallet, the simple rewards list, balances, the fee
-// engine and the wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store,
+// engine, the gas estimate (useCanAffordTx runs ui-kit's real canAffordTx against `gas`) and the
+// wallet side of the tx (useFactoryTx). The wizard's tx hook, the pending-tx store,
 // the Review step and the Done screen are real. "Today" is fixed at 20 Oct 2026.
 type TxOpts = {
     onBroadcast?: (hash: string) => void;
     onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
     onFailure?: (reason: string, details?: { stage: string }) => void;
 };
-const { queryParams, wallet, rewardsState, balances, navigateMock, txMock, refreshMock } = vi.hoisted(() => ({
+const { queryParams, wallet, rewardsState, balances, gas, navigateMock, txMock, refreshMock } = vi.hoisted(() => ({
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1me" as string | undefined },
     rewardsState: { rewards: [] as StakingRewardSDKType[], isLoading: false, hasError: false },
     balances: { current: {} as Record<string, string> },
+    gas: { denom: "ubze", amount: "0" },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
     refreshMock: vi.fn(),
@@ -68,6 +70,20 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useAssets: () => ({ denomTicker: (d: string) => assets[d]?.ticker ?? d }),
         useBalance: (denom: string) => ({ balance: { denom, amount: new BN(balances.current[denom] ?? "0") }, isLoading: false }),
+        useCanAffordTx: ({ spec, spend }: { spec?: unknown; spend?: { denom: string; amount: BigNumber } }) => {
+            if (spec === undefined) return { canAfford: true, shortfalls: [], shortOnFees: false, message: "", isLoading: false };
+            const result = actual.canAffordTx({
+                spend,
+                gasFee: { denom: gas.denom, amount: new BN(gas.amount) },
+                balanceOf: (denom: string) => new BN(balances.current[denom] ?? "0"),
+            });
+            const ticker = assets[gas.denom]?.ticker ?? gas.denom;
+            return {
+                ...result,
+                message: result.shortOnFees ? `Not enough ${ticker} left for the network fee` : "",
+                isLoading: false,
+            };
+        },
         useAssetPrice: () => ({ hasPrice: false, totalUsdValue: () => new BN(0), uAmountUsdValue: () => new BN(0) }),
         getDexApp: () => ({ href: "https://dex.test" }),
         getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
@@ -132,6 +148,8 @@ beforeEach(() => {
     rewardsState.isLoading = false;
     rewardsState.hasError = false;
     balances.current = { uhoney: "797000000000", ubze: "1000000000" };
+    gas.denom = "ubze";
+    gas.amount = "0";
     navigateMock.mockReset();
     refreshMock.mockReset();
     txMock.mockReset();
@@ -187,6 +205,38 @@ describe("Extend a reward (/reward/extend)", { timeout: 20_000 }, () => {
             expect(within(step("Extra days")).getByText("Max 500 days.")).toBeInTheDocument();
             expect(button(step("Extra days"), "Review extension")).toBeDisabled();
             expect(txMock).not.toHaveBeenCalled();
+        });
+
+        // Regression: the page compared the prize balance with the cost only. With gas paid in the
+        // prize token (a BZE prize, BZE fee token), a balance between cost and cost + gas passed the
+        // form and the escrow then failed on chain, after the gas was charged.
+        it("blocks when the prize balance covers the cost but not the network fee on top", async () => {
+            queryParams.current = new URLSearchParams({ id: VDL.reward_id });
+            // 10 days × 5 BZE = 50 BZE, gas 0.02 BZE: 50.01 BZE is short.
+            balances.current = { ubze: "50010000" };
+            gas.amount = "20000";
+            renderPage();
+            await enterDays("10");
+            expect(screen.getByRole("alert")).toHaveTextContent("Not enough BZE left for the network fee");
+            expect(button(step("Extra days"), "Review extension")).toBeDisabled();
+        });
+
+        it("lets the same extension through once the network fee fits too", async () => {
+            queryParams.current = new URLSearchParams({ id: VDL.reward_id });
+            balances.current = { ubze: "50020000" };
+            gas.amount = "20000";
+            renderPage();
+            await enterDays("10");
+            expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+            expect(button(step("Extra days"), "Review extension")).toBeEnabled();
+        });
+
+        it("ignores the network fee when it is paid in another token than the prize", async () => {
+            balances.current = { uhoney: "1000000000", ubze: "1000000" };
+            gas.amount = "20000";
+            renderPage();
+            await enterDays("10");
+            expect(button(step("Extra days"), "Review extension")).toBeEnabled();
         });
 
         it("blocks when the wallet holds too little of the reward token", async () => {

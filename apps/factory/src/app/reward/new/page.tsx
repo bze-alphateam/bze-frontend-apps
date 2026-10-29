@@ -115,8 +115,6 @@ function RewardNewContent() {
     const fee = fees.createStakingRewardFee
     const { balance: feeBalance, isLoading: isFeeBalanceLoading } = useBalance(fee?.denom ?? '')
     const { asset: feeAsset } = useAsset(fee?.denom ?? '')
-    const feePayment = useFeePayment(fee, TX_KIND)
-
     const connected = Boolean(address)
     const stakeTicker = stakingAsset?.ticker ?? ''
     const prizeTicker = prizeAsset?.ticker ?? ''
@@ -132,6 +130,9 @@ function RewardNewContent() {
         return escrowAmount(prizePerDay, prizeAsset.decimals, duration)
     }, [prizeAsset, prizePerDay, duration, prizeError, durationError])
     const escrowDisplay = escrow && prizeAsset ? uAmountToBigNumberAmount(escrow, prizeAsset.decimals) : undefined
+    // MsgCreateStakingReward escrows the rewards BEFORE it captures the fee: the fee token is
+    // picked on what is left after gas and escrow, the way the pay panel already resolves it.
+    const feePayment = useFeePayment(fee, TX_KIND, escrow && prizeDenom ? [{ denom: prizeDenom, amount: escrow.toFixed(0) }] : undefined)
 
     const { hasEnoughForEscrow, canPayFee } = programBalances({
         escrow,
@@ -141,6 +142,7 @@ function RewardNewContent() {
         feeBalance: feeBalance.amount,
         gasFee: feePayment.gasFee,
         paysWithAlt: feePayment.paysWithAlt,
+        altFee: feePayment.estimate?.resolvedFee,
     })
 
     // The budget step checks the rewards alone; the creation fee on top (same token) is checked at Review.
