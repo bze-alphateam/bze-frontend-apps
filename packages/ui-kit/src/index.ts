@@ -146,7 +146,7 @@ export type { LegacyAssetNotice } from './constants/assets';
 export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
-    getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL,
+    getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL, getExplorerTokenURL,
     getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
     getForeignFeeSlippage
 } from './constants/chain';

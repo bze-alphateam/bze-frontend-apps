@@ -150,6 +150,9 @@ export const getExplorerTxURL = (hash: string): string => `${getExplorerBaseURL(
 /** Explorer page of a BZE account. */
 export const getExplorerAccountURL = (address: string): string => `${getExplorerBaseURL()}/accounts/${address}`
 
+/** Explorer page of a token, by its denom (factory/ and ibc/ slashes encoded). */
+export const getExplorerTokenURL = (denom: string): string => `${getExplorerBaseURL()}/tokens/${encodeURIComponent(denom)}`
+
 /** Explorer page of a validator, by its operator address. */
 export const getExplorerValidatorURL = (valoper: string): string => `${getExplorerBaseURL()}/validators/${valoper}`
 

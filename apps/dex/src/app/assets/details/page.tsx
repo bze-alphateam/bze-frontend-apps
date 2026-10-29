@@ -4,7 +4,9 @@ import {Suspense, useCallback, useMemo} from 'react';
 import {Box, Button, chakra, Flex, IconButton, Skeleton} from '@chakra-ui/react';
 import {LuArrowLeft, LuLink, LuSearchX} from 'react-icons/lu';
 import {
+    AppLink,
     Asset,
+    getExplorerTokenURL,
     useAsset,
     useAssetPrice,
     formatUsdAmount,
@@ -75,6 +77,7 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
                                 <PriceChange change={change} fontSize="13px"/>
                             </Skeleton>
                         </Flex>
+                        <AppLink app="explorer" href={getExplorerTokenURL(asset.denom)}>Explorer</AppLink>
                         <IconButton
                             aria-label="Copy link to this asset"
                             size="lg"
