@@ -39,7 +39,7 @@ import {bze} from "@bze/bzejs";
 import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
-import {balanceToFormValue} from "@/lib/trading-form";
+import {balanceToFormValue, isPositiveOrderValue} from "@/lib/trading-form";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -599,11 +599,11 @@ const TradingPageContent = () => {
             price = priceToBigNumberUPrice(sellPrice, quoteAsset.decimals, baseAsset.decimals)
         }
 
-        if (!amount.isPositive()) {
+        if (!isPositiveOrderValue(amount)) {
             toast.error('Invalid amount');
             return;
         }
-        if (!price.isPositive()) {
+        if (!isPositiveOrderValue(price)) {
             toast.error('Invalid price');
             return;
         }
