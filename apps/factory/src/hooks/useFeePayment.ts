@@ -56,7 +56,7 @@ export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec, spent?: FeeCoin[],
     const afford = feeFirst && fee && estimate.resolvedFee
         ? canAffordTx({
             spend: spent,
-            gasFee: txKind ? gasFee.estimate : undefined,
+            gasFee: { denom: gasFee.denom, amount: gasFee.amount },
             moduleFee: estimate.resolvedFee,
             balanceOf: denom => getBalanceByDenom(denom).amount,
         })
