@@ -4,7 +4,7 @@ import BigNumber from 'bignumber.js';
 import {useMemo} from 'react';
 import {Asset} from '../types/asset';
 import {uAmountToBigNumberAmount} from '../utils/amount';
-import {maxSpendableAmount, TxSpec} from '../utils/gas_fee';
+import {maxSpendableAmount, SpendCoin, TxSpec} from '../utils/gas_fee';
 import {useAsset} from './useAssets';
 import {useBalance} from './useBalances';
 import {useGasFeeEstimate, UseGasFeeEstimateResult} from './useGasFeeEstimate';
@@ -18,9 +18,9 @@ export interface UseMaxSpendableResult {
     inputValue: string;
     /** The wallet balance of `denom` (micro-units), before any reserve. */
     balance: BigNumber;
-    /** Micro-amount held back for the gas fee (0 unless `denom` is the tx fee denom). */
+    /** Micro-amount held back for the gas fee and the module fee paid in `denom` (0 when neither is). */
     reserved: BigNumber;
-    /** True when part of the balance is being held back for gas. */
+    /** True when part of the balance is being held back for fees. */
     isReserving: boolean;
     /** The gas fee estimate the reserve comes from. */
     gasFee: UseGasFeeEstimateResult;
@@ -30,19 +30,36 @@ export interface UseMaxSpendableResult {
     isLoading: boolean;
 }
 
+export interface UseMaxSpendableOptions {
+    /**
+     * The module fee the transaction pays (taker fee, creation fee…), resolved to the denom
+     * the chain will take it in (`useFeeEstimate`'s `resolvedFee`). Held back too when it is
+     * paid in `denom`, so MAX fills what `useCanAffordTx` with the same `moduleFee` accepts.
+     */
+    moduleFee?: SpendCoin;
+}
+
 /**
  * How much of `denom` the user can put into a transaction of shape `spec`: the full
- * balance, minus the estimated gas fee when `denom` is the denom that fee is paid in
+ * balance, minus the estimated gas fee and the module fee, each when it is paid in `denom`
  * (floored at 0). Every MAX / ALL / 100 % button goes through this.
  */
-export function useMaxSpendable(denom: string, spec?: TxSpec): UseMaxSpendableResult {
+export function useMaxSpendable(denom: string, spec?: TxSpec, options: UseMaxSpendableOptions = {}): UseMaxSpendableResult {
+    const {moduleFee} = options;
     const {balance, isLoading: balanceLoading} = useBalance(denom);
     const {asset} = useAsset(denom);
     const gasFee = useGasFeeEstimate(spec);
 
+    const moduleFeeDenom = moduleFee?.denom;
+    const moduleFeeAmount = moduleFee?.amount.toString();
     const amount = useMemo(
-        () => maxSpendableAmount(balance.amount, denom, gasFee.estimate),
-        [balance.amount, denom, gasFee.estimate],
+        () => maxSpendableAmount(
+            balance.amount,
+            denom,
+            gasFee.estimate,
+            moduleFeeDenom && moduleFeeAmount ? {denom: moduleFeeDenom, amount: moduleFeeAmount} : undefined,
+        ),
+        [balance.amount, denom, gasFee.estimate, moduleFeeDenom, moduleFeeAmount],
     );
     const reserved = balance.amount.minus(amount);
     const displayAmount = asset ? uAmountToBigNumberAmount(amount, asset.decimals) : new BigNumber(0);

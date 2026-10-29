@@ -351,22 +351,28 @@ export interface GasFeeCoin {
 }
 
 /**
- * How much of `denom` a MAX button may fill in: the balance minus the gas fee when `denom`
- * is the one the fee is paid in (floored at 0), the full balance otherwise.
+ * How much of `denom` a MAX button may fill in: the balance minus the gas fee and the module
+ * fee, each only when it is paid in `denom` (floored at 0). `moduleFee` must already be
+ * resolved to the denom the chain will take it in (`useFeeEstimate`'s `resolvedFee`), so the
+ * result is exactly what `canAffordTx` accepts for the same fees.
  */
 export function maxSpendableAmount(
     balance: BigNumber | string | number,
     denom: string,
     gasFee?: GasFeeCoin,
+    moduleFee?: GasFeeCoin,
 ): BigNumber {
     const available = toBigNumber(balance);
     if (available.isNaN() || available.lte(0)) {
         return toBigNumber(0);
     }
-    if (!gasFee || gasFee.denom !== denom) {
-        return available;
-    }
-    const spendable = available.minus(gasFee.amount);
+    const reserved = [gasFee, moduleFee]
+        .filter((fee): fee is GasFeeCoin => fee !== undefined && fee.denom === denom)
+        .reduce((sum, fee) => {
+            const amount = toBigNumber(fee.amount);
+            return amount.isNaN() || amount.lte(0) ? sum : sum.plus(amount);
+        }, toBigNumber(0));
+    const spendable = available.minus(reserved);
     return spendable.gt(0) ? spendable : toBigNumber(0);
 }
 
@@ -386,6 +392,11 @@ export interface CanAffordTxInput {
      * denom the chain will take it in (`useFeeEstimate` → preferred or native).
      */
     moduleFee?: SpendCoin;
+    /**
+     * Coins the message pays into the wallet before it captures the module fee (a swap's
+     * minimum output). They can cover the module fee, never the spend or the gas.
+     */
+    receive?: SpendCoin | SpendCoin[];
     /** Wallet balance lookup, micro-units. */
     balanceOf: (denom: string) => BigNumber | string | number;
 }
@@ -408,39 +419,42 @@ export interface CanAffordTxResult {
 /**
  * Pre-submit affordability check that follows the chain's charging order: the ante handler
  * deducts the gas fee first (in the tx fee denom — no fallback, the tx fails when that
- * balance is short), then the module captures its fee, then the message moves the amount.
- * Per denom the wallet must therefore hold `spend + gas + moduleFee`.
+ * balance is short), then the message moves the amount and captures its fee. Per denom the
+ * wallet must therefore hold `spend + gas + moduleFee`. Coins in `receive` (a swap's output,
+ * paid before the fee is captured) count toward the module fee only: per denom the wallet
+ * must hold `spend + gas`, and `spend + gas + moduleFee` once `receive` has landed.
  */
 export function canAffordTx(input: CanAffordTxInput): CanAffordTxResult {
     const spends = input.spend ? (Array.isArray(input.spend) ? input.spend : [input.spend]) : [];
-    const required = new Map<string, BigNumber>();
-    const add = (coin: SpendCoin | undefined) => {
-        if (!coin || !coin.denom) return;
-        const amount = toBigNumber(coin.amount);
-        if (amount.isNaN() || amount.lte(0)) return;
-        required.set(coin.denom, (required.get(coin.denom) ?? toBigNumber(0)).plus(amount));
+    const receives = input.receive ? (Array.isArray(input.receive) ? input.receive : [input.receive]) : [];
+    const total = (coins: Array<SpendCoin | undefined>) => {
+        const sums = new Map<string, BigNumber>();
+        coins.forEach(coin => {
+            if (!coin || !coin.denom) return;
+            const amount = toBigNumber(coin.amount);
+            if (amount.isNaN() || amount.lte(0)) return;
+            sums.set(coin.denom, (sums.get(coin.denom) ?? toBigNumber(0)).plus(amount));
+        });
+        return sums;
     };
-    spends.forEach(add);
-    add(input.gasFee);
-    add(input.moduleFee);
-
-    const spendOnly = new Map<string, BigNumber>();
-    spends.forEach(coin => {
-        const amount = toBigNumber(coin.amount);
-        if (!coin.denom || amount.isNaN() || amount.lte(0)) return;
-        spendOnly.set(coin.denom, (spendOnly.get(coin.denom) ?? toBigNumber(0)).plus(amount));
-    });
+    const beforeFee = total([...spends, input.gasFee]);
+    const required = total([...spends, input.gasFee, input.moduleFee]);
+    const received = total(receives);
+    const spendOnly = total(spends);
 
     const shortfalls: TxShortfall[] = [];
     let spendCovered = true;
     required.forEach((amount, denom) => {
         const availableRaw = toBigNumber(input.balanceOf(denom));
-        const available = availableRaw.isNaN() ? toBigNumber(0) : availableRaw;
-        if (available.lt(amount)) {
-            shortfalls.push({denom, required: amount, available, missing: amount.minus(available)});
+        const balance = availableRaw.isNaN() ? toBigNumber(0) : availableRaw;
+        const zero = toBigNumber(0);
+        const available = balance.plus(received.get(denom) ?? zero);
+        const missing = BigNumber.max(amount.minus(available), (beforeFee.get(denom) ?? zero).minus(balance), zero);
+        if (missing.gt(0)) {
+            shortfalls.push({denom, required: amount, available, missing});
         }
         const spend = spendOnly.get(denom);
-        if (spend && available.lt(spend)) {
+        if (spend && balance.lt(spend)) {
             spendCovered = false;
         }
     });

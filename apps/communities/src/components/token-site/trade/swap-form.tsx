@@ -12,9 +12,11 @@ import {
     useAssets,
     useBalances,
     useCanAffordTx,
+    useFeeEstimate,
     useGasFeeEstimate,
     useLiquidityPools,
     useMaxSpendable,
+    useTradingFees,
 } from "@bze/bze-ui-kit";
 
 import {type SwapDirection, useTokenSwap} from "@/hooks/token-site/useTokenSwap";
@@ -84,13 +86,16 @@ interface SwapFormProps {
 /**
  * An instant swap of T for a connected wallet, assuming T is tradable (Business Logic R8).
  * Buying pays with any held token that has a route of at most 3 hops to T, the most valuable one
- * (in USD) preselected; selling receives any token T has such a route to, BZE preselected. Max
- * keeps the network fee back when the token paid is the fee token.
+ * (in USD) preselected; selling receives any token T has such a route to, BZE preselected. The
+ * check and Max both count the network fee and the taker fee the chain charges on every swap, in
+ * the chain's order: gas first, then the input leaves, the output lands, and the taker fee is
+ * taken from the fee token, else BZE — so an output in either can pay it.
  */
 export function SwapForm({asset, direction, idPrefix, cta, notice}: SwapFormProps) {
     const {assetsBalances} = useBalances();
     const {pools} = useLiquidityPools();
     const {getAsset} = useAssets();
+    const {fees: tradingFees} = useTradingFees();
     const [picked, setPicked] = useState<string>();
     const [amount, setAmount] = useState("");
     const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE);
@@ -109,11 +114,22 @@ export function SwapForm({asset, direction, idPrefix, cta, notice}: SwapFormProp
 
     const swap = useTokenSwap(asset.denom, {direction, other: other?.denom, amountIn: amount, slippage});
     const spec: TxSpec = {kind: "swap", count: swap.route?.route.length ?? 1};
-    const maxSpendable = useMaxSpendable(spent?.denom ?? "", spec);
     const gasFee = useGasFeeEstimate(spec);
+    const spend = amount !== "" && spent && swap.uAmountIn ? {denom: spent.denom, amount: swap.uAmountIn.toFixed(0)} : undefined;
+    const receive = spend && swap.to && swap.uMinOut ? {denom: swap.to, amount: swap.uMinOut.toFixed(0)} : undefined;
+    // The taker fee, in the denom the chain will take it in once the input has left and the
+    // output has landed (the fee token, else BZE).
+    const takerFee = useFeeEstimate(tradingFees.takerFee, {
+        gasFee: gasFee.estimate,
+        reserved: spend ? [spend] : [],
+        received: receive ? [receive] : [],
+    });
+    const maxSpendable = useMaxSpendable(spent?.denom ?? "", spec, {moduleFee: takerFee.maxSpendReserve(spent?.denom ?? "")});
     const affordability = useCanAffordTx({
         spec: amount !== "" ? spec : undefined,
-        spend: amount !== "" && spent && swap.uAmountIn ? {denom: spent.denom, amount: swap.uAmountIn.toFixed(0)} : undefined,
+        spend,
+        moduleFee: takerFee.resolvedFee,
+        receive,
     });
 
     if (!other || !spent) {

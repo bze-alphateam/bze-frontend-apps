@@ -48,6 +48,32 @@ describe('useFeeEstimate', () => {
         expect(result.current.method).toBe('native')
     })
 
+    it('keeps an unpayable fee as the native fee, so checks refuse and MAX holds it back', () => {
+        // Regression: wallet 0.10 BZE, gas 0.02, 0.1 BZE taker fee — the fee resolved to nothing,
+        // so MAX filled 0.08 and the check passed; the chain then failed on the fee.
+        balances.current = { ubze: '100000' }
+        const takerFee = { denom: 'ubze', amount: '100000' }
+
+        const { result } = renderHook(() => useFeeEstimate(takerFee, { gasFee: { denom: 'ubze', amount: '20000' } }))
+
+        expect(result.current.method).toBe('insufficient')
+        expect(result.current.resolvedFee).toEqual(takerFee)
+        expect(result.current.maxSpendReserve('ubze')).toEqual(takerFee)
+    })
+
+    it('counts coins received before the fee, after the spend has left', () => {
+        // Regression: a swap's BZE output pays the taker fee on chain, but was ignored.
+        balances.current = { ubze: '20000' }
+        const takerFee = { denom: 'ubze', amount: '100000' }
+        const gasFee = { denom: 'ubze', amount: '20000' }
+
+        const paid = renderHook(() => useFeeEstimate(takerFee, { gasFee, received: [{ denom: 'ubze', amount: '100000' }] }))
+        expect(paid.result.current.method).toBe('native')
+
+        const short = renderHook(() => useFeeEstimate(takerFee, { gasFee, received: [{ denom: 'ubze', amount: '99999' }] }))
+        expect(short.result.current.method).toBe('insufficient')
+    })
+
     it('ignores reserved coins of other denoms', () => {
         balances.current = { ubze: '25000009000' }
 

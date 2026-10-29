@@ -7,6 +7,7 @@ import { Asset } from '../types/asset';
 import { uAmountToBigNumberAmount } from '../utils/amount';
 import {
     estimateFeeInPreferredDenom,
+    maxSpendFeeReserve,
     resolveFeePayment,
     FeeEstimate,
     FeePaymentMethod,
@@ -31,6 +32,12 @@ export interface UseFeeEstimateOptions {
      * and preferred balances before the fee is checked.
      */
     reserved?: FeeCoin[];
+    /**
+     * Coins the same transaction pays into the wallet before the fee is captured (a swap's
+     * minimum output: tradebin sends it before taking the taker fee). They count toward the
+     * native and preferred balances after `reserved` and the gas fee have left.
+     */
+    received?: FeeCoin[];
 }
 
 export interface UseFeeEstimateResult {
@@ -60,9 +67,17 @@ export interface UseFeeEstimateResult {
     gasFeeTicker?: string;
     /**
      * The fee the chain will actually take, in the denom it will take it from — ready for
-     * `canAffordTx`'s `moduleFee`. Undefined while `fee` is unknown or nothing can cover it.
+     * `canAffordTx`'s `moduleFee`. When nothing covers it (`insufficient`) it is the native fee,
+     * the chain's last resort, so balance checks refuse and MAX holds it back instead of
+     * dropping it. Undefined while `fee` is unknown.
      */
     resolvedFee?: FeeCoin;
+    /**
+     * The fee a MAX of `denom` must leave behind when the message moves the spent coins before
+     * capturing its fee (a swap) — see `maxSpendFeeReserve`. Pass it as `useMaxSpendable`'s
+     * `moduleFee`. Only the gas fee is reserved besides the spend; `reserved`/`received` are ignored.
+     */
+    maxSpendReserve: (denom: string) => FeeCoin | undefined;
     /** Pools, assets or balances still loading. */
     isLoading: boolean;
 }
@@ -80,7 +95,7 @@ export interface UseFeeEstimateResult {
  * Needs SettingsProvider and the app's assets context (pools, assets, balances) above it.
  */
 export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {}): UseFeeEstimateResult {
-    const { gasFee, reserved = [] } = options;
+    const { gasFee, reserved = [], received = [] } = options;
     const nativeDenom = getChainNativeAssetDenom();
     const { denom: feeDenom, isLoading: feeDenomLoading } = useTxFeeDenom();
     const { getDenomsPool, isLoading: poolsLoading } = useLiquidityPools();
@@ -105,14 +120,25 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         })
         : undefined;
 
-    const spentIn = (denom: string) => [...reserved, ...(gasFee ? [gasFee] : [])]
+    const sumIn = (coins: GasFeeCoin[], denom: string) => coins
         .filter(coin => coin.denom === denom)
         .reduce((sum, coin) => sum.plus(coin.amount), new BigNumber(0));
+    const gasCoins = gasFee ? [gasFee] : [];
+    const spent = [...reserved, ...gasCoins];
 
     const method = estimate
         ? resolveFeePayment(estimate, preferredBalance.amount, nativeBalance.amount, {
-            reservedNative: spentIn(feeNativeDenom),
-            reservedPreferred: isPreferredSelected ? spentIn(feeDenom) : undefined,
+            reservedNative: sumIn(spent, feeNativeDenom),
+            reservedPreferred: isPreferredSelected ? sumIn(spent, feeDenom) : undefined,
+            receivedNative: sumIn(received, feeNativeDenom),
+            receivedPreferred: isPreferredSelected ? sumIn(received, feeDenom) : undefined,
+        })
+        : undefined;
+
+    const maxSpendReserve = (denom: string) => estimate && denom
+        ? maxSpendFeeReserve(estimate, denom, preferredBalance.amount, nativeBalance.amount, {
+            reservedNative: sumIn(gasCoins, feeNativeDenom),
+            reservedPreferred: isPreferredSelected ? sumIn(gasCoins, feeDenom) : undefined,
         })
         : undefined;
 
@@ -137,7 +163,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         : undefined;
 
     let resolvedFee: FeeCoin | undefined;
-    if (estimate && method && method !== 'insufficient') {
+    if (estimate && method) {
         resolvedFee = method === 'preferred' && estimate.preferredAmount
             ? { denom: estimate.preferredDenom, amount: estimate.preferredAmount.toFixed(0) }
             : { denom: estimate.nativeDenom, amount: estimate.nativeAmount.toFixed(0) };
@@ -157,6 +183,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         gasFeeDisplayAmount,
         gasFeeTicker: gasFee ? (gasAsset?.ticker ?? gasFee.denom) : undefined,
         resolvedFee,
+        maxSpendReserve,
         isLoading: feeDenomLoading || poolsLoading || feeTokensLoading || assetsLoading || balancesLoading,
     };
 }
