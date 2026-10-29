@@ -229,6 +229,18 @@ describe("SwapPanel", () => {
         });
     });
 
+    it("never asks for a zero minimum output, which the chain rejects", async () => {
+        // A route paying 1 base unit: 1 % under it rounds down to 0, so the minimum is clamped to 1.
+        findOptimalRoute.mockReturnValue(route(["pool-page-bze"], "1"));
+        const user = renderSection();
+
+        await user.type(screen.getByLabelText("You pay"), "10");
+        await user.click(screen.getByRole("button", {name: "Buy PAGE"}));
+
+        const [msg] = tx.mock.calls[0][0];
+        expect(msg.value.minOutput).toEqual({denom: T, amount: "1"});
+    });
+
     it("sells into the token picked", async () => {
         const user = renderSection();
         await user.click(screen.getByRole("tab", {name: "Sell"}));

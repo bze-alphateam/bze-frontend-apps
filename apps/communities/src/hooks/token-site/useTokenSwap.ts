@@ -102,7 +102,9 @@ export function useTokenSwap(denom: string, {direction, other, amountIn, slippag
             creator: address,
             routes: route.route,
             input: {denom: from, amount: uAmountIn.toFixed(0)},
-            minOutput: {denom: to, amount: minimumOutput(route.expectedOutput, slippage).toFixed(0)},
+            // The router only returns routes with a whole-unit output, so 1 never exceeds it;
+            // the chain rejects a zero minimum output.
+            minOutput: {denom: to, amount: BigNumber.max(minimumOutput(route.expectedOutput, slippage), 1).toFixed(0)},
         });
         setIsSubmitting(true);
         try {
