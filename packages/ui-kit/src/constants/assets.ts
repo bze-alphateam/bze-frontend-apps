@@ -11,6 +11,7 @@ export const VERIFIED_ASSETS: { [key: string]: boolean } = {
     "ubze": true,
     "utbz": true,
     "factory/bze13gzq40che93tgfm9kzmkpjamah5nj0j73pyhqk/uvdl": true,
+    "factory/bze1972aqfzdg29ugjln74edx0xvcg4ehvysjptk77/CTL": true,
 }
 
 export const EXCLUDED_ASSETS: { [key: string]: boolean } = {
