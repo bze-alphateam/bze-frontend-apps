@@ -131,6 +131,23 @@ describe("programBalances", () => {
         expect(programBalances({ ...base, gasFee: otherGas, prizeDenom: "utok", prizeBalance: new BigNumber(1000), feeBalance: new BigNumber(100) }).hasEnoughForFee).toBe(true);
     });
 
+    // Regression: with the Settings fee token as the prize, the converted fee and the gas both come
+    // out of the prize balance, and the escrow check used to ignore them.
+    it("prize = the alternate fee token: escrow + converted fee + gas from the prize balance", () => {
+        const altGas = { denom: "uusdc", amount: new BigNumber(5) };
+        const altFee = { denom: "uusdc", amount: "40" };
+        const input = { ...base, paysWithAlt: true, altFee, gasFee: altGas, prizeDenom: "uusdc", feeBalance: new BigNumber(0) };
+        expect(programBalances({ ...input, prizeBalance: new BigNumber(1044) }).hasEnoughForEscrow).toBe(false);
+        expect(programBalances({ ...input, prizeBalance: new BigNumber(1045) }).hasEnoughForEscrow).toBe(true);
+    });
+
+    // Regression: a BZE prize with BZE gas checked the escrow without the gas.
+    it("gas in the prize denom comes on top of the escrow", () => {
+        const gas = { denom: "utok", amount: new BigNumber(5) };
+        expect(programBalances({ ...base, gasFee: gas, prizeDenom: "utok", prizeBalance: new BigNumber(1004), feeBalance: new BigNumber(100) }).hasEnoughForEscrow).toBe(false);
+        expect(programBalances({ ...base, gasFee: gas, prizeDenom: "utok", prizeBalance: new BigNumber(1005), feeBalance: new BigNumber(100) }).hasEnoughForEscrow).toBe(true);
+    });
+
     it("is false everywhere while the escrow or fee is unknown", () => {
         const result = programBalances({ ...base, escrow: undefined, fee: undefined, prizeDenom: "ubze", prizeBalance: new BigNumber(1e9), feeBalance: new BigNumber(1e9) });
         expect(result).toEqual({ hasEnoughForEscrow: false, hasEnoughForFee: false, canPayFee: false });

@@ -5,6 +5,7 @@ import {
     calculateOptimalInputForOutput,
     estimateFeeInPreferredDenom,
     resolveFeePayment,
+    maxSpendFeeReserve,
     FeeEstimate,
 } from './fee_conversion'
 
@@ -209,5 +210,56 @@ describe('resolveFeePayment', () => {
             expect(resolveFeePayment(nativeOnly, '0', '100000', { reservedNative: '-5' })).toBe('native')
             expect(resolveFeePayment(nativeOnly, '0', '100000', { reservedNative: 'abc' })).toBe('native')
         })
+    })
+
+    // A swap: gas leaves, the input leaves, the output lands, then the fee is captured.
+    describe('with coins received before the fee', () => {
+        it('falls back to a native output when the whole preferred balance is sold', () => {
+            // Regression: selling all USDC (minus gas) into BZE was refused although the BZE
+            // output pays the fee on chain.
+            expect(resolveFeePayment(estimated, '10500', '0', { reservedPreferred: '10500', receivedNative: '100000' })).toBe('fallback')
+            expect(resolveFeePayment(estimated, '10500', '0', { reservedPreferred: '10500', receivedNative: '99999' })).toBe('insufficient')
+        })
+
+        it('lets a preferred output pay the fee in the preferred token', () => {
+            expect(resolveFeePayment(estimated, '500', '200000', { reservedPreferred: '500', reservedNative: '200000', receivedPreferred: '1004' })).toBe('preferred')
+        })
+
+        it('never lets the output pay for the input or the gas', () => {
+            expect(resolveFeePayment(nativeOnly, '0', '50000', { reservedNative: '60000', receivedNative: '999999' })).toBe('insufficient')
+        })
+    })
+})
+
+describe('maxSpendFeeReserve', () => {
+    const estimated: FeeEstimate = {
+        reason: 'estimated',
+        nativeDenom: NATIVE,
+        nativeAmount: new BigNumber('100000'),
+        preferredDenom: USDC,
+        preferredAmount: new BigNumber('1004'),
+    }
+    const nativeFee: FeeEstimate = { reason: 'native', nativeDenom: NATIVE, nativeAmount: new BigNumber('100000'), preferredDenom: NATIVE }
+
+    it('holds the native fee back when BZE is spent and pays the fee', () => {
+        // Regression: wallet 0.10 BZE, gas 0.02 — MAX filled 0.08 and the taker fee failed on chain.
+        expect(maxSpendFeeReserve(nativeFee, NATIVE, '100000', '100000', { reservedNative: '20000' })).toEqual({ denom: NATIVE, amount: '100000' })
+    })
+
+    it('holds nothing back when another balance pays the fee', () => {
+        expect(maxSpendFeeReserve(estimated, USDC, '50000', '100000', { reservedPreferred: '500' })).toBeUndefined()
+        expect(maxSpendFeeReserve(estimated, NATIVE, '1504', '5000000', { reservedPreferred: '500' })).toBeUndefined()
+    })
+
+    it('holds the preferred amount back when the fee token is spent and BZE cannot pay', () => {
+        expect(maxSpendFeeReserve(estimated, USDC, '50000', '99999', { reservedPreferred: '500' })).toEqual({ denom: USDC, amount: '1004' })
+    })
+
+    it('holds the native fee back when BZE is spent and the fee token is short', () => {
+        expect(maxSpendFeeReserve(estimated, NATIVE, '1503', '5000000', { reservedPreferred: '500' })).toEqual({ denom: NATIVE, amount: '100000' })
+    })
+
+    it('holds nothing back in a coin that can never pay the fee', () => {
+        expect(maxSpendFeeReserve(estimated, 'uatom', '0', '0')).toBeUndefined()
     })
 })

@@ -10,7 +10,7 @@ import {
 import {LuTicket} from "react-icons/lu";
 import { useState, useMemo, useCallback } from "react";
 import { useChain } from "@interchain-kit/react";
-import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, amountToUAmount, sanitizeIntegerInput, useAsset, FeaturedCard, Notice, hgVariant } from "@bze/bze-ui-kit";
+import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, sanitizeIntegerInput, useAsset, FeaturedCard, Notice, hgVariant } from "@bze/bze-ui-kit";
 import { bze } from '@bze/bzejs';
 import BigNumber from "bignumber.js";
 import {useRaffleContributions} from "@/hooks/useRaffles";
@@ -20,7 +20,8 @@ interface RaffleModalProps {
     isOpen: boolean;
     onClose: () => void;
     raffleName: string;
-    contributionPrice: string;
+    contributionPrice: string; // display only
+    ticketPrice: string; // micro units per ticket, exactly as the chain stores it
     currentPrize: string;
     winChance: string; // e.g., "1 in 10"
     ticker: string;
@@ -32,6 +33,7 @@ export const RaffleModal = ({
     onClose,
     raffleName,
     contributionPrice,
+    ticketPrice,
     currentPrize,
     winChance,
     ticker,
@@ -60,25 +62,29 @@ export const RaffleModal = ({
         }
     }
 
-    // Calculate total cost for tickets
-    const totalCost = useMemo(() => {
+    const decimals = asset?.decimals ?? 6;
+
+    // Total cost in micro units: exactly what the chain charges (ticket_price x tickets).
+    const totalCostMicro = useMemo(() => {
         const tickets = toBigNumber(numContributions);
-        const price = toBigNumber(contributionPrice);
-        if (tickets.isNaN() || price.isNaN()) return BigNumber(0);
+        const price = toBigNumber(ticketPrice);
+        if (tickets.isNaN() || price.isNaN() || !tickets.isInteger()) return BigNumber(0);
         return tickets.multipliedBy(price);
-    }, [numContributions, contributionPrice]);
+    }, [numContributions, ticketPrice]);
+
+    const totalCost = useMemo(() => uAmountToBigNumberAmount(totalCostMicro, decimals), [totalCostMicro, decimals]);
 
     // Check if user has enough balance
     const userBalance = useMemo(() => {
         if (!asset) return BigNumber(0);
-        return uAmountToBigNumberAmount(balance.amount, asset.decimals || 6);
-    }, [balance, asset]);
+        return uAmountToBigNumberAmount(balance.amount, decimals);
+    }, [balance, asset, decimals]);
 
     // Tickets plus the gas fee must fit the balance (gas matters when the raffle coin is the
     // fee coin, e.g. a BZE raffle).
     const affordability = useCanAffordTx({
-        spec: totalCost.gt(0) ? 'join-raffle' : undefined,
-        spend: totalCost.gt(0) ? { denom, amount: amountToUAmount(totalCost, asset?.decimals || 6) } : undefined,
+        spec: totalCostMicro.gt(0) ? 'join-raffle' : undefined,
+        spend: totalCostMicro.gt(0) ? { denom, amount: totalCostMicro.toFixed(0) } : undefined,
     });
 
     const hasEnoughBalance = useMemo(() => {

@@ -14,7 +14,7 @@ import { LuTrendingUp, LuTrendingDown, LuActivity, LuArrowLeft, LuX, LuInfo } fr
 import {useNavigationWithParams} from "@/hooks/useNavigation";
 import {
     useMarket, useAsset,
-    amountToBigNumberUAmount, prettyAmount, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice,
+    amountToBigNumberUAmount, prettyAmount, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
     getAddressFullMarketOrders, getMarketBuyOrders, getMarketHistory, getMarketSellOrders,
     ActiveOrders, ORDER_TYPE_BUY, ORDER_TYPE_SELL,
     HistoryOrder,
@@ -39,7 +39,8 @@ import {bze} from "@bze/bzejs";
 import BigNumber from "bignumber.js";
 import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
-import {balanceToFormValue, isPositiveOrderValue} from "@/lib/trading-form";
+import {balanceToFormValue, isPositiveOrderValue, orderPriceSent} from "@/lib/trading-form";
+import {isAboveChainMinPrice} from "@/lib/order-price";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -83,7 +84,7 @@ function getOrderTxMessages(activeOrders: ActiveOrders, marketId: string, addres
         const orderUAmountNum = new BigNumber(ordersToSearch[i].amount);
         let msgAmount = ordersToSearch[i].amount;
         if (orderUAmountNum.gt(uAmountNum)) {
-            msgAmount = uAmountNum.toString();
+            msgAmount = uAmountNum.toFixed(0);
         }
 
         msgs.push(
@@ -108,7 +109,7 @@ function getOrderTxMessages(activeOrders: ActiveOrders, marketId: string, addres
                 creator: address,
                 marketId: marketId,
                 orderType: orderType,
-                amount: uAmountNum.toString(),
+                amount: uAmountNum.toFixed(0),
                 price: uPrice,
             })
         )
@@ -165,17 +166,18 @@ const TradingPageContent = () => {
     const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
     const {toast} = useToast()
     const {connectionType} = useConnectionType()
-    // Shared gas engine: a balance click fills the spendable amount (gas kept back when the
-    // clicked balance is the fee coin) and submitting checks amount + gas + trading fee in the
-    // chain's charging order. The gas is estimated for the final shape (one MsgCreateOrder, or
-    // one MsgFillOrders with N orders) right before sending.
-    const baseSpendable = useMaxSpendable(market?.base ?? '', 'create-order')
-    const quoteSpendable = useMaxSpendable(market?.quote ?? '', 'create-order')
+    // Shared gas engine: submitting checks amount + gas + trading fee in the chain's charging
+    // order, and a balance click fills the spendable amount: gas and the taker fee (the larger
+    // trading fee, since maker or taker is only known at submit) kept back when the clicked
+    // balance is the coin they are paid in. The gas is estimated for the final shape (one
+    // MsgCreateOrder, or one MsgFillOrders with N orders) right before sending.
     const {estimate: estimateGasFee} = useGasFeeEstimator()
     const {getBalanceByDenom} = useBalances()
     const orderGasFee = useMemo(() => estimateGasFee('create-order'), [estimateGasFee])
     const takerFeeEstimate = useFeeEstimate(tradingFees.takerFee, {gasFee: orderGasFee})
     const makerFeeEstimate = useFeeEstimate(tradingFees.makerFee, {gasFee: orderGasFee})
+    const baseSpendable = useMaxSpendable(market?.base ?? '', 'create-order', {moduleFee: takerFeeEstimate.resolvedFee})
+    const quoteSpendable = useMaxSpendable(market?.quote ?? '', 'create-order', {moduleFee: takerFeeEstimate.resolvedFee})
 
     const timeframes = [CHART_4H, CHART_1D, CHART_7D, CHART_30D, CHART_1Y];
 
@@ -575,7 +577,7 @@ const TradingPageContent = () => {
         }
 
         setSubmittingOrder(true);
-        const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toString(), uPrice.toString());
+        const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toFixed(0), uPriceToMsgPrice(uPrice));
 
         await tx(msgs);
 
@@ -607,6 +609,10 @@ const TradingPageContent = () => {
             toast.error('Invalid price');
             return;
         }
+        if (!isAboveChainMinPrice(price)) {
+            toast.error('Price is too low');
+            return;
+        }
 
         //a buy locks quote, a sell locks base — plus the gas fee and the trading fee the chain
         //takes on top, from the same balances (chain charging order: gas, module fee, amount)
@@ -630,7 +636,9 @@ const TradingPageContent = () => {
             return;
         }
 
-        const minAmount = getMinAmount(price, baseAsset.decimals)
+        // Both sides in micro units: the chain rejects an order below ceil(1 / price) * 2 base units,
+        // computed from the price in the message, which for a single fill is the matched order's.
+        const minAmount = getMinAmount(orderPriceSent(price, toFill.map((order) => order.price)))
         if (amount.lt(minAmount)) {
             toast.error(`Minimum amount is ${prettyAmount(uAmountToAmount(minAmount, baseAsset.decimals))} ${baseAsset.ticker}`);
             return;
@@ -931,6 +939,7 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={buyAmount}
                                     onChange={onBuyAmountChange}
+                                    maxDecimals={baseAsset?.decimals}
                                     disabled={submittingOrder}
                                 />
                                 <OrderField
@@ -938,6 +947,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={buyTotal}
                                     onChange={onBuyTotalChange}
+                                    maxDecimals={quoteAsset?.decimals}
                                     disabled={submittingOrder}
                                     usd={buyTotal && shouldShowUsdValues ? quoteUsdValue(buyTotal) : undefined}
                                 />
@@ -963,6 +973,7 @@ const TradingPageContent = () => {
                                     unit={baseAsset?.ticker}
                                     value={sellAmount}
                                     onChange={onSellAmountChange}
+                                    maxDecimals={baseAsset?.decimals}
                                     disabled={submittingOrder}
                                 />
                                 <OrderField
@@ -970,6 +981,7 @@ const TradingPageContent = () => {
                                     unit={quoteAsset?.ticker}
                                     value={sellTotal}
                                     onChange={onSellTotalChange}
+                                    maxDecimals={quoteAsset?.decimals}
                                     disabled={submittingOrder}
                                     usd={sellTotal && shouldShowUsdValues ? quoteUsdValue(sellTotal) : undefined}
                                 />

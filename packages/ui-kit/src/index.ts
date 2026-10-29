@@ -52,7 +52,7 @@ export {
 export {
     toBigNumber, uAmountToAmount, uAmountToBigNumberAmount,
     amountToBigNumberUAmount, amountToUAmount, prettyAmount,
-    priceToUPrice, priceToBigNumberUPrice, uPriceToPrice, uPriceToBigNumberPrice
+    priceToUPrice, priceToBigNumberUPrice, uPriceToPrice, uPriceToBigNumberPrice, uPriceToMsgPrice
 } from './utils/amount';
 export { truncateAddress, validateBech32Address, validateBZEBech32Address, valoperToAccountAddress } from './utils/address';
 export {
@@ -92,14 +92,15 @@ export {
 } from './utils/liquidity_pool';
 export { poolData, poolTickers } from './utils/pool_data';
 export {
-    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
+    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {
-    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, maxSpendableAmount, canAffordTx
+    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
+    maxSpendableAmount, canAffordTx
 } from './utils/gas_fee';
 export type {
-    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin,
+    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
     SpendCoin, CanAffordTxInput, CanAffordTxResult, TxShortfall
 } from './utils/gas_fee';
 export {
@@ -295,7 +296,7 @@ export type { UseTxFeeDenomResult } from './hooks/useTxFeeDenom';
 export { useGasPrice, useGasFeeEstimator, useGasFeeEstimate } from './hooks/useGasFeeEstimate';
 export type { UseGasFeeEstimatorResult, UseGasFeeEstimateResult } from './hooks/useGasFeeEstimate';
 export { useMaxSpendable } from './hooks/useMaxSpendable';
-export type { UseMaxSpendableResult } from './hooks/useMaxSpendable';
+export type { UseMaxSpendableResult, UseMaxSpendableOptions } from './hooks/useMaxSpendable';
 export { useCanAffordTx } from './hooks/useCanAffordTx';
 export type { UseCanAffordTxInput, UseCanAffordTxResult } from './hooks/useCanAffordTx';
 export { useMarkets, useAssetMarkets, useMarket, useMarketsManager } from './hooks/useMarkets';

@@ -278,7 +278,7 @@ export const RewardsStakingActionModal = ({
         const msg = joinStaking({
             creator: address,
             rewardId: stakingReward.reward_id,
-            amount: uStakeAmount.toString()
+            amount: uStakeAmount.toFixed(0)
         })
 
         const success = await tx([msg])

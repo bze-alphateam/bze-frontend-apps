@@ -6,7 +6,7 @@ const CACHE_KEY = "txfeecollector_params";
 const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 
 /**
- * One entry of the chain's `blocked_ibc_inbound` param: ICS-20 packets arriving on
+ * One entry of the chain's `BlockedIbcInbound` param: ICS-20 packets arriving on
  * `channelId` (the BZE-side destination channel) carrying `baseDenom` are refused,
  * so nothing is minted on BZE and the sender gets a refund.
  */
@@ -23,12 +23,25 @@ export interface TxFeeCollectorParamsCache {
     blockedIbcInbound: BlockedIbcInbound[];
 }
 
-// The LCD JSON as the chain sends it. The proto sets gogoproto jsontags, so every
-// key is snake_case: Telescope's PascalCase typing (`ValidatorMinGasFee`) does not
-// match the wire format, and the bzejs version in use predates `blocked_ibc_inbound`.
-// Read the snake_case keys directly.
+// The LCD JSON as the chain sends it (verified on mainnet and testnet, 2026-10-29):
+//
+//   {"params":{"ValidatorMinGasFee":{"denom":"ubze","amount":"0.01..."},
+//              "MaxBalanceIterations":"100",
+//              "BlockedIbcInbound":[{"channel_id":"channel-3","base_denom":"uusdc"}]}}
+//
+// The params message carries no json tags, so its fields are serialised under their Go
+// (PascalCase) names, while the nested messages (Coin, BlockedIbcInbound) do have snake_case
+// tags. The snake_case top-level keys are accepted as a fallback in case the chain ever
+// adds the tags; a payload matching neither is treated as a failed query.
+interface RawMinGasFee {
+    denom?: unknown;
+    amount?: unknown;
+}
+
 interface RawTxFeeCollectorParams {
-    validator_min_gas_fee?: { denom?: unknown; amount?: unknown };
+    ValidatorMinGasFee?: RawMinGasFee;
+    BlockedIbcInbound?: unknown;
+    validator_min_gas_fee?: RawMinGasFee;
     blocked_ibc_inbound?: unknown;
 }
 
@@ -76,7 +89,7 @@ export const getTxFeeCollectorParams = async (): Promise<TxFeeCollectorParamsCac
         const client = await getRestClient();
         const response = await client.bze.txfeecollector.params();
         const raw = response?.params as unknown as RawTxFeeCollectorParams | undefined;
-        const minGasFee = raw?.validator_min_gas_fee;
+        const minGasFee = raw?.ValidatorMinGasFee ?? raw?.validator_min_gas_fee;
 
         if (isNonEmptyString(minGasFee?.denom) && isNonEmptyString(minGasFee?.amount)) {
             const params: TxFeeCollectorParamsCache = {
@@ -84,7 +97,7 @@ export const getTxFeeCollectorParams = async (): Promise<TxFeeCollectorParamsCac
                     denom: minGasFee.denom,
                     amount: minGasFee.amount,
                 },
-                blockedIbcInbound: parseBlockedIbcInbound(raw?.blocked_ibc_inbound),
+                blockedIbcInbound: parseBlockedIbcInbound(raw?.BlockedIbcInbound ?? raw?.blocked_ibc_inbound),
             };
             setInLocalStorage(CACHE_KEY, JSON.stringify(params), CACHE_TTL_SECONDS);
             return params;

@@ -169,14 +169,20 @@ export function estimateFeeInPreferredDenom(input: FeeEstimateInput): FeeEstimat
 export type FeePaymentMethod = 'native' | 'preferred' | 'fallback' | 'insufficient';
 
 /**
- * Balance already spoken for before the module fee is charged — the transaction's gas fee,
- * which the ante handler deducts first. Micro-units of the respective denom.
+ * How the balances move before the module fee is charged. `reserved*` leave the wallet first:
+ * the gas fee (the ante handler deducts it before anything else) and, for messages that move
+ * coins before capturing their fee (a swap's input), those coins. `received*` land afterwards
+ * and before the fee is captured (a swap's output). Micro-units of the respective denom.
  */
 export interface FeeReserves {
-    /** Reserved from the native balance (gas paid in the native coin). */
+    /** Reserved from the native balance (gas paid in the native coin, native coins spent). */
     reservedNative?: BigNumber | string | number;
-    /** Reserved from the preferred-token balance (gas paid in the preferred token). */
+    /** Reserved from the preferred-token balance (gas paid in the preferred token, preferred coins spent). */
     reservedPreferred?: BigNumber | string | number;
+    /** Native coins paid into the wallet before the fee is captured. */
+    receivedNative?: BigNumber | string | number;
+    /** Preferred-token coins paid into the wallet before the fee is captured. */
+    receivedPreferred?: BigNumber | string | number;
 }
 
 function reservedAmount(value: BigNumber | string | number | undefined): BigNumber {
@@ -188,10 +194,11 @@ function reservedAmount(value: BigNumber | string | number | undefined): BigNumb
 }
 
 /**
- * Which balance the chain takes the module fee from, given optional reserves (the gas fee,
- * deducted first). A reserve larger than its balance means the gas itself cannot be paid:
- * the ante handler rejects the transaction outright, so the result is `insufficient`
- * regardless of the other balance.
+ * Which balance the chain takes the module fee from, given how the balances move first
+ * (see {@link FeeReserves}). A reserve larger than its balance means the gas or the spend
+ * itself cannot be paid: the transaction fails before the fee, so the result is
+ * `insufficient` regardless of the other balance. Coins received count only after that check,
+ * since they land after the reserves have left.
  */
 export function resolveFeePayment(
     estimate: FeeEstimate,
@@ -204,21 +211,61 @@ export function resolveFeePayment(
     const native = toBigNumber(nativeBalance);
     const preferred = toBigNumber(preferredBalance);
 
-    // Gas must be payable before anything else happens.
+    // Gas (and whatever the message moves before its fee) must be payable before anything else happens.
     if (native.lt(reservedNative) || preferred.lt(reservedPreferred)) {
         return 'insufficient';
     }
 
-    const hasEnoughNative = native.minus(reservedNative).gte(estimate.nativeAmount);
+    const nativeLeft = native.minus(reservedNative).plus(reservedAmount(reserves.receivedNative));
+    const preferredLeft = preferred.minus(reservedPreferred).plus(reservedAmount(reserves.receivedPreferred));
+    const hasEnoughNative = nativeLeft.gte(estimate.nativeAmount);
 
     if (estimate.reason === 'estimated' && estimate.preferredAmount) {
-        if (preferred.minus(reservedPreferred).gte(estimate.preferredAmount)) {
+        if (preferredLeft.gte(estimate.preferredAmount)) {
             return 'preferred';
         }
         return hasEnoughNative ? 'fallback' : 'insufficient';
     }
 
     return hasEnoughNative ? 'native' : 'insufficient';
+}
+
+/**
+ * The module fee a MAX of `spentDenom` must leave behind, for a message that moves the spent
+ * coins before capturing its fee (a swap). The whole spendable balance (balance minus the gas
+ * reserve) is assumed spent and nothing assumed received, since the output of that amount is
+ * not known yet. When the fee is still payable from another balance nothing is held back;
+ * otherwise the fee has to come from what is left of `spentDenom`: the preferred amount when
+ * `spentDenom` is the preferred token, the native amount when it is the native coin. Undefined
+ * when nothing needs holding back (or `spentDenom` can never pay the fee).
+ */
+export function maxSpendFeeReserve(
+    estimate: FeeEstimate,
+    spentDenom: string,
+    preferredBalance: BigNumber | string | number,
+    nativeBalance: BigNumber | string | number,
+    reserves: Pick<FeeReserves, 'reservedNative' | 'reservedPreferred'> = {},
+): FeeCoin | undefined {
+    const usesPreferred = estimate.reason === 'estimated' && Boolean(estimate.preferredAmount);
+    const spendsPreferred = usesPreferred && spentDenom === estimate.preferredDenom;
+    const spendsNative = spentDenom === estimate.nativeDenom;
+    if (!spendsPreferred && !spendsNative) {
+        return undefined;
+    }
+
+    // Everything spendable leaves: the reserve becomes the whole balance.
+    const method = resolveFeePayment(estimate, preferredBalance, nativeBalance, {
+        reservedNative: spendsNative ? nativeBalance : reserves.reservedNative,
+        reservedPreferred: spendsPreferred ? preferredBalance : reserves.reservedPreferred,
+    });
+    const paidFromOther = (method === 'preferred' && !spendsPreferred) || ((method === 'native' || method === 'fallback') && !spendsNative);
+    if (paidFromOther) {
+        return undefined;
+    }
+
+    return spendsPreferred && estimate.preferredAmount
+        ? {denom: estimate.preferredDenom, amount: estimate.preferredAmount.toFixed(0)}
+        : {denom: estimate.nativeDenom, amount: estimate.nativeAmount.toFixed(0)};
 }
 
 function poolHasDenoms(pool: LiquidityPoolSDKType, denomA: string, denomB: string): boolean {

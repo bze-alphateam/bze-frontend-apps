@@ -3,6 +3,8 @@
 import BigNumber from 'bignumber.js';
 
 const MAX_PRICE_DECIMALS = 14;
+// the chain's LegacyDec holds 18 decimals; a longer price string fails ValidateBasic
+const MSG_PRICE_DECIMALS = 18;
 
 export function toBigNumber(amount: string | number | BigNumber | bigint): BigNumber {
     if (amount instanceof BigNumber) {
@@ -22,14 +24,24 @@ export function uAmountToBigNumberAmount(amount: string | number | BigNumber | b
         .decimalPlaces(noOfDecimals || 6)
 }
 
+// Whole micro-units only: the chain has no fraction of a micro-unit, and digits past the asset's
+// decimals are dropped (never rounded up, so a user amount can't grow past what they typed).
 export function amountToBigNumberUAmount(amount: string | number | BigNumber | bigint, noOfDecimals: number): BigNumber {
     return toBigNumber(amount)
         .shiftedBy(noOfDecimals)
-        .decimalPlaces(noOfDecimals || 6);
+        .integerValue(BigNumber.ROUND_DOWN);
 }
 
+// toFixed(0), not toString(): BigNumber switches to exponent notation ("1e+21") from 1e21 on,
+// which no chain message accepts.
 export function amountToUAmount(amount: string | number | BigNumber | bigint, noOfDecimals: number): string {
-    return amountToBigNumberUAmount(amount, noOfDecimals).toString();
+    return amountToBigNumberUAmount(amount, noOfDecimals).toFixed(0);
+}
+
+// A micro-unit price as the string a tradebin message carries: plain notation (toString() gives
+// "5e-8" below 1e-7) and at most the 18 decimals the chain's LegacyDec parses, truncated.
+export function uPriceToMsgPrice(uPrice: string | number | BigNumber): string {
+    return toBigNumber(uPrice).decimalPlaces(MSG_PRICE_DECIMALS, BigNumber.ROUND_DOWN).toFixed();
 }
 
 export function prettyAmount(amount: number | string | BigNumber | bigint): string {

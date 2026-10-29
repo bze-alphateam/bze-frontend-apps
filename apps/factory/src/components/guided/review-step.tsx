@@ -53,6 +53,8 @@ interface ReviewStepProps {
     blocker?: React.ReactNode;
     /** Lines under the rows, e.g. why the button is disabled. */
     children?: React.ReactNode;
+    /** The message takes its fee before the other rows (pool creation): see useFeePayment. */
+    feeFirst?: boolean;
 }
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
@@ -73,9 +75,9 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 export function ReviewStep({
     number, total, state, direction, title = 'Review', question = 'Everything right?',
     leaves, moduleFee, txKind, isLoading, feeUnknown, gets, extra = [], permanent = [],
-    submitLabel, onSubmit, disabled, onBack, blocker, children,
+    submitLabel, onSubmit, disabled, onBack, blocker, children, feeFirst,
 }: ReviewStepProps) {
-    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(leaves, moduleFee))
+    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(leaves, moduleFee), { feeFirst })
     const cantPay = Boolean(moduleFee) && !payment.isLoading && payment.method === 'insufficient'
     const hasGas = Boolean(txKind) && payment.gasFee.amount.gt(0)
 

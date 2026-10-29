@@ -208,9 +208,9 @@ export const DepositForm = () => {
     }, [selectedRoutes]);
 
     const onAmountChange = useCallback((value: string) => {
-        setAmount(sanitizeNumberInput(value));
+        setAmount(sanitizeNumberInput(value, selectedAsset?.bzeAsset.decimals));
         setAmountError('');
-    }, []);
+    }, [selectedAsset?.bzeAsset.decimals]);
 
     // MAX fills the full balance on the source chain on purpose: the deposit is signed on
     // that chain and its gas is paid in that chain's own coin by the wallet (letWalletSetFee),

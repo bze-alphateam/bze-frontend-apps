@@ -11,6 +11,7 @@ import {
     priceToBigNumberUPrice,
     uPriceToPrice,
     uPriceToBigNumberPrice,
+    uPriceToMsgPrice,
 } from './amount'
 
 describe('toBigNumber', () => {
@@ -69,9 +70,34 @@ describe('amountToUAmount', () => {
         const original = '123456.789012'
         expect(uAmountToAmount(amountToUAmount(original, 6), 6)).toBe(original)
     })
+
+    // regression: digits past the asset's decimals used to survive as fractional micro-units
+    // ("1000000.1"), which the chain's Int parser rejects
+    it('drops digits past the asset decimals, never rounding up', () => {
+        expect(amountToUAmount('1.0000001', 6)).toBe('1000000')
+        expect(amountToUAmount('1.9999999', 6)).toBe('1999999')
+        expect(amountToUAmount('0.0000001', 6)).toBe('0')
+    })
+
+    // regression: a 0-decimal asset kept 6 fractional places ("1.5")
+    it('gives whole units for a 0-decimal asset', () => {
+        expect(amountToUAmount('1.5', 0)).toBe('1')
+        expect(amountToUAmount('7', 0)).toBe('7')
+    })
+
+    // regression: toString() switches to "1e+21" from 1e21 micro-units on
+    it('never uses exponent notation for large amounts', () => {
+        expect(amountToUAmount('1000', 18)).toBe('1000000000000000000000')
+        expect(amountToUAmount('1000000000000000', 6)).toBe('1000000000000000000000')
+    })
 })
 
 describe('amountToBigNumberUAmount / uAmountToBigNumberAmount', () => {
+    it('amountToBigNumberUAmount returns whole micro-units', () => {
+        expect(amountToBigNumberUAmount('2.0000005', 6).toString()).toBe('2000000')
+        expect(amountToBigNumberUAmount('2.5', 0).isInteger()).toBe(true)
+    })
+
     it('are BigNumber-returning counterparts of the string versions', () => {
         expect(amountToBigNumberUAmount('2.5', 6)).toBeInstanceOf(BigNumber)
         expect(amountToBigNumberUAmount('2.5', 6).toString()).toBe('2500000')
@@ -111,6 +137,14 @@ describe('price conversions', () => {
     it('uPriceToPrice is the inverse of priceToUPrice', () => {
         const uPrice = priceToUPrice(new BigNumber('0.025'), 6, 8)
         expect(uPriceToPrice(uPrice, 6, 8)).toBe('0.025')
+    })
+
+    // regression: the order form sent uPrice.toString(), which gives "5e-8" below 1e-7
+    it('uPriceToMsgPrice gives plain notation with at most 18 decimals, truncated', () => {
+        expect(uPriceToMsgPrice(new BigNumber('0.00000005'))).toBe('0.00000005')
+        expect(uPriceToMsgPrice('0.0000000000000000019')).toBe('0.000000000000000001')
+        expect(uPriceToMsgPrice('1234.5')).toBe('1234.5')
+        expect(uPriceToMsgPrice(new BigNumber('1e21'))).toBe('1000000000000000000000')
     })
 
     it('BigNumber variants agree with string variants', () => {

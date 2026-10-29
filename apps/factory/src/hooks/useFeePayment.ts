@@ -1,6 +1,16 @@
 'use client'
 
-import { FeeCoin, TxSpec, useFeeEstimate, useGasFeeEstimate } from '@bze/bze-ui-kit'
+import {
+    FeeCoin,
+    TxSpec,
+    canAffordTx,
+    prettyAmount,
+    uAmountToBigNumberAmount,
+    useAssets,
+    useBalances,
+    useFeeEstimate,
+    useGasFeeEstimate,
+} from '@bze/bze-ui-kit'
 
 /**
  * How the chain will charge a creation fee, mirroring the keeper's charging order: when
@@ -18,19 +28,48 @@ import { FeeCoin, TxSpec, useFeeEstimate, useGasFeeEstimate } from '@bze/bze-ui-
  */
 export type FeePaymentMethod = 'native' | 'alt' | 'fallback' | 'insufficient'
 
+export interface FeePaymentOptions {
+    /**
+     * The message captures its fee BEFORE it moves `spent` (MsgCreateLiquidityPool: fee, then
+     * the starting reserves). The chain then picks the fee token on the balance left after gas
+     * alone, so the fee is resolved without `spent`, and the wallet must still hold `spent` +
+     * the resolved fee + gas, per denom, or the transfer after the fee fails on chain.
+     * Default (spend first): `spent` is reserved before the fee token is picked.
+     */
+    feeFirst?: boolean;
+}
+
 /**
  * Thin factory-flavoured view over ui-kit's shared fee engine (`useFeeEstimate`, pool
  * math) plus the gas estimate of `txKind` (`useGasFeeEstimate`). Pass the kind(s) of the
  * message(s) the form will send so the balance check accounts for the gas fee too, and in
  * `spent` every other coin the transaction takes from the wallet (starting amounts, budgets).
  */
-export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec, spent?: FeeCoin[]) {
+export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec, spent?: FeeCoin[], options: FeePaymentOptions = {}) {
+    const { feeFirst = false } = options
     const gasFee = useGasFeeEstimate(txKind)
-    const estimate = useFeeEstimate(fee, { gasFee: txKind ? gasFee.estimate : undefined, reserved: spent })
+    const estimate = useFeeEstimate(fee, { gasFee: txKind ? gasFee.estimate : undefined, reserved: feeFirst ? undefined : spent })
+    const { getBalanceByDenom } = useBalances()
+    const { denomTicker, denomDecimals } = useAssets()
 
-    const method: FeePaymentMethod = estimate.method === 'preferred'
+    // Fee first: the fee token is settled, now everything the tx takes must fit together.
+    const afford = feeFirst && fee && estimate.resolvedFee
+        ? canAffordTx({
+            spend: spent,
+            gasFee: { denom: gasFee.denom, amount: gasFee.amount },
+            moduleFee: estimate.resolvedFee,
+            balanceOf: denom => getBalanceByDenom(denom).amount,
+        })
+        : undefined
+    const shortfall = afford?.shortfalls[0]
+    const shortMessage = shortfall
+        ? `Not enough ${denomTicker(shortfall.denom)}: ${prettyAmount(uAmountToBigNumberAmount(shortfall.missing, denomDecimals(shortfall.denom)))} ${denomTicker(shortfall.denom)} short.`
+        : undefined
+
+    const resolved: FeePaymentMethod = estimate.method === 'preferred'
         ? 'alt'
         : (estimate.method ?? 'insufficient')
+    const method: FeePaymentMethod = afford && !afford.canAfford ? 'insufficient' : resolved
 
     return {
         isLoading: estimate.isLoading || gasFee.isLoading,
@@ -47,6 +86,8 @@ export function useFeePayment(fee?: FeeCoin, txKind?: TxSpec, spent?: FeeCoin[])
         canPayFee: Boolean(fee) && method !== 'insufficient',
         /** The gas fee reserved by the check (zero when no `txKind` was given). */
         gasFee,
+        /** Fee first only: what the wallet is short of once fee, gas and `spent` are summed. */
+        shortMessage,
         /** The raw shared-engine result, for callers that need more detail. */
         estimate,
     }

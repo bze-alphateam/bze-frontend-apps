@@ -5,16 +5,28 @@ import {
     GAS_ESTIMATES,
     TxKind,
     canAffordTx,
+    computeForeignGasFee,
+    computeNativeGasFee,
     estimateGasFee,
     estimateGasUsed,
     maxSpendableAmount,
     resolveGasPrice,
 } from './gas_fee'
-import { calculatePoolOppositeAmount } from './liquidity_pool'
 
 const NATIVE = 'ubze'
 const USDC = 'uusdc'
 const MIN_LIQUIDITY = '100000000000'
+
+// What the ante handler requires for a gas limit paid in the native denom: ceil(gas × minGasPrice).
+const chainNativeRequirement = (gas: BigNumber, gasPrice: number) =>
+    gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_CEIL)
+
+// What the ante handler requires for a gas limit paid in the pool's other token:
+// ceil(gas × minGasPrice / spot), spot = nativeReserve / foreignReserve.
+const chainForeignRequirement = (gas: BigNumber, gasPrice: number, p: LiquidityPoolSDKType) => {
+    const spot = new BigNumber(p.reserve_base).dividedBy(p.reserve_quote)
+    return gas.multipliedBy(gasPrice).dividedBy(spot).integerValue(BigNumber.ROUND_CEIL)
+}
 
 // 1M BZE : 10k USDC pool → 1 BZE ≈ 0.01 USDC, 0.3 % swap fee
 const pool = {
@@ -25,9 +37,11 @@ const pool = {
     reserve_quote: '10000000000',
 } as LiquidityPoolSDKType
 
-// The env defaults useTx applies (constants/chain.ts).
+// The chain's validator_min_gas_fee (0.01 ubze/gas on mainnet) with the env defaults useTx
+// applies for the multipliers (constants/chain.ts).
+const CHAIN_GAS_PRICE = 0.01
 const env = {
-    gasPrice: 0.02,
+    gasPrice: CHAIN_GAS_PRICE,
     gasMultiplier: 1.5,
     nonNativeGasMultiplier: 1.5,
     foreignFeeSlippage: 1.1,
@@ -95,44 +109,119 @@ describe('resolveGasPrice', () => {
     })
 })
 
+describe('computeNativeGasFee', () => {
+    it('rounds the gas limit up, then the fee up: fee = ceil(gas × price)', () => {
+        // 3 gas × 1.5 = 4.5 → 5 gas; 5 × 0.3 = 1.5 → 2 ubze
+        const fee = computeNativeGasFee(3, 0.3, 1.5)
+        expect(fee.gas.toNumber()).toBe(5)
+        expect(fee.amount.toNumber()).toBe(2)
+    })
+
+    // Regression: the fee was rounded half-up, one ubze short of the chain's ceil whenever
+    // gas × price ended in .01–.49 — at the real 0.01 price, every gas limit ending in 01..49.
+    it('never sends a fee below ceil(gas × 0.01): simulated 123410 gas → 185115 gas → 1852 ubze', () => {
+        const fee = computeNativeGasFee(123_410, CHAIN_GAS_PRICE, 1.5)
+        expect(fee.gas.toNumber()).toBe(185_115)
+        expect(fee.amount.toNumber()).toBe(1852)
+        expect(fee.amount.gte(chainNativeRequirement(fee.gas, CHAIN_GAS_PRICE))).toBe(true)
+    })
+
+    it('satisfies the chain rule for every gas limit remainder', () => {
+        for (let gasUsed = 100_000; gasUsed < 100_100; gasUsed++) {
+            const fee = computeNativeGasFee(gasUsed, CHAIN_GAS_PRICE, 1.5)
+            expect(fee.gas.mod(1).isZero()).toBe(true)
+            expect(fee.amount.gte(chainNativeRequirement(fee.gas, CHAIN_GAS_PRICE))).toBe(true)
+        }
+    })
+
+    it('rounds a fractional gas limit up before pricing it', () => {
+        // 123411 × 1.5 = 185116.5 → 185117 gas → 1851.17 → 1852 ubze
+        const fee = computeNativeGasFee(123_411, CHAIN_GAS_PRICE, 1.5)
+        expect(fee.gas.toNumber()).toBe(185_117)
+        expect(fee.amount.toNumber()).toBe(1852)
+    })
+})
+
+describe('computeForeignGasFee', () => {
+    const nativeGas = new BigNumber(185_115)
+
+    it('prices the fee from the multiplied gas limit at the spot ratio, with the slippage buffer', () => {
+        const fee = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1.1, pool, NATIVE)!
+        expect(fee.gas.toNumber()).toBe(277_673)                 // ceil(185115 × 1.5)
+        expect(fee.nativeAmount.toNumber()).toBe(2777)           // ceil(277673 × 0.01)
+        // 2777 ubze at 0.01 USDC/BZE = 27.77 uusdc × 1.1 = 30.547 → 31
+        expect(fee.amount.toNumber()).toBe(31)
+    })
+
+    // Regression: the foreign amount was converted from the *pre-multiplier* native fee, so only
+    // slippage / nonNativeGasMultiplier (1.1 / 1.5 ≈ 73 %) of the chain's requirement was sent.
+    it('covers ceil(gasLimit × 0.01 / spot) for the gas limit it returns', () => {
+        const fee = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1.1, pool, NATIVE)!
+        expect(fee.amount.gte(chainForeignRequirement(fee.gas, CHAIN_GAS_PRICE, pool))).toBe(true)
+        // Without the buffer the raw spot conversion still meets the rule (it fails on the old math).
+        const noBuffer = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1, pool, NATIVE)!
+        expect(noBuffer.amount.gte(chainForeignRequirement(noBuffer.gas, CHAIN_GAS_PRICE, pool))).toBe(true)
+    })
+
+    it('works when the native denom is the pool quote', () => {
+        const flipped = { ...pool, base: USDC, quote: NATIVE, reserve_base: pool.reserve_quote, reserve_quote: pool.reserve_base } as LiquidityPoolSDKType
+        const fee = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1.1, flipped, NATIVE)!
+        expect(fee.amount.toNumber()).toBe(31)
+    })
+
+    it('is at least one unit of the foreign token', () => {
+        const fee = computeForeignGasFee(new BigNumber(10), CHAIN_GAS_PRICE, 1.5, 1.1, pool, NATIVE)!
+        expect(fee.amount.toNumber()).toBe(1)
+    })
+
+    it('is undefined for a pool that cannot price the fee', () => {
+        const empty = { ...pool, reserve_base: '0', reserve_quote: '0' } as LiquidityPoolSDKType
+        expect(computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1.1, empty, NATIVE)).toBeUndefined()
+    })
+})
+
 describe('estimateGasFee', () => {
-    it('mirrors useTx.simulateFee for a native fee: gas × multiplier × price', () => {
+    it('mirrors useTx.simulateFee for a native fee: ceil(ceil(gas × multiplier) × price)', () => {
         const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE })
-        const gas = GAS_ESTIMATES.send.base * 1.5
+        const expected = computeNativeGasFee(GAS_ESTIMATES.send.base, CHAIN_GAS_PRICE, 1.5)
         expect(result.isNative).toBe(true)
         expect(result.denom).toBe(NATIVE)
-        expect(result.gas.toNumber()).toBe(gas)
-        expect(result.amount.toNumber()).toBe(Math.round(gas * 0.02))
+        expect(result.gas.eq(expected.gas)).toBe(true)
+        expect(result.amount.eq(expected.amount)).toBe(true)
         expect(result.nativeAmount.eq(result.amount)).toBe(true)
     })
 
-    it('rounds the gas limit up and the native amount half-up like useTx', () => {
+    it('rounds the gas limit up and the native amount up like useTx', () => {
         // 3 gas × 1.5 = 4.5 → 5 gas; 5 × 0.3 = 1.5 → 2 ubze
         const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE, gasMultiplier: 1.5, gasPrice: 0.3 })
         expect(result.gas.mod(1).isZero()).toBe(true)
         expect(result.amount.mod(1).isZero()).toBe(true)
+        expect(result.amount.gte(chainNativeRequirement(result.gas, 0.3))).toBe(true)
     })
 
     it('converts through the pool with slippage and the non-native gas multiplier', () => {
         const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: USDC, pool })
+        const nativeGas = computeNativeGasFee(GAS_ESTIMATES.send.base, CHAIN_GAS_PRICE, 1.5).gas
+        const expected = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.5, 1.1, pool, NATIVE)!
         expect(result.isNative).toBe(false)
         expect(result.denom).toBe(USDC)
-        expect(result.gas.toNumber()).toBe(GAS_ESTIMATES.send.base * 1.5 * 1.5)
-        expect(result.nativeAmount.toNumber()).toBe(Math.round(GAS_ESTIMATES.send.base * 1.5 * 0.02))
-        expect(result.amount.gt(0)).toBe(true)
+        expect(result.gas.eq(expected.gas)).toBe(true)
+        expect(result.nativeAmount.eq(expected.nativeAmount)).toBe(true)
+        expect(result.amount.eq(expected.amount)).toBe(true)
         expect(result.amount.mod(1).isZero()).toBe(true)
     })
 
-    it('is never lower than what useTx would send (spot ratio × slippage)', () => {
+    it('is exactly what useTx would send, and satisfies ceil(gasLimit × 0.01 / spot)', () => {
         const result = estimateGasFee({ ...env, spec: 'ibc-transfer', txFeeDenom: USDC, pool })
-        const spot = calculatePoolOppositeAmount(pool, result.nativeAmount, pool.base === NATIVE)
-        const useTxAmount = spot.multipliedBy(1.1).integerValue(BigNumber.ROUND_CEIL)
-        expect(result.amount.gte(useTxAmount)).toBe(true)
+        expect(result.amount.gte(chainForeignRequirement(result.gas, CHAIN_GAS_PRICE, pool))).toBe(true)
+        // The native fee the estimate reports is the one the returned gas limit needs.
+        expect(result.nativeAmount.gte(chainNativeRequirement(result.gas, CHAIN_GAS_PRICE))).toBe(true)
     })
 
-    it('falls back to the native fee without a pool, with a shallow pool or when the token is BZE', () => {
+    it('falls back to the native fee without a pool, with a shallow pool, a foreign pool or when the token is BZE', () => {
         expect(estimateGasFee({ ...env, spec: 'send', txFeeDenom: USDC }).isNative).toBe(true)
         expect(estimateGasFee({ ...env, spec: 'send', txFeeDenom: USDC, pool, minNativeLiquidity: pool.reserve_base }).isNative).toBe(true)
+        expect(estimateGasFee({ ...env, spec: 'send', txFeeDenom: 'uatom', pool }).isNative).toBe(true)
         expect(estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE, pool }).isNative).toBe(true)
         expect(estimateGasFee({ ...env, spec: 'send', txFeeDenom: '', pool }).isNative).toBe(true)
     })
@@ -168,6 +257,42 @@ describe('maxSpendableAmount', () => {
         expect(maxSpendableAmount('0', NATIVE, gasFee).toString()).toBe('0')
         expect(maxSpendableAmount('-5', USDC, gasFee).toString()).toBe('0')
         expect(maxSpendableAmount('abc', USDC, gasFee).toString()).toBe('0')
+    })
+
+    // 0.1 BZE taker fee, paid in BZE (the fee token, or the fallback when it is short).
+    const takerFee = { denom: NATIVE, amount: '100000' }
+
+    it('also leaves the module fee behind when it is paid in the same denom', () => {
+        expect(maxSpendableAmount('1000000', NATIVE, gasFee, takerFee).toString()).toBe('895500')
+    })
+
+    it('leaves a module fee paid in another denom alone', () => {
+        expect(maxSpendableAmount('1000000', USDC, gasFee, takerFee).toString()).toBe('1000000')
+        expect(maxSpendableAmount('1000000', USDC, gasFee, { denom: USDC, amount: '300' }).toString()).toBe('999700')
+    })
+
+    it('floors at zero when the balance does not cover gas plus module fee', () => {
+        expect(maxSpendableAmount('100000', NATIVE, gasFee, takerFee).toString()).toBe('0')
+    })
+
+    it('fills an amount canAffordTx accepts with the same gas and module fee', () => {
+        // Regression: MAX on the fee coin used to keep only the gas back, so the swap / order
+        // form refused its own MAX ("Not enough BZE left for the network fee").
+        const balance = '1000000'
+        const max = maxSpendableAmount(balance, NATIVE, gasFee, takerFee)
+        const result = canAffordTx({
+            spend: { denom: NATIVE, amount: max },
+            gasFee,
+            moduleFee: takerFee,
+            balanceOf: () => balance,
+        })
+        expect(result.canAfford).toBe(true)
+        expect(canAffordTx({
+            spend: { denom: NATIVE, amount: max.plus(1) },
+            gasFee,
+            moduleFee: takerFee,
+            balanceOf: () => balance,
+        }).canAfford).toBe(false)
     })
 })
 
@@ -237,5 +362,26 @@ describe('canAffordTx', () => {
     it('ignores empty, zero and NaN coins', () => {
         const result = canAffordTx({ spend: [{ denom: '', amount: '5' }, { denom: NATIVE, amount: '0' }, { denom: USDC, amount: 'x' }], gasFee, balanceOf })
         expect(result.canAfford).toBe(true)
+    })
+    // A swap pays its output before capturing the taker fee, so the output can pay the fee.
+    describe('with coins received before the module fee', () => {
+        it('lets the output pay the module fee', () => {
+            // Regression: selling USDC into BZE with no BZE left for the taker fee was refused,
+            // although the chain takes the fee from the BZE output.
+            const sell = { spend: { denom: USDC, amount: '2000' }, gasFee: { denom: USDC, amount: '0' }, moduleFee: { denom: NATIVE, amount: '100000' } }
+            const empty = (denom: string) => denom === USDC ? '2000' : '0'
+            expect(canAffordTx({ ...sell, balanceOf: empty }).canAfford).toBe(false)
+            expect(canAffordTx({ ...sell, receive: { denom: NATIVE, amount: '100000' }, balanceOf: empty }).canAfford).toBe(true)
+            const short = canAffordTx({ ...sell, receive: { denom: NATIVE, amount: '99999' }, balanceOf: empty })
+            expect(short.canAfford).toBe(false)
+            expect(short.shortfalls[0].missing.toString()).toBe('1')
+        })
+
+        it('never lets the output pay the spend or the gas', () => {
+            const result = canAffordTx({ spend: { denom: NATIVE, amount: '1000000' }, gasFee, receive: { denom: NATIVE, amount: '999999999' }, balanceOf })
+            expect(result.canAfford).toBe(false)
+            expect(result.shortOnFees).toBe(true)
+            expect(result.shortfalls[0].missing.toString()).toBe('4500')
+        })
     })
 })

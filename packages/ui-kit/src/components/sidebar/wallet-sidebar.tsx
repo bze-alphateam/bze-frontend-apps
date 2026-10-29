@@ -285,9 +285,9 @@ export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFo
     }, [])
 
     const onAmountChange = useCallback((amount: string) => {
-        setSendAmount(sanitizeNumberInput(amount))
+        setSendAmount(sanitizeNumberInput(amount, selectedCoin?.decimals))
         setSendAmountError('')
-    }, [])
+    }, [selectedCoin?.decimals])
 
     const onCoinSelectChange = useCallback((ticker: string) => {
         if (ticker === "") return

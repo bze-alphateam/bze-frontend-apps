@@ -88,6 +88,8 @@ interface PayPanelProps {
     feeUnknown?: boolean;
     /** E.g. a "Left in your wallet" line. */
     footer?: React.ReactNode;
+    /** The message takes its fee before the other rows (pool creation): see useFeePayment. */
+    feeFirst?: boolean;
 }
 
 function PanelShell({ children }: { children: React.ReactNode }) {
@@ -201,11 +203,11 @@ export function spentBesidesFee(rows: PayRow[], moduleFee?: FeeCoin): FeeCoin[] 
  * follows the chain's charging order (see useFeePayment): network fee first, then the
  * selected fee token, silent fallback to the native denom.
  */
-export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, footer }: PayPanelProps) {
+export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, footer, feeFirst }: PayPanelProps) {
     const { address } = useChain(getChainName())
     const { asset: feeAsset } = useAsset(moduleFee?.denom ?? '')
     const { balance, isLoading: isBalanceLoading } = useBalance(moduleFee?.denom ?? '')
-    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(rows, moduleFee))
+    const payment = useFeePayment(moduleFee, txKind, spentBesidesFee(rows, moduleFee), { feeFirst })
 
     if (isLoading) {
         return (
@@ -320,9 +322,9 @@ export function PayPanel({ rows, moduleFee, txKind, isLoading, feeUnknown, foote
                         <HStack gap="8px" color="hg.danger.text" align="start">
                             <Box mt="3px" flexShrink={0}><LuCircleAlert size={16} /></Box>
                             <Text fontSize="14px" lineHeight="1.5">
-                                {payment.isAltSelected
+                                {payment.shortMessage ?? (payment.isAltSelected
                                     ? `Not enough ${altTicker} or ${nativeTicker}: you hold ${prettyAmount(payment.altBalanceDisplay)} ${altTicker} and ${nativeBalance} ${nativeTicker}.`
-                                    : `Not enough ${nativeTicker}: you hold ${nativeBalance} ${nativeTicker}.`}
+                                    : `Not enough ${nativeTicker}: you hold ${nativeBalance} ${nativeTicker}.`)}
                             </Text>
                         </HStack>
                     )}

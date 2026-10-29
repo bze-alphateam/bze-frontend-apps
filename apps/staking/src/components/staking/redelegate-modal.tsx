@@ -195,7 +195,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
             <AmountField
                 value={amount}
-                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                onChange={(value) => setAmount(sanitizeNumberInput(value, decimals))}
                 aside={`Staked: ${prettyAmount(delegatedHuman)} ${nativeAsset?.ticker ?? ''}`}
                 ticker={nativeAsset?.ticker}
                 disabled={!isConnected}

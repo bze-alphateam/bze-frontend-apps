@@ -7,11 +7,32 @@ import { WalletState } from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
 import type { ValidatorSDKType } from "@bze/bzejs/cosmos/staking/v1beta1/staking";
 
-// Wallet, balance, fee and tx hooks are stubbed; the rest of ui-kit stays real.
+// Wallet, balance, fee and tx hooks are stubbed; the rest of ui-kit stays real. useCanAffordTx runs
+// ui-kit's real canAffordTx against `gas` (the network fee in the Settings fee token) and `wallet`.
+const { gas, wallet } = vi.hoisted(() => ({
+    gas: { denom: "ubze", amount: "100000" },
+    wallet: { current: {} as Record<string, string> },
+}));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
+    const { default: BN } = await import("bignumber.js");
+    const tickers: Record<string, string> = { ubze: "BZE", uusdc: "USDC" };
     return {
         ...actual,
+        useCanAffordTx: ({ spec, spend }: { spec?: unknown; spend?: { denom: string; amount: string } }) => {
+            if (spec === undefined) return { canAfford: true, shortfalls: [], shortOnFees: false, message: "", isLoading: false };
+            const result = actual.canAffordTx({
+                spend,
+                gasFee: { denom: gas.denom, amount: new BN(gas.amount) },
+                balanceOf: (denom: string) => new BN(wallet.current[denom] ?? "0"),
+            });
+            const short = result.shortfalls[0];
+            return {
+                ...result,
+                message: short ? `Not enough ${tickers[short.denom]} left for the network fee` : "",
+                isLoading: false,
+            };
+        },
         useAssets: () => ({ nativeAsset: { denom: "ubze", ticker: "BZE", decimals: 6 } }),
         useBalance: () => ({ balance: { amount: new BigNumber("10000000"), denom: "ubze" } }),
         useMaxSpendable: () => ({
@@ -44,6 +65,9 @@ function validator(overrides: Record<string, unknown>): ValidatorSDKType {
 
 beforeEach(() => {
     chainMock.current = { address: "bze1me", status: WalletState.Connected, connect: vi.fn() };
+    gas.denom = "ubze";
+    gas.amount = "100000";
+    wallet.current = { ubze: "10000000" };
 });
 
 function renderModal(v: ValidatorSDKType, props: Partial<Parameters<typeof DelegateModal>[0]> = {}) {
@@ -120,6 +144,47 @@ describe("DelegateModal amount validation", () => {
         await user.type(await screen.findByPlaceholderText("0.00"), "1");
 
         expect(screen.getByRole("button", { name: "Stake 1 BZE" })).toBeEnabled();
+    });
+
+    // regression: typed decimals past BZE's 6 became fractional micro-units in MsgDelegate
+    it("drops typed digits past the asset decimals", async () => {
+        const user = userEvent.setup();
+        renderModal(validator({}));
+
+        await user.type(await screen.findByPlaceholderText("0.00"), "1.12345678");
+
+        expect(screen.getByPlaceholderText("0.00")).toHaveValue("1.123456");
+    });
+});
+
+// Regression: with a non-BZE fee token picked in Settings and none of it in the wallet, the modal
+// only checked BZE. Stake stayed enabled, the fee simulation failed, and the tx silently paid a
+// default fee in BZE (or, at MAX, failed on chain after paying it).
+describe("DelegateModal fee token", () => {
+    beforeEach(() => {
+        gas.denom = "uusdc";
+        gas.amount = "30000";
+    });
+
+    it("blocks Stake and says why when the wallet holds none of the fee token", async () => {
+        const user = userEvent.setup();
+        renderModal(validator({}));
+
+        await user.type(await screen.findByPlaceholderText("0.00"), "1");
+
+        expect(screen.getByRole("button", { name: "Stake 1 BZE" })).toBeDisabled();
+        expect(screen.getByText("Not enough USDC left for the network fee")).toBeInTheDocument();
+    });
+
+    it("enables Stake when the fee token covers the network fee", async () => {
+        wallet.current = { ubze: "10000000", uusdc: "30000" };
+        const user = userEvent.setup();
+        renderModal(validator({}));
+
+        await user.type(await screen.findByPlaceholderText("0.00"), "1");
+
+        expect(screen.getByRole("button", { name: "Stake 1 BZE" })).toBeEnabled();
+        expect(screen.queryByText(/left for the network fee/)).not.toBeInTheDocument();
     });
 });
 
