@@ -30,3 +30,10 @@ export const balanceToFormValue = (uAmount: BigNumber | string | number | undefi
  */
 export const orderPriceSent = (uPrice: BigNumber, matchedPrices: string[]): BigNumber =>
     matchedPrices.length === 1 ? new BigNumber(matchedPrices[0]) : uPrice;
+
+/**
+ * True when an order amount or price (micro units) can go into a message: finite and above zero.
+ * BigNumber's isPositive() is true for 0, so a 0 price used to reach the chain and fail its
+ * ValidateBasic after signing.
+ */
+export const isPositiveOrderValue = (value: BigNumber): boolean => value.isFinite() && value.gt(0);

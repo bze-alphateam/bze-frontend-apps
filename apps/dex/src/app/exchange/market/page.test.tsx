@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[] },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0" },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -39,7 +39,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useMarket: () => ({ market: MARKET, marketId: MARKET_ID, marketData: undefined }),
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useBalance: (denom: string) => ({ balance: { denom, amount: new BigNumber(0) } }),
-        useBalances: () => ({ getBalanceByDenom: (denom: string) => ({ denom, amount: new BigNumber(0) }) }),
+        useBalances: () => ({ getBalanceByDenom: (denom: string) => ({ denom, amount: new BigNumber(mocks.balance) }) }),
         useAssetPrice: () => ({ totalUsdValue: () => new BigNumber(0), hasPrice: false }),
         useBZETx: () => ({ tx: mocks.tx }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
@@ -84,6 +84,7 @@ beforeEach(() => {
     mocks.halted = new Set();
     mocks.tx.mockReset();
     mocks.myOrders = [ORDER];
+    mocks.balance = "0";
 });
 
 describe("trading page on a governance-halted market", () => {
@@ -118,6 +119,39 @@ describe("trading page on a governance-halted market", () => {
         expect(screen.getByRole("button", { name: "Sell HALT" })).toBeInTheDocument();
         expect(screen.queryByText("Trading halted")).toBeNull();
         expect(screen.queryByText(/no longer tradeable/)).toBeNull();
+    });
+});
+
+// The order guards used isPositive(), which is true for 0. Pasting an amount after a tiny total
+// rounds the derived price down to "0", and the sell then went out as MsgCreateOrder with price
+// "0", failing the chain's ValidateBasic after the user had signed.
+describe("order guards", () => {
+    const fill = (form: HTMLElement, label: string, value: string) =>
+        fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+
+    it("sends no order whose price rounds to 0", async () => {
+        mocks.balance = "1000000000000";
+        renderPage();
+
+        // A valid buy first: proves the book has loaded and the form reaches tx().
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+        await waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+        expect(mocks.tx.mock.calls[0][0][0].typeUrl).toBe("/bze.tradebin.MsgCreateOrder");
+        expect(mocks.tx.mock.calls[0][0][0].value).toMatchObject({ orderType: "buy", price: "1", amount: "2000000" });
+        await waitFor(() => expect(within(buy).getByRole("button", { name: "Buy HALT" })).toBeEnabled());
+
+        const sell = screen.getByRole("group", { name: "Sell HALT" });
+        fill(sell, "Total", "0.000001");
+        fill(sell, "Amount", "1000");
+        expect(within(sell).getByLabelText("Price")).toHaveValue("0");
+
+        fireEvent.click(within(sell).getByRole("button", { name: "Sell HALT" }));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        expect(mocks.tx).toHaveBeenCalledTimes(1);
     });
 });
 

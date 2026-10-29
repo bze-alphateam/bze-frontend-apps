@@ -22,6 +22,7 @@ import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {LuSearch, LuWallet} from 'react-icons/lu';
+import {isPositiveAmount} from '@/lib/delegate-amount';
 import {AmountField, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 import {ValidatorAvatar} from './validator-avatar';
 
@@ -48,6 +49,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
+    const amountValid = isPositiveAmount(amount);
     // Max redelegates the full delegation (not a wallet balance), but the wallet must still
     // hold the gas fee for the transaction.
     const feeCheck = useCanAffordTx({spec: isConnected ? 'redelegate' : undefined});
@@ -63,7 +65,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
     }, [allValidators, sourceValidator, search]);
 
     const handleRedelegate = async () => {
-        if (!address || !sourceValidator || !amount || new BigNumber(amount).lte(0) || !destValidator) {
+        if (!address || !sourceValidator || !amountValid || !destValidator) {
             toast.error('Invalid input', 'Please select a destination validator and enter an amount');
             return;
         }
@@ -222,10 +224,10 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                     size="lg"
                     onClick={handleRedelegate}
                     loading={isSubmitting}
-                    disabled={!amount || new BigNumber(amount).lte(0) || !address || !destValidator || !feeCheck.canAfford}
+                    disabled={!amountValid || !address || !destValidator || !feeCheck.canAfford}
                     w="full"
                 >
-                    Move {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Move {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>
