@@ -41,6 +41,8 @@ export interface TokenSwap {
     uAmountIn?: BigNumber;
     /** The expected output in display units of `to`. */
     expectedOut?: BigNumber;
+    /** The least the swap may pay out (expected output less the slippage), in base units of `to`. */
+    uMinOut?: BigNumber;
     /** Price impact in percent. */
     priceImpact?: BigNumber;
     route: SwapRouteResult | null;
@@ -94,6 +96,7 @@ export function useTokenSwap(denom: string, {direction, other, amountIn, slippag
     }, [router, tradable, from, to, uAmountIn]);
 
     const error = tradable && uAmountIn?.gt(0) && !route ? "No route for this amount" : "";
+    const uMinOut = route ? minimumOutput(route.expectedOutput, slippage) : undefined;
 
     const submit = useCallback(async () => {
         if (!address || !route || !from || !to || !uAmountIn) return false;
@@ -118,6 +121,7 @@ export function useTokenSwap(denom: string, {direction, other, amountIn, slippag
         isTradable: tradable,
         uAmountIn,
         expectedOut: route && to ? uAmountToBigNumberAmount(route.expectedOutput, denomDecimals(to)) : undefined,
+        uMinOut,
         priceImpact: route?.priceImpact,
         route,
         error,

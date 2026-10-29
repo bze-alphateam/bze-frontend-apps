@@ -25,6 +25,7 @@ let feeMessage = "";
 const GAS_FEE = {denom: "ubze", amount: "20000"};
 const TAKER_FEE = {denom: "ubze", amount: "100000"};
 const useFeeEstimate = vi.fn();
+type Coin = {denom: string; amount: string};
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => {
     const kit = await importOriginal<typeof import("@bze/bze-ui-kit")>();
@@ -45,9 +46,9 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => {
         useTradingFees: () => ({fees: {takerFee: TAKER_FEE}, isLoading: false}),
         useFeeEstimate: (fee: unknown, options: unknown) => useFeeEstimate(fee, options),
         // The real balance check (kit.canAffordTx) over the mocked balances and fees.
-        useCanAffordTx: ({spend, moduleFee}: {spend?: {denom: string; amount: string}; moduleFee?: {denom: string; amount: string}}) => {
+        useCanAffordTx: ({spend, moduleFee, receive}: {spend?: Coin; moduleFee?: Coin; receive?: Coin}) => {
             if (feeMessage) return {canAfford: false, message: feeMessage, isLoading: false};
-            const result = kit.canAffordTx({spend, gasFee: GAS_FEE, moduleFee, balanceOf: (denom) => balances[denom] ?? new BigNumber(0)});
+            const result = kit.canAffordTx({spend, gasFee: GAS_FEE, moduleFee, receive, balanceOf: (denom) => balances[denom] ?? new BigNumber(0)});
             const message = result.canAfford ? "" : result.shortOnFees ? "Not enough BZE left for the network fee" : "Insufficient balance";
             return {...result, message, isLoading: false};
         },
@@ -106,7 +107,7 @@ beforeEach(() => {
     feeMessage = "";
     findOptimalRoute.mockReturnValue(route(["pool-usdc-bze", "pool-bze-page"], "1234567.9"));
     // The taker fee resolves to BZE, the denom the chain takes it in here.
-    useFeeEstimate.mockImplementation((fee?: { denom: string; amount: string }) => ({resolvedFee: fee, isLoading: false}));
+    useFeeEstimate.mockImplementation((fee?: Coin) => ({resolvedFee: fee, maxSpendReserve: () => fee, isLoading: false}));
     useMaxSpendable.mockImplementation((denom: string, _spec: unknown, options?: { moduleFee?: { denom: string; amount: string } }) => {
         const amount = maxSpendableAmount(balances[denom] ?? 0, denom, GAS_FEE, options?.moduleFee);
         return {amount, inputValue: amount.dividedBy(1e6).toFixed(), isLoading: false};
@@ -196,7 +197,12 @@ describe("GetTab", () => {
         await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "ubze");
         await user.type(amountField(), "4999.98");
 
-        expect(useFeeEstimate).toHaveBeenLastCalledWith(TAKER_FEE, {gasFee: GAS_FEE});
+        // Resolved the chain's way: after the input has left and the minimum output has landed.
+        expect(useFeeEstimate).toHaveBeenLastCalledWith(TAKER_FEE, {
+            gasFee: GAS_FEE,
+            reserved: [{denom: "ubze", amount: "4999980000"}],
+            received: [expect.objectContaining({denom: T})],
+        });
         expect(screen.getByRole("alert")).toHaveTextContent("Not enough BZE left for the network fee");
         expect(getButton()).toBeDisabled();
         await user.click(getButton());

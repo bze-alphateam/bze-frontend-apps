@@ -92,7 +92,7 @@ export {
 } from './utils/liquidity_pool';
 export { poolData, poolTickers } from './utils/pool_data';
 export {
-    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment
+    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {

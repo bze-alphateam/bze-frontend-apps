@@ -14,6 +14,8 @@ import { rulesFor } from "@/test-support/css-rules";
 // ui-kit real. vi.hoisted guarantees the mock state exists before the factories run.
 const mocks = vi.hoisted(() => ({
     useMaxSpendable: vi.fn(),
+    useFeeEstimate: vi.fn(),
+    useCanAffordTx: vi.fn(),
     tx: vi.fn(),
     liquidAssets: [] as unknown[],
     pools: [] as unknown[],
@@ -75,14 +77,21 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useTradingFees: () => ({ fees: {}, isLoading: false }),
         useMaxSpendable: (denom: string, spec: unknown, options?: unknown) => mocks.useMaxSpendable(denom, spec, options),
         useGasFeeEstimate: () => zeroGas,
-        useFeeEstimate: () => ({
-            resolvedFee: mocks.takerFee,
-            isPreferredSelected: false,
-            nativeBalanceDisplay: new BigNumber(0),
-            preferredBalanceDisplay: new BigNumber(0),
-            isLoading: false,
-        }),
-        useCanAffordTx: () => ({ canAfford: true, shortfalls: [], shortOnFees: false, message: "", gasFee: zeroGas, isLoading: false }),
+        useFeeEstimate: (fee: unknown, options: unknown) => {
+            mocks.useFeeEstimate(fee, options);
+            return {
+                resolvedFee: mocks.takerFee,
+                maxSpendReserve: () => mocks.takerFee,
+                isPreferredSelected: false,
+                nativeBalanceDisplay: new BigNumber(0),
+                preferredBalanceDisplay: new BigNumber(0),
+                isLoading: false,
+            };
+        },
+        useCanAffordTx: (input: unknown) => {
+            mocks.useCanAffordTx(input);
+            return { canAfford: true, shortfalls: [], shortOnFees: false, message: "", gasFee: zeroGas, isLoading: false };
+        },
         getAddressSwapHistory: async () => [],
         // The home page's market list and BZE price; empty here, the swap card is under test.
         useMarkets: () => ({ markets: mocks.markets, getMarketData: () => undefined, isLoading: false }),
@@ -173,6 +182,8 @@ function setupBzeUsdc(pools: LiquidityPoolSDKType[] = [bzeUsdcPool()]) {
 
 beforeEach(() => {
     mocks.useMaxSpendable.mockReset();
+    mocks.useFeeEstimate.mockReset();
+    mocks.useCanAffordTx.mockReset();
     mocks.takerFee = undefined;
     mocks.tx.mockReset();
     mocks.balances.clear();
@@ -311,6 +322,27 @@ describe("Swap page quoting", () => {
         const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
         expect(toInput().value).toBe(expected.amountOut.shiftedBy(-6).toFixed(6));
         expect(screen.getByRole("button", { name: "Swap" })).toBeEnabled();
+    });
+
+    it("resolves the taker fee after the input leaves and the minimum output lands, like the chain", () => {
+        // Regression: the fee was resolved from the balances alone, so selling the fee token
+        // was refused even when the output (BZE) pays the fee after the swap.
+        setupBzeUsdc();
+        renderSwap();
+
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+
+        const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
+        const options = mocks.useFeeEstimate.mock.lastCall![1] as {
+            reserved: { denom: string; amount: string }[];
+            received: { denom: string; amount: string }[];
+        };
+        expect(options.reserved).toEqual([{ denom: "ubze", amount: "1000000000" }]);
+        expect(options.received).toHaveLength(1);
+        expect(options.received[0].denom).toBe("uusdc");
+        const minOut = new BigNumber(options.received[0].amount);
+        expect(minOut.gt(0) && minOut.lt(expected.amountOut)).toBe(true);
+        expect(mocks.useCanAffordTx).toHaveBeenLastCalledWith(expect.objectContaining({ receive: options.received[0] }));
     });
 
     it("keeps a typed bought amount as typed and derives the sold amount from it", () => {

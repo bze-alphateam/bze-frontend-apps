@@ -49,7 +49,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     },
     useGasFeeEstimate: () => ({displayAmount: new BigNumber("0.02"), ticker: "BZE", isLoading: false}),
     useTradingFees: () => ({fees: {}, isLoading: false}),
-    useFeeEstimate: () => ({isLoading: false}),
+    useFeeEstimate: () => ({isLoading: false, maxSpendReserve: () => undefined}),
     useCanAffordTx: () => ({canAfford: true, message: "", isLoading: false}),
 }));
 

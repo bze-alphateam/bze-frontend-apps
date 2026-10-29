@@ -14,6 +14,8 @@ export interface UseCanAffordTxInput {
     spend?: SpendCoin | SpendCoin[];
     /** A module fee, resolved to the denom the chain will take it in (micro-units). */
     moduleFee?: SpendCoin;
+    /** Coins the message pays into the wallet before it captures the module fee (a swap's minimum output). */
+    receive?: SpendCoin | SpendCoin[];
 }
 
 export interface UseCanAffordTxResult extends CanAffordTxResult {
@@ -33,7 +35,7 @@ export interface UseCanAffordTxResult extends CanAffordTxResult {
  * it is paid in the same denom, plus an optional module fee — following the chain's
  * charging order (see `canAffordTx`). Drives submit buttons and validation messages.
  */
-export function useCanAffordTx({spec, spend, moduleFee}: UseCanAffordTxInput): UseCanAffordTxResult {
+export function useCanAffordTx({spec, spend, moduleFee, receive}: UseCanAffordTxInput): UseCanAffordTxResult {
     const {getBalanceByDenom, isLoading: balancesLoading} = useBalances();
     const {denomTicker, denomDecimals} = useAssets();
     const gasFee = useGasFeeEstimate(spec);
@@ -43,14 +45,15 @@ export function useCanAffordTx({spec, spend, moduleFee}: UseCanAffordTxInput): U
     // Inline literals are the norm for `spend`/`moduleFee`; key the memo on their content.
     const spendKey = JSON.stringify(spend ?? null, (_, value) => value?._isBigNumber ? value.toString() : value);
     const moduleFeeKey = JSON.stringify(moduleFee ?? null, (_, value) => value?._isBigNumber ? value.toString() : value);
+    const receiveKey = JSON.stringify(receive ?? null, (_, value) => value?._isBigNumber ? value.toString() : value);
 
     const result = useMemo<CanAffordTxResult>(() => {
         if (!spec || !gasFee.estimate) {
             return {canAfford: true, shortfalls: [], shortOnFees: false};
         }
-        return canAffordTx({spend, gasFee: gasFee.estimate, moduleFee, balanceOf});
+        return canAffordTx({spend, gasFee: gasFee.estimate, moduleFee, receive, balanceOf});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [spec !== undefined, gasFee.estimate, spendKey, moduleFeeKey, balanceOf]);
+    }, [spec !== undefined, gasFee.estimate, spendKey, moduleFeeKey, receiveKey, balanceOf]);
 
     const message = useMemo(() => {
         if (result.canAfford || result.shortfalls.length === 0) {
