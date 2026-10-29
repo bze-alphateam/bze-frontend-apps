@@ -158,7 +158,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                 aside={`Available: ${prettyAmount(availableHuman)} ${nativeAsset?.ticker ?? ''}`}
                 ticker={nativeAsset?.ticker}
                 disabled={!isConnected}
-                warning={exceedsSpendable}
+                warning={amountValid && exceedsSpendable}
                 inputRef={amountInputRef}
             >
                 <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
