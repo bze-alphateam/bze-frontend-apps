@@ -22,6 +22,7 @@ import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {LuWallet} from 'react-icons/lu';
+import {isPositiveAmount} from '@/lib/delegate-amount';
 import {AmountField, ProgressLine, QuickAmounts, StakingDialog} from '@/components/ui/staking/dialog';
 
 interface UndelegateModalProps {
@@ -45,12 +46,13 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
 
     const decimals = nativeAsset?.decimals ?? 6;
     const delegatedHuman = uAmountToBigNumberAmount(delegatedAmount, decimals);
+    const amountValid = isPositiveAmount(amount);
     // Max undelegates the full delegation (not a wallet balance), but the wallet must still
     // hold the gas fee for the transaction.
     const feeCheck = useCanAffordTx({spec: isConnected ? 'undelegate' : undefined});
 
     const handleUndelegate = async () => {
-        if (!address || !validator || !amount || new BigNumber(amount).lte(0)) {
+        if (!address || !validator || !amountValid) {
             toast.error('Invalid amount', 'Please enter a valid amount to unstake');
             return;
         }
@@ -143,10 +145,10 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                     size="lg"
                     onClick={handleUndelegate}
                     loading={isSubmitting}
-                    disabled={!amount || new BigNumber(amount).lte(0) || !address || !feeCheck.canAfford}
+                    disabled={!amountValid || !address || !feeCheck.canAfford}
                     w="full"
                 >
-                    Unstake {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Unstake {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>

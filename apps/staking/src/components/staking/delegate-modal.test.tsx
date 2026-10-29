@@ -100,6 +100,29 @@ describe("DelegateModal", () => {
     });
 });
 
+// sanitizeNumberInput lets a lone "." through. BigNumber reads it as NaN, which is not lte(0),
+// so the button used to enable as "Stake . BZE" and send amount "NaN".
+describe("DelegateModal amount validation", () => {
+    it("keeps Stake disabled for a lone decimal point", async () => {
+        const user = userEvent.setup();
+        renderModal(validator({}));
+
+        await user.type(await screen.findByPlaceholderText("0.00"), ".");
+
+        expect(screen.getByRole("button", { name: /^Stake/ })).toBeDisabled();
+        expect(screen.queryByText(/leaves less than the network fee/)).not.toBeInTheDocument();
+    });
+
+    it("enables Stake for a positive amount", async () => {
+        const user = userEvent.setup();
+        renderModal(validator({}));
+
+        await user.type(await screen.findByPlaceholderText("0.00"), "1");
+
+        expect(screen.getByRole("button", { name: "Stake 1 BZE" })).toBeEnabled();
+    });
+});
+
 // The dialog used to focus its first tabbable element, the copy-link icon in the title, and a
 // form opened from a stake link (no click before it) then showed the focus ring around it.
 describe("DelegateModal initial focus", () => {

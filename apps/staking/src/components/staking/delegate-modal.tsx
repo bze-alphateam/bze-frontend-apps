@@ -20,13 +20,13 @@ import {
 import {
     validateDelegationAmount,
     exceedsSpendable as computeExceedsSpendable,
+    isPositiveAmount,
     quickAmount,
 } from '@/lib/delegate-amount';
 import {formatCommissionRate} from '@/lib/validator-list';
 import {useChain} from '@interchain-kit/react';
 import {getChainName} from '@bze/bze-ui-kit';
 import {WalletState} from '@interchain-kit/core';
-import BigNumber from 'bignumber.js';
 import {cosmos} from '@bze/bzejs';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
@@ -111,6 +111,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
         }
     };
 
+    const amountValid = isPositiveAmount(amount);
     const exceedsSpendable = useMemo(
         () => computeExceedsSpendable(amount, spendableHuman, availableHuman),
         [amount, spendableHuman, availableHuman],
@@ -163,7 +164,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                 <QuickAmounts onPick={setQuickAmount} disabled={!isConnected} />
             </AmountField>
 
-            {exceedsSpendable && (
+            {amountValid && exceedsSpendable && (
                 <Notice status="warning">
                     This amount leaves less than the network fee
                     (≈ {prettyAmount(maxSpendable.gasFee.displayAmount)} {maxSpendable.gasFee.ticker}) in your wallet,
@@ -203,10 +204,10 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                     size="lg"
                     onClick={handleDelegate}
                     loading={isSubmitting}
-                    disabled={!amount || new BigNumber(amount).lte(0) || !address || exceedsSpendable}
+                    disabled={!amountValid || !address || exceedsSpendable}
                     w="full"
                 >
-                    Stake {amount ? `${amount} ${nativeAsset?.ticker}` : ''}
+                    Stake {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}
                 </Button>
             )}
         </StakingDialog>
