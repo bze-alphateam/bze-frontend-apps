@@ -154,7 +154,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
 
             <AmountField
                 value={amount}
-                onChange={(value) => setAmount(sanitizeNumberInput(value))}
+                onChange={(value) => setAmount(sanitizeNumberInput(value, decimals))}
                 aside={`Available: ${prettyAmount(availableHuman)} ${nativeAsset?.ticker ?? ''}`}
                 ticker={nativeAsset?.ticker}
                 disabled={!isConnected}

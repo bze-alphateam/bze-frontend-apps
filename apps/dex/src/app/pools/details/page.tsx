@@ -214,8 +214,8 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
         const msg = addLiquidity({
             creator: address ?? '',
             poolId: pool.id,
-            baseAmount: baseAmountBN.toString(),
-            quoteAmount: quoteAmountBN.toString(),
+            baseAmount: baseAmountBN.toFixed(0),
+            quoteAmount: quoteAmountBN.toFixed(0),
             minLpTokens: minExpectedShares.toFixed(0),
         })
 
@@ -236,6 +236,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
                 value={addLiquidityBaseAmount}
                 onChange={onAddLiquidityBaseAmountChange}
                 onMax={() => onAddLiquidityBaseAmountChange(baseSpendable.inputValue)}
+                maxDecimals={baseAsset?.decimals}
                 disabled={isSubmitting}
                 maxDisabled={false}
             />
@@ -248,6 +249,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
                 value={addLiquidityQuoteAmount}
                 onChange={onAddLiquidityQuoteAmountChange}
                 onMax={() => onAddLiquidityQuoteAmountChange(quoteSpendable.inputValue)}
+                maxDecimals={quoteAsset?.decimals}
                 disabled={isSubmitting}
                 maxDisabled={false}
             />
@@ -422,6 +424,7 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
                 value={removeAmount}
                 onChange={onAmountChange}
                 onMax={() => onAmountChange(userSharesAmount)}
+                maxDecimals={LP_ASSETS_DECIMALS}
                 disabled={!canRemove}
             />
 
@@ -709,6 +712,7 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
                 value={lockAmount}
                 onChange={setLockAmount}
                 onMax={() => setLockAmount(userSharesAmount)}
+                maxDecimals={LP_ASSETS_DECIMALS}
                 disabled={isSubmitting || !selectedRewardId}
                 maxDisabled={isSubmitting || !selectedRewardId || userShares.lte(0)}
             />

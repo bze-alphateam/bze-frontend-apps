@@ -265,7 +265,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
                         inputMode="decimal"
                         placeholder={selectedAsset ? `0.00 ${selectedAsset.ticker}` : "0.00"}
                         value={amount}
-                        onChange={(e) => handleAmountChange(sanitizeNumberInput(e.target.value))}
+                        onChange={(e) => handleAmountChange(sanitizeNumberInput(e.target.value, selectedCoin ? denomDecimals(selectedCoin) : undefined))}
                         disabled={!isConnected || !selectedCoin || isSubmitting || !hasBalance}
                     />
                     <Button

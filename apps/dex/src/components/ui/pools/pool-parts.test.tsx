@@ -44,6 +44,16 @@ describe("AmountField", () => {
         fireEvent.click(max);
         expect(onMax).toHaveBeenCalledOnce();
     });
+
+    // regression: add liquidity took any number of decimals, which became fractional micro-units
+    // in MsgAddLiquidity and failed to decode on chain
+    it("drops typed digits past the asset decimals", () => {
+        const onChange = vi.fn();
+        ui(<AmountField label="LMN Amount" available="5" value="" onChange={onChange} onMax={() => {}} maxDecimals={6}/>);
+
+        fireEvent.change(screen.getByLabelText("LMN Amount"), {target: {value: "1.12345678"}});
+        expect(onChange).toHaveBeenLastCalledWith("1.123456");
+    });
 });
 
 describe("FeeShare", () => {
