@@ -150,7 +150,7 @@ function CoinDetailContent() {
     const raffleData = useMemo(() => {
         if (!coinRaffle || !asset) return null;
 
-        const decimals = asset.decimals || 6;
+        const decimals = asset.decimals ?? 6;
 
         // Calculate prize (pot * ratio)
         const potAmount = uAmountToBigNumberAmount(coinRaffle.pot, decimals);
@@ -186,6 +186,7 @@ function CoinDetailContent() {
             name: `${asset.ticker} Raffle`,
             currentPrize: formattedPrize,
             contributionPrice: formattedTicketPrice,
+            ticketPrice: coinRaffle.ticket_price,
             winChance,
             timeRemaining,
             totalWon: formattedTotalWon,
@@ -269,7 +270,7 @@ function CoinDetailContent() {
         if (!result.hasWon) return undefined;
 
         // Convert amount to display format
-        const decimals = asset.decimals || 6;
+        const decimals = asset.decimals ?? 6;
         const bnAmount = uAmountToBigNumberAmount(result.amount, decimals);
         return prettyAmount(bnAmount);
     }, [currentRaffleContribution, currentResultIndex, asset]);
@@ -286,7 +287,7 @@ function CoinDetailContent() {
         results.forEach((result: {hasWon: boolean; amount: string}) => {
             if (result.hasWon) {
                 winnersCount++;
-                const decimals = asset.decimals || 6;
+                const decimals = asset.decimals ?? 6;
                 const amount = uAmountToBigNumberAmount(result.amount, decimals);
                 totalWonAmount = totalWonAmount.plus(amount);
             } else {
@@ -550,6 +551,7 @@ function CoinDetailContent() {
                     onClose={() => setIsRaffleModalOpen(false)}
                     raffleName={raffleData.name}
                     contributionPrice={raffleData.contributionPrice}
+                    ticketPrice={raffleData.ticketPrice}
                     currentPrize={raffleData.currentPrize}
                     winChance={raffleData.winChance}
                     ticker={asset.ticker}
