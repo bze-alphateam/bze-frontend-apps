@@ -91,6 +91,7 @@ export {
     createPoolId, poolIdFromPoolDenom, createLpDenomPoolsMap
 } from './utils/liquidity_pool';
 export { poolData, poolTickers } from './utils/pool_data';
+export { assetUsdPrice } from './utils/usd_price';
 export {
     calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
 } from './utils/fee_conversion';
