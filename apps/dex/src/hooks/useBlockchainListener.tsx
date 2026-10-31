@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
@@ -56,15 +56,13 @@ export function useBlockchainListener() {
     const [isConnected, setIsConnected] = useState(false);
     const {address: rawAddress} = useChain(getChainName());
 
-    // Cache the last known good address to work around interchain-kit losing wallet state
-    const lastKnownAddressRef = useRef<string | undefined>(undefined);
-    const address = rawAddress || lastKnownAddressRef.current;
-
-    useEffect(() => {
-        if (rawAddress && rawAddress !== '') {
-            lastKnownAddressRef.current = rawAddress;
-        }
-    }, [rawAddress]);
+    // Cache the last known good address to work around interchain-kit losing wallet
+    // state (state-during-render pattern — refs must not be read during render).
+    const [lastKnownAddress, setLastKnownAddress] = useState<string | undefined>(undefined);
+    if (rawAddress && rawAddress !== '' && rawAddress !== lastKnownAddress) {
+        setLastKnownAddress(rawAddress);
+    }
+    const address = rawAddress || lastKnownAddress;
 
     // NewBlock subscription — lives for the component lifetime
     useEffect(() => {

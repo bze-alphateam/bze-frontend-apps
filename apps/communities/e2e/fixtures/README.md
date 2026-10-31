@@ -30,8 +30,8 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 
 | File | Request | Notes |
 |---|---|---|
-| `lcd/bank.supply.json` | total supply, limit 200 | listed by the directory |
-| `lcd/bank.denoms_metadata.json` | denom metadata, limit 200 | token names and tickers |
+| `lcd/bank.supply.json` | total supply, limit 500 (one page) | listed by the directory |
+| `lcd/bank.denoms_metadata.json` | denom metadata, limit 500 (one page) | token names and tickers |
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | "next burn" |
 | `lcd/burner.params.json` | burner params | burn period |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
