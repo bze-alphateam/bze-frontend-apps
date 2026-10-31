@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT, EPOCH_START_EVENT,
@@ -7,7 +7,7 @@ import {
     RAFFLE_CHANGED_EVENT, SUPPLY_CHANGED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
     getBurnerModuleAddress, getHardcodedLockAddress, getRaffleModuleAddress,
-    subscribeToBlockchainEvents,
+    subscribeToBlockchainEvents, getNewBlockEvents,
     isBurnEvent, isCoinbaseEvent, isEpochStartEvent,
     getMintedAmount, isOrderBookEvent, isOrderExecutedEvent, getEventMarketId,
 } from "@bze/bze-ui-kit";
@@ -61,15 +61,13 @@ export function useBlockchainListener() {
     const [isConnected, setIsConnected] = useState(false);
     const {address: rawAddress} = useChain(getChainName());
 
-    // Cache the last known good address to work around interchain-kit losing wallet state
-    const lastKnownAddressRef = useRef<string | undefined>(undefined);
-    const address = rawAddress || lastKnownAddressRef.current;
-
-    useEffect(() => {
-        if (rawAddress && rawAddress !== '') {
-            lastKnownAddressRef.current = rawAddress;
-        }
-    }, [rawAddress]);
+    // Cache the last known good address to work around interchain-kit losing wallet
+    // state (state-during-render pattern — refs must not be read during render).
+    const [lastKnownAddress, setLastKnownAddress] = useState<string | undefined>(undefined);
+    if (rawAddress && rawAddress !== '' && rawAddress !== lastKnownAddress) {
+        setLastKnownAddress(rawAddress);
+    }
+    const address = rawAddress || lastKnownAddress;
 
     // NewBlock subscription — lives for the component lifetime
     useEffect(() => {
@@ -79,20 +77,7 @@ export function useBlockchainListener() {
         let unsubscribe: (() => void) | null = null;
 
         subscribeToBlockchainEvents(rpcEndpoint, "tm.event='NewBlock'", (result: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const value = (result as Record<string, any>)?.data?.value;
-
-            if (value?.result_finalize_block?.events) {
-                dispatchBlockEvents(value.result_finalize_block.events);
-            }
-
-            if (value?.txs_results) {
-                for (const txResult of value.txs_results) {
-                    if (txResult?.events) {
-                        dispatchBlockEvents(txResult.events);
-                    }
-                }
-            }
+            dispatchBlockEvents(getNewBlockEvents(result));
 
             setIsConnected(true);
         }).then(unsub => {

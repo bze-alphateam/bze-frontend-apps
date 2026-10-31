@@ -130,8 +130,8 @@ const getOrCreateSocket = async (rpcEndpoint: string): Promise<void> => {
 /**
  * Subscribes to CometBFT events using the shared WebSocket connection.
  * The handler receives `msg.result` for every notification:
- *   result.data.value.result_finalize_block.events  — NewBlock events
- *   result.data.value.txs_results                   — block Tx results
+ *   result.data.value.result_finalize_block.events      — NewBlock events
+ *   result.data.value.result_finalize_block.tx_results  — block Tx results (read both with getNewBlockEvents)
  *   result.data.value.TxResult.result.events        — Tx subscription events
  *
  * Returns an unsubscribe function that cleans up the subscription.

@@ -1,10 +1,10 @@
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
     SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
-    subscribeToBlockchainEvents,
+    subscribeToBlockchainEvents, getNewBlockEvents,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, getMintedAmount, getEventMarketId,
 } from "@bze/bze-ui-kit";
@@ -56,15 +56,13 @@ export function useBlockchainListener() {
     const [isConnected, setIsConnected] = useState(false);
     const {address: rawAddress} = useChain(getChainName());
 
-    // Cache the last known good address to work around interchain-kit losing wallet state
-    const lastKnownAddressRef = useRef<string | undefined>(undefined);
-    const address = rawAddress || lastKnownAddressRef.current;
-
-    useEffect(() => {
-        if (rawAddress && rawAddress !== '') {
-            lastKnownAddressRef.current = rawAddress;
-        }
-    }, [rawAddress]);
+    // Cache the last known good address to work around interchain-kit losing wallet
+    // state (state-during-render pattern — refs must not be read during render).
+    const [lastKnownAddress, setLastKnownAddress] = useState<string | undefined>(undefined);
+    if (rawAddress && rawAddress !== '' && rawAddress !== lastKnownAddress) {
+        setLastKnownAddress(rawAddress);
+    }
+    const address = rawAddress || lastKnownAddress;
 
     // NewBlock subscription — lives for the component lifetime
     useEffect(() => {
@@ -74,20 +72,7 @@ export function useBlockchainListener() {
         let unsubscribe: (() => void) | null = null;
 
         subscribeToBlockchainEvents(rpcEndpoint, "tm.event='NewBlock'", (result: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const value = (result as Record<string, any>)?.data?.value;
-
-            if (value?.result_finalize_block?.events) {
-                dispatchEvents(address ?? '', value.result_finalize_block.events);
-            }
-
-            if (value?.txs_results) {
-                for (const txResult of value.txs_results) {
-                    if (txResult?.events) {
-                        dispatchEvents(address ?? '', txResult.events);
-                    }
-                }
-            }
+            dispatchEvents(address ?? '', getNewBlockEvents(result));
 
             setIsConnected(true);
         }).then(unsub => {
