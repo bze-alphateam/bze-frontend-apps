@@ -203,25 +203,9 @@ const populateIBCAsset = async (asset: Asset, ibcOrigins: Map<string, IbcOrigin>
         ibcOrigins.set(asset.denom, origin)
     }
 
-    const registryAssetChain = getAssetLists().find((item) => {
-        const a = item.assets.find((i) => i.base === ibcTrace.base_denom)
-        return !!a;
-    })
-
-    if (registryAssetChain) {
-        const registryAsset = registryAssetChain.assets.find((i) => i.base === ibcTrace.base_denom) as ChainRegistryAsset
-        asset.name = registryAsset.name
-        asset.ticker = registryAsset.symbol.toUpperCase()
-        asset.decimals = getExponentByDenomFromAsset(registryAsset, registryAsset.display) ?? 0
-        asset.logo = getAssetLogo(registryAsset)
-        asset.verified = true
-        if (isIbcDenom(ibcTrace.base_denom)) {
-            appendOriginChain(asset)
-        }
-
-        return asset;
-    }
-
+    // The channel is not in the registry's IBC data, so anyone could have opened it
+    // and sent a coin whose trace claims another chain's base denom (e.g. uosmo).
+    // Only BZE's own registry list, keyed by the exact ibc/<hash>, may name it.
     const localAsset = await populateAssetFromBZEChainRegistryAssetList(asset)
     if (localAsset) {
         localAsset.verified = true
