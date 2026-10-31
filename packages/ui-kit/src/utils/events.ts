@@ -56,3 +56,26 @@ export const getMintedAmount = (event: TendermintEvent) => {
         return defaultCoin;
     }
 }
+
+type NewBlockValue = {
+    result_finalize_block?: { events?: TendermintEvent[]; tx_results?: ({ events?: TendermintEvent[] } | null)[] };
+    txs_results?: ({ events?: TendermintEvent[] } | null)[];
+};
+
+/**
+ * Every event of a `tm.event='NewBlock'` notification: the block's own (begin/end block) events
+ * first, then each tx's events in block order. CometBFT 0.38 nests the tx results inside
+ * `result_finalize_block.tx_results`; `txs_results` is the pre-0.38 shape, kept as a fallback.
+ */
+export const getNewBlockEvents = (result: unknown): TendermintEvent[] => {
+    const value = (result as { data?: { value?: NewBlockValue } } | undefined)?.data?.value;
+    if (!value) return [];
+
+    const finalize = value.result_finalize_block;
+    const txResults = finalize?.tx_results ?? value.txs_results ?? [];
+
+    return [
+        ...(finalize?.events ?? []),
+        ...txResults.flatMap(tx => tx?.events ?? []),
+    ];
+}

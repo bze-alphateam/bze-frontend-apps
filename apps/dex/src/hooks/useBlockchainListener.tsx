@@ -4,7 +4,7 @@ import {
     CURRENT_WALLET_BALANCE_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
     SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
-    subscribeToBlockchainEvents,
+    subscribeToBlockchainEvents, getNewBlockEvents,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, getMintedAmount, getEventMarketId,
 } from "@bze/bze-ui-kit";
@@ -74,20 +74,7 @@ export function useBlockchainListener() {
         let unsubscribe: (() => void) | null = null;
 
         subscribeToBlockchainEvents(rpcEndpoint, "tm.event='NewBlock'", (result: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const value = (result as Record<string, any>)?.data?.value;
-
-            if (value?.result_finalize_block?.events) {
-                dispatchEvents(address ?? '', value.result_finalize_block.events);
-            }
-
-            if (value?.txs_results) {
-                for (const txResult of value.txs_results) {
-                    if (txResult?.events) {
-                        dispatchEvents(address ?? '', txResult.events);
-                    }
-                }
-            }
+            dispatchEvents(address ?? '', getNewBlockEvents(result));
 
             setIsConnected(true);
         }).then(unsub => {
