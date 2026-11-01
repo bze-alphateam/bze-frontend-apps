@@ -16,6 +16,8 @@ export interface FakeRpc {
     subscribes(query: string): number;
     /** Answer the next `subscribe` with a CometBFT "out of capacity" error instead of an ack. */
     cancelNextSubscribe(): void;
+    /** false: drop every open socket and refuse new upgrades (503) until set back to true. */
+    setAvailable(available: boolean): void;
     close(): Promise<void>;
 }
 
@@ -63,6 +65,7 @@ const decode = (buffer: Buffer): {messages: string[]; rest: Buffer} => {
 export const startFakeRpc = async (): Promise<FakeRpc> => {
     let connections = 0;
     let cancelNext = false;
+    let available = true;
     const subscribes = new Map<string, number>();
     const sockets = new Set<Socket>();
     const timers = new Set<NodeJS.Timeout>();
@@ -75,6 +78,11 @@ export const startFakeRpc = async (): Promise<FakeRpc> => {
         const key = req.headers["sec-websocket-key"];
         if (typeof key !== "string") {
             socket.destroy();
+            return;
+        }
+        if (!available) {
+            socket.on("error", () => undefined);
+            socket.end("HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n");
             return;
         }
         connections++;
@@ -139,6 +147,11 @@ export const startFakeRpc = async (): Promise<FakeRpc> => {
         connections: () => connections,
         subscribes: (query) => subscribes.get(query) ?? 0,
         cancelNextSubscribe: () => { cancelNext = true; },
+        setAvailable: (next) => {
+            available = next;
+            if (next) return;
+            for (const socket of sockets) socket.destroy();
+        },
         close: () => new Promise<void>((resolve) => {
             for (const timer of timers) clearInterval(timer);
             for (const socket of sockets) socket.destroy();
