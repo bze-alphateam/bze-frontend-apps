@@ -181,7 +181,7 @@ describe("Get your logo in every wallet (/official)", { timeout: 20_000 }, () =>
         expect(review).toHaveTextContent("Waiting for the registry team (usually a few days)");
         expect(within(review).getByTestId("official-not-listed")).toHaveTextContent("Not in the registry yet.");
         expect(within(review).getByRole("link", { name: /Your request/ })).toHaveAttribute("href", "https://github.com/cosmos/chain-registry/pull/12");
-        expect(screen.getByTestId("official-after-merge")).toHaveTextContent("BeeZee apps show it after their next update.");
+        expect(screen.getByTestId("official-after-merge")).toHaveTextContent("BeeZee apps show the logo within about an hour.");
         expect(progressText()).toBe("Your progress: 4 of 5 steps");
 
         expect(loadOfficialProgress(DENOM)).toEqual({

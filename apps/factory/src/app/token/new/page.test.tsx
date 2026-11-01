@@ -15,7 +15,7 @@ type TxOpts = {
     onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
     onFailure?: (reason: string, details?: { stage: string }) => void;
 };
-const { wallet, assetDenoms, feeState, payment, setupState, navigateMock, txMock } = vi.hoisted(() => ({
+const { wallet, assetDenoms, feeState, payment, setupState, navigateMock, txMock, refreshAssetsAfterTxMock } = vi.hoisted(() => ({
     wallet: { address: "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l" as string | undefined },
     assetDenoms: { current: [] as string[] },
     feeState: { fee: { denom: "ubze", amount: "25000000000" } as { denom: string; amount: string } | undefined },
@@ -23,6 +23,7 @@ const { wallet, assetDenoms, feeState, payment, setupState, navigateMock, txMock
     setupState: { pools: [] as { id: string; base: string; quote: string }[] },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
+    refreshAssetsAfterTxMock: vi.fn(async () => {}),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -56,6 +57,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     return {
         ...actual,
+        useAssetsContext: () => ({ refreshAssetsAfterTx: refreshAssetsAfterTxMock }),
         useAssets: () => ({ assets: assetDenoms.current.map(denom => ({ denom })), denomTicker: (d: string) => d }),
         useAsset: (denom: string) => ({
             asset: denom === "ubze" ? { denom: "ubze", ticker: "BZE", decimals: 6, logo: "" } : undefined,
@@ -416,6 +418,8 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("HONEY is live.");
             expect(screen.getByText("1,000,000 HONEY are in your wallet.")).toBeInTheDocument();
             expect(screen.getByText(DENOM)).toBeInTheDocument();
+            // The new token's Scan entry is refetched past the HTTP cache (BFE-329).
+            expect(refreshAssetsAfterTxMock).toHaveBeenCalledWith(DENOM);
             expect(screen.getByTestId("done-confetti")).toBeInTheDocument();
             expect(screen.getByRole("link", { name: /Explorer/ })).toHaveAttribute("href", "https://explorer.test/txs/HASH1");
             expect(screen.getByRole("link", { name: /DEX/ })).toHaveAttribute("href", `https://dex.test/assets/details?denom=${encodeURIComponent(DENOM)}`);

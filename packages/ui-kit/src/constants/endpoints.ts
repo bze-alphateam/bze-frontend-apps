@@ -115,8 +115,10 @@ export function getRegistryRestURLs(chainName: string): string[] {
  *
  * NOTE: async. `useCounterpartyBalance` awaits this before calling /balances.
  */
-export async function getChainRestURL(chainName: string): Promise<string> {
+export async function getChainRestURL(chainName: string, extraCandidates: string[] = []): Promise<string> {
     const envUrl = getEnvRestURL(chainName);
     if (envUrl) return envUrl;
-    return resolveHealthyRestUrl(chainName, getRegistryRestURLs(chainName));
+    // Extra candidates (BZE Scan's endpoints for the chain) are probed before the registry's.
+    const candidates = [...new Set([...extraCandidates, ...getRegistryRestURLs(chainName)])];
+    return resolveHealthyRestUrl(chainName, candidates);
 }

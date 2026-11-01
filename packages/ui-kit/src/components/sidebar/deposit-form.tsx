@@ -25,7 +25,8 @@ import {sanitizeNumberInput} from '../../utils/number';
 import {formatDuration} from '../../utils/cross_chain';
 import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {getChainName} from '../../constants/chain';
-import {LEGACY_ASSET_NOTICES} from '../../constants/assets';
+import type {LegacyAssetNotice} from '../../constants/assets';
+import {assetNotice} from '../../utils/ibc_inbound';
 import {LegacyAssetNoticeBox} from '../legacy-asset-notice';
 import {MaxInputGroup} from '../max-input-group';
 
@@ -50,8 +51,8 @@ export const DepositForm = () => {
     // has a wind-down notice, show it so users looking for it learn why it's gone.
     const blockedNotices = useMemo(() => {
         return blockedAssets
-            .filter(a => LEGACY_ASSET_NOTICES[a.denom] !== undefined)
-            .map(a => ({denom: a.denom, notice: LEGACY_ASSET_NOTICES[a.denom]}));
+            .map(a => ({denom: a.denom, notice: assetNotice(a)}))
+            .filter((n): n is {denom: string; notice: LegacyAssetNotice} => n.notice !== undefined);
     }, [blockedAssets]);
 
     // Routes grouped by BZE denom, in the hook's order: one per voucher, one per
@@ -115,6 +116,7 @@ export const DepositForm = () => {
         selectedAsset?.counterparty.chainName,
         sourceAddress,
         selectedAsset?.sourceDenom,
+        selectedAsset?.counterparty.restUrls,
     );
 
     const sourceBalance = useMemo(() => {

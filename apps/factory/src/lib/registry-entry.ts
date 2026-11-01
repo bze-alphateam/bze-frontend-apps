@@ -14,14 +14,14 @@ export const REGISTRY_REPO_URL = 'https://github.com/cosmos/chain-registry'
 const REGISTRY_RAW_URL = 'https://raw.githubusercontent.com/cosmos/chain-registry/master'
 
 /**
- * Whether BeeZee apps read logos from the live registry (BFE-63) or from the `chain-registry`
- * npm package bundled at build time. Flip to true once BFE-63 ships; it only changes the
- * "after it's merged" copy of the guide.
+ * Whether BeeZee apps read logos from the live registry or from the `chain-registry` npm
+ * package bundled at build time. True since BFE-329: the apps read the asset list from BZE
+ * Scan, which follows the live registry. It only changes the "after it's merged" copy of the guide.
  */
-export const BEEZEE_APPS_READ_LIVE_REGISTRY = false
+export const BEEZEE_APPS_READ_LIVE_REGISTRY = true
 
 export const AFTER_MERGE_COPY = BEEZEE_APPS_READ_LIVE_REGISTRY
-    ? 'Once it is merged, BeeZee apps show the logo within an hour. Other wallets follow when they update their lists.'
+    ? 'Once it is merged, BeeZee apps show the logo within about an hour. Other wallets follow when they update their lists.'
     : 'Once it is merged, BeeZee apps show it after their next update. Other wallets follow when they update their lists.'
 
 /** The chain's folder in the registry. Testnet tokens aren't listed; the guide still shows the mainnet folder. */
