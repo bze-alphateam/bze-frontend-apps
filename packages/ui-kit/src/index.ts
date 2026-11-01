@@ -70,7 +70,7 @@ export {
     getEventKeyValue, getEventMarketId,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, isEpochStartEvent, getMintedAmount,
-    getNewBlockEvents,
+    getNewBlockEvents, blockHasAddressTransfer,
 } from './utils/events';
 export {
     formatUsdAmount, shortNumberFormat, intlDateFormat,

@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest'
-import {getNewBlockEvents} from './events'
+import {blockHasAddressTransfer, getNewBlockEvents} from './events'
 import type {TendermintEvent} from '../types/events'
 
 const event = (type: string): TendermintEvent => ({type, attributes: [{key: 'amount', value: '1ubze', index: true}]})
@@ -62,5 +62,32 @@ describe('getNewBlockEvents', () => {
 
     it.each([undefined, null, {}, {data: {}}, {data: {value: {}}}])('returns nothing for %j', (result) => {
         expect(getNewBlockEvents(result)).toEqual([])
+    })
+})
+
+describe('blockHasAddressTransfer', () => {
+    const transfer = (recipient: string, sender: string): TendermintEvent => ({
+        type: 'transfer',
+        attributes: [{key: 'recipient', value: recipient, index: true}, {key: 'sender', value: sender, index: true}],
+    })
+    const block = (blockEvents: TendermintEvent[], txEvents: TendermintEvent[]) => ({
+        data: {value: {result_finalize_block: {events: blockEvents, tx_results: [{events: txEvents}]}}},
+    })
+
+    it('finds a transfer in the block\'s own events', () => {
+        expect(blockHasAddressTransfer('bze1me', block([transfer('bze1me', 'bze1module')], []))).toBe(true)
+    })
+
+    it('finds a transfer in a tx\'s events', () => {
+        expect(blockHasAddressTransfer('bze1me', block([], [transfer('bze1other', 'bze1me')]))).toBe(true)
+    })
+
+    it('ignores transfers between other addresses and non-transfer events', () => {
+        expect(blockHasAddressTransfer('bze1me', block([transfer('bze1a', 'bze1b')], [event('message')]))).toBe(false)
+    })
+
+    it('is false for an empty address or an empty notification', () => {
+        expect(blockHasAddressTransfer('', block([transfer('', 'bze1b')], []))).toBe(false)
+        expect(blockHasAddressTransfer('bze1me', {})).toBe(false)
     })
 })

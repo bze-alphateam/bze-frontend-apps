@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
-import {blockchainEventManager, type TendermintEvent, getHardcodedLockAddress, LOCK_CHANGED_EVENT, ORDER_BOOK_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT} from "@bze/bze-ui-kit";
+import {blockchainEventManager, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, getHardcodedLockAddress, LOCK_CHANGED_EVENT, ORDER_BOOK_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT} from "@bze/bze-ui-kit";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
@@ -18,12 +18,14 @@ const fakeFeed = vi.hoisted(() => ({
     },
 }));
 
+const wallet = vi.hoisted(() => ({address: undefined as string | undefined}));
+
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     getSettings: () => ({endpoints: {rpcEndpoint: "wss://rpc.example.com"}}),
     getChainFeed: () => fakeFeed,
 }));
-vi.mock("@interchain-kit/react", () => ({useChain: () => ({address: undefined})}));
+vi.mock("@interchain-kit/react", () => ({useChain: () => ({address: wallet.address})}));
 
 import {useBlockchainListener} from "./useBlockchainListener";
 
@@ -110,6 +112,77 @@ describe("useBlockchainListener NewBlock events", () => {
     });
 });
 
+describe("useBlockchainListener wallet balance", () => {
+    let emit: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+        subscriptions.clear();
+        feedStatus.current = "connecting";
+        feedStatus.listeners.clear();
+        wallet.address = undefined;
+        emit = vi.spyOn(blockchainEventManager, "emit");
+        emit.mockClear();
+    });
+
+    const transfer = (recipient: string, sender = "bze1someone") => event("transfer", {recipient, sender, amount: "5ubze"});
+
+    it("subscribes only to NewBlock, with and without a wallet", async () => {
+        const {unmount} = renderHook(() => useBlockchainListener());
+        await vi.waitFor(() => expect(subscriptions.size).toBe(1));
+        expect([...subscriptions.keys()]).toEqual(["tm.event='NewBlock'"]);
+        unmount();
+        subscriptions.clear();
+
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+        await vi.waitFor(() => expect(subscriptions.size).toBe(1));
+        expect([...subscriptions.keys()]).toEqual(["tm.event='NewBlock'"]);
+    });
+
+    it("refreshes the balance for a transfer to the wallet in the block's own events (EndBlock fill)", async () => {
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([transfer("bze1wallet", "bze1module")], []));
+
+        expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+    });
+
+    it("refreshes the balance for a transfer from the wallet inside a tx", async () => {
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[transfer("bze1other", "bze1wallet")]]));
+
+        expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+    });
+
+    it("leaves the balance alone for transfers between other addresses", async () => {
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([transfer("bze1a", "bze1b")], [[transfer("bze1c", "bze1d")]]));
+
+        expect(emit).not.toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+    });
+
+    it("follows a wallet that changes after mount, without resubscribing", async () => {
+        wallet.address = "bze1old";
+        const {rerender} = renderHook(() => useBlockchainListener());
+        await vi.waitFor(() => expect(subscriptions.size).toBe(1));
+        const handler = subscriptions.get("tm.event='NewBlock'");
+
+        wallet.address = "bze1new";
+        rerender();
+
+        act(() => subscriptions.get("tm.event='NewBlock'")!(newBlock([], [[transfer("bze1old")]])));
+        expect(emit).not.toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+
+        act(() => subscriptions.get("tm.event='NewBlock'")!(newBlock([], [[transfer("bze1new")]])));
+        expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+        expect(subscriptions.get("tm.event='NewBlock'")).toBe(handler);
+    });
+});
 
 describe("useBlockchainListener connection status", () => {
     const setFeedStatus = (status: "connecting" | "live" | "down") => {

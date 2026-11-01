@@ -79,3 +79,13 @@ export const getNewBlockEvents = (result: unknown): TendermintEvent[] => {
         ...txResults.flatMap(tx => tx?.events ?? []),
     ];
 }
+
+/**
+ * Whether a `tm.event='NewBlock'` notification moved coins to or from `address`, in the block's own
+ * (begin/end block, FinalizeBlock) events or in any tx's events. Lets one NewBlock subscription
+ * replace per-wallet Tx subscriptions, and also catches transfers that are not txs (e.g. order fills).
+ */
+export const blockHasAddressTransfer = (address: string, result: unknown): boolean => {
+    if (!address) return false;
+    return getNewBlockEvents(result).some(event => isAddressTransfer(address, event));
+}
