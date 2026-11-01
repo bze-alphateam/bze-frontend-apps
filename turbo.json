@@ -9,7 +9,7 @@
       // are inlined at build time, so that cached output silently keeps the old values.
       "inputs": ["$TURBO_DEFAULT$", ".env", ".env.*"],
       "env": ["NEXT_PUBLIC_*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "public/chain-feed-worker.js"]
     },
     "dev": {
       "cache": false,

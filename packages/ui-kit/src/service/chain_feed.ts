@@ -12,6 +12,9 @@
  * are tracked by id, one id per query.
  */
 
+import {CHAIN_FEED_PROTOCOL_VERSION} from './chain_feed_hub';
+import {createSharedChainFeed, type SharedWorkerLike} from './shared_chain_feed';
+
 export type FeedStatus = 'connecting' | 'live' | 'down';
 
 export interface ChainFeed {
@@ -43,6 +46,9 @@ export interface ChainFeedDeps {
     createSocket: SocketFactory;
     timers: FeedTimers;
 }
+
+/** Prefix of the SharedWorker name; the rest is the WebSocket URL. */
+export const CHAIN_FEED_WORKER_NAME_PREFIX = 'bze-chain-feed|';
 
 const WATCHDOG_MS = 30_000;
 const REPEATED_ERROR_WINDOW_MS = 30_000;
@@ -284,21 +290,55 @@ export const createChainFeed = (deps: ChainFeedDeps): ChainFeed & {close(): void
 
 // ── Composition root ──────────────────────────────────────────────────────────
 
-let current: {endpoint: string; feed: ReturnType<typeof createChainFeed>} | null = null;
+let current: {endpoint: string; feed: ChainFeed & {close?(): void}} | null = null;
 
-/** One feed per tab, built on the browser WebSocket and window timers. */
+const createTabFeed = (url: string): ChainFeed & {close(): void} => createChainFeed({
+    url,
+    createSocket: (target) => new WebSocket(target) as unknown as FeedSocket,
+    timers: {
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
+        clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+    },
+});
+
+/**
+ * One feed per tab. Where the browser has SharedWorker, all tabs of the origin share one socket
+ * through the worker (the endpoint is in the worker name, so tabs on different endpoints do not
+ * share), falling back to the tab's own socket; elsewhere the tab's own socket is used directly.
+ */
 export const getChainFeed = (rpcEndpoint: string): ChainFeed => {
     if (current?.endpoint === rpcEndpoint) return current.feed;
 
-    current?.feed.close();
-    const feed = createChainFeed({
-        url: rpcEndpoint.replace(/\/?$/, '') + '/websocket',
-        createSocket: (url) => new WebSocket(url) as unknown as FeedSocket,
-        timers: {
-            setTimeout: (fn, ms) => setTimeout(fn, ms),
-            clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-        },
-    });
+    current?.feed.close?.();
+    const url = rpcEndpoint.replace(/\/?$/, '') + '/websocket';
+    const timers: FeedTimers = {
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
+        clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+    };
+
+    let feed: ChainFeed & {close?(): void};
+    if (typeof SharedWorker === 'function') {
+        let localFeed: (ChainFeed & {close(): void}) | null = null;
+        const shared = createSharedChainFeed({
+            createWorker: () => new SharedWorker(
+                '/chain-feed-worker.js?v=' + CHAIN_FEED_PROTOCOL_VERSION,
+                {name: CHAIN_FEED_WORKER_NAME_PREFIX + url},
+            ) as unknown as SharedWorkerLike,
+            createLocalFeed: () => (localFeed = createTabFeed(url)),
+            timers,
+            onPageHide: (fn) => window.addEventListener('pagehide', (ev) => fn(ev.persisted)),
+        });
+        feed = {
+            subscribe: shared.subscribe,
+            onStatus: shared.onStatus,
+            close: () => {
+                shared.close();
+                localFeed?.close();
+            },
+        };
+    } else {
+        feed = createTabFeed(url);
+    }
     current = {endpoint: rpcEndpoint, feed};
     return feed;
 };
