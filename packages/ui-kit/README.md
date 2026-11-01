@@ -81,22 +81,21 @@ export function BlockchainListenerWrapper() {
 
 ### Blockchain event subscriptions
 
-Use `subscribeToBlockchainEvents` to subscribe to CometBFT events via a shared WebSocket singleton (one persistent connection reused across the whole app):
+Use `getChainFeed` to subscribe to CometBFT events through one chain feed per tab (the WebSocket connects lazily on the first subscribe):
 
 ```ts
-import { subscribeToBlockchainEvents, getSettings } from '@bze/bze-ui-kit';
+import { getChainFeed, getSettings } from '@bze/bze-ui-kit';
 
-const unsubscribe = await subscribeToBlockchainEvents(
-  getSettings().endpoints.rpcEndpoint,
-  "tm.event='NewBlock'",
-  (result) => { /* handle result.data.value */ }
-);
+const feed = getChainFeed(getSettings().endpoints.rpcEndpoint);
 
-// Later:
-unsubscribe();
+// subscribe is synchronous and returns the unsubscribe function
+const unsubscribe = feed.subscribe("tm.event='NewBlock'", (result) => { /* handle result.data.value */ });
+
+// 'connecting' | 'live' | 'down' — `live` only while notifications are arriving
+const stopStatus = feed.onStatus((status) => { /* poll while status !== 'live' */ });
 ```
 
-The singleton handles reconnection with exponential backoff and automatically resubscribes active subscriptions after reconnect.
+The feed shares one server subscription per query, resubscribes everything on every (re)connect, reconnects forever with capped backoff (1 s up to 30 s) and reports `down` when the socket closes, the node refuses or cancels a subscription, or no block arrives for 30 s. `createChainFeed` takes the socket factory and timers as dependencies (used by the unit tests).
 
 ### Event helper functions
 
@@ -203,7 +202,7 @@ Wording: the label is the app's name only ("Explorer", "DEX", "Staking", "Burner
 
 These are **not** in the library — each app keeps its own:
 
-- **useBlockchainListener** — different WebSocket event subscriptions per app; built on top of `subscribeToBlockchainEvents` from the lib
+- **useBlockchainListener** — different WebSocket event subscriptions per app; built on top of `getChainFeed` from the lib
 - **useNavigation** — completely different route structures
 - **AssetsProvider** (`contexts/assets_context.tsx`) — each app extends the shared base `AssetsContextType` with app-specific state
 - **Burner-only**: `useBurnerContext`, `useBurningHistory`, `useNextBurning`, `useRaffles`
