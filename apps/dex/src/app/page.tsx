@@ -1189,11 +1189,24 @@ export default function SwapPage() {
                           txKind={swapSpec}
                         />
                         <SummaryRow label="Rate">
-                          1 {fromAsset?.ticker || ''} ≈ {
-                            uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6)
-                              .dividedBy(toBigNumber(fromAmount))
-                              .toFixed(toAsset?.decimals ?? 6)
-                          } {toAsset?.ticker || ''}
+                          <Flex direction="column" align="flex-end" gap="2px">
+                            <chakra.span>
+                              1 {fromAsset?.ticker || ''} ≈ {
+                                uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6)
+                                  .dividedBy(toBigNumber(fromAmount))
+                                  .toFixed(toAsset?.decimals ?? 6)
+                              } {toAsset?.ticker || ''}
+                            </chakra.span>
+                            {uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6).gt(0) && (
+                              <chakra.span>
+                                1 {toAsset?.ticker || ''} ≈ {
+                                  toBigNumber(fromAmount)
+                                    .dividedBy(uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6))
+                                    .toFixed(fromAsset?.decimals ?? 6)
+                                } {fromAsset?.ticker || ''}
+                              </chakra.span>
+                            )}
+                          </Flex>
                         </SummaryRow>
                       </Flex>
                     )}
