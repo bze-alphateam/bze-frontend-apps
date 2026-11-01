@@ -56,10 +56,10 @@ type Subscription = {
 };
 
 const errorText = (error: unknown): string => {
-    const e = error as {data?: unknown; message?: unknown} | string | null | undefined;
-    if (typeof e === 'string') return e;
-    const text = e?.data ?? e?.message;
-    return typeof text === 'string' ? text : '';
+    if (typeof error === 'string') return error;
+    const {data, message} = (error ?? {}) as {data?: unknown; message?: unknown};
+    if (typeof data === 'string' && data !== '') return data;
+    return typeof message === 'string' ? message : '';
 };
 
 export const createChainFeed = (deps: ChainFeedDeps): ChainFeed & {close(): void} => {

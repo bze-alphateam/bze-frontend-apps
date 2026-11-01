@@ -229,6 +229,37 @@ describe('createChainFeed', () => {
         expect(sockets.filter(s => !s.closed)).toHaveLength(1);
     });
 
+    it('reads the refusal from the message when the error data is not a string', () => {
+        feed.subscribe(BLOCK, () => {});
+        const socket = latest();
+        socket.open();
+
+        socket.receive({jsonrpc: '2.0', id: socket.idOf(BLOCK), error: {code: -32603, message: 'max_subscriptions_per_client 5 reached', data: {reason: 'refused'}}});
+
+        expect(statuses[statuses.length - 1]).toBe('down');
+        expect(socket.closed).toBe(true);
+    });
+
+    it('ignores late events from a socket the watchdog already replaced', () => {
+        const handler = vi.fn();
+        feed.subscribe(BLOCK, handler);
+        const old = liveSocket();
+        handler.mockClear();
+        vi.advanceTimersByTime(30_000);
+        expect(sockets).toHaveLength(2);
+        const statusesBefore = [...statuses];
+
+        old.receive({jsonrpc: '2.0', id: old.idOf(BLOCK), result: NOTIFICATION});
+        old.drop();
+        old.fail();
+
+        expect(handler).not.toHaveBeenCalled();
+        expect(statuses).toEqual(statusesBefore);
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(60_000);
+        expect(sockets).toHaveLength(2);
+    });
+
     it('arms the watchdog from open, before any notification', () => {
         feed.subscribe(BLOCK, () => {});
         latest().open();
@@ -336,5 +367,72 @@ describe('createChainFeed', () => {
 
         expect(socket.closed).toBe(true);
         expect(vi.getTimerCount()).toBe(0);
+    });
+});
+
+describe('getChainFeed', () => {
+    class FakeWebSocket {
+        static instances: FakeWebSocket[] = [];
+        closed = false;
+        onopen: (() => void) | null = null;
+        onmessage: ((ev: {data: unknown}) => void) | null = null;
+        onclose: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(readonly url: string) { FakeWebSocket.instances.push(this); }
+        send() {}
+        close() { this.closed = true; }
+    }
+
+    const load = async () => {
+        vi.resetModules();
+        return (await import('./chain_feed')).getChainFeed;
+    };
+
+    beforeEach(() => {
+        FakeWebSocket.instances = [];
+        vi.stubGlobal('WebSocket', FakeWebSocket);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('connects to the endpoint without a trailing slash plus /websocket', async () => {
+        const getChainFeed = await load();
+
+        getChainFeed('wss://rpc.example.com/').subscribe(BLOCK, () => {});
+        getChainFeed('wss://other.example.com').subscribe(BLOCK, () => {});
+
+        expect(FakeWebSocket.instances.map(s => s.url)).toEqual([
+            'wss://rpc.example.com/websocket',
+            'wss://other.example.com/websocket',
+        ]);
+    });
+
+    it('returns the same feed for the same endpoint and shares its socket', async () => {
+        const getChainFeed = await load();
+
+        const first = getChainFeed('wss://rpc.example.com');
+        first.subscribe(BLOCK, () => {});
+        const second = getChainFeed('wss://rpc.example.com');
+        second.subscribe(TX, () => {});
+
+        expect(second).toBe(first);
+        expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    it('closes the old feed and builds a new one when the endpoint changes', async () => {
+        const getChainFeed = await load();
+        const old = getChainFeed('wss://rpc.example.com');
+        old.subscribe(BLOCK, () => {});
+
+        const next = getChainFeed('wss://other.example.com');
+
+        expect(next).not.toBe(old);
+        expect(FakeWebSocket.instances[0].closed).toBe(true);
+        next.subscribe(BLOCK, () => {});
+        expect(FakeWebSocket.instances).toHaveLength(2);
+        expect(FakeWebSocket.instances[1].url).toBe('wss://other.example.com/websocket');
+        expect(FakeWebSocket.instances[1].closed).toBe(false);
     });
 });
