@@ -1,27 +1,22 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT, LOCK_CHANGED_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
     SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
-    getChainFeed, getNewBlockEvents, getHardcodedLockAddress,
+    getChainFeed, getNewBlockEvents, blockHasAddressTransfer, getHardcodedLockAddress,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, getMintedAmount, getEventMarketId,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 
-const dispatchEvents = (address: string, events: TendermintEvent[]) => {
+const dispatchEvents = (events: TendermintEvent[]) => {
     if (!events) return;
 
     for (const event of events) {
         // Coins sent to (or moved out of) the burner's lock address change the pools' "locked forever" amounts.
         if (isAddressTransfer(getHardcodedLockAddress(), event)) {
             blockchainEventManager.emit(LOCK_CHANGED_EVENT);
-        }
-
-        if (isAddressTransfer(address, event)) {
-            blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT);
-            continue;
         }
 
         if (isBurnEvent(event)) {
@@ -69,15 +64,23 @@ export function useBlockchainListener() {
     }
     const address = rawAddress || lastKnownAddress;
 
+    // The NewBlock handler is registered once; it reads the wallet through this ref at event time.
+    const addressRef = useRef(address);
+    useEffect(() => {
+        addressRef.current = address;
+    }, [address]);
+
     // NewBlock subscription — lives for the component lifetime
     useEffect(() => {
         const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
         if (!rpcEndpoint) return;
 
         return getChainFeed(rpcEndpoint).subscribe("tm.event='NewBlock'", (result: unknown) => {
-            dispatchEvents(address ?? '', getNewBlockEvents(result));
+            dispatchEvents(getNewBlockEvents(result));
+            if (blockHasAddressTransfer(addressRef.current ?? '', result)) {
+                blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT);
+            }
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // isConnected is true only while the feed reports live events; otherwise the wrapper polls
@@ -87,32 +90,6 @@ export function useBlockchainListener() {
 
         return getChainFeed(rpcEndpoint).onStatus(status => setIsConnected(status === 'live'));
     }, []);
-
-    // Tx subscriptions — resubscribe whenever the wallet address changes
-    useEffect(() => {
-        const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
-        if (!rpcEndpoint || !address || address === '') return;
-
-        const recipientQuery = `tm.event='Tx' AND transfer.recipient='${address}'`;
-        const senderQuery = `tm.event='Tx' AND transfer.sender='${address}'`;
-
-        const handleTx = (result: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const events = (result as Record<string, any>)?.data?.value?.TxResult?.result?.events;
-            if (events) {
-                dispatchEvents(address, events);
-            }
-        };
-
-        const unsubRecipient = getChainFeed(rpcEndpoint).subscribe(recipientQuery, handleTx);
-
-        const unsubSender = getChainFeed(rpcEndpoint).subscribe(senderQuery, handleTx);
-
-        return () => {
-            unsubRecipient?.();
-            unsubSender?.();
-        };
-    }, [address]);
 
     return {
         isConnected,

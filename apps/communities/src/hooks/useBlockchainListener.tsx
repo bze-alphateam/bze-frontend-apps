@@ -3,7 +3,7 @@ import {
     getSettings, getChainName, blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT, EPOCH_START_EVENT, SUPPLY_CHANGED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
-    getChainFeed, getNewBlockEvents,
+    getChainFeed, getNewBlockEvents, blockHasAddressTransfer,
     isBurnEvent, isCoinbaseEvent, isEpochStartEvent, getMintedAmount,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
@@ -58,6 +58,12 @@ export function useBlockchainListener() {
         }
     }, [rawAddress]);
 
+    // The NewBlock handler is registered once; it reads the wallet through this ref at event time.
+    const addressRef = useRef(address);
+    useEffect(() => {
+        addressRef.current = address;
+    }, [address]);
+
     // NewBlock subscription — lives for the component lifetime
     useEffect(() => {
         const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
@@ -65,6 +71,9 @@ export function useBlockchainListener() {
 
         return getChainFeed(rpcEndpoint).subscribe("tm.event='NewBlock'", (result: unknown) => {
             dispatchBlockEvents(getNewBlockEvents(result));
+            if (blockHasAddressTransfer(addressRef.current ?? '', result)) {
+                blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT);
+            }
         });
     }, []);
 
@@ -75,21 +84,6 @@ export function useBlockchainListener() {
 
         return getChainFeed(rpcEndpoint).onStatus(status => setIsConnected(status === 'live'));
     }, []);
-
-    // Tx subscriptions for user address — resubscribe on address change
-    useEffect(() => {
-        const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
-        if (!rpcEndpoint || !address || address === '') return;
-
-        const unsubRecipient = getChainFeed(rpcEndpoint).subscribe(`tm.event='Tx' AND transfer.recipient='${address}'`, () => { blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT); });
-
-        const unsubSender = getChainFeed(rpcEndpoint).subscribe(`tm.event='Tx' AND transfer.sender='${address}'`, () => { blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT); });
-
-        return () => {
-            unsubRecipient?.();
-            unsubSender?.();
-        };
-    }, [address]);
 
     return {isConnected};
 }
