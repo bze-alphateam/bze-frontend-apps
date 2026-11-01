@@ -4,7 +4,7 @@ import {useState, ReactNode, useEffect, useCallback} from 'react';
 import {
     AssetsContext,
     Asset, ChainAssets, IBCData, LP_ASSETS_DECIMALS,
-    getChainAssets,
+    getChainAssets, getChainAssetsAfterTx,
     Market, MarketData,
     createMarketId,
     getMarketHistory, getMarkets,
@@ -34,6 +34,12 @@ import type { AssetsContextType as BaseAssetsContextType } from "@bze/bze-ui-kit
 export interface AssetsContextType extends BaseAssetsContextType {
     settingsVersion: number;
     setSettingsVersion: (version: number) => void;
+    /**
+     * After the user's own transaction that creates a token or changes its metadata: shows
+     * `denom` built from the chain at once, then refetches BZE Scan's list past the HTTP cache
+     * until Scan has caught up (see getChainAssetsAfterTx).
+     */
+    refreshAssetsAfterTx: (denom?: string) => Promise<void>;
 }
 
 interface AssetsProviderProps {
@@ -210,6 +216,10 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         const newAssets = await getChainAssets()
         return doUpdateAssets(newAssets)
     }, [doUpdateAssets]);
+    const refreshAssetsAfterTx = useCallback(async (denom?: string) => {
+        const newAssets = await getChainAssetsAfterTx(denom, doUpdateAssets)
+        doUpdateAssets(newAssets)
+    }, [doUpdateAssets]);
     const updateMarkets = useCallback(async () => {
         const newMarkets = await getMarkets()
         doUpdateMarkets(newMarkets)
@@ -284,6 +294,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         <AssetsContext.Provider value={{
             assetsMap,
             updateAssets,
+            refreshAssetsAfterTx,
             marketsMap,
             updateMarkets,
             isLoading,

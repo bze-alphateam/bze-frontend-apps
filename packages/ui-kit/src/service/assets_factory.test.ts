@@ -70,8 +70,12 @@ const TRACES: Record<string, { path: string; base_denom: string }> = {
     [BZE_LISTED_DENOM.replace('ibc/', '')]: { path: 'transfer/channel-998', base_denom: 'uusdc' },
 }
 
-describe('getChainAssets IBC coins', () => {
+// BZE Scan is down (fetch rejects) and this node environment has no localStorage copy, so every
+// case here goes through the fallback build from the chain + the bundled registry (BFE-329):
+// BFE-326's spoof case must stay unverified there too. The Scan path is in assets_factory.scan.test.ts.
+describe('getChainAssets IBC coins (Scan down, no stored copy)', () => {
     beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed') }))
         getAllSupplyMock.mockResolvedValue([
             { denom: SPOOF_DENOM, amount: '1000' },
             { denom: BZE_LISTED_DENOM, amount: '2000' },

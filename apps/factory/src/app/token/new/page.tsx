@@ -32,6 +32,7 @@ import { createTokenMsgs, createdDenom } from '@/components/token-wizard/create-
 import { TokenDone, type TokenDoneInput } from '@/components/token-wizard/token-done'
 import { useTokenWizardValidation } from '@/components/token-wizard/useTokenWizardValidation'
 import { MAX_DESCRIPTION_LENGTH } from '@/components/token-wizard/validation'
+import { useFactoryContext } from '@/hooks/useFactoryContext'
 import { useFeePayment } from '@/hooks/useFeePayment'
 import { type WizardTxDone, useWizardTx, useWizardTxBroadcast } from '@/hooks/useWizardTx'
 import {
@@ -137,12 +138,16 @@ function TokenNewContent() {
     const { balance: feeBalance } = useBalance(fee?.denom ?? '')
 
     const buildMsgs = useCallback(() => (address ? createTokenMsgs(form, address) : undefined), [address, form])
+    const { refreshAssetsAfterTx } = useFactoryContext()
     const onDone = useCallback(({ input, hash }: WizardTxDone<TokenDoneInput>) => {
         clearTokenDraft()
         setForm(EMPTY_TOKEN_FORM)
         setAnswered([])
-        if (input) setDone({ input, hash })
-    }, [])
+        if (input) {
+            setDone({ input, hash })
+            void refreshAssetsAfterTx(input.denom)
+        }
+    }, [refreshAssetsAfterTx])
     const { submit, panelProps } = useWizardTx<TokenDoneInput>(buildMsgs, { title: `Create token ${form.symbol}`, onDone })
 
     // The token exists once the tx is confirmed: a draft left behind would only create it twice.

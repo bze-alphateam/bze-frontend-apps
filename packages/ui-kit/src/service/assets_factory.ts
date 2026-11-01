@@ -1,6 +1,8 @@
 import {getAllSupply, getAllSupplyMetadata} from "../query/supply";
 import {MetadataSDKType} from "@bze/bzejs/cosmos/bank/v1beta1/bank";
-import {Asset, ChainAssets, IBCData, IbcTransitionMock, LP_ASSETS_DECIMALS} from "../types/asset";
+import {Asset, ChainAssets, IBCData, IbcTransitionMock, LP_ASSETS_DECIMALS, ScanAssetData, ScanChainInfo} from "../types/asset";
+import type {RegistryAsset, RegistryAssetsResponse, RegistryChainInfo} from "../types/registry_asset";
+import {fetchRegistryAssets, getCachedRegistryAssets} from "../query/registry_assets";
 import {getDenomType, isFactoryDenom, isIbcDenom, isLpDenom, isNativeDenom, truncateDenom} from "../utils/denom";
 import {BZE_CIRCLE_LOGO, TOKEN_LOGO_PLACEHOLDER} from "../constants/placeholders";
 import {EXCLUDED_ASSETS, STABLE_COINS, VERIFIED_ASSETS} from "../constants/assets";
@@ -41,22 +43,230 @@ const getAssetLogo = (asset: ChainRegistryAsset): string => {
     return asset.logoURIs?.svg ?? asset.logoURIs?.png ?? asset.images?.[0]?.svg ?? asset.images?.[0]?.png ?? TOKEN_LOGO_PLACEHOLDER
 }
 
-export const getChainAssets = async (): Promise<ChainAssets> => {
+interface ChainData {
+    metadata: Record<string, MetadataSDKType>;
+    supply: { denom: string; amount: string }[] | undefined;
+    pools: Awaited<ReturnType<typeof getLiquidityPools>> | undefined;
+    halted: Set<string>;
+}
+
+const getChainData = async (): Promise<ChainData> => {
     const [metadata, supply, pools, haltedList] = await Promise.all([getAllMetadataMap(), getAllSupply(), getLiquidityPools(), getHaltedDenoms()])
-    const halted = new Set(haltedList)
-    const result = {
-        assets: new Map<string, Asset>(),
-        ibcData: new Map<string, IBCData>()
+    return {metadata, supply, pools, halted: new Set(haltedList)}
+}
+
+const emptyChainAssets = (): ChainAssets => ({
+    assets: new Map<string, Asset>(),
+    ibcData: new Map<string, IBCData>()
+})
+
+// The version of the Scan list the last build used: the post-tx refetch waits for it to move.
+let lastRegistryVersion: string | undefined
+
+/**
+ * The assets of BZE, keyed by denom. The list comes from BZE Scan (/api/v1/registry/assets),
+ * which holds the curation (verified, excluded, stable, deposit/withdraw, notices) and the
+ * registry data; the supply always comes from the chain. Denoms Scan does not list yet (a token
+ * created seconds ago) are built from the chain and never verified. When Scan cannot be reached
+ * the last list kept in localStorage is used, and without one the whole list is built from the
+ * chain + the bundled chain-registry package + the hard-coded curation lists, as before Scan.
+ */
+export const getChainAssets = async (): Promise<ChainAssets> => {
+    const [chain, fetched] = await Promise.all([getChainData(), fetchRegistryAssets()])
+    return buildChainAssets(chain, fetched ?? getCachedRegistryAssets())
+}
+
+export const ASSETS_REFRESH_ATTEMPTS = 5
+export const ASSETS_REFRESH_INTERVAL_MS = 3000
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+/**
+ * Refetches the asset list after the user's own transaction that adds or changes an asset
+ * (token creation, metadata or branding update). Scan rebuilds its list a few seconds after the
+ * block, so the list is refetched past the browser's HTTP cache (`cache: 'no-cache'`) up to
+ * ASSETS_REFRESH_ATTEMPTS times, ASSETS_REFRESH_INTERVAL_MS apart. With a `denom` it stops once
+ * Scan's entry for that denom has caught up with the chain; without one, once the version changes.
+ * The version alone is not enough for a denom: it also moves for other people's changes.
+ *
+ * `onInterim` gets the list at once, with `denom` built from the chain (so the new token or its
+ * new metadata shows while Scan catches up). When Scan never catches up, the newest list fetched
+ * is returned with `denom` still built from the chain, or the interim build if no fetch worked.
+ */
+export const getChainAssetsAfterTx = async (denom?: string, onInterim?: (assets: ChainAssets) => void): Promise<ChainAssets> => {
+    const previousVersion = lastRegistryVersion
+    const chain = await getChainData()
+    const current = getCachedRegistryAssets()
+    const interim = await buildChainAssets(chain, current, denom)
+    onInterim?.(interim)
+
+    const wasListed = !!denom && !!current?.assets.some(a => a.denom === denom)
+    const chainBuilt = denom ? interim.assets.get(denom) : undefined
+    let newest: RegistryAssetsResponse | undefined
+    for (let attempt = 0; attempt < ASSETS_REFRESH_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+            await sleep(ASSETS_REFRESH_INTERVAL_MS)
+        }
+        const list = await fetchRegistryAssets(true)
+        if (!list) continue
+        if (!denom) {
+            if (list.version !== previousVersion) {
+                return buildChainAssets(chain, list)
+            }
+            continue
+        }
+        newest = list
+        if (registryCaughtUp(list, denom, wasListed, chainBuilt)) {
+            return buildChainAssets(chain, list)
+        }
     }
 
-    if (!metadata || !supply) {
-        return result;
+    return newest ? buildChainAssets(chain, newest, denom) : interim
+}
+
+// A new denom has caught up once Scan lists it; a changed one once Scan shows what the chain shows.
+const registryCaughtUp = (list: RegistryAssetsResponse, denom: string, wasListed: boolean, chainBuilt: Asset | undefined): boolean => {
+    const entry = list.assets.find(a => a.denom === denom)
+    if (!entry) return false
+    if (!wasListed || !chainBuilt) return true
+
+    return entry.name === chainBuilt.name
+        && entry.ticker.toUpperCase() === chainBuilt.ticker.toUpperCase()
+        && entry.decimals === chainBuilt.decimals
+        && (entry.description ?? '') === (chainBuilt.description ?? '')
+}
+
+const buildChainAssets = async (chain: ChainData, list: RegistryAssetsResponse | undefined, chainBuiltDenom?: string): Promise<ChainAssets> => {
+    if (!chain.supply) {
+        return emptyChainAssets()
+    }
+    if (!list) {
+        return buildAssetsFromChain(chain.supply.filter(asset => !EXCLUDED_ASSETS[asset.denom]), chain)
+    }
+    lastRegistryVersion = list.version
+
+    return buildAssetsFromRegistry(list, chain, chainBuiltDenom)
+}
+
+const buildAssetsFromRegistry = async (list: RegistryAssetsResponse, chain: ChainData, chainBuiltDenom?: string): Promise<ChainAssets> => {
+    const result = emptyChainAssets()
+    // Every listed denom, excluded ones too: an excluded denom is not "missing".
+    const listed = new Map(list.assets.map(a => [a.denom, a]))
+    const missing: { denom: string; amount: string }[] = []
+    for (const entry of chain.supply ?? []) {
+        const registryAsset = listed.get(entry.denom)
+        if (registryAsset?.excluded) continue
+        if (!registryAsset || entry.denom === chainBuiltDenom) {
+            missing.push(entry)
+            continue
+        }
+        const asset = assetFromRegistry(registryAsset, BigInt(entry.amount), chain.halted)
+        result.assets.set(asset.denom, asset)
+        if (asset.IBCData && asset.IBCData.chain.channelId !== '') {
+            result.ibcData.set(asset.IBCData.chain.channelId, asset.IBCData)
+        }
+    }
+    if (missing.length === 0) {
+        return result
     }
 
-    const filtered = supply.filter(asset => !EXCLUDED_ASSETS[asset.denom])
+    const fromChain = await buildAssetsFromChain(missing, chain, result.assets)
+    for (const asset of fromChain.assets.values()) {
+        const registryAsset = listed.get(asset.denom)
+        if (registryAsset) {
+            // The denom the user just changed: its display fields come from the chain while
+            // Scan catches up, its curation stays Scan's.
+            asset.verified = registryAsset.verified
+            asset.stable = registryAsset.stable
+            asset.scan = scanDataFromRegistry(registryAsset)
+        } else {
+            // Not in Scan's list yet: nothing vouches for it.
+            asset.verified = false
+        }
+        result.assets.set(asset.denom, asset)
+    }
+    for (const [channelId, ibcData] of fromChain.ibcData) {
+        if (!result.ibcData.has(channelId)) {
+            result.ibcData.set(channelId, ibcData)
+        }
+    }
+
+    return result
+}
+
+const chainInfoFromRegistry = (chain: RegistryChainInfo): ScanChainInfo => ({
+    chainName: chain.chain_name ?? '',
+    chainId: chain.chain_id,
+    prettyName: chain.pretty_name,
+    logo: chain.logo ?? '',
+    bech32Prefix: chain.bech32_prefix ?? '',
+    rest: chain.rest ?? [],
+})
+
+const scanDataFromRegistry = (registryAsset: RegistryAsset): ScanAssetData => ({
+    depositAllowed: registryAsset.deposit_allowed,
+    withdrawAllowed: registryAsset.withdraw_allowed,
+    notice: registryAsset.notice ?? undefined,
+    counterparty: registryAsset.ibc ? chainInfoFromRegistry(registryAsset.ibc.counterparty) : undefined,
+    origin: registryAsset.ibc?.origin
+        ? {chainName: registryAsset.ibc.origin.chain_name, baseDenom: registryAsset.ibc.origin.base_denom, hops: registryAsset.ibc.origin.hops}
+        : undefined,
+    routes: (registryAsset.routes ?? []).map(route => ({
+        chain: chainInfoFromRegistry(route),
+        channelId: route.channel_id,
+        counterpartyChannelId: route.counterparty_channel_id,
+        counterpartyDenom: route.counterparty_denom,
+    })),
+})
+
+const assetFromRegistry = (registryAsset: RegistryAsset, supply: bigint, halted: Set<string>): Asset => {
+    const lp = registryAsset.lp
+    const asset: Asset = {
+        denom: registryAsset.denom,
+        type: getDenomType(registryAsset.denom),
+        name: registryAsset.name,
+        ticker: registryAsset.ticker,
+        decimals: registryAsset.decimals,
+        logo: registryAsset.logo || TOKEN_LOGO_PLACEHOLDER,
+        stable: registryAsset.stable,
+        verified: registryAsset.verified,
+        // The chain's halted list is read live; Scan's copy may lag a block or two.
+        halted: registryAsset.halted || halted.has(registryAsset.denom) || (!!lp && (halted.has(lp.base) || halted.has(lp.quote))),
+        supply,
+        scan: scanDataFromRegistry(registryAsset),
+    }
+    if (registryAsset.description) {
+        asset.description = registryAsset.description
+    }
+    const ibc = registryAsset.ibc
+    if (ibc) {
+        asset.IBCData = {
+            chain: {
+                channelId: ibc.channel_id
+            },
+            counterparty: {
+                chainName: ibc.counterparty.chain_name ?? '',
+                chainPrettyName: ibc.counterparty.pretty_name,
+                channelId: ibc.counterparty.channel_id,
+                baseDenom: ibc.counterparty.base_denom,
+            }
+        }
+    }
+
+    return asset
+}
+
+// The pre-Scan build: the chain's bank metadata + the bundled chain-registry package + the
+// hard-coded curation lists. Used for the whole list when Scan and its stored copy are both
+// unavailable, and for the denoms Scan does not list yet. `known` holds the assets already
+// built, so an LP share can name a pool whose assets came from Scan.
+const buildAssetsFromChain = async (supply: { denom: string; amount: string }[], chain: ChainData, known?: Map<string, Asset>): Promise<ChainAssets> => {
+    const {metadata, pools, halted} = chain
+    const result = emptyChainAssets()
+
     const lpAssets = []
     const ibcOrigins = new Map<string, IbcOrigin>()
-    for (const asset of filtered) {
+    for (const asset of supply) {
         const baseAsset = createAsset(asset.denom, BigInt(asset.amount));
         baseAsset.halted = halted.has(asset.denom)
         if (isLpDenom(asset.denom)) {
@@ -82,6 +292,7 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
     // ulp_<base>_<quote> and hashed ulp/<hash> denoms). Fall back to parsing legacy
     // denoms in case the pools fetch failed.
     const poolsByLpDenom = createLpDenomPoolsMap(pools ?? [])
+    const assetOf = (denom: string | undefined) => denom ? (result.assets.get(denom) ?? known?.get(denom)) : undefined
     for (const lpAsset of lpAssets) {
         const pool = poolsByLpDenom.get(lpAsset.denom)
         let baseDenom = pool?.base
@@ -94,8 +305,8 @@ export const getChainAssets = async (): Promise<ChainAssets> => {
             }
         }
 
-        const baseAsset = baseDenom ? result.assets.get(baseDenom) : undefined
-        const quoteAsset = quoteDenom ? result.assets.get(quoteDenom) : undefined
+        const baseAsset = assetOf(baseDenom)
+        const quoteAsset = assetOf(quoteDenom)
         if (!baseAsset || !quoteAsset) {
             result.assets.set(lpAsset.denom, lpAsset)
             continue;

@@ -4,7 +4,8 @@ export { setStorageKeyVersion } from './storage/storage';
 export { setDefaultTxMemo, getDefaultTxMemo } from './constants/placeholders';
 
 // === Types ===
-export type { Asset, IBCData, IBCCounterparty, IbcTransitionMock, ChainAssets } from './types/asset';
+export type { Asset, IBCData, IBCCounterparty, IbcTransitionMock, ChainAssets, ScanAssetData, ScanChainInfo, ScanRoute, LegacyAssetNoticeData } from './types/asset';
+export type { RegistryAsset, RegistryAssetsResponse, RegistryChainInfo, RegistryCounterparty, RegistryRoute, RegistryIBC, RegistryNotice, RegistryOrigin } from './types/registry_asset';
 export { LP_ASSETS_DECIMALS } from './types/asset';
 export type { Balance, PrettyBalance } from './types/balance';
 export type { TradeViewChart } from './types/charts';
@@ -78,7 +79,7 @@ export {
 export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
 export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout, ibcVoucherDenom } from './utils/ibc';
-export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
+export { isIbcInboundBlocked, getLegacyAssetNotice, assetNotice } from './utils/ibc_inbound';
 export { ibcOriginFromTrace, ibcOriginFromRegistry, unverifyIndirectIbcDuplicates } from './utils/ibc_duplicates';
 export type { IbcOrigin } from './utils/ibc_duplicates';
 export { isDenomHaltedIn, isPairHaltedIn } from './utils/halted_denoms';
@@ -184,7 +185,8 @@ export { getSettings, setSettings } from './storage/settings';
 // === Services ===
 export { ammRouter, createAmmRouter, AmmRouter } from './service/amm_router';
 export { blockchainEventManager } from './service/blockchain_event_manager';
-export { getChainAssets } from './service/assets_factory';
+export { getChainAssets, getChainAssetsAfterTx, ASSETS_REFRESH_ATTEMPTS, ASSETS_REFRESH_INTERVAL_MS } from './service/assets_factory';
+export { fetchRegistryAssets, getCachedRegistryAssets, getRegistryAssetsURL } from './query/registry_assets';
 export { keplrSuggestChain } from './service/keplr';
 
 // === Query ===

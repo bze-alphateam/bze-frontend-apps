@@ -4,6 +4,12 @@ export const ASSET_TYPE_IBC = "IBC"
 export const ASSET_TYPE_NATIVE = "Native"
 export const ASSET_TYPE_LP = "LP"
 
+// The curation lists below (VERIFIED_ASSETS, EXCLUDED_ASSETS, DEPOSIT_EXCLUDED_ASSETS,
+// WITHDRAW_EXCLUDED_ASSETS, STABLE_COINS, LEGACY_ASSET_NOTICES) are only the input of the
+// fallback build, used when BZE Scan's asset list cannot be reached (see getChainAssets).
+// The source of truth is Scan's curation file: change an asset's curation there, and mirror it
+// here only to keep the fallback close.
+
 export const VERIFIED_ASSETS: { [key: string]: boolean } = {
     "factory/testbz1w9vva0muctcrmd9xgret9x4wasw2rrflsdkwfs/faneatiku2": true,
     "factory/testbz1z3mkcr2jz424w6m49frgjmy9uhlrx69p4cvrgf/vidulum": true,
