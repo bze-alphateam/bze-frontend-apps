@@ -14,13 +14,13 @@ const NEW_BLOCK = "tm.event='NewBlock'";
 const SETTINGS_KEY = "5-bzetestnet-3:bze_app_settings";
 
 const test = base.extend<{rpc: FakeRpc}>({
-    rpc: async ({context}, use) => {
+    rpc: async ({context}, provide) => {
         const rpc = await startFakeRpc();
         await context.addInitScript(({key, endpoint}) => {
             const settings = {endpoints: {restEndpoint: "https://lcd.e2e.test", rpcEndpoint: endpoint}};
             window.localStorage.setItem(key, JSON.stringify({data: JSON.stringify(settings), expiry: 0}));
         }, {key: SETTINGS_KEY, endpoint: rpc.url});
-        await use(rpc);
+        await provide(rpc);
         await rpc.close();
     },
 });
