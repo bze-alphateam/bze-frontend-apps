@@ -34,6 +34,12 @@ const handleMessage = (event: MessageEvent) => {
         const msg = JSON.parse(event.data as string);
         const id = String(msg?.id ?? '');
 
+        // A rejected subscribe (e.g. "max_subscriptions_per_client 5 reached") never delivers events.
+        if (id && activeSubscriptions.has(id) && msg.error) {
+            console.error(`[WS] Subscription rejected for ${activeSubscriptions.get(id)!.query}:`, msg.error.data ?? msg.error.message);
+            return;
+        }
+
         // CometBFT subscription notification: same id as the subscribe call,
         // non-empty result object (the empty {} ack is ignored here).
         if (id && activeSubscriptions.has(id) && msg.result && Object.keys(msg.result).length > 0) {

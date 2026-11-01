@@ -1,9 +1,13 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
-import {blockchainEventManager, type TendermintEvent, EPOCH_START_EVENT, RAFFLE_CHANGED_EVENT, SUPPLY_CHANGED_EVENT} from "@bze/bze-ui-kit";
+import {
+    blockchainEventManager, type TendermintEvent, EPOCH_START_EVENT, LOCK_CHANGED_EVENT, NEXT_BURN_CHANGED_EVENT,
+    RAFFLE_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, getBurnerModuleAddress, getHardcodedLockAddress, getRaffleModuleAddress,
+} from "@bze/bze-ui-kit";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
+const wallet = vi.hoisted(() => ({address: undefined as string | undefined}));
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
@@ -13,7 +17,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
         return () => subscriptions.delete(query);
     },
 }));
-vi.mock("@interchain-kit/react", () => ({useChain: () => ({address: undefined})}));
+vi.mock("@interchain-kit/react", () => ({useChain: () => ({address: wallet.address})}));
 
 import {useBlockchainListener} from "./useBlockchainListener";
 
@@ -43,6 +47,7 @@ describe("useBlockchainListener NewBlock events", () => {
 
     beforeEach(() => {
         subscriptions.clear();
+        wallet.address = undefined;
         emit = vi.spyOn(blockchainEventManager, "emit");
         emit.mockClear();
     });
@@ -77,5 +82,51 @@ describe("useBlockchainListener NewBlock events", () => {
         await pushNewBlock(newBlock([], [[event("bze.burner.RaffleWinnerEvent", {denom: "factory/bze1creator/utoken"})]]));
 
         expect(emit).toHaveBeenCalledWith(RAFFLE_CHANGED_EVENT);
+    });
+
+    it("refreshes the locked balance when a tx sends coins to the lock address", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[
+            event("transfer", {recipient: getHardcodedLockAddress(), sender: "bze1someone", amount: "5ulp_1"}),
+        ]]));
+
+        expect(emit).toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
+    });
+
+    it("refreshes the locked balance when the block's burn moves coins to the lock address", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([
+            event("transfer", {recipient: getHardcodedLockAddress(), sender: getBurnerModuleAddress(), amount: "5ulp_1"}),
+        ], []));
+
+        expect(emit).toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
+        expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
+    });
+
+    it("refreshes the next burn and the raffles on transfers to their module addresses", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [
+            [event("transfer", {recipient: getBurnerModuleAddress(), sender: "bze1someone", amount: "5ubze"})],
+            [event("transfer", {recipient: getRaffleModuleAddress(), sender: "bze1someone", amount: "5ubze"})],
+        ]));
+
+        expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
+        expect(emit).toHaveBeenCalledWith(RAFFLE_CHANGED_EVENT);
+        expect(emit).not.toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
+    });
+
+    it("stays within the node's 5 subscriptions per client with a wallet connected", async () => {
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+
+        await vi.waitFor(() => expect(subscriptions.size).toBe(3));
+        expect([...subscriptions.keys()]).toEqual([
+            "tm.event='NewBlock'",
+            "tm.event='Tx' AND transfer.recipient='bze1wallet'",
+            "tm.event='Tx' AND transfer.sender='bze1wallet'",
+        ]);
     });
 });

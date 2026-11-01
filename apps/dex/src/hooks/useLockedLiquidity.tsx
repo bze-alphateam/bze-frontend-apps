@@ -1,24 +1,44 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {getLockedBalances, toBigNumber, uAmountToAmount, LP_ASSETS_DECIMALS, useAssetPrice} from "@bze/bze-ui-kit";
+import {
+    getLockedBalances, toBigNumber, uAmountToAmount, LP_ASSETS_DECIMALS, useAssetPrice,
+    addDebounce, blockchainEventManager, LOCK_CHANGED_EVENT,
+} from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 
 export function useLockedLiquidity(lpDenom: string) {
     const [lockedBalances, setLockedBalances] = useState<Coin[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    // The LP denom the balances were last loaded for; loading is derived from it, not set in an effect.
+    const [loadedFor, setLoadedFor] = useState<string | undefined>(undefined);
     const { price: lpTokenPrice } = useAssetPrice(lpDenom);
 
-    const fetchBalances = useCallback(async () => {
-        setIsLoading(true);
-        const data = await getLockedBalances();
-        setLockedBalances(data);
-        setIsLoading(false);
+    const loadBalances = useCallback(async () => {
+        setLockedBalances(await getLockedBalances());
     }, []);
 
     useEffect(() => {
-        if (lpDenom) {
-            fetchBalances();
-        }
-    }, [lpDenom, fetchBalances]);
+        if (!lpDenom) return;
+
+        let cancelled = false;
+        getLockedBalances().then(data => {
+            if (cancelled) return;
+            setLockedBalances(data);
+            setLoadedFor(lpDenom);
+        });
+
+        return () => { cancelled = true; };
+    }, [lpDenom]);
+
+    const isLoading = !!lpDenom && loadedFor !== lpDenom;
+
+    // Coins locked (or moved out of the lock address) in a new block refresh the amount in place,
+    // without the loading state.
+    useEffect(() => {
+        if (!lpDenom) return;
+
+        return blockchainEventManager.subscribe(LOCK_CHANGED_EVENT, () => {
+            addDebounce('refresh-locked-liquidity', 500, loadBalances);
+        });
+    }, [lpDenom, loadBalances]);
 
     // Find the locked amount for this specific LP token
     const lockedForeverAmount = useMemo(() => {
@@ -37,6 +57,6 @@ export function useLockedLiquidity(lpDenom: string) {
         lockedForeverAmount,
         lockedForeverUsdValue,
         isLoading,
-        refetch: fetchBalances
+        refetch: loadBalances
     };
 }
