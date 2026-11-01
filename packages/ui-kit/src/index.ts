@@ -70,7 +70,7 @@ export {
     getEventKeyValue, getEventMarketId,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, isEpochStartEvent, getMintedAmount,
-    getNewBlockEvents,
+    getNewBlockEvents, blockHasAddressTransfer,
 } from './utils/events';
 export {
     formatUsdAmount, shortNumberFormat, intlDateFormat,
@@ -121,7 +121,14 @@ export {
     validateRestEndpoint, validateRpcEndpoint, validateEndpoints, convertToWebSocketUrl
 } from './utils/validation';
 export { getValidatorSupportedDenoms, getValidatorPageUrl, isPoolSupportedByValidator } from './utils/validator';
-export { subscribeToBlockchainEvents } from './utils/ws_rpc_client';
+export { getChainFeed, createChainFeed } from './service/chain_feed';
+export { createChainFeedHub, CHAIN_FEED_PROTOCOL_VERSION } from './service/chain_feed_hub';
+export { createSharedChainFeed, WORKER_STATUS_TIMEOUT_MS } from './service/shared_chain_feed';
+export { watchTabResume } from './service/tab_resume';
+export type { ResumeTarget, ResumeEvent, ResumeEventType, TabResumeDeps } from './service/tab_resume';
+export type { ChainFeedHub, HubPort, TabMessage, WorkerMessage } from './service/chain_feed_hub';
+export type { SharedChainFeedDeps, SharedWorkerLike } from './service/shared_chain_feed';
+export type { ChainFeed, FeedStatus, FeedSocket, SocketFactory, FeedTimers, ChainFeedDeps } from './service/chain_feed';
 export { createSkipProxyHandler } from './utils/skip_proxy';
 export { isEvmChain, skipChainIdToEvmChainId, isEvmAddress, ERC20_APPROVE_ABI } from './utils/evm';
 
@@ -272,6 +279,7 @@ export { useAssetsContext, useAssets, useAsset, useAssetsManager, useIBCChains }
 export { useConnectionType } from './hooks/useConnectionType';
 export { useSigningClient } from './hooks/useSigningClient';
 export { useWalletHealthCheck } from './hooks/useWalletHealthCheck';
+export { useTabResume } from './hooks/useTabResume';
 export { useAssetPrice } from './hooks/usePrices';
 export { useSettings } from './hooks/useSettings';
 export { useBalances, useBalance } from './hooks/useBalances';

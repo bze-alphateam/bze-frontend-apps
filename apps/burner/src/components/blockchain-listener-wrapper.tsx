@@ -1,8 +1,8 @@
 'use client';
 
 import { useBlockchainListener } from '@/hooks/useBlockchainListener';
-import {useEffect} from "react";
-import {useWalletHealthCheck} from "@bze/bze-ui-kit";
+import {useCallback, useEffect, useRef} from "react";
+import {useTabResume, useWalletHealthCheck} from "@bze/bze-ui-kit";
 import {
     blockchainEventManager,
     CURRENT_WALLET_BALANCE_EVENT,
@@ -38,6 +38,30 @@ export function BlockchainListenerWrapper() {
         updateEpochs,
     } = useBurnerContext()
 
+    const refreshAll = useCallback(() => {
+        updateBalances()
+        updateMarketsData()
+        updateAssets()
+        updateNextBurn()
+        updateRaffles()
+        updateLockBalance()
+        updateEpochs()
+    }, [updateBalances, updateMarketsData, updateAssets, updateNextBurn, updateRaffles, updateLockBalance, updateEpochs]);
+
+    // A tab coming back from a long background stay refreshes once, whatever the feed state.
+    useTabResume(refreshAll);
+
+    // Events missed while the feed was down are caught up once it recovers (not on the first connect).
+    const hasBeenConnected = useRef(false);
+    const wasConnected = useRef(false);
+    useEffect(() => {
+        if (isConnected && hasBeenConnected.current && !wasConnected.current) {
+            refreshAll();
+        }
+        if (isConnected) hasBeenConnected.current = true;
+        wasConnected.current = isConnected;
+    }, [isConnected, refreshAll]);
+
     useEffect(() => {
         //will call this to trigger the connection type change to NONE after (polling_interval * 2) seconds
         const fallbackToNone = () => addDebounce('connection-type-none', POLLING_INTERVAL * 2, () => {
@@ -60,13 +84,7 @@ export function BlockchainListenerWrapper() {
 
             pollingInterval = setInterval(() => {
                 //update the state
-                updateBalances()
-                updateMarketsData()
-                updateAssets()
-                updateNextBurn()
-                updateRaffles()
-                updateLockBalance()
-                updateEpochs()
+                refreshAll()
 
                 //reset the fallback debounce time
                 //this will start the fallback again, resetting the timer when it should trigger
@@ -140,7 +158,7 @@ export function BlockchainListenerWrapper() {
             removeFallback()
             unsubscribers.forEach(unsubscribe => unsubscribe())
         };
-    }, [isConnected, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateNextBurn, updateRaffles, processPendingRaffleContributions, updateLockBalance, updateEpochs]);
+    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateNextBurn, updateRaffles, processPendingRaffleContributions, updateLockBalance, updateEpochs]);
 
     return null; // This component renders nothing, just runs the hook
 }
