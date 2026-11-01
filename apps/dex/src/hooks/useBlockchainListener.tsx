@@ -1,10 +1,10 @@
 import {useEffect, useState} from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
-    CURRENT_WALLET_BALANCE_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
+    CURRENT_WALLET_BALANCE_EVENT, LOCK_CHANGED_EVENT, ORDER_BOOK_CHANGED_EVENT, ORDER_EXECUTED_EVENT,
     SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT,
     TendermintEvent, getChainNativeAssetDenom,
-    subscribeToBlockchainEvents, getNewBlockEvents,
+    subscribeToBlockchainEvents, getNewBlockEvents, getHardcodedLockAddress,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, getMintedAmount, getEventMarketId,
 } from "@bze/bze-ui-kit";
@@ -14,6 +14,11 @@ const dispatchEvents = (address: string, events: TendermintEvent[]) => {
     if (!events) return;
 
     for (const event of events) {
+        // Coins sent to (or moved out of) the burner's lock address change the pools' "locked forever" amounts.
+        if (isAddressTransfer(getHardcodedLockAddress(), event)) {
+            blockchainEventManager.emit(LOCK_CHANGED_EVENT);
+        }
+
         if (isAddressTransfer(address, event)) {
             blockchainEventManager.emit(CURRENT_WALLET_BALANCE_EVENT);
             continue;

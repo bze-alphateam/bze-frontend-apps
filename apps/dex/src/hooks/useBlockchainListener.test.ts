@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
-import {blockchainEventManager, type TendermintEvent, ORDER_BOOK_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT} from "@bze/bze-ui-kit";
+import {blockchainEventManager, type TendermintEvent, getHardcodedLockAddress, LOCK_CHANGED_EVENT, ORDER_BOOK_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT} from "@bze/bze-ui-kit";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
@@ -77,5 +77,23 @@ describe("useBlockchainListener NewBlock events", () => {
         await pushNewBlock(newBlock([event("bze.tradebin.OrderSavedEvent", {market_id: "\"ubze/uusdc\""})], []));
 
         expect(emit).toHaveBeenCalledWith(ORDER_BOOK_CHANGED_EVENT, {marketId: "ubze/uusdc"});
+    });
+
+    it("refreshes the locked liquidity when a tx sends LP coins to the lock address", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[
+            event("transfer", {recipient: getHardcodedLockAddress(), sender: "bze1someone", amount: "5ulp_1"}),
+        ]]));
+
+        expect(emit).toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
+    });
+
+    it("leaves the locked liquidity alone for other transfers", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("transfer", {recipient: "bze1other", sender: "bze1someone", amount: "5ubze"})]]));
+
+        expect(emit).not.toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
     });
 });

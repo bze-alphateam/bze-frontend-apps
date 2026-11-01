@@ -8,17 +8,28 @@ import {
     TendermintEvent, getChainNativeAssetDenom,
     getBurnerModuleAddress, getHardcodedLockAddress, getRaffleModuleAddress,
     subscribeToBlockchainEvents, getNewBlockEvents,
-    isBurnEvent, isCoinbaseEvent, isEpochStartEvent,
+    isAddressTransfer, isBurnEvent, isCoinbaseEvent, isEpochStartEvent,
     getMintedAmount, isOrderBookEvent, isOrderExecutedEvent, getEventMarketId,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 
 const isRaffleEvent = (event: TendermintEvent) => event.type.includes('Raffle');
 
+// The burner, raffle and lock module balances are watched through the transfers in each NewBlock
+// notification, not with a Tx subscription per address: CometBFT caps a client at 5 subscriptions
+// (max_subscriptions_per_client) and the node rejects any beyond that.
+const dispatchModuleTransfers = (event: TendermintEvent) => {
+    if (isAddressTransfer(getBurnerModuleAddress(), event)) blockchainEventManager.emit(NEXT_BURN_CHANGED_EVENT);
+    if (isAddressTransfer(getRaffleModuleAddress(), event)) blockchainEventManager.emit(RAFFLE_CHANGED_EVENT);
+    if (isAddressTransfer(getHardcodedLockAddress(), event)) blockchainEventManager.emit(LOCK_CHANGED_EVENT);
+};
+
 const dispatchBlockEvents = (events: TendermintEvent[]) => {
     if (!events) return;
 
     for (const event of events) {
+        dispatchModuleTransfers(event);
+
         if (isRaffleEvent(event)) {
             blockchainEventManager.emit(RAFFLE_CHANGED_EVENT);
             continue;
@@ -116,93 +127,6 @@ export function useBlockchainListener() {
             unsubSender?.();
         };
     }, [address]);
-
-    // Tx subscriptions for burner module address — mount once
-    useEffect(() => {
-        const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
-        const burnerAddr = getBurnerModuleAddress();
-        if (!rpcEndpoint || !burnerAddr) return;
-
-        let unsubRecipient: (() => void) | null = null;
-        let unsubSender: (() => void) | null = null;
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.recipient='${burnerAddr}'`,
-            () => { blockchainEventManager.emit(NEXT_BURN_CHANGED_EVENT); }
-        ).then(unsub => { unsubRecipient = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to burner Tx recipient:', e));
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.sender='${burnerAddr}'`,
-            () => { blockchainEventManager.emit(NEXT_BURN_CHANGED_EVENT); }
-        ).then(unsub => { unsubSender = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to burner Tx sender:', e));
-
-        return () => {
-            unsubRecipient?.();
-            unsubSender?.();
-        };
-    }, []);
-
-    // Tx subscriptions for raffle module address — mount once
-    useEffect(() => {
-        const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
-        const raffleAddr = getRaffleModuleAddress();
-        if (!rpcEndpoint || !raffleAddr) return;
-
-        let unsubRecipient: (() => void) | null = null;
-        let unsubSender: (() => void) | null = null;
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.recipient='${raffleAddr}'`,
-            () => { blockchainEventManager.emit(RAFFLE_CHANGED_EVENT); }
-        ).then(unsub => { unsubRecipient = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to raffle Tx recipient:', e));
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.sender='${raffleAddr}'`,
-            () => { blockchainEventManager.emit(RAFFLE_CHANGED_EVENT); }
-        ).then(unsub => { unsubSender = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to raffle Tx sender:', e));
-
-        return () => {
-            unsubRecipient?.();
-            unsubSender?.();
-        };
-    }, []);
-
-    // Tx subscriptions for lock address — mount once
-    useEffect(() => {
-        const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
-        const lockAddr = getHardcodedLockAddress();
-        if (!rpcEndpoint || !lockAddr) return;
-
-        let unsubRecipient: (() => void) | null = null;
-        let unsubSender: (() => void) | null = null;
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.recipient='${lockAddr}'`,
-            () => { blockchainEventManager.emit(LOCK_CHANGED_EVENT); }
-        ).then(unsub => { unsubRecipient = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to lock Tx recipient:', e));
-
-        subscribeToBlockchainEvents(
-            rpcEndpoint,
-            `tm.event='Tx' AND transfer.sender='${lockAddr}'`,
-            () => { blockchainEventManager.emit(LOCK_CHANGED_EVENT); }
-        ).then(unsub => { unsubSender = unsub; })
-            .catch(e => console.error('[BlockchainListener] Failed to subscribe to lock Tx sender:', e));
-
-        return () => {
-            unsubRecipient?.();
-            unsubSender?.();
-        };
-    }, []);
 
     return {isConnected};
 }
