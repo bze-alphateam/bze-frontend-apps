@@ -85,11 +85,13 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
  * Refetches the asset list after the user's own transaction that adds or changes an asset
  * (token creation, metadata or branding update). Scan rebuilds its list a few seconds after the
  * block, so the list is refetched past the browser's HTTP cache (`cache: 'no-cache'`) up to
- * ASSETS_REFRESH_ATTEMPTS times, ASSETS_REFRESH_INTERVAL_MS apart, until its version changes.
+ * ASSETS_REFRESH_ATTEMPTS times, ASSETS_REFRESH_INTERVAL_MS apart. With a `denom` it stops once
+ * Scan's entry for that denom has caught up with the chain; without one, once the version changes.
+ * The version alone is not enough for a denom: it also moves for other people's changes.
  *
  * `onInterim` gets the list at once, with `denom` built from the chain (so the new token or its
- * new metadata shows while Scan catches up). The returned list is Scan's new one, or, when it
- * never changed, the interim build again.
+ * new metadata shows while Scan catches up). When Scan never catches up, the newest list fetched
+ * is returned with `denom` still built from the chain, or the interim build if no fetch worked.
  */
 export const getChainAssetsAfterTx = async (denom?: string, onInterim?: (assets: ChainAssets) => void): Promise<ChainAssets> => {
     const previousVersion = lastRegistryVersion
@@ -98,19 +100,40 @@ export const getChainAssetsAfterTx = async (denom?: string, onInterim?: (assets:
     const interim = await buildChainAssets(chain, current, denom)
     onInterim?.(interim)
 
+    const wasListed = !!denom && !!current?.assets.some(a => a.denom === denom)
+    const chainBuilt = denom ? interim.assets.get(denom) : undefined
+    let newest: RegistryAssetsResponse | undefined
     for (let attempt = 0; attempt < ASSETS_REFRESH_ATTEMPTS; attempt++) {
         if (attempt > 0) {
             await sleep(ASSETS_REFRESH_INTERVAL_MS)
         }
         const list = await fetchRegistryAssets(true)
         if (!list) continue
-        const denomAppeared = !!denom && list.assets.some(a => a.denom === denom) && !current?.assets.some(a => a.denom === denom)
-        if (list.version !== previousVersion || denomAppeared) {
+        if (!denom) {
+            if (list.version !== previousVersion) {
+                return buildChainAssets(chain, list)
+            }
+            continue
+        }
+        newest = list
+        if (registryCaughtUp(list, denom, wasListed, chainBuilt)) {
             return buildChainAssets(chain, list)
         }
     }
 
-    return interim
+    return newest ? buildChainAssets(chain, newest, denom) : interim
+}
+
+// A new denom has caught up once Scan lists it; a changed one once Scan shows what the chain shows.
+const registryCaughtUp = (list: RegistryAssetsResponse, denom: string, wasListed: boolean, chainBuilt: Asset | undefined): boolean => {
+    const entry = list.assets.find(a => a.denom === denom)
+    if (!entry) return false
+    if (!wasListed || !chainBuilt) return true
+
+    return entry.name === chainBuilt.name
+        && entry.ticker.toUpperCase() === chainBuilt.ticker.toUpperCase()
+        && entry.decimals === chainBuilt.decimals
+        && (entry.description ?? '') === (chainBuilt.description ?? '')
 }
 
 const buildChainAssets = async (chain: ChainData, list: RegistryAssetsResponse | undefined, chainBuiltDenom?: string): Promise<ChainAssets> => {

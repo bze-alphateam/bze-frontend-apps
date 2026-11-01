@@ -270,5 +270,51 @@ describe('getChainAssets from BZE Scan', () => {
             expect(fetchMock).toHaveBeenCalledTimes(ASSETS_REFRESH_ATTEMPTS)
             expect(assets.get(GGE)).toMatchObject({ name: 'Gege Renamed', verified: true, stable: true, scan: { depositAllowed: true } })
         })
+
+        describe('when the version moves for someone else\'s change first', () => {
+            const OTHER = 'factory/bze1other/uother'
+            const GGE_RENAMED_METADATA = {
+                base: GGE, name: 'Gege Renamed', symbol: 'GGE', description: 'the gege token', display: 'gge', uri: '', uri_hash: '',
+                denom_units: [{ denom: GGE, exponent: 0, aliases: [] }, { denom: 'gge', exponent: 6, aliases: [] }],
+            }
+            const withOther = (assets: RegistryAsset[]) => [...assets, base(OTHER, 'factory', { name: 'Other', routes: [] })]
+
+            beforeEach(async () => {
+                fetchMock.mockResolvedValueOnce(jsonResponse(list('v1')))
+                await getChainAssets()
+                getAllSupplyMock.mockResolvedValue([...SUPPLY, { denom: OTHER, amount: '8000' }])
+                getAllSupplyMetadataMock.mockResolvedValue([GGE_RENAMED_METADATA])
+                fetchMock.mockReset()
+            })
+
+            it('keeps refetching until Scan\'s entry for the denom matches the chain', async () => {
+                const renamed = SCAN_ASSETS.map(a => a.denom === GGE ? { ...a, name: 'Gege Renamed' } : a)
+                fetchMock
+                    .mockResolvedValueOnce(jsonResponse(list('v2', withOther(SCAN_ASSETS))))
+                    .mockResolvedValueOnce(jsonResponse(list('v3', withOther(renamed))))
+
+                vi.useFakeTimers()
+                const done = getChainAssetsAfterTx(GGE)
+                await vi.runAllTimersAsync()
+                const { assets } = await done
+
+                expect(fetchMock).toHaveBeenCalledTimes(2)
+                expect(assets.get(GGE)).toMatchObject({ name: 'Gege Renamed', verified: true, stable: true })
+                expect(assets.get(OTHER)).toMatchObject({ name: 'Other', scan: { routes: [] } })
+            })
+
+            it('shows the chain\'s display with Scan\'s curation from the newest list when Scan never catches up', async () => {
+                fetchMock.mockResolvedValue(jsonResponse(list('v2', withOther(SCAN_ASSETS))))
+
+                vi.useFakeTimers()
+                const done = getChainAssetsAfterTx(GGE)
+                await vi.runAllTimersAsync()
+                const { assets } = await done
+
+                expect(fetchMock).toHaveBeenCalledTimes(ASSETS_REFRESH_ATTEMPTS)
+                expect(assets.get(GGE)).toMatchObject({ name: 'Gege Renamed', verified: true, stable: true, scan: { depositAllowed: true } })
+                expect(assets.get(OTHER)).toMatchObject({ name: 'Other', scan: { routes: [] } })
+            })
+        })
     })
 })
