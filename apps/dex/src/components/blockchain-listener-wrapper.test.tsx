@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {render} from "@testing-library/react";
 
 const listener = vi.hoisted(() => ({isConnected: false}));
@@ -53,6 +53,48 @@ describe("BlockchainListenerWrapper recovery refresh", () => {
         expect(assets.updateMarketsData).toHaveBeenCalledTimes(1);
         expect(assets.updateAssets).toHaveBeenCalledTimes(1);
         expect(assets.updateLiquidityPools).toHaveBeenCalledTimes(1);
+        view.unmount();
+    });
+});
+
+describe("BlockchainListenerWrapper tab resume", () => {
+    const setVisibility = (state: "visible" | "hidden") => {
+        Object.defineProperty(document, "visibilityState", {configurable: true, get: () => state});
+        document.dispatchEvent(new Event("visibilitychange"));
+    };
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+        Object.values(assets).forEach(fn => fn.mockClear());
+        listener.isConnected = true;
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        delete (document as unknown as Record<string, unknown>).visibilityState;
+    });
+
+    it("refreshes balances and liquidity pools after the tab was hidden for over 30 s", () => {
+        const view = render(<BlockchainListenerWrapper/>);
+
+        setVisibility("hidden");
+        vi.advanceTimersByTime(31_000);
+        setVisibility("visible");
+
+        expect(assets.updateBalances).toHaveBeenCalledTimes(1);
+        expect(assets.updateLiquidityPools).toHaveBeenCalledTimes(1);
+        view.unmount();
+    });
+
+    it("does not refresh after a short tab switch", () => {
+        const view = render(<BlockchainListenerWrapper/>);
+
+        setVisibility("hidden");
+        vi.advanceTimersByTime(5_000);
+        setVisibility("visible");
+
+        expect(assets.updateBalances).not.toHaveBeenCalled();
         view.unmount();
     });
 });
