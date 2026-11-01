@@ -326,9 +326,16 @@ export const getChainFeed = (rpcEndpoint: string): ChainFeed => {
             ) as unknown as SharedWorkerLike,
             createLocalFeed: () => (localFeed = createTabFeed(url)),
             timers,
-            onPageHide: (fn) => window.addEventListener('pagehide', fn),
+            onPageHide: (fn) => window.addEventListener('pagehide', (ev) => fn(ev.persisted)),
         });
-        feed = {...shared, close: () => localFeed?.close()};
+        feed = {
+            subscribe: shared.subscribe,
+            onStatus: shared.onStatus,
+            close: () => {
+                shared.close();
+                localFeed?.close();
+            },
+        };
     } else {
         feed = createTabFeed(url);
     }

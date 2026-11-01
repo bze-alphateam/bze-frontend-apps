@@ -50,7 +50,7 @@ const TX = "tm.event='Tx'";
 describe('createSharedChainFeed', () => {
     let workers: FakeWorker[];
     let locals: FakeLocalFeed[];
-    let hideCallbacks: (() => void)[];
+    let hideCallbacks: ((persisted: boolean) => void)[];
     let createWorker: () => SharedWorkerLike;
 
     const build = () => createSharedChainFeed({
@@ -133,9 +133,54 @@ describe('createSharedChainFeed', () => {
         build();
         workers[0].reply({type: 'status', status: 'live'});
 
-        hideCallbacks.forEach(fn => fn());
+        hideCallbacks.forEach(fn => fn(false));
 
         expect(workers[0].sentOfType('bye')).toHaveLength(1);
+    });
+
+    it('keeps the worker connection when the page may be restored from the bfcache', () => {
+        const feed = build();
+        const got: unknown[] = [];
+        feed.subscribe(BLOCK, r => got.push(r));
+        workers[0].reply({type: 'status', status: 'live'});
+
+        hideCallbacks.forEach(fn => fn(true));
+        workers[0].reply({type: 'event', sid: '1', result: {height: 1}});
+
+        expect(workers[0].sentOfType('bye')).toHaveLength(0);
+        expect(got).toEqual([{height: 1}]);
+    });
+
+    it('tells the worker bye when it falls back, so a late worker releases the tab', () => {
+        build();
+
+        vi.advanceTimersByTime(WORKER_STATUS_TIMEOUT_MS);
+
+        expect(workers[0].sentOfType('bye')).toHaveLength(1);
+    });
+
+    it('does not bring back on the local feed a subscription removed before the fallback', () => {
+        const feed = build();
+        feed.subscribe(TX, () => {})();
+        feed.subscribe(BLOCK, () => {});
+
+        vi.advanceTimersByTime(WORKER_STATUS_TIMEOUT_MS);
+
+        expect(locals[0].handlers.map(h => h.query)).toEqual([BLOCK]);
+    });
+
+    it('close() sends bye, stops the fallback timer and ignores later worker messages', () => {
+        const feed = build();
+        const got: unknown[] = [];
+        feed.subscribe(BLOCK, r => got.push(r));
+
+        feed.close();
+        workers[0].reply({type: 'event', sid: '1', result: {height: 1}});
+        vi.advanceTimersByTime(WORKER_STATUS_TIMEOUT_MS * 2);
+
+        expect(workers[0].sentOfType('bye')).toHaveLength(1);
+        expect(locals).toHaveLength(0);
+        expect(got).toEqual([]);
     });
 
     it('falls back to the local feed when the worker cannot be created, re-registering subscriptions', () => {

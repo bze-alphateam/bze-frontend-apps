@@ -23,13 +23,16 @@ export interface SharedChainFeedDeps {
     createWorker: () => SharedWorkerLike;
     createLocalFeed: () => ChainFeed;
     timers: FeedTimers;
-    /** Registers a callback for the page going away (pagehide). */
-    onPageHide: (fn: () => void) => void;
+    /**
+     * Registers a callback for pagehide, called with the event's `persisted` flag. A persisted
+     * page may be restored from the bfcache, so it keeps its worker connection.
+     */
+    onPageHide: (fn: (persisted: boolean) => void) => void;
 }
 
 type Registration = {query: string; handler: (result: unknown) => void; unsubscribeLocal?: () => void};
 
-export const createSharedChainFeed = (deps: SharedChainFeedDeps): ChainFeed => {
+export const createSharedChainFeed = (deps: SharedChainFeedDeps): ChainFeed & {close(): void} => {
     const {createWorker, createLocalFeed, timers, onPageHide} = deps;
 
     const registrations = new Map<string, Registration>(); // by sid
@@ -108,7 +111,9 @@ export const createSharedChainFeed = (deps: SharedChainFeedDeps): ChainFeed => {
         fallBack();
     }
 
-    onPageHide(() => send({type: 'bye'}));
+    onPageHide((persisted) => {
+        if (!persisted) send({type: 'bye'});
+    });
 
     const subscribe: ChainFeed['subscribe'] = (query, handler) => {
         const sid = String(++nextSid);
@@ -139,5 +144,22 @@ export const createSharedChainFeed = (deps: SharedChainFeedDeps): ChainFeed => {
         };
     };
 
-    return {subscribe, onStatus};
+    const close = () => {
+        clearStatusTimer();
+        statusListeners.clear();
+        registrations.clear();
+        if (worker) {
+            const old = worker;
+            worker = null;
+            old.onerror = null;
+            old.port.onmessage = null;
+            try {
+                old.port.postMessage({type: 'bye'});
+            } catch {
+                // the worker is gone already
+            }
+        }
+    };
+
+    return {subscribe, onStatus, close};
 };
