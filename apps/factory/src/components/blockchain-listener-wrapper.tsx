@@ -1,7 +1,7 @@
 'use client';
 
 import { useBlockchainListener } from '@/hooks/useBlockchainListener';
-import {useEffect} from "react";
+import {useCallback, useEffect, useRef} from "react";
 import {useWalletHealthCheck} from "@bze/bze-ui-kit";
 import {
     blockchainEventManager,
@@ -28,6 +28,24 @@ export function BlockchainListenerWrapper() {
         updateEpochs,
     } = useFactoryContext()
 
+    const refreshAll = useCallback(() => {
+        updateBalances()
+        updateMarketsData()
+        updateAssets()
+        updateEpochs()
+    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs]);
+
+    // Events missed while the feed was down are caught up once it recovers (not on the first connect).
+    const hasBeenConnected = useRef(false);
+    const wasConnected = useRef(false);
+    useEffect(() => {
+        if (isConnected && hasBeenConnected.current && !wasConnected.current) {
+            refreshAll();
+        }
+        if (isConnected) hasBeenConnected.current = true;
+        wasConnected.current = isConnected;
+    }, [isConnected, refreshAll]);
+
     useEffect(() => {
         const fallbackToNone = () => addDebounce('connection-type-none', POLLING_INTERVAL * 2, () => {
             updateConnectionType(CONNECTION_TYPE_NONE)
@@ -42,10 +60,8 @@ export function BlockchainListenerWrapper() {
             fallbackToNone()
 
             pollingInterval = setInterval(() => {
-                updateBalances()
-                updateMarketsData()
-                updateAssets()
-                updateEpochs()
+
+                refreshAll()
                 fallbackToNone();
             }, POLLING_INTERVAL)
         } else {
@@ -78,7 +94,7 @@ export function BlockchainListenerWrapper() {
             removeFallback()
             unsubscribers.forEach(unsubscribe => unsubscribe())
         };
-    }, [isConnected, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs]);
+    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs]);
 
     return null;
 }

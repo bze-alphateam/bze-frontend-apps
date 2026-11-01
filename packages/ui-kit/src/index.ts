@@ -121,7 +121,8 @@ export {
     validateRestEndpoint, validateRpcEndpoint, validateEndpoints, convertToWebSocketUrl
 } from './utils/validation';
 export { getValidatorSupportedDenoms, getValidatorPageUrl, isPoolSupportedByValidator } from './utils/validator';
-export { subscribeToBlockchainEvents } from './utils/ws_rpc_client';
+export { getChainFeed, createChainFeed } from './service/chain_feed';
+export type { ChainFeed, FeedStatus, FeedSocket, SocketFactory, FeedTimers, ChainFeedDeps } from './service/chain_feed';
 export { createSkipProxyHandler } from './utils/skip_proxy';
 export { isEvmChain, skipChainIdToEvmChainId, isEvmAddress, ERC20_APPROVE_ABI } from './utils/evm';
 

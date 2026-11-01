@@ -7,15 +7,25 @@ import {
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
+// A fake ChainFeed: subscriptions are captured for the tests, the status is driven by feedStatus.
+const feedStatus = vi.hoisted(() => ({current: "connecting" as "connecting" | "live" | "down", listeners: new Set<(s: "connecting" | "live" | "down") => void>()}));
+const fakeFeed = vi.hoisted(() => ({
+    subscribe: (query: string, handler: (result: unknown) => void) => {
+        subscriptions.set(query, handler);
+        return () => { subscriptions.delete(query); };
+    },
+    onStatus: (listener: (s: "connecting" | "live" | "down") => void) => {
+        feedStatus.listeners.add(listener);
+        listener(feedStatus.current);
+        return () => { feedStatus.listeners.delete(listener); };
+    },
+}));
 const wallet = vi.hoisted(() => ({address: undefined as string | undefined}));
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     getSettings: () => ({endpoints: {rpcEndpoint: "wss://rpc.example.com"}}),
-    subscribeToBlockchainEvents: async (_endpoint: string, query: string, handler: (result: unknown) => void) => {
-        subscriptions.set(query, handler);
-        return () => subscriptions.delete(query);
-    },
+    getChainFeed: () => fakeFeed,
 }));
 vi.mock("@interchain-kit/react", () => ({useChain: () => ({address: wallet.address})}));
 
@@ -47,6 +57,8 @@ describe("useBlockchainListener NewBlock events", () => {
 
     beforeEach(() => {
         subscriptions.clear();
+        feedStatus.current = "connecting";
+        feedStatus.listeners.clear();
         wallet.address = undefined;
         emit = vi.spyOn(blockchainEventManager, "emit");
         emit.mockClear();
@@ -128,5 +140,39 @@ describe("useBlockchainListener NewBlock events", () => {
             "tm.event='Tx' AND transfer.recipient='bze1wallet'",
             "tm.event='Tx' AND transfer.sender='bze1wallet'",
         ]);
+    });
+});
+
+
+describe("useBlockchainListener connection status", () => {
+    const setFeedStatus = (status: "connecting" | "live" | "down") => {
+        feedStatus.current = status;
+        act(() => feedStatus.listeners.forEach(listener => listener(status)));
+    };
+
+    beforeEach(() => {
+        subscriptions.clear();
+        feedStatus.current = "connecting";
+        feedStatus.listeners.clear();
+    });
+
+    it("is connected only while the feed is live", () => {
+        const {result} = renderHook(() => useBlockchainListener());
+        expect(result.current.isConnected).toBe(false);
+
+        setFeedStatus("live");
+        expect(result.current.isConnected).toBe(true);
+
+        setFeedStatus("down");
+        expect(result.current.isConnected).toBe(false);
+    });
+
+    it("is not connected just because a block handler ran", async () => {
+        const {result} = renderHook(() => useBlockchainListener());
+        await vi.waitFor(() => expect(subscriptions.has("tm.event='NewBlock'")).toBe(true));
+
+        act(() => subscriptions.get("tm.event='NewBlock'")!({data: {value: {result_finalize_block: {events: [], tx_results: []}}}}));
+
+        expect(result.current.isConnected).toBe(false);
     });
 });
