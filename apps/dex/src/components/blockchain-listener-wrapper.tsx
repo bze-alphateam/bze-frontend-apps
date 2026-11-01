@@ -2,7 +2,7 @@
 
 import { useBlockchainListener } from '@/hooks/useBlockchainListener';
 import {useCallback, useEffect, useRef} from "react";
-import {useAssetsContext, useWalletHealthCheck} from "@bze/bze-ui-kit";
+import {useAssetsContext, useTabResume, useWalletHealthCheck} from "@bze/bze-ui-kit";
 import {blockchainEventManager, CURRENT_WALLET_BALANCE_EVENT, ORDER_EXECUTED_EVENT, SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT, addDebounce, addMultipleDebounce, CONNECTION_TYPE_NONE, CONNECTION_TYPE_POLLING, CONNECTION_TYPE_WS} from "@bze/bze-ui-kit";
 
 const POLLING_INTERVAL = 10 * 1000;
@@ -18,6 +18,9 @@ export function BlockchainListenerWrapper() {
         updateAssets()
         updateLiquidityPools()
     }, [updateBalances, updateMarketsData, updateAssets, updateLiquidityPools]);
+
+    // A tab coming back from a long background stay refreshes once, whatever the feed state.
+    useTabResume(refreshAll);
 
     // Events missed while the feed was down are caught up once it recovers (not on the first connect).
     const hasBeenConnected = useRef(false);

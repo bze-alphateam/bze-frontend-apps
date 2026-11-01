@@ -122,6 +122,8 @@ export {
 } from './utils/validation';
 export { getValidatorSupportedDenoms, getValidatorPageUrl, isPoolSupportedByValidator } from './utils/validator';
 export { getChainFeed, createChainFeed } from './service/chain_feed';
+export { watchTabResume } from './service/tab_resume';
+export type { ResumeTarget, ResumeEvent, ResumeEventType, TabResumeDeps } from './service/tab_resume';
 export type { ChainFeed, FeedStatus, FeedSocket, SocketFactory, FeedTimers, ChainFeedDeps } from './service/chain_feed';
 export { createSkipProxyHandler } from './utils/skip_proxy';
 export { isEvmChain, skipChainIdToEvmChainId, isEvmAddress, ERC20_APPROVE_ABI } from './utils/evm';
@@ -273,6 +275,7 @@ export { useAssetsContext, useAssets, useAsset, useAssetsManager, useIBCChains }
 export { useConnectionType } from './hooks/useConnectionType';
 export { useSigningClient } from './hooks/useSigningClient';
 export { useWalletHealthCheck } from './hooks/useWalletHealthCheck';
+export { useTabResume } from './hooks/useTabResume';
 export { useAssetPrice } from './hooks/usePrices';
 export { useSettings } from './hooks/useSettings';
 export { useBalances, useBalance } from './hooks/useBalances';
