@@ -6,7 +6,7 @@ import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
 import type { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
 import { createAmmRouter, setInLocalStorage } from "@bze/bze-ui-kit";
-import { quoteExactInput } from "@/lib/swap-quote";
+import { quoteExactInput, quoteExactOutput } from "@/lib/swap-quote";
 import { rulesFor } from "@/test-support/css-rules";
 
 // The swap page reads its assets, balances and the shared gas engine through ui-kit hooks.
@@ -322,6 +322,34 @@ describe("Swap page quoting", () => {
         const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
         expect(toInput().value).toBe(expected.amountOut.shiftedBy(-6).toFixed(6));
         expect(screen.getByRole("button", { name: "Swap" })).toBeEnabled();
+    });
+
+    it("shows both rates of the quote in the summary, each read from the quoted amounts", () => {
+        setupBzeUsdc();
+        renderSwap();
+
+        fireEvent.change(fromInput(), { target: { value: "1000" } });
+
+        const expected = quoteExactInput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(1000).shiftedBy(6))!;
+        const sold = new BigNumber(1000);
+        const bought = expected.amountOut.shiftedBy(-6);
+        expect(screen.getByText(`1 BZE ≈ ${bought.dividedBy(sold).toFixed(6)} USDC`)).toBeInTheDocument();
+        expect(screen.getByText(`1 USDC ≈ ${sold.dividedBy(bought).toFixed(6)} BZE`)).toBeInTheDocument();
+    });
+
+    it("shows both rates when the bought amount is typed, priced from the derived sold amount", () => {
+        setupBzeUsdc();
+        renderSwap();
+
+        fireEvent.change(toInput(), { target: { value: "0.1" } });
+
+        // The exact-output search may buy a little more than typed: the rate follows the quote.
+        const expected = quoteExactOutput(createAmmRouter([bzeUsdcPool()]), "ubze", "uusdc", new BigNumber(0.1).shiftedBy(6))!;
+        const sold = expected.amountIn.shiftedBy(-6);
+        const bought = expected.amountOut.shiftedBy(-6);
+        expect(fromInput().value).toBe(sold.toFixed(6));
+        expect(screen.getByText(`1 BZE ≈ ${bought.dividedBy(sold).toFixed(6)} USDC`)).toBeInTheDocument();
+        expect(screen.getByText(`1 USDC ≈ ${sold.dividedBy(bought).toFixed(6)} BZE`)).toBeInTheDocument();
     });
 
     it("resolves the taker fee after the input leaves and the minimum output lands, like the chain", () => {

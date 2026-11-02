@@ -51,6 +51,24 @@ export function parseAmountInput(value: string): BigNumber | null {
     return amount.isNaN() || !amount.isFinite() || amount.lte(0) ? null : amount;
 }
 
+/** Both prices of a quote, in whole tokens; null where its denominator is zero. */
+export interface SwapRates {
+    /** Bought tokens per one sold token. */
+    perSold: BigNumber | null;
+    /** Sold tokens per one bought token. */
+    perBought: BigNumber | null;
+}
+
+/** The quote's two prices, taken from its exact micro amounts rather than the form's text. */
+export function swapRates(quote: SwapQuote, fromDecimals: number, toDecimals: number): SwapRates {
+    const sold = quote.amountIn.shiftedBy(-fromDecimals);
+    const bought = quote.amountOut.shiftedBy(-toDecimals);
+    return {
+        perSold: sold.gt(0) ? bought.dividedBy(sold) : null,
+        perBought: bought.gt(0) ? sold.dividedBy(bought) : null,
+    };
+}
+
 /** Quotes a swap for whichever side the user typed. */
 export function quoteSwap(router: SwapRouter, request: SwapRequest): SwapQuote | null {
     const { fromDenom, toDenom, side, amount } = request;
