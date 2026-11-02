@@ -9,7 +9,7 @@ import {
     LuLink,
     LuSearch,
 } from 'react-icons/lu'
-import {Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast, HaltedBadge, PageContainer, HgCard, Shimmer} from "@bze/bze-ui-kit";
+import {AppIconButton, Asset, ASSET_TYPE_FACTORY, ASSET_TYPE_IBC, ASSET_TYPE_NATIVE, useAssets, useAssetPrice, formatUsdAmount, HighlightText, TokenLogo, useToast, HaltedBadge, getExplorerTokenURL, PageContainer, HgCard, Shimmer} from "@bze/bze-ui-kit";
 import {VerifiedBadge} from "@/components/ui/badge/verified";
 import {AssetDetails} from "@/components/ui/assets/asset-details";
 import {assetPagePath} from "@/hooks/useNavigation";
@@ -100,6 +100,10 @@ function AssetItem({ asset, isExpanded, toggleExpanded }: { asset: Asset, isExpa
                     </Skeleton>
                 </Flex>
                 <Flex gap="2px" flex="none">
+                    {/* Opening the explorer doesn't toggle the expanded details either */}
+                    <chakra.span display="contents" onClick={(e) => e.stopPropagation()}>
+                        <AppIconButton app="explorer" href={getExplorerTokenURL(asset.denom)} aria-label="View on explorer" size="md"/>
+                    </chakra.span>
                     <IconButton
                         aria-label="Copy link to this asset"
                         size="md"

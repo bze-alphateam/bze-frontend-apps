@@ -87,3 +87,19 @@ describe('getLegacyAssetNotice', () => {
         expect(getLegacyAssetNotice(undefined, NOBLE_BLOCK)).toBeUndefined()
     })
 })
+
+// BFE-329: an asset from BZE Scan's list takes Scan's notice, still only while the chain blocks it.
+describe('getLegacyAssetNotice for an asset from BZE Scan', () => {
+    const scanNotice = { title: 'Scan says', text: 'Scan curation text.', url: 'https://example.test' }
+
+    it('returns Scan\'s notice while the deposits are blocked', () => {
+        const asset = { ...USDC_N, scan: { depositAllowed: true, withdrawAllowed: true, routes: [], notice: scanNotice } }
+        expect(getLegacyAssetNotice(asset, NOBLE_BLOCK)).toEqual(scanNotice)
+        expect(getLegacyAssetNotice(asset, [])).toBeUndefined()
+    })
+
+    it('shows no hard-coded notice when Scan has none', () => {
+        const asset = { ...USDC_N, scan: { depositAllowed: true, withdrawAllowed: true, routes: [] } }
+        expect(getLegacyAssetNotice(asset, NOBLE_BLOCK)).toBeUndefined()
+    })
+})

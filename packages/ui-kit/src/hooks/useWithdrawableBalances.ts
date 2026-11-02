@@ -8,6 +8,7 @@ import {getChainName, getChains} from "../constants/chain";
 import {isAssetDenied, isChainDenied} from "../constants/cross_chain";
 import {isFactoryDenom, isIbcDenom, isLpDenom} from "../utils/denom";
 import {WITHDRAW_EXCLUDED_ASSETS} from "../constants/assets";
+import type {ScanChainInfo, ScanRoute} from "../types/asset";
 
 /**
  * A chain the user can pick as an IBC destination. Resolved against
@@ -22,6 +23,8 @@ export interface WithdrawDestinationChain {
     addressPrefix: string;
     /** BZE-side channel we send through to reach this chain. */
     bzeSideChannelId: string;
+    /** Scan's REST endpoints for the chain, tried before chain-registry's. */
+    restUrls?: string[];
 }
 
 export type WithdrawableAssetKind = 'ibc' | 'native' | 'factory';
@@ -99,6 +102,42 @@ const resolveDestination = (
     };
 };
 
+/**
+ * A destination from Scan's chain data (asset came from BZE Scan's list). The chain must
+ * still be one chain-registry knows, as for the registry path; an unknown chain (no name or
+ * prefix) is never offered.
+ */
+const destinationFromScan = (
+    info: ScanChainInfo | undefined,
+    bzeSideChannelId: string,
+): WithdrawDestinationChain | undefined => {
+    if (!info || !info.chainName || !info.chainId || !info.bech32Prefix || !bzeSideChannelId) return undefined;
+    if (!registryChainFor(info.chainName)) return undefined;
+    return {
+        chainName: info.chainName,
+        chainId: info.chainId,
+        displayName: info.prettyName || info.chainName,
+        logo: info.logo,
+        addressPrefix: info.bech32Prefix,
+        bzeSideChannelId,
+        restUrls: info.rest.length > 0 ? info.rest : undefined,
+    };
+};
+
+const scanRouteDestinations = (routes: ScanRoute[]): WithdrawDestinationChain[] => {
+    const seen = new Set<string>();
+    const out: WithdrawDestinationChain[] = [];
+    for (const route of routes) {
+        if (seen.has(route.chain.chainName) || isChainDenied(route.chain.chainName)) continue;
+        const dest = destinationFromScan(route.chain, route.channelId);
+        if (!dest) continue;
+        seen.add(dest.chainName);
+        out.push(dest);
+    }
+    out.sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return out;
+};
+
 const OSMOSIS_CHAIN_NAME = 'osmosis';
 
 /**
@@ -113,6 +152,10 @@ const OSMOSIS_CHAIN_NAME = 'osmosis';
  *   • BZE-native + factory tokens can be sent anywhere BZE has an IBC channel;
  *     Osmosis is pre-selected because that's the overwhelming common case
  *     (the user wants to trade the token there).
+ *
+ * When the asset came from BZE Scan's list (`asset.scan`), Scan's `withdraw_allowed` replaces
+ * `WITHDRAW_EXCLUDED_ASSETS`, the destination's chain data comes from Scan, and a BZE coin's
+ * destinations are its Scan `routes`.
  *
  * Denylist (`NEXT_PUBLIC_BRIDGE_DENY_CHAINS` / `…_DENY_ASSETS`) still applies.
  */
@@ -153,7 +196,7 @@ export function useWithdrawableBalances(): UseWithdrawableBalancesResult {
             if (!bal.denom) continue;
             if (isLpDenom(bal.denom)) continue;
             if (isAssetDenied(bal.denom)) continue;
-            if (WITHDRAW_EXCLUDED_ASSETS[bal.denom]) continue;
+            if (bal.scan ? !bal.scan.withdrawAllowed : WITHDRAW_EXCLUDED_ASSETS[bal.denom]) continue;
             if (!bal.amount || bal.amount.isZero() || bal.amount.isNegative()) continue;
 
             // Case 1: IBC voucher — destination is locked to the trace counterparty.
@@ -164,7 +207,9 @@ export function useWithdrawableBalances(): UseWithdrawableBalancesResult {
                     // withdraw. (User can still hold it, just can't use our UI to move it.)
                     continue;
                 }
-                const dest = resolveDestination(ibcData.counterparty.chainName, ibcData.chain.channelId);
+                const dest = bal.scan
+                    ? destinationFromScan(bal.scan.counterparty, ibcData.chain.channelId)
+                    : resolveDestination(ibcData.counterparty.chainName, ibcData.chain.channelId);
                 if (!dest) continue;
                 result.push({
                     balance: bal,
@@ -178,13 +223,17 @@ export function useWithdrawableBalances(): UseWithdrawableBalancesResult {
 
             // Case 2: native or factory — destination is user's choice, so it needs at least
             // one reachable chain (none on a network whose IBC counterparties the registry lacks).
-            if (openDestinations.length === 0) continue;
+            const destinations = bal.scan ? scanRouteDestinations(bal.scan.routes) : openDestinations;
+            if (destinations.length === 0) continue;
             const kind: WithdrawableAssetKind = isFactoryDenom(bal.denom) ? 'factory' : 'native';
+            const osmosis = bal.scan
+                ? destinations.find(d => d.chainName === OSMOSIS_CHAIN_NAME)
+                : osmosisDestination;
             result.push({
                 balance: bal,
                 kind,
-                destinations: openDestinations,
-                defaultDestination: osmosisDestination ?? openDestinations[0],
+                destinations,
+                defaultDestination: osmosis ?? destinations[0],
                 isDestinationLocked: false,
             });
         }

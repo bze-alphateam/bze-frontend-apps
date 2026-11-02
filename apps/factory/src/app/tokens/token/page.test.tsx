@@ -45,6 +45,7 @@ vi.mock("@/hooks/useStakingRewards", () => ({ useStakingRewards: () => m.staking
 vi.mock("@/hooks/useRegistryListing", () => ({ useRegistryListing: () => ({ status: m.registry, retry: vi.fn() }) }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
 vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
+vi.mock("@/hooks/useFactoryContext", () => ({ useFactoryContext: () => ({ refreshAssetsAfterTx: vi.fn(async () => {}) }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
 vi.mock("@/components/manage/metadata-card", () => ({ MetadataCard: ({ access }: { access: string }) => <div>metadata {access}</div> }));

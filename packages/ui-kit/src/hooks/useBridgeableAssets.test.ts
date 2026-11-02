@@ -190,3 +190,69 @@ describe('useBridgeableAssets — BZE coins coming back', () => {
         expect(usdc?.sourceDenom).toBe(USDC_INJ.IBCData!.counterparty.baseDenom)
     })
 })
+
+// BFE-329: an asset from BZE Scan's list carries `scan`; Scan's deposit_allowed, chain data and
+// routes decide, and the hard-coded DEPOSIT_EXCLUDED_ASSETS and the ibcChains pool do not.
+describe('useBridgeableAssets with assets from BZE Scan', () => {
+    const LUMEN_DENOM = 'ibc/693DDB2D9B4260D67C8136C22D837F37488E0FBD81857D8E9C6022332EA26E33'
+    const scanChain = (chainName: string, chainId: string, prefix: string) => ({
+        chainName, chainId, prettyName: `${chainName} (Scan)`, logo: `${chainName}-scan.svg`, bech32Prefix: prefix, rest: [`https://rest.${chainName}.scan`],
+    })
+    const scanCoin = (asset: Asset, depositAllowed: boolean, routes: NonNullable<Asset['scan']>['routes'] = [], counterparty?: NonNullable<Asset['scan']>['counterparty']): Asset => ({
+        ...asset,
+        scan: { depositAllowed, withdrawAllowed: true, routes, counterparty },
+    })
+    const route = (chainName: string, chainId: string, prefix: string, channelId: string, counterpartyChannelId: string, counterpartyDenom: string) => ({
+        chain: scanChain(chainName, chainId, prefix), channelId, counterpartyChannelId, counterpartyDenom,
+    })
+
+    const render = async (assets: Asset[]) => {
+        useAssetsContextMock.mockReturnValue({
+            assetsMap: new Map(assets.map(a => [a.denom, a])),
+            // No channel pool: a Scan coin's routes must come from Scan alone.
+            ibcChains: [],
+            isLoading: false,
+        })
+        getTxFeeCollectorParamsMock.mockResolvedValue(params([]))
+        const hook = renderHook(() => useBridgeableAssets())
+        await waitFor(() => expect(getTxFeeCollectorParamsMock).toHaveBeenCalled())
+        return hook.result
+    }
+
+    it('sends a BZE coin over Scan\'s routes, its voucher there being the counterparty_denom', async () => {
+        const result = await render([scanCoin(BZE, true, [
+            route('noble', 'noble-1', 'noble', 'channel-3', 'channel-95', 'ibc/BZEONNOBLE'),
+            route('osmosis', 'osmosis-1', 'osmo', 'channel-0', 'channel-340', 'ibc/BZEONOSMO'),
+            // The wallet cannot register a chain the bundled registry lacks.
+            route('notaregisteredchain', 'nope-1', 'nope', 'channel-9', 'channel-1', 'ibc/BZEONNOPE'),
+        ])])
+
+        expect(result.current.assets.map(a => a.counterparty.chainName)).toEqual(['osmosis', 'noble'])
+        const osmosis = result.current.assets[0]
+        expect(osmosis.sourceDenom).toBe('ibc/BZEONOSMO')
+        expect(osmosis.counterparty).toEqual({
+            chainName: 'osmosis', chainId: 'osmosis-1', displayName: 'osmosis (Scan)', logo: 'osmosis-scan.svg',
+            addressPrefix: 'osmo', restUrls: ['https://rest.osmosis.scan'],
+        })
+        expect(osmosis.ibcData).toEqual({
+            chain: { channelId: 'channel-0' },
+            counterparty: { chainName: 'osmosis', chainPrettyName: 'osmosis (Scan)', channelId: 'channel-340', baseDenom: 'ubze' },
+        })
+    })
+
+    it('offers no route of a BZE coin Scan does not allow to deposit', async () => {
+        const result = await render([scanCoin(GGE, false, [route('osmosis', 'osmosis-1', 'osmo', 'channel-0', 'channel-340', GGE_ON_OSMOSIS)])])
+        expect(result.current.assets).toEqual([])
+    })
+
+    it('follows deposit_allowed for an IBC voucher, not the hard-coded exclusions', async () => {
+        const lumen = scanCoin(ibcAsset(LUMEN_DENOM, 'LMN', 'channel-3', 'noble', 'channel-95', 'ulmn'), true, [], scanChain('noble', 'noble-1', 'noble'))
+        const refused = scanCoin(USDC_INJ, false, [], scanChain('injective', 'injective-1', 'inj'))
+
+        const result = await render([lumen, refused])
+
+        expect(depositDenoms(result.current.assets)).toEqual([LUMEN_DENOM])
+        expect(result.current.assets[0].sourceDenom).toBe('ulmn')
+        expect(result.current.assets[0].counterparty).toMatchObject({ chainId: 'noble-1', displayName: 'noble (Scan)', restUrls: ['https://rest.noble.scan'] })
+    })
+})

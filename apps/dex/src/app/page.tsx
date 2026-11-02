@@ -22,7 +22,7 @@ import {
 import { useState, useMemo, memo, useEffect, useCallback, useId, type ComponentProps, type ReactNode } from 'react';
 import NextLink from "next/link";
 import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms, useMarkets, useAssetPrice, getChainNativeAssetDenom, createMarketId, formatUsdAmount, shortNumberFormat, LPTokenLogo, PageContainer, HeroGlow, Eyebrow, GradientText, HgCard, StatCard, StatStrip, Notice, hgVariant} from "@bze/bze-ui-kit";
-import {parseAmountInput, quoteSwap, SwapInput, SwapQuote} from "@/lib/swap-quote";
+import {parseAmountInput, quoteSwap, swapRates, SwapInput, SwapQuote} from "@/lib/swap-quote";
 import {SLIPPAGE_PRESETS, isSlippagePreset, minimumSwapOutput, parseCustomSlippage} from "@/lib/slippage";
 import {AMM_SLIPPAGE_KEY, createLocalSlippageStore} from "@/lib/slippage-store";
 import {sortPools} from "@/lib/pool-list";
@@ -507,6 +507,7 @@ export default function SwapPage() {
   }, [router, fromAsset, toAsset, input]);
 
   const routeResult = quote?.route ?? null;
+  const rates = quote && fromAsset && toAsset ? swapRates(quote, fromAsset.decimals, toAsset.decimals) : null;
   const hasAmount = parseAmountInput(input.value) !== null;
   const fromAmount = input.side === 'from'
     ? input.value
@@ -1189,11 +1190,18 @@ export default function SwapPage() {
                           txKind={swapSpec}
                         />
                         <SummaryRow label="Rate">
-                          1 {fromAsset?.ticker || ''} ≈ {
-                            uAmountToBigNumberAmount(routeResult.expectedOutput, toAsset?.decimals ?? 6)
-                              .dividedBy(toBigNumber(fromAmount))
-                              .toFixed(toAsset?.decimals ?? 6)
-                          } {toAsset?.ticker || ''}
+                          <Flex direction="column" align="flex-end" gap="2px">
+                            {rates?.perSold && (
+                              <chakra.span>
+                                1 {fromAsset?.ticker || ''} ≈ {rates.perSold.toFixed(toAsset?.decimals ?? 6)} {toAsset?.ticker || ''}
+                              </chakra.span>
+                            )}
+                            {rates?.perBought && (
+                              <chakra.span>
+                                1 {toAsset?.ticker || ''} ≈ {rates.perBought.toFixed(fromAsset?.decimals ?? 6)} {fromAsset?.ticker || ''}
+                              </chakra.span>
+                            )}
+                          </Flex>
                         </SummaryRow>
                       </Flex>
                     )}

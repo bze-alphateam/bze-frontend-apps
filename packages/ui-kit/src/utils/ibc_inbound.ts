@@ -21,7 +21,17 @@ export const isIbcInboundBlocked = (asset: Asset, blocked: BlockedIbcInbound[] |
 };
 
 /**
- * The wind-down notice to show for `asset`, if it has one in `LEGACY_ASSET_NOTICES`
+ * The wind-down notice an asset has: Scan's `notice` when the asset came from BZE Scan's
+ * list, else the fallback `LEGACY_ASSET_NOTICES` entry.
+ */
+export const assetNotice = (asset: Asset): LegacyAssetNotice | undefined => {
+    if (asset.scan) return asset.scan.notice;
+
+    return LEGACY_ASSET_NOTICES[asset.denom];
+};
+
+/**
+ * The wind-down notice to show for `asset`, if it has one (`assetNotice`)
  * and the chain currently refuses its deposits. Before the block is live (empty or
  * unknown list) there is nothing to explain, so this returns `undefined`.
  */
@@ -31,7 +41,7 @@ export const getLegacyAssetNotice = (
 ): LegacyAssetNotice | undefined => {
     if (!asset) return undefined;
 
-    const notice = LEGACY_ASSET_NOTICES[asset.denom];
+    const notice = assetNotice(asset);
     if (!notice) return undefined;
 
     return isIbcInboundBlocked(asset, blocked) ? notice : undefined;

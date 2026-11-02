@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack -p 3004",
-    "build": "next build --webpack",
+    "dev": "node ../../packages/ui-kit/scripts/copy-chain-feed-worker.mjs && next dev --webpack -p 3004",
+    "build": "node ../../packages/ui-kit/scripts/copy-chain-feed-worker.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",

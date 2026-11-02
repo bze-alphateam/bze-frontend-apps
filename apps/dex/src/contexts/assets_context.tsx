@@ -24,7 +24,7 @@ import {
     calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
     EXCLUDED_MARKETS,
     EXCLUDED_ASSETS,
-    poolData, poolTickers,
+    poolData, poolTickers, assetUsdPrice,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -222,21 +222,8 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
             }
 
             const [priceInUsd, priceInBze] = await Promise.all([getLastPrice(asset, usdcAsset), getLastPrice(asset, bzeAsset)])
-            if (!priceInBze.gt(0)) {
-                //we dont have a price in BZE on the BZE market -> use the USD price (might be 0)
-                pricesMap.set(asset.denom, priceInUsd)
-                continue
-            }
 
-            const priceInUsdFromBze = priceInBze.multipliedBy(bzeUsdPrice)
-            if (!priceInUsd.gt(0)) {
-                //we dont have a USD price -> use the BZE price which surely is > 0
-                pricesMap.set(asset.denom, priceInUsdFromBze)
-                continue
-            }
-
-            //we have a USD market and a BZE market -> return the average of the two prices
-            pricesMap.set(asset.denom, priceInUsd.plus(priceInUsdFromBze).dividedBy(2))
+            pricesMap.set(asset.denom, assetUsdPrice(priceInUsd, priceInBze, bzeUsdPrice))
         }
 
         if (lpDenoms.length > 0 && poolsMap.size > 0) {
