@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack -p 3000",
-    "build": "next build --webpack",
+    "dev": "node ../../packages/ui-kit/scripts/copy-chain-feed-worker.mjs && next dev --webpack -p 3000",
+    "build": "node ../../packages/ui-kit/scripts/copy-chain-feed-worker.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run"
@@ -12,7 +12,7 @@
   "dependencies": {
     "@bze/bze-ui-kit": "workspace:*",
     "@bze/bzejs": "3.2.0",
-    "@chain-registry/utils": "^2.0.283",
+    "@chain-registry/utils": "^2.0.284",
     "@chakra-ui/react": "^3.22.0",
     "@emotion/react": "^11.14.0",
     "@interchain-kit/core": "0.11.0",
@@ -26,7 +26,7 @@
     "@wagmi/core": "^3.4.2",
     "@walletconnect/ethereum-provider": "^2.23.9",
     "bignumber.js": "^9.3.1",
-    "chain-registry": "^2.0.283",
+    "chain-registry": "^2.0.284",
     "interchainjs": "^1.21.0",
     "lightweight-charts": "^5.0.9",
     "minimatch": "^10.0.3",

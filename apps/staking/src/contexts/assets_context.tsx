@@ -21,7 +21,7 @@ import {
     LiquidityPoolData,
     getLiquidityPools,
     calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
-    EXCLUDED_MARKETS,
+    EXCLUDED_MARKETS, assetUsdPrice,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -161,16 +161,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
                 continue
             }
             const [priceInUsd, priceInBze] = await Promise.all([getLastPrice(asset, usdcAsset), getLastPrice(asset, bzeAsset)])
-            if (!priceInBze.gt(0)) {
-                pricesMap.set(asset.denom, priceInUsd)
-                continue
-            }
-            const priceInUsdFromBze = priceInBze.multipliedBy(bzeUsdPrice)
-            if (!priceInUsd.gt(0)) {
-                pricesMap.set(asset.denom, priceInUsdFromBze)
-                continue
-            }
-            pricesMap.set(asset.denom, priceInUsd.plus(priceInUsdFromBze).dividedBy(2))
+            pricesMap.set(asset.denom, assetUsdPrice(priceInUsd, priceInBze, bzeUsdPrice))
         }
 
         if (lpDenoms.length > 0 && poolsMap.size > 0) {

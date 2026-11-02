@@ -8,6 +8,7 @@ import {
     quoteExactOutput,
     quoteSwap,
     SWAP_MAX_HOPS,
+    swapRates,
     type SwapRouter,
 } from "./swap-quote";
 
@@ -184,5 +185,35 @@ describe("quoteSwap", () => {
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "ubze", side: "from", amount: new BigNumber(1) })).toBeNull();
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "from", amount: new BigNumber(0) })).toBeNull();
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "to", amount: new BigNumber(NaN) })).toBeNull();
+    });
+});
+
+describe("swapRates", () => {
+    const quote = (amountIn: string, amountOut: string) =>
+        ({ route: {} as never, amountIn: new BigNumber(amountIn), amountOut: new BigNumber(amountOut) });
+
+    it("gives both prices in whole tokens, each the inverse of the other", () => {
+        // 1,000 BZE (6 decimals) buys 2 ATOM (8 decimals).
+        const rates = swapRates(quote("1000000000", "200000000"), 6, 8);
+
+        expect(rates.perSold!.toFixed()).toBe("0.002");
+        expect(rates.perBought!.toFixed()).toBe("500");
+    });
+
+    it("prices from the quote's micro amounts, so a derived sold amount is used as quoted", () => {
+        const rates = swapRates(quote("3", "1000000"), 6, 6);
+
+        expect(rates.perSold!.toFixed()).toBe(new BigNumber(1).dividedBy("0.000003").toFixed());
+        expect(rates.perBought!.toFixed()).toBe("0.000003");
+    });
+
+    it("drops the price whose denominator is zero instead of dividing by it", () => {
+        const noOutput = swapRates(quote("1000000", "0"), 6, 6);
+        expect(noOutput.perSold!.toFixed()).toBe("0");
+        expect(noOutput.perBought).toBeNull();
+
+        const noInput = swapRates(quote("0", "1000000"), 6, 6);
+        expect(noInput.perSold).toBeNull();
+        expect(noInput.perBought!.toFixed()).toBe("0");
     });
 });

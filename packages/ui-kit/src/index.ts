@@ -4,7 +4,8 @@ export { setStorageKeyVersion } from './storage/storage';
 export { setDefaultTxMemo, getDefaultTxMemo } from './constants/placeholders';
 
 // === Types ===
-export type { Asset, IBCData, IBCCounterparty, IbcTransitionMock, ChainAssets } from './types/asset';
+export type { Asset, IBCData, IBCCounterparty, IbcTransitionMock, ChainAssets, ScanAssetData, ScanChainInfo, ScanRoute, LegacyAssetNoticeData } from './types/asset';
+export type { RegistryAsset, RegistryAssetsResponse, RegistryChainInfo, RegistryCounterparty, RegistryRoute, RegistryIBC, RegistryNotice, RegistryOrigin } from './types/registry_asset';
 export { LP_ASSETS_DECIMALS } from './types/asset';
 export type { Balance, PrettyBalance } from './types/balance';
 export type { TradeViewChart } from './types/charts';
@@ -69,6 +70,7 @@ export {
     getEventKeyValue, getEventMarketId,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, isEpochStartEvent, getMintedAmount,
+    getNewBlockEvents, blockHasAddressTransfer,
 } from './utils/events';
 export {
     formatUsdAmount, shortNumberFormat, intlDateFormat,
@@ -77,7 +79,7 @@ export {
 export { sleep, openExternalLink } from './utils/functions';
 export { coins, parseCoins } from './utils/coins';
 export { canDepositFromIBC, canSendToIBC, denomOnFirstHopChainFromTrace, getIbcTransferTimeout, ibcVoucherDenom } from './utils/ibc';
-export { isIbcInboundBlocked, getLegacyAssetNotice } from './utils/ibc_inbound';
+export { isIbcInboundBlocked, getLegacyAssetNotice, assetNotice } from './utils/ibc_inbound';
 export { ibcOriginFromTrace, ibcOriginFromRegistry, unverifyIndirectIbcDuplicates } from './utils/ibc_duplicates';
 export type { IbcOrigin } from './utils/ibc_duplicates';
 export { isDenomHaltedIn, isPairHaltedIn } from './utils/halted_denoms';
@@ -91,6 +93,7 @@ export {
     createPoolId, poolIdFromPoolDenom, createLpDenomPoolsMap
 } from './utils/liquidity_pool';
 export { poolData, poolTickers } from './utils/pool_data';
+export { assetUsdPrice } from './utils/usd_price';
 export {
     calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
 } from './utils/fee_conversion';
@@ -118,7 +121,14 @@ export {
     validateRestEndpoint, validateRpcEndpoint, validateEndpoints, convertToWebSocketUrl
 } from './utils/validation';
 export { getValidatorSupportedDenoms, getValidatorPageUrl, isPoolSupportedByValidator } from './utils/validator';
-export { subscribeToBlockchainEvents } from './utils/ws_rpc_client';
+export { getChainFeed, createChainFeed } from './service/chain_feed';
+export { createChainFeedHub, CHAIN_FEED_PROTOCOL_VERSION } from './service/chain_feed_hub';
+export { createSharedChainFeed, WORKER_STATUS_TIMEOUT_MS } from './service/shared_chain_feed';
+export { watchTabResume } from './service/tab_resume';
+export type { ResumeTarget, ResumeEvent, ResumeEventType, TabResumeDeps } from './service/tab_resume';
+export type { ChainFeedHub, HubPort, TabMessage, WorkerMessage } from './service/chain_feed_hub';
+export type { SharedChainFeedDeps, SharedWorkerLike } from './service/shared_chain_feed';
+export type { ChainFeed, FeedStatus, FeedSocket, SocketFactory, FeedTimers, ChainFeedDeps } from './service/chain_feed';
 export { createSkipProxyHandler } from './utils/skip_proxy';
 export { isEvmChain, skipChainIdToEvmChainId, isEvmAddress, ERC20_APPROVE_ABI } from './utils/evm';
 
@@ -146,7 +156,7 @@ export type { LegacyAssetNotice } from './constants/assets';
 export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
-    getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL,
+    getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL, getExplorerTokenURL,
     getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
     getForeignFeeSlippage
 } from './constants/chain';
@@ -182,7 +192,8 @@ export { getSettings, setSettings } from './storage/settings';
 // === Services ===
 export { ammRouter, createAmmRouter, AmmRouter } from './service/amm_router';
 export { blockchainEventManager } from './service/blockchain_event_manager';
-export { getChainAssets } from './service/assets_factory';
+export { getChainAssets, getChainAssetsAfterTx, ASSETS_REFRESH_ATTEMPTS, ASSETS_REFRESH_INTERVAL_MS } from './service/assets_factory';
+export { fetchRegistryAssets, getCachedRegistryAssets, getRegistryAssetsURL } from './query/registry_assets';
 export { keplrSuggestChain } from './service/keplr';
 
 // === Query ===
@@ -268,6 +279,7 @@ export { useAssetsContext, useAssets, useAsset, useAssetsManager, useIBCChains }
 export { useConnectionType } from './hooks/useConnectionType';
 export { useSigningClient } from './hooks/useSigningClient';
 export { useWalletHealthCheck } from './hooks/useWalletHealthCheck';
+export { useTabResume } from './hooks/useTabResume';
 export { useAssetPrice } from './hooks/usePrices';
 export { useSettings } from './hooks/useSettings';
 export { useBalances, useBalance } from './hooks/useBalances';

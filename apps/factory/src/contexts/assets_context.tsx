@@ -4,7 +4,7 @@ import {useState, ReactNode, useEffect, useCallback} from 'react';
 import {
     AssetsContext,
     Asset, ChainAssets, IBCData, LP_ASSETS_DECIMALS,
-    getChainAssets,
+    getChainAssets, getChainAssetsAfterTx,
     Market, MarketData,
     createMarketId,
     getMarketHistory, getMarkets,
@@ -21,7 +21,7 @@ import {
     LiquidityPoolData,
     getLiquidityPools,
     calculatePoolPrice, createPoolId, createLpDenomPoolsMap,
-    EXCLUDED_MARKETS,
+    EXCLUDED_MARKETS, assetUsdPrice,
 } from "@bze/bze-ui-kit";
 import {Coin} from "@bze/bzejs/cosmos/base/v1beta1/coin";
 import BigNumber from "bignumber.js";
@@ -34,6 +34,12 @@ import type { AssetsContextType as BaseAssetsContextType } from "@bze/bze-ui-kit
 export interface AssetsContextType extends BaseAssetsContextType {
     settingsVersion: number;
     setSettingsVersion: (version: number) => void;
+    /**
+     * After the user's own transaction that creates a token or changes its metadata: shows
+     * `denom` built from the chain at once, then refetches BZE Scan's list past the HTTP cache
+     * until Scan has caught up (see getChainAssetsAfterTx).
+     */
+    refreshAssetsAfterTx: (denom?: string) => Promise<void>;
 }
 
 interface AssetsProviderProps {
@@ -161,16 +167,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
                 continue
             }
             const [priceInUsd, priceInBze] = await Promise.all([getLastPrice(asset, usdcAsset), getLastPrice(asset, bzeAsset)])
-            if (!priceInBze.gt(0)) {
-                pricesMap.set(asset.denom, priceInUsd)
-                continue
-            }
-            const priceInUsdFromBze = priceInBze.multipliedBy(bzeUsdPrice)
-            if (!priceInUsd.gt(0)) {
-                pricesMap.set(asset.denom, priceInUsdFromBze)
-                continue
-            }
-            pricesMap.set(asset.denom, priceInUsd.plus(priceInUsdFromBze).dividedBy(2))
+            pricesMap.set(asset.denom, assetUsdPrice(priceInUsd, priceInBze, bzeUsdPrice))
         }
 
         if (lpDenoms.length > 0 && poolsMap.size > 0) {
@@ -218,6 +215,10 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     const updateAssets = useCallback(async () => {
         const newAssets = await getChainAssets()
         return doUpdateAssets(newAssets)
+    }, [doUpdateAssets]);
+    const refreshAssetsAfterTx = useCallback(async (denom?: string) => {
+        const newAssets = await getChainAssetsAfterTx(denom, doUpdateAssets)
+        doUpdateAssets(newAssets)
     }, [doUpdateAssets]);
     const updateMarkets = useCallback(async () => {
         const newMarkets = await getMarkets()
@@ -293,6 +294,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         <AssetsContext.Provider value={{
             assetsMap,
             updateAssets,
+            refreshAssetsAfterTx,
             marketsMap,
             updateMarkets,
             isLoading,

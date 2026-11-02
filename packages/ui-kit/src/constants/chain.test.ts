@@ -6,6 +6,7 @@ import {
     getExplorerBlockURL,
     getExplorerProposalURL,
     getExplorerProposalsURL,
+    getExplorerTokenURL,
     getExplorerTxURL,
     getExplorerValidatorURL,
 } from './chain'
@@ -53,5 +54,18 @@ describe('explorer links (BZE Scan)', () => {
         process.env.NEXT_PUBLIC_CHAIN_NAME = 'BeeZee Testnet 3'
         process.env.NEXT_PUBLIC_EXPLORER_URL = 'https://testnet-explorer.getbze.com'
         expect(getExplorerTxURL('ABC')).toBe('https://testnet-explorer.getbze.com/txs/ABC')
+    })
+
+    // BZE Scan serves a token at /tokens/<encodeURIComponent(denom)>, like its own render/tokens.ts.
+    it('links a token by its encoded denom', () => {
+        expect(getExplorerTokenURL('ubze')).toBe('https://explorer.getbze.com/tokens/ubze')
+        expect(getExplorerTokenURL('factory/bze1abc/uhoney')).toBe('https://explorer.getbze.com/tokens/factory%2Fbze1abc%2Fuhoney')
+        expect(getExplorerTokenURL('ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4'))
+            .toBe('https://explorer.getbze.com/tokens/ibc%2F6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4')
+    })
+
+    it('links a token on the configured explorer', () => {
+        process.env.NEXT_PUBLIC_EXPLORER_URL = 'https://testnet-explorer.getbze.com/'
+        expect(getExplorerTokenURL('factory/bze1abc/uhoney')).toBe('https://testnet-explorer.getbze.com/tokens/factory%2Fbze1abc%2Fuhoney')
     })
 })

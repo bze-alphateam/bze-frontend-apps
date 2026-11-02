@@ -6,6 +6,7 @@ import { LuCircleCheck } from 'react-icons/lu'
 import { withReturn } from '@/components/guided/return-to'
 import { BrandKitCard, type BrandKitAccess } from '@/components/manage/brand-kit-card'
 import { MetadataCard } from '@/components/manage/metadata-card'
+import { useFactoryContext } from '@/hooks/useFactoryContext'
 import { useRegistryListing } from '@/hooks/useRegistryListing'
 import { useTokenMetadata } from '@/hooks/useTokenMetadata'
 import { brandKitHref } from '@/lib/brand-kit'
@@ -17,6 +18,11 @@ import { ActionGroup, ActionItem, ItemButton, ItemLink, type GroupProps } from '
 function MetadataItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
     const [isOpen, setIsOpen] = useState(false)
     const { metadata, isLoading, refresh } = useTokenMetadata(asset.denom)
+    const { refreshAssetsAfterTx } = useFactoryContext()
+    const onSaved = () => {
+        void refresh()
+        void refreshAssetsAfterTx(asset.denom)
+    }
     // While the admin query runs or failed, the card stays read-only.
     const cardAccess: AdminState = access === 'checking' ? 'unknown' : access
 
@@ -31,7 +37,7 @@ function MetadataItem({ asset, access }: Pick<GroupProps, 'asset' | 'access'>) {
                 </ItemButton>
             }
         >
-            {isOpen && <MetadataCard asset={asset} metadata={metadata} isLoading={isLoading} access={cardAccess} onSaved={refresh} />}
+            {isOpen && <MetadataCard asset={asset} metadata={metadata} isLoading={isLoading} access={cardAccess} onSaved={onSaved} />}
         </ActionItem>
     )
 }

@@ -36,7 +36,10 @@ export function useCounterpartyBalance(
     chainName: string | undefined,
     address: string | undefined,
     denom: string | undefined,
+    /** REST endpoints to try before chain-registry's (BZE Scan's for the chain). */
+    restUrls?: string[],
 ): UseCounterpartyBalanceResult {
+    const restUrlsKey = (restUrls ?? []).join('\n');
     const [amount, setAmount] = useState<BigNumber>(new BigNumber(0));
     const [status, setStatus] = useState<CounterpartyBalanceStatus>('idle');
     const [tick, setTick] = useState(0);
@@ -54,7 +57,7 @@ export function useCounterpartyBalance(
         setStatus('loading');
 
         (async () => {
-            const restUrl = await getChainRestURL(chainName);
+            const restUrl = await getChainRestURL(chainName, restUrlsKey ? restUrlsKey.split('\n') : []);
             if (cancelled) return;
 
             if (!restUrl) {
@@ -87,7 +90,7 @@ export function useCounterpartyBalance(
         return () => {
             cancelled = true;
         };
-    }, [chainName, address, denom, tick]);
+    }, [chainName, address, denom, tick, restUrlsKey]);
 
     return {amount, status, refetch};
 }

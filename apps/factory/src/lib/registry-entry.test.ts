@@ -111,9 +111,9 @@ describe("links and names", () => {
 });
 
 describe("after-merge copy", () => {
-    it("follows the one BFE-63 constant", () => {
-        expect(BEEZEE_APPS_READ_LIVE_REGISTRY).toBe(false);
-        expect(AFTER_MERGE_COPY).toContain("BeeZee apps show it after their next update.");
+    it("says BeeZee apps follow the live registry (BFE-329)", () => {
+        expect(BEEZEE_APPS_READ_LIVE_REGISTRY).toBe(true);
+        expect(AFTER_MERGE_COPY).toContain("BeeZee apps show the logo within about an hour.");
         expect(AFTER_MERGE_COPY).toContain("Other wallets follow when they update their lists.");
     });
 });

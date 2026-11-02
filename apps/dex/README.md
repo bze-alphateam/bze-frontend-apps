@@ -25,7 +25,7 @@ src/
 
 ### What comes from @bze/bze-ui-kit
 
-Everything else: `useAssets`, `useBalances`, `useMarkets`, `useLiquidityPools`, `useLiquidityPool`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useWalletHealthCheck`, `subscribeToBlockchainEvents`, all event helpers (`isAddressTransfer`, `isBurnEvent`, etc.), all utils, all types, all constants, all query clients, all services, sidebar components, toaster, HighlightText.
+Everything else: `useAssets`, `useBalances`, `useMarkets`, `useLiquidityPools`, `useLiquidityPool`, `useEpochs`, `useSettings`, `useToast`, `useSDKTx`, `useWalletHealthCheck`, `getChainFeed`, all event helpers (`isAddressTransfer`, `isBurnEvent`, etc.), all utils, all types, all constants, all query clients, all services, sidebar components, toaster, HighlightText.
 
 ## App initialization (layout.tsx)
 

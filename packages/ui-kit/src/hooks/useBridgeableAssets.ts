@@ -1,7 +1,7 @@
 'use client'
 
 import {useMemo} from "react";
-import type {Asset, IBCData} from "../types/asset";
+import type {Asset, IBCData, ScanChainInfo, ScanRoute} from "../types/asset";
 import {useAssetsContext} from "./useAssets";
 import {isAssetDenied, isChainDenied} from "../constants/cross_chain";
 import {isFactoryDenom, isIbcDenom, isLpDenom} from "../utils/denom";
@@ -38,13 +38,18 @@ export interface BridgeableAsset {
     ibcData: IBCData;
     /** The denom the user holds and sends on the counterparty chain. */
     sourceDenom: string;
-    /** Counterparty chain metadata pulled from chain-registry (pretty name, logo, bech32 prefix). */
+    /**
+     * Counterparty chain metadata (pretty name, logo, bech32 prefix): from BZE Scan when the
+     * asset came from Scan's list, else from chain-registry.
+     */
     counterparty: {
         chainName: string;
         chainId: string;
         displayName: string;
         logo: string;
         addressPrefix: string;
+        /** Scan's REST endpoints for the chain, tried before chain-registry's. */
+        restUrls?: string[];
     };
 }
 
@@ -81,6 +86,24 @@ const registryChainFor = (chainName: string): RegistryChain | undefined => {
 const pickLogo = (c: RegistryChain | undefined): string => {
     const logos = c?.logoURIs;
     return logos?.svg || logos?.png || '';
+};
+
+/**
+ * A counterparty from Scan's chain data. The chain must still be one the bundled registry
+ * knows: the wallet provider registers chains from it, and signing on an unregistered chain
+ * fails. An unknown chain (no name or prefix) is never offered.
+ */
+const counterpartyFromScan = (info: ScanChainInfo | undefined): BridgeableAsset['counterparty'] | undefined => {
+    if (!info || !info.chainName || !info.chainId || !info.bech32Prefix) return undefined;
+    if (!registryChainFor(info.chainName)) return undefined;
+    return {
+        chainName: info.chainName,
+        chainId: info.chainId,
+        displayName: info.prettyName || info.chainName,
+        logo: info.logo,
+        addressPrefix: info.bech32Prefix,
+        restUrls: info.rest.length > 0 ? info.rest : undefined,
+    };
 };
 
 // ─── 2-hop detection ─────────────────────────────────────────────────────
@@ -237,6 +260,15 @@ const isReturnable = (asset: Asset): boolean => {
  * through (the same pool the withdraw form offers BZE coins). Osmosis first:
  * it's where BZE coins are traded, so it's the usual way back.
  */
+const osmosisFirst = (a: string, b: string): number => {
+    const rank = (c: string) => (c === OSMOSIS_CHAIN_NAME ? 0 : 1);
+    return rank(a) - rank(b) || a.localeCompare(b);
+};
+
+/** Scan's routes of a BZE coin, Osmosis first. */
+const scanReturnRoutes = (routes: ScanRoute[]): ScanRoute[] =>
+    [...routes].sort((a, b) => osmosisFirst(a.chain.chainName, b.chain.chainName));
+
 const returnRoutes = (ibcChains: IBCData[]): IBCData[] => {
     const bzeName = getChainName();
     const seen = new Set<string>();
@@ -248,11 +280,7 @@ const returnRoutes = (ibcChains: IBCData[]): IBCData[] => {
         seen.add(cpName);
         out.push(entry);
     }
-    const rank = (c: string) => (c === OSMOSIS_CHAIN_NAME ? 0 : 1);
-    out.sort((a, b) =>
-        rank(a.counterparty.chainName) - rank(b.counterparty.chainName)
-        || a.counterparty.chainName.localeCompare(b.counterparty.chainName),
-    );
+    out.sort((a, b) => osmosisFirst(a.counterparty.chainName, b.counterparty.chainName));
     return out;
 };
 
@@ -294,6 +322,11 @@ export interface UseBridgeableAssetsResult {
  * per counterparty chain BZE has a channel with: holders bring them back
  * from Osmosis and co. The denylist and `DEPOSIT_EXCLUDED_ASSETS` apply.
  * Order: BZE, then IBC vouchers, then factory tokens (verified first).
+ *
+ * When the asset came from BZE Scan's list (`asset.scan`), Scan decides instead of rules 2, 4
+ * and 5: `deposit_allowed`, the counterparty chain data, and for BZE coins the `routes` (with
+ * the voucher each coin is on the counterparty). The chain must still be in chain-registry,
+ * which the wallet registers chains from.
  *
  * Grouped by counterparty chain for convenience, though the deposit form
  * currently uses the flat `assets` list as an asset-first picker.
@@ -339,8 +372,35 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
 
         for (const asset of assetsMap.values()) {
             if (isReturnable(asset)) {
-                if (isAssetDenied(asset.denom) || DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
+                if (isAssetDenied(asset.denom)) continue;
                 const kind: BridgeableAssetKind = isFactoryDenom(asset.denom) ? 'factory' : 'native';
+                if (asset.scan) {
+                    if (!asset.scan.depositAllowed) continue;
+                    for (const route of scanReturnRoutes(asset.scan.routes)) {
+                        if (isChainDenied(route.chain.chainName)) continue;
+                        const counterparty = counterpartyFromScan(route.chain);
+                        if (!counterparty || !route.channelId || !route.counterpartyChannelId) continue;
+                        const bridgeable: BridgeableAsset = {
+                            bzeAsset: asset,
+                            kind,
+                            ibcData: {
+                                chain: {channelId: route.channelId},
+                                counterparty: {
+                                    chainName: counterparty.chainName,
+                                    chainPrettyName: counterparty.displayName,
+                                    channelId: route.counterpartyChannelId,
+                                    baseDenom: asset.denom,
+                                },
+                            },
+                            sourceDenom: route.counterpartyDenom,
+                            counterparty,
+                        };
+                        (kind === 'factory' ? factoryAssets : nativeAssets).push(bridgeable);
+                        addToChain(bridgeable);
+                    }
+                    continue;
+                }
+                if (DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
                 for (const route of routes) {
                     const counterparty = toCounterparty(route.counterparty.chainName, route.counterparty.chainPrettyName);
                     if (!counterparty) continue;
@@ -367,7 +427,7 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
 
             if (!isBridgeable(asset)) continue;
             if (isAssetDenied(asset.denom)) continue;
-            if (DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
+            if (!asset.scan && DEPOSIT_EXCLUDED_ASSETS[asset.denom]) continue;
 
             // The chain answers these deposits with an error ack and the sender
             // is refunded on the source chain — never offer them.
@@ -378,11 +438,29 @@ export function useBridgeableAssets(): UseBridgeableAssetsResult {
 
             const cpName = asset.IBCData!.counterparty.chainName;
             if (isChainDenied(cpName)) continue;
+            const cpBaseDenom = asset.IBCData!.counterparty.baseDenom;
+
+            if (asset.scan) {
+                // Scan's deposit_allowed covers the curation, unconfirmed channels and the
+                // 2-hop rule below.
+                if (!asset.scan.depositAllowed) continue;
+                const counterparty = counterpartyFromScan(asset.scan.counterparty);
+                if (!counterparty) continue;
+                const bridgeable: BridgeableAsset = {
+                    bzeAsset: asset,
+                    kind: 'ibc',
+                    ibcData: asset.IBCData!,
+                    sourceDenom: cpBaseDenom,
+                    counterparty,
+                };
+                ibcAssets.push(bridgeable);
+                addToChain(bridgeable);
+                continue;
+            }
 
             // Auto-exclude 2-hop assets when BZE has a direct channel to
             // the true origin chain. See the "2-hop detection" block above
             // for the full rationale.
-            const cpBaseDenom = asset.IBCData!.counterparty.baseDenom;
             if (is2HopWithDirectAlternative(cpName, cpBaseDenom)) continue;
 
             const counterparty = toCounterparty(cpName, asset.IBCData!.counterparty.chainPrettyName);

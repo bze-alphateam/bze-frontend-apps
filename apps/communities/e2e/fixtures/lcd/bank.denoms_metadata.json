@@ -1,5 +1,5 @@
 {
-  "source": "https://testnet.getbze.com/cosmos/bank/v1beta1/denoms_metadata?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=200&pagination.reverse=false",
+  "source": "https://testnet.getbze.com/cosmos/bank/v1beta1/denoms_metadata?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=500&pagination.reverse=false",
   "recorded": "2026-10-11",
   "method": "GET",
   "path": "/cosmos/bank/v1beta1/denoms_metadata",
@@ -7,7 +7,7 @@
     "pagination.count_total": "false",
     "pagination.key": "",
     "pagination.offset": "0",
-    "pagination.limit": "200",
+    "pagination.limit": "500",
     "pagination.reverse": "false"
   },
   "status": 200,

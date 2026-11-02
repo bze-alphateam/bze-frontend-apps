@@ -33,6 +33,7 @@ pnpm --filter bze-communities e2e
 - Each fixture is keyed by method, path and query. Query order does not matter, but every parameter does, including the empty `pagination.key=` the LCD client always sends.
 - A request to `lcd.e2e.test` or `agg.e2e.test` that no fixture covers gets a 500 answer. The test then fails in its teardown with `requests to mocked hosts without a fixture`, followed by every such URL.
 - The RPC WebSocket (`wss://rpc.e2e.test`) is closed as soon as it opens. The app has to render without block/tx events.
+- `chain-feed.spec.ts` is the exception: it runs a fake RPC on 127.0.0.1 (`support/fake-rpc.ts`) and stores its address in the app settings, because `routeWebSocket` cannot intercept sockets opened inside a SharedWorker.
 - Requests to any other non-local host (token logos, wallet SDKs) are aborted and listed in the test's annotations (`blocked external request`). They never fail a test.
 - `network.use(host, fixture)` answers a request differently for one test, ahead of the recorded fixtures. Use it for empty, error or edge-case answers:
 

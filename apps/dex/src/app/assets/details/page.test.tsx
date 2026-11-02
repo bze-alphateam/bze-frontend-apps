@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
-import type { Asset, BlockedIbcInbound } from "@bze/bze-ui-kit";
+import { getExplorerBaseURL, type Asset, type BlockedIbcInbound } from "@bze/bze-ui-kit";
 
 // The details page reads the asset, its price, the toast helper and the chain's IBC
 // inbound block list from ui-kit. Those hooks are fed directly; the notice lookup
@@ -133,5 +133,26 @@ describe("asset details page — halted asset", () => {
 
         expect(screen.queryByText("Trading halted")).toBeNull();
         expect(screen.queryByText(/no longer tradeable/)).toBeNull();
+    });
+});
+
+describe("asset details page — explorer link", () => {
+    beforeEach(() => {
+        useAssetMock.mockReset();
+        useBlockedIbcInboundMock.mockReset().mockReturnValue([]);
+    });
+
+    it.each([
+        ["native", BZE, "ubze"],
+        ["IBC", USDC_N, "ibc%2F6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4"],
+        ["factory", { ...BZE, type: "Factory", denom: "factory/bze1abc/uhoney" }, "factory%2Fbze1abc%2Fuhoney"],
+    ])("opens the %s asset's explorer token page in a new tab", (_kind, asset, encoded) => {
+        useAssetMock.mockReturnValue({ asset, isLoading: false });
+
+        renderPage();
+
+        const link = screen.getByRole("link", { name: /Explorer/ });
+        expect(link).toHaveAttribute("href", `${getExplorerBaseURL()}/tokens/${encoded}`);
+        expect(link).toHaveAttribute("target", "_blank");
     });
 });
