@@ -12,6 +12,8 @@ import {toBigNumber} from "../utils/amount";
 
 const BURNED_KEY = 'burner:all_burned_coins';
 const LOCAL_CACHE_TTL = 60 * 60 * 4; //4 hours
+// The chain paginates AllBurnedCoins at 100 records by default; one record is added per burn.
+export const BURNED_COINS_PAGE_LIMIT = BigInt(500);
 
 const {fromPartial: QueryAllBurnedCoinsRequestFromPartial} = bze.burner.QueryAllBurnedCoinsRequest;
 
@@ -52,7 +54,7 @@ export async function getAllBurnedCoins(): Promise<QueryAllBurnedCoinsResponseSD
         const client = await getRestClient();
         const response = await client.bze.burner.allBurnedCoins(
             QueryAllBurnedCoinsRequestFromPartial({
-                pagination: PageRequest.fromPartial({reverse: true})
+                pagination: PageRequest.fromPartial({reverse: true, limit: BURNED_COINS_PAGE_LIMIT})
             })
         );
         setInLocalStorage(BURNED_KEY, JSON.stringify(response), LOCAL_CACHE_TTL);
