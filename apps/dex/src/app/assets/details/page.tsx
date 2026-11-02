@@ -49,10 +49,14 @@ const AssetHeader = ({ asset }: { asset: Asset }) => {
                         borderRadius="full"
                         borderWidth="1px"
                         borderColor="hg.hairline"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
                     >
                         <TokenLogo
                             src={asset.logo}
                             symbol={asset.ticker}
+                            size="48px"
                             circular={true}
                         />
                     </Box>

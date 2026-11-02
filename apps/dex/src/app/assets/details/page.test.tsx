@@ -156,3 +156,23 @@ describe("asset details page — explorer link", () => {
         expect(link).toHaveAttribute("target", "_blank");
     });
 });
+
+describe("asset details page — logo", () => {
+    beforeEach(() => {
+        useAssetMock.mockReset().mockReturnValue({ asset: { ...BZE, logo: "/images/bze.svg" }, isLoading: false });
+        useBlockedIbcInboundMock.mockReset().mockReturnValue([]);
+    });
+
+    it("draws the logo at 48px in the middle of its 56px ring", () => {
+        renderPage();
+
+        const tile = screen.getByAltText("BZE token logo").parentElement!;
+        const ring = tile.parentElement!;
+        expect(getComputedStyle(tile).width).toBe("48px");
+        expect(getComputedStyle(tile).height).toBe("48px");
+        expect(getComputedStyle(ring).width).toBe("56px");
+        expect(getComputedStyle(ring).display).toBe("flex");
+        expect(getComputedStyle(ring).alignItems).toBe("center");
+        expect(getComputedStyle(ring).justifyContent).toBe("center");
+    });
+});
