@@ -3,6 +3,7 @@ import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
 import {getChainName} from "../constants/chain";
 import {toaster} from "../components/toaster";
+import {isBeePocketWallet, walletNameOf} from "../utils/wallet_sign_mode";
 
 const REFRESH_TIMEOUT_MS = 2_000;
 const INITIAL_DELAY_MS = 2_000;
@@ -34,6 +35,9 @@ export const useWalletHealthCheck = (chainName?: string) => {
 
     useEffect(() => {
         if (status !== WalletState.Connected) return;
+        // BeePocket tells the page about account changes itself (`beepocket_keystorechange`)
+        // and is not an extension this Keplr/Leap-oriented check was written for.
+        if (isBeePocketWallet(walletNameOf(wallet))) return;
         if (hasValidated.current) return;
         hasValidated.current = true;
 
