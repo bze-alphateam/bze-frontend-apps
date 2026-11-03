@@ -5,7 +5,7 @@ import { act, renderHook } from '@testing-library/react'
 // The wallet, signing client and toasts are fed directly. Most tests pass a fixed fee, which
 // skips simulation, so a tx only signs, broadcasts and reports the result; the simulateFee
 // tests leave the fee out and feed the simulate query and the chain params instead.
-const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings, getDenomsPoolMock } = vi.hoisted(() => ({
+const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings, getDenomsPoolMock, connected, queryClient } = vi.hoisted(() => ({
     toastMock: {
         loading: vi.fn(() => 'toast-id'),
         dismiss: vi.fn(),
@@ -18,11 +18,27 @@ const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings
     txFeeParamsMock: vi.fn(),
     settings: { feeDenom: 'ubze' },
     getDenomsPoolMock: vi.fn(),
+    // The useChain() wallet (a ChainWalletStore); undefined unless a test connects one.
+    connected: { wallet: undefined as unknown },
+    // The node the direct signer reads the account from and broadcasts to.
+    queryClient: {
+        getBaseAccount: vi.fn(),
+        broadcastTxSync: vi.fn(),
+        getTx: vi.fn(),
+    },
 }))
 
 vi.mock('@interchain-kit/react', () => ({
-    useChain: () => ({ address: 'addr1', disconnect: vi.fn(), wallet: undefined, chain: undefined, getRpcEndpoint: vi.fn() }),
+    useChain: () => ({
+        address: 'addr1',
+        disconnect: vi.fn(),
+        wallet: connected.wallet,
+        chain: { chainId: 'bzetestnet-3', bech32Prefix: 'bze' },
+        getRpcEndpoint: async () => 'http://rpc.test',
+    }),
 }))
+// The direct path builds a real interchainjs DirectSigner; only its node connection is faked.
+vi.mock('@interchainjs/cosmos', () => ({ createCosmosQueryClient: async () => queryClient }))
 vi.mock('./useSigningClient', () => ({
     useSigningClient: () => ({
         signingClient: {
@@ -49,9 +65,15 @@ vi.mock('../constants/chain', async (importOriginal) => ({
 }))
 
 import { useBZETx, useIBCTx, TxStatus } from './useTx'
+import { AuthInfo, TxBody, TxRaw } from '@bze/bzejs/cosmos/tx/v1beta1/tx'
 
 const FEE = { amount: [{ denom: 'ubze', amount: '1000' }], gas: '200000' }
 const MSG = { typeUrl: '/cosmos.bank.v1beta1.MsgSend', value: {} }
+
+// Only the sign mode tests connect a wallet.
+beforeEach(() => {
+    connected.wallet = undefined
+})
 
 describe('useTx success toast', () => {
     beforeEach(() => {
@@ -219,5 +241,140 @@ describe('useTx simulateFee', () => {
 
         expect(fee.gas).toBe('185115')
         expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1852' }])
+    })
+})
+
+describe('useTx sign mode', () => {
+    const TX_HASH = new Uint8Array(32).fill(0xab)
+    // The fee the wallet puts in place of the requested one, as BeePocket does with its own estimate.
+    const WALLET_FEE = { amount: [{ denom: 'ubze', amount: '4321' }], gasLimit: BigInt(123_456) }
+
+    // A connected interchain-kit wallet: the ChainWalletStore useChain() hands out, over a cosmos
+    // wallet whose signDirect answers like the extension (the request's body, its own authInfo).
+    const connectWallet = (name: string) => {
+        const cosmosWallet = {
+            getOfflineSigner: vi.fn(async () => ({
+                getAccounts: async () => [{ address: 'addr1', pubkey: new Uint8Array(33).fill(2), algo: 'secp256k1' }],
+                signDirect: (signer: string, doc: { authInfoBytes: Uint8Array }) => cosmosWallet.signDirect('bzetestnet-3', signer, doc),
+            })),
+            signDirect: vi.fn(async (_chainId: string, _signer: string, doc: { authInfoBytes: Uint8Array }) => {
+                const authInfo = AuthInfo.decode(doc.authInfoBytes)
+                const authInfoBytes = AuthInfo.encode({ ...authInfo, fee: { ...authInfo.fee!, ...WALLET_FEE } }).finish()
+                return {
+                    signed: { ...doc, authInfoBytes },
+                    signature: { pub_key: { type: 'tendermint/PubKeySecp256k1', value: '' }, signature: btoa('s'.repeat(64)) },
+                }
+            }),
+            signAmino: vi.fn(async () => { throw new Error('Not supported by BeePocket') }),
+        }
+        connected.wallet = { info: { name }, getWalletOfType: () => cosmosWallet }
+        return cosmosWallet
+    }
+
+    const broadcastTx = () => {
+        expect(queryClient.broadcastTxSync).toHaveBeenCalledTimes(1)
+        return TxRaw.decode(queryClient.broadcastTxSync.mock.calls[0][0].tx)
+    }
+
+    beforeEach(() => {
+        Object.values(toastMock).forEach(m => m.mockClear())
+        signAndBroadcastMock.mockReset().mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 0, txhash: 'HASH', height: 10, events: [] }),
+        })
+        simulateMock.mockReset()
+        queryClient.getBaseAccount.mockReset().mockResolvedValue({ accountNumber: BigInt(5), sequence: BigInt(3) })
+        queryClient.broadcastTxSync.mockReset().mockResolvedValue({ code: 0, hash: TX_HASH })
+        queryClient.getTx.mockReset().mockResolvedValue({ height: 10, hash: TX_HASH, txResult: { code: 0, events: [] } })
+    })
+
+    // One message per flow the five dapps sign: send, order book, swap, liquidity, staking,
+    // governance, burner, token factory, rewards and an IBC transfer.
+    it.each([
+        '/cosmos.bank.v1beta1.MsgSend',
+        '/bze.tradebin.MsgCreateOrder',
+        '/bze.tradebin.MsgCancelOrder',
+        '/bze.tradebin.MsgMultiSwap',
+        '/bze.tradebin.MsgAddLiquidity',
+        '/cosmos.staking.v1beta1.MsgDelegate',
+        '/cosmos.gov.v1.MsgVote',
+        '/bze.burner.MsgFundBurner',
+        '/bze.tokenfactory.MsgCreateDenom',
+        '/bze.rewards.MsgJoinStaking',
+        '/ibc.applications.transfer.v1.MsgTransfer',
+    ])('BeePocket signs %s in direct mode and never in amino', async (typeUrl) => {
+        const beePocket = connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        let ok = false
+        await act(async () => { ok = await result.current.tx([{ typeUrl, value: {} }], { fee: FEE, toasts: false }) })
+
+        expect(ok).toBe(true)
+        expect(beePocket.getOfflineSigner).toHaveBeenCalledWith('bzetestnet-3', 'direct')
+        expect(beePocket.signDirect).toHaveBeenCalledTimes(1)
+        expect(beePocket.signAmino).not.toHaveBeenCalled()
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+        expect(TxBody.decode(broadcastTx().bodyBytes).messages.map(m => m.typeUrl)).toEqual([typeUrl])
+    })
+
+    it('BeePocket broadcasts the authInfo it returned, with its own fee, not the requested one', async () => {
+        connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, toasts: false }) })
+
+        const fee = AuthInfo.decode(broadcastTx().authInfoBytes).fee!
+        expect(fee.amount).toEqual(WALLET_FEE.amount)
+        expect(fee.gasLimit).toBe(WALLET_FEE.gasLimit)
+        expect(fee.amount).not.toEqual(FEE.amount)
+    })
+
+    it('BeePocket leaves the fee to the wallet: no simulation, an empty fee amount in the request', async () => {
+        const beePocket = connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { toasts: false }) })
+
+        expect(simulateMock).not.toHaveBeenCalled()
+        expect(beePocket.signDirect).toHaveBeenCalledWith('bzetestnet-3', 'addr1', expect.anything(), { preferNoSetFee: false })
+        const requested = AuthInfo.decode(beePocket.signDirect.mock.calls[0][2].authInfoBytes).fee!
+        expect(requested.amount).toEqual([])
+    })
+
+    it('BeePocket ignores a request for amino (useDirectSign: false)', async () => {
+        const beePocket = connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, useDirectSign: false, toasts: false }) })
+
+        expect(beePocket.signDirect).toHaveBeenCalledTimes(1)
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+    })
+
+    it('Keplr keeps the amino signing client by default', async () => {
+        const keplr = connectWallet('keplr-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        let ok = false
+        await act(async () => { ok = await result.current.tx([MSG], { fee: FEE, toasts: false }) })
+
+        expect(ok).toBe(true)
+        expect(signAndBroadcastMock).toHaveBeenCalledWith('addr1', [MSG], FEE, expect.any(String))
+        expect(keplr.getOfflineSigner).not.toHaveBeenCalled()
+        expect(queryClient.broadcastTxSync).not.toHaveBeenCalled()
+    })
+
+    it('Keplr signs direct with useDirectSign and sends the requested fee', async () => {
+        const keplr = connectWallet('keplr-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, useDirectSign: true, toasts: false }) })
+
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+        expect(keplr.getOfflineSigner).toHaveBeenCalledWith('bzetestnet-3', 'direct')
+        // Without letWalletSetFee the request goes through the raw offline signer with our fee.
+        const requested = AuthInfo.decode(keplr.signDirect.mock.calls[0][2].authInfoBytes).fee!
+        expect(requested.amount).toEqual(FEE.amount)
+        expect(requested.gasLimit).toBe(BigInt(FEE.gas))
     })
 })

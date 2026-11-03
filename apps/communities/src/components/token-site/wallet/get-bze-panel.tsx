@@ -9,12 +9,14 @@ import {
     formatDuration,
     getChainName,
     getChainNativeAssetDenom,
+    isBeePocketWallet,
     prettyAmount,
     shortNumberFormat,
     toBigNumber,
     uAmountToBigNumberAmount,
     useAssets,
     useBuyBze,
+    walletNameOf,
 } from "@bze/bze-ui-kit";
 
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
@@ -262,8 +264,10 @@ function GetBzeForm({ticker, onDone}: { ticker: string; onDone: () => void }) {
 export function GetBzePanel({onBack}: { onBack: () => void }) {
     const {denomTicker} = useAssets();
     const {connect} = useTokenWallet();
-    const {status, address} = useChain(getChainName());
+    const {status, address, wallet} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
+    // BeePocket serves BeeZee only, so it cannot pay from another network.
+    const beeZeeOnly = isBeePocketWallet(walletNameOf(wallet));
     const ticker = denomTicker(getChainNativeAssetDenom());
 
     // The button that opened the panel is gone: keep the keyboard inside the drawer.
@@ -281,7 +285,11 @@ export function GetBzePanel({onBack}: { onBack: () => void }) {
             <chakra.p m="0" color={ts.muted} lineHeight="1.55">
                 Pay with a coin from another network and receive {ticker} for network fees, usually within minutes.
             </chakra.p>
-            {connected ? (
+            {connected && beeZeeOnly ? (
+                <chakra.p m="0" color={ts.muted} lineHeight="1.55" data-testid="get-bze-beezee-only">
+                    BeePocket supports BeeZee only. Connect another wallet to pay with a coin from another network.
+                </chakra.p>
+            ) : connected ? (
                 <GetBzeForm ticker={ticker} onDone={onBack}/>
             ) : (
                 <Flex direction="column" gap="14px">

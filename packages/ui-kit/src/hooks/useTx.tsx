@@ -22,6 +22,7 @@ import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {computeForeignGasFee, computeNativeGasFee, resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
+import {signModeFor, walletNameOf} from "../utils/wallet_sign_mode";
 
 import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
 
@@ -63,6 +64,8 @@ export interface TxOptions {
      * amino converter emits fields BZE's chain doesn't know about, and the
      * signature verification fails with code 4. Direct sign bypasses amino
      * entirely.
+     *
+     * Ignored for BeePocket, which has no amino signing: its transactions are always direct.
      */
     useDirectSign?: boolean;
     /**
@@ -73,6 +76,9 @@ export interface TxOptions {
      * signAndBroadcast is replaced with an empty zero-gas placeholder and
      * the underlying offline signer is configured with
      * `preferNoSetFee: false` so Keplr overrides it.
+     *
+     * Always on for BeePocket, which sets its own gas and fee: {@link fee} and the
+     * fee-token setting are ignored for it.
      */
     letWalletSetFee?: boolean;
     /**
@@ -309,9 +315,12 @@ const useTx = (chainName: string) => {
                 // For IBC MsgTransfer (and similar) we must bypass amino and sign directly,
                 // because bzejs v3's amino converter produces sign-doc bytes that BZE chain
                 // rejects with code 4. Build a one-off direct client; fall back to amino
-                // client for simulation and non-IBC txs.
-                const activeClient: any = options?.useDirectSign
-                    ? await buildDirectSigningClient(options?.letWalletSetFee ?? false)
+                // client for simulation and non-IBC txs. BeePocket signs every tx this way
+                // (signModeFor). The direct client builds the TxRaw from the wallet's
+                // returned `signed` doc, so a fee the wallet changed is what gets broadcast.
+                const signMode = signModeFor(walletNameOf(wallet), options);
+                const activeClient: any = signMode.direct
+                    ? await buildDirectSigningClient(signMode.letWalletSetFee)
                     : signingClient;
 
                 // When letting the wallet compute the fee, submit an empty fee amount
@@ -319,7 +328,8 @@ const useTx = (chainName: string) => {
                 // the offline signer wrapper and replaces the amount with `gas × its
                 // recommended gas price`. If we pass `gas: "0"` the result is 0, which
                 // is why we hand it a sane ceiling that covers an IBC MsgTransfer.
-                const fee: StdFee = options?.letWalletSetFee
+                // BeePocket re-simulates the gas and sets both limit and amount itself.
+                const fee: StdFee = signMode.letWalletSetFee
                     ? { amount: [], gas: "300000" }
                     : await getFee(msgs, options);
                 setProgressTrack("Signing transaction")
@@ -394,7 +404,7 @@ const useTx = (chainName: string) => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)
         return success;
-    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient]);
+    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient, wallet]);
 
     return {
         tx,

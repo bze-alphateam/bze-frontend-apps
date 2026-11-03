@@ -46,6 +46,9 @@ importers:
 
   apps/burner:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -167,6 +170,9 @@ importers:
 
   apps/communities:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -276,6 +282,9 @@ importers:
 
   apps/dex:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -403,6 +412,9 @@ importers:
 
   apps/factory:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -515,6 +527,9 @@ importers:
 
   apps/staking:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -630,6 +645,9 @@ importers:
 
   packages/ui-kit:
     devDependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bzejs':
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -831,6 +849,11 @@ packages:
 
   '@base-org/account@2.4.0':
     resolution: {integrity: sha512-A4Umpi8B9/pqR78D1Yoze4xHyQaujioVRqqO3d6xuDFw9VRtjg6tK3bPlwE0aW+nVH/ntllCpPa2PbI8Rnjcug==}
+
+  '@bze/beepocket-connector@0.1.0':
+    resolution: {integrity: sha512-G7VPbFYDWZcw6aOXZhd8/i7gWCz0HHe6ozGysSp1CSK/55UA6WxsmTp6WE0EcD3pxADggki6x8+RHe5cssyDYA==}
+    peerDependencies:
+      '@interchain-kit/core': 0.11.x
 
   '@bze/bzejs@3.2.0':
     resolution: {integrity: sha512-8UAB4iFneL5qgzXZ2xWfnfVsr0oMSObZH1SR3ruyrCK7NBZzJJbM9BAmORdSasHD8GoublqF4hBgBrXEsT4mVA==}
@@ -7050,6 +7073,14 @@ snapshots:
       - utf-8-validate
       - zod
     optional: true
+
+  '@bze/beepocket-connector@0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))':
+    dependencies:
+      '@interchain-kit/core': 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+
+  '@bze/beepocket-connector@0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))':
+    dependencies:
+      '@interchain-kit/core': 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
 
   '@bze/bzejs@3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:

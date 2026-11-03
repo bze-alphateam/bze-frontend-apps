@@ -7,6 +7,7 @@ import {
 } from "./color-mode"
 
 import { ChainProvider, InterchainWalletModal } from "@interchain-kit/react"
+import { beePocketWallet } from "@bze/beepocket-connector";
 import { keplrWallet } from "@interchain-kit/keplr-extension";
 import { leapWallet } from "@interchain-kit/leap-extension";
 import { WCWallet } from "@interchain-kit/core";
@@ -40,7 +41,7 @@ const system = createHiveGlowSystem('factory')
 export function Provider({ children, ...props }: ColorModeProviderProps & { children: React.ReactNode }) {
     return (
         <ChainProvider
-            wallets={[keplrWallet, leapWallet, walletConnect]}
+            wallets={[beePocketWallet, keplrWallet, leapWallet, walletConnect]}
             signerOptions={{
                 preferredSignType: () => {
                     return 'amino';

@@ -195,6 +195,7 @@ export { blockchainEventManager } from './service/blockchain_event_manager';
 export { getChainAssets, getChainAssetsAfterTx, ASSETS_REFRESH_ATTEMPTS, ASSETS_REFRESH_INTERVAL_MS } from './service/assets_factory';
 export { fetchRegistryAssets, getCachedRegistryAssets, getRegistryAssetsURL } from './query/registry_assets';
 export { keplrSuggestChain } from './service/keplr';
+export { BEEPOCKET_WALLET_NAME, isBeePocketWallet, walletNameOf } from './utils/wallet_sign_mode';
 
 // === Query ===
 export { getRestClient, createRestClient, getPageRequestWithLimit } from './query/client';
