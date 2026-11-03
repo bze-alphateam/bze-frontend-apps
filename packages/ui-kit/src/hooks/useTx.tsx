@@ -64,6 +64,8 @@ export interface TxOptions {
      * amino converter emits fields BZE's chain doesn't know about, and the
      * signature verification fails with code 4. Direct sign bypasses amino
      * entirely.
+     *
+     * Ignored for BeePocket, which has no amino signing: its transactions are always direct.
      */
     useDirectSign?: boolean;
     /**
@@ -74,6 +76,9 @@ export interface TxOptions {
      * signAndBroadcast is replaced with an empty zero-gas placeholder and
      * the underlying offline signer is configured with
      * `preferNoSetFee: false` so Keplr overrides it.
+     *
+     * Always on for BeePocket, which sets its own gas and fee: {@link fee} and the
+     * fee-token setting are ignored for it.
      */
     letWalletSetFee?: boolean;
     /**

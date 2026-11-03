@@ -49,6 +49,7 @@
     "wagmi": "^3.6.0"
   },
   "devDependencies": {
+    "@bze/beepocket-connector": "0.1.0",
     "@bze/bzejs": "3.2.0",
     "@chain-registry/types": "2.0.284",
     "@chain-registry/utils": "2.0.284",

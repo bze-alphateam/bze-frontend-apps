@@ -17,6 +17,7 @@ import {skipChainIdToEvmChainId} from '../utils/evm';
 import type {UseSkipTxTrackerReturn} from './useSkipTxTracker';
 import {useToast} from './useToast';
 import type {SkipAsset} from '../types/cross_chain';
+import {isBeePocketWallet, walletNameOf} from '../utils/wallet_sign_mode';
 
 /** SkipAsset enriched with optional balance data from the source chain. */
 export interface SkipAssetWithBalance extends SkipAsset {
@@ -100,6 +101,9 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
 
     const {address: sourceAddress} = useChain(sourceChainName);
     const bzeChain = useChain(getChainName());
+    // The Cosmos source and intermediate chains are reached through Keplr directly. BeePocket
+    // serves BeeZee only, so with it connected Keplr is never asked (EVM sources still work).
+    const keplrAllowed = !isBeePocketWallet(walletNameOf(bzeChain.wallet));
 
     // ─── EVM wallet ──────────────────────────────────────────────────────
     // Both hooks are safe to call without EvmProvider — they return inert
@@ -132,6 +136,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         }
 
         // For Cosmos source: check Keplr keys
+        if (!keplrAllowed) return;
         let cancelled = false;
         (async () => {
             const keplr = (window as any).keplr;
@@ -150,7 +155,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
             }
         })();
         return () => { cancelled = true; };
-    }, [rawRoute, allChainsConnected, isSourceEvm, evmState.isConnected]);
+    }, [rawRoute, allChainsConnected, isSourceEvm, evmState.isConnected, keplrAllowed]);
 
     // ─── Connect handler (Cosmos + EVM) ────────────────────────────────────
     const handleConnectAll = useCallback(async () => {
@@ -166,6 +171,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
                     await evmWallet.switchChain(targetEvmChainId);
                 }
             } else {
+                if (!keplrAllowed) throw new Error('BeePocket supports BeeZee only');
                 // Cosmos: enable all required chains via Keplr
                 const keplr = (window as any).keplr;
                 if (keplr) {
@@ -181,7 +187,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         } finally {
             setIsConnecting(false);
         }
-    }, [isSourceEvm, requiredChainIds, selectedChain, evmWallet, evmState]);
+    }, [isSourceEvm, requiredChainIds, selectedChain, evmWallet, evmState, keplrAllowed]);
 
     // ─── Balance fetch (Cosmos only — EVM balance fetch deferred) ──────────
     useEffect(() => {
@@ -263,6 +269,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         if (resolved?.chainName === getChainName()) return bzeChain.address;
 
         // Cosmos intermediate chain via Keplr
+        if (!keplrAllowed) return undefined;
         try {
             const keplr = (window as any).keplr;
             if (keplr) {
@@ -273,7 +280,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
             console.error(`[buy] could not get address for chain ${chainId}:`, e);
         }
         return undefined;
-    }, [bzeChain.address, sourceAddress, selectedChain, isSourceEvm, evmState.address]);
+    }, [bzeChain.address, sourceAddress, selectedChain, isSourceEvm, evmState.address, keplrAllowed]);
 
     // ─── Execute ───────────────────────────────────────────────────────────
     const canExecute = useMemo(() => {
