@@ -1,6 +1,6 @@
 'use client'
 import "@interchain-kit/react/styles.css";
-import {InterchainWalletModal, useChain} from "@interchain-kit/react";
+import {useChain} from "@interchain-kit/react";
 import {
     Badge,
     Box,
@@ -58,7 +58,6 @@ import {isBeePocketWallet, walletNameOf} from '../../utils/wallet_sign_mode';
 type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
 
 interface WalletSidebarContentProps {
-    skipWalletModal?: boolean
     // When set (communities token pages), this denom's balance is pinned at the top of the
     // balances list even when zero, every other balance is collapsed behind an expand control,
     // and the send form preselects it. Unset (dex/burner/staking/index) → today's behaviour.
@@ -471,7 +470,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFo
     )
 }
 
-export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }: WalletSidebarContentProps) => {
+export const WalletSidebarContent = ({ featuredDenom }: WalletSidebarContentProps) => {
     const [viewState, setViewState] = useState<ViewState>('balances')
     const [showAllBalances, setShowAllBalances] = useState(false)
     const [selectedTxId, setSelectedTxId] = useState<string>('')
@@ -706,7 +705,6 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
         <VStack gap="22px" align="stretch">
             {/* Wallet Status - Always at top */}
             <VStack gap="12px" align="stretch">
-                {!skipWalletModal && <InterchainWalletModal />}
                 <HStack justify="space-between">
                     <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">
                         Wallet Status

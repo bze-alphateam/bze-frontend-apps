@@ -12,7 +12,7 @@ import { keplrWallet } from "@interchain-kit/keplr-extension";
 import { leapWallet } from "@interchain-kit/leap-extension";
 import { WCWallet } from "@interchain-kit/core";
 
-import {getAssetLists, getWalletChainsNames, EvmProvider, createEvmConfig, createHiveGlowSystem} from "@bze/bze-ui-kit";
+import {getAssetLists, getWalletChainsNames, EvmProvider, createEvmConfig, createHiveGlowSystem, splitComingSoonWallets, WalletPickModal} from "@bze/bze-ui-kit";
 
 const evmConfig = createEvmConfig({
     projectId: '7e8510ae772ef527bd711c9bc02f0cb7',
@@ -36,12 +36,15 @@ const walletConnect = new WCWallet(
     }
 );
 
+// BeePocket stays "Coming soon" (listed, not connectable) unless NEXT_PUBLIC_BEEPOCKET_ENABLED=true.
+const {wallets, comingSoon} = splitComingSoonWallets([beePocketWallet, keplrWallet, leapWallet, walletConnect])
+
 const system = createHiveGlowSystem('burner')
 
 export function Provider({ children, ...props }: ColorModeProviderProps & { children: React.ReactNode }) {
     return (
         <ChainProvider
-            wallets={[beePocketWallet, keplrWallet, leapWallet, walletConnect]}
+            wallets={wallets}
             signerOptions={{
                 preferredSignType: () => {
                     return 'amino';
@@ -54,6 +57,7 @@ export function Provider({ children, ...props }: ColorModeProviderProps & { chil
                 <ChakraProvider value={system}>
                     <ColorModeProvider {...props} >
                         {children}
+                        <WalletPickModal comingSoonWallets={comingSoon} />
                     </ColorModeProvider>
                 </ChakraProvider>
             </EvmProvider>

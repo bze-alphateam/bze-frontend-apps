@@ -51,7 +51,7 @@ export const TopNavBar = () => {
                 badge: item.href === GOVERNANCE_HREF ? governanceBadge : undefined,
             }))}
             walletLabel={walletLabel}
-            walletContent={<WalletSidebarContent skipWalletModal />}
+            walletContent={<WalletSidebarContent />}
             settings={<SettingsToggle />}
         />
     )

@@ -181,6 +181,7 @@ export {
     getSkipProxyUrl, isCrossChainEnabled, isSkipEnabled,
     getDeniedChains, getDeniedAssets, isChainDenied, isAssetDenied,
 } from './constants/cross_chain';
+export { isBeePocketEnabled } from './constants/wallets';
 
 // === Storage ===
 export {
@@ -196,6 +197,8 @@ export { getChainAssets, getChainAssetsAfterTx, ASSETS_REFRESH_ATTEMPTS, ASSETS_
 export { fetchRegistryAssets, getCachedRegistryAssets, getRegistryAssetsURL } from './query/registry_assets';
 export { keplrSuggestChain } from './service/keplr';
 export { BEEPOCKET_WALLET_NAME, isBeePocketWallet, walletNameOf } from './utils/wallet_sign_mode';
+export { isWalletComingSoon, splitComingSoonWallets } from './utils/wallet_availability';
+export type { ComingSoonWallet } from './utils/wallet_availability';
 
 // === Query ===
 export { getRestClient, createRestClient, getPageRequestWithLimit } from './query/client';
@@ -361,6 +364,8 @@ export type { MaxInputGroupProps } from './components/max-input-group';
 export { Sidebar } from './components/sidebar/sidebar';
 export { SettingsSidebarContent } from './components/sidebar/settings-sidebar';
 export { WalletSidebarContent, WalletSendForm } from './components/sidebar/wallet-sidebar';
+export { WalletPickModal } from './components/wallet-pick-modal';
+export type { WalletPickModalProps } from './components/wallet-pick-modal';
 export type { WalletSendFormProps } from './components/sidebar/wallet-sidebar';
 export { SettingsToggle } from './components/settings-toggle';
 export { TestnetBanner } from './components/testnet-banner';

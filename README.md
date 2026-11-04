@@ -311,6 +311,13 @@ image for that commit, so rollback tags come from the target's own release histo
   `true`. Launching communities.getbze.com is a one-line change to the mainnet
   `build.env` in the deploy repo (the value is baked in at build time, so it needs a new
   image, not a container restart).
+- **BeePocket gate (every app):** `NEXT_PUBLIC_BEEPOCKET_ENABLED` — BeePocket is
+  connectable only when it is the literal `true`. Any other value, or no value, keeps it
+  in the wallet picker greyed out with a "Coming soon" label, and the wallet manager never
+  receives it, so no path connects it (a stored BeePocket choice from an earlier visit is
+  dropped on load). `.env.dist` and the testnet `build.env` files set `true`; the mainnet
+  `build.env` files leave it unset until launch, which is then a one-line change per app
+  plus a new image.
 - **Public origin for `apps/communities`:** `NEXT_PUBLIC_SITE_URL` is the base of the
   head's absolute URLs (canonical, `og:url`, `og:image`). Unset, it falls back to
   `https://communities.getbze.com`, so the testnet `build.env` must set its own origin.

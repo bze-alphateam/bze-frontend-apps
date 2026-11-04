@@ -17,7 +17,6 @@ const { wallet, tracker, bridge, held } = vi.hoisted(() => ({
 }));
 
 vi.mock('@interchain-kit/react', () => ({
-    InterchainWalletModal: () => null,
     useChain: () => ({
         status: wallet.status,
         username: 'Keplr',

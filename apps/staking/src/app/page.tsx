@@ -117,7 +117,7 @@ export default function StakingPage() {
                         </Button>
                     }
                 >
-                    <WalletSidebarContent skipWalletModal />
+                    <WalletSidebarContent />
                 </Sidebar>
             )}
             <Button asChild variant={hgVariant('secondary')} size="xl" display={{base: 'none', md: 'inline-flex'}}>
