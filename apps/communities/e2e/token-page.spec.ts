@@ -278,6 +278,9 @@ test("a NOAD raffle shows its odds, pot and latest winners under the next burn",
 
     const card = page.locator("#burn").getByTestId("raffle-card");
     await expect(card.getByRole("heading", {name: "Burn raffle"})).toBeVisible();
+    // Its own full-width card under the two burn cards, not inside Next burn.
+    await expect(page.getByTestId("next-burn").getByTestId("raffle-card")).toHaveCount(0);
+    await expect(page.getByTestId("burn-raffle")).toBeVisible();
     await expect(card.getByTestId("raffle-copy")).toContainText("Each ticket has a 1 in 20 chance to win 50% of the pot.");
     await expect(card.getByTestId("raffle-odds")).toHaveText("1 in 20");
     await expect(card.getByTestId("raffle-pot")).toHaveText("480 NOAD");

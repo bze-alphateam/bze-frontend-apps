@@ -28,12 +28,12 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
     ].filter(Boolean).join(" · ");
 
     return (
-        <TsCard flex="999 1 520px" minW="0" p={{base: "24px", md: "36px"}} display="flex" flexDirection="column" gap="26px" data-testid="burn-total">
+        <TsCard minW="0" p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="20px" data-testid="burn-total">
             <chakra.span {...tsLabel}>Burned forever</chakra.span>
             <Flex direction="column" gap="6px">
                 <chakra.span
                     fontVariantNumeric="tabular-nums"
-                    fontSize={{base: "48px", md: "clamp(48px, 7vw, 88px)"}}
+                    fontSize={{base: "44px", md: "clamp(44px, 5vw, 64px)"}}
                     fontWeight={800}
                     lineHeight="1"
                     letterSpacing="-0.04em"
@@ -70,12 +70,12 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
     );
 }
 
-/** When the next burn happens and how much T it destroys; `children` is the raffle slot, which draws its own divider. */
-function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; children?: React.ReactNode }) {
+/** When the next burn happens and how much T it destroys. */
+function NextBurn({asset, burn}: { asset: Asset; burn: TokenBurnData }) {
     const now = useNow();
 
     return (
-        <TsCard flex="1 1 320px" minW="0" p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="18px" data-testid="next-burn">
+        <TsCard minW="0" p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="14px" data-testid="next-burn">
             <chakra.span {...tsLabel}>Next burn</chakra.span>
             {burn.next ? (
                 <>
@@ -89,7 +89,6 @@ function NextBurn({asset, burn, children}: { asset: Asset; burn: TokenBurnData; 
             ) : (
                 <chakra.span fontSize="22px" fontWeight={700} data-testid="next-burn-none">No burn scheduled</chakra.span>
             )}
-            {children}
         </TsCard>
     );
 }
@@ -145,7 +144,7 @@ function BurnDialog({asset, onClose}: { asset: Asset; onClose: () => void }) {
 /**
  * "Every burn makes T scarcer" (Business Logic R10), always on the page: what has been burned
  * and its share of the original supply, the next burn, the history and the Burn action.
- * `raffle` fills the slot under the next burn (the raffle story).
+ * `raffle` is the raffle's full-width card, between the two burn cards and the history.
  */
 export function BurnSection({asset, raffle}: { asset: Asset; raffle?: React.ReactNode }) {
     const burn = useTokenBurn(asset.denom);
@@ -157,10 +156,19 @@ export function BurnSection({asset, raffle}: { asset: Asset; raffle?: React.Reac
                 <Skeleton height="360px" borderRadius="16px" data-testid="burn-loading"/>
             ) : (
                 <>
-                    <Flex wrap="wrap" gap="16px">
+                    {/* Row 1: two compact cards of equal height, side by side from tablet width on. */}
+                    <chakra.div
+                        display="grid"
+                        gridTemplateColumns={{base: "minmax(0, 1fr)", md: "minmax(0, 3fr) minmax(0, 2fr)"}}
+                        gap="16px"
+                        alignItems="stretch"
+                        data-testid="burn-overview"
+                    >
                         <BurnTotal asset={asset} burn={burn} onBurn={() => setDialogOpen(true)}/>
-                        <NextBurn asset={asset} burn={burn}>{raffle}</NextBurn>
-                    </Flex>
+                        <NextBurn asset={asset} burn={burn}/>
+                    </chakra.div>
+                    {/* Row 2: the raffle as its own full-width card; it renders nothing without a raffle. */}
+                    {raffle}
                     <BurnHistory asset={asset} burn={burn}/>
                 </>
             )}

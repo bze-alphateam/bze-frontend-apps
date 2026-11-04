@@ -31,7 +31,7 @@ import {
 } from "@/lib/token-site/raffle";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsDialog, TsField, TsNotice, TsTag, ts, tsMix} from "../kit";
+import {TsButton, TsCard, TsDialog, TsField, TsNotice, TsTag, ts, tsMix} from "../kit";
 
 function Fact({label, value, testId}: { label: string; value: React.ReactNode; testId: string }) {
     return (
@@ -54,24 +54,33 @@ function Row({label, children}: { label: string; children: React.ReactNode }) {
 const tAmount = (asset: Asset, uAmount: BigNumber.Value) =>
     `${walletAmount(uAmountToBigNumberAmount(new BigNumber(uAmount), asset.decimals))} ${asset.ticker}`;
 
-/** The raffle's facts and "Buy tickets", under the next burn (Business Logic R11). */
+/** The raffle's title, rules, facts (one row on wide screens) and "Buy tickets" (Business Logic R11). */
 function RaffleCard({asset, raffle, onBuy}: { asset: Asset; raffle: RaffleSDKType; onBuy: () => void }) {
     const {hourEpochInfo} = useEpochs();
     const odds = raffleOdds(raffle.chances);
     const ends = hourEpochInfo ? formatTimeRemainingFromEpochs(raffle.end_at, hourEpochInfo.current_epoch) : "—";
 
     return (
-        <Flex direction="column" gap="12px" data-testid="raffle-card">
-            <Flex justify="space-between" align="center" gap="12px">
-                <chakra.h3 m="0" fontWeight={700} fontSize="18px">Burn raffle</chakra.h3>
+        <Flex direction="column" gap="16px" data-testid="raffle-card">
+            <Flex align="center" gap="12px">
+                <chakra.h3 m="0" fontWeight={700} fontSize="20px">Burn raffle</chakra.h3>
                 <TsTag>Live</TsTag>
             </Flex>
-            <chakra.p m="0" color={ts.muted} fontSize="15px" lineHeight="1.5" data-testid="raffle-copy">
+            <chakra.p m="0" color={ts.muted} fontSize="15px" lineHeight="1.5" maxW="720px" data-testid="raffle-copy">
                 {/* One string: the production build dropped the space after an inline expression here. */}
                 {`Each ticket has a ${odds} chance to win ${raffleShare(raffle.ratio)} of the pot. Losing tickets grow the pot, `
                     + "and what's left when the raffle ends is burned."}
             </chakra.p>
-            <chakra.div display="grid" gridTemplateColumns="repeat(2, minmax(0, 1fr))" gap="12px" px="16px" py="14px" borderRadius="12px" bg={ts.inset}>
+            <chakra.div
+                display="grid"
+                gridTemplateColumns={{base: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))"}}
+                gap="12px"
+                px="16px"
+                py="14px"
+                borderRadius="12px"
+                bg={ts.inset}
+                data-testid="raffle-facts"
+            >
                 <Fact label="Ticket" value={tAmount(asset, raffle.ticket_price)} testId="raffle-ticket"/>
                 <Fact label="Current pot" value={tAmount(asset, raffle.pot)} testId="raffle-pot"/>
                 <Fact label="Win chance" value={odds} testId="raffle-odds"/>
@@ -82,7 +91,7 @@ function RaffleCard({asset, raffle, onBuy}: { asset: Asset; raffle: RaffleSDKTyp
                 />
                 <Fact label="Ends in" value={ends} testId="raffle-ends"/>
             </chakra.div>
-            <TsButton variant="secondary" onClick={onBuy}>Buy tickets</TsButton>
+            <TsButton variant="primary" alignSelf={{base: "stretch", sm: "flex-start"}} onClick={onBuy}>Buy tickets</TsButton>
         </Flex>
     );
 }
@@ -402,9 +411,10 @@ function RaffleDialog({asset, raffle, tokenRaffle, onClose}: RaffleDialogProps) 
 }
 
 /**
- * The Burn section's raffle slot (Business Logic R11): T's raffle card, the connected wallet's
- * tickets drawing block by block, its recent winners and the ticket dialog, or nothing when the
- * burner runs no raffle for T. Ticket results keep resolving here while the dialog is closed.
+ * The Burn section's raffle card, full width under the burn cards (Business Logic R11): T's raffle,
+ * the connected wallet's tickets drawing block by block, its recent winners (a side column on wide
+ * screens, below on phones) and the ticket dialog, or nothing when the burner runs no raffle for T.
+ * Ticket results keep resolving here while the dialog is closed.
  */
 export function BurnRaffle({asset}: { asset: Asset }) {
     const tokenRaffle = useTokenRaffle(asset.denom);
@@ -414,11 +424,31 @@ export function BurnRaffle({asset}: { asset: Asset }) {
     if (!raffle) return null;
 
     return (
-        <Flex direction="column" gap="18px" borderTopWidth="1px" borderStyle="solid" borderColor={ts.border} pt="18px">
-            <RaffleCard asset={asset} raffle={raffle} onBuy={() => setDialogOpen(true)}/>
-            <YourTickets asset={asset} entries={entries} height={height}/>
-            <RecentWinners asset={asset} winners={winners}/>
+        <TsCard
+            p={{base: "24px", md: "28px"}}
+            display="grid"
+            gridTemplateColumns={{base: "minmax(0, 1fr)", lg: winners.length > 0 ? "minmax(0, 1fr) 280px" : "minmax(0, 1fr)"}}
+            gap={{base: "24px", lg: "32px"}}
+            data-testid="burn-raffle"
+        >
+            <Flex direction="column" gap="20px" minW="0">
+                <RaffleCard asset={asset} raffle={raffle} onBuy={() => setDialogOpen(true)}/>
+                <YourTickets asset={asset} entries={entries} height={height}/>
+            </Flex>
+            {winners.length > 0 && (
+                <chakra.aside
+                    minW="0"
+                    borderStyle="solid"
+                    borderColor={ts.border}
+                    borderTopWidth={{base: "1px", lg: "0"}}
+                    borderLeftWidth={{base: "0", lg: "1px"}}
+                    pt={{base: "20px", lg: "0"}}
+                    pl={{base: "0", lg: "28px"}}
+                >
+                    <RecentWinners asset={asset} winners={winners}/>
+                </chakra.aside>
+            )}
             {dialogOpen && <RaffleDialog asset={asset} raffle={raffle} tokenRaffle={tokenRaffle} onClose={() => setDialogOpen(false)}/>}
-        </Flex>
+        </TsCard>
     );
 }

@@ -194,6 +194,26 @@ describe("BurnRaffle", () => {
         expect(screen.getByTestId("raffle-ends")).toHaveTextContent("2d 2h");
     });
 
+    it("is one card: the raffle and its facts in the main column, the winners in a side column", async () => {
+        renderRaffle();
+
+        const card = await screen.findByTestId("burn-raffle");
+        expect(within(card).getByTestId("raffle-card")).toBeInTheDocument();
+        expect(within(screen.getByTestId("raffle-facts")).getAllByText(/^(Ticket|Current pot|Win chance|Prize now|Ends in)$/)
+            .map((label) => label.textContent)).toEqual(["Ticket", "Current pot", "Win chance", "Prize now", "Ends in"]);
+        expect(within(card).getByRole("complementary")).toContainElement(screen.getByTestId("raffle-winners"));
+    });
+
+    it("leaves out the winners column while the raffle has no winner", async () => {
+        getRaffleWinners.mockResolvedValue([]);
+        getRaffles.mockResolvedValue([{...RAFFLE, winners: 0n}]);
+        renderRaffle();
+
+        const card = await screen.findByTestId("burn-raffle");
+        expect(within(card).queryByRole("complementary")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("raffle-winners")).not.toBeInTheDocument();
+    });
+
     it("lists the newest winners first with shortened addresses", async () => {
         renderRaffle();
 
