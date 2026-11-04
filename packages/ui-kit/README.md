@@ -141,7 +141,7 @@ The library reads these `NEXT_PUBLIC_*` env vars at build time (inlined by Next.
 | `NEXT_PUBLIC_WALLET_CHAINS_NAMES` | _(auto)_ | Comma-separated chain names for wallet connection |
 | `NEXT_PUBLIC_LOCKER_ADDRESS` | `bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4` | Locker module address |
 | `NEXT_PUBLIC_APP_NAME` | `BZE` | Display name and default transaction memo |
-| `NEXT_PUBLIC_GAS_MULTIPLIER` | `1.5` | Multiplier applied to simulated gas estimates |
+| `NEXT_PUBLIC_GAS_MULTIPLIER` | `1.2` | Margin on the simulated gas, the same for every fee token (the simulation carries the fee denom) |
 
 ### BZE endpoints
 

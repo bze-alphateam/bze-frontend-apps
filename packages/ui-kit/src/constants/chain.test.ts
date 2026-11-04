@@ -9,6 +9,8 @@ import {
     getExplorerTokenURL,
     getExplorerTxURL,
     getExplorerValidatorURL,
+    getForeignFeeSlippage,
+    getGasMultiplier,
 } from './chain'
 
 const ENV_KEYS = ['NEXT_PUBLIC_EXPLORER_URL', 'NEXT_PUBLIC_CHAIN_NAME'] as const
@@ -67,5 +69,28 @@ describe('explorer links (BZE Scan)', () => {
     it('links a token on the configured explorer', () => {
         process.env.NEXT_PUBLIC_EXPLORER_URL = 'https://testnet-explorer.getbze.com/'
         expect(getExplorerTokenURL('factory/bze1abc/uhoney')).toBe('https://testnet-explorer.getbze.com/tokens/factory%2Fbze1abc%2Fuhoney')
+    })
+})
+
+describe('gas margin', () => {
+    afterEach(() => {
+        delete process.env.NEXT_PUBLIC_GAS_MULTIPLIER
+        delete process.env.NEXT_PUBLIC_FOREIGN_FEE_SLIPPAGE
+    })
+
+    it('defaults to a 1.2 gas margin and a 1.1 foreign fee slippage', () => {
+        delete process.env.NEXT_PUBLIC_GAS_MULTIPLIER
+        delete process.env.NEXT_PUBLIC_FOREIGN_FEE_SLIPPAGE
+        expect(getGasMultiplier()).toBe(1.2)
+        expect(getForeignFeeSlippage()).toBe(1.1)
+    })
+
+    it('takes a positive override and ignores garbage', () => {
+        process.env.NEXT_PUBLIC_GAS_MULTIPLIER = '1.3'
+        expect(getGasMultiplier()).toBe(1.3)
+        process.env.NEXT_PUBLIC_GAS_MULTIPLIER = '0'
+        expect(getGasMultiplier()).toBe(1.2)
+        process.env.NEXT_PUBLIC_GAS_MULTIPLIER = 'abc'
+        expect(getGasMultiplier()).toBe(1.2)
     })
 })

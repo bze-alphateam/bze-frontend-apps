@@ -64,6 +64,6 @@ Copy `.env.dist` as a starting template. Key vars:
 | `NEXT_PUBLIC_APP_NAME` | App display name (also used as default tx memo) |
 | `NEXT_PUBLIC_REST_ENDPOINT` | Default REST endpoint |
 | `NEXT_PUBLIC_RPC_ENDPOINT` | Default RPC/WebSocket endpoint |
-| `NEXT_PUBLIC_GAS_MULTIPLIER` | Gas estimate multiplier (default `1.5`) |
+| `NEXT_PUBLIC_GAS_MULTIPLIER` | Gas estimate multiplier (default `1.2`) |
 
 See `@bze/bze-ui-kit` README for the full list of supported env vars.
