@@ -246,7 +246,7 @@ describe('useTx simulateFee', () => {
 
 describe('useTx sign mode', () => {
     const TX_HASH = new Uint8Array(32).fill(0xab)
-    // The fee the wallet puts in place of the requested one, as BeePocket does with its own estimate.
+    // The fee the wallet puts in place of the requested one, as BeePocket does when ours cannot be paid.
     const WALLET_FEE = { amount: [{ denom: 'ubze', amount: '4321' }], gasLimit: BigInt(123_456) }
 
     // A connected interchain-kit wallet: the ChainWalletStore useChain() hands out, over a cosmos
@@ -283,6 +283,9 @@ describe('useTx sign mode', () => {
             wait: async () => ({ code: 0, txhash: 'HASH', height: 10, events: [] }),
         })
         simulateMock.mockReset()
+        txFeeParamsMock.mockReset()
+        getDenomsPoolMock.mockReset().mockReturnValue(undefined)
+        settings.feeDenom = 'ubze'
         queryClient.getBaseAccount.mockReset().mockResolvedValue({ accountNumber: BigInt(5), sequence: BigInt(3) })
         queryClient.broadcastTxSync.mockReset().mockResolvedValue({ code: 0, hash: TX_HASH })
         queryClient.getTx.mockReset().mockResolvedValue({ height: 10, hash: TX_HASH, txResult: { code: 0, events: [] } })
@@ -317,7 +320,8 @@ describe('useTx sign mode', () => {
         expect(TxBody.decode(broadcastTx().bodyBytes).messages.map(m => m.typeUrl)).toEqual([typeUrl])
     })
 
-    it('BeePocket broadcasts the authInfo it returned, with its own fee, not the requested one', async () => {
+    // BeePocket replaces our fee when it cannot be paid; the tx must carry the one it signed.
+    it('BeePocket broadcasts the authInfo it returned, with the fee it signed, not the requested one', async () => {
         connectWallet('beepocket-extension')
         const { result } = renderHook(() => useBZETx())
 
@@ -329,11 +333,43 @@ describe('useTx sign mode', () => {
         expect(fee.amount).not.toEqual(FEE.amount)
     })
 
-    it('BeePocket leaves the fee to the wallet: no simulation, an empty fee amount in the request', async () => {
+    // Regression: BeePocket used to get an empty fee on every tx and picked its own (BZE first),
+    // so the fee token from the settings never reached it.
+    it('BeePocket gets our simulated fee in the settings fee token', async () => {
+        settings.feeDenom = 'uusdc'
+        // 1M BZE : 10k USDC → spot = 100 ubze per uusdc
+        getDenomsPoolMock.mockReturnValue({ base: 'ubze', quote: 'uusdc', fee: '0.003', reserve_base: '1000000000000', reserve_quote: '10000000000' })
+        simulateMock.mockResolvedValue({ gasInfo: { gasUsed: BigInt(123_410), gasWanted: BigInt(0) } })
+        txFeeParamsMock.mockResolvedValue({ validatorMinGasFee: { denom: 'ubze', amount: '0.01' }, blockedIbcInbound: [] })
         const beePocket = connectWallet('beepocket-extension')
         const { result } = renderHook(() => useBZETx())
 
         await act(async () => { await result.current.tx([MSG], { toasts: false }) })
+
+        expect(simulateMock).toHaveBeenCalledTimes(1)
+        // The raw offline signer, never the wrapper that asks the wallet to set its own fee.
+        expect(beePocket.signDirect).toHaveBeenCalledWith('bzetestnet-3', 'addr1', expect.anything())
+        const requested = AuthInfo.decode(beePocket.signDirect.mock.calls[0][2].authInfoBytes).fee!
+        expect(requested.amount).toEqual([{ denom: 'uusdc', amount: '31' }])
+        expect(requested.gasLimit).toBe(BigInt(277_673))
+    })
+
+    it('BeePocket gets the fee passed in the options', async () => {
+        const beePocket = connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, toasts: false }) })
+
+        const requested = AuthInfo.decode(beePocket.signDirect.mock.calls[0][2].authInfoBytes).fee!
+        expect(requested.amount).toEqual(FEE.amount)
+        expect(requested.gasLimit).toBe(BigInt(FEE.gas))
+    })
+
+    it('BeePocket sets its own fee with letWalletSetFee: no simulation, an empty fee amount in the request', async () => {
+        const beePocket = connectWallet('beepocket-extension')
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { letWalletSetFee: true, toasts: false }) })
 
         expect(simulateMock).not.toHaveBeenCalled()
         expect(beePocket.signDirect).toHaveBeenCalledWith('bzetestnet-3', 'addr1', expect.anything(), { preferNoSetFee: false })

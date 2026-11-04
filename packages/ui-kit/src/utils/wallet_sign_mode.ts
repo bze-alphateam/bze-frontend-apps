@@ -20,16 +20,17 @@ export interface TxSignMode {
 }
 
 /**
- * How a transaction is signed. BeePocket has no amino signing and always sets its own fee
- * (returned in the signed doc's authInfo), so every BeePocket transaction is direct with the
- * wallet's fee, whatever the options say. Every other wallet follows the options.
+ * How a transaction is signed. BeePocket has no amino signing, so every BeePocket transaction is
+ * direct whatever the options say. The fee follows the options for every wallet: BeePocket
+ * proposes the dapp's fee (gas limit and the fee token from the settings) and falls back to
+ * its own only when that fee cannot be paid.
  */
 export const signModeFor = (
     walletName: string | undefined,
     options?: {useDirectSign?: boolean; letWalletSetFee?: boolean},
 ): TxSignMode => {
     if (isBeePocketWallet(walletName)) {
-        return {direct: true, letWalletSetFee: true};
+        return {direct: true, letWalletSetFee: options?.letWalletSetFee ?? false};
     }
 
     return {
