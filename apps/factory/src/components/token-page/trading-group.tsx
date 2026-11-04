@@ -43,13 +43,14 @@ function PoolRow({ pool, denom, address, back, canReward }: {
     denom: string;
     address?: string;
     back: ReturnTo;
-    /** False for a halted token: no create buttons. */
+    /** False for a halted token: no create buttons. A halted pair side hides it too. */
     canReward: boolean;
 }) {
     const { asset: baseAsset } = useAsset(pool.base)
     const { asset: quoteAsset } = useAsset(pool.quote)
     const base = { ticker: baseAsset?.ticker ?? pool.base, decimals: baseAsset?.decimals ?? 0 }
     const quote = { ticker: quoteAsset?.ticker ?? pool.quote, decimals: quoteAsset?.decimals ?? 0 }
+    const pairHalted = Boolean(baseAsset?.halted || quoteAsset?.halted)
 
     return (
         <ActionItem
@@ -60,7 +61,7 @@ function PoolRow({ pool, denom, address, back, canReward }: {
             // whoever stakes the pool's LP shares, in the page's token unless the user picks another.
             action={(
                 <HStack gap="8px">
-                    {canReward && (
+                    {canReward && !pairHalted && (
                         <ItemLink href={withReturn(simpleRewardHref({ staking: pool.lp_denom, prize: denom }), back)}>
                             Reward LPs
                         </ItemLink>

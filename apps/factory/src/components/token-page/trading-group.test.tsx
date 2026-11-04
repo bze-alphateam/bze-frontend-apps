@@ -13,10 +13,13 @@ const m = vi.hoisted(() => ({
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1me" }) }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
-    const tickers: Record<string, string> = { uhoney: "HONEY", ubze: "BZE", uusdc: "USDC" };
+    const tickers: Record<string, string> = { uhoney: "HONEY", ubze: "BZE", uusdc: "USDC", uhalt: "HALT" };
     return {
         ...actual,
-        useAsset: (denom: string) => ({ asset: tickers[denom] ? { denom, ticker: tickers[denom], decimals: 6 } : undefined, isLoading: false }),
+        useAsset: (denom: string) => ({
+            asset: tickers[denom] ? { denom, ticker: tickers[denom], decimals: 6, halted: denom === "uhalt" } : undefined,
+            isLoading: false,
+        }),
         useLiquidityPools: () => ({ pools: m.pools, isLoading: false }),
         useMarkets: () => ({ markets: [], isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
@@ -75,5 +78,12 @@ describe("TradingGroup pool rows", () => {
         renderGroup(asset({ halted: true } as Partial<Asset>));
         expect(screen.getByTestId("trading-pool-uhoney_ubze")).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Reward LPs" })).not.toBeInTheDocument();
+    });
+
+    it("offers no reward on a pool whose other side is halted", () => {
+        m.pools = [pool("uhoney_uhalt", "uhoney", "uhalt", "ulp_uhoney_uhalt"), ...m.pools];
+        renderGroup();
+        expect(within(screen.getByTestId("trading-pool-uhoney_uhalt")).queryByRole("link", { name: "Reward LPs" })).not.toBeInTheDocument();
+        expect(rewardLink("uhoney_ubze")).toBeInTheDocument();
     });
 });
