@@ -50,6 +50,12 @@ export const RAFFLE_POLL_MS = 7_000;
  */
 const BLOCK_STALL_MS = 10_000;
 
+/**
+ * After this many checks in a row failed to read the chain, the strip says so instead of looking
+ * like the tickets are just not drawn yet. The next successful read clears it.
+ */
+export const RAFFLE_READ_FAILURES = 3;
+
 /** How often entries past their hour on the page are dropped. */
 const EXPIRY_CHECK_MS = 60_000;
 
@@ -126,6 +132,8 @@ export interface TokenRaffle {
     entries: RaffleEntry[];
     /** The last block the chain feed reported; absent until one arrives. */
     height?: number;
+    /** The last checks in a row all failed to read the chain; tickets may be drawn but unknown. */
+    readFailing: boolean;
     /** Buys `tickets` tickets; resolves to the new entry's id, or undefined when the tx failed. */
     join: (tickets: number) => Promise<string | undefined>;
     /** Whether an entry's result view is open; unwatched entries report through toasts. */
@@ -150,11 +158,12 @@ interface CheckContext {
  * joins draw in it, then applies the results if the wallet and T are still the ones it started for.
  * A failed read leaves the entries as they were for the next block to retry. A check that ends after
  * the page was left only saves its results, so the next visit shows them without toasts.
+ * Resolves to false when the chain couldn't be read.
  */
-async function checkOnce(context: { current: CheckContext }, mounted: { current: boolean }): Promise<void> {
+async function checkOnce(context: { current: CheckContext }, mounted: { current: boolean }): Promise<boolean> {
     const {address, key, denom, entries} = context.current;
     const pending = entries.filter((entry) => !isEntryResolved(entry));
-    if (!address || !key || pending.length === 0) return;
+    if (!address || !key || pending.length === 0) return true;
 
     const blocks = new Map<number, ReturnType<typeof checkAddressWonRaffle>>();
     const checkBlock = (block: number) => {
@@ -171,11 +180,11 @@ async function checkOnce(context: { current: CheckContext }, mounted: { current:
         resolved = await Promise.all(pending.map((entry) => resolveEntry(entry, checkBlock)));
     } catch (error) {
         console.error("raffle: checking the draw failed, retrying on the next block", error);
-        return;
+        return false;
     }
 
     const {key: currentKey, entries: currentEntries, asset, toast, reload, reloadNextBurn, updateBalances, setEntries} = context.current;
-    if (currentKey !== key) return;
+    if (currentKey !== key) return true;
 
     const now = Date.now();
     const changed = resolved
@@ -189,7 +198,7 @@ async function checkOnce(context: { current: CheckContext }, mounted: { current:
                 resolvedAt: isEntryResolved(after) ? now : undefined,
             },
         }));
-    if (changed.length === 0) return;
+    if (changed.length === 0) return true;
 
     const apply = (list: RaffleEntry[]) => list.map((entry) => {
         const update = changed.find(({after}) => after.id === entry.id)?.after;
@@ -197,7 +206,7 @@ async function checkOnce(context: { current: CheckContext }, mounted: { current:
     });
     if (!mounted.current) {
         setInLocalStorage(key, serializeEntries(apply(readEntries(key))), TTL_NO_EXPIRY);
-        return;
+        return true;
     }
 
     const ticker = asset?.ticker ?? denom;
@@ -229,6 +238,8 @@ async function checkOnce(context: { current: CheckContext }, mounted: { current:
         void reloadNextBurn();
         updateBalances();
     }
+
+    return true;
 }
 
 /** Throws when the raffles can't be read, so a failed read never looks like "no raffle". */
@@ -330,6 +341,8 @@ export function useTokenRaffle(denom: string): TokenRaffle {
     // One check at a time; a block that arrives meanwhile asks for one more run after it.
     const checking = useRef(false);
     const again = useRef(false);
+    const failures = useRef(0);
+    const [readFailing, setReadFailing] = useState(false);
 
     const check = useCallback(async () => {
         if (checking.current) {
@@ -340,7 +353,9 @@ export function useTokenRaffle(denom: string): TokenRaffle {
         try {
             do {
                 again.current = false;
-                await checkOnce(latest, mounted);
+                const read = await checkOnce(latest, mounted);
+                failures.current = read ? 0 : failures.current + 1;
+                if (mounted.current) setReadFailing(failures.current >= RAFFLE_READ_FAILURES);
             } while (again.current);
         } finally {
             checking.current = false;
@@ -399,6 +414,7 @@ export function useTokenRaffle(denom: string): TokenRaffle {
         winners: data?.winners ?? [],
         entries,
         height,
+        readFailing: readFailing && hasPending,
         join,
         watch,
     };

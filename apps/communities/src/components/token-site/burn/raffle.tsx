@@ -145,7 +145,7 @@ const ticketStatus = ({blocksAway}: UpcomingTicket) =>
  * away each is (the drawing one pulses), how far the draw is, and each drawn ticket won or lost
  * with a summary. Fully drawn joins stay for an hour.
  */
-function YourTickets({asset, entries, height}: { asset: Asset; entries: RaffleEntry[]; height?: number }) {
+function YourTickets({asset, entries, height, readFailing}: { asset: Asset; entries: RaffleEntry[]; height?: number; readFailing: boolean }) {
     // Results that land while the page is open flash once; those restored from storage don't.
     const [shownAt] = useState(() => Date.now());
     const strip = ticketStrip(entries, height);
@@ -165,6 +165,11 @@ function YourTickets({asset, entries, height}: { asset: Asset; entries: RaffleEn
                     {strip.drawn} of {strip.total} drawn
                 </chakra.span>
             </Flex>
+            {!finished && readFailing && (
+                <chakra.span role="status" fontSize="13px" color={ts.danger} data-testid="raffle-read-failing">
+                    {"Can't read the chain right now, retrying…"}
+                </chakra.span>
+            )}
             {!finished && (
                 <chakra.ol m="0" p="0" listStyleType="none" display="flex" flexWrap="wrap" gap="8px" data-testid="raffle-strip">
                     {strip.upcoming.map((ticket) => {
@@ -419,7 +424,7 @@ function RaffleDialog({asset, raffle, tokenRaffle, onClose}: RaffleDialogProps) 
 export function BurnRaffle({asset}: { asset: Asset }) {
     const tokenRaffle = useTokenRaffle(asset.denom);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const {raffle, winners, entries, height, isLoading} = tokenRaffle;
+    const {raffle, winners, entries, height, readFailing, isLoading} = tokenRaffle;
 
     // Tickets already bought keep drawing (and their results stay) even once the raffle is gone.
     if (!raffle) {
@@ -432,7 +437,7 @@ export function BurnRaffle({asset}: { asset: Asset }) {
                         The {asset.ticker} burn raffle has ended. Tickets bought before still draw here.
                     </chakra.p>
                 )}
-                <YourTickets asset={asset} entries={entries} height={height}/>
+                <YourTickets asset={asset} entries={entries} height={height} readFailing={readFailing}/>
             </TsCard>
         );
     }
@@ -447,7 +452,7 @@ export function BurnRaffle({asset}: { asset: Asset }) {
         >
             <Flex direction="column" gap="20px" minW="0">
                 <RaffleCard asset={asset} raffle={raffle} onBuy={() => setDialogOpen(true)}/>
-                <YourTickets asset={asset} entries={entries} height={height}/>
+                <YourTickets asset={asset} entries={entries} height={height} readFailing={readFailing}/>
             </Flex>
             {winners.length > 0 && (
                 <chakra.aside

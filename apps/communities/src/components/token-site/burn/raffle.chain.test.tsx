@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type {RaffleSDKType} from "@bze/bzejs/bze/burner/raffle";
-import {type Asset, DEFAULT_DENOM_BRANDING} from "@bze/bze-ui-kit";
+import {type Asset, DEFAULT_DENOM_BRANDING, DEFAULT_SETTINGS, setSettings} from "@bze/bze-ui-kit";
 import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 import NEW_BLOCK from "./__fixtures__/new-block.json";
@@ -60,7 +60,7 @@ vi.mock("@interchain-kit/react", () => ({
 vi.mock("@/hooks/useNextBurning", () => ({useNextBurning: () => ({reload: vi.fn()})}));
 
 import {TokenSiteTheme} from "../kit";
-import {RAFFLE_POLL_MS} from "@/hooks/token-site/useTokenRaffle";
+import {RAFFLE_POLL_MS, RAFFLE_READ_FAILURES} from "@/hooks/token-site/useTokenRaffle";
 import {BurnRaffle} from "./index";
 
 forbidNetwork();
@@ -77,13 +77,24 @@ const RAFFLE: RaffleSDKType = {
 
 /** The chain's head as the fake RPC sees it: block_results of later blocks answer like CometBFT does. */
 let head: number;
+/** How the node answers: normally, with a 502 from the proxy in front of it, or not at all. */
+let rpcMode: "up" | "bad-gateway" | "unreachable";
+
+/** Saved the way the settings panel saves it (convertToWebSocketUrl adds the trailing slash). */
+const RPC_ENDPOINT = "wss://testnet-rpc.getbze.com/";
+const BLOCK_RESULTS_URL = /^https:\/\/testnet-rpc\.getbze\.com\/block_results\?height=(\d+)$/;
 
 /** block_results from the recorded fixtures; a block past the head is the node's 500. */
 function stubRpc() {
-    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-        const height = Number(/block_results\?height=(\d+)/.exec(url)?.[1]);
+        const height = Number(BLOCK_RESULTS_URL.exec(url)?.[1]);
         if (!Number.isFinite(height)) throw new Error(`unexpected request ${url}`);
+        // A plain GET: a Content-Type header would make the browser send a CORS preflight first.
+        if (init?.headers !== undefined) throw new Error(`unexpected headers on ${url}`);
+
+        if (rpcMode === "unreachable") throw new TypeError("Failed to fetch");
+        if (rpcMode === "bad-gateway") return new Response("<html>502 Bad Gateway</html>", {status: 502});
 
         if (height > head) {
             return new Response(JSON.stringify({
@@ -153,6 +164,8 @@ beforeEach(() => {
     statusListeners.clear();
     feedStatus = "down";
     head = JOIN_HEIGHT + 1;
+    rpcMode = "up";
+    setSettings({...DEFAULT_SETTINGS, endpoints: {restEndpoint: "https://testnet.getbze.com", rpcEndpoint: RPC_ENDPOINT}});
     tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (res: { height: number }) => void }) => {
         options?.onSuccess?.({height: JOIN_HEIGHT});
         return true;
@@ -238,5 +251,39 @@ describe("BurnRaffle against recorded chain data", () => {
         await act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS * 2));
         expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
         expect(rpc).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["answers with an error", "bad-gateway"],
+        ["can't be reached", "unreachable"],
+    ] as const)("says the chain can't be read while the node %s, and clears it once a read works", async (_, mode) => {
+        stubRpc();
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const user = renderRaffle();
+        await buyAndClose(user, "10");
+        chainAt(JOIN_HEIGHT + 3);
+        rpcMode = mode;
+
+        await act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS * (RAFFLE_READ_FAILURES - 1)));
+        expect(screen.queryByTestId("raffle-read-failing")).not.toBeInTheDocument();
+        await act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS));
+        expect(screen.getByTestId("raffle-read-failing")).toHaveTextContent("Can't read the chain right now, retrying");
+        expect(progress()).toHaveTextContent("0 of 10 drawn");
+
+        rpcMode = "up";
+        await act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS));
+        expect(screen.queryByTestId("raffle-read-failing")).not.toBeInTheDocument();
+        expect(progress()).toHaveTextContent("2 of 10 drawn");
+    });
+
+    it("doesn't count blocks the node hasn't processed yet as failed reads", async () => {
+        stubRpc();
+        const user = renderRaffle();
+        await buyAndClose(user, "10");
+
+        // The head stays at the join's next block: every ticket block is still in the future.
+        await act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS * (RAFFLE_READ_FAILURES + 2)));
+        expect(screen.queryByTestId("raffle-read-failing")).not.toBeInTheDocument();
+        expect(progress()).toHaveTextContent("0 of 10 drawn");
     });
 });
