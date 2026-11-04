@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
     getSettings, getChainName, blockchainEventManager,
-    CURRENT_WALLET_BALANCE_EVENT, EPOCH_START_EVENT, SUPPLY_CHANGED_EVENT,
-    TendermintEvent, getChainNativeAssetDenom,
+    CURRENT_WALLET_BALANCE_EVENT, EPOCH_START_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT,
+    TendermintEvent, getChainNativeAssetDenom, getBurnerModuleAddress,
     getChainFeed, getNewBlockEvents, blockHasAddressTransfer,
-    isBurnEvent, isCoinbaseEvent, isEpochStartEvent, getMintedAmount,
+    isAddressTransfer, isBurnEvent, isCoinbaseEvent, isEpochStartEvent, getMintedAmount,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 
@@ -12,6 +12,12 @@ const dispatchBlockEvents = (events: TendermintEvent[]) => {
     if (!events) return;
 
     for (const event of events) {
+        // Coins sent to the burner (anyone's MsgFundBurner) or burned out of it change the next burn.
+        // Watched through the NewBlock events, not a Tx subscription: CometBFT caps a client at 5.
+        if (isAddressTransfer(getBurnerModuleAddress(), event)) {
+            blockchainEventManager.emit(NEXT_BURN_CHANGED_EVENT);
+        }
+
         if (isBurnEvent(event)) {
             blockchainEventManager.emit(SUPPLY_CHANGED_EVENT);
             continue;
