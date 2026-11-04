@@ -34,10 +34,10 @@ vi.mock('@interchain-ui/react', () => ({
     ConnectModal: ({isOpen, header, children}: {isOpen: boolean; header: ReactNode; children: ReactNode}) =>
         isOpen ? <div role="dialog">{header}{children}</div> : null,
     ConnectModalHead: ({title}: {title: string}) => <h2>{title}</h2>,
-    ConnectModalWalletList: ({wallets, onWalletItemClick}: {wallets: {name: string; prettyName?: string; originalWallet: unknown}[]; onWalletItemClick: (wallet: unknown) => void}) => (
+    ConnectModalWalletList: ({wallets, onWalletItemClick}: {wallets: {name: string; prettyName?: string; logo: string; subLogo?: string; originalWallet: unknown}[]; onWalletItemClick: (wallet: unknown) => void}) => (
         <div>
             {wallets.map((wallet) => (
-                <button key={wallet.name} type="button" onClick={() => onWalletItemClick(wallet.originalWallet)}>
+                <button key={wallet.name} type="button" data-logo={wallet.logo} data-sublogo={wallet.subLogo} onClick={() => onWalletItemClick(wallet.originalWallet)}>
                     {wallet.prettyName ?? wallet.name}
                 </button>
             ))}
@@ -122,5 +122,23 @@ describe('WalletPickModal', () => {
         // The connectable wallets still work.
         fireEvent.click(walletButton(/Keplr/)!);
         await vi.waitFor(() => expect(held[0].connect).toHaveBeenCalledWith('beezee-1'));
+    });
+
+    it('shows a paired WalletConnect wallet as its mobile peer and still connects it', async () => {
+        const walletConnect = {
+            ...stateful({name: 'WalletConnect', prettyName: 'WalletConnect', logo: 'wc.svg'}),
+            session: {peer: {metadata: {name: 'Keplr', icons: ['keplr-mobile.png']}}},
+        };
+        (walletConnect.info as {mode?: string}).mode = 'wallet-connect';
+        manager.wallets = [walletConnect];
+        render(<WalletPickModal/>, {wrapper});
+
+        const button = walletButton(/Keplr - Mobile/);
+        expect(button).toBeDefined();
+        expect(button!.dataset.logo).toBe('keplr-mobile.png');
+        expect(button!.dataset.sublogo).toBe('wc.svg');
+
+        fireEvent.click(button!);
+        await vi.waitFor(() => expect(walletConnect.connect).toHaveBeenCalledWith('beezee-1'));
     });
 });

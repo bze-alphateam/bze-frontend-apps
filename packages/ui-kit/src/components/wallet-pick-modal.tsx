@@ -37,14 +37,40 @@ type View = 'list' | 'qr' | 'notExist' | 'rejected' | 'error' | 'connected' | 'c
 const logoUrl = (logo: StatefulWallet['info']['logo']): string =>
     typeof logo === 'string' ? logo : (logo?.major ?? '');
 
-const toWalletUI = (wallet: StatefulWallet): WalletUI => ({
-    name: wallet.info.name,
-    prettyName: wallet.info.prettyName,
-    logo: logoUrl(wallet.info.logo),
-    mobileDisabled: true,
-    shape: 'list',
-    originalWallet: wallet,
-});
+// WalletConnect peer metadata, present once a mobile wallet is paired.
+interface WalletConnectSession {
+    peer?: {metadata?: {name?: string; icons?: string[]}};
+}
+
+const toWalletUI = (wallet: StatefulWallet): WalletUI => {
+    const session = wallet.info.mode === 'wallet-connect'
+        ? (wallet as unknown as {session?: WalletConnectSession}).session
+        : undefined;
+    // A paired WalletConnect wallet shows as its mobile peer, as in interchain-kit. The wallet
+    // itself stays the original: interchain-kit passes a spread copy, which loses the store's
+    // connect method.
+    if (session) {
+        const peerName = session.peer?.metadata?.name ?? '';
+        return {
+            name: peerName,
+            prettyName: `${peerName} - Mobile`,
+            logo: session.peer?.metadata?.icons?.[0] ?? '',
+            subLogo: logoUrl(wallet.info.logo),
+            mobileDisabled: true,
+            shape: 'list',
+            originalWallet: wallet,
+        };
+    }
+
+    return {
+        name: wallet.info.name,
+        prettyName: wallet.info.prettyName,
+        logo: logoUrl(wallet.info.logo),
+        mobileDisabled: true,
+        shape: 'list',
+        originalWallet: wallet,
+    };
+};
 
 const statusWallet = (wallet: StatefulWallet): WalletUI => ({
     name: wallet.info.name,
@@ -74,6 +100,7 @@ const viewFor = (wallet: StatefulWallet | undefined, showList: boolean, qrCodeUr
     return 'list';
 };
 
+// Sizes follow interchain-ui's list items: 52px tall, 0.5rem padding, 2rem logo, 1rem gap.
 const ComingSoonRows = ({wallets}: {wallets: ComingSoonWallet[]}) => (
     <chakra.div display="grid" rowGap="0.25rem" px="0.125rem" pb="1rem">
         {wallets.map((wallet) => (
@@ -84,19 +111,19 @@ const ComingSoonRows = ({wallets}: {wallets: ComingSoonWallet[]}) => (
                 disabled
                 display="flex"
                 alignItems="center"
-                gap="3"
+                gap="1rem"
                 w="full"
-                px="3"
-                py="2"
+                h="52px"
+                p="0.5rem"
                 borderRadius="lg"
                 bg="transparent"
                 color="inherit"
-                opacity={0.5}
                 cursor="not-allowed"
                 textAlign="left"
             >
-                {wallet.logo && <Image src={wallet.logo} alt="" boxSize="8" objectFit="contain"/>}
-                <Text as="span" flex="1" fontWeight="600" fontSize="sm">{wallet.prettyName}</Text>
+                {/* Only the wallet itself is dimmed; the badge stays readable. */}
+                {wallet.logo && <Image src={wallet.logo} alt="" boxSize="2rem" objectFit="contain" opacity={0.5}/>}
+                <Text as="span" flex="1" fontWeight="600" fontSize="sm" opacity={0.5}>{wallet.prettyName}</Text>
                 <Badge size="sm" variant={hgVariant('neutral')} borderRadius="hg.pill">Coming soon</Badge>
             </chakra.button>
         ))}
