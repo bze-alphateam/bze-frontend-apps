@@ -77,6 +77,14 @@ function appColors(a: HiveGlowAppColors) {
     };
 }
 
+/** The toast surface; repeated in every `data-type` rule, which Chakra's own toast recipe also sets. */
+const toastSurface = {
+    bg: 'var(--hg-toast-bg, {colors.hg.card})',
+    color: 'var(--hg-toast-fg, {colors.fg})',
+    '--toast-trigger-bg': 'var(--hg-toast-hover, {colors.hg.hoverFill})',
+    '--toast-border-color': 'var(--hg-toast-line, {colors.hg.lineStrong})',
+} as const;
+
 function hiveGlowConfig(app: HiveGlowAppKey) {
     const a = HIVE_GLOW_APPS[app];
     if (!a) {
@@ -386,16 +394,19 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                     },
                 },
                 // CompOverlays: every toast on the card surface; the status shows in the edge and the icon disc.
+                // The surface reads the `--hg-toast-*` variables (`useToasterTheme`) when a page sets them
+                // and falls back to the Hive Glow tokens otherwise; the status edge is never themed.
                 toast: {
                     slots: slotsOf('toast'),
                     base: {
                         root: {
-                            bg: 'hg.card',
-                            color: 'fg',
+                            bg: toastSurface.bg,
+                            color: toastSurface.color,
+                            fontFamily: 'var(--hg-toast-font, inherit)',
                             borderWidth: '1px',
-                            borderColor: 'hg.hairline',
-                            borderRadius: '14px',
-                            boxShadow: 'hg.popover',
+                            borderColor: 'var(--hg-toast-border, {colors.hg.hairline})',
+                            borderRadius: 'var(--hg-toast-radius, 14px)',
+                            boxShadow: 'var(--hg-toast-shadow, {shadows.hg.popover})',
                             py: '14px',
                             ps: '16px',
                             pe: '40px',
@@ -409,13 +420,13 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                                     ] as const
                                 ).map(([type, edge]) => [
                                     `&[data-type=${type}]`,
-                                    { bg: 'hg.card', color: 'fg', borderColor: edge, '--toast-trigger-bg': 'colors.hg.hoverFill', '--toast-border-color': 'colors.hg.lineStrong' },
+                                    { ...toastSurface, borderColor: edge },
                                 ]),
                             ),
                         },
                         title: { fontSize: '14px', fontWeight: '600' },
-                        description: { fontSize: '13px', lineHeight: '1.45', color: 'fg.muted', opacity: 1 },
-                        closeTrigger: { color: 'hg.text.faint', top: '10px', insetEnd: '10px', borderRadius: '8px' },
+                        description: { fontSize: '13px', lineHeight: '1.45', color: 'var(--hg-toast-muted, {colors.fg.muted})', opacity: 1 },
+                        closeTrigger: { color: 'var(--hg-toast-faint, {colors.hg.text.faint})', top: '10px', insetEnd: '10px', borderRadius: '8px' },
                     },
                 },
                 select: { slots: slotsOf('select'), variants: { variant: { outline: { trigger: field } } } },

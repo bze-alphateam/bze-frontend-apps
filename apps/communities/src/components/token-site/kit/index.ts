@@ -6,4 +6,4 @@ export {TsCard, TsFeaturedCard, TsInset, TsNotice, TsSection, TsStat, TsTag} fro
 export {TsChip, TsField, TsSegmented, TsTable} from "./controls";
 export {TsDialog, TsDrawer} from "./overlay";
 export {ts, tsChangeColor, tsContainer, tsEyebrow, tsLabel, tsMix} from "./tokens";
-export {darken, GLOW_PRIMARY, GLOW_SECONDARY, tokenSiteGlow, tokenSiteGlowVars, type TokenSiteGlow} from "./hive-glow";
+export {darken, GLOW_PRIMARY, GLOW_SECONDARY, tokenSiteGlow, tokenSiteGlowVars, tokenSiteToasterTheme, type TokenSiteGlow} from "./hive-glow";
