@@ -77,8 +77,8 @@ export interface TxOptions {
      * the underlying offline signer is configured with
      * `preferNoSetFee: false` so Keplr overrides it.
      *
-     * Always on for BeePocket, which sets its own gas and fee: {@link fee} and the
-     * fee-token setting are ignored for it.
+     * BeePocket follows this option too: when it is off, BeePocket proposes our fee (the
+     * fee token from the settings) and replaces it only when it cannot be paid.
      */
     letWalletSetFee?: boolean;
     /**
@@ -328,7 +328,7 @@ const useTx = (chainName: string) => {
                 // the offline signer wrapper and replaces the amount with `gas × its
                 // recommended gas price`. If we pass `gas: "0"` the result is 0, which
                 // is why we hand it a sane ceiling that covers an IBC MsgTransfer.
-                // BeePocket re-simulates the gas and sets both limit and amount itself.
+                // BeePocket also gets our fee unless the options let the wallet set it.
                 const fee: StdFee = signMode.letWalletSetFee
                     ? { amount: [], gas: "300000" }
                     : await getFee(msgs, options);
