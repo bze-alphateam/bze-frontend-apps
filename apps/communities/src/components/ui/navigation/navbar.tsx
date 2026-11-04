@@ -19,7 +19,7 @@ export const TopNavBar = () => {
             linkAs={NextLink}
             items={navItems.map((item) => ({...item, active: currentPathName === item.href}))}
             walletLabel={walletLabel}
-            walletContent={<WalletSidebarContent skipWalletModal />}
+            walletContent={<WalletSidebarContent />}
             settings={<SettingsToggle />}
         />
     )

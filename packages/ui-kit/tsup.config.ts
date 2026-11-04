@@ -16,6 +16,7 @@ export default defineConfig([{
     '@chakra-ui/react',
     '@interchain-kit/core',
     '@interchain-kit/react',
+    '@interchain-ui/react',
     '@interchainjs/cosmos',
     '@interchainjs/encoding',
     '@chain-registry/types',

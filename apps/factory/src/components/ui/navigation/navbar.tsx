@@ -83,7 +83,7 @@ export const TopNavBar = () => {
                 active: currentPathName === item.href || item.href === navSubitems[currentPathName],
             })), entries)}
             walletLabel={walletLabel}
-            walletContent={<WalletSidebarContent skipWalletModal />}
+            walletContent={<WalletSidebarContent />}
             settings={<SettingsToggle />}
         />
     )
