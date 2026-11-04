@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, {useState} from "react";
 import {chakra} from "@chakra-ui/react";
 import {LuChevronDown} from "react-icons/lu";
 
@@ -25,57 +25,81 @@ interface TsTokenSelectProps {
 const LOGO = 20;
 
 /**
- * Token picker pill (the "You pay" / "You receive" coin): the picked token's logo, its ticker and a
- * chevron over a native select, so the list, keyboard and screen readers behave as the platform's.
- * Inset fill that darkens on hover and press, and a primary ring on keyboard focus only.
+ * Token picker pill (the "You pay" / "You receive" coin): a visible row of the picked token's logo,
+ * its ticker and a chevron, with a transparent native select stretched over it, so the list,
+ * keyboard and screen readers behave as the platform's. The row sizes itself from its content in
+ * any kit font (a long ticker ends in an ellipsis at the cap), so nothing is laid over the text.
+ * Subtle border at rest, the kit's primary on hover, a primary ring on keyboard focus only:
+ * Chromium counts a mouse click on a select as `:focus-visible`, so a pointer press hides the ring
+ * until the next key press or blur.
  */
 export function TsTokenSelect({label, value, options, onChange}: TsTokenSelectProps) {
     const picked = options.find((token) => token.denom === value) ?? options[0];
+    const [pointer, setPointer] = useState(false);
 
     return (
-        <chakra.span position="relative" display="inline-flex" alignItems="center" flexShrink={0} maxW="11rem" color={ts.fg}>
+        <chakra.span
+            data-pointer={pointer ? "" : undefined}
+            onPointerDown={() => setPointer(true)}
+            position="relative"
+            display="inline-flex"
+            alignItems="center"
+            gap="8px"
+            flexShrink={0}
+            maxW="11rem"
+            h="36px"
+            ps={picked ? "6px" : "14px"}
+            pe="12px"
+            fontSize="15px"
+            fontWeight={700}
+            lineHeight="1"
+            color={ts.fg}
+            bg={ts.inset}
+            border="1px solid"
+            borderColor={tsMix(ts.fg, 10, ts.inset)}
+            borderRadius="999px"
+            transition="background-color 120ms ease, border-color 120ms ease"
+            _hover={{bg: tsMix(ts.fg, 8, ts.inset), borderColor: tsMix(ts.pri, 70, ts.inset)}}
+            _active={{bg: tsMix(ts.fg, 14, ts.inset)}}
+            css={{"&:has(select:focus-visible):not([data-pointer])": {outline: `2px solid ${ts.pri}`, outlineOffset: "2px"}}}
+        >
+            {/* What the select shows, drawn under it: the select itself names the picked option. */}
             {picked && (
-                <chakra.span position="absolute" left="6px" display="flex" pointerEvents="none" data-testid="token-select-logo">
+                <chakra.span display="flex" flexShrink={0} aria-hidden="true" data-testid="token-select-logo">
                     <BrandedTokenLogo src={picked.logo ?? ""} ticker={picked.ticker} size={LOGO} fill={ts.pri} ink={ts.onPri}/>
                 </chakra.span>
             )}
+            <chakra.span minW="0" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" aria-hidden="true" data-testid="token-select-ticker">
+                {picked?.ticker}
+            </chakra.span>
+            <chakra.span display="flex" flexShrink={0} color={ts.muted} aria-hidden="true">
+                <LuChevronDown size={14} strokeWidth={2.5}/>
+            </chakra.span>
             <chakra.select
                 aria-label={label}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
+                onKeyDown={() => setPointer(false)}
+                onBlur={() => setPointer(false)}
+                position="absolute"
+                inset="0"
+                w="100%"
+                h="100%"
+                m="0"
+                p="0"
+                opacity={0}
                 appearance="none"
                 font="inherit"
-                fontSize="15px"
-                fontWeight={700}
-                lineHeight="1"
-                color="inherit"
-                bg={ts.inset}
-                border="1px solid"
-                borderColor={tsMix(ts.fg, 10, ts.inset)}
-                borderRadius="999px"
-                h="36px"
-                w="100%"
-                minW="0"
-                ps={picked ? `${6 + LOGO + 8}px` : "14px"}
-                pe="34px"
-                overflow="hidden"
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
+                border="0"
+                borderRadius="inherit"
                 cursor="pointer"
                 outline="none"
-                transition="background-color 120ms ease, border-color 120ms ease"
-                _hover={{bg: tsMix(ts.fg, 8, ts.inset), borderColor: tsMix(ts.fg, 18, ts.inset)}}
-                _active={{bg: tsMix(ts.fg, 14, ts.inset)}}
-                _focusVisible={{outline: `2px solid ${ts.pri}`, outlineOffset: "2px"}}
                 // The platform's option list would keep the inherited text colour on its own
                 // (often white) popup: paint it in the theme so dark kits stay readable.
                 css={{"& option": {backgroundColor: ts.bg, color: ts.fg}}}
             >
                 {options.map((token) => <option key={token.denom} value={token.denom}>{token.ticker}</option>)}
             </chakra.select>
-            <chakra.span position="absolute" right="12px" display="flex" pointerEvents="none" color={ts.muted} aria-hidden="true">
-                <LuChevronDown size={14} strokeWidth={2.5}/>
-            </chakra.span>
         </chakra.span>
     );
 }

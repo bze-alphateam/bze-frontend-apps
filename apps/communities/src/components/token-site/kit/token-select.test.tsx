@@ -9,9 +9,11 @@ import {TsTokenSelect, type TsTokenOption} from "./index";
 
 forbidNetwork();
 
+const LONG_TICKER = "SUPERLONGTICKERNAME";
 const OPTIONS: TsTokenOption[] = [
     {denom: "ubze", ticker: "BZE", logo: "https://example.test/bze.svg"},
     {denom: "uusdc", ticker: "TUSDC"},
+    {denom: "ulong", ticker: LONG_TICKER},
 ];
 
 function Picker({onChange = vi.fn()}: { onChange?: (denom: string) => void }) {
@@ -40,7 +42,7 @@ describe("TsTokenSelect", () => {
         renderPicker(onChange);
 
         const select = screen.getByRole("combobox", {name: "Pay with"});
-        expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["BZE", "TUSDC"]);
+        expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["BZE", "TUSDC", LONG_TICKER]);
         expect(select).toHaveValue("ubze");
 
         await user.selectOptions(select, "uusdc");
@@ -75,5 +77,66 @@ describe("TsTokenSelect", () => {
         await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "uusdc");
 
         expect(within(screen.getByTestId("token-select-logo")).getByTestId("token-initials")).toHaveTextContent("TU");
+    });
+
+    it("shows the full picked ticker beside the logo, not under it, and follows a change", async () => {
+        const user = userEvent.setup();
+        renderPicker();
+
+        const ticker = screen.getByTestId("token-select-ticker");
+        expect(ticker).toHaveTextContent(/^BZE$/);
+        // The ticker is its own box in the row after the logo: never the select's padded text.
+        expect(screen.getByTestId("token-select-logo").nextElementSibling).toBe(ticker);
+
+        await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "uusdc");
+
+        expect(screen.getByTestId("token-select-ticker")).toHaveTextContent(/^TUSDC$/);
+    });
+
+    it("keeps one accessible name and picks with the keyboard focus on the select", async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        renderPicker(onChange);
+
+        await user.tab();
+        const select = screen.getByRole("combobox", {name: "Pay with"});
+        expect(select).toHaveFocus();
+        // The visible ticker is drawn for sight only: the select announces the picked option.
+        expect(screen.getByTestId("token-select-ticker")).toHaveAttribute("aria-hidden", "true");
+
+        await user.selectOptions(select, "ulong");
+
+        expect(select).toHaveFocus();
+        expect(onChange).toHaveBeenCalledWith("ulong");
+        expect(select).toHaveDisplayValue(LONG_TICKER);
+    });
+
+    it("ends a ticker longer than the pill's cap in an ellipsis", async () => {
+        const user = userEvent.setup();
+        renderPicker();
+
+        await user.selectOptions(screen.getByRole("combobox", {name: "Pay with"}), "ulong");
+
+        const ticker = screen.getByTestId("token-select-ticker");
+        expect(ticker).toHaveTextContent(LONG_TICKER);
+        expect(ticker).toHaveStyle({overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "0"});
+        expect(ticker.parentElement).toHaveStyle({maxWidth: "11rem"});
+    });
+
+    it("drops the keyboard ring for a mouse press and brings it back on a key press", async () => {
+        const user = userEvent.setup();
+        renderPicker();
+
+        const select = screen.getByRole("combobox", {name: "Pay with"});
+        const pill = select.parentElement!;
+        await user.tab();
+        expect(pill).not.toHaveAttribute("data-pointer");
+
+        await user.click(select);
+        expect(select).toHaveFocus();
+        expect(pill).toHaveAttribute("data-pointer");
+
+        await user.keyboard("{ArrowDown}");
+        expect(pill).not.toHaveAttribute("data-pointer");
     });
 });
