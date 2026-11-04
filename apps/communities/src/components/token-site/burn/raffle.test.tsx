@@ -382,17 +382,17 @@ describe("BurnRaffle", () => {
             expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("No win yet");
         });
 
-        it("checks on new blocks, not on the timer, while the feed is live", async () => {
+        it("checks on new blocks, not on the timer, while the feed brings blocks", async () => {
             const user = renderRaffle();
             await goLive();
             await buyAndClose(user, "2");
 
-            await nextPoll();
-            await nextPoll();
-            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
-
-            await newBlock(101);
-            expect(checkAddressWonRaffle).toHaveBeenCalledWith(ME, T, 102);
+            // A block every 6 s: the timer stays quiet, each block is checked once.
+            for (const height of [101, 102]) {
+                await act(() => vi.advanceTimersByTimeAsync(6_000));
+                await newBlock(height);
+            }
+            expect(checkAddressWonRaffle.mock.calls.map(([, , height]) => height)).toEqual([102, 102]);
         });
 
         it("shows the next five tickets and how many more wait", async () => {

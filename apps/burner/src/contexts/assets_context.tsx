@@ -437,8 +437,15 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
             // Calculate which block to check: submission block + 2 + current ticket index
             const checkBlock = contribution.blockHeight + 2 + contribution.currentTicket;
 
-            // Try to check if this ticket won
-            const result = await checkAddressWonRaffle(address, contribution.denom, checkBlock);
+            // Try to check if this ticket won; a failed read leaves this contribution for the next
+            // cycle and doesn't stop the others.
+            let result: Awaited<ReturnType<typeof checkAddressWonRaffle>>;
+            try {
+                result = await checkAddressWonRaffle(address, contribution.denom, checkBlock);
+            } catch (error) {
+                console.error(`raffle: reading block ${checkBlock} for ${contribution.denom} failed, retrying next cycle`, error);
+                continue;
+            }
 
             // If result is undefined, the block hasn't been processed yet, skip for now
             if (!result) continue;

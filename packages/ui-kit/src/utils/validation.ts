@@ -72,7 +72,7 @@ export async function validateRpcEndpoint(endpoint: string): Promise<ValidationR
 
 function testWebSocketConnection(endpoint: string): Promise<boolean> {
     return new Promise((resolve) => {
-        const ws = new WebSocket(`${endpoint}/websocket`);
+        const ws = new WebSocket(`${endpoint.replace(/\/+$/, '')}/websocket`);
         const timeout = setTimeout(() => {
             ws.close();
             resolve(false);

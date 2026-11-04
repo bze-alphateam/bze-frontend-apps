@@ -1,0 +1,590 @@
+{
+ "4083545": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4083545",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleWinnerEvent",
+     "attributes": [
+      {
+       "key": "amount",
+       "value": "\"91840000\"",
+       "index": true
+      },
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "winner",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424054ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "jeRD0N2Iogvf+lMzu1uNYmNZcl+MBzy/bJUoZ1pI+uE="
+  }
+ },
+ "4084167": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084167",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "5LZa8rR+769BtQANNh/gEt/4yeSX69VkRQ87k2nb4k4="
+  }
+ },
+ "4084168": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084168",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "UYO4I412a/3hyNyaeMFsjT6w8xL2iBy4xMp7pL9cF5I="
+  }
+ },
+ "4084169": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084169",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "g6yw6a8v9j26N73VZ+7WnPXwrOFbWGodtMWB/QU+XQQ="
+  }
+ },
+ "4084170": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084170",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "tfpNlaelX/6ejbsNCyHOLy/xvVI/cPkejCRctNxF6KQ="
+  }
+ },
+ "4084171": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084171",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "qYKvtMU9Oq4XN9nJmOXwgyJvNareqRc/NSuGgqgpzDU="
+  }
+ },
+ "4084172": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084172",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "PkvMUwGu/MNSwbDuGcyOoBVpoLdEPvT2Qm8eCpKrsVM="
+  }
+ },
+ "4084173": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084173",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "c96DE/A8lWPABu8nKuJw4Jt34YRVGOzw469S00aEFF4="
+  }
+ },
+ "4084174": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084174",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "Uu6g9ylN2FDcc4D/2Dpn9Wif2ytj10qWwC6Zi5Xrhq8="
+  }
+ },
+ "4084175": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084175",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "05i8s5HjcoAOdAb7ErLayIzRvuQvfi6Qm9DKJOgzUI0="
+  }
+ },
+ "4084176": {
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+   "height": "4084176",
+   "txs_results": null,
+   "finalize_block_events": [
+    {
+     "type": "bze.burner.RaffleLostEvent",
+     "attributes": [
+      {
+       "key": "denom",
+       "value": "\"factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr\"",
+       "index": true
+      },
+      {
+       "key": "participant",
+       "value": "\"bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k\"",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "EndBlock",
+       "index": true
+      }
+     ]
+    },
+    {
+     "type": "coin_received",
+     "attributes": [
+      {
+       "key": "receiver",
+       "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+       "index": true
+      },
+      {
+       "key": "amount",
+       "value": "424062ubze",
+       "index": true
+      },
+      {
+       "key": "mode",
+       "value": "BeginBlock",
+       "index": true
+      }
+     ]
+    }
+   ],
+   "validator_updates": null,
+   "consensus_param_updates": null,
+   "app_hash": "aIdsfcAJXXwjCnr+YIcXnREHU/lt8P46OTMD+dCb38w="
+  }
+ }
+}

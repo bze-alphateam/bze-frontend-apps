@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { validateRestEndpoint, convertToWebSocketUrl } from './validation'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { validateRestEndpoint, validateRpcEndpoint, convertToWebSocketUrl } from './validation'
 import { VALIDATION_ERRORS } from '../constants/settings'
 
 // Only the pure / early-return paths are tested here — anything past URL
@@ -38,5 +38,27 @@ describe('validateRestEndpoint (offline paths)', () => {
             isValid: false,
             error: VALIDATION_ERRORS.INVALID_REST_PROTOCOL,
         })
+    })
+})
+
+describe('validateRpcEndpoint', () => {
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('opens one /websocket path for an endpoint with a trailing slash', async () => {
+        const opened: string[] = []
+        class FakeSocket {
+            onopen: (() => void) | null = null
+            onerror: (() => void) | null = null
+            onclose: ((ev: { wasClean: boolean }) => void) | null = null
+            constructor(url: string) {
+                opened.push(url)
+                queueMicrotask(() => this.onopen?.())
+            }
+            close() {}
+        }
+        vi.stubGlobal('WebSocket', FakeSocket)
+
+        expect(await validateRpcEndpoint('https://rpc.getbze.com/')).toEqual({ isValid: true })
+        expect(opened).toEqual(['wss://rpc.getbze.com/websocket'])
     })
 })
