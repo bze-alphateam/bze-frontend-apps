@@ -144,8 +144,27 @@ describe('Toaster theme', () => {
         expect(css).toContain('var(--hg-toast-muted, var(--chakra-colors-fg-muted))');
         expect(css).toContain('var(--hg-toast-radius, 14px)');
         expect(css).toContain('var(--hg-toast-shadow, var(--chakra-shadows-hg-popover))');
-        // The status edge is never themed.
-        expect(css).toContain('color-mix(in srgb, var(--chakra-colors-hg-success) 30%, transparent)');
+        // The action and close buttons fall back to the same variables the unbraced token paths gave.
+        expect(css).toContain('--toast-trigger-bg:var(--hg-toast-hover, var(--chakra-colors-hg-hover-fill))');
+        expect(css).toContain('--toast-border-color:var(--hg-toast-line, var(--chakra-colors-hg-line-strong))');
+    });
+
+    it.each([
+        ['success', 'hg-success', 30],
+        ['error', 'hg-danger', 35],
+        ['warning', 'hg-warning', 30],
+    ] as const)('keeps the %s edge in the shared status colour', async (type, token, percent) => {
+        ui(<Toaster />);
+        act(() => {
+            toaster.create({ type, title: `Edge ${type}` });
+        });
+        await screen.findByText(`Edge ${type}`);
+
+        const rule = styleText().match(new RegExp(`\\[data-type=${type}\\]\\{([^}]*)\\}`));
+        expect(rule).not.toBeNull();
+        expect(rule![1]).toContain(`--mix-borderColor:color-mix(in srgb, var(--chakra-colors-${token}) ${percent}%, transparent)`);
+        expect(rule![1]).toContain(`border-color:var(--mix-borderColor, var(--chakra-colors-${token}))`);
+        expect(rule![1]).not.toContain('--hg-toast-border');
     });
 
     it('sets the theme on the document root while mounted and removes it after', () => {
@@ -172,6 +191,34 @@ describe('Toaster theme', () => {
         expect(root.getPropertyValue('--hg-toast-bg')).toBe('#101010');
         expect(root.getPropertyValue('--hg-toast-radius')).toBe('');
         expect(root.getPropertyValue('--hg-toast-shadow')).toBe('');
+    });
+
+    it('hands back to the earlier theme when the later one unmounts, and clears after the last', () => {
+        const later: ToasterTheme = { ...THEME, bg: '#222222', shadow: undefined };
+        const first = ui(<Themed theme={THEME} />);
+        const second = render(<Themed theme={later} />);
+        const root = document.documentElement.style;
+        expect(root.getPropertyValue('--hg-toast-bg')).toBe('#222222');
+        expect(root.getPropertyValue('--hg-toast-shadow')).toBe('');
+
+        second.unmount();
+        expect(root.getPropertyValue('--hg-toast-bg')).toBe('#101010');
+        expect(root.getPropertyValue('--hg-toast-shadow')).toBe('0 0 40px #ABCDEF');
+
+        first.unmount();
+        expect(root.getPropertyValue('--hg-toast-bg')).toBe('');
+    });
+
+    it('keeps the later theme when the earlier one unmounts first', () => {
+        const later: ToasterTheme = { ...THEME, bg: '#222222' };
+        const first = ui(<Themed theme={THEME} />);
+        const second = render(<Themed theme={later} />);
+
+        first.unmount();
+        expect(document.documentElement.style.getPropertyValue('--hg-toast-bg')).toBe('#222222');
+
+        second.unmount();
+        expect(document.documentElement.style.getPropertyValue('--hg-toast-bg')).toBe('');
     });
 
     it('sets nothing without a theme', () => {

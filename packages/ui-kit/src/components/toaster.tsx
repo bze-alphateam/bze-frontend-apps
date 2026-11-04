@@ -52,22 +52,36 @@ const THEME_VARS: Record<keyof ToasterTheme, string> = {
   font: "--hg-toast-font",
 }
 
+/** The mounted themes, oldest first; the newest one is on the document root. */
+const activeThemes: ToasterTheme[] = []
+
+/** Puts `theme` on the document root, or clears it; optional parts it omits stay on the defaults. */
+function applyTheme(theme: ToasterTheme | undefined) {
+  const root = document.documentElement.style
+  for (const key of Object.keys(THEME_VARS) as (keyof ToasterTheme)[]) {
+    const value = theme?.[key]
+    if (value === undefined) root.removeProperty(THEME_VARS[key])
+    else root.setProperty(THEME_VARS[key], value)
+  }
+}
+
 /**
  * Themes every toast with `theme` while the calling component is mounted. The toaster renders in a
- * portal under `document.body`, so the variables go on the document root and are removed again on
- * unmount; without them the toast recipe falls back to the Hive Glow tokens. Pass a stable
+ * portal under `document.body`, so the variables go on the document root; without them the toast
+ * recipe falls back to the Hive Glow tokens. When several components theme the toasts, the most
+ * recently mounted one wins and an unmount hands back to the one before it. Pass a stable
  * (memoised) object.
  */
 export function useToasterTheme(theme: ToasterTheme | undefined) {
   useEffect(() => {
     if (!theme) return
-    const root = document.documentElement.style
-    const entries = (Object.keys(THEME_VARS) as (keyof ToasterTheme)[])
-      .filter((key) => theme[key] !== undefined)
-      .map((key) => [THEME_VARS[key], theme[key] as string] as const)
-    entries.forEach(([name, value]) => root.setProperty(name, value))
+    activeThemes.push(theme)
+    applyTheme(theme)
 
-    return () => entries.forEach(([name]) => root.removeProperty(name))
+    return () => {
+      activeThemes.splice(activeThemes.lastIndexOf(theme), 1)
+      applyTheme(activeThemes[activeThemes.length - 1])
+    }
   }, [theme])
 }
 
