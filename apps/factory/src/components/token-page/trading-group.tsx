@@ -16,8 +16,8 @@ import {
 } from '@bze/bze-ui-kit'
 import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { useChain } from '@interchain-kit/react'
-import { withReturn } from '@/components/guided/return-to'
-import { CHOOSE_MARKET_PATH, dexMarketHref, dexPoolHref } from '@/lib/create-routes'
+import { type ReturnTo, withReturn } from '@/components/guided/return-to'
+import { CHOOSE_MARKET_PATH, dexMarketHref, dexPoolHref, simpleRewardHref } from '@/lib/create-routes'
 import { poolLine } from '@/lib/token-page'
 import { ActionGroup, ActionItem, ItemLink, type GroupProps } from './action-group'
 
@@ -38,23 +38,37 @@ function PairTitle({ base, quote, isMine, kind }: { base: string; quote: string;
     )
 }
 
-function PoolRow({ pool, denom, address }: {
+function PoolRow({ pool, denom, address, back, canReward }: {
     pool: LiquidityPoolSDKType;
     denom: string;
     address?: string;
+    back: ReturnTo;
+    /** False for a halted token: no create buttons. A halted pair side hides it too. */
+    canReward: boolean;
 }) {
     const { asset: baseAsset } = useAsset(pool.base)
     const { asset: quoteAsset } = useAsset(pool.quote)
     const base = { ticker: baseAsset?.ticker ?? pool.base, decimals: baseAsset?.decimals ?? 0 }
     const quote = { ticker: quoteAsset?.ticker ?? pool.quote, decimals: quoteAsset?.decimals ?? 0 }
+    const pairHalted = Boolean(baseAsset?.halted || quoteAsset?.halted)
 
     return (
         <ActionItem
             testId={`trading-pool-${pool.id}`}
             title={<PairTitle base={base.ticker} quote={quote.ticker} kind="pool" isMine={Boolean(address) && pool.creator === address} />}
             line={poolLine(pool, denom, base, quote)}
-            // Adding and removing liquidity live on the DEX pool page (BFE-262).
-            action={<AppLink app="dex" href={dexPoolHref(getDexApp().href, pool.id)}>DEX</AppLink>}
+            // Adding and removing liquidity live on the DEX pool page. The reward pays
+            // whoever stakes the pool's LP shares, in the page's token unless the user picks another.
+            action={(
+                <HStack gap="8px">
+                    {canReward && !pairHalted && (
+                        <ItemLink href={withReturn(simpleRewardHref({ staking: pool.lp_denom, prize: denom }), back)}>
+                            Reward LPs
+                        </ItemLink>
+                    )}
+                    <AppLink app="dex" href={dexPoolHref(getDexApp().href, pool.id)}>DEX</AppLink>
+                </HStack>
+            )}
         />
     )
 }
@@ -113,7 +127,7 @@ export function TradingGroup({ asset, back }: GroupProps) {
             ) : (
                 <>
                     {pools.map(pool => (
-                        <PoolRow key={pool.id} pool={pool} denom={denom} address={address} />
+                        <PoolRow key={pool.id} pool={pool} denom={denom} address={address} back={back} canReward={!isHalted} />
                     ))}
                     {markets.map(market => (
                         <MarketRow key={createMarketId(market.base, market.quote)} market={market} address={address} />

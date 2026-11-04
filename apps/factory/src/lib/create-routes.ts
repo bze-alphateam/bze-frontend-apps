@@ -55,6 +55,13 @@ export function rewardTargets(query: QueryReader) {
     }
 }
 
+/**
+ * The simple reward form with the staked token (`?staking=`) and the reward token (`?prize=`)
+ * preselected; the user can still change either.
+ */
+export const simpleRewardHref = ({ staking, prize }: { staking?: string; prize?: string } = {}) =>
+    withQuery('/reward/new', { staking, prize })
+
 export const GROW_TARGETS = {
     airdrop: AIRDROP_PATH,
     raffle: '/raffle/new',
