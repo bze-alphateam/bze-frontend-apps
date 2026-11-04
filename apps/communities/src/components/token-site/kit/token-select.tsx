@@ -67,6 +67,9 @@ export function TsTokenSelect({label, value, options, onChange}: TsTokenSelectPr
                 _hover={{bg: tsMix(ts.fg, 8, ts.inset), borderColor: tsMix(ts.fg, 18, ts.inset)}}
                 _active={{bg: tsMix(ts.fg, 14, ts.inset)}}
                 _focusVisible={{outline: `2px solid ${ts.pri}`, outlineOffset: "2px"}}
+                // The platform's option list would keep the inherited text colour on its own
+                // (often white) popup: paint it in the theme so dark kits stay readable.
+                css={{"& option": {backgroundColor: ts.bg, color: ts.fg}}}
             >
                 {options.map((token) => <option key={token.denom} value={token.denom}>{token.ticker}</option>)}
             </chakra.select>
