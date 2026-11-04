@@ -11,6 +11,8 @@ export const ts = {
     muted: "var(--ts-muted)",
     card: "var(--ts-card)",
     border: "var(--ts-border)",
+    /** The border of controls (chips, icon buttons): stronger than `border`. */
+    borderStrong: "var(--ts-border-strong)",
     /** A recessed block inside a card (stat tiles, the position column). */
     inset: "var(--ts-inset)",
     danger: "var(--ts-danger)",
