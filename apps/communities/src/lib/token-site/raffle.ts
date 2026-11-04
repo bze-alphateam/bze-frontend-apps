@@ -205,7 +205,7 @@ export function parseEntries(raw: string | null): RaffleEntry[] {
     });
 }
 
-/** One ticket still to be drawn: `blocksAway` 0 means its block is the one being made now. */
+/** One ticket still to be drawn: `blocksAway` 0 (only ever the soonest) means it is drawing now. */
 export interface UpcomingTicket {
     /** 1-based over every entry shown, in join order. */
     number: number;
@@ -259,7 +259,12 @@ export function ticketStrip(entries: RaffleEntry[], height?: number, size = 5): 
     return {
         total: number,
         drawn: results.length,
-        upcoming: pending.slice(0, size).map((ticket) => ({number: ticket.number, blocksAway: Math.max(ticket.block - current - 1, 0)})),
+        // One ticket draws at a time on the page: the soonest; any other the chain is already past
+        // (results not read yet) shows as next.
+        upcoming: pending.slice(0, size).map((ticket, index) => ({
+            number: ticket.number,
+            blocksAway: Math.max(ticket.block - current - 1, index === 0 ? 0 : 1),
+        })),
         more: Math.max(pending.length - size, 0),
         results,
         won: won.length,

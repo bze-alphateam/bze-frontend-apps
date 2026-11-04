@@ -119,6 +119,99 @@ export interface TokenRaffle {
     watch: (id: string, watched: boolean) => void;
 }
 
+interface CheckContext {
+    address?: string;
+    key?: string;
+    denom: string;
+    entries: RaffleEntry[];
+    asset?: { ticker: string; decimals: number };
+    toast: ReturnType<typeof useToast>["toast"];
+    reload: () => void;
+    reloadNextBurn: () => Promise<void> | void;
+    updateBalances: () => void;
+    setEntries: (forKey: string, update: (previous: RaffleEntry[]) => RaffleEntry[]) => void;
+}
+
+/**
+ * Resolves every pending join as far as the chain has drawn, reading each block once however many
+ * joins draw in it, then applies the results if the wallet and T are still the ones it started for.
+ * A failed read leaves the entries as they were for the next block to retry.
+ */
+async function checkOnce(context: { current: CheckContext }): Promise<void> {
+    const {address, key, denom, entries} = context.current;
+    const pending = entries.filter((entry) => !isEntryResolved(entry));
+    if (!address || !key || pending.length === 0) return;
+
+    const blocks = new Map<number, ReturnType<typeof checkAddressWonRaffle>>();
+    const checkBlock = (block: number) => {
+        let answer = blocks.get(block);
+        if (!answer) {
+            answer = checkAddressWonRaffle(address, denom, block);
+            blocks.set(block, answer);
+        }
+        return answer;
+    };
+
+    let resolved: RaffleEntry[];
+    try {
+        resolved = await Promise.all(pending.map((entry) => resolveEntry(entry, checkBlock)));
+    } catch (error) {
+        console.error("raffle: checking the draw failed, retrying on the next block", error);
+        return;
+    }
+
+    const {key: currentKey, entries: currentEntries, asset, toast, reload, reloadNextBurn, updateBalances, setEntries} = context.current;
+    if (currentKey !== key) return;
+
+    const now = Date.now();
+    const changed = resolved
+        .map((after, index) => ({before: pending[index], after}))
+        .filter(({before, after}) => after !== before)
+        .map(({before, after}) => ({
+            before,
+            after: {
+                ...after,
+                results: after.results.map((result, index) => (index < before.results.length ? result : {...result, at: now})),
+                resolvedAt: isEntryResolved(after) ? now : undefined,
+            },
+        }));
+    if (changed.length === 0) return;
+
+    const ticker = asset?.ticker ?? denom;
+    const amount = (uAmount: BigNumber) => `${walletAmount(uAmountToBigNumberAmount(uAmount, asset?.decimals ?? 0))} ${ticker}`;
+    changed.forEach(({before, after}) => {
+        // Results nobody is looking at come as toasts: whether the dialog shows the join is read now.
+        if (currentEntries.find((entry) => entry.id === after.id)?.watched ?? before.watched) return;
+
+        after.results.slice(before.results.length).forEach((result, offset) => {
+            if (result.won) toast.success(`${ticker} raffle: ticket ${before.results.length + offset + 1} won`, `You won ${amount(result.amount)}.`);
+        });
+        if (isEntryResolved(after)) {
+            const summary = entrySummary(after);
+            toast.info(
+                `${ticker} raffle: all ${after.tickets} ${after.tickets === 1 ? "ticket" : "tickets"} drawn`,
+                summary.won > 0 ? `${summary.won} won, ${amount(summary.amount)} in total.` : "No winning ticket this time.",
+            );
+        }
+    });
+    const apply = (list: RaffleEntry[]) => list.map((entry) => {
+        const update = changed.find(({after}) => after.id === entry.id)?.after;
+        return update ? {...update, watched: entry.watched} : entry;
+    });
+    setEntries(key, apply);
+    // A run that follows straight away (blocks arrived meanwhile) starts from these results, not
+    // from the entries of the last render.
+    context.current = {...context.current, entries: apply(currentEntries)};
+
+    // Every draw moves the pot; a win adds a winner and pays out of the pot, so the raffle, the
+    // next burn and the balance are read again right away.
+    reload();
+    if (changed.some(({before, after}) => after.results.slice(before.results.length).some((result) => result.won))) {
+        void reloadNextBurn();
+        updateBalances();
+    }
+}
+
 async function loadRaffle(denom: string): Promise<Loaded> {
     const raffle = (await getRaffles()).find((candidate) => candidate.denom === denom);
     const winners = raffle ? recentWinners(await getRaffleWinners(denom), raffle.winners) : [];
@@ -198,87 +291,47 @@ export function useTokenRaffle(denom: string): TokenRaffle {
 
     const reload = useCallback(() => setVersion((value) => value + 1), []);
 
-    // The latest check, for the per-block trigger below; one check at a time.
-    const checkRef = useRef<() => Promise<void>>(undefined);
-    const checking = useRef(false);
-
-    // Draws resolve one block at a time; each change re-arms the check with the latest entries.
+    // A check reads what it needs when it runs, so a refresh of the asset, the balances or the
+    // entries never cancels one in flight; it only re-applies to the wallet and T it started for.
+    const latest = useRef({address, key, denom, entries, asset, toast, reload, reloadNextBurn, updateBalances, setEntries});
     useEffect(() => {
-        const pending = entries.filter((entry) => !isEntryResolved(entry));
-        if (!address || !key || pending.length === 0) {
-            checkRef.current = undefined;
+        latest.current = {address, key, denom, entries, asset, toast, reload, reloadNextBurn, updateBalances, setEntries};
+    });
+
+    // One check at a time; a block that arrives meanwhile asks for one more run after it.
+    const checking = useRef(false);
+    const again = useRef(false);
+
+    const check = useCallback(async () => {
+        if (checking.current) {
+            again.current = true;
             return;
         }
+        checking.current = true;
+        try {
+            do {
+                again.current = false;
+                await checkOnce(latest);
+            } while (again.current);
+        } finally {
+            checking.current = false;
+        }
+    }, []);
 
-        const ticker = asset?.ticker ?? denom;
-        const amount = (uAmount: BigNumber) => `${walletAmount(uAmountToBigNumberAmount(uAmount, asset?.decimals ?? 0))} ${ticker}`;
-        const report = (before: RaffleEntry, after: RaffleEntry) => {
-            if (before.watched) return;
-            after.results.slice(before.results.length).forEach((result, offset) => {
-                if (result.won) toast.success(`${ticker} raffle: ticket ${before.results.length + offset + 1} won`, `You won ${amount(result.amount)}.`);
-            });
-            if (isEntryResolved(after)) {
-                const summary = entrySummary(after);
-                toast.info(
-                    `${ticker} raffle: all ${after.tickets} ${after.tickets === 1 ? "ticket" : "tickets"} drawn`,
-                    summary.won > 0 ? `${summary.won} won, ${amount(summary.amount)} in total.` : "No winning ticket this time.",
-                );
-            }
-        };
+    const hasPending = entries.some((entry) => !isEntryResolved(entry));
 
-        let current = true;
-        const check = async () => {
-            if (checking.current) return;
-            checking.current = true;
-            try {
-                const resolved = await Promise.all(pending.map((entry) => resolveEntry(entry, (block) => checkAddressWonRaffle(address, denom, block))));
-                if (!current) return;
+    // With the feed down, a timer stands in for new blocks.
+    useEffect(() => {
+        if (!key || !hasPending || live) return;
 
-                const now = Date.now();
-                const changed = resolved
-                    .map((entry, index) => ({before: pending[index], after: entry}))
-                    .filter(({before, after}) => after !== before)
-                    .map(({before, after}) => ({
-                        before,
-                        after: {
-                            ...after,
-                            results: after.results.map((result, index) => (index < before.results.length ? result : {...result, at: now})),
-                            resolvedAt: isEntryResolved(after) ? now : undefined,
-                        },
-                    }));
-                if (changed.length === 0) return;
-
-                changed.forEach(({before, after}) => report(before, after));
-                setEntries(key, (previous) => previous.map((entry) => {
-                    const update = changed.find(({after}) => after.id === entry.id)?.after;
-                    return update ? {...update, watched: entry.watched} : entry;
-                }));
-                // Every draw moves the pot; a win adds a winner and pays out of the pot, so the raffle,
-                // the next burn and the balance are read again right away.
-                reload();
-                if (changed.some(({before, after}) => after.results.slice(before.results.length).some((result) => result.won))) {
-                    void reloadNextBurn();
-                    updateBalances();
-                }
-            } finally {
-                checking.current = false;
-            }
-        };
-        checkRef.current = check;
-
-        // With the feed down, a timer stands in for new blocks.
-        const id = live ? undefined : setInterval(() => void check(), RAFFLE_POLL_MS);
-
-        return () => {
-            current = false;
-            if (id !== undefined) clearInterval(id);
-        };
-    }, [entries, address, key, denom, asset, live, toast, reload, reloadNextBurn, updateBalances, setEntries]);
+        const id = setInterval(() => void check(), RAFFLE_POLL_MS);
+        return () => clearInterval(id);
+    }, [key, hasPending, live, check]);
 
     // Each new block may have drawn the next ticket.
     useEffect(() => {
-        if (live && height !== undefined) void checkRef.current?.();
-    }, [height, live]);
+        if (live && height !== undefined) void check();
+    }, [height, live, check]);
 
     const join = useCallback(async (tickets: number) => {
         if (!address || !key) return undefined;

@@ -419,9 +419,23 @@ function RaffleDialog({asset, raffle, tokenRaffle, onClose}: RaffleDialogProps) 
 export function BurnRaffle({asset}: { asset: Asset }) {
     const tokenRaffle = useTokenRaffle(asset.denom);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const {raffle, winners, entries, height} = tokenRaffle;
+    const {raffle, winners, entries, height, isLoading} = tokenRaffle;
 
-    if (!raffle) return null;
+    // Tickets already bought keep drawing (and their results stay) even once the raffle is gone.
+    if (!raffle) {
+        if (entries.length === 0) return null;
+
+        return (
+            <TsCard p={{base: "24px", md: "28px"}} display="flex" flexDirection="column" gap="16px" data-testid="burn-raffle">
+                {!isLoading && (
+                    <chakra.p m="0" color={ts.muted} fontSize="15px" lineHeight="1.5" data-testid="raffle-ended">
+                        The {asset.ticker} burn raffle has ended. Tickets bought before still draw here.
+                    </chakra.p>
+                )}
+                <YourTickets asset={asset} entries={entries} height={height}/>
+            </TsCard>
+        );
+    }
 
     return (
         <TsCard

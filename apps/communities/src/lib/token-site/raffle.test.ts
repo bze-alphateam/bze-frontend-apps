@@ -166,8 +166,8 @@ describe("ticketStrip", () => {
         expect(strip).toMatchObject({total: 3, drawn: 0, more: 0, won: 0});
     });
 
-    it("never counts below drawing when the chain is past a ticket whose result isn't read yet", () => {
-        expect(ticketStrip([newRaffleEntry("a", 100, 2)], 120).upcoming.map((ticket) => ticket.blocksAway)).toEqual([0, 0]);
+    it("shows one ticket drawing when the chain is past several whose results aren't read yet", () => {
+        expect(ticketStrip([newRaffleEntry("a", 100, 3)], 120).upcoming.map((ticket) => ticket.blocksAway)).toEqual([0, 1, 1]);
     });
 
     it("falls back to the height the entries prove without a feed height", () => {
@@ -187,8 +187,8 @@ describe("ticketStrip", () => {
         // Join a draws 3 and 4 in blocks 104/105, join b draws 5…10 in blocks 103…108.
         expect(strip.upcoming).toEqual([
             {number: 5, blocksAway: 0},
-            {number: 3, blocksAway: 0},
-            {number: 6, blocksAway: 0},
+            {number: 3, blocksAway: 1},
+            {number: 6, blocksAway: 1},
             {number: 4, blocksAway: 1},
             {number: 7, blocksAway: 1},
         ]);
