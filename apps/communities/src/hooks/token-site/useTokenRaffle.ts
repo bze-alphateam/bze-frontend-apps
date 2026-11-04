@@ -1,6 +1,6 @@
 'use client';
 
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {type RefObject, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from "@bze/bzejs";
@@ -44,6 +44,12 @@ const {joinRaffle} = bze.burner.MessageComposer.withTypeUrl;
  */
 export const RAFFLE_POLL_MS = 7_000;
 
+/**
+ * A live feed that brought no block for this long is treated as down: "live" only means some
+ * notification arrived on the socket, not that this page's NewBlock subscription gets any.
+ */
+const BLOCK_STALL_MS = 10_000;
+
 /** How often entries past their hour on the page are dropped. */
 const EXPIRY_CHECK_MS = 60_000;
 
@@ -68,10 +74,14 @@ function newBlockHeight(result: unknown): number | undefined {
     return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
-/** The last block the shared chain feed reported, and whether the feed is live. */
-function useChainHeight(): { height?: number; live: boolean } {
+/**
+ * The last block the shared chain feed reported, whether the feed is live, and when this page
+ * last heard of a block (ms; read at check time, so it lives in a ref).
+ */
+function useChainHeight(): { height?: number; live: boolean; lastBlockAt: RefObject<number | undefined> } {
     const [height, setHeight] = useState<number>();
     const [live, setLive] = useState(false);
+    const lastBlockAt = useRef<number | undefined>(undefined);
 
     useEffect(() => {
         const rpcEndpoint = getSettings().endpoints.rpcEndpoint;
@@ -81,7 +91,10 @@ function useChainHeight(): { height?: number; live: boolean } {
         const feed = getChainFeed(rpcEndpoint);
         const unsubscribe = feed.subscribe(NEW_BLOCK_QUERY, (result) => {
             const value = newBlockHeight(result);
-            if (value !== undefined) setHeight((previous) => Math.max(previous ?? 0, value));
+            if (value === undefined) return;
+
+            lastBlockAt.current = Date.now();
+            setHeight((previous) => Math.max(previous ?? 0, value));
         });
         const unwatch = feed.onStatus((status) => setLive(status === "live"));
 
@@ -91,7 +104,7 @@ function useChainHeight(): { height?: number; live: boolean } {
         };
     }, []);
 
-    return {height, live};
+    return {height, live, lastBlockAt};
 }
 
 interface Loaded {
@@ -241,7 +254,7 @@ export function useTokenRaffle(denom: string): TokenRaffle {
     const {tx} = useBZETx();
     const {toast} = useToast();
     const {reload: reloadNextBurn} = useNextBurning();
-    const {height, live} = useChainHeight();
+    const {height, live, lastBlockAt} = useChainHeight();
     const [loaded, setLoaded] = useState<Loaded>();
     const [version, setVersion] = useState(0);
 
@@ -336,13 +349,18 @@ export function useTokenRaffle(denom: string): TokenRaffle {
 
     const hasPending = entries.some((entry) => !isEntryResolved(entry));
 
-    // With the feed down, a timer stands in for new blocks.
+    // With the feed down, or live but bringing no block, a timer stands in for new blocks.
     useEffect(() => {
-        if (!key || !hasPending || live) return;
+        if (!key || !hasPending) return;
 
-        const id = setInterval(() => void check(), RAFFLE_POLL_MS);
+        const id = setInterval(() => {
+            const heard = lastBlockAt.current;
+            if (live && heard !== undefined && Date.now() - heard < BLOCK_STALL_MS) return;
+
+            void check();
+        }, RAFFLE_POLL_MS);
         return () => clearInterval(id);
-    }, [key, hasPending, live, check]);
+    }, [key, hasPending, live, check, lastBlockAt]);
 
     // Each new block may have drawn the next ticket.
     useEffect(() => {
@@ -358,7 +376,8 @@ export function useTokenRaffle(denom: string): TokenRaffle {
                 height = result.height;
             },
         });
-        if (!ok || height === undefined) return undefined;
+        // A join needs the block it was included in: its tickets are drawn from `height + 2` on.
+        if (!ok || height === undefined || !Number.isSafeInteger(height) || height <= 0) return undefined;
 
         const entry = newRaffleEntry(`${height}-${Date.now()}`, height, tickets);
         setEntries(key, (previous) => [...previous, entry]);

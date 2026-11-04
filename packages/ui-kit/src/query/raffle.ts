@@ -76,7 +76,7 @@ export async function checkAddressWonRaffle(address: string, denom: string, heig
     for (let i = 0; i < raffleEvents.length; i++) {
         const ev = raffleEvents[i];
         const converted = mapEventAttributes(ev.attributes)
-        if ('participant' in converted && ev.type.includes('RaffleLostEvent') && converted['participant'] === address) {
+        if ('participant' in converted && ev.type.includes('RaffleLostEvent') && converted['participant'] === address && converted['denom'] === denom) {
             return response;
         }
 
