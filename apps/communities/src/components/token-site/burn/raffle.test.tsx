@@ -35,7 +35,7 @@ let feeMessage: string;
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
-    getRaffles: () => getRaffles(),
+    getRafflesOrThrow: () => getRaffles(),
     getRaffleWinners: (denom: string) => getRaffleWinners(denom),
     checkAddressWonRaffle: (address: string, denom: string, height: number) => checkAddressWonRaffle(address, denom, height),
     getSettings: () => ({endpoints: {rpcEndpoint: "wss://rpc.e2e.test"}}),
@@ -653,6 +653,47 @@ describe("BurnRaffle", () => {
             draws({102: true});
             await nextPoll();
             expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+        });
+            it("doesn't call the raffle ended when reading it fails", async () => {
+            vi.spyOn(console, "error").mockImplementation(() => {});
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+
+            // The draw of ticket 1 reads the raffle again, and that read fails.
+            getRaffles.mockRejectedValue(new Error("lcd unreachable"));
+            draws({102: false});
+            await nextPoll();
+            await act(() => vi.advanceTimersByTimeAsync(0));
+
+            expect(getRaffles.mock.calls.length).toBeGreaterThan(1);
+            expect(screen.queryByTestId("raffle-ended")).not.toBeInTheDocument();
+            expect(screen.getByTestId("raffle-card")).toBeInTheDocument();
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("1 of 2 drawn");
+        });
+
+        it("saves a check that ends after the page was left, without a toast", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            let answer!: (check: { hasWon: boolean; amount: string }) => void;
+            checkAddressWonRaffle.mockImplementationOnce(() => new Promise((resolve) => {
+                answer = resolve;
+            }));
+            await nextPoll();
+
+            user.view.unmount();
+            await act(async () => {
+                answer({hasWon: true, amount: "2000000"});
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(toast.success).not.toHaveBeenCalled();
+            expect(toast.info).not.toHaveBeenCalled();
+
+            // The next visit shows the result straight from storage, without reading the block again.
+            checkAddressWonRaffle.mockClear();
+            renderRaffle();
+            expect(await screen.findByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+            await nextPoll();
+            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
         });
     });
 });

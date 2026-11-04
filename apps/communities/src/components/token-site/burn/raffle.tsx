@@ -73,7 +73,7 @@ function RaffleCard({asset, raffle, onBuy}: { asset: Asset; raffle: RaffleSDKTyp
             </chakra.p>
             <chakra.div
                 display="grid"
-                gridTemplateColumns={{base: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))"}}
+                gridTemplateColumns={{base: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))", lg: "repeat(5, minmax(0, 1fr))"}}
                 gap="12px"
                 px="16px"
                 py="14px"

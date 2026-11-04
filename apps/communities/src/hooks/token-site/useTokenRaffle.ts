@@ -10,7 +10,7 @@ import {
     getChainFeed,
     getChainName,
     getFromLocalStorage,
-    getRaffles,
+    getRafflesOrThrow,
     getRaffleWinners,
     getSettings,
     setInLocalStorage,
@@ -135,9 +135,10 @@ interface CheckContext {
 /**
  * Resolves every pending join as far as the chain has drawn, reading each block once however many
  * joins draw in it, then applies the results if the wallet and T are still the ones it started for.
- * A failed read leaves the entries as they were for the next block to retry.
+ * A failed read leaves the entries as they were for the next block to retry. A check that ends after
+ * the page was left only saves its results, so the next visit shows them without toasts.
  */
-async function checkOnce(context: { current: CheckContext }): Promise<void> {
+async function checkOnce(context: { current: CheckContext }, mounted: { current: boolean }): Promise<void> {
     const {address, key, denom, entries} = context.current;
     const pending = entries.filter((entry) => !isEntryResolved(entry));
     if (!address || !key || pending.length === 0) return;
@@ -177,6 +178,15 @@ async function checkOnce(context: { current: CheckContext }): Promise<void> {
         }));
     if (changed.length === 0) return;
 
+    const apply = (list: RaffleEntry[]) => list.map((entry) => {
+        const update = changed.find(({after}) => after.id === entry.id)?.after;
+        return update ? {...update, watched: entry.watched} : entry;
+    });
+    if (!mounted.current) {
+        setInLocalStorage(key, serializeEntries(apply(readEntries(key))), TTL_NO_EXPIRY);
+        return;
+    }
+
     const ticker = asset?.ticker ?? denom;
     const amount = (uAmount: BigNumber) => `${walletAmount(uAmountToBigNumberAmount(uAmount, asset?.decimals ?? 0))} ${ticker}`;
     changed.forEach(({before, after}) => {
@@ -194,10 +204,6 @@ async function checkOnce(context: { current: CheckContext }): Promise<void> {
             );
         }
     });
-    const apply = (list: RaffleEntry[]) => list.map((entry) => {
-        const update = changed.find(({after}) => after.id === entry.id)?.after;
-        return update ? {...update, watched: entry.watched} : entry;
-    });
     setEntries(key, apply);
     // A run that follows straight away (blocks arrived meanwhile) starts from these results, not
     // from the entries of the last render.
@@ -212,8 +218,9 @@ async function checkOnce(context: { current: CheckContext }): Promise<void> {
     }
 }
 
+/** Throws when the raffles can't be read, so a failed read never looks like "no raffle". */
 async function loadRaffle(denom: string): Promise<Loaded> {
-    const raffle = (await getRaffles()).find((candidate) => candidate.denom === denom);
+    const raffle = (await getRafflesOrThrow()).find((candidate) => candidate.denom === denom);
     const winners = raffle ? recentWinners(await getRaffleWinners(denom), raffle.winners) : [];
 
     return {denom, raffle, winners};
@@ -280,9 +287,10 @@ export function useTokenRaffle(denom: string): TokenRaffle {
 
     useEffect(() => {
         let current = true;
-        void loadRaffle(denom).then((result) => {
+        // A failed read keeps the last good raffle (or keeps loading); the next draw reads it again.
+        loadRaffle(denom).then((result) => {
             if (current) setLoaded(result);
-        });
+        }).catch((error) => console.error("raffle: reading the raffle failed", error));
 
         return () => {
             current = false;
@@ -298,6 +306,14 @@ export function useTokenRaffle(denom: string): TokenRaffle {
         latest.current = {address, key, denom, entries, asset, toast, reload, reloadNextBurn, updateBalances, setEntries};
     });
 
+    const mounted = useRef(false);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
+
     // One check at a time; a block that arrives meanwhile asks for one more run after it.
     const checking = useRef(false);
     const again = useRef(false);
@@ -311,7 +327,7 @@ export function useTokenRaffle(denom: string): TokenRaffle {
         try {
             do {
                 again.current = false;
-                await checkOnce(latest);
+                await checkOnce(latest, mounted);
             } while (again.current);
         } finally {
             checking.current = false;
