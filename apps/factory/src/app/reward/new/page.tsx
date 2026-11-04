@@ -8,6 +8,7 @@ import {
     GradientText,
     amountToUAmount,
     getChainName,
+    isLpDenom,
     prettyAmount,
     uAmountToBigNumberAmount,
     useAsset,
@@ -100,7 +101,11 @@ function RewardNewContent() {
 
     // The pool Done screen and the Choose screen chain here with the staked token preselected: step 1 is answered.
     const [stakingDenom, setStakingDenom] = useState(() => getQueryParam('staking') ?? '')
-    const [prizeDenom, setPrizeDenom] = useState('')
+    // The token page's pool rows also preselect the reward token; LP shares are never a reward.
+    const [prizeDenom, setPrizeDenom] = useState(() => {
+        const prize = getQueryParam('prize') ?? ''
+        return isLpDenom(prize) ? '' : prize
+    })
     const [prizePerDay, setPrizePerDay] = useState('')
     const [duration, setDuration] = useState('')
     const [lock, setLock] = useState('0')

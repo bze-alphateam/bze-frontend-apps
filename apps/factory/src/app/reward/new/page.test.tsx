@@ -196,6 +196,41 @@ describe("Create a simple reward (/reward/new)", { timeout: 20_000 }, () => {
             expect(step("Stake")).toHaveTextContent("Stake TOK/BZE LP");
             expect(step("Reward")).toHaveAttribute("data-state", "active");
         });
+
+        it("ignores a ?staking= that is no known token", () => {
+            queryParams.current = new URLSearchParams({ staking: "ulp/unknown" });
+            renderPage();
+            expect(step("Stake")).toHaveAttribute("data-state", "active");
+            expect(step("Stake")).not.toHaveTextContent("Stake ulp/unknown");
+            expect(button(step("Stake"), "Continue")).toBeDisabled();
+            expect(step("Reward")).toHaveAttribute("data-state", "todo");
+        });
+    });
+
+    describe("Reward token from ?prize=", () => {
+        it("is preselected, the way a token page's pool row links here", () => {
+            queryParams.current = new URLSearchParams({ staking: "ulp/abc", prize: "utok" });
+            renderPage();
+            expect(within(step("Reward")).getByLabelText("Daily reward (TOK)")).toBeInTheDocument();
+        });
+
+        it("still lets the user pick another token", async () => {
+            queryParams.current = new URLSearchParams({ staking: "ulp/abc", prize: "utok" });
+            renderPage();
+            await userEvent.click(within(step("Reward")).getByText("Reward token: ueth"));
+            expect(within(step("Reward")).getByLabelText("Daily reward (ETH)")).toBeInTheDocument();
+        });
+
+        it("is left blank without it, or when it names LP shares", () => {
+            queryParams.current = new URLSearchParams({ staking: "ulp/abc" });
+            const { unmount } = renderPage();
+            expect(within(step("Reward")).queryByLabelText(/Daily reward/)).not.toBeInTheDocument();
+            unmount();
+
+            queryParams.current = new URLSearchParams({ staking: "ulp/abc", prize: "ulp/abc" });
+            renderPage();
+            expect(within(step("Reward")).queryByLabelText(/Daily reward/)).not.toBeInTheDocument();
+        });
     });
 
     describe("Reward", () => {
