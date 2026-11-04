@@ -230,14 +230,26 @@ describe("BurnSection", () => {
         expect(screen.getByTestId("next-burn-none")).toBeInTheDocument();
     });
 
-    it("renders the raffle slot under the next burn", () => {
+    it("puts the raffle in its own row between the burn cards and the history", () => {
         render(<BurnSection asset={ASSET} raffle={<div data-testid="raffle"/>}/>, {
             wrapper: ({children}: { children: ReactNode }) => (
                 <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
             ),
         });
 
-        expect(within(screen.getByTestId("next-burn")).getByTestId("raffle")).toBeInTheDocument();
+        const overview = screen.getByTestId("burn-overview");
+        const raffle = screen.getByTestId("raffle");
+        expect(within(overview).queryByTestId("raffle")).not.toBeInTheDocument();
+        expect(overview.nextElementSibling).toBe(raffle);
+        expect(raffle.nextElementSibling).toBe(screen.getByTestId("burn-history"));
+    });
+
+    it("shows the two burn cards side by side, and only them, without a raffle", () => {
+        renderSection();
+
+        const overview = screen.getByTestId("burn-overview");
+        expect(Array.from(overview.children).map((card) => card.getAttribute("data-testid"))).toEqual(["burn-total", "next-burn"]);
+        expect(overview.nextElementSibling).toBe(screen.getByTestId("burn-history"));
     });
 });
 
