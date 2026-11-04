@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
-import {blockchainEventManager, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, EPOCH_START_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, getBurnerModuleAddress} from "@bze/bze-ui-kit";
+import {blockchainEventManager, BURNER_COINS_BURNED_EVENT, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, EPOCH_START_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, getBurnerModuleAddress} from "@bze/bze-ui-kit";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
@@ -188,6 +188,22 @@ describe("useBlockchainListener next burn", () => {
 
         expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
         expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+    });
+
+    it("flags the periodic burn so the burn history is read again", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([event("bze.burner.CoinsBurnedEvent", {burned: "4000000factory/bze1creator/uctr"})], []));
+
+        expect(emit).toHaveBeenCalledWith(BURNER_COINS_BURNED_EVENT);
+    });
+
+    it("doesn't flag a burn for a fund to the burner", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("bze.burner.FundBurnerEvent", {from: "bze1someone", amount: "1000000factory/bze1creator/uctr"}), fundBurner("bze1someone")]]));
+
+        expect(emit).not.toHaveBeenCalledWith(BURNER_COINS_BURNED_EVENT);
     });
 
     it("leaves the next burn alone for transfers that don't touch the burner", async () => {

@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {act, render} from "@testing-library/react";
-import {blockchainEventManager, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT} from "@bze/bze-ui-kit";
+import {blockchainEventManager, BURNER_COINS_BURNED_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT} from "@bze/bze-ui-kit";
 
 // The feed is driven by the test; the context's refreshers are spies.
 const feed = vi.hoisted(() => ({isConnected: true}));
@@ -46,7 +46,20 @@ describe("BlockchainListenerWrapper burner refresh", () => {
         expect(context.updateNextBurn).toHaveBeenCalledTimes(1);
     });
 
-    it("reads the next burn and the burn history again after a burn", () => {
+    it("reads the next burn and the burn history again after the periodic burn", () => {
+        feed.isConnected = true;
+        render(<BlockchainListenerWrapper/>);
+
+        act(() => {
+            blockchainEventManager.emit(BURNER_COINS_BURNED_EVENT);
+            vi.advanceTimersByTime(1500);
+        });
+
+        expect(context.updateNextBurn).toHaveBeenCalledTimes(1);
+        expect(context.updateBurnHistory).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the burn history alone for other supply changes (a fund to the burner included)", () => {
         feed.isConnected = true;
         render(<BlockchainListenerWrapper/>);
 
@@ -55,18 +68,33 @@ describe("BlockchainListenerWrapper burner refresh", () => {
             vi.advanceTimersByTime(1500);
         });
 
-        expect(context.updateNextBurn).toHaveBeenCalledTimes(1);
-        expect(context.updateBurnHistory).toHaveBeenCalledTimes(1);
+        expect(context.updateAssets).toHaveBeenCalledTimes(1);
+        expect(context.updateBurnHistory).not.toHaveBeenCalled();
     });
 
-    it("polls the next burn while the feed is down", () => {
+    it("polls the next burn, but not the burn history, while the feed is down", () => {
         feed.isConnected = false;
         render(<BlockchainListenerWrapper/>);
 
         act(() => {
-            vi.advanceTimersByTime(10_500);
+            vi.advanceTimersByTime(20_500);
         });
 
+        expect(context.updateNextBurn).toHaveBeenCalled();
+        expect(context.updateBurnHistory).not.toHaveBeenCalled();
+    });
+
+    it("catches up the burn history once when the feed recovers", () => {
+        feed.isConnected = true;
+        const {rerender} = render(<BlockchainListenerWrapper/>);
+        feed.isConnected = false;
+        rerender(<BlockchainListenerWrapper/>);
+        expect(context.updateBurnHistory).not.toHaveBeenCalled();
+
+        feed.isConnected = true;
+        rerender(<BlockchainListenerWrapper/>);
+
+        expect(context.updateBurnHistory).toHaveBeenCalledTimes(1);
         expect(context.updateNextBurn).toHaveBeenCalled();
     });
 });

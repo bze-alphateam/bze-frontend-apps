@@ -191,6 +191,14 @@ describe("BurnSection", () => {
         expect(screen.queryByTestId("burn-total-pending")).not.toBeInTheDocument();
     });
 
+    it("hides the pending line when the burner lists T with a zero amount", () => {
+        nextBurn = {date: inMinutes(60), coins: [{denom: "ubze", amount: "9"}, {denom: T, amount: "0"}]};
+        renderSection();
+
+        expect(screen.queryByTestId("burn-total-pending")).not.toBeInTheDocument();
+        expect(screen.getByTestId("next-burn-none")).toBeInTheDocument();
+    });
+
     it("updates the pending line when the burner's queue changes after a burn", async () => {
         nextBurn = {date: inMinutes(60), coins: [{denom: T, amount: "1000000"}]};
         const user = renderSection();
