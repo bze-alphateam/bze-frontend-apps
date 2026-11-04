@@ -49,6 +49,17 @@ describe('getAllBurnedCoins', () => {
         expect(allBurnedCoinsMock).not.toHaveBeenCalled()
     })
 
+    it('asks the chain again when a fresh list is requested, and refills the cache', async () => {
+        const cached = { burnedCoins: [{ burned: '1ubze', height: '10' }] }
+        const latest = { burnedCoins: [{ burned: '5ubze', height: '20' }, ...cached.burnedCoins] }
+        getLocalMock.mockReturnValue(JSON.stringify(cached))
+        allBurnedCoinsMock.mockResolvedValue(latest)
+
+        expect(await getAllBurnedCoins({ fresh: true })).toEqual(latest)
+        expect(allBurnedCoinsMock).toHaveBeenCalledTimes(1)
+        expect(setLocalMock).toHaveBeenCalledWith('burner:all_burned_coins', JSON.stringify(latest), expect.any(Number))
+    })
+
     it('answers an empty list when the query fails', async () => {
         allBurnedCoinsMock.mockRejectedValue(new Error('node down'))
 

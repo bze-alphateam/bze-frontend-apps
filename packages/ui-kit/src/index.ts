@@ -45,7 +45,7 @@ export type {
 } from './types/events';
 export {
     CURRENT_WALLET_BALANCE_EVENT, ORDER_EXECUTED_EVENT, ORDER_BOOK_CHANGED_EVENT,
-    SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT, NEXT_BURN_CHANGED_EVENT,
+    SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT, NEXT_BURN_CHANGED_EVENT, BURNER_COINS_BURNED_EVENT,
     RAFFLE_CHANGED_EVENT, LOCK_CHANGED_EVENT, EPOCH_START_EVENT
 } from './types/events';
 
@@ -69,7 +69,7 @@ export {
     getMarketOrderBookChangedEvent, getMarketEventKey, mapEventAttributes,
     getEventKeyValue, getEventMarketId,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
-    isCoinbaseEvent, isBurnEvent, isEpochStartEvent, getMintedAmount,
+    isCoinbaseEvent, isBurnEvent, isBurnerCoinsBurnedEvent, isEpochStartEvent, getMintedAmount,
     getNewBlockEvents, blockHasAddressTransfer,
 } from './utils/events';
 export {

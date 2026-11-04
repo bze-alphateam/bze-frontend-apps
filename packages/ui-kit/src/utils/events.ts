@@ -42,6 +42,14 @@ export const isBurnEvent = (event: TendermintEvent): boolean => {
     return event.type.includes('burn');
 }
 
+/**
+ * The burner's periodic burn (`bze.burner.CoinsBurnedEvent`), the only event that adds a burn
+ * history record. Narrower than `isBurnEvent`, which also matches e.g. `bze.burner.FundBurnerEvent`.
+ */
+export const isBurnerCoinsBurnedEvent = (event: TendermintEvent): boolean => {
+    return event.type === 'bze.burner.CoinsBurnedEvent';
+}
+
 export const isEpochStartEvent = (event: TendermintEvent): boolean => {
     return event.type.includes('bze.epochs.EpochStartEvent');
 }

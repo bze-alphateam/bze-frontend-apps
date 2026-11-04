@@ -41,9 +41,13 @@ export const getBurnerParamsWithClient = async (client: Awaited<ReturnType<typeo
     return undefined;
 }
 
-export async function getAllBurnedCoins(): Promise<QueryAllBurnedCoinsResponseSDKType> {
+/**
+ * Every burn the burner module made, newest first. Served from a 4h local cache unless `fresh`
+ * asks the chain again (after a burn happened), which refills the cache.
+ */
+export async function getAllBurnedCoins(options: { fresh?: boolean } = {}): Promise<QueryAllBurnedCoinsResponseSDKType> {
     try {
-        const localData = getFromLocalStorage(BURNED_KEY);
+        const localData = options.fresh ? null : getFromLocalStorage(BURNED_KEY);
         if (null !== localData) {
             const parsed = JSON.parse(localData);
             if (parsed) {

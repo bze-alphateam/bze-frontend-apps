@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest'
-import {blockHasAddressTransfer, getNewBlockEvents} from './events'
+import {blockHasAddressTransfer, getNewBlockEvents, isBurnEvent, isBurnerCoinsBurnedEvent} from './events'
 import type {TendermintEvent} from '../types/events'
 
 const event = (type: string): TendermintEvent => ({type, attributes: [{key: 'amount', value: '1ubze', index: true}]})
@@ -89,5 +89,15 @@ describe('blockHasAddressTransfer', () => {
     it('is false for an empty address or an empty notification', () => {
         expect(blockHasAddressTransfer('', block([transfer('', 'bze1b')], []))).toBe(false)
         expect(blockHasAddressTransfer('bze1me', {})).toBe(false)
+    })
+})
+
+describe('isBurnerCoinsBurnedEvent', () => {
+    it("matches only the burner's periodic burn, not every burn-named event", () => {
+        expect(isBurnerCoinsBurnedEvent(event('bze.burner.CoinsBurnedEvent'))).toBe(true)
+        expect(isBurnerCoinsBurnedEvent(event('bze.burner.FundBurnerEvent'))).toBe(false)
+        expect(isBurnerCoinsBurnedEvent(event('burn'))).toBe(false)
+        // isBurnEvent is the broad one: a fund is "burn" to it too.
+        expect(isBurnEvent(event('bze.burner.FundBurnerEvent'))).toBe(true)
     })
 })

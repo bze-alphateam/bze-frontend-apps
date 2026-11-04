@@ -22,6 +22,8 @@ export const ORDER_BOOK_CHANGED_EVENT = "order_book_changed";
 export const SUPPLY_CHANGED_EVENT = "supply_changed";
 export const SWAP_EXECUTED_EVENT = "swap_executed";
 export const NEXT_BURN_CHANGED_EVENT = "next_burn_changed";
+/** The burner module burned what it held (the periodic burn): its burn history has a new record. */
+export const BURNER_COINS_BURNED_EVENT = "burner_coins_burned";
 export const RAFFLE_CHANGED_EVENT = "raffle_changed";
 export const LOCK_CHANGED_EVENT = "lock_changed";
 export const EPOCH_START_EVENT = "epoch_start";
