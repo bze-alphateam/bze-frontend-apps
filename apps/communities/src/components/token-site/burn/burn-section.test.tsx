@@ -165,6 +165,49 @@ describe("BurnSection", () => {
         expect(screen.queryByTestId("next-burn-none")).not.toBeInTheDocument();
     });
 
+    it("shows T queued in the burner as pending under the total, which counts executed burns only", () => {
+        nextBurn = {date: inMinutes(4 * 1440 + 11 * 60 + 30), coins: [{denom: T, amount: "4000000"}]};
+        renderSection();
+
+        expect(screen.getByTestId("burn-total-pending")).toHaveTextContent(/^\+4 PAGE pending · burns in 4d 11h$/);
+        expect(screen.getByTestId("burn-total-amount")).toHaveTextContent("2,340,112");
+        expect(screen.getByTestId("burn-total-details")).toHaveTextContent("PAGE · $1,170,056.00 · 2.34% of the original supply");
+        expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2.34");
+    });
+
+    it("shows the pending line next to a zero total when T was never burned", () => {
+        history = [];
+        nextBurn = {date: inMinutes(60.5), coins: [{denom: T, amount: "4000000"}]};
+        renderSection();
+
+        expect(screen.getByTestId("burn-total-amount")).toHaveTextContent("0");
+        expect(screen.getByTestId("burn-total-pending")).toHaveTextContent("+4 PAGE pending · burns in 1h");
+    });
+
+    it("hides the pending line when no T is queued", () => {
+        nextBurn = {date: inMinutes(60), coins: [{denom: "ubze", amount: "9"}]};
+        renderSection();
+
+        expect(screen.queryByTestId("burn-total-pending")).not.toBeInTheDocument();
+    });
+
+    it("updates the pending line when the burner's queue changes after a burn", async () => {
+        nextBurn = {date: inMinutes(60), coins: [{denom: T, amount: "1000000"}]};
+        const user = renderSection();
+        expect(screen.getByTestId("burn-total-pending")).toHaveTextContent("+1 PAGE pending");
+
+        // The reload after the burn reads the burner's new balance.
+        reloadNextBurn.mockImplementation(async () => {
+            nextBurn = {date: inMinutes(60), coins: [{denom: T, amount: "3000000"}]};
+        });
+        const dialog = await openBurnDialog(user);
+        await user.type(within(dialog).getByLabelText("Amount to burn"), "2");
+        await user.click(within(dialog).getByRole("button", {name: "Burn PAGE"}));
+        await user.click(within(dialog).getByRole("button", {name: "Confirm burn"}));
+
+        await waitFor(() => expect(screen.getByTestId("burn-total-pending")).toHaveTextContent("+3 PAGE pending"));
+    });
+
     it("says no burn is scheduled when the next burn holds no T", () => {
         nextBurn = {date: inMinutes(60), coins: [{denom: "ubze", amount: "9"}]};
         renderSection();

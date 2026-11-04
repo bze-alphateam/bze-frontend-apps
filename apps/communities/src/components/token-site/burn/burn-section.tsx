@@ -14,8 +14,12 @@ import {TsButton, TsCard, TsDialog, TsSection, TsTable, ts, tsLabel} from "../ki
 import {BurnForm} from "./burn-form";
 import {useNow} from "./use-now";
 
-/** The "Burned forever" card: a big total, USD, share of the original supply and Burn T. */
+/**
+ * The "Burned forever" card: a big total, USD, share of the original supply and Burn T. The total,
+ * USD and share count executed burns only; T queued in the burner shows as pending under them.
+ */
 function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; onBurn: () => void }) {
+    const now = useNow();
     const percent = burn.share.multipliedBy(100);
     const details = [
         asset.ticker,
@@ -39,6 +43,11 @@ function BurnTotal({asset, burn, onBurn}: { asset: Asset; burn: TokenBurnData; o
                     {walletAmount(burn.burned)}
                 </chakra.span>
                 <chakra.span fontVariantNumeric="tabular-nums" fontSize={{base: "16px", md: "18px"}} color={ts.muted} data-testid="burn-total-details">{details}</chakra.span>
+                {burn.next && (
+                    <chakra.span fontVariantNumeric="tabular-nums" fontSize={{base: "14px", md: "15px"}} fontWeight={600} color={ts.pri} data-testid="burn-total-pending">
+                        +{walletAmount(burn.next.amount)} {asset.ticker} pending · burns in {burnCountdown(burn.next.date, now)}
+                    </chakra.span>
+                )}
             </Flex>
             <Box
                 role="progressbar"
