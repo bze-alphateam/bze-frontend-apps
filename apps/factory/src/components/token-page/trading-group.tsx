@@ -56,7 +56,7 @@ function PoolRow({ pool, denom, address, back, canReward }: {
             testId={`trading-pool-${pool.id}`}
             title={<PairTitle base={base.ticker} quote={quote.ticker} kind="pool" isMine={Boolean(address) && pool.creator === address} />}
             line={poolLine(pool, denom, base, quote)}
-            // Adding and removing liquidity live on the DEX pool page (BFE-262). The reward pays
+            // Adding and removing liquidity live on the DEX pool page. The reward pays
             // whoever stakes the pool's LP shares, in the page's token unless the user picks another.
             action={(
                 <HStack gap="8px">
