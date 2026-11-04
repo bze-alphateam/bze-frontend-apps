@@ -3,7 +3,7 @@
 import BigNumber from 'bignumber.js';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {getChainNativeAssetDenom} from '../constants/assets';
-import {getForeignFeeSlippage, getGasMultiplier, getGasPrice, getNonNativeGasMultiplier} from '../constants/chain';
+import {getForeignFeeSlippage, getGasMultiplier, getGasPrice} from '../constants/chain';
 import {getTxFeeCollectorParams} from '../query/txfeecollector_params';
 import {Asset} from '../types/asset';
 import {uAmountToBigNumberAmount} from '../utils/amount';
@@ -66,7 +66,6 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
         txFeeDenom,
         gasPrice,
         gasMultiplier: getGasMultiplier(),
-        nonNativeGasMultiplier: getNonNativeGasMultiplier(),
         foreignFeeSlippage: getForeignFeeSlippage(),
         pool,
         minNativeLiquidity: minLiquidity,

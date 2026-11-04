@@ -20,13 +20,22 @@ import {FeeCoin} from "../types/fees";
  *   native:  fee >= ceil(gasLimit × minGasPrice)
  *   foreign: fee >= ceil(gasLimit × minGasPrice / spot),  spot = nativeReserve / foreignReserve
  * so
- *   gas        = ceil(gasUsed × gasMultiplier)
+ *   gas        = ceil(gasUsed × gasMultiplier)                         (the same limit in every fee token)
  *   nativeFee  = ceil(gas × gasPrice)                                   (paying in the native denom)
- *   foreignGas = ceil(gas × nonNativeGasMultiplier)                     (paying in another token)
- *   foreignFee = ceil(spot⁻¹(ceil(foreignGas × gasPrice)) × foreignFeeSlippage)
- * Every rounding is up: a fee one micro-unit short is rejected with "insufficient fees". The
- * foreign fee is derived from the gas limit the transaction is actually sent with (the
- * multiplied one), and the slippage buffer absorbs pool drift between simulation and inclusion.
+ *   foreignFee = ceil(spot⁻¹(ceil(gas × gasPrice)) × foreignFeeSlippage) (paying in another token)
+ * Every rounding is up: a fee one micro-unit short is rejected with "insufficient fees".
+ *
+ * One gas margin serves every fee token. The simulation carries the fee denom
+ * (`utils/simulation.ts`), so it already measures what paying in another token costs: the
+ * network fee is only moved to the txfeecollector module in the tx (it is swapped to the native
+ * denom in that module's EndBlock, outside the tx's gas), and a module fee (trading fee,
+ * creation fee) is captured and swapped through the token's pool inside the tx, which the
+ * simulation runs too. The slippage buffer absorbs pool drift between simulation and inclusion.
+ *
+ * The measured table below comes from transactions paid in the native denom, so it holds no
+ * module-fee swap. When the fee is paid in another token, {@link estimateGasUsed} adds
+ * {@link FEE_SWAP_GAS} for every module fee the message captures, keeping the estimate at or
+ * above what `simulateFee` sends.
  */
 
 /** Every kind of message the apps send. One entry per message type, not per form. */
@@ -75,12 +84,24 @@ export type TxKind =
 /**
  * Gas profile of a message kind: `base` is the gas one message uses; `perItem`, when set,
  * is the extra gas every additional item costs (orders in a fill, hops in a swap route,
- * validators in a claim, …). See {@link GAS_ESTIMATES} for how the numbers were obtained.
+ * validators in a claim, …); `feeSwaps`, when set, is how many module fees the message
+ * captures through the chain's `CaptureAndSwapUserFee` (swapped in the tx when paid in another
+ * token, see {@link FEE_SWAP_GAS}). See {@link GAS_ESTIMATES} for how the numbers were obtained.
  */
 export interface GasProfile {
     base: number;
     perItem?: number;
+    feeSwaps?: number;
 }
+
+/**
+ * Extra gas of one module fee captured in another token and swapped to the native denom
+ * through that token's pool, inside the tx. From the BZE testnet numbers in
+ * `utils/simulation.ts`: create denom reward paid in another token executed ~175k against
+ * ~77k simulated without a fee, of which ~20k is the ante fee transfer, so ~80k per swap;
+ * rounded up for headroom.
+ */
+export const FEE_SWAP_GAS = 100_000;
 
 /**
  * `gas_used` per message kind, rounded UP with headroom from real transactions (2026-09-09):
@@ -91,6 +112,9 @@ export interface GasProfile {
  * these only decide how much MAX leaves behind and when to warn — over-estimating by a few
  * thousand gas costs a fraction of a cent, under-estimating fails the transaction.
  *
+ * The samples paid their network fee in the native denom, so module fees were captured without
+ * a swap; `feeSwaps` marks the kinds that need {@link FEE_SWAP_GAS} on top in another token.
+ *
  * Re-measure when the chain upgrades (`gas_used` of recent txs of that type, e.g. from the
  * explorer or `GET /cosmos/tx/v1beta1/txs?query=message.action='/bze.tradebin.MsgCreateOrder'`
  * — BZE type URLs have no version segment).
@@ -99,14 +123,14 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'send': {base: 160_000},                                  // measured p90 123k, max 146k
     'multi-send': {base: 200_000, perItem: 35_000},           // no on-chain sample — bank send of one output measured p90 123k; estimate with headroom, re-measure on bzetestnet-3
     'ibc-transfer': {base: 450_000},                          // measured p90 330k, max 419k
-    'create-order': {base: 180_000},                          // measured (testnet) p90 155k, max 162k
-    'fill-orders': {base: 220_000, perItem: 60_000},          // measured 2 orders 240k … 15 orders 961k
+    'create-order': {base: 180_000, feeSwaps: 1},             // measured (testnet) p90 155k, max 162k
+    'fill-orders': {base: 220_000, perItem: 60_000, feeSwaps: 1}, // measured 2 orders 240k … 15 orders 961k
     'cancel-order': {base: 100_000},                          // measured (testnet) 84k
-    'swap': {base: 260_000, perItem: 60_000},                 // measured 1 hop 224k–242k, 2 hops 251k
+    'swap': {base: 260_000, perItem: 60_000, feeSwaps: 1},    // measured 1 hop 224k–242k, 2 hops 251k
     'add-liquidity': {base: 220_000},                         // measured p90 194k, max 201k
     'remove-liquidity': {base: 220_000},                      // measured max 203k
-    'create-market': {base: 220_000},                         // measured 165k (single sample)
-    'create-pool': {base: 300_000},                           // measured max 252k
+    'create-market': {base: 220_000, feeSwaps: 1},            // measured 165k (single sample)
+    'create-pool': {base: 300_000, feeSwaps: 1},              // measured max 252k
     'delegate': {base: 260_000},                              // measured p90 233k, max 241k
     'undelegate': {base: 320_000},                            // measured p90 275k, max 284k
     'redelegate': {base: 460_000},                            // measured p90 404k, max 425k
@@ -114,14 +138,14 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
     'start-raffle': {base: 200_000},                          // no on-chain sample — denom/raffle lookups + pot capture + two writes; re-measure on bzetestnet-3
-    'create-denom': {base: 300_000},                          // no on-chain sample — estimate with headroom
+    'create-denom': {base: 300_000, feeSwaps: 1},             // no on-chain sample — estimate with headroom
     'mint': {base: 200_000},                                  // no on-chain sample — estimate with headroom
     'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom
     'set-denom-metadata': {base: 200_000},                    // no on-chain sample — estimate with headroom
     'change-admin': {base: 150_000},                          // no on-chain sample — estimate with headroom
     'set-denom-branding': {base: 200_000},                    // no on-chain sample (chain v8.2.0) — admin check + one small record write + event; re-measure on bzetestnet-3
-    'create-staking-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
-    'create-trading-reward': {base: 300_000},                 // no on-chain sample — estimate with headroom
+    'create-staking-reward': {base: 300_000, feeSwaps: 1},    // no on-chain sample — estimate with headroom
+    'create-trading-reward': {base: 300_000, feeSwaps: 1},    // no on-chain sample — estimate with headroom
     'update-staking-reward': {base: 160_000},                 // measured max 137k
     'delete-staking-reward': {base: 200_000},                 // no on-chain sample (chain v8.2.0) — one record removal + event; re-measure on bzetestnet-3
     'distribute-staking-rewards': {base: 180_000},            // no on-chain sample — one capture + one record write, like update-staking-reward (137k)
@@ -130,10 +154,10 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'claim-staking-reward': {base: 170_000, perItem: 100_000}, // measured max 147k per message
     // Denom Rewards (chain v8.2.0): no on-chain sample yet — estimates with headroom, sized from the
     // staking-reward equivalents above. Re-measure on bzetestnet-3 once it runs v8.2.0.
-    'create-denom-reward': {base: 300_000},                   // no on-chain sample — fee capture-and-swap, like create-staking-reward
-    'create-denom-reward-schedule': {base: 350_000},          // no on-chain sample — escrow + schedule fee + (new prize) prize fee captures
+    'create-denom-reward': {base: 300_000, feeSwaps: 1},      // no on-chain sample — fee capture-and-swap, like create-staking-reward
+    'create-denom-reward-schedule': {base: 350_000, feeSwaps: 2}, // no on-chain sample — escrow + schedule fee + (new prize) prize fee captures
     'update-denom-reward-schedule': {base: 180_000},          // no on-chain sample — escrow only, like update-staking-reward (137k)
-    'distribute-denom-rewards': {base: 300_000, perItem: 60_000}, // no on-chain sample — per prize coin; a new prize denom adds a fee capture
+    'distribute-denom-rewards': {base: 300_000, perItem: 60_000, feeSwaps: 1}, // no on-chain sample — per prize coin; a new prize denom adds a fee capture
     'join-denom-reward': {base: 250_000},                     // no on-chain sample — settles every prize accumulator of the DR
     'claim-denom-rewards': {base: 250_000},                   // no on-chain sample — settles every prize accumulator of the DR
     // The keeper consumes the extra_gas_for_denom_exit param (default 1,000,000) on every exit, on
@@ -157,12 +181,20 @@ function normalizeSpec(spec: TxSpec): TxKindSpec[] {
     return list.map(item => typeof item === 'string' ? {kind: item} : item);
 }
 
+export interface EstimateGasUsedOptions {
+    /**
+     * The fee is paid in a token other than the native denom: every module fee the messages
+     * capture is swapped in the tx, so {@link FEE_SWAP_GAS} is added per `feeSwaps`.
+     */
+    foreignFee?: boolean;
+}
+
 /**
  * Raw gas a transaction made of `spec` is expected to use, before the gas multiplier.
  * A multi-message transaction sums its messages' `base` — deliberately conservative
  * (the fixed per-tx overhead is counted once per message).
  */
-export function estimateGasUsed(spec: TxSpec): BigNumber {
+export function estimateGasUsed(spec: TxSpec, options?: EstimateGasUsedOptions): BigNumber {
     return normalizeSpec(spec).reduce((total, {kind, count}) => {
         const profile = GAS_ESTIMATES[kind];
         if (!profile) {
@@ -170,7 +202,8 @@ export function estimateGasUsed(spec: TxSpec): BigNumber {
         }
         const items = Math.max(1, Math.floor(count ?? 1));
         const extra = profile.perItem ? profile.perItem * (items - 1) : 0;
-        return total.plus(profile.base + extra);
+        const swaps = options?.foreignFee && profile.feeSwaps ? profile.feeSwaps * FEE_SWAP_GAS : 0;
+        return total.plus(profile.base + extra + swaps);
     }, toBigNumber(0));
 }
 
@@ -219,7 +252,7 @@ export function computeNativeGasFee(
 
 /** Gas limit and fee of a transaction paid in a non-native token. */
 export interface ForeignGasFee {
-    /** Gas limit the transaction is sent with: `ceil(nativeGas × nonNativeGasMultiplier)`. */
+    /** Gas limit the transaction is sent with: the native gas limit, unchanged. */
     gas: BigNumber;
     /** Fee in micro-units of the foreign denom, slippage buffer included. */
     amount: BigNumber;
@@ -231,11 +264,10 @@ export interface ForeignGasFee {
  * The fee `useTx.simulateFee` sends when the user pays in another token. The chain prices gas
  * in that token at `minGasPrice / spot`, where `spot = nativeReserve / foreignReserve` of the
  * token's pool with the native denom (x/tradebin `GetDenomSpotPriceInNativeCoin`), and requires
- * `fee >= ceil(gasLimit × minGasPrice / spot)`. The gas limit of a foreign-fee transaction is
- * the native one times `nonNativeGasMultiplier`, so the fee is derived from *that* limit:
- * `ceil(finalGas × gasPrice)` native, converted at the spot ratio, times the slippage buffer,
- * rounded up. Computing it from the pre-multiplier gas would send only `slippage / multiplier`
- * of what the chain requires.
+ * `fee >= ceil(gasLimit × minGasPrice / spot)`. The gas limit is the one of
+ * {@link computeNativeGasFee} — no second margin: the simulation already ran with the fee in
+ * this token (see module doc) — so the fee is `ceil(gas × gasPrice)` native, converted at the
+ * spot ratio, times the slippage buffer, rounded up.
  *
  * `nativeGas` is the gas limit of {@link computeNativeGasFee}. Returns undefined when the pool
  * cannot price the fee (empty reserves), in which case the native fee must be sent instead.
@@ -243,12 +275,11 @@ export interface ForeignGasFee {
 export function computeForeignGasFee(
     nativeGas: BigNumber,
     gasPrice: number,
-    nonNativeGasMultiplier: number,
     foreignFeeSlippage: number,
     pool: LiquidityPoolSDKType,
     nativeDenom: string,
 ): ForeignGasFee | undefined {
-    const gas = nativeGas.multipliedBy(nonNativeGasMultiplier).integerValue(BigNumber.ROUND_CEIL);
+    const gas = nativeGas.integerValue(BigNumber.ROUND_CEIL);
     const nativeAmount = gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_CEIL);
     // spot⁻¹: native amount × foreignReserve / nativeReserve
     const spot = calculatePoolOppositeAmount(pool, nativeAmount, pool.base === nativeDenom);
@@ -273,10 +304,8 @@ export interface GasFeeEstimateInput {
     txFeeDenom: string;
     /** Gas price in native micro-units per gas (see {@link resolveGasPrice}). */
     gasPrice: number;
-    /** `NEXT_PUBLIC_GAS_MULTIPLIER` (useTx: 1.5 by default). */
+    /** `NEXT_PUBLIC_GAS_MULTIPLIER` (useTx: 1.2 by default), the same for every fee token. */
     gasMultiplier: number;
-    /** `NEXT_PUBLIC_NON_NATIVE_GAS_MULTIPLIER`, applied to the gas limit when paying in another token. */
-    nonNativeGasMultiplier: number;
     /** `NEXT_PUBLIC_FOREIGN_FEE_SLIPPAGE`, applied to the foreign amount when paying in another token. */
     foreignFeeSlippage: number;
     /** The `txFeeDenom`/`nativeDenom` liquidity pool; required to pay in a non-native token. */
@@ -299,11 +328,12 @@ export interface GasFeeEstimate {
 }
 
 /**
- * Pre-submit gas fee estimate. Follows `useTx.simulateFee` exactly, with the measured gas
- * table instead of a simulation (see module doc).
+ * Pre-submit gas fee estimate. Follows `useTx.simulateFee`, with the measured gas table instead
+ * of a simulation (see module doc). In another token the table gets {@link FEE_SWAP_GAS} per
+ * captured module fee, which the simulation measures and the native-paid samples lack.
  */
 export function estimateGasFee(input: GasFeeEstimateInput): GasFeeEstimate {
-    const {spec, nativeDenom, txFeeDenom, gasPrice, gasMultiplier, nonNativeGasMultiplier, foreignFeeSlippage, pool, minNativeLiquidity} = input;
+    const {spec, nativeDenom, txFeeDenom, gasPrice, gasMultiplier, foreignFeeSlippage, pool, minNativeLiquidity} = input;
 
     const {gas, amount: nativeAmount} = computeNativeGasFee(estimateGasUsed(spec), gasPrice, gasMultiplier);
     const native: GasFeeEstimate = {denom: nativeDenom, amount: nativeAmount, gas, nativeAmount, isNative: true};
@@ -312,7 +342,8 @@ export function estimateGasFee(input: GasFeeEstimateInput): GasFeeEstimate {
         return native;
     }
 
-    const foreign = computeForeignGasFee(gas, gasPrice, nonNativeGasMultiplier, foreignFeeSlippage, pool, nativeDenom);
+    const foreignGas = computeNativeGasFee(estimateGasUsed(spec, {foreignFee: true}), gasPrice, gasMultiplier).gas;
+    const foreign = computeForeignGasFee(foreignGas, gasPrice, foreignFeeSlippage, pool, nativeDenom);
     if (!foreign) {
         return native;
     }

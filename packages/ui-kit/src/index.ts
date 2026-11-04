@@ -99,11 +99,11 @@ export {
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {
-    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
+    GAS_ESTIMATES, FEE_SWAP_GAS, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
     maxSpendableAmount, canAffordTx
 } from './utils/gas_fee';
 export type {
-    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
+    TxKind, TxKindSpec, TxSpec, GasProfile, EstimateGasUsedOptions, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
     SpendCoin, CanAffordTxInput, CanAffordTxResult, TxShortfall
 } from './utils/gas_fee';
 export {
@@ -157,7 +157,7 @@ export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
     getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL, getExplorerTokenURL,
-    getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
+    getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice,
     getForeignFeeSlippage
 } from './constants/chain';
 export {

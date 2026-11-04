@@ -6,7 +6,7 @@ import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
 import {createCosmosQueryClient} from "@interchainjs/cosmos";
-import {getChainName, getExplorerTxURL, getForeignFeeSlippage, getGasMultiplier, getGasPrice, getNonNativeGasMultiplier} from "../constants/chain";
+import {getChainName, getExplorerTxURL, getForeignFeeSlippage, getGasMultiplier, getGasPrice} from "../constants/chain";
 import {getTxFeeCollectorParams} from "../query/txfeecollector_params";
 import {useToast} from "./useToast";
 import {prettyError} from "../utils/user_errors";
@@ -218,8 +218,9 @@ const useTx = (chainName: string) => {
         // BZE ante handler checks sequence even in simulation — use the real sequence
         const sequence = await signer.getSequence(address);
         const signerInfo = SignerInfo.fromPartial({modeInfo: {single: {mode: 1}}, sequence});
-        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why). The signer's
-        // own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
+        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why): the measured
+        // gas then already includes what that token costs, so one margin serves every fee token. The
+        // signer's own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
         const simulationDenom = feeDenom !== nativeDenom && isValidFeeDenom(feeDenom) && getDenomsPool(feeDenom, nativeDenom)
             ? feeDenom
             : nativeDenom;
@@ -230,7 +231,7 @@ const useTx = (chainName: string) => {
             throw new Error("Gas simulation returned 0");
         }
 
-        // Gas limit rounded up, then fee = ceil(gas × price): the ante handler requires
+        // Gas limit = ceil(gasUsed × margin), then fee = ceil(gas × price): the ante handler requires
         // fee >= ceil(gasLimit × minGasPrice) and rejects anything a micro-unit short.
         const nativeGasFee = computeNativeGasFee(gasEstimated, gasPrice, getGasMultiplier());
         const nativeFee = {
@@ -254,10 +255,10 @@ const useTx = (chainName: string) => {
             return nativeFee;
         }
 
-        // The foreign fee is priced from the gas limit the tx is actually sent with (native gas ×
-        // non-native multiplier) at the pool's spot ratio, with the slippage buffer (default 10%)
-        // to absorb pool drift between simulation and inclusion. See computeForeignGasFee.
-        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getNonNativeGasMultiplier(), getForeignFeeSlippage(), pool, nativeDenom);
+        // Same gas limit as the native fee (the simulation already ran with this token), priced at
+        // the pool's spot ratio with the slippage buffer (default 10%) to absorb pool drift between
+        // simulation and inclusion. See computeForeignGasFee.
+        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getForeignFeeSlippage(), pool, nativeDenom);
         if (!foreignGasFee) {
             return nativeFee;
         }

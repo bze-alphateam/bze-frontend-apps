@@ -169,19 +169,18 @@ export const getLockerAddress = (): string => {
     return process.env.NEXT_PUBLIC_LOCKER_ADDRESS || 'bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4'
 }
 
+/**
+ * Margin on the simulated gas, the same for every fee token: the simulation already carries
+ * the fee denom, so paying in another token needs no extra margin (see utils/gas_fee.ts).
+ */
 export const getGasMultiplier = (): number => {
     const val = parseFloat(process.env.NEXT_PUBLIC_GAS_MULTIPLIER || '');
-    return isNaN(val) || val <= 0 ? 1.5 : val;
+    return isNaN(val) || val <= 0 ? 1.2 : val;
 }
 
 export const getGasPrice = (): number => {
     const val = parseFloat(process.env.NEXT_PUBLIC_GAS_PRICE || '');
     return isNaN(val) || val <= 0 ? 0.02 : val;
-}
-
-export const getNonNativeGasMultiplier = (): number => {
-    const val = parseFloat(process.env.NEXT_PUBLIC_NON_NATIVE_GAS_MULTIPLIER || '');
-    return isNaN(val) || val <= 0 ? 1.5 : val;
 }
 
 export const getForeignFeeSlippage = (): number => {

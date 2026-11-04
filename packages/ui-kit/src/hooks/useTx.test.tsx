@@ -65,6 +65,9 @@ vi.mock('../constants/chain', async (importOriginal) => ({
 }))
 
 import { useBZETx, useIBCTx, TxStatus } from './useTx'
+import { estimateGasFee, GAS_ESTIMATES } from '../utils/gas_fee'
+import { getForeignFeeSlippage, getGasMultiplier } from '../constants/chain'
+import type { LiquidityPoolSDKType } from '@bze/bzejs/bze/tradebin/store'
 import { AuthInfo, TxBody, TxRaw } from '@bze/bzejs/cosmos/tx/v1beta1/tx'
 
 const FEE = { amount: [{ denom: 'ubze', amount: '1000' }], gas: '200000' }
@@ -175,7 +178,7 @@ describe('useTx toasts and failure details', () => {
 })
 
 describe('useTx simulateFee', () => {
-    // Mainnet's validator_min_gas_fee; the env multipliers are the defaults (1.5 / 1.5 / 1.1).
+    // Mainnet's validator_min_gas_fee; the gas margin and foreign fee slippage are the defaults (1.2 / 1.1).
     const CHAIN_GAS_PRICE = 0.01
     // 1M BZE : 10k USDC → spot = 100 ubze per uusdc
     const pool = { base: 'ubze', quote: 'uusdc', fee: '0.003', reserve_base: '1000000000000', reserve_quote: '10000000000' }
@@ -202,13 +205,13 @@ describe('useTx simulateFee', () => {
         settings.feeDenom = 'ubze'
     })
 
-    // Regression: gasUsed 123410 × 1.5 = 185115 gas; 185115 × 0.01 = 1851.15 was rounded half-up
-    // to 1851 ubze, one short of the ceil(gas × minGasPrice) = 1852 the ante handler requires.
-    it('sends ceil(gasLimit × chain gas price) in the native denom', async () => {
+    // gasUsed 123410 × 1.2 = 148092 gas (was × 1.5 = 185115); 148092 × 0.01 = 1480.92 → 1481 ubze,
+    // rounded up: the ante handler requires ceil(gas × minGasPrice) and rejects one ubze less.
+    it('sends ceil(ceil(gasUsed × 1.2) × chain gas price) in the native denom', async () => {
         const fee = await sentFee()
 
-        expect(fee.gas).toBe('185115')
-        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1852' }])
+        expect(fee.gas).toBe('148092')
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1481' }])
     })
 
     it('uses the chain gas price, not the env default', async () => {
@@ -216,20 +219,21 @@ describe('useTx simulateFee', () => {
 
         const fee = await sentFee()
 
-        // ceil(185115 × 0.05) = ceil(9255.75)
-        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '9256' }])
+        // ceil(148092 × 0.05) = ceil(7404.6)
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '7405' }])
     })
 
-    // Regression: the foreign fee was converted from gas × 0.01 (1851 ubze → 18.51 uusdc × 1.1 → 21)
-    // while the gas limit sent was gas × 1.5, so the chain's ceil(277673 × 0.01 / 100) = 28 was not met.
-    it('prices a foreign fee from the multiplied gas limit the tx is sent with', async () => {
+    // The simulation already carries the fee token, so a foreign fee gets the same gas limit as a
+    // native one (no second ×1.5, which sent 277673 gas and 31 uusdc here) and is the native fee
+    // for that limit at spot × 1.1.
+    it('sends a foreign fee with the native gas limit, priced at spot with the slippage buffer', async () => {
         settings.feeDenom = 'uusdc'
         getDenomsPoolMock.mockReturnValue(pool)
 
         const fee = await sentFee()
 
-        expect(fee.gas).toBe('277673')                                   // ceil(185115 × 1.5)
-        expect(fee.amount).toEqual([{ denom: 'uusdc', amount: '31' }])   // ceil(ceil(277673 × 0.01) / 100 × 1.1)
+        expect(fee.gas).toBe('148092')                                   // ceil(123410 × 1.2), as in ubze
+        expect(fee.amount).toEqual([{ denom: 'uusdc', amount: '17' }])   // ceil(ceil(148092 × 0.01) / 100 × 1.1)
         const required = Math.ceil(Number(fee.gas) * CHAIN_GAS_PRICE / 100)
         expect(Number(fee.amount[0].amount)).toBeGreaterThanOrEqual(required)
     })
@@ -239,8 +243,48 @@ describe('useTx simulateFee', () => {
 
         const fee = await sentFee()
 
-        expect(fee.gas).toBe('185115')
-        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1852' }])
+        expect(fee.gas).toBe('148092')
+        expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1481' }])
+    })
+
+    // Forms reserve the pre-submit estimate on MAX and warn with it, so for the same gas it must
+    // be exactly the fee the tx is sent with, in either denom.
+    describe('matches the pre-submit estimate', () => {
+        const estimateFor = (txFeeDenom: string) => estimateGasFee({
+            spec: 'send',
+            nativeDenom: 'ubze',
+            txFeeDenom,
+            gasPrice: CHAIN_GAS_PRICE,
+            gasMultiplier: getGasMultiplier(),
+            foreignFeeSlippage: getForeignFeeSlippage(),
+            pool: txFeeDenom === 'ubze' ? undefined : pool as LiquidityPoolSDKType,
+            minNativeLiquidity: 0,
+        })
+
+        beforeEach(() => {
+            simulateMock.mockResolvedValue({ gasInfo: { gasUsed: BigInt(GAS_ESTIMATES.send.base), gasWanted: BigInt(0) } })
+        })
+
+        it('in the native denom', async () => {
+            const estimate = estimateFor('ubze')
+
+            const fee = await sentFee()
+
+            expect(fee.gas).toBe(estimate.gas.toFixed(0))
+            expect(fee.amount).toEqual([{ denom: 'ubze', amount: estimate.amount.toFixed(0) }])
+        })
+
+        it('in another token', async () => {
+            settings.feeDenom = 'uusdc'
+            getDenomsPoolMock.mockReturnValue(pool)
+            const estimate = estimateFor('uusdc')
+
+            const fee = await sentFee()
+
+            expect(estimate.isNative).toBe(false)
+            expect(fee.gas).toBe(estimate.gas.toFixed(0))
+            expect(fee.amount).toEqual([{ denom: 'uusdc', amount: estimate.amount.toFixed(0) }])
+        })
     })
 })
 
@@ -350,8 +394,8 @@ describe('useTx sign mode', () => {
         // The raw offline signer, never the wrapper that asks the wallet to set its own fee.
         expect(beePocket.signDirect).toHaveBeenCalledWith('bzetestnet-3', 'addr1', expect.anything())
         const requested = AuthInfo.decode(beePocket.signDirect.mock.calls[0][2].authInfoBytes).fee!
-        expect(requested.amount).toEqual([{ denom: 'uusdc', amount: '31' }])
-        expect(requested.gasLimit).toBe(BigInt(277_673))
+        expect(requested.amount).toEqual([{ denom: 'uusdc', amount: '17' }])   // see the simulateFee tests
+        expect(requested.gasLimit).toBe(BigInt(148_092))
     })
 
     it('BeePocket gets the fee passed in the options', async () => {

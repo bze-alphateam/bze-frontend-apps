@@ -101,9 +101,9 @@ const assetsContext: AssetsContextType = {
 } as unknown as AssetsContextType;
 
 // The env defaults the engine applies without NEXT_PUBLIC_* overrides (constants/chain.ts):
-// gas × 1.5 multiplier × 0.02 ubze/gas, half-up rounded, then shown in BZE.
+// gas × 1.2 margin × 0.02 ubze/gas, half-up rounded, then shown in BZE.
 const SEND_GAS_BZE = new BigNumber(GAS_ESTIMATES.send.base)
-    .multipliedBy(1.5)
+    .multipliedBy(1.2)
     .integerValue(BigNumber.ROUND_CEIL)
     .multipliedBy(0.02)
     .integerValue(BigNumber.ROUND_HALF_UP)
