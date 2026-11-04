@@ -1,4 +1,4 @@
-import type {BrandingColors} from "@bze/bze-ui-kit";
+import type {BrandingColors, ToasterTheme} from "@bze/bze-ui-kit";
 
 import {contrastRatio} from "@/lib/brand-kit";
 
@@ -66,5 +66,26 @@ export function tokenSiteGlowVars(palette: BrandingColors): Record<string, strin
         "--ts-hero-gradient": heroGradient,
         "--ts-glow": glow,
         "--ts-inset": mix(palette.text, 6, palette.background),
+    };
+}
+
+/**
+ * The toasts' surface on the token site (`useToasterTheme`): the site's card, text, muted text,
+ * border and font, the 14 px radius of the app toasts and a soft glow of the primary under the
+ * shadow. `vars` are the site's `--ts-*` values; the toaster renders outside the site, so it
+ * gets the values themselves, not `var(--ts-*)` references.
+ */
+export function tokenSiteToasterTheme(palette: BrandingColors, vars: Record<string, string>): ToasterTheme {
+    return {
+        bg: vars["--ts-card"],
+        fg: vars["--ts-fg"],
+        muted: vars["--ts-muted"],
+        faint: mix(palette.text, 45, palette.background),
+        border: vars["--ts-border"],
+        hover: mix(palette.text, 8, palette.background),
+        line: mix(palette.text, 16, palette.background),
+        radius: "14px",
+        shadow: `0 20px 40px -20px rgba(0, 0, 0, 0.6), 0 16px 48px -24px ${mix(palette.primary, 55, "transparent")}`,
+        font: vars["--ts-font"],
     };
 }

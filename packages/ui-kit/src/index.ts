@@ -343,7 +343,8 @@ export type { WithdrawableAsset, WithdrawableAssetKind, WithdrawDestinationChain
 
 // === Components ===
 export { SettingsProvider } from './components/settings-provider';
-export { Toaster } from './components/toaster';
+export { Toaster, useToasterTheme } from './components/toaster';
+export type { ToasterTheme } from './components/toaster';
 export { HighlightText } from './components/highlight';
 export { ImageWithFallback } from './components/image';
 export { TokenLogo } from './components/token-logo';
