@@ -3,8 +3,15 @@ import BigNumber from "bignumber.js";
 
 import {
     entrySummary,
+    isEntryExpired,
     isEntryResolved,
     newRaffleEntry,
+    parseEntries,
+    RAFFLE_PENDING_MAX_AGE_MS,
+    RAFFLE_RESULTS_TTL_MS,
+    type RaffleEntry,
+    serializeEntries,
+    ticketStrip,
     raffleOdds,
     rafflePrize,
     raffleShare,
@@ -115,6 +122,81 @@ describe("raffle entries", () => {
 
         expect(await resolveEntry(entry, async () => undefined)).toBe(entry);
         expect(entrySummary(entry)).toEqual({won: 0, lost: 0, pending: 1, amount: new BigNumber(0)});
+    });
+});
+
+describe("stored entries", () => {
+    const entry: RaffleEntry = {
+        ...newRaffleEntry("a", 100, 3, 1_000),
+        results: [{won: false, amount: new BigNumber(0), at: 2_000}, {won: true, amount: new BigNumber("2500000"), at: 3_000}],
+    };
+
+    it("round-trips through storage, unwatched", () => {
+        const [restored] = parseEntries(serializeEntries([entry]));
+
+        expect(restored).toEqual({...entry, watched: false});
+        expect(restored.results[1].amount.toFixed()).toBe("2500000");
+    });
+
+    it("drops what can't be trusted instead of failing", () => {
+        expect(parseEntries(null)).toEqual([]);
+        expect(parseEntries("{not json")).toEqual([]);
+        expect(parseEntries(JSON.stringify({id: "a"}))).toEqual([]);
+        expect(parseEntries(JSON.stringify([{id: "a", height: -1, tickets: 1, results: [], createdAt: 1}, null]))).toEqual([]);
+        expect(parseEntries(JSON.stringify([{id: "a", height: 100, tickets: 1, results: [{won: true, amount: "x"}], createdAt: 1}]))).toEqual([]);
+    });
+
+    it("keeps drawn joins an hour after the last draw and gives up on a join after a day", () => {
+        const drawn = {...entry, resolvedAt: 10_000};
+        expect(isEntryExpired(drawn, 10_000 + RAFFLE_RESULTS_TTL_MS - 1)).toBe(false);
+        expect(isEntryExpired(drawn, 10_000 + RAFFLE_RESULTS_TTL_MS)).toBe(true);
+
+        expect(isEntryExpired(entry, 1_000 + RAFFLE_PENDING_MAX_AGE_MS - 1)).toBe(false);
+        expect(isEntryExpired(entry, 1_000 + RAFFLE_PENDING_MAX_AGE_MS)).toBe(true);
+    });
+});
+
+describe("ticketStrip", () => {
+    const lost = {won: false, amount: new BigNumber(0)};
+
+    it("counts blocks to each undrawn ticket: the one in the next block is drawing", () => {
+        const strip = ticketStrip([newRaffleEntry("a", 100, 3)], 101);
+
+        expect(strip.upcoming).toEqual([{number: 1, blocksAway: 0}, {number: 2, blocksAway: 1}, {number: 3, blocksAway: 2}]);
+        expect(strip).toMatchObject({total: 3, drawn: 0, more: 0, won: 0});
+    });
+
+    it("never counts below drawing when the chain is past a ticket whose result isn't read yet", () => {
+        expect(ticketStrip([newRaffleEntry("a", 100, 2)], 120).upcoming.map((ticket) => ticket.blocksAway)).toEqual([0, 0]);
+    });
+
+    it("falls back to the height the entries prove without a feed height", () => {
+        const joined = newRaffleEntry("a", 100, 3);
+        expect(ticketStrip([joined]).upcoming.map((ticket) => ticket.blocksAway)).toEqual([1, 2, 3]);
+
+        // Ticket 1 (block 102) is drawn, so the chain is at 102 at least: ticket 2 is drawing.
+        const drawnOne = {...joined, results: [lost]};
+        expect(ticketStrip([drawnOne], 90).upcoming.map((ticket) => ticket.blocksAway)).toEqual([0, 1]);
+    });
+
+    it("shows the next five over every join, the rest as more, and sums the wins", () => {
+        const first = {...newRaffleEntry("a", 100, 4), results: [lost, {won: true, amount: new BigNumber("7"), at: 5}]};
+        const second = newRaffleEntry("b", 101, 6);
+        const strip = ticketStrip([first, second], 103);
+
+        // Join a draws 3 and 4 in blocks 104/105, join b draws 5…10 in blocks 103…108.
+        expect(strip.upcoming).toEqual([
+            {number: 5, blocksAway: 0},
+            {number: 3, blocksAway: 0},
+            {number: 6, blocksAway: 0},
+            {number: 4, blocksAway: 1},
+            {number: 7, blocksAway: 1},
+        ]);
+        expect(strip.more).toBe(3);
+        expect(strip).toMatchObject({total: 10, drawn: 2, won: 1});
+        expect(strip.amount.toFixed()).toBe("7");
+        // Newest result first.
+        expect(strip.results.map((ticket) => ticket.number)).toEqual([2, 1]);
     });
 });
 

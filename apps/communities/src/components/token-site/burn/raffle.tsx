@@ -19,7 +19,16 @@ import {
 } from "@bze/bze-ui-kit";
 
 import {type TokenRaffle, useTokenRaffle} from "@/hooks/token-site/useTokenRaffle";
-import {entrySummary, type RaffleEntry, raffleOdds, rafflePrize, raffleShare, ticketsProblem} from "@/lib/token-site/raffle";
+import {
+    entrySummary,
+    type RaffleEntry,
+    raffleOdds,
+    rafflePrize,
+    raffleShare,
+    ticketsProblem,
+    ticketStrip,
+    type UpcomingTicket,
+} from "@/lib/token-site/raffle";
 import {walletAmount} from "@/lib/token-site/wallet";
 
 import {TsButton, TsDialog, TsField, TsNotice, TsTag, ts, tsMix} from "../kit";
@@ -92,6 +101,121 @@ function RecentWinners({asset, winners}: { asset: Asset; winners: RaffleWinnerSD
                     </chakra.li>
                 ))}
             </chakra.ul>
+        </Flex>
+    );
+}
+
+/**
+ * The drawing ticket pulses in the token's colour and a result flashes once as it lands; both stop
+ * for people who ask for reduced motion. Plain CSS so the keyframes need no runtime injection.
+ */
+const RAFFLE_MOTION_CSS = `
+@keyframes ts-raffle-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--ts-pri) 55%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--ts-pri) 0%, transparent); }
+}
+@keyframes ts-raffle-flash-won {
+    from { background-color: color-mix(in oklab, var(--ts-pri) 55%, var(--ts-bg)); }
+}
+@keyframes ts-raffle-flash-lost {
+    from { background-color: color-mix(in oklab, var(--ts-muted) 35%, var(--ts-bg)); }
+}
+.ts-raffle-drawing { animation: ts-raffle-pulse 1.6s ease-in-out infinite; }
+.ts-raffle-flash-won { animation: ts-raffle-flash-won 1.2s ease-out 1; }
+.ts-raffle-flash-lost { animation: ts-raffle-flash-lost 1.2s ease-out 1; }
+@media (prefers-reduced-motion: reduce) {
+    .ts-raffle-drawing, .ts-raffle-flash-won, .ts-raffle-flash-lost { animation: none; }
+}
+`;
+
+const ticketStatus = ({blocksAway}: UpcomingTicket) =>
+    (blocksAway === 0 ? "Drawing…" : `in ${blocksAway} ${blocksAway === 1 ? "block" : "blocks"}`);
+
+/**
+ * The connected wallet's tickets in the raffle slot: the next five to be drawn with how many blocks
+ * away each is (the drawing one pulses), how far the draw is, and each drawn ticket won or lost
+ * with a summary. Fully drawn joins stay for an hour.
+ */
+function YourTickets({asset, entries, height}: { asset: Asset; entries: RaffleEntry[]; height?: number }) {
+    // Results that land while the page is open flash once; those restored from storage don't.
+    const [shownAt] = useState(() => Date.now());
+    const strip = ticketStrip(entries, height);
+    if (strip.total === 0) return null;
+
+    const finished = strip.upcoming.length === 0;
+    const summary = strip.won > 0
+        ? `${strip.won} ${strip.won === 1 ? "ticket" : "tickets"} won · ${tAmount(asset, strip.amount)}`
+        : finished ? "No winning ticket this time" : "No win yet";
+
+    return (
+        <Flex direction="column" gap="10px" data-testid="raffle-tickets">
+            <style>{RAFFLE_MOTION_CSS}</style>
+            <Flex justify="space-between" align="baseline" gap="12px">
+                <chakra.h4 m="0" fontSize="14px" fontWeight={600} color={ts.muted}>Your tickets</chakra.h4>
+                <chakra.span fontSize="13px" fontVariantNumeric="tabular-nums" color={ts.muted} aria-live="polite" data-testid="raffle-tickets-progress">
+                    {strip.drawn} of {strip.total} drawn
+                </chakra.span>
+            </Flex>
+            {!finished && (
+                <chakra.ol m="0" p="0" listStyleType="none" display="flex" flexWrap="wrap" gap="8px" data-testid="raffle-strip">
+                    {strip.upcoming.map((ticket) => {
+                        const drawing = ticket.blocksAway === 0;
+
+                        return (
+                            <chakra.li
+                                key={ticket.number}
+                                className={drawing ? "ts-raffle-drawing" : undefined}
+                                display="flex"
+                                flexDirection="column"
+                                gap="2px"
+                                minW="92px"
+                                px="12px"
+                                py="8px"
+                                borderRadius="12px"
+                                bg={drawing ? tsMix(ts.pri, 14) : ts.inset}
+                                borderWidth="1px"
+                                borderStyle="solid"
+                                borderColor={drawing ? tsMix(ts.pri, 60) : "transparent"}
+                                aria-current={drawing ? "step" : undefined}
+                                data-testid={`raffle-strip-ticket-${ticket.number}`}
+                            >
+                                <chakra.span fontSize="12px" color={ts.muted}>Ticket {ticket.number}</chakra.span>
+                                <chakra.span fontSize="13px" fontWeight={600} color={drawing ? ts.fg : ts.muted} data-testid="raffle-strip-status">
+                                    {ticketStatus(ticket)}
+                                </chakra.span>
+                            </chakra.li>
+                        );
+                    })}
+                    {strip.more > 0 && (
+                        <chakra.li alignSelf="center" px="4px" fontSize="13px" color={ts.muted} data-testid="raffle-strip-more">+{strip.more} more</chakra.li>
+                    )}
+                </chakra.ol>
+            )}
+            {strip.results.length > 0 && (
+                <chakra.ul m="0" p="0" listStyleType="none" display="flex" flexWrap="wrap" gap="6px" maxH="132px" overflowY="auto" data-testid="raffle-drawn">
+                    {strip.results.map(({number, result}) => (
+                        <chakra.li
+                            key={number}
+                            className={result.at !== undefined && result.at >= shownAt ? (result.won ? "ts-raffle-flash-won" : "ts-raffle-flash-lost") : undefined}
+                            px="10px"
+                            py="4px"
+                            borderRadius="999px"
+                            fontSize="12px"
+                            fontWeight={600}
+                            fontVariantNumeric="tabular-nums"
+                            bg={result.won ? tsMix(ts.pri, 18) : ts.inset}
+                            color={result.won ? ts.fg : ts.muted}
+                            data-result={result.won ? "won" : "lost"}
+                            data-testid={`raffle-drawn-ticket-${number}`}
+                        >
+                            #{number} {result.won ? `Won ${tAmount(asset, result.amount)}` : "No win"}
+                        </chakra.li>
+                    ))}
+                </chakra.ul>
+            )}
+            {strip.drawn > 0 && (
+                <chakra.span fontSize="14px" fontWeight={600} fontVariantNumeric="tabular-nums" data-testid="raffle-tickets-summary">{summary}</chakra.span>
+            )}
         </Flex>
     );
 }
@@ -202,7 +326,7 @@ function TicketResults({asset, entry, onMore, onClose}: { asset: Asset; entry: R
                 })}
             </chakra.ol>
             {summary.pending > 0 && (
-                <TsNotice>You can close this window: the results that are still drawing will appear as notifications.</TsNotice>
+                <TsNotice>You can close this window: the tickets still drawing show under Next burn and as notifications.</TsNotice>
             )}
             <Flex gap="12px" wrap="wrap">
                 <TsButton variant="primary" flex="1" onClick={onMore}>Buy more tickets</TsButton>
@@ -278,20 +402,21 @@ function RaffleDialog({asset, raffle, tokenRaffle, onClose}: RaffleDialogProps) 
 }
 
 /**
- * The Burn section's raffle slot (Business Logic R11): T's raffle card, its recent winners and the
- * ticket dialog, or nothing when the burner runs no raffle for T. Ticket results keep resolving
- * here while the dialog is closed.
+ * The Burn section's raffle slot (Business Logic R11): T's raffle card, the connected wallet's
+ * tickets drawing block by block, its recent winners and the ticket dialog, or nothing when the
+ * burner runs no raffle for T. Ticket results keep resolving here while the dialog is closed.
  */
 export function BurnRaffle({asset}: { asset: Asset }) {
     const tokenRaffle = useTokenRaffle(asset.denom);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const {raffle, winners} = tokenRaffle;
+    const {raffle, winners, entries, height} = tokenRaffle;
 
     if (!raffle) return null;
 
     return (
         <Flex direction="column" gap="18px" borderTopWidth="1px" borderStyle="solid" borderColor={ts.border} pt="18px">
             <RaffleCard asset={asset} raffle={raffle} onBuy={() => setDialogOpen(true)}/>
+            <YourTickets asset={asset} entries={entries} height={height}/>
             <RecentWinners asset={asset} winners={winners}/>
             {dialogOpen && <RaffleDialog asset={asset} raffle={raffle} tokenRaffle={tokenRaffle} onClose={() => setDialogOpen(false)}/>}
         </Flex>

@@ -11,6 +11,7 @@ import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 const T = "factory/bze1owner/upage";
 const ME = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
+const OTHER_WALLET = "bze1other00000000000000000000000000000000zz";
 
 // Every chain read and hook the raffle uses is mocked; the values below are per test.
 const getRaffles = vi.fn();
@@ -20,7 +21,14 @@ const tx = vi.fn();
 const updateBalances = vi.fn();
 const connect = vi.fn();
 const toast = {success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn()};
+const reloadNextBurn = vi.fn();
 let status: WalletState;
+let wallet: string;
+
+// The shared chain feed: NewBlock handlers and status listeners the test drives.
+const blockHandlers = new Set<(result: unknown) => void>();
+const statusListeners = new Set<(status: string) => void>();
+let feedStatus: string;
 let spendable: BigNumber;
 let feeMessage: string;
 
@@ -29,6 +37,18 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     getRaffles: () => getRaffles(),
     getRaffleWinners: (denom: string) => getRaffleWinners(denom),
     checkAddressWonRaffle: (address: string, denom: string, height: number) => checkAddressWonRaffle(address, denom, height),
+    getSettings: () => ({endpoints: {rpcEndpoint: "wss://rpc.e2e.test"}}),
+    getChainFeed: () => ({
+        subscribe: (query: string, handler: (result: unknown) => void) => {
+            if (query === "tm.event='NewBlock'") blockHandlers.add(handler);
+            return () => blockHandlers.delete(handler);
+        },
+        onStatus: (listener: (status: string) => void) => {
+            statusListeners.add(listener);
+            listener(feedStatus);
+            return () => statusListeners.delete(listener);
+        },
+    }),
     useAsset: () => ({asset: ASSET, isLoading: false}),
     useAssetsContext: () => ({updateBalances}),
     useBZETx: () => ({tx, progressTrack: ""}),
@@ -39,8 +59,10 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 }));
 
 vi.mock("@interchain-kit/react", () => ({
-    useChain: () => ({status, address: status === WalletState.Connected ? ME : undefined, connect}),
+    useChain: () => ({status, address: status === WalletState.Connected ? wallet : undefined, connect}),
 }));
+
+vi.mock("@/hooks/useNextBurning", () => ({useNextBurning: () => ({reload: reloadNextBurn})}));
 
 import {TokenSiteTheme} from "../kit";
 import {RAFFLE_POLL_MS} from "@/hooks/token-site/useTokenRaffle";
@@ -69,12 +91,12 @@ const WINNERS = [
 
 function renderRaffle() {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
-    render(<BurnRaffle asset={ASSET}/>, {
+    const view = render(<BurnRaffle asset={ASSET}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
         ),
     });
-    return user;
+    return Object.assign(user, {view});
 }
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -91,13 +113,43 @@ async function buy(user: ReturnType<typeof userEvent.setup>, tickets: string) {
     return dialog;
 }
 
-/** Lets the result poll run once. */
+/** Lets the result poll run once (the fallback while the chain feed is down). */
 const nextPoll = () => act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS));
+
+/** The chain feed starts reporting events. */
+const goLive = () => act(() => {
+    feedStatus = "live";
+    statusListeners.forEach((listener) => listener("live"));
+});
+
+/** A NewBlock notification at `height`, as CometBFT sends it, then lets the checks it starts finish. */
+const newBlock = (height: number) => act(async () => {
+    const result = {query: "tm.event='NewBlock'", data: {type: "tendermint/event/NewBlock", value: {block: {header: {height: String(height)}}}}};
+    blockHandlers.forEach((handler) => handler(result));
+    await vi.advanceTimersByTimeAsync(0);
+});
+
+/** Answers the draw of each block in `draws` (true = won 2 PAGE); other blocks aren't processed yet. */
+const draws = (results: Record<number, boolean>) =>
+    checkAddressWonRaffle.mockImplementation(async (_address: string, _denom: string, height: number) =>
+        (height in results ? {hasWon: results[height], amount: results[height] ? "2000000" : "0"} : undefined));
+
+const stripStatus = (n: number) => within(screen.getByTestId(`raffle-strip-ticket-${n}`)).getByTestId("raffle-strip-status");
+
+async function buyAndClose(user: ReturnType<typeof renderRaffle>, tickets: string) {
+    const dialog = await buy(user, tickets);
+    await user.click(within(dialog).getByRole("button", {name: "Done"}));
+}
 
 beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({shouldAdvanceTime: true});
+    localStorage.clear();
+    blockHandlers.clear();
+    statusListeners.clear();
+    feedStatus = "down";
     status = WalletState.Connected;
+    wallet = ME;
     spendable = new BigNumber("1000000000"); // 1,000 PAGE after the fee reserve
     feeMessage = "";
     getRaffles.mockResolvedValue([OTHER, RAFFLE]);
@@ -111,6 +163,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
 });
 
@@ -277,5 +330,166 @@ describe("BurnRaffle", () => {
 
         expect(within(dialog).getByTestId("raffle-form")).toBeInTheDocument();
         expect(within(dialog).queryByTestId("raffle-results")).not.toBeInTheDocument();
+    });
+    describe("your tickets", () => {
+        it("counts the strip down block by block from the chain feed, the drawing ticket pulsing", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "3");
+
+            // Joined in block 100: ticket 1 is drawn in 102.
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 3 drawn");
+            expect(stripStatus(1)).toHaveTextContent("in 1 block");
+            expect(stripStatus(2)).toHaveTextContent("in 2 blocks");
+            expect(stripStatus(3)).toHaveTextContent("in 3 blocks");
+
+            await newBlock(101);
+            expect(stripStatus(1)).toHaveTextContent("Drawing…");
+            expect(screen.getByTestId("raffle-strip-ticket-1")).toHaveClass("ts-raffle-drawing");
+            expect(stripStatus(2)).toHaveTextContent("in 1 block");
+            expect(screen.getByTestId("raffle-strip-ticket-2")).not.toHaveClass("ts-raffle-drawing");
+
+            draws({102: false});
+            await newBlock(102);
+            expect(screen.queryByTestId("raffle-strip-ticket-1")).not.toBeInTheDocument();
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 No win");
+            // A result that lands while the page is open flashes once.
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveClass("ts-raffle-flash-lost");
+            expect(stripStatus(2)).toHaveTextContent("Drawing…");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("1 of 3 drawn");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("No win yet");
+        });
+
+        it("checks on new blocks, not on the timer, while the feed is live", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "2");
+
+            await nextPoll();
+            await nextPoll();
+            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
+
+            await newBlock(101);
+            expect(checkAddressWonRaffle).toHaveBeenCalledWith(ME, T, 102);
+        });
+
+        it("shows the next five tickets and how many more wait", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "8");
+
+            expect(within(screen.getByTestId("raffle-strip")).getAllByTestId("raffle-strip-status")).toHaveLength(5);
+            expect(screen.getByTestId("raffle-strip-more")).toHaveTextContent("+3 more");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 8 drawn");
+        });
+
+        it("picks the draw up from storage after a reload", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            user.view.unmount();
+
+            renderRaffle();
+            expect(await screen.findByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+            expect(stripStatus(1)).toHaveTextContent("in 1 block");
+
+            draws({102: true, 103: false});
+            await nextPoll();
+            expect(checkAddressWonRaffle).toHaveBeenCalledWith(ME, T, 102);
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+            expect(screen.getByTestId("raffle-drawn-ticket-2")).toHaveTextContent("#2 No win");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("1 ticket won · 2 PAGE");
+            // Nobody watches a restored join: the final toast still comes.
+            expect(toast.info).toHaveBeenCalledWith("PAGE raffle: all 2 tickets drawn", "1 won, 2 PAGE in total.");
+        });
+
+        it("doesn't flash or toast again results restored from storage", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            draws({102: true});
+            await nextPoll();
+            expect(toast.info).toHaveBeenCalledTimes(1);
+            user.view.unmount();
+
+            renderRaffle();
+            await nextPoll();
+            expect(await screen.findByTestId("raffle-drawn-ticket-1")).not.toHaveClass("ts-raffle-flash-won");
+            expect(toast.info).toHaveBeenCalledTimes(1);
+            expect(toast.success).toHaveBeenCalledTimes(1);
+        });
+
+        it("keeps drawn results for an hour, then drops them from the page and storage", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            draws({102: false});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("No winning ticket this time");
+            expect(screen.queryByTestId("raffle-strip")).not.toBeInTheDocument();
+
+            await act(() => vi.advanceTimersByTimeAsync(55 * 60_000));
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toBeInTheDocument();
+
+            await act(() => vi.advanceTimersByTimeAsync(6 * 60_000));
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+            const stored = Object.keys(localStorage).filter((key) => key.includes("communities:raffle:"));
+            expect(stored.map((key) => JSON.parse(localStorage.getItem(key)!).data)).toEqual(["[]"]);
+        });
+
+        it("shows only the connected wallet's tickets", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            expect(screen.getByTestId("raffle-tickets")).toBeInTheDocument();
+
+            wallet = OTHER_WALLET;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+            // Its draw isn't checked for the other wallet either.
+            await nextPoll();
+            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
+
+            status = WalletState.Disconnected;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+
+            status = WalletState.Connected;
+            wallet = ME;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+        });
+
+        it("works without browser storage", async () => {
+            vi.spyOn(console, "error").mockImplementation(() => {});
+            vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+                throw new Error("storage disabled");
+            });
+            vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+                throw new Error("storage disabled");
+            });
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+
+            draws({102: false, 103: true});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("2 of 2 drawn");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("1 ticket won · 2 PAGE");
+        });
+
+        it("reads the raffle and the next burn again right away on a win", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            const loads = getRaffles.mock.calls.length;
+
+            draws({102: false});
+            await nextPoll();
+            expect(reloadNextBurn).not.toHaveBeenCalled();
+
+            // The draw's new pot and winner show without waiting for another poll.
+            getRaffles.mockResolvedValue([OTHER, {...RAFFLE, pot: "46300000000", winners: 8n}]);
+            draws({102: false, 103: true});
+            await nextPoll();
+            expect(reloadNextBurn).toHaveBeenCalledTimes(1);
+            expect(getRaffles.mock.calls.length).toBeGreaterThan(loads + 1);
+            await waitFor(() => expect(screen.getByTestId("raffle-pot")).toHaveTextContent("46,300 PAGE"));
+            expect(getRaffleWinners).toHaveBeenLastCalledWith(T);
+        });
     });
 });
