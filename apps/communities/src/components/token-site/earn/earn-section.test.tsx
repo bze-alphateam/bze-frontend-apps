@@ -258,14 +258,96 @@ describe("EarnSection", () => {
         await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
     });
 
-    it("manages a stake in the same dialog", async () => {
-        getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
-        const {user} = renderSection();
+    describe("Manage", () => {
+        /** The viewer is in both: 40 GUILD with 1.5 T to claim in the pool, 2 BZE with 1.5 T in the program. */
+        beforeEach(() => {
+            getDenomRewardParticipations.mockResolvedValue([myPoolStake]);
+            getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
+            useTokenDenomReward.mockReturnValue({
+                item: {...guildPool, position: {participant: myPoolStake, pending: [{denom: T, amount: "1500000"}]}},
+                prizeDenoms: [], isLoading: false, hasError: false, reload: reloadPool,
+            });
+            useFixedTermPrograms.mockReturnValue({
+                programs: [{...bzeProgram, stake: myProgramStake, pending: new BigNumber("1500000")}],
+                isLoading: false, reload: reloadPrograms,
+            });
+        });
 
-        await user.click(await screen.findByRole("button", {name: "Manage BZE"}));
+        /** Opens the row's actions, picks one, submits its dialog and returns the message sent. */
+        async function manage(user: ReturnType<typeof userEvent.setup>, ticker: string, pick: string, dialogName: string, submit: string) {
+            const toggle = await screen.findByRole("button", {name: `Manage ${ticker}`});
+            expect(toggle).toHaveAttribute("aria-expanded", "false");
+            await user.click(toggle);
+            expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-        expect(useFixedTermPrograms).toHaveBeenCalledWith("ubze", ME);
-        expect(screen.getByRole("dialog", {name: "Stake BZE"})).toBeInTheDocument();
+            await user.click(screen.getByRole("button", {name: `${pick} ${ticker}`}));
+            const dialog = screen.getByRole("dialog", {name: dialogName});
+            await user.click(within(dialog).getByRole("button", {name: submit}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+            return tx.mock.calls[0][0];
+        }
+
+        it("offers Stake more, Claim and Unstake, only on a staked row", async () => {
+            getDenomRewardParticipations.mockResolvedValue([]);
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage BZE"}));
+            const actions = within(screen.getByTestId("earn-program-07")).getByTestId("earn-actions");
+            expect(within(actions).getAllByRole("button").map((button) => button.textContent)).toEqual(["Stake more", "Claim", "Unstake"]);
+            expect(within(screen.getByTestId(`earn-pool-${GUILD}`)).queryByTestId("earn-actions")).not.toBeInTheDocument();
+
+            await user.click(screen.getByRole("button", {name: "Stake more BZE"}));
+            expect(screen.getByRole("dialog", {name: "Stake more BZE"})).toBeInTheDocument();
+        });
+
+        it("has no Claim on a program with nothing to claim yet", async () => {
+            getStakingRewardParticipantByAddress.mockResolvedValue({list: [{...myProgramStake, joined_at: "0.75"}]});
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage BZE"}));
+
+            expect(screen.queryByRole("button", {name: "Claim from BZE"})).not.toBeInTheDocument();
+            expect(screen.getByRole("button", {name: "Unstake BZE"})).toBeInTheDocument();
+        });
+
+        it("claims the program's T, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "BZE", "Claim from", "Claim your rewards", "Claim");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgClaimStakingRewards", value: {creator: ME, rewardId: "07"}}]);
+            expect(reloadPrograms).toHaveBeenCalled();
+            await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
+        });
+
+        it("leaves the program, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "BZE", "Unstake", "Unstake your BZE", "Unstake");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgExitStaking", value: {creator: ME, rewardId: "07"}}]);
+            await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
+        });
+
+        it("claims the holders pool's rewards, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "GUILD", "Claim from", "Claim your rewards", "Claim all");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgClaimDenomRewards", value: {creator: ME, denom: GUILD}}]);
+            expect(reloadPool).toHaveBeenCalled();
+            await waitFor(() => expect(getDenomRewardParticipations).toHaveBeenCalledTimes(2));
+        });
+
+        it("leaves the holders pool, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "GUILD", "Unstake", "Unstake your GUILD", "Unstake");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgExitDenomReward", value: {creator: ME, denom: GUILD}}]);
+            await waitFor(() => expect(getDenomRewardParticipations).toHaveBeenCalledTimes(2));
+        });
     });
 
     it("waits for the pool before the stake form, and says so when it is gone", async () => {

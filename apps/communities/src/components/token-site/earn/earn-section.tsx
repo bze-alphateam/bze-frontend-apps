@@ -13,7 +13,7 @@ import {formatApr, formatDays} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
 import {TsButton, TsCard, TsDialog, TsFeaturedCard, TsNotice, TsSection, TsTag, ts} from "../kit";
-import {StakeDialog} from "../stake/stake-dialog";
+import {type StakeAction, StakeDialog} from "../stake/stake-dialog";
 
 // Desktop columns: token, APR, T daily, unlock, time left, action.
 const COLUMNS = "minmax(0, 2.4fr) repeat(4, minmax(0, 1fr)) minmax(112px, auto)";
@@ -52,19 +52,27 @@ function PlainRow(props: BoxProps) {
 interface EarnRowProps {
     asset: Asset;
     row: EarnRow;
-    onOpen: () => void;
+    /** Opens the stake dialog on the row's token for `action`. */
+    onAction: (action: StakeAction) => void;
+    /** The viewer's actions on their stake are shown under the row. */
+    managing: boolean;
+    onManage: () => void;
     /** The page's featured row (T has no holders pool, so the first way to earn stands out). */
     featured?: boolean;
 }
 
-/** One place paying T: the token staked there, its terms, the viewer's stake and Stake / Manage. */
-function EarnRowView({asset, row: {item, position}, onOpen, featured}: EarnRowProps) {
+/**
+ * One place paying T: the token staked there, its terms, the viewer's stake and Stake, or Manage
+ * opening Stake more / Claim / Unstake under the row.
+ */
+function EarnRowView({asset, row: {item, position}, onAction, managing, onManage, featured}: EarnRowProps) {
     const {denomTicker, denomDecimals} = useAssets();
     const ticker = denomTicker(item.stakingDenom);
     const pool = item.kind === "pool";
     const action = position ? "Manage" : "Stake";
     const pending = position?.pending?.gt(0) ? position.pending : undefined;
     const Row = featured ? TsFeaturedCard : PlainRow;
+    const actionsId = `earn-actions-${item.key}`;
 
     return (
         <Row
@@ -110,10 +118,29 @@ function EarnRowView({asset, row: {item, position}, onOpen, featured}: EarnRowPr
             </Flex>
 
             <Flex role="cell" justify="flex-end" order={{base: 2, md: 0}}>
-                <TsButton variant={position ? "ghost" : "secondary"} minH="40px" px="18px" aria-label={`${action} ${ticker}`} onClick={onOpen}>
+                <TsButton
+                    variant={position ? "ghost" : "secondary"}
+                    minH="40px"
+                    px="18px"
+                    aria-label={`${action} ${ticker}`}
+                    aria-expanded={position ? managing : undefined}
+                    aria-controls={position && managing ? actionsId : undefined}
+                    onClick={position ? onManage : () => onAction("stake")}
+                >
                     {action}
                 </TsButton>
             </Flex>
+
+            {position && managing && (
+                <Flex id={actionsId} gridColumn="1 / -1" order={{base: 4, md: 0}} wrap="wrap" gap="10px" justify="flex-end" data-testid="earn-actions">
+                    <TsButton variant="secondary" minH="40px" aria-label={`Stake more ${ticker}`} onClick={() => onAction("stake")}>Stake more</TsButton>
+                    {/* A pool's claimable coins aren't read here; its dialog tells when there is nothing to claim. */}
+                    {(pool || pending) && (
+                        <TsButton variant="secondary" minH="40px" aria-label={`Claim from ${ticker}`} onClick={() => onAction("claim")}>Claim</TsButton>
+                    )}
+                    <TsButton variant="ghost" minH="40px" aria-label={`Unstake ${ticker}`} onClick={() => onAction("unstake")}>Unstake</TsButton>
+                </Flex>
+            )}
         </Row>
     );
 }
@@ -129,19 +156,26 @@ function Placeholder({title, gone, onClose}: { title: string; gone: boolean; onC
     );
 }
 
+/** The dialog's title before it can open (the dialog's own words, without the top-up wording). */
+function placeholderTitle(action: StakeAction, ticker = ""): string {
+    if (action === "claim") return "Claim your rewards";
+    return `${action === "unstake" ? "Unstake your" : "Stake"} ${ticker}`.trim();
+}
+
 interface StakeProps {
     stakingDenom: string;
+    action: StakeAction;
     address: string;
     onClose: () => void;
     /** After a stake or an unstake, on top of the dialog's own reload. */
     onDone: () => void;
 }
 
-/** Stake into another token's holders pool, with the viewer's position there (for "stake more"). */
-function PoolStake({stakingDenom, address, onClose, onDone}: StakeProps) {
+/** Stake into, claim from or leave another token's holders pool, with the viewer's position there. */
+function PoolStake({stakingDenom, action, address, onClose, onDone}: StakeProps) {
     const {asset} = useAsset(stakingDenom);
     const {item, isLoading, reload} = useTokenDenomReward(stakingDenom, address);
-    const title = `Stake ${asset?.ticker ?? ""}`.trim();
+    const title = placeholderTitle(action, asset?.ticker);
 
     if (!asset || isLoading || !item) return <Placeholder title={title} gone={Boolean(asset) && !isLoading} onClose={onClose}/>;
 
@@ -149,7 +183,7 @@ function PoolStake({stakingDenom, address, onClose, onDone}: StakeProps) {
         <StakeDialog
             asset={asset}
             target={{kind: "dr", stakingDenom, item}}
-            action="stake"
+            action={action}
             onClose={onClose}
             onDone={() => {
                 void reload();
@@ -159,12 +193,12 @@ function PoolStake({stakingDenom, address, onClose, onDone}: StakeProps) {
     );
 }
 
-/** Stake into a fixed-term program staking another token, with the viewer's stake in it. */
-function ProgramStake({stakingDenom, rewardId, address, onClose, onDone}: StakeProps & { rewardId: string }) {
+/** Stake into, claim from or leave a fixed-term program staking another token, with the viewer's stake in it. */
+function ProgramStake({stakingDenom, rewardId, action, address, onClose, onDone}: StakeProps & { rewardId: string }) {
     const {asset} = useAsset(stakingDenom);
     const {programs, isLoading, reload} = useFixedTermPrograms(stakingDenom, address);
     const item = programs.find((program) => program.program.reward_id === rewardId);
-    const title = `Stake ${asset?.ticker ?? ""}`.trim();
+    const title = placeholderTitle(action, asset?.ticker);
 
     if (!asset || isLoading || !item) return <Placeholder title={title} gone={Boolean(asset) && !isLoading} onClose={onClose}/>;
 
@@ -172,7 +206,7 @@ function ProgramStake({stakingDenom, rewardId, address, onClose, onDone}: StakeP
         <StakeDialog
             asset={asset}
             target={{kind: "sr", rewardId, item}}
-            action="stake"
+            action={action}
             onClose={onClose}
             onDone={() => {
                 void reload();
@@ -194,7 +228,7 @@ interface EarnSectionProps {
  * "Ways to earn T" (Business Logic R7): for people who don't hold T yet, every other token they
  * can stake to get paid in T — fixed-term programs whose prize is T and other tokens' holders
  * pools paying T — as a compact list. The ones the viewer stakes in come first, with their stake
- * and a Manage button; past five rows the rest wait behind "Show all". Staking opens the stake
+ * and a Manage button (Stake more / Claim / Unstake); past five rows the rest wait behind "Show all". Staking opens the stake
  * dialog on the **other** token. Hidden with none.
  */
 export function EarnSection({asset, opportunities, featureFirst}: EarnSectionProps) {
@@ -202,16 +236,17 @@ export function EarnSection({asset, opportunities, featureFirst}: EarnSectionPro
     const connected = status === WalletState.Connected && Boolean(address);
     // Two address-wide reads, only while the section shows.
     const {positions, reload: reloadPositions} = useEarnPositions(connected && opportunities.length > 0 ? address : undefined);
-    const [selected, setSelected] = useState<EarnOpportunity>();
+    const [selected, setSelected] = useState<{ item: EarnOpportunity; action: StakeAction }>();
+    const [managing, setManaging] = useState<string>();
     const [expanded, setExpanded] = useState(false);
 
     if (opportunities.length === 0) return null;
 
     const rows = earnRows(opportunities, connected ? positions : undefined);
     const shown = expanded ? rows : rows.slice(0, VISIBLE_ROWS);
-    const open = (item: EarnOpportunity) => {
+    const open = (item: EarnOpportunity, action: StakeAction) => {
         if (connected) {
-            setSelected(item);
+            setSelected({item, action});
         } else {
             void connect();
         }
@@ -251,7 +286,9 @@ export function EarnSection({asset, opportunities, featureFirst}: EarnSectionPro
                             asset={asset}
                             row={row}
                             featured={featureFirst && index === 0}
-                            onOpen={() => open(row.item)}
+                            onAction={(action) => open(row.item, action)}
+                            managing={managing === row.item.key}
+                            onManage={() => setManaging((key) => (key === row.item.key ? undefined : row.item.key))}
                         />
                     ))}
                 </Box>
@@ -263,9 +300,16 @@ export function EarnSection({asset, opportunities, featureFirst}: EarnSectionPro
                     </Flex>
                 )}
             </TsCard>
-            {selected && address && (selected.kind === "program" && selected.rewardId
-                ? <ProgramStake stakingDenom={selected.stakingDenom} rewardId={selected.rewardId} address={address} onClose={close} onDone={reloadPositions}/>
-                : <PoolStake stakingDenom={selected.stakingDenom} address={address} onClose={close} onDone={reloadPositions}/>)}
+            {selected && address && (selected.item.kind === "program" && selected.item.rewardId
+                ? <ProgramStake
+                    stakingDenom={selected.item.stakingDenom}
+                    rewardId={selected.item.rewardId}
+                    action={selected.action}
+                    address={address}
+                    onClose={close}
+                    onDone={reloadPositions}
+                />
+                : <PoolStake stakingDenom={selected.item.stakingDenom} action={selected.action} address={address} onClose={close} onDone={reloadPositions}/>)}
         </TsSection>
     );
 }
