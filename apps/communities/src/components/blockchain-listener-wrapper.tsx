@@ -35,14 +35,24 @@ export function BlockchainListenerWrapper() {
         updateLiquidityPools,
     } = useCommunitiesContext()
 
+    // The context's pool refresher changes with every price or asset update; reading it through a
+    // ref keeps refreshAll stable, so those updates don't restart the poll interval below.
+    const updateLiquidityPoolsRef = useRef(updateLiquidityPools);
+    useEffect(() => {
+        updateLiquidityPoolsRef.current = updateLiquidityPools;
+    }, [updateLiquidityPools]);
+    const refreshPools = useCallback(() => {
+        void updateLiquidityPoolsRef.current();
+    }, []);
+
     const refreshAll = useCallback(() => {
         updateBalances()
         updateMarketsData()
         updateAssets()
         updateEpochs()
         updateNextBurn()
-        updateLiquidityPools()
-    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs, updateNextBurn, updateLiquidityPools]);
+        refreshPools()
+    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs, updateNextBurn, refreshPools]);
 
     // A tab coming back from a long background stay refreshes once, whatever the feed state.
     useTabResume(refreshAll);
@@ -107,7 +117,7 @@ export function BlockchainListenerWrapper() {
             // Swaps move the pools' reserves without changing any supply; the add-liquidity
             // forms match their amounts to these reserves.
             const swapUnsubscribe = blockchainEventManager.subscribe(SWAP_EXECUTED_EVENT, () => {
-                addMultipleDebounce('refresh-swap-func', 500, updateLiquidityPools, 3)
+                addMultipleDebounce('refresh-swap-func', 500, refreshPools, 3)
             })
 
             unsubscribers.push(
@@ -127,7 +137,7 @@ export function BlockchainListenerWrapper() {
             removeFallback()
             unsubscribers.forEach(unsubscribe => unsubscribe())
         };
-    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs, updateNextBurn, updateBurnHistory, updateLiquidityPools]);
+    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs, updateNextBurn, updateBurnHistory, refreshPools]);
 
     return null;
 }

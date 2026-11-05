@@ -151,4 +151,27 @@ describe("BlockchainListenerWrapper pool refresh", () => {
 
         expect(context.updateLiquidityPools).toHaveBeenCalledTimes(1);
     });
+
+    it("keeps the poll on schedule when the pool refresher changes between polls", () => {
+        feed.isConnected = false;
+        const {rerender} = render(<BlockchainListenerWrapper/>);
+        const first = context.updateLiquidityPools;
+
+        // A price update hands the listener a new refresher 6s into the interval.
+        act(() => {
+            vi.advanceTimersByTime(6_000);
+        });
+        const next = vi.fn();
+        context.updateLiquidityPools = next;
+        rerender(<BlockchainListenerWrapper/>);
+
+        act(() => {
+            vi.advanceTimersByTime(4_500);
+        });
+        context.updateLiquidityPools = first;
+
+        expect(context.updateBalances).toHaveBeenCalledTimes(1);
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(first).not.toHaveBeenCalled();
+    });
 });
