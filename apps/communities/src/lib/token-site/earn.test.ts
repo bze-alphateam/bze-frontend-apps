@@ -3,7 +3,7 @@ import BigNumber from "bignumber.js";
 import type {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
 import type {DenomRewardSchedule} from "@bze/bze-ui-kit";
 
-import {earnOpportunities, joinTickers, type PoolWithSchedules} from "./earn";
+import {type EarnOpportunity, earnOpportunities, earnRows, joinTickers, type PoolWithSchedules} from "./earn";
 
 const T = "factory/bze1owner/upage";
 const GUILD = "factory/bze1guild/uguild";
@@ -115,5 +115,46 @@ describe("joinTickers", () => {
         expect(joinTickers(["BZE"])).toBe("BZE");
         expect(joinTickers(["GUILD", "BZE"])).toBe("GUILD and BZE");
         expect(joinTickers(["GUILD", "BZE", "VDL"])).toBe("GUILD, BZE and VDL");
+    });
+});
+
+describe("earnRows", () => {
+    const opportunity = (kind: "pool" | "program", key: string, extra: Partial<EarnOpportunity> = {}): EarnOpportunity => ({
+        kind, key, stakingDenom: GUILD, daily: new BigNumber(1), lock: 0, daysLeft: 1, otherPrizes: [], ...extra,
+    });
+    // Accrued 0.5 T per staked unit since the program started.
+    const paying = program("7", {distributed_stake: "0.5"});
+    const list = [
+        opportunity("pool", "pool-a", {stakingDenom: "ubze"}),
+        opportunity("program", "program-7", {stakingDenom: "ubze", rewardId: "7", program: paying}),
+        opportunity("pool", "pool-b", {stakingDenom: GUILD}),
+        opportunity("program", "program-8", {stakingDenom: "ubze", rewardId: "8", program: program("8")}),
+    ];
+
+    it("keeps the order without positions", () => {
+        expect(earnRows(list).map((row) => [row.item.key, row.position])).toEqual([
+            ["pool-a", undefined], ["program-7", undefined], ["pool-b", undefined], ["program-8", undefined],
+        ]);
+    });
+
+    it("puts the viewer's stakes first, in their order, with the program's pending prize", () => {
+        const rows = earnRows(list, {
+            pools: [
+                {address: "me", staking_denom: GUILD, amount: "4000000"},
+                {address: "me", staking_denom: "ubze", amount: "0"}, // nothing staked: no position
+            ],
+            programs: [
+                {address: "me", reward_id: "7", amount: "2000000", joined_at: "0.25"},
+                {address: "me", reward_id: "99", amount: "5", joined_at: "0"}, // not on the list
+            ],
+        });
+
+        expect(rows.map((row) => row.item.key)).toEqual(["program-7", "pool-b", "pool-a", "program-8"]);
+        expect(rows[0].position?.staked.toString()).toBe("2000000");
+        // 2,000,000 × (0.5 − 0.25), the stake dialog's own math.
+        expect(rows[0].position?.pending?.toString()).toBe("500000");
+        expect(rows[1].position?.staked.toString()).toBe("4000000");
+        expect(rows[1].position?.pending).toBeUndefined();
+        expect(rows[2].position).toBeUndefined();
     });
 });

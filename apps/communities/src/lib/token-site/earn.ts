@@ -1,6 +1,12 @@
 import BigNumber from "bignumber.js";
-import type {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {type DenomReward, type DenomRewardSchedule, uAmountToBigNumberAmount} from "@bze/bze-ui-kit";
+import type {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
+import {
+    calculateRewardsStakingPendingRewards,
+    type DenomReward,
+    type DenomRewardParticipant,
+    type DenomRewardSchedule,
+    uAmountToBigNumberAmount,
+} from "@bze/bze-ui-kit";
 
 import {isProgramFinished, programApr, programDaysLeft} from "./fixed-term";
 import {holdersPoolApr, holdersPoolPrizes, type UsdPrices} from "./holders-pool";
@@ -20,6 +26,8 @@ export interface EarnOpportunity {
     stakingDenom: string;
     /** The program staked into; only for a program. */
     rewardId?: string;
+    /** The program itself (its accrual tells the viewer's pending prize); only for a program. */
+    program?: StakingRewardSDKType;
     /** T paid out per day, display units. */
     daily: BigNumber;
     /** APR in percent; undefined when it can't be told honestly (R5/R6 missing-price rule). */
@@ -43,6 +51,7 @@ function programOpportunity(program: StakingRewardSDKType, prices: UsdPrices, de
         key: `program-${program.reward_id}`,
         stakingDenom: program.staking_denom,
         rewardId: program.reward_id,
+        program,
         daily: uAmountToBigNumberAmount(program.prize_amount, prizeDecimals),
         apr: programApr({
             program,
@@ -114,4 +123,50 @@ export function joinTickers(tickers: string[]): string {
     if (tickers.length <= 1) return tickers.join("");
 
     return `${tickers.slice(0, -1).join(", ")} and ${tickers[tickers.length - 1]}`;
+}
+
+/** The viewer's stakes, read address-wide: holders pools by staking denom, programs by id. */
+export interface EarnPositions {
+    pools: DenomRewardParticipant[];
+    programs: StakingRewardParticipantSDKType[];
+}
+
+/** The viewer's part in one way to earn, in base units. */
+export interface EarnPosition {
+    /** In the staked token's base units. */
+    staked: BigNumber;
+    /**
+     * T the viewer can claim, in T's base units. Only known for a program: a holders pool's
+     * claimable coins need a read per pool, which the list doesn't make.
+     */
+    pending?: BigNumber;
+}
+
+export interface EarnRow {
+    item: EarnOpportunity;
+    position?: EarnPosition;
+}
+
+function positionOf(item: EarnOpportunity, positions: EarnPositions): EarnPosition | undefined {
+    if (item.kind === "pool") {
+        const stake = positions.pools.find((participant) => participant.staking_denom === item.stakingDenom);
+        const staked = new BigNumber(stake?.amount ?? 0);
+        return staked.gt(0) ? {staked} : undefined;
+    }
+
+    const stake = positions.programs.find((participant) => participant.reward_id === item.rewardId);
+    const staked = new BigNumber(stake?.amount ?? 0);
+    if (!stake || !staked.gt(0)) return undefined;
+
+    return {staked, pending: calculateRewardsStakingPendingRewards(item.program, stake)};
+}
+
+/**
+ * The section's rows: each way to earn with the viewer's position in it, the ones they stake in
+ * first, otherwise in `opportunities` order. No positions (no wallet): the list as it is.
+ */
+export function earnRows(opportunities: EarnOpportunity[], positions?: EarnPositions): EarnRow[] {
+    const rows = opportunities.map((item) => ({item, position: positions && positionOf(item, positions)}));
+
+    return [...rows.filter((row) => row.position), ...rows.filter((row) => !row.position)];
 }
