@@ -139,8 +139,9 @@ export function AddLiquidityForm({asset, row, totalShares, onDone}: LiquidityFor
     const {address} = useChain(getChainName());
     const {tx, progressTrack} = useBZETx();
     const refresh = useRefresh();
-    const [token, setToken] = useState("");
-    const [paired, setPaired] = useState("");
+    // Only the side the user last edited is kept; the other is matched to the pool's current
+    // reserves on every render, so a swap moving the ratio after typing re-fills it.
+    const [edited, setEdited] = useState<{ from: "token" | "paired"; value: string }>({from: "token", value: ""});
     const [slippage, setSlippage] = useState<number>(DEFAULT_SLIPPAGE);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -149,13 +150,12 @@ export function AddLiquidityForm({asset, row, totalShares, onDone}: LiquidityFor
     const tokenMax = useMaxSpendable(asset.denom, "add-liquidity");
     const otherMax = useMaxSpendable(other, "add-liquidity");
 
-    const fill = (from: "token" | "paired", value: string) => {
-        const fromToken = from === "token";
-        const matched = matchedAmount(pool, value, fromToken === tokenIsBase, fromToken ? asset.decimals : otherDecimals, fromToken ? otherDecimals : asset.decimals);
-        const counterpart = matched.gt(0) ? matched.toFixed() : "";
-        setToken(fromToken ? value : counterpart);
-        setPaired(fromToken ? counterpart : value);
-    };
+    const fill = (from: "token" | "paired", value: string) => setEdited({from, value});
+    const fromToken = edited.from === "token";
+    const matched = matchedAmount(pool, edited.value, fromToken === tokenIsBase, fromToken ? asset.decimals : otherDecimals, fromToken ? otherDecimals : asset.decimals);
+    const counterpart = matched.gt(0) ? matched.toFixed() : "";
+    const token = fromToken ? edited.value : counterpart;
+    const paired = fromToken ? counterpart : edited.value;
 
     const filled = token !== "" && paired !== "";
     const tokenProblem = token === "" ? "" : depositAmountProblem(token, uAmountToBigNumberAmount(tokenMax.balance, asset.decimals), asset.decimals, asset.ticker);

@@ -10,7 +10,9 @@ import {
     EPOCH_START_EVENT,
     NEXT_BURN_CHANGED_EVENT,
     SUPPLY_CHANGED_EVENT,
+    SWAP_EXECUTED_EVENT,
     addDebounce,
+    addMultipleDebounce,
     CONNECTION_TYPE_NONE,
     CONNECTION_TYPE_POLLING,
     CONNECTION_TYPE_WS,
@@ -30,7 +32,18 @@ export function BlockchainListenerWrapper() {
         updateEpochs,
         updateNextBurn,
         updateBurnHistory,
+        updateLiquidityPools,
     } = useCommunitiesContext()
+
+    // The context's pool refresher changes with every price or asset update; reading it through a
+    // ref keeps refreshAll stable, so those updates don't restart the poll interval below.
+    const updateLiquidityPoolsRef = useRef(updateLiquidityPools);
+    useEffect(() => {
+        updateLiquidityPoolsRef.current = updateLiquidityPools;
+    }, [updateLiquidityPools]);
+    const refreshPools = useCallback(() => {
+        void updateLiquidityPoolsRef.current();
+    }, []);
 
     const refreshAll = useCallback(() => {
         updateBalances()
@@ -38,7 +51,8 @@ export function BlockchainListenerWrapper() {
         updateAssets()
         updateEpochs()
         updateNextBurn()
-    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs, updateNextBurn]);
+        refreshPools()
+    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs, updateNextBurn, refreshPools]);
 
     // A tab coming back from a long background stay refreshes once, whatever the feed state.
     useTabResume(refreshAll);
@@ -100,12 +114,19 @@ export function BlockchainListenerWrapper() {
                 addDebounce('refresh-epoch-func', 1000, updateEpochs)
             })
 
+            // Swaps move the pools' reserves without changing any supply; the add-liquidity
+            // forms match their amounts to these reserves.
+            const swapUnsubscribe = blockchainEventManager.subscribe(SWAP_EXECUTED_EVENT, () => {
+                addMultipleDebounce('refresh-swap-func', 500, refreshPools, 3)
+            })
+
             unsubscribers.push(
                 balanceUnsubscribe,
                 updateAssetsUnsubscribe,
                 nextBurnUnsubscribe,
                 coinsBurnedUnsubscribe,
                 epochUnsubscribe,
+                swapUnsubscribe,
             )
         }
 
@@ -116,7 +137,7 @@ export function BlockchainListenerWrapper() {
             removeFallback()
             unsubscribers.forEach(unsubscribe => unsubscribe())
         };
-    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs, updateNextBurn, updateBurnHistory]);
+    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs, updateNextBurn, updateBurnHistory, refreshPools]);
 
     return null;
 }
