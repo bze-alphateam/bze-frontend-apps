@@ -4,7 +4,7 @@ import React, {useState} from "react";
 import {Box, type BoxProps, chakra, Flex, Skeleton} from "@chakra-ui/react";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
-import {type Asset, getChainName, uAmountToBigNumberAmount, useAsset, useAssets, useTokenDenomReward} from "@bze/bze-ui-kit";
+import {type Asset, type DenomRewardCoin, getChainName, uAmountToBigNumberAmount, useAsset, useAssets, useTokenDenomReward} from "@bze/bze-ui-kit";
 
 import {useEarnPositions} from "@/hooks/token-site/useEarnPositions";
 import {useFixedTermPrograms} from "@/hooks/token-site/useFixedTermPrograms";
@@ -61,18 +61,28 @@ interface EarnRowProps {
     featured?: boolean;
 }
 
+/** "1.5 PAGE", "24 PAGE and 64 NOAD": the coins to claim, T first. */
+function pendingText(coins: DenomRewardCoin[], denom: string, ticker: (denom: string) => string, decimals: (denom: string) => number): string {
+    const sorted = [...coins.filter((coin) => coin.denom === denom), ...coins.filter((coin) => coin.denom !== denom)];
+
+    return joinTickers(sorted.map((coin) => `${walletAmount(uAmountToBigNumberAmount(coin.amount, decimals(coin.denom)))} ${ticker(coin.denom)}`));
+}
+
 /**
- * One place paying T: the token staked there, its terms, the viewer's stake and Stake, or Manage
- * opening Stake more / Claim / Unstake under the row.
+ * One place paying T: the token staked there, its terms, the viewer's stake with what it lets
+ * them claim and Stake, or Manage opening Stake / Claim / Unstake under the row.
  */
 function EarnRowView({asset, row: {item, position}, onAction, managing, onManage, featured}: EarnRowProps) {
     const {denomTicker, denomDecimals} = useAssets();
     const ticker = denomTicker(item.stakingDenom);
     const pool = item.kind === "pool";
     const action = position ? "Manage" : "Stake";
-    const pending = position?.pending?.gt(0) ? position.pending : undefined;
+    const pending = position?.pending;
+    const canClaim = Boolean(pending && pending.length > 0);
     const Row = featured ? TsFeaturedCard : PlainRow;
     const actionsId = `earn-actions-${item.key}`;
+    const claimReasonId = `earn-claim-reason-${item.key}`;
+    const claimReason = pending ? "Nothing to claim yet" : "Your rewards couldn't be read";
 
     return (
         <Row
@@ -89,7 +99,9 @@ function EarnRowView({asset, row: {item, position}, onAction, managing, onManage
                 {position && (
                     <chakra.span fontSize="13px" fontWeight={600} fontVariantNumeric="tabular-nums" data-testid="earn-position">
                         Your stake: {walletAmount(uAmountToBigNumberAmount(position.staked, denomDecimals(item.stakingDenom)))} {ticker}
-                        {pending && ` · ${walletAmount(uAmountToBigNumberAmount(pending, asset.decimals))} ${asset.ticker} to claim`}
+                        {pending && (pending.length > 0
+                            ? ` · ${pendingText(pending, asset.denom, denomTicker, denomDecimals)} to claim`
+                            : " · nothing to claim yet")}
                     </chakra.span>
                 )}
                 {item.otherPrizes.length > 0 && (
@@ -133,11 +145,19 @@ function EarnRowView({asset, row: {item, position}, onAction, managing, onManage
 
             {position && managing && (
                 <Flex id={actionsId} gridColumn="1 / -1" order={{base: 4, md: 0}} wrap="wrap" gap="10px" justify="flex-end" data-testid="earn-actions">
-                    <TsButton variant="secondary" minH="40px" aria-label={`Stake more ${ticker}`} onClick={() => onAction("stake")}>Stake more</TsButton>
-                    {/* A pool's claimable coins aren't read here; its dialog tells when there is nothing to claim. */}
-                    {(pool || pending) && (
-                        <TsButton variant="secondary" minH="40px" aria-label={`Claim from ${ticker}`} onClick={() => onAction("claim")}>Claim</TsButton>
-                    )}
+                    <TsButton variant="secondary" minH="40px" aria-label={`Stake ${ticker}`} onClick={() => onAction("stake")}>Stake</TsButton>
+                    <TsButton
+                        variant="secondary"
+                        minH="40px"
+                        aria-label={`Claim from ${ticker}`}
+                        disabled={!canClaim}
+                        title={canClaim ? undefined : claimReason}
+                        aria-describedby={canClaim ? undefined : claimReasonId}
+                        onClick={() => onAction("claim")}
+                    >
+                        Claim
+                    </TsButton>
+                    {!canClaim && <chakra.span id={claimReasonId} srOnly>{claimReason}</chakra.span>}
                     <TsButton variant="ghost" minH="40px" aria-label={`Unstake ${ticker}`} onClick={() => onAction("unstake")}>Unstake</TsButton>
                 </Flex>
             )}
@@ -228,13 +248,13 @@ interface EarnSectionProps {
  * "Ways to earn T" (Business Logic R7): for people who don't hold T yet, every other token they
  * can stake to get paid in T — fixed-term programs whose prize is T and other tokens' holders
  * pools paying T — as a compact list. The ones the viewer stakes in come first, with their stake
- * and a Manage button (Stake more / Claim / Unstake); past five rows the rest wait behind "Show all". Staking opens the stake
+ * and what it lets them claim, and a Manage button (Stake / Claim / Unstake); past five rows the rest wait behind "Show all". Staking opens the stake
  * dialog on the **other** token. Hidden with none.
  */
 export function EarnSection({asset, opportunities, featureFirst}: EarnSectionProps) {
     const {status, address, connect} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
-    // Two address-wide reads, only while the section shows.
+    // Two address-wide reads plus one per staked holders pool, only while the section shows.
     const {positions, reload: reloadPositions} = useEarnPositions(connected && opportunities.length > 0 ? address : undefined);
     const [selected, setSelected] = useState<{ item: EarnOpportunity; action: StakeAction }>();
     const [managing, setManaging] = useState<string>();
