@@ -253,6 +253,8 @@ describe("EarnSection", () => {
         expect(useTokenDenomReward).toHaveBeenCalledWith(GUILD, ME);
 
         const dialog = screen.getByRole("dialog", {name: "Stake GUILD"});
+        // Nothing staked yet: no current stake to show.
+        expect(within(dialog).queryByTestId("stake-dialog-current")).not.toBeInTheDocument();
         await user.type(within(dialog).getByLabelText("Amount"), "25");
         await user.click(within(dialog).getByRole("button", {name: "Stake"}));
 
@@ -329,6 +331,22 @@ describe("EarnSection", () => {
             await user.click(within(actions).getByRole("button", {name: "Stake BZE"}));
             // The stake dialog's own top-up title.
             expect(screen.getByRole("dialog", {name: "Stake more BZE"})).toBeInTheDocument();
+        });
+
+        it("shows the current stake in the stake dialog of a holders pool and of a program", async () => {
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage GUILD"}));
+            await user.click(screen.getByRole("button", {name: "Stake GUILD"}));
+            expect(within(screen.getByRole("dialog", {name: "Stake more GUILD"})).getByTestId("stake-dialog-current"))
+                .toHaveTextContent(/^Your stake now40 GUILD$/);
+            await user.click(screen.getByRole("button", {name: "Close"}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+            await user.click(screen.getByRole("button", {name: "Manage BZE"}));
+            await user.click(screen.getByRole("button", {name: "Stake BZE"}));
+            expect(within(screen.getByRole("dialog", {name: "Stake more BZE"})).getByTestId("stake-dialog-current"))
+                .toHaveTextContent(/^Your stake now2 BZE$/);
         });
 
         it("disables Claim on a program with nothing to claim yet, and says why", async () => {
