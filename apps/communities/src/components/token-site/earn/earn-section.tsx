@@ -1,79 +1,147 @@
 'use client';
 
 import React, {useState} from "react";
-import {chakra, Flex, Grid, Skeleton} from "@chakra-ui/react";
+import {Box, type BoxProps, chakra, Flex, Skeleton} from "@chakra-ui/react";
 import {useChain} from "@interchain-kit/react";
 import {WalletState} from "@interchain-kit/core";
-import {type Asset, getChainName, useAsset, useAssets, useTokenDenomReward} from "@bze/bze-ui-kit";
+import {type Asset, getChainName, uAmountToBigNumberAmount, useAsset, useAssets, useTokenDenomReward} from "@bze/bze-ui-kit";
 
+import {useEarnPositions} from "@/hooks/token-site/useEarnPositions";
 import {useFixedTermPrograms} from "@/hooks/token-site/useFixedTermPrograms";
-import {type EarnOpportunity, joinTickers} from "@/lib/token-site/earn";
+import {type EarnOpportunity, type EarnRow, earnRows, joinTickers} from "@/lib/token-site/earn";
 import {formatApr, formatDays} from "@/lib/token-site/holders-pool";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsCard, TsDialog, TsFeaturedCard, TsNotice, TsSection, TsTag, ts, tsLabel, tsMix} from "../kit";
-import {StakeDialog} from "../stake/stake-dialog";
+import {TsButton, TsCard, TsDialog, TsFeaturedCard, TsNotice, TsSection, TsTag, ts} from "../kit";
+import {type StakeAction, StakeDialog} from "../stake/stake-dialog";
 
-function Term({label, children}: { label: string; children: React.ReactNode }) {
+// Desktop columns: token, APR, T daily, unlock, time left, action.
+const COLUMNS = "minmax(0, 2.4fr) repeat(4, minmax(0, 1fr)) minmax(112px, auto)";
+// Rows shown before "Show all".
+const VISIBLE_ROWS = 5;
+
+const rowLayout = {
+    display: "grid",
+    gridTemplateColumns: {base: "minmax(0, 1fr) auto", md: COLUMNS},
+    columnGap: "16px",
+    rowGap: "8px",
+    alignItems: "center",
+    px: {base: "16px", md: "20px"},
+    py: "14px",
+} as const;
+
+/**
+ * One term of a row. On a phone the terms share a second line, each with its own words
+ * (`label` before, `suffix` after); from md the column header says what it is, unless `keepLabel`
+ * (the header can't tell a pool's "Funded for" from a program's "Ends in").
+ */
+function Term({label, suffix, keepLabel, children, ...props}: BoxProps & { label?: string; suffix?: string; keepLabel?: boolean }) {
     return (
-        <Flex direction="column" gap="4px" minW="0">
-            <chakra.span color={ts.muted}>{label}</chakra.span>
-            <chakra.span fontVariantNumeric="tabular-nums" fontWeight={600} overflowWrap="anywhere">{children}</chakra.span>
-        </Flex>
+        <Box role="cell" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" {...props}>
+            {label && <chakra.span hideFrom={keepLabel ? undefined : "md"} fontSize={{md: "13px"}}>{label} </chakra.span>}
+            <chakra.span fontWeight={600} color={ts.fg}>{children}</chakra.span>
+            {suffix && <chakra.span hideFrom="md">{suffix}</chakra.span>}
+        </Box>
     );
 }
 
-interface EarnCardProps {
+function PlainRow(props: BoxProps) {
+    return <Box {...props}/>;
+}
+
+interface EarnRowProps {
     asset: Asset;
-    item: EarnOpportunity;
-    onStake: () => void;
-    /** The page's featured card (T has no holders pool, so the first way to earn stands out). */
+    row: EarnRow;
+    /** Opens the stake dialog on the row's token for `action`. */
+    onAction: (action: StakeAction) => void;
+    /** The viewer's actions on their stake are shown under the row. */
+    managing: boolean;
+    onManage: () => void;
+    /** The page's featured row (T has no holders pool, so the first way to earn stands out). */
     featured?: boolean;
 }
 
-/** One place paying T: the token staked there, its APR, T paid daily, its terms and the stake button. */
-function EarnCard({asset, item, onStake, featured}: EarnCardProps) {
-    const {denomTicker} = useAssets();
+/**
+ * One place paying T: the token staked there, its terms, the viewer's stake and Stake, or Manage
+ * opening Stake more / Claim / Unstake under the row.
+ */
+function EarnRowView({asset, row: {item, position}, onAction, managing, onManage, featured}: EarnRowProps) {
+    const {denomTicker, denomDecimals} = useAssets();
     const ticker = denomTicker(item.stakingDenom);
     const pool = item.kind === "pool";
-    const Card = featured ? TsFeaturedCard : TsCard;
+    const action = position ? "Manage" : "Stake";
+    const pending = position?.pending?.gt(0) ? position.pending : undefined;
+    const Row = featured ? TsFeaturedCard : PlainRow;
+    const actionsId = `earn-actions-${item.key}`;
 
     return (
-        <Card p={{base: "20px", md: "28px"}} display="flex" flexDirection="column" gap="22px" data-testid={`earn-${item.key}`}>
-            <Flex justify="space-between" align="flex-start" gap="12px">
-                <Flex direction="column" gap="6px" minW="0">
-                    <chakra.span color={ts.muted} fontSize="14px">Stake</chakra.span>
-                    <chakra.h3 m="0" fontSize="24px" fontWeight={700} overflowWrap="anywhere">{ticker}</chakra.h3>
-                    <TsTag alignSelf="flex-start" data-testid="earn-kind">{pool ? "Holders pool" : "Fixed-term program"}</TsTag>
+        <Row
+            role="row"
+            {...rowLayout}
+            {...(featured ? {mx: "8px", my: "8px"} : {borderTop: `1px solid ${ts.border}`})}
+            data-testid={`earn-${item.key}`}
+        >
+            <Flex role="cell" direction="column" gap="4px" minW="0">
+                <Flex align="center" gap="8px" wrap="wrap">
+                    <chakra.span fontSize="17px" fontWeight={700} overflowWrap="anywhere" data-testid="earn-ticker">{ticker}</chakra.span>
+                    <TsTag data-testid="earn-kind">{pool ? "Holders pool" : "Fixed-term"}</TsTag>
                 </Flex>
-                {item.apr && (
-                    <Flex direction="column" align="flex-end" gap="4px" data-testid="earn-apr">
-                        <chakra.span fontVariantNumeric="tabular-nums" fontSize="30px" fontWeight={800}>
-                            {formatApr(item.apr)}
-                        </chakra.span>
-                        <chakra.span {...tsLabel}>APR</chakra.span>
-                    </Flex>
+                {position && (
+                    <chakra.span fontSize="13px" fontWeight={600} fontVariantNumeric="tabular-nums" data-testid="earn-position">
+                        Your stake: {walletAmount(uAmountToBigNumberAmount(position.staked, denomDecimals(item.stakingDenom)))} {ticker}
+                        {pending && ` · ${walletAmount(uAmountToBigNumberAmount(pending, asset.decimals))} ${asset.ticker} to claim`}
+                    </chakra.span>
+                )}
+                {item.otherPrizes.length > 0 && (
+                    <chakra.span color={ts.muted} fontSize="13px" data-testid="earn-also-pays">
+                        Also pays {joinTickers(item.otherPrizes.map(denomTicker))}.
+                    </chakra.span>
                 )}
             </Flex>
 
-            <Flex align="baseline" wrap="wrap" gap="8px" px="18px" py="14px" borderRadius="14px" bg={tsMix(ts.sec, 12)} data-testid="earn-daily">
-                <chakra.span fontVariantNumeric="tabular-nums" fontSize="24px" fontWeight={700}>{walletAmount(item.daily)}</chakra.span>
-                <chakra.span fontWeight={600}>{asset.ticker} paid out daily</chakra.span>
+            {/* A phone's second line; from md its terms are the row's own columns. */}
+            <Flex
+                display={{base: "flex", md: "contents"}}
+                gridColumn="1 / -1"
+                order={{base: 3, md: 0}}
+                wrap="wrap"
+                gap="4px 14px"
+                color={ts.muted}
+                fontSize={{base: "13px", md: "15px"}}
+            >
+                <Term label="APR" hideBelow={item.apr ? undefined : "md"} data-testid="earn-apr">
+                    {item.apr ? formatApr(item.apr) : "—"}
+                </Term>
+                <Term suffix={` ${asset.ticker}/day`} data-testid="earn-daily">{walletAmount(item.daily)}</Term>
+                <Term label="Unlock" data-testid="earn-unlock">{item.lock > 0 ? formatDays(item.lock) : "Instant"}</Term>
+                <Term label={pool ? "Funded for" : "Ends in"} keepLabel data-testid="earn-left">{formatDays(item.daysLeft)}</Term>
             </Flex>
 
-            <Grid templateColumns="repeat(2, minmax(0, 1fr))" gap="14px 20px" fontSize="15px">
-                <Term label="Unlock time">{item.lock > 0 ? formatDays(item.lock) : "Instant"}</Term>
-                <Term label={pool ? "Funded for" : "Ends in"}>{formatDays(item.daysLeft)}</Term>
-            </Grid>
+            <Flex role="cell" justify="flex-end" order={{base: 2, md: 0}}>
+                <TsButton
+                    variant={position ? "ghost" : "secondary"}
+                    minH="40px"
+                    px="18px"
+                    aria-label={`${action} ${ticker}`}
+                    aria-expanded={position ? managing : undefined}
+                    aria-controls={position && managing ? actionsId : undefined}
+                    onClick={position ? onManage : () => onAction("stake")}
+                >
+                    {action}
+                </TsButton>
+            </Flex>
 
-            {item.otherPrizes.length > 0 && (
-                <chakra.span color={ts.muted} fontSize="14px" data-testid="earn-also-pays">
-                    Also pays {joinTickers(item.otherPrizes.map(denomTicker))}.
-                </chakra.span>
+            {position && managing && (
+                <Flex id={actionsId} gridColumn="1 / -1" order={{base: 4, md: 0}} wrap="wrap" gap="10px" justify="flex-end" data-testid="earn-actions">
+                    <TsButton variant="secondary" minH="40px" aria-label={`Stake more ${ticker}`} onClick={() => onAction("stake")}>Stake more</TsButton>
+                    {/* A pool's claimable coins aren't read here; its dialog tells when there is nothing to claim. */}
+                    {(pool || pending) && (
+                        <TsButton variant="secondary" minH="40px" aria-label={`Claim from ${ticker}`} onClick={() => onAction("claim")}>Claim</TsButton>
+                    )}
+                    <TsButton variant="ghost" minH="40px" aria-label={`Unstake ${ticker}`} onClick={() => onAction("unstake")}>Unstake</TsButton>
+                </Flex>
             )}
-
-            <TsButton variant="secondary" mt="auto" onClick={onStake}>Stake {ticker}</TsButton>
-        </Card>
+        </Row>
     );
 }
 
@@ -88,17 +156,26 @@ function Placeholder({title, gone, onClose}: { title: string; gone: boolean; onC
     );
 }
 
-interface StakeProps {
-    stakingDenom: string;
-    address: string;
-    onClose: () => void;
+/** The dialog's title before it can open (the dialog's own words, without the top-up wording). */
+function placeholderTitle(action: StakeAction, ticker = ""): string {
+    if (action === "claim") return "Claim your rewards";
+    return `${action === "unstake" ? "Unstake your" : "Stake"} ${ticker}`.trim();
 }
 
-/** Stake into another token's holders pool, with the viewer's position there (for "stake more"). */
-function PoolStake({stakingDenom, address, onClose}: StakeProps) {
+interface StakeProps {
+    stakingDenom: string;
+    action: StakeAction;
+    address: string;
+    onClose: () => void;
+    /** After a stake or an unstake, on top of the dialog's own reload. */
+    onDone: () => void;
+}
+
+/** Stake into, claim from or leave another token's holders pool, with the viewer's position there. */
+function PoolStake({stakingDenom, action, address, onClose, onDone}: StakeProps) {
     const {asset} = useAsset(stakingDenom);
     const {item, isLoading, reload} = useTokenDenomReward(stakingDenom, address);
-    const title = `Stake ${asset?.ticker ?? ""}`.trim();
+    const title = placeholderTitle(action, asset?.ticker);
 
     if (!asset || isLoading || !item) return <Placeholder title={title} gone={Boolean(asset) && !isLoading} onClose={onClose}/>;
 
@@ -106,19 +183,22 @@ function PoolStake({stakingDenom, address, onClose}: StakeProps) {
         <StakeDialog
             asset={asset}
             target={{kind: "dr", stakingDenom, item}}
-            action="stake"
+            action={action}
             onClose={onClose}
-            onDone={() => void reload()}
+            onDone={() => {
+                void reload();
+                onDone();
+            }}
         />
     );
 }
 
-/** Stake into a fixed-term program staking another token, with the viewer's stake in it. */
-function ProgramStake({stakingDenom, rewardId, address, onClose}: StakeProps & { rewardId: string }) {
+/** Stake into, claim from or leave a fixed-term program staking another token, with the viewer's stake in it. */
+function ProgramStake({stakingDenom, rewardId, action, address, onClose, onDone}: StakeProps & { rewardId: string }) {
     const {asset} = useAsset(stakingDenom);
     const {programs, isLoading, reload} = useFixedTermPrograms(stakingDenom, address);
     const item = programs.find((program) => program.program.reward_id === rewardId);
-    const title = `Stake ${asset?.ticker ?? ""}`.trim();
+    const title = placeholderTitle(action, asset?.ticker);
 
     if (!asset || isLoading || !item) return <Placeholder title={title} gone={Boolean(asset) && !isLoading} onClose={onClose}/>;
 
@@ -126,9 +206,12 @@ function ProgramStake({stakingDenom, rewardId, address, onClose}: StakeProps & {
         <StakeDialog
             asset={asset}
             target={{kind: "sr", rewardId, item}}
-            action="stake"
+            action={action}
             onClose={onClose}
-            onDone={() => void reload()}
+            onDone={() => {
+                void reload();
+                onDone();
+            }}
         />
     );
 }
@@ -137,25 +220,33 @@ interface EarnSectionProps {
     asset: Asset;
     /** From `useEarnOpportunities`, read by the page so the header knows whether the section exists. */
     opportunities: EarnOpportunity[];
-    /** Feature the first card: T has no holders pool to feature. */
+    /** Feature the first row: T has no holders pool to feature. */
     featureFirst?: boolean;
 }
 
 /**
  * "Ways to earn T" (Business Logic R7): for people who don't hold T yet, every other token they
  * can stake to get paid in T — fixed-term programs whose prize is T and other tokens' holders
- * pools paying T. Staking opens the stake dialog on the **other** token. Hidden with none.
+ * pools paying T — as a compact list. The ones the viewer stakes in come first, with their stake
+ * and a Manage button (Stake more / Claim / Unstake); past five rows the rest wait behind "Show all". Staking opens the stake
+ * dialog on the **other** token. Hidden with none.
  */
 export function EarnSection({asset, opportunities, featureFirst}: EarnSectionProps) {
     const {status, address, connect} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
-    const [selected, setSelected] = useState<EarnOpportunity>();
+    // Two address-wide reads, only while the section shows.
+    const {positions, reload: reloadPositions} = useEarnPositions(connected && opportunities.length > 0 ? address : undefined);
+    const [selected, setSelected] = useState<{ item: EarnOpportunity; action: StakeAction }>();
+    const [managing, setManaging] = useState<string>();
+    const [expanded, setExpanded] = useState(false);
 
     if (opportunities.length === 0) return null;
 
-    const stake = (item: EarnOpportunity) => {
+    const rows = earnRows(opportunities, connected ? positions : undefined);
+    const shown = expanded ? rows : rows.slice(0, VISIBLE_ROWS);
+    const open = (item: EarnOpportunity, action: StakeAction) => {
         if (connected) {
-            setSelected(item);
+            setSelected({item, action});
         } else {
             void connect();
         }
@@ -169,14 +260,56 @@ export function EarnSection({asset, opportunities, featureFirst}: EarnSectionPro
             title={`Ways to earn ${asset.ticker}`}
             description={`Don't hold ${asset.ticker} yet? Stake one of these tokens and get paid in ${asset.ticker} every day.`}
         >
-            <Grid templateColumns="repeat(auto-fit, minmax(min(360px, 100%), 1fr))" gap="16px" data-testid="earn-list">
-                {opportunities.map((item, index) => (
-                    <EarnCard key={item.key} asset={asset} item={item} featured={featureFirst && index === 0} onStake={() => stake(item)}/>
-                ))}
-            </Grid>
-            {selected && address && (selected.kind === "program" && selected.rewardId
-                ? <ProgramStake stakingDenom={selected.stakingDenom} rewardId={selected.rewardId} address={address} onClose={close}/>
-                : <PoolStake stakingDenom={selected.stakingDenom} address={address} onClose={close}/>)}
+            <TsCard overflow="hidden">
+                <Box role="table" aria-label={`Ways to earn ${asset.ticker}`} data-testid="earn-list">
+                    <Box
+                        role="row"
+                        {...rowLayout}
+                        hideBelow="md"
+                        py="12px"
+                        fontSize="12px"
+                        letterSpacing="0.08em"
+                        textTransform="uppercase"
+                        fontWeight={600}
+                        color={ts.muted}
+                    >
+                        <span role="columnheader">Stake</span>
+                        <span role="columnheader">APR</span>
+                        <span role="columnheader">{asset.ticker} daily</span>
+                        <span role="columnheader">Unlock</span>
+                        <span role="columnheader">Time left</span>
+                        <span role="columnheader"><chakra.span srOnly>Actions</chakra.span></span>
+                    </Box>
+                    {shown.map((row, index) => (
+                        <EarnRowView
+                            key={row.item.key}
+                            asset={asset}
+                            row={row}
+                            featured={featureFirst && index === 0}
+                            onAction={(action) => open(row.item, action)}
+                            managing={managing === row.item.key}
+                            onManage={() => setManaging((key) => (key === row.item.key ? undefined : row.item.key))}
+                        />
+                    ))}
+                </Box>
+                {rows.length > VISIBLE_ROWS && (
+                    <Flex justify="center" px="16px" py="14px" borderTop={`1px solid ${ts.border}`}>
+                        <TsButton variant="ghost" minH="40px" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+                            {expanded ? "Show fewer" : `Show all ${rows.length}`}
+                        </TsButton>
+                    </Flex>
+                )}
+            </TsCard>
+            {selected && address && (selected.item.kind === "program" && selected.item.rewardId
+                ? <ProgramStake
+                    stakingDenom={selected.item.stakingDenom}
+                    rewardId={selected.item.rewardId}
+                    action={selected.action}
+                    address={address}
+                    onClose={close}
+                    onDone={reloadPositions}
+                />
+                : <PoolStake stakingDenom={selected.item.stakingDenom} action={selected.action} address={address} onClose={close} onDone={reloadPositions}/>)}
         </TsSection>
     );
 }
