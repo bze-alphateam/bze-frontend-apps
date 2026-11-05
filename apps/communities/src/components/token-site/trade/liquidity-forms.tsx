@@ -33,7 +33,7 @@ import {
 import {DEFAULT_SLIPPAGE, SLIPPAGE_OPTIONS} from "@/lib/token-site/swap";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsChip, TsField, ts, tsMix} from "../kit";
+import {TsButton, TsChip, TsField, ts} from "../kit";
 
 interface LiquidityFormProps {
     asset: Asset;
@@ -299,7 +299,7 @@ export function RemoveLiquidityForm({asset, row, totalShares, userShares, onDone
                 </Flex>
             </Flex>
 
-            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)} data-testid="remove-liquidity-estimate">
+            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.card} data-testid="remove-liquidity-estimate">
                 <chakra.span color={ts.muted} fontSize="13px">You receive about</chakra.span>
                 <Row label={asset.ticker}>{out(tokenOut, asset.decimals)}</Row>
                 <Row label={denomTicker(other)}>{out(otherOut, denomDecimals(other))}</Row>

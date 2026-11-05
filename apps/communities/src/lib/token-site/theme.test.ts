@@ -56,9 +56,9 @@ describe("tokenSiteVars", () => {
 
 // The contrast floors on the background, from the faintest surface to the strongest, and the
 // least step from the card to its border.
-const FLOORS = {card: 1.08, inset: 1.12, hover: 1.15, border: 1.24, line: 1.38, borderStrong: 1.44} as const;
+const FLOORS = {card: 1.08, inset: 1.12, hover: 1.15, border: 1.24, line: 1.38, borderStrong: 1.44, borderGhost: 1.58} as const;
 const BORDER_ON_CARD = 1.15;
-const ORDER = ["card", "inset", "hover", "border", "line", "borderStrong"] as const;
+const ORDER = ["card", "inset", "hover", "border", "line", "borderStrong", "borderGhost"] as const;
 
 const PALETTES: { name: string; mode: BrandingPalette; colors: BrandingColors }[] = [
     ...BRANDING_TEMPLATES,
@@ -66,21 +66,7 @@ const PALETTES: { name: string; mode: BrandingPalette; colors: BrandingColors }[
 ].flatMap(({id, branding}) => (["light", "dark"] as const).map((mode) => ({name: `${id} ${mode}`, mode, colors: branding[mode]})));
 
 describe("tokenSiteSurfaces", () => {
-    it("separates card, inset, hover, border and lines from the background on every template, light and dark", () => {
-        const table = PALETTES.map(({name, colors}) => {
-            const s = tokenSiteSurfaces(colors);
-            return {
-                kit: name,
-                bg: colors.background,
-                card: s.card,
-                "card/bg": +contrastRatio(s.card, colors.background).toFixed(3),
-                border: s.border,
-                "border/bg": +contrastRatio(s.border, colors.background).toFixed(3),
-                "border/card": +contrastRatio(s.border, s.card).toFixed(3),
-            };
-        });
-        console.table(table);
-
+    it("separates every surface from the background on every template, light and dark", () => {
         for (const {name, colors} of PALETTES) {
             const s = tokenSiteSurfaces(colors);
             const onBg = (key: keyof typeof FLOORS) => contrastRatio(s[key], colors.background);
@@ -101,11 +87,11 @@ describe("tokenSiteSurfaces", () => {
         expect(terminal.background).toBe("#000000");
         expect(s.card).not.toBe("#000000");
         expect(s.border).not.toBe("#000000");
-        expect(s).toEqual({card: "#0D0F0D", inset: "#111412", hover: "#151816", border: "#1B1F1C", line: "#262B28", borderStrong: "#2A302C"});
+        expect(s).toEqual({card: "#0D0F0D", inset: "#111412", hover: "#151816", border: "#1B1F1C", line: "#262B28", borderStrong: "#2A302C", borderGhost: "#343A36"});
     });
 
     it("keeps the design shares on light kits: 4 % card, 6 % inset, 11 % border", () => {
-        expect(tokenSiteSurfaces(DEFAULT_DENOM_BRANDING.light)).toEqual({card: "#F4F4F5", inset: "#EFEFF1", hover: "#E9EAEC", border: "#E1E2E5", line: "#D4D5D9", borderStrong: "#CED0D4"});
+        expect(tokenSiteSurfaces(DEFAULT_DENOM_BRANDING.light)).toEqual({card: "#F4F4F5", inset: "#EFEFF1", hover: "#E9EAEC", border: "#E1E2E5", line: "#D4D5D9", borderStrong: "#CED0D4", borderGhost: "#C4C6CB"});
     });
 
     it("stays bounded when the text is almost the background", () => {

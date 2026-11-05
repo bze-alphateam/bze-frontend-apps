@@ -90,6 +90,7 @@ const SURFACES = [
     {key: "border", percent: 11, minContrast: 1.24, minOnCard: 1.15},
     {key: "line", percent: 16, minContrast: 1.38},
     {key: "borderStrong", percent: 18, minContrast: 1.44},
+    {key: "borderGhost", percent: 22, minContrast: 1.58},
 ] as const;
 
 /** A surface's share never grows past its design share plus this (text almost equal to the background). */
@@ -99,7 +100,8 @@ export type TokenSiteSurfaces = Record<(typeof SURFACES)[number]["key"], string>
 
 /**
  * The token site's neutral surfaces for one palette, as hex colours: the card, the inset block
- * inside a card, a row's hover, the border, a divider line and the strong border of controls.
+ * inside a card, a row's hover, the border, a divider line, the strong border of controls and
+ * the ghost button's border.
  * Each is the text mixed into the background at its design share (`SURFACES`), raised until it
  * reaches its contrast floor on the background (the border also on the card), and never closer to the background than the
  * surface before it, so the order and spacing hold on every kit.
@@ -130,7 +132,7 @@ export function tokenSiteSurfaces({background, text}: BrandingColors): TokenSite
  */
 export function tokenSiteVars(kit: DenomBranding, mode: BrandingPalette): Record<string, string> {
     const {background, text, primary, secondary} = kit[mode];
-    const {card, inset, border, borderStrong} = tokenSiteSurfaces(kit[mode]);
+    const {card, inset, hover, border, borderStrong, borderGhost} = tokenSiteSurfaces(kit[mode]);
     const font = resolveBrandFont(kit.font);
 
     return {
@@ -143,8 +145,10 @@ export function tokenSiteVars(kit: DenomBranding, mode: BrandingPalette): Record
         "--ts-muted": mix(text, 64, background),
         "--ts-card": card,
         "--ts-inset": inset,
+        "--ts-hover": hover,
         "--ts-border": border,
         "--ts-border-strong": borderStrong,
+        "--ts-border-ghost": borderGhost,
         "--ts-danger": dangerColor(background),
         // The curated family first ("'Inter', sans-serif" → "'Inter'"), then the system fallback.
         "--ts-font": font ? `${font.family.split(",")[0]}, ${TOKEN_SITE_FALLBACK_FONT}` : TOKEN_SITE_FALLBACK_FONT,
