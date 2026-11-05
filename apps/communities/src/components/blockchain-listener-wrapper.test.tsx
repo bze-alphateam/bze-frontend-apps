@@ -1,6 +1,12 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {act, render} from "@testing-library/react";
-import {blockchainEventManager, BURNER_COINS_BURNED_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT} from "@bze/bze-ui-kit";
+import {
+    blockchainEventManager,
+    BURNER_COINS_BURNED_EVENT,
+    NEXT_BURN_CHANGED_EVENT,
+    SUPPLY_CHANGED_EVENT,
+    SWAP_EXECUTED_EVENT,
+} from "@bze/bze-ui-kit";
 
 // The feed is driven by the test; the context's refreshers are spies.
 const feed = vi.hoisted(() => ({isConnected: true}));
@@ -12,6 +18,7 @@ const context = vi.hoisted(() => ({
     updateEpochs: vi.fn(),
     updateNextBurn: vi.fn(),
     updateBurnHistory: vi.fn(),
+    updateLiquidityPools: vi.fn(),
 }));
 
 vi.mock("@/hooks/useBlockchainListener", () => ({useBlockchainListener: () => ({isConnected: feed.isConnected})}));
@@ -96,5 +103,52 @@ describe("BlockchainListenerWrapper burner refresh", () => {
 
         expect(context.updateBurnHistory).toHaveBeenCalledTimes(1);
         expect(context.updateNextBurn).toHaveBeenCalled();
+    });
+});
+
+describe("BlockchainListenerWrapper pool refresh", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        Object.values(context).forEach((fn) => fn.mockReset());
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("reads the pools' reserves again after a swap", () => {
+        feed.isConnected = true;
+        render(<BlockchainListenerWrapper/>);
+
+        act(() => {
+            blockchainEventManager.emit(SWAP_EXECUTED_EVENT);
+            vi.advanceTimersByTime(2000);
+        });
+
+        expect(context.updateLiquidityPools).toHaveBeenCalled();
+        expect(context.updateAssets).not.toHaveBeenCalled();
+    });
+
+    it("polls the pools' reserves while the feed is down", () => {
+        feed.isConnected = false;
+        render(<BlockchainListenerWrapper/>);
+
+        act(() => {
+            vi.advanceTimersByTime(10_500);
+        });
+
+        expect(context.updateLiquidityPools).toHaveBeenCalledTimes(1);
+    });
+
+    it("catches up the pools' reserves when the feed recovers", () => {
+        feed.isConnected = true;
+        const {rerender} = render(<BlockchainListenerWrapper/>);
+        feed.isConnected = false;
+        rerender(<BlockchainListenerWrapper/>);
+
+        feed.isConnected = true;
+        rerender(<BlockchainListenerWrapper/>);
+
+        expect(context.updateLiquidityPools).toHaveBeenCalledTimes(1);
     });
 });

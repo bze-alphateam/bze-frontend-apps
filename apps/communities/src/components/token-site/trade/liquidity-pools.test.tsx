@@ -39,12 +39,13 @@ const updateLiquidityPools = vi.fn();
 let walletStatus = WalletState.Connected;
 let balances: Record<string, BigNumber> = {};
 let shares: Record<string, BigNumber> = {};
+let pools: LiquidityPoolSDKType[] = [];
 const TOTAL_SHARES = new BigNumber("1000000000");
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useLiquidityPools: () => ({
-        pools: [BZE_USDC, PAGE_BZE, ABC_PAGE],
+        pools,
         poolsDataMap: new Map([
             [PAGE_BZE.id, stats(PAGE_BZE.id, 8000, 0, "0.00")],
             [ABC_PAGE.id, stats(ABC_PAGE.id, 12000, 640, "5.84")],
@@ -81,12 +82,12 @@ const ASSET: Asset = {
 
 function renderTable() {
     const user = userEvent.setup();
-    render(<LiquidityPools asset={ASSET}/>, {
+    const {rerender} = render(<LiquidityPools asset={ASSET}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
         ),
     });
-    return user;
+    return Object.assign(user, {rerenderTable: () => rerender(<LiquidityPools asset={ASSET}/>)});
 }
 
 const row = (p: LiquidityPoolSDKType) => screen.getByTestId(`liquidity-pool-${p.id}`);
@@ -96,6 +97,7 @@ beforeEach(() => {
     walletStatus = WalletState.Connected;
     balances = {[T]: new BigNumber(500e6), ubze: new BigNumber(1000e6), [ABC]: new BigNumber(1000e6)};
     shares = {};
+    pools = [BZE_USDC, PAGE_BZE, ABC_PAGE];
     tx.mockResolvedValue(true);
 });
 
@@ -202,6 +204,27 @@ describe("LiquidityPools", () => {
         expect(tx.mock.calls[0][0]).toEqual([{
             typeUrl: "/bze.tradebin.MsgAddLiquidity",
             value: {creator: ME, poolId: ABC_PAGE.id, baseAmount: "20000000", quoteAmount: "5000000", minLpTokens: "9800000"},
+        }]);
+    });
+
+    it("re-matches the other side to the pool's new reserves after a swap moved them", async () => {
+        const user = renderTable();
+        await user.click(screen.getByRole("button", {name: "Add liquidity to PAGE / BZE"}));
+        const form = screen.getByTestId("add-liquidity-form");
+        await user.type(within(form).getByLabelText("BZE"), "80");
+        expect(within(form).getByLabelText("PAGE")).toHaveValue("20");
+
+        // A swap bought PAGE: 800 PAGE / 5,000 BZE now, 80 BZE pairs with 12.8 PAGE.
+        pools = [BZE_USDC, pool(T, "ubze", "800000000", "5000000000"), ABC_PAGE];
+        user.rerenderTable();
+
+        expect(within(form).getByLabelText("BZE")).toHaveValue("80");
+        expect(within(form).getByLabelText("PAGE")).toHaveValue("12.8");
+        await user.click(within(form).getByRole("button", {name: "Add liquidity"}));
+        // 12.8 of 800 PAGE = 1.6% of 1e9 shares, less 1% slippage.
+        expect(tx.mock.calls[0][0]).toEqual([{
+            typeUrl: "/bze.tradebin.MsgAddLiquidity",
+            value: {creator: ME, poolId: PAGE_BZE.id, baseAmount: "12800000", quoteAmount: "80000000", minLpTokens: "15840000"},
         }]);
     });
 
