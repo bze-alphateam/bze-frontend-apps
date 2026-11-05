@@ -126,15 +126,19 @@ export const Toaster = () => {
                   <Toast.Indicator boxSize="16px" color="inherit" />
                 )}
               </Box>
-              <Stack gap="2px" flex="1" maxWidth="100%">
+              {/* The action sits under the text, not in its own column: beside the text it took the
+                  title's width, so the title and the button label wrapped (worse with wide theme fonts). */}
+              <Stack gap="2px" flex="1" minWidth="0" maxWidth="100%" data-testid="toast-text">
                 {toast.title && <Toast.Title>{toast.title}</Toast.Title>}
                 {toast.description && (
                   <Toast.Description>{toast.description}</Toast.Description>
                 )}
+                {toast.action && (
+                  <Toast.ActionTrigger alignSelf="flex-start" flexShrink="0" whiteSpace="nowrap" mt="8px">
+                    {toast.action.label}
+                  </Toast.ActionTrigger>
+                )}
               </Stack>
-              {toast.action && (
-                <Toast.ActionTrigger>{toast.action.label}</Toast.ActionTrigger>
-              )}
               {toast.closable && <Toast.CloseTrigger />}
             </Toast.Root>
           )

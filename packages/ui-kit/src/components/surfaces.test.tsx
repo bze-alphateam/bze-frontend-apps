@@ -80,6 +80,12 @@ describe('halted and legacy notices', () => {
     });
 });
 
+/** The CSS Chakra injected, as text (jsdom's CSSOM drops the rules it cannot parse). */
+const styleText = () =>
+    Array.from(document.querySelectorAll('style'))
+        .map((style) => style.textContent)
+        .join('\n');
+
 describe('Toaster', () => {
     it.each([
         ['success', 'success'],
@@ -97,13 +103,43 @@ describe('Toaster', () => {
             toaster.remove();
         });
     });
-});
 
-/** The CSS Chakra injected, as text (jsdom's CSSOM drops the rules it cannot parse). */
-const styleText = () =>
-    Array.from(document.querySelectorAll('style'))
-        .map((style) => style.textContent)
-        .join('\n');
+    it('puts the action under the title, on one line', async () => {
+        ui(<Toaster />);
+        act(() => {
+            toaster.create({
+                type: 'success',
+                title: 'Transaction Successful',
+                description: 'Your transaction was included in a block.',
+                action: { label: 'View on Explorer', onClick: () => {} },
+                closable: true,
+            });
+        });
+        const title = await screen.findByText('Transaction Successful');
+        const action = screen.getByRole('button', { name: 'View on Explorer' });
+
+        // The action shares the text column, so it no longer takes width from the title.
+        const text = title.closest('[data-testid="toast-text"]') as HTMLElement;
+        expect(text).not.toBeNull();
+        expect(text.contains(action)).toBe(true);
+        expect(action.parentElement).toBe(text);
+
+        // Its label never wraps or shrinks.
+        const css = styleText();
+        const rules = action.className
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((cls) => css.match(new RegExp(`\\.${cls}\\{([^}]*)\\}`))?.[1] ?? '')
+            .join(';');
+        expect(rules).toContain('white-space:nowrap');
+        expect(rules).toContain('flex-shrink:0');
+        expect(rules).toContain('align-self:flex-start');
+
+        act(() => {
+            toaster.remove();
+        });
+    });
+});
 
 const THEME: ToasterTheme = {
     bg: '#101010',
