@@ -1,0 +1,95 @@
+{
+ "query": "tm.event='NewBlock'",
+ "data": {
+  "type": "tendermint/event/NewBlock",
+  "value": {
+   "block": {
+    "header": {
+     "version": {
+      "block": "11"
+     },
+     "chain_id": "bzetestnet-3",
+     "height": "4084214",
+     "time": "2026-11-04T22:53:53.719876009Z",
+     "last_block_id": {
+      "hash": "BF0CC44752E0BDA430B6F09B9FBA976660400DE3C85B00E85609389F84BD56CB",
+      "parts": {
+       "total": 1,
+       "hash": "4670F9B2F1E216815A7CDA18CA3A9CE0B72237C8879D1BCA2CDD5D57820B7C5E"
+      }
+     },
+     "last_commit_hash": "7F76391D1B79B119417EA6F3FAA2964887B6C168C6861EEA70322F95D31BF556",
+     "data_hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+     "validators_hash": "BE28A23301907A33712A82B80C50831A61B3817B3B228C92BEA86B186A98F450",
+     "next_validators_hash": "BE28A23301907A33712A82B80C50831A61B3817B3B228C92BEA86B186A98F450",
+     "consensus_hash": "048091BC7DDC283F77BFBF91D73C44DA58C3DF8A9CBC867405D8B7F3DAADA22F",
+     "app_hash": "CF8B918A2BBA2C2EC8FB99B6781151A101EA091BF4E0457E436702F4A895FA33",
+     "last_results_hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+     "evidence_hash": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+     "proposer_address": "F440A4F1F6DB76DABBC78BC26A2BA218880F5067"
+    },
+    "data": {
+     "txs": []
+    }
+   },
+   "block_id": {
+    "hash": "127582FFCB034DAF61709EEF1AA735F0668AB1D21A109C22AAB30872B99CB386",
+    "parts": {
+     "total": 1,
+     "hash": "0BD812C04977263F83C2D38E633F90D0A30418FBA40A8593B39BEEE4B1F5BC55"
+    }
+   },
+   "result_finalize_block": {
+    "events": [
+     {
+      "type": "coin_received",
+      "attributes": [
+       {
+        "key": "receiver",
+        "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+        "index": true
+       },
+       {
+        "key": "amount",
+        "value": "424063ubze",
+        "index": true
+       },
+       {
+        "key": "mode",
+        "value": "BeginBlock",
+        "index": true
+       }
+      ]
+     },
+     {
+      "type": "coinbase",
+      "attributes": [
+       {
+        "key": "minter",
+        "value": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+        "index": true
+       },
+       {
+        "key": "amount",
+        "value": "424063ubze",
+        "index": true
+       },
+       {
+        "key": "mode",
+        "value": "BeginBlock",
+        "index": true
+       }
+      ]
+     }
+    ],
+    "tx_results": [],
+    "app_hash": "jIoP/5+gTZ5mQ18nvo5rR0c9SrdGKtOztXdXp7g68LY="
+   }
+  }
+ },
+ "events": {
+  "tm.event": [
+   "NewBlock"
+  ]
+ }
+}

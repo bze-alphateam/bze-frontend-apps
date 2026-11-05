@@ -10,20 +10,20 @@ import type { CrossChainTxRecord } from '../../types/cross_chain';
 // The wallet connection, balances and the Latest Buy tracker are fed directly; the buy and
 // bridge flows have their own hooks and are not under test here.
 const { wallet, tracker, bridge, held } = vi.hoisted(() => ({
-    wallet: { status: 'Disconnected' as string },
+    wallet: { status: 'Disconnected' as string, name: 'keplr-extension' },
     tracker: { transactions: [] as CrossChainTxRecord[], addTransaction: () => {}, dismissTransaction: () => {} },
     bridge: { isAvailable: false },
     held: { balances: [] as unknown[] },
 }));
 
 vi.mock('@interchain-kit/react', () => ({
-    InterchainWalletModal: () => null,
     useChain: () => ({
         status: wallet.status,
         username: 'Keplr',
         address: 'bze1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',
         disconnect: vi.fn(),
         connect: vi.fn(),
+        wallet: { info: { name: wallet.name } },
     }),
 }));
 vi.mock('../../hooks/useBalances', () => ({ useBalances: () => ({ assetsBalances: held.balances, isLoading: false }) }));
@@ -69,6 +69,7 @@ const statusPill = () => screen.getByTestId('status-pill');
 
 beforeEach(() => {
     wallet.status = WalletState.Disconnected;
+    wallet.name = 'keplr-extension';
     tracker.transactions = [];
     bridge.isAvailable = false;
     held.balances = [];
@@ -167,6 +168,29 @@ describe('Deposit / Withdraw entry', () => {
         bridge.isAvailable = true;
         render(<WalletSidebarContent />, { wrapper });
         expect(screen.getByRole('button', { name: /Deposit \/ Withdraw/ })).toBeTruthy();
+    });
+});
+
+describe('BeePocket (BeeZee only)', () => {
+    beforeEach(() => {
+        wallet.status = WalletState.Connected;
+        bridge.isAvailable = true;
+    });
+
+    it('offers no Deposit / Withdraw or Buy BZE and says why', () => {
+        wallet.name = 'beepocket-extension';
+        render(<WalletSidebarContent />, { wrapper });
+        expect(screen.getByRole('button', { name: /^Send/ })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Deposit \/ Withdraw/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Buy BZE/ })).toBeNull();
+        expect(screen.getByTestId('wallet-beezee-only').textContent).toContain('BeePocket supports BeeZee only');
+    });
+
+    it('leaves Keplr with both flows and no notice', () => {
+        render(<WalletSidebarContent />, { wrapper });
+        expect(screen.getByRole('button', { name: /Deposit \/ Withdraw/ })).toBeTruthy();
+        expect(screen.getByRole('button', { name: /Buy BZE/ })).toBeTruthy();
+        expect(screen.queryByTestId('wallet-beezee-only')).toBeNull();
     });
 });
 

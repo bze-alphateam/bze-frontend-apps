@@ -53,27 +53,39 @@ export async function getBlockTimeByHeight(height: BigNumber): Promise<Date | un
     return details.block?.header?.time
 }
 
+/** The HTTP base of a CometBFT RPC endpoint saved as ws(s)://, without trailing slashes. */
+function rpcHttpUrl(endpoint: string): string {
+    return endpoint.trim().replace(/^ws(s?):\/\//i, 'http$1://').replace(/\/+$/, '');
+}
+
+/** CometBFT's answer for a height it has not committed yet: the block is simply not there yet. */
+const FUTURE_HEIGHT_PATTERN = /must be less than or equal to the current blockchain height/;
+
+/**
+ * The block's results, or `undefined` while the node has not processed `height` yet. Throws when
+ * the node can't be read (network error, any other error answer), so callers can tell
+ * "not there yet" from "can't read the chain".
+ */
 export async function getBlockResults(height: number): Promise<BlockResults | undefined> {
     const settings = getSettings();
-    const rpcUrl = settings.endpoints.rpcEndpoint.replace("wss", "https");
-    const url = `${rpcUrl}/block_results?height=${height}`;
+    const url = `${rpcHttpUrl(settings.endpoints.rpcEndpoint)}/block_results?height=${height}`;
 
+    // A plain GET (no Content-Type) needs no CORS preflight.
+    const response = await fetch(url);
+    let body: (BlockResults & { error?: { data?: unknown; message?: unknown } }) | undefined;
     try {
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            console.log('not ok response from RPC: ', response);
-            return undefined
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to fetch block results:", error);
-        throw error;
+        body = await response.json();
+    } catch {
+        body = undefined;
     }
+
+    const error = body?.error;
+    if (error && FUTURE_HEIGHT_PATTERN.test(String(error.data ?? error.message ?? ''))) {
+        return undefined;
+    }
+    if (!response.ok || error || !body) {
+        throw new Error(`block_results at ${height}: HTTP ${response.status}${error ? ` ${String(error.data ?? error.message ?? '')}` : ''}`);
+    }
+
+    return body;
 }

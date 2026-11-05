@@ -365,7 +365,8 @@ describe("token page", () => {
         expect(pool).toHaveTextContent("You created it");
         expect(pool).toHaveTextContent("1 TOK = 0.500000 BZE · 2 TOK + 1 BZE in the pool");
         expect(within(pool).getByRole("link", { name: /DEX/ })).toHaveAttribute("href", "https://dex.example/pools/details?id=p1");
-        expect(within(pool).queryByRole("link", { name: "Reward LPs" })).not.toBeInTheDocument();
+        const reward = within(pool).getByRole("link", { name: "Reward LPs" }).getAttribute("href") ?? "";
+        expect(reward).toMatch(new RegExp(`^/reward/new\\?staking=ulp_tok_ubze&prize=${encodeURIComponent(DENOM)}&return=`));
         const market = screen.getByTestId(`trading-market-ubze/${DENOM}`);
         expect(market).not.toHaveTextContent("You created it");
         unmount();

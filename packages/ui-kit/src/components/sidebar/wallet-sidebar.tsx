@@ -1,6 +1,6 @@
 'use client'
 import "@interchain-kit/react/styles.css";
-import {InterchainWalletModal, useChain} from "@interchain-kit/react";
+import {useChain} from "@interchain-kit/react";
 import {
     Badge,
     Box,
@@ -53,11 +53,11 @@ import {DrawerInset, DrawerMono, DrawerQuickAction, DrawerSectionTitle, DrawerVi
 import {isCrossChainEnabled, isSkipEnabled} from '../../constants/cross_chain';
 import {useBridgeAvailability} from '../../hooks/useBridgeAvailability';
 import {MaxInputGroup} from '../max-input-group';
+import {isBeePocketWallet, walletNameOf} from '../../utils/wallet_sign_mode';
 
 type ViewState = 'balances' | 'send' | 'transfer' | 'buy' | 'txDetails'
 
 interface WalletSidebarContentProps {
-    skipWalletModal?: boolean
     // When set (communities token pages), this denom's balance is pinned at the top of the
     // balances list even when zero, every other balance is collapsed behind an expand control,
     // and the send form preselects it. Unset (dex/burner/staking/index) → today's behaviour.
@@ -470,7 +470,7 @@ export const WalletSendForm = ({balances, onClose, selectedTicker}: WalletSendFo
     )
 }
 
-export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }: WalletSidebarContentProps) => {
+export const WalletSidebarContent = ({ featuredDenom }: WalletSidebarContentProps) => {
     const [viewState, setViewState] = useState<ViewState>('balances')
     const [showAllBalances, setShowAllBalances] = useState(false)
     const [selectedTxId, setSelectedTxId] = useState<string>('')
@@ -490,8 +490,13 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
         address,
         disconnect,
         connect,
+        wallet,
     } = useChain(getChainName());
     const {assetsBalances, isLoading: assetsLoading} = useBalances();
+    // BeePocket serves BeeZee only: the flows that sign or read on another chain are not offered.
+    const beeZeeOnly = isBeePocketWallet(walletNameOf(wallet));
+    const showBridge = bridgeAvailable && !beeZeeOnly;
+    const showBuy = skipEnabled && !beeZeeOnly;
 
     const handleConnect = useCallback(() => {
         connect();
@@ -608,18 +613,23 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
                 <DrawerQuickAction icon={<LuSend/>} onClick={() => setViewState('send')} disabled={assetsLoading}>
                     Send
                 </DrawerQuickAction>
-                {bridgeAvailable && (
+                {showBridge && (
                     <DrawerQuickAction icon={<LuArrowRightLeft/>} onClick={() => setViewState('transfer')}>
                         Deposit / Withdraw
                     </DrawerQuickAction>
                 )}
             </HStack>
-            {skipEnabled && (
+            {showBuy && (
                 <HStack w="full">
                     <DrawerQuickAction icon={<LuCircleArrowUp/>} onClick={() => setViewState('buy')}>
                         Buy BZE
                     </DrawerQuickAction>
                 </HStack>
+            )}
+            {beeZeeOnly && (bridgeAvailable || skipEnabled) && (
+                <Text fontSize="12px" color="fg.muted" data-testid="wallet-beezee-only">
+                    BeePocket supports BeeZee only. Use another wallet to deposit, withdraw or buy BZE from other networks.
+                </Text>
             )}
         </VStack>
     )
@@ -695,7 +705,6 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
         <VStack gap="22px" align="stretch">
             {/* Wallet Status - Always at top */}
             <VStack gap="12px" align="stretch">
-                {!skipWalletModal && <InterchainWalletModal />}
                 <HStack justify="space-between">
                     <Text fontSize="13px" fontWeight="600" color="hg.text.secondary">
                         Wallet Status
@@ -752,8 +761,8 @@ export const WalletSidebarContent = ({ skipWalletModal = false, featuredDenom }:
             )}
             {status === WalletState.Connected && viewState === 'balances' && renderBalancesView()}
             {status === WalletState.Connected && viewState === 'send' && <WalletSendForm balances={sendBalances} onClose={handleCancel} selectedTicker={clickedBalance !== '' ? clickedBalance : (featuredBalance?.ticker ?? '')}/>}
-            {status === WalletState.Connected && crossChainEnabled && viewState === 'transfer' && <BridgeForm onClose={() => setViewState('balances')} />}
-            {status === WalletState.Connected && skipEnabled && viewState === 'buy' && <BuyForm onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
+            {status === WalletState.Connected && crossChainEnabled && !beeZeeOnly && viewState === 'transfer' && <BridgeForm onClose={() => setViewState('balances')} />}
+            {status === WalletState.Connected && showBuy && viewState === 'buy' && <BuyForm onClose={() => setViewState('balances')} addTransaction={txTracker.addTransaction} />}
             {status === WalletState.Connected && viewState === 'txDetails' && selectedTxId && (() => {
                 const tx = txTracker.transactions.find(t => t.id === selectedTxId);
                 if (!tx) return null;

@@ -27,6 +27,7 @@ const UNUSED_DEPS = [
 // @chakra-ui/react and @tanstack/react-query already dedupe to one, so they're omitted.)
 const SINGLETONS = [
     '@interchain-kit/react',
+    '@interchain-ui/react',
     '@interchain-kit/core',
     'wagmi',
     '@wagmi/core',

@@ -46,6 +46,9 @@ importers:
 
   apps/burner:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -76,6 +79,9 @@ importers:
       '@interchain-kit/react':
         specifier: 0.11.1
         version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@next/third-parties':
         specifier: ^16.0.6
         version: 16.2.9(next@16.4.1(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
@@ -167,6 +173,9 @@ importers:
 
   apps/communities:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -197,6 +206,9 @@ importers:
       '@interchain-kit/react':
         specifier: 0.11.1
         version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
@@ -276,6 +288,9 @@ importers:
 
   apps/dex:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -309,6 +324,9 @@ importers:
       '@interchain-kit/store':
         specifier: 0.10.1
         version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@next/third-parties':
         specifier: ^16.0.6
         version: 16.2.9(next@16.4.1(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
@@ -403,6 +421,9 @@ importers:
 
   apps/factory:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -433,6 +454,9 @@ importers:
       '@interchain-kit/react':
         specifier: 0.11.1
         version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
@@ -515,6 +539,9 @@ importers:
 
   apps/staking:
     dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -545,6 +572,9 @@ importers:
       '@interchain-kit/react':
         specifier: 0.11.1
         version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
@@ -630,6 +660,9 @@ importers:
 
   packages/ui-kit:
     devDependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bzejs':
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -651,6 +684,9 @@ importers:
       '@interchain-kit/store':
         specifier: 0.10.1
         version: 0.10.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@interchainjs/cosmos':
         specifier: ^1.21.0
         version: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -831,6 +867,11 @@ packages:
 
   '@base-org/account@2.4.0':
     resolution: {integrity: sha512-A4Umpi8B9/pqR78D1Yoze4xHyQaujioVRqqO3d6xuDFw9VRtjg6tK3bPlwE0aW+nVH/ntllCpPa2PbI8Rnjcug==}
+
+  '@bze/beepocket-connector@0.1.0':
+    resolution: {integrity: sha512-G7VPbFYDWZcw6aOXZhd8/i7gWCz0HHe6ozGysSp1CSK/55UA6WxsmTp6WE0EcD3pxADggki6x8+RHe5cssyDYA==}
+    peerDependencies:
+      '@interchain-kit/core': 0.11.x
 
   '@bze/bzejs@3.2.0':
     resolution: {integrity: sha512-8UAB4iFneL5qgzXZ2xWfnfVsr0oMSObZH1SR3ruyrCK7NBZzJJbM9BAmORdSasHD8GoublqF4hBgBrXEsT4mVA==}
@@ -7050,6 +7091,14 @@ snapshots:
       - utf-8-validate
       - zod
     optional: true
+
+  '@bze/beepocket-connector@0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))':
+    dependencies:
+      '@interchain-kit/core': 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+
+  '@bze/beepocket-connector@0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))':
+    dependencies:
+      '@interchain-kit/core': 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
 
   '@bze/bzejs@3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:

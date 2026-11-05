@@ -5,8 +5,10 @@ import {useCallback, useEffect, useRef} from "react";
 import {useTabResume, useWalletHealthCheck} from "@bze/bze-ui-kit";
 import {
     blockchainEventManager,
+    BURNER_COINS_BURNED_EVENT,
     CURRENT_WALLET_BALANCE_EVENT,
     EPOCH_START_EVENT,
+    NEXT_BURN_CHANGED_EVENT,
     SUPPLY_CHANGED_EVENT,
     addDebounce,
     CONNECTION_TYPE_NONE,
@@ -26,6 +28,8 @@ export function BlockchainListenerWrapper() {
         updateConnectionType,
         updateAssets,
         updateEpochs,
+        updateNextBurn,
+        updateBurnHistory,
     } = useCommunitiesContext()
 
     const refreshAll = useCallback(() => {
@@ -33,7 +37,8 @@ export function BlockchainListenerWrapper() {
         updateMarketsData()
         updateAssets()
         updateEpochs()
-    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs]);
+        updateNextBurn()
+    }, [updateBalances, updateMarketsData, updateAssets, updateEpochs, updateNextBurn]);
 
     // A tab coming back from a long background stay refreshes once, whatever the feed state.
     useTabResume(refreshAll);
@@ -44,10 +49,12 @@ export function BlockchainListenerWrapper() {
     useEffect(() => {
         if (isConnected && hasBeenConnected.current && !wasConnected.current) {
             refreshAll();
+            // Not in refreshAll: the 10s poll would read the history past its cache every time.
+            updateBurnHistory();
         }
         if (isConnected) hasBeenConnected.current = true;
         wasConnected.current = isConnected;
-    }, [isConnected, refreshAll]);
+    }, [isConnected, refreshAll, updateBurnHistory]);
 
     useEffect(() => {
         const fallbackToNone = () => addDebounce('connection-type-none', POLLING_INTERVAL * 2, () => {
@@ -75,6 +82,16 @@ export function BlockchainListenerWrapper() {
                 addDebounce('refresh-assets-func', 100, updateAssets)
             })
 
+            // The periodic burn empties the burner and adds a record to the burn history.
+            const coinsBurnedUnsubscribe = blockchainEventManager.subscribe(BURNER_COINS_BURNED_EVENT, () => {
+                addDebounce('refresh-next-burn-func', 1000, updateNextBurn)
+                addDebounce('refresh-burn-history-func', 1000, updateBurnHistory)
+            })
+
+            const nextBurnUnsubscribe = blockchainEventManager.subscribe(NEXT_BURN_CHANGED_EVENT, () => {
+                addDebounce('refresh-next-burn-func', 1000, updateNextBurn)
+            })
+
             const balanceUnsubscribe = blockchainEventManager.subscribe(CURRENT_WALLET_BALANCE_EVENT, () => {
                 addDebounce('refresh-wallet-func', 1000, updateBalances)
             })
@@ -86,6 +103,8 @@ export function BlockchainListenerWrapper() {
             unsubscribers.push(
                 balanceUnsubscribe,
                 updateAssetsUnsubscribe,
+                nextBurnUnsubscribe,
+                coinsBurnedUnsubscribe,
                 epochUnsubscribe,
             )
         }
@@ -97,7 +116,7 @@ export function BlockchainListenerWrapper() {
             removeFallback()
             unsubscribers.forEach(unsubscribe => unsubscribe())
         };
-    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs]);
+    }, [isConnected, refreshAll, updateBalances, updateMarketsData, updateConnectionType, updateAssets, updateEpochs, updateNextBurn, updateBurnHistory]);
 
     return null;
 }

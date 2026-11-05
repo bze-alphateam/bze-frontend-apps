@@ -9,17 +9,19 @@ import {
     formatDuration,
     getChainName,
     getChainNativeAssetDenom,
+    isBeePocketWallet,
     prettyAmount,
     shortNumberFormat,
     toBigNumber,
     uAmountToBigNumberAmount,
     useAssets,
     useBuyBze,
+    walletNameOf,
 } from "@bze/bze-ui-kit";
 
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
 
-import {TsButton, TsField, TsNotice, ts, tsMix} from "../kit";
+import {TsButton, TsField, TsNotice, ts} from "../kit";
 
 interface PickOption {
     key: string;
@@ -62,7 +64,7 @@ function PickList({title, search, onSearch, options, empty, onPick}: {
                             font="inherit"
                             textAlign="left"
                             cursor="pointer"
-                            _hover={{bg: tsMix(ts.fg, 6)}}
+                            _hover={{bg: ts.hover}}
                             _disabled={{opacity: 0.5, cursor: "not-allowed", _hover: {bg: "transparent"}}}
                         >
                             <Flex align="center" gap="10px" minW="0">
@@ -199,7 +201,7 @@ function GetBzeForm({ticker, onDone}: { ticker: string; onDone: () => void }) {
             {buy.isLoadingRoute && buy.amount && <Loading>Finding the best route to {ticker}…</Loading>}
             {buy.routeError && buy.amount && !buy.isLoadingRoute && <Problem>{buy.routeError}</Problem>}
             {buy.routePreview && buy.amount && !buy.isLoadingRoute && (
-                <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)} data-testid="get-bze-route">
+                <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.card} data-testid="get-bze-route">
                     <chakra.span color={ts.muted} fontSize="13px">You get about</chakra.span>
                     <chakra.span fontSize="22px" fontWeight={600} fontVariantNumeric="tabular-nums">
                         {shortNumberFormat(toBigNumber(buy.routePreview.estimatedOutput))} {ticker}
@@ -262,8 +264,10 @@ function GetBzeForm({ticker, onDone}: { ticker: string; onDone: () => void }) {
 export function GetBzePanel({onBack}: { onBack: () => void }) {
     const {denomTicker} = useAssets();
     const {connect} = useTokenWallet();
-    const {status, address} = useChain(getChainName());
+    const {status, address, wallet} = useChain(getChainName());
     const connected = status === WalletState.Connected && Boolean(address);
+    // BeePocket serves BeeZee only, so it cannot pay from another network.
+    const beeZeeOnly = isBeePocketWallet(walletNameOf(wallet));
     const ticker = denomTicker(getChainNativeAssetDenom());
 
     // The button that opened the panel is gone: keep the keyboard inside the drawer.
@@ -281,7 +285,11 @@ export function GetBzePanel({onBack}: { onBack: () => void }) {
             <chakra.p m="0" color={ts.muted} lineHeight="1.55">
                 Pay with a coin from another network and receive {ticker} for network fees, usually within minutes.
             </chakra.p>
-            {connected ? (
+            {connected && beeZeeOnly ? (
+                <chakra.p m="0" color={ts.muted} lineHeight="1.55" data-testid="get-bze-beezee-only">
+                    BeePocket supports BeeZee only. Connect another wallet to pay with a coin from another network.
+                </chakra.p>
+            ) : connected ? (
                 <GetBzeForm ticker={ticker} onDone={onBack}/>
             ) : (
                 <Flex direction="column" gap="14px">

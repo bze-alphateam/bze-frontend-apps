@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
-import type {DenomBranding} from "@bze/bze-ui-kit";
+import {BRANDING_TEMPLATES, type BrandingColors, type BrandingPalette, contrastRatio, DEFAULT_DENOM_BRANDING, type DenomBranding} from "@bze/bze-ui-kit";
 
-import {dangerColor, tokenSiteVars} from "./theme";
+import {dangerColor, tokenSiteSurfaces, tokenSiteVars} from "./theme";
 
 const KIT: DenomBranding = {
     font: "space-grotesk",
@@ -10,7 +10,7 @@ const KIT: DenomBranding = {
 };
 
 describe("tokenSiteVars", () => {
-    it("takes the four colours of the light palette and derives the tints from text and background", () => {
+    it("takes the four colours of the light palette and derives the surfaces from text and background", () => {
         const vars = tokenSiteVars(KIT, "light");
 
         expect(vars["--ts-bg"]).toBe("#FBF7F0");
@@ -18,8 +18,10 @@ describe("tokenSiteVars", () => {
         expect(vars["--ts-pri"]).toBe("#FFD000");
         expect(vars["--ts-sec"]).toBe("#2E6E8E");
         expect(vars["--ts-muted"]).toBe("color-mix(in oklab, #1E1B16 64%, #FBF7F0)");
-        expect(vars["--ts-card"]).toBe("color-mix(in oklab, #1E1B16 4%, #FBF7F0)");
-        expect(vars["--ts-border"]).toBe("color-mix(in oklab, #1E1B16 11%, #FBF7F0)");
+        expect(vars["--ts-card"]).toBe("#F1EDE6");
+        expect(vars["--ts-inset"]).toBe("#ECE8E1");
+        expect(vars["--ts-border"]).toBe("#E0DCD5");
+        expect(vars["--ts-border-strong"]).toBe("#CECAC4");
     });
 
     it("switches every colour to the dark palette", () => {
@@ -49,6 +51,54 @@ describe("tokenSiteVars", () => {
     it("uses the curated font with a system fallback, and only the fallback for an unknown slug", () => {
         expect(tokenSiteVars(KIT, "light")["--ts-font"]).toBe("'Space Grotesk', system-ui, sans-serif");
         expect(tokenSiteVars({...KIT, font: "papyrus"}, "light")["--ts-font"]).toBe("system-ui, sans-serif");
+    });
+});
+
+// The contrast floors on the background, from the faintest surface to the strongest, and the
+// least step from the card to its border.
+const FLOORS = {card: 1.08, inset: 1.12, hover: 1.15, border: 1.24, line: 1.38, borderStrong: 1.44, borderGhost: 1.58} as const;
+const BORDER_ON_CARD = 1.15;
+const ORDER = ["card", "inset", "hover", "border", "line", "borderStrong", "borderGhost"] as const;
+
+const PALETTES: { name: string; mode: BrandingPalette; colors: BrandingColors }[] = [
+    ...BRANDING_TEMPLATES,
+    {id: "default", branding: DEFAULT_DENOM_BRANDING},
+].flatMap(({id, branding}) => (["light", "dark"] as const).map((mode) => ({name: `${id} ${mode}`, mode, colors: branding[mode]})));
+
+describe("tokenSiteSurfaces", () => {
+    it("separates every surface from the background on every template, light and dark", () => {
+        for (const {name, colors} of PALETTES) {
+            const s = tokenSiteSurfaces(colors);
+            const onBg = (key: keyof typeof FLOORS) => contrastRatio(s[key], colors.background);
+            for (const key of ORDER) {
+                expect(onBg(key), `${name} ${key}`).toBeGreaterThanOrEqual(FLOORS[key]);
+            }
+            for (let i = 1; i < ORDER.length; i++) {
+                expect(onBg(ORDER[i]), `${name} ${ORDER[i]} after ${ORDER[i - 1]}`).toBeGreaterThan(onBg(ORDER[i - 1]));
+            }
+            expect(contrastRatio(s.border, s.card), `${name} border/card`).toBeGreaterThanOrEqual(BORDER_ON_CARD);
+        }
+    });
+
+    it("lifts the cards of a pure black kit off the background (Terminal dark painted them #000000)", () => {
+        const terminal = BRANDING_TEMPLATES.find((t) => t.id === "terminal")!.branding.dark;
+        const s = tokenSiteSurfaces(terminal);
+
+        expect(terminal.background).toBe("#000000");
+        expect(s.card).not.toBe("#000000");
+        expect(s.border).not.toBe("#000000");
+        expect(s).toEqual({card: "#0D0F0D", inset: "#111412", hover: "#151816", border: "#1B1F1C", line: "#262B28", borderStrong: "#2A302C", borderGhost: "#343A36"});
+    });
+
+    it("keeps the design shares on light kits: 4 % card, 6 % inset, 11 % border", () => {
+        expect(tokenSiteSurfaces(DEFAULT_DENOM_BRANDING.light)).toEqual({card: "#F4F4F5", inset: "#EFEFF1", hover: "#E9EAEC", border: "#E1E2E5", line: "#D4D5D9", borderStrong: "#CED0D4", borderGhost: "#C4C6CB"});
+    });
+
+    it("stays bounded when the text is almost the background", () => {
+        const s = tokenSiteSurfaces({background: "#808080", text: "#818181", primary: "#000000", secondary: "#000000"});
+
+        expect(s.card).toMatch(/^#[0-9A-F]{6}$/);
+        expect(s.borderStrong).toMatch(/^#[0-9A-F]{6}$/);
     });
 });
 

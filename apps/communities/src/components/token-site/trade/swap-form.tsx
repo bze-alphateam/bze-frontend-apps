@@ -23,7 +23,7 @@ import {type SwapDirection, useTokenSwap} from "@/hooks/token-site/useTokenSwap"
 import {DEFAULT_SLIPPAGE, formatPriceImpact, payableTokens, receivableTokens, SLIPPAGE_OPTIONS} from "@/lib/token-site/swap";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsChip, TsField, TsNotice, ts, tsMix} from "../kit";
+import {TsButton, TsChip, TsField, TsNotice, TsTokenSelect, ts} from "../kit";
 
 /** Why `amount` (display units) can't be swapped, or '' when it can as far as the balance goes. */
 function amountProblem(amount: string, balance: BigNumber, decimals: number, ticker: string): string {
@@ -41,34 +41,6 @@ function Row({label, children}: { label: string; children: React.ReactNode }) {
             <chakra.span color={ts.muted}>{label}</chakra.span>
             <chakra.span fontWeight={600} fontVariantNumeric="tabular-nums" textAlign="right">{children}</chakra.span>
         </Flex>
-    );
-}
-
-interface TokenSelectProps {
-    label: string;
-    value: string;
-    options: { denom: string; ticker: string }[];
-    onChange: (denom: string) => void;
-}
-
-function TokenSelect({label, value, options, onChange}: TokenSelectProps) {
-    return (
-        <chakra.select
-            aria-label={label}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            font="inherit"
-            fontWeight={700}
-            color={ts.fg}
-            bg={ts.inset}
-            border="0"
-            borderRadius="999px"
-            px="10px"
-            minH="36px"
-            cursor="pointer"
-        >
-            {options.map((token) => <option key={token.denom} value={token.denom}>{token.ticker}</option>)}
-        </chakra.select>
     );
 }
 
@@ -151,7 +123,7 @@ export function SwapForm({asset, direction, idPrefix, cta, notice}: SwapFormProp
     const errorId = `${idPrefix}-amount-error`;
     const slippageId = `${idPrefix}-slippage`;
     const select = (
-        <TokenSelect
+        <TsTokenSelect
             label={buying ? "Pay with" : "Receive"}
             value={other.denom}
             options={options}
@@ -204,7 +176,7 @@ export function SwapForm({asset, direction, idPrefix, cta, notice}: SwapFormProp
                 </chakra.button>
             </Flex>
 
-            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)} data-testid={`${idPrefix}-quote`}>
+            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.card} data-testid={`${idPrefix}-quote`}>
                 <chakra.span color={ts.muted} fontSize="13px">{buying ? "You get" : "You receive"}</chakra.span>
                 <Flex align="center" justify="space-between" gap="10px">
                     <chakra.span fontSize="22px" fontWeight={600} fontVariantNumeric="tabular-nums" overflowWrap="anywhere">

@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
-import {blockchainEventManager, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, EPOCH_START_EVENT, SUPPLY_CHANGED_EVENT} from "@bze/bze-ui-kit";
+import {blockchainEventManager, BURNER_COINS_BURNED_EVENT, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, EPOCH_START_EVENT, NEXT_BURN_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, getBurnerModuleAddress} from "@bze/bze-ui-kit";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
@@ -155,6 +155,63 @@ describe("useBlockchainListener wallet balance", () => {
         act(() => subscriptions.get("tm.event='NewBlock'")!(newBlock([], [[transfer("bze1new")]])));
         expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
         expect(subscriptions.get("tm.event='NewBlock'")).toBe(handler);
+    });
+});
+
+describe("useBlockchainListener next burn", () => {
+    let emit: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+        subscriptions.clear();
+        feedStatus.current = "connecting";
+        feedStatus.listeners.clear();
+        wallet.address = undefined;
+        emit = vi.spyOn(blockchainEventManager, "emit");
+        emit.mockClear();
+    });
+
+    const fundBurner = (sender: string) => event("transfer", {recipient: getBurnerModuleAddress(), sender, amount: "1000000factory/bze1creator/uctr"});
+
+    it("refreshes the next burn when anyone sends coins to the burner", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("message", {action: "/bze.burner.v1.MsgFundBurner"}), fundBurner("bze1someone")]]));
+
+        expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
+    });
+
+    it("refreshes the next burn when the connected wallet funds the burner", async () => {
+        wallet.address = "bze1wallet";
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[fundBurner("bze1wallet")]]));
+
+        expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
+        expect(emit).toHaveBeenCalledWith(CURRENT_WALLET_BALANCE_EVENT);
+    });
+
+    it("flags the periodic burn so the burn history is read again", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([event("bze.burner.CoinsBurnedEvent", {burned: "4000000factory/bze1creator/uctr"})], []));
+
+        expect(emit).toHaveBeenCalledWith(BURNER_COINS_BURNED_EVENT);
+    });
+
+    it("doesn't flag a burn for a fund to the burner", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("bze.burner.FundBurnerEvent", {from: "bze1someone", amount: "1000000factory/bze1creator/uctr"}), fundBurner("bze1someone")]]));
+
+        expect(emit).not.toHaveBeenCalledWith(BURNER_COINS_BURNED_EVENT);
+    });
+
+    it("leaves the next burn alone for transfers that don't touch the burner", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([event("transfer", {recipient: "bze1a", sender: "bze1b", amount: "5ubze"})], []));
+
+        expect(emit).not.toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
     });
 });
 

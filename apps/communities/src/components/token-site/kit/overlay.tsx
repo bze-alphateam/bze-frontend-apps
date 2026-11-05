@@ -6,7 +6,7 @@ import {Box, chakra, Flex} from "@chakra-ui/react";
 import {LuX} from "react-icons/lu";
 
 import {useTokenSiteTheme} from "./theme";
-import {ts, tsMix} from "./tokens";
+import {ts} from "./tokens";
 
 interface OverlayProps {
     open: boolean;
@@ -133,7 +133,7 @@ function OverlayLayer({open, onClose, title, icon, children, placement}: LayerPr
                         borderRadius="12px"
                         borderWidth="1px"
                         borderStyle="solid"
-                        borderColor={tsMix(ts.fg, 18)}
+                        borderColor={ts.borderStrong}
                         bg="transparent"
                         color={ts.fg}
                         cursor="pointer"

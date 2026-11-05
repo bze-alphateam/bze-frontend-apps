@@ -40,6 +40,7 @@ export interface AssetsContextType extends BaseAssetsContextType {
     updateNextBurn: () => Promise<void>;
 
     burnHistory: BurnedCoinsSDKType[];
+    /** Reads the burn history from the chain again, past the local cache (after a burn happened). */
     updateBurnHistory: () => Promise<void>;
 
     settingsVersion: number;
@@ -248,7 +249,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
         }
     }, [doUpdateNextBurn])
     const updateBurnHistory = useCallback(async () => {
-        const response = await getAllBurnedCoins();
+        const response = await getAllBurnedCoins({fresh: true});
         doUpdateBurnHistory(response.burnedCoins)
     }, [doUpdateBurnHistory])
 

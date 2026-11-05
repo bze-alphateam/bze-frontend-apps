@@ -45,7 +45,7 @@ export type {
 } from './types/events';
 export {
     CURRENT_WALLET_BALANCE_EVENT, ORDER_EXECUTED_EVENT, ORDER_BOOK_CHANGED_EVENT,
-    SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT, NEXT_BURN_CHANGED_EVENT,
+    SUPPLY_CHANGED_EVENT, SWAP_EXECUTED_EVENT, NEXT_BURN_CHANGED_EVENT, BURNER_COINS_BURNED_EVENT,
     RAFFLE_CHANGED_EVENT, LOCK_CHANGED_EVENT, EPOCH_START_EVENT
 } from './types/events';
 
@@ -69,7 +69,7 @@ export {
     getMarketOrderBookChangedEvent, getMarketEventKey, mapEventAttributes,
     getEventKeyValue, getEventMarketId,
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
-    isCoinbaseEvent, isBurnEvent, isEpochStartEvent, getMintedAmount,
+    isCoinbaseEvent, isBurnEvent, isBurnerCoinsBurnedEvent, isEpochStartEvent, getMintedAmount,
     getNewBlockEvents, blockHasAddressTransfer,
 } from './utils/events';
 export {
@@ -99,11 +99,11 @@ export {
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {
-    GAS_ESTIMATES, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
+    GAS_ESTIMATES, FEE_SWAP_GAS, estimateGasUsed, estimateGasFee, resolveGasPrice, computeNativeGasFee, computeForeignGasFee,
     maxSpendableAmount, canAffordTx
 } from './utils/gas_fee';
 export type {
-    TxKind, TxKindSpec, TxSpec, GasProfile, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
+    TxKind, TxKindSpec, TxSpec, GasProfile, EstimateGasUsedOptions, GasFeeEstimateInput, GasFeeEstimate, GasFeeCoin, NativeGasFee, ForeignGasFee,
     SpendCoin, CanAffordTxInput, CanAffordTxResult, TxShortfall
 } from './utils/gas_fee';
 export {
@@ -157,7 +157,7 @@ export {
     getChainId, getChainName, isTestnetChain, getChains, getChainByChainId,
     getChainByName, getWalletChainsNames, getAssetLists, getIBCAssetList,
     getChainAddressPrefix, getExplorerBaseURL, getExplorerTxURL, getExplorerAccountURL, getExplorerTokenURL,
-    getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice, getNonNativeGasMultiplier,
+    getExplorerValidatorURL, getExplorerBlockURL, getExplorerProposalsURL, getExplorerProposalURL, getLockerAddress, getGasPrice,
     getForeignFeeSlippage
 } from './constants/chain';
 export {
@@ -181,6 +181,7 @@ export {
     getSkipProxyUrl, isCrossChainEnabled, isSkipEnabled,
     getDeniedChains, getDeniedAssets, isChainDenied, isAssetDenied,
 } from './constants/cross_chain';
+export { isBeePocketEnabled } from './constants/wallets';
 
 // === Storage ===
 export {
@@ -195,6 +196,9 @@ export { blockchainEventManager } from './service/blockchain_event_manager';
 export { getChainAssets, getChainAssetsAfterTx, ASSETS_REFRESH_ATTEMPTS, ASSETS_REFRESH_INTERVAL_MS } from './service/assets_factory';
 export { fetchRegistryAssets, getCachedRegistryAssets, getRegistryAssetsURL } from './query/registry_assets';
 export { keplrSuggestChain } from './service/keplr';
+export { BEEPOCKET_WALLET_NAME, isBeePocketWallet, walletNameOf } from './utils/wallet_sign_mode';
+export { isWalletComingSoon, splitComingSoonWallets } from './utils/wallet_availability';
+export type { ComingSoonWallet } from './utils/wallet_availability';
 
 // === Query ===
 export { getRestClient, createRestClient, getPageRequestWithLimit } from './query/client';
@@ -339,7 +343,8 @@ export type { WithdrawableAsset, WithdrawableAssetKind, WithdrawDestinationChain
 
 // === Components ===
 export { SettingsProvider } from './components/settings-provider';
-export { Toaster } from './components/toaster';
+export { Toaster, useToasterTheme } from './components/toaster';
+export type { ToasterTheme } from './components/toaster';
 export { HighlightText } from './components/highlight';
 export { ImageWithFallback } from './components/image';
 export { TokenLogo } from './components/token-logo';
@@ -360,6 +365,8 @@ export type { MaxInputGroupProps } from './components/max-input-group';
 export { Sidebar } from './components/sidebar/sidebar';
 export { SettingsSidebarContent } from './components/sidebar/settings-sidebar';
 export { WalletSidebarContent, WalletSendForm } from './components/sidebar/wallet-sidebar';
+export { WalletPickModal } from './components/wallet-pick-modal';
+export type { WalletPickModalProps } from './components/wallet-pick-modal';
 export type { WalletSendFormProps } from './components/sidebar/wallet-sidebar';
 export { SettingsToggle } from './components/settings-toggle';
 export { TestnetBanner } from './components/testnet-banner';

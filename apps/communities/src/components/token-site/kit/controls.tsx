@@ -22,7 +22,7 @@ export function TsChip({selected, ...props}: HTMLChakraProps<"button"> & { selec
             cursor="pointer"
             bg={selected ? ts.fg : "transparent"}
             color={selected ? ts.bg : ts.fg}
-            borderColor={selected ? ts.fg : tsMix(ts.fg, 18)}
+            borderColor={selected ? ts.fg : ts.borderStrong}
             _focusVisible={{outline: `2px solid ${ts.fg}`, outlineOffset: "2px"}}
             {...props}
         />
@@ -74,7 +74,7 @@ interface TsFieldProps extends Omit<HTMLChakraProps<"input">, "size"> {
     suffix?: React.ReactNode;
 }
 
-/** Amount field: label, borderless input and a suffix (the token ticker); a primary ring while focused. */
+/** Amount field: label, borderless input and a suffix (the token ticker); a primary ring while the input is focused. */
 export function TsField({label, suffix, id, ...props}: TsFieldProps) {
     const generated = useId();
     const inputId = id ?? generated;
@@ -90,7 +90,8 @@ export function TsField({label, suffix, id, ...props}: TsFieldProps) {
             borderWidth="1px"
             borderStyle="solid"
             borderColor={ts.border}
-            _focusWithin={{borderColor: tsMix(ts.pri, 55), boxShadow: `0 0 0 3px ${tsMix(ts.pri, 18, "transparent")}`}}
+            // Only the amount input lights the field: a token pill in the suffix draws its own ring.
+            css={{"&:has(input:focus)": {borderColor: tsMix(ts.pri, 55), boxShadow: `0 0 0 3px ${tsMix(ts.pri, 18, "transparent")}`}}}
         >
             <chakra.label htmlFor={inputId} color={ts.muted} fontSize="13px">{label}</chakra.label>
             <Flex align="center" gap="10px">

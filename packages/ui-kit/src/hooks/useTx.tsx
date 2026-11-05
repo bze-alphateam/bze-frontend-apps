@@ -6,7 +6,7 @@ import {useChain} from "@interchain-kit/react";
 import {CosmosWallet} from "@interchain-kit/core";
 import {DirectSigner} from "@interchainjs/cosmos/signers/direct-signer";
 import {createCosmosQueryClient} from "@interchainjs/cosmos";
-import {getChainName, getExplorerTxURL, getForeignFeeSlippage, getGasMultiplier, getGasPrice, getNonNativeGasMultiplier} from "../constants/chain";
+import {getChainName, getExplorerTxURL, getForeignFeeSlippage, getGasMultiplier, getGasPrice} from "../constants/chain";
 import {getTxFeeCollectorParams} from "../query/txfeecollector_params";
 import {useToast} from "./useToast";
 import {prettyError} from "../utils/user_errors";
@@ -22,6 +22,7 @@ import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {computeForeignGasFee, computeNativeGasFee, resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
+import {signModeFor, walletNameOf} from "../utils/wallet_sign_mode";
 
 import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
 
@@ -63,6 +64,8 @@ export interface TxOptions {
      * amino converter emits fields BZE's chain doesn't know about, and the
      * signature verification fails with code 4. Direct sign bypasses amino
      * entirely.
+     *
+     * Ignored for BeePocket, which has no amino signing: its transactions are always direct.
      */
     useDirectSign?: boolean;
     /**
@@ -73,6 +76,9 @@ export interface TxOptions {
      * signAndBroadcast is replaced with an empty zero-gas placeholder and
      * the underlying offline signer is configured with
      * `preferNoSetFee: false` so Keplr overrides it.
+     *
+     * BeePocket follows this option too: when it is off, BeePocket proposes our fee (the
+     * fee token from the settings) and replaces it only when it cannot be paid.
      */
     letWalletSetFee?: boolean;
     /**
@@ -212,8 +218,9 @@ const useTx = (chainName: string) => {
         // BZE ante handler checks sequence even in simulation — use the real sequence
         const sequence = await signer.getSequence(address);
         const signerInfo = SignerInfo.fromPartial({modeInfo: {single: {mode: 1}}, sequence});
-        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why). The signer's
-        // own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
+        // Simulate with the fee denom the tx will pay in (simulationFeeCoins explains why): the measured
+        // gas then already includes what that token costs, so one margin serves every fee token. The
+        // signer's own simulateByTxBody always sends an empty fee, so the simulate query is called directly.
         const simulationDenom = feeDenom !== nativeDenom && isValidFeeDenom(feeDenom) && getDenomsPool(feeDenom, nativeDenom)
             ? feeDenom
             : nativeDenom;
@@ -224,7 +231,7 @@ const useTx = (chainName: string) => {
             throw new Error("Gas simulation returned 0");
         }
 
-        // Gas limit rounded up, then fee = ceil(gas × price): the ante handler requires
+        // Gas limit = ceil(gasUsed × margin), then fee = ceil(gas × price): the ante handler requires
         // fee >= ceil(gasLimit × minGasPrice) and rejects anything a micro-unit short.
         const nativeGasFee = computeNativeGasFee(gasEstimated, gasPrice, getGasMultiplier());
         const nativeFee = {
@@ -248,10 +255,10 @@ const useTx = (chainName: string) => {
             return nativeFee;
         }
 
-        // The foreign fee is priced from the gas limit the tx is actually sent with (native gas ×
-        // non-native multiplier) at the pool's spot ratio, with the slippage buffer (default 10%)
-        // to absorb pool drift between simulation and inclusion. See computeForeignGasFee.
-        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getNonNativeGasMultiplier(), getForeignFeeSlippage(), pool, nativeDenom);
+        // Same gas limit as the native fee (the simulation already ran with this token), priced at
+        // the pool's spot ratio with the slippage buffer (default 10%) to absorb pool drift between
+        // simulation and inclusion. See computeForeignGasFee.
+        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getForeignFeeSlippage(), pool, nativeDenom);
         if (!foreignGasFee) {
             return nativeFee;
         }
@@ -309,9 +316,12 @@ const useTx = (chainName: string) => {
                 // For IBC MsgTransfer (and similar) we must bypass amino and sign directly,
                 // because bzejs v3's amino converter produces sign-doc bytes that BZE chain
                 // rejects with code 4. Build a one-off direct client; fall back to amino
-                // client for simulation and non-IBC txs.
-                const activeClient: any = options?.useDirectSign
-                    ? await buildDirectSigningClient(options?.letWalletSetFee ?? false)
+                // client for simulation and non-IBC txs. BeePocket signs every tx this way
+                // (signModeFor). The direct client builds the TxRaw from the wallet's
+                // returned `signed` doc, so a fee the wallet changed is what gets broadcast.
+                const signMode = signModeFor(walletNameOf(wallet), options);
+                const activeClient: any = signMode.direct
+                    ? await buildDirectSigningClient(signMode.letWalletSetFee)
                     : signingClient;
 
                 // When letting the wallet compute the fee, submit an empty fee amount
@@ -319,7 +329,8 @@ const useTx = (chainName: string) => {
                 // the offline signer wrapper and replaces the amount with `gas × its
                 // recommended gas price`. If we pass `gas: "0"` the result is 0, which
                 // is why we hand it a sane ceiling that covers an IBC MsgTransfer.
-                const fee: StdFee = options?.letWalletSetFee
+                // BeePocket also gets our fee unless the options let the wallet set it.
+                const fee: StdFee = signMode.letWalletSetFee
                     ? { amount: [], gas: "300000" }
                     : await getFee(msgs, options);
                 setProgressTrack("Signing transaction")
@@ -394,7 +405,7 @@ const useTx = (chainName: string) => {
             setProgressTrack("")
         }, options?.progressTrackerTimeout || 5000)
         return success;
-    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient]);
+    }, [address, canUseClient, toast, signingClient, disconnect, getFee, chainName, defaultChainName, buildDirectSigningClient, wallet]);
 
     return {
         tx,

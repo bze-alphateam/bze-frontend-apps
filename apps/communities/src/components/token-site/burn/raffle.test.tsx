@@ -11,6 +11,7 @@ import {forbidNetwork} from "@bze/vitest-preset/no-network";
 
 const T = "factory/bze1owner/upage";
 const ME = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
+const OTHER_WALLET = "bze1other00000000000000000000000000000000zz";
 
 // Every chain read and hook the raffle uses is mocked; the values below are per test.
 const getRaffles = vi.fn();
@@ -20,16 +21,36 @@ const tx = vi.fn();
 const updateBalances = vi.fn();
 const connect = vi.fn();
 const toast = {success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn()};
+const reloadNextBurn = vi.fn();
 let status: WalletState;
+let wallet: string;
+let asset: Asset;
+
+// The shared chain feed: NewBlock handlers and status listeners the test drives.
+const blockHandlers = new Set<(result: unknown) => void>();
+const statusListeners = new Set<(status: string) => void>();
+let feedStatus: string;
 let spendable: BigNumber;
 let feeMessage: string;
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
-    getRaffles: () => getRaffles(),
+    getRafflesOrThrow: () => getRaffles(),
     getRaffleWinners: (denom: string) => getRaffleWinners(denom),
     checkAddressWonRaffle: (address: string, denom: string, height: number) => checkAddressWonRaffle(address, denom, height),
-    useAsset: () => ({asset: ASSET, isLoading: false}),
+    getSettings: () => ({endpoints: {rpcEndpoint: "wss://rpc.e2e.test"}}),
+    getChainFeed: () => ({
+        subscribe: (query: string, handler: (result: unknown) => void) => {
+            if (query === "tm.event='NewBlock'") blockHandlers.add(handler);
+            return () => blockHandlers.delete(handler);
+        },
+        onStatus: (listener: (status: string) => void) => {
+            statusListeners.add(listener);
+            listener(feedStatus);
+            return () => statusListeners.delete(listener);
+        },
+    }),
+    useAsset: () => ({asset, isLoading: false}),
     useAssetsContext: () => ({updateBalances}),
     useBZETx: () => ({tx, progressTrack: ""}),
     useToast: () => ({toast}),
@@ -39,8 +60,10 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 }));
 
 vi.mock("@interchain-kit/react", () => ({
-    useChain: () => ({status, address: status === WalletState.Connected ? ME : undefined, connect}),
+    useChain: () => ({status, address: status === WalletState.Connected ? wallet : undefined, connect}),
 }));
+
+vi.mock("@/hooks/useNextBurning", () => ({useNextBurning: () => ({reload: reloadNextBurn})}));
 
 import {TokenSiteTheme} from "../kit";
 import {RAFFLE_POLL_MS} from "@/hooks/token-site/useTokenRaffle";
@@ -69,12 +92,12 @@ const WINNERS = [
 
 function renderRaffle() {
     const user = userEvent.setup({advanceTimers: vi.advanceTimersByTime});
-    render(<BurnRaffle asset={ASSET}/>, {
+    const view = render(<BurnRaffle asset={ASSET}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}><TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}>{children}</TokenSiteTheme></ChakraProvider>
         ),
     });
-    return user;
+    return Object.assign(user, {view});
 }
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -91,13 +114,44 @@ async function buy(user: ReturnType<typeof userEvent.setup>, tickets: string) {
     return dialog;
 }
 
-/** Lets the result poll run once. */
+/** Lets the result poll run once (the fallback while the chain feed is down). */
 const nextPoll = () => act(() => vi.advanceTimersByTimeAsync(RAFFLE_POLL_MS));
+
+/** The chain feed starts reporting events. */
+const goLive = () => act(() => {
+    feedStatus = "live";
+    statusListeners.forEach((listener) => listener("live"));
+});
+
+/** A NewBlock notification at `height`, as CometBFT sends it, then lets the checks it starts finish. */
+const newBlock = (height: number) => act(async () => {
+    const result = {query: "tm.event='NewBlock'", data: {type: "tendermint/event/NewBlock", value: {block: {header: {height: String(height)}}}}};
+    blockHandlers.forEach((handler) => handler(result));
+    await vi.advanceTimersByTimeAsync(0);
+});
+
+/** Answers the draw of each block in `draws` (true = won 2 PAGE); other blocks aren't processed yet. */
+const draws = (results: Record<number, boolean>) =>
+    checkAddressWonRaffle.mockImplementation(async (_address: string, _denom: string, height: number) =>
+        (height in results ? {hasWon: results[height], amount: results[height] ? "2000000" : "0"} : undefined));
+
+const stripStatus = (n: number) => within(screen.getByTestId(`raffle-strip-ticket-${n}`)).getByTestId("raffle-strip-status");
+
+async function buyAndClose(user: ReturnType<typeof renderRaffle>, tickets: string) {
+    const dialog = await buy(user, tickets);
+    await user.click(within(dialog).getByRole("button", {name: "Done"}));
+}
 
 beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({shouldAdvanceTime: true});
+    localStorage.clear();
+    blockHandlers.clear();
+    statusListeners.clear();
+    feedStatus = "down";
     status = WalletState.Connected;
+    wallet = ME;
+    asset = ASSET;
     spendable = new BigNumber("1000000000"); // 1,000 PAGE after the fee reserve
     feeMessage = "";
     getRaffles.mockResolvedValue([OTHER, RAFFLE]);
@@ -111,6 +165,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
 });
 
@@ -139,6 +194,26 @@ describe("BurnRaffle", () => {
         expect(screen.getByTestId("raffle-prize")).toHaveTextContent("24,150 PAGE");
         // 50 hours left.
         expect(screen.getByTestId("raffle-ends")).toHaveTextContent("2d 2h");
+    });
+
+    it("is one card: the raffle and its facts in the main column, the winners in a side column", async () => {
+        renderRaffle();
+
+        const card = await screen.findByTestId("burn-raffle");
+        expect(within(card).getByTestId("raffle-card")).toBeInTheDocument();
+        expect(within(screen.getByTestId("raffle-facts")).getAllByText(/^(Ticket|Current pot|Win chance|Prize now|Ends in)$/)
+            .map((label) => label.textContent)).toEqual(["Ticket", "Current pot", "Win chance", "Prize now", "Ends in"]);
+        expect(within(card).getByRole("complementary")).toContainElement(screen.getByTestId("raffle-winners"));
+    });
+
+    it("leaves out the winners column while the raffle has no winner", async () => {
+        getRaffleWinners.mockResolvedValue([]);
+        getRaffles.mockResolvedValue([{...RAFFLE, winners: 0n}]);
+        renderRaffle();
+
+        const card = await screen.findByTestId("burn-raffle");
+        expect(within(card).queryByRole("complementary")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("raffle-winners")).not.toBeInTheDocument();
     });
 
     it("lists the newest winners first with shortened addresses", async () => {
@@ -277,5 +352,348 @@ describe("BurnRaffle", () => {
 
         expect(within(dialog).getByTestId("raffle-form")).toBeInTheDocument();
         expect(within(dialog).queryByTestId("raffle-results")).not.toBeInTheDocument();
+    });
+    describe("your tickets", () => {
+        it("counts the strip down block by block from the chain feed, the drawing ticket pulsing", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "3");
+
+            // Joined in block 100: ticket 1 is drawn in 102.
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 3 drawn");
+            expect(stripStatus(1)).toHaveTextContent("in 1 block");
+            expect(stripStatus(2)).toHaveTextContent("in 2 blocks");
+            expect(stripStatus(3)).toHaveTextContent("in 3 blocks");
+
+            await newBlock(101);
+            expect(stripStatus(1)).toHaveTextContent("Drawing…");
+            expect(screen.getByTestId("raffle-strip-ticket-1")).toHaveClass("ts-raffle-drawing");
+            expect(stripStatus(2)).toHaveTextContent("in 1 block");
+            expect(screen.getByTestId("raffle-strip-ticket-2")).not.toHaveClass("ts-raffle-drawing");
+
+            draws({102: false});
+            await newBlock(102);
+            expect(screen.queryByTestId("raffle-strip-ticket-1")).not.toBeInTheDocument();
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 No win");
+            // A result that lands while the page is open flashes once.
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveClass("ts-raffle-flash-lost");
+            expect(stripStatus(2)).toHaveTextContent("Drawing…");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("1 of 3 drawn");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("No win yet");
+        });
+
+        it("checks on new blocks, not on the timer, while the feed brings blocks", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "2");
+
+            // A block every 6 s: the timer stays quiet, each block is checked once.
+            for (const height of [101, 102]) {
+                await act(() => vi.advanceTimersByTimeAsync(6_000));
+                await newBlock(height);
+            }
+            expect(checkAddressWonRaffle.mock.calls.map(([, , height]) => height)).toEqual([102, 102]);
+        });
+
+        it("shows the next five tickets and how many more wait", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "8");
+
+            expect(within(screen.getByTestId("raffle-strip")).getAllByTestId("raffle-strip-status")).toHaveLength(5);
+            expect(screen.getByTestId("raffle-strip-more")).toHaveTextContent("+3 more");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 8 drawn");
+        });
+
+        it("picks the draw up from storage after a reload", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            user.view.unmount();
+
+            renderRaffle();
+            expect(await screen.findByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+            expect(stripStatus(1)).toHaveTextContent("in 1 block");
+
+            draws({102: true, 103: false});
+            await nextPoll();
+            expect(checkAddressWonRaffle).toHaveBeenCalledWith(ME, T, 102);
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+            expect(screen.getByTestId("raffle-drawn-ticket-2")).toHaveTextContent("#2 No win");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("1 ticket won · 2 PAGE");
+            // Nobody watches a restored join: the final toast still comes.
+            expect(toast.info).toHaveBeenCalledWith("PAGE raffle: all 2 tickets drawn", "1 won, 2 PAGE in total.");
+        });
+
+        it("doesn't flash or toast again results restored from storage", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            draws({102: true});
+            await nextPoll();
+            expect(toast.info).toHaveBeenCalledTimes(1);
+            user.view.unmount();
+
+            renderRaffle();
+            await nextPoll();
+            expect(await screen.findByTestId("raffle-drawn-ticket-1")).not.toHaveClass("ts-raffle-flash-won");
+            expect(toast.info).toHaveBeenCalledTimes(1);
+            expect(toast.success).toHaveBeenCalledTimes(1);
+        });
+
+        it("keeps drawn results for an hour, then drops them from the page and storage", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            draws({102: false});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("No winning ticket this time");
+            expect(screen.queryByTestId("raffle-strip")).not.toBeInTheDocument();
+
+            await act(() => vi.advanceTimersByTimeAsync(55 * 60_000));
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toBeInTheDocument();
+
+            await act(() => vi.advanceTimersByTimeAsync(6 * 60_000));
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+            const stored = Object.keys(localStorage).filter((key) => key.includes("communities:raffle:"));
+            expect(stored.map((key) => JSON.parse(localStorage.getItem(key)!).data)).toEqual(["[]"]);
+        });
+
+        it("shows only the connected wallet's tickets", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            expect(screen.getByTestId("raffle-tickets")).toBeInTheDocument();
+
+            wallet = OTHER_WALLET;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+            // Its draw isn't checked for the other wallet either.
+            await nextPoll();
+            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
+
+            status = WalletState.Disconnected;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+
+            status = WalletState.Connected;
+            wallet = ME;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+        });
+
+        it("works without browser storage", async () => {
+            vi.spyOn(console, "error").mockImplementation(() => {});
+            vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+                throw new Error("storage disabled");
+            });
+            vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+                throw new Error("storage disabled");
+            });
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 2 drawn");
+
+            draws({102: false, 103: true});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("2 of 2 drawn");
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("1 ticket won · 2 PAGE");
+        });
+
+        it("reads the raffle and the next burn again right away on a win", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+            const loads = getRaffles.mock.calls.length;
+
+            draws({102: false});
+            await nextPoll();
+            expect(reloadNextBurn).not.toHaveBeenCalled();
+
+            // The draw's new pot and winner show without waiting for another poll.
+            getRaffles.mockResolvedValue([OTHER, {...RAFFLE, pot: "46300000000", winners: 8n}]);
+            draws({102: false, 103: true});
+            await nextPoll();
+            expect(reloadNextBurn).toHaveBeenCalledTimes(1);
+            expect(getRaffles.mock.calls.length).toBeGreaterThan(loads + 1);
+            await waitFor(() => expect(screen.getByTestId("raffle-pot")).toHaveTextContent("46,300 PAGE"));
+            expect(getRaffleWinners).toHaveBeenLastCalledWith(T);
+        });
+            it("applies a check that was in flight while the page refreshed its data", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            let answer!: (check: { hasWon: boolean; amount: string }) => void;
+            checkAddressWonRaffle.mockImplementation(() => new Promise((resolve) => {
+                answer = resolve;
+            }));
+            await nextPoll();
+
+            // The asset (and with it everything the check uses) is read again mid-check.
+            asset = {...ASSET};
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            await act(async () => {
+                answer({hasWon: false, amount: "0"});
+                await vi.advanceTimersByTimeAsync(0);
+            });
+
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 No win");
+        });
+
+        it("reads each block once however many joins draw in it", async () => {
+            let joinHeight = 100;
+            tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (res: { height: number }) => void }) => {
+                options?.onSuccess?.({height: joinHeight++});
+                return true;
+            });
+            const user = renderRaffle();
+            // Join A draws in blocks 102…104, join B in 103…104.
+            await buyAndClose(user, "3");
+            await buyAndClose(user, "2");
+
+            draws({102: false, 103: false, 104: true});
+            await nextPoll();
+
+            const blocks = checkAddressWonRaffle.mock.calls.map(([, , height]) => height);
+            expect(blocks.sort()).toEqual([102, 103, 104]);
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("5 of 5 drawn");
+        });
+
+        it("retries a failed check on the next poll instead of failing", async () => {
+            const error = vi.spyOn(console, "error").mockImplementation(() => {});
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+
+            checkAddressWonRaffle.mockRejectedValueOnce(new Error("node unreachable"));
+            await nextPoll();
+            expect(error).toHaveBeenCalled();
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 1 drawn");
+
+            draws({102: true});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+        });
+
+        it("shows one ticket drawing even when the chain is past several unread ones", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "3");
+
+            await newBlock(110);
+            const statuses = within(screen.getByTestId("raffle-strip")).getAllByTestId("raffle-strip-status").map((status) => status.textContent);
+            expect(statuses).toEqual(["Drawing…", "in 1 block", "in 1 block"]);
+        });
+
+        it("keeps the tickets drawing after the raffle is gone", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+
+            // The raffle ends (it is gone at the next read) after ticket 1 is drawn.
+            getRaffles.mockResolvedValue([OTHER]);
+            draws({102: false});
+            await nextPoll();
+
+            await waitFor(() => expect(screen.queryByTestId("raffle-card")).not.toBeInTheDocument());
+            expect(screen.getByTestId("raffle-ended")).toHaveTextContent("The PAGE burn raffle has ended.");
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("1 of 2 drawn");
+
+            draws({102: false, 103: true});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-tickets-summary")).toHaveTextContent("1 ticket won · 2 PAGE");
+        });
+
+        it("toasts each result once when blocks arrive in a burst during a check", async () => {
+            const user = renderRaffle();
+            await goLive();
+            await buyAndClose(user, "2");
+            let answer!: () => void;
+            const gate = new Promise<void>((resolve) => {
+                answer = resolve;
+            });
+            checkAddressWonRaffle.mockImplementation(async (_address: string, _denom: string, height: number) => {
+                await gate;
+                return height <= 103 ? {hasWon: height === 102, amount: height === 102 ? "2000000" : "0"} : undefined;
+            });
+
+            // A reconnect delivers several blocks at once while the first check waits on the node.
+            await newBlock(101);
+            await newBlock(102);
+            await newBlock(103);
+            await newBlock(104);
+            await act(async () => {
+                answer();
+                await vi.advanceTimersByTimeAsync(0);
+            });
+
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("2 of 2 drawn");
+            expect(toast.success).toHaveBeenCalledTimes(1);
+            expect(toast.info).toHaveBeenCalledTimes(1);
+            // Both blocks are read once: the run after the burst starts from the drawn results.
+            const blocks = checkAddressWonRaffle.mock.calls.map(([, , height]) => height);
+            expect(blocks.filter((height) => height === 102)).toHaveLength(1);
+            expect(blocks.filter((height) => height === 103)).toHaveLength(1);
+        });
+
+        it("ignores a check that finishes after the wallet changed", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            let answer!: (check: { hasWon: boolean; amount: string }) => void;
+            checkAddressWonRaffle.mockImplementationOnce(() => new Promise((resolve) => {
+                answer = resolve;
+            }));
+            await nextPoll();
+
+            wallet = OTHER_WALLET;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            await act(async () => {
+                answer({hasWon: true, amount: "2000000"});
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(screen.queryByTestId("raffle-tickets")).not.toBeInTheDocument();
+            expect(toast.success).not.toHaveBeenCalled();
+            expect(Object.keys(localStorage).filter((key) => key.includes(OTHER_WALLET))).toEqual([]);
+
+            // Back on the first wallet, the draw is still to be read, and is read normally.
+            wallet = ME;
+            user.view.rerender(<BurnRaffle asset={ASSET}/>);
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("0 of 1 drawn");
+            draws({102: true});
+            await nextPoll();
+            expect(screen.getByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+        });
+            it("doesn't call the raffle ended when reading it fails", async () => {
+            vi.spyOn(console, "error").mockImplementation(() => {});
+            const user = renderRaffle();
+            await buyAndClose(user, "2");
+
+            // The draw of ticket 1 reads the raffle again, and that read fails.
+            getRaffles.mockRejectedValue(new Error("lcd unreachable"));
+            draws({102: false});
+            await nextPoll();
+            await act(() => vi.advanceTimersByTimeAsync(0));
+
+            expect(getRaffles.mock.calls.length).toBeGreaterThan(1);
+            expect(screen.queryByTestId("raffle-ended")).not.toBeInTheDocument();
+            expect(screen.getByTestId("raffle-card")).toBeInTheDocument();
+            expect(screen.getByTestId("raffle-tickets-progress")).toHaveTextContent("1 of 2 drawn");
+        });
+
+        it("saves a check that ends after the page was left, without a toast", async () => {
+            const user = renderRaffle();
+            await buyAndClose(user, "1");
+            let answer!: (check: { hasWon: boolean; amount: string }) => void;
+            checkAddressWonRaffle.mockImplementationOnce(() => new Promise((resolve) => {
+                answer = resolve;
+            }));
+            await nextPoll();
+
+            user.view.unmount();
+            await act(async () => {
+                answer({hasWon: true, amount: "2000000"});
+                await vi.advanceTimersByTimeAsync(0);
+            });
+            expect(toast.success).not.toHaveBeenCalled();
+            expect(toast.info).not.toHaveBeenCalled();
+
+            // The next visit shows the result straight from storage, without reading the block again.
+            checkAddressWonRaffle.mockClear();
+            renderRaffle();
+            expect(await screen.findByTestId("raffle-drawn-ticket-1")).toHaveTextContent("#1 Won 2 PAGE");
+            await nextPoll();
+            expect(checkAddressWonRaffle).not.toHaveBeenCalled();
+        });
     });
 });

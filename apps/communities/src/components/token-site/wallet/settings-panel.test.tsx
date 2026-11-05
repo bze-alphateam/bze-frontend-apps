@@ -127,6 +127,13 @@ describe("SettingsPanel", () => {
         expect(feeMode.setOptOut).toHaveBeenCalledWith(false);
     });
 
+    it("draws an off switch's track with the floored strong border, so it shows on black kits", async () => {
+        feeMode = {...feeMode, optOut: true, feeDenom: "ubze"};
+        await openSettings();
+
+        expect(screen.getByRole("switch", {name: "Pay network fees in PAGE"})).toHaveStyle({background: "var(--ts-border-strong)"});
+    });
+
     it("has no fee switch for a token that can't pay fees", async () => {
         feeMode = {...feeMode, eligible: false, needsBze: true, feeDenom: "ubze"};
         await openSettings();
