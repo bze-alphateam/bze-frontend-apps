@@ -387,17 +387,21 @@ test("Ways to earn VDL lists the program and the other pool paying it, not the f
     await expect(earn.getByTestId(/^earn-(pool|program)-/)).toHaveCount(2);
 
     const pool = earn.getByTestId(`earn-pool-${NOAD}`);
+    await expect(pool.getByTestId("earn-ticker")).toHaveText("NOAD");
     await expect(pool.getByTestId("earn-kind")).toHaveText("Holders pool");
-    await expect(pool.getByTestId("earn-daily")).toHaveText("10VDL paid out daily");
-    await expect(pool).toContainText("Unlock time7 days");
-    await expect(pool).toContainText("Funded for198 days");
+    // Each term's phone words are in the text; from md the column headers stand in for them.
+    await expect(pool.getByTestId("earn-daily")).toHaveText("10 VDL/day");
+    await expect(pool.getByTestId("earn-unlock")).toHaveText("Unlock 7 days");
+    await expect(pool.getByTestId("earn-left")).toHaveText("Funded for 198 days");
     await expect(pool.getByTestId("earn-also-pays")).toHaveText("Also pays NOAD and TUSDC.");
-    await expect(pool.getByTestId("earn-apr")).toHaveCount(0);
+    await expect(pool.getByTestId("earn-apr")).toHaveText("APR —");
+    await expect(pool.getByTestId("earn-position")).toHaveCount(0);
 
     const program = earn.getByTestId("earn-program-000000000003");
-    await expect(program.getByTestId("earn-kind")).toHaveText("Fixed-term program");
-    await expect(program.getByTestId("earn-daily")).toHaveText("4VDL paid out daily");
-    await expect(program).toContainText("Ends in15 days");
+    await expect(program.getByTestId("earn-kind")).toHaveText("Fixed-term");
+    await expect(program.getByTestId("earn-daily")).toHaveText("4 VDL/day");
+    await expect(program.getByTestId("earn-unlock")).toHaveText("Unlock 2 days");
+    await expect(program.getByTestId("earn-left")).toHaveText("Ends in 15 days");
     await expect(program.getByRole("button", {name: "Stake NOAD"})).toBeVisible();
     await expect(earn.getByTestId("earn-program-000000000002")).toHaveCount(0);
 });
