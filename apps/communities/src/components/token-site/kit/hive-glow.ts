@@ -1,6 +1,7 @@
 import type {BrandingColors, ToasterTheme} from "@bze/bze-ui-kit";
 
 import {contrastRatio} from "@/lib/brand-kit";
+import {tokenSiteSurfaces} from "@/lib/token-site/theme";
 
 /** How much darker the gradient's end is than the kit's primary (the app Ink gradient rule). */
 const GRADIENT_DARKEN = 0.25;
@@ -65,7 +66,6 @@ export function tokenSiteGlowVars(palette: BrandingColors): Record<string, strin
         "--ts-gradient": gradient,
         "--ts-hero-gradient": heroGradient,
         "--ts-glow": glow,
-        "--ts-inset": mix(palette.text, 6, palette.background),
     };
 }
 
@@ -76,14 +76,16 @@ export function tokenSiteGlowVars(palette: BrandingColors): Record<string, strin
  * gets the values themselves, not `var(--ts-*)` references.
  */
 export function tokenSiteToasterTheme(palette: BrandingColors, vars: Record<string, string>): ToasterTheme {
+    const {hover, line} = tokenSiteSurfaces(palette);
+
     return {
         bg: vars["--ts-card"],
         fg: vars["--ts-fg"],
         muted: vars["--ts-muted"],
         faint: mix(palette.text, 45, palette.background),
         border: vars["--ts-border"],
-        hover: mix(palette.text, 8, palette.background),
-        line: mix(palette.text, 16, palette.background),
+        hover,
+        line,
         radius: "14px",
         shadow: `0 20px 40px -20px rgba(0, 0, 0, 0.6), 0 16px 48px -24px ${mix(palette.primary, 55, "transparent")}`,
         font: vars["--ts-font"],

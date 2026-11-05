@@ -26,6 +26,15 @@ vi.mock("@/hooks/token-site/useTokenWallet", () => ({useTokenWallet: () => ({con
 
 import {GetBzePanel} from "./get-bze-panel";
 
+/** The background the plain `:hover` rule of the element's classes sets (Chakra puts the styles in the document). */
+function hoverBackground(element: HTMLElement): string | undefined {
+    // Chakra nests its rules in @layer blocks.
+    const flatten = (list: CSSRuleList): CSSRule[] => Array.from(list).flatMap((r) => ("cssRules" in r ? flatten((r as CSSGroupingRule).cssRules) : [r]));
+    const rules = Array.from(document.styleSheets).flatMap((sheet) => flatten(sheet.cssRules)) as CSSStyleRule[];
+    const rule = rules.find((r) => Array.from(element.classList).some((c) => r.selectorText?.startsWith(`.${c}:is(:hover`)));
+    return rule?.style.getPropertyValue("background") || rule?.style.getPropertyValue("background-color") || undefined;
+}
+
 const wrapper = ({children}: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
 
 describe("GetBzePanel", () => {
@@ -42,6 +51,17 @@ describe("GetBzePanel", () => {
 
         expect(screen.getByTestId("get-bze-beezee-only")).toHaveTextContent("BeePocket supports BeeZee only");
         expect(useBuyBze).not.toHaveBeenCalled();
+    });
+
+    it("hovers a network row with the site's floored hover surface, not a raw text mix", () => {
+        useBuyBze.mockReturnValue({
+            skipChains: [{chain_id: "osmosis-1", pretty_name: "Osmosis", canSign: true}],
+            filteredChains: [{chain_id: "osmosis-1", pretty_name: "Osmosis", canSign: true}],
+            assetBalances: new Map(), isLoadingChains: false, chainSearch: "", setChainSearch: vi.fn(),
+        });
+        render(<GetBzePanel onBack={vi.fn()}/>, {wrapper});
+
+        expect(hoverBackground(screen.getByRole("button", {name: "Osmosis"}))).toBe("var(--ts-hover)");
     });
 
     it("starts the Skip flow for Keplr", () => {

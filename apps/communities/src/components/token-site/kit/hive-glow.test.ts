@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
-import {type BrandingColors, DEFAULT_DENOM_BRANDING} from "@bze/bze-ui-kit";
+import {BRANDING_TEMPLATES, type BrandingColors, contrastRatio, DEFAULT_DENOM_BRANDING} from "@bze/bze-ui-kit";
 
-import {darken, GLOW_PRIMARY, GLOW_SECONDARY, tokenSiteGlow, tokenSiteGlowVars} from "./hive-glow";
+import {darken, GLOW_PRIMARY, GLOW_SECONDARY, tokenSiteGlow, tokenSiteGlowVars, tokenSiteToasterTheme} from "./hive-glow";
 
 // A dark kit whose blue primary is too dark to read as a word on its background.
 const DARK_BLUE: BrandingColors = {background: "#0A0F24", text: "#EEF1FB", primary: "#3B5FD0", secondary: "#9AA8D6"};
@@ -50,7 +50,7 @@ describe("tokenSiteGlow", () => {
 });
 
 describe("tokenSiteGlowVars", () => {
-    it("exposes the gradient, hero word, glow and inset as --ts-* variables", () => {
+    it("exposes the gradient, hero word and glow as --ts-* variables", () => {
         const vars = tokenSiteGlowVars(DEFAULT_DENOM_BRANDING.dark);
 
         expect(vars).toEqual({
@@ -58,7 +58,18 @@ describe("tokenSiteGlowVars", () => {
             "--ts-gradient": "linear-gradient(135deg, #FBBF24, #BC8F1B)",
             "--ts-hero-gradient": "linear-gradient(135deg, #FBBF24, #BC8F1B)",
             "--ts-glow": tokenSiteGlow(DEFAULT_DENOM_BRANDING.dark).glow,
-            "--ts-inset": "color-mix(in oklab, #F9FAFB 6%, #111827)",
         });
+    });
+});
+
+describe("tokenSiteToasterTheme", () => {
+    it("takes the row hover and divider from the site's surfaces, so they show on a pure black kit", () => {
+        const terminal = BRANDING_TEMPLATES.find((t) => t.id === "terminal")!.branding.dark;
+        const theme = tokenSiteToasterTheme(terminal, {"--ts-card": "#0D0F0D", "--ts-border": "#1B1F1C"});
+
+        expect(theme.bg).toBe("#0D0F0D");
+        expect(theme.border).toBe("#1B1F1C");
+        expect(contrastRatio(theme.hover, terminal.background)).toBeGreaterThanOrEqual(1.15);
+        expect(contrastRatio(theme.line, terminal.background)).toBeGreaterThanOrEqual(1.38);
     });
 });

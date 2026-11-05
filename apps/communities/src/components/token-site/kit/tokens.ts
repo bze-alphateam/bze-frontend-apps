@@ -11,8 +11,14 @@ export const ts = {
     muted: "var(--ts-muted)",
     card: "var(--ts-card)",
     border: "var(--ts-border)",
+    /** The border of controls (chips, icon buttons) and a switch's off track: stronger than `border`. */
+    borderStrong: "var(--ts-border-strong)",
+    /** The ghost button's border. */
+    borderGhost: "var(--ts-border-ghost)",
     /** A recessed block inside a card (stat tiles, the position column). */
     inset: "var(--ts-inset)",
+    /** A row's hover on the page or a panel. */
+    hover: "var(--ts-hover)",
     danger: "var(--ts-danger)",
     font: "var(--ts-font)",
     /** Hive Glow in the kit's colours (`tokenSiteGlow`): buttons, featured edge, hero word, glow. */

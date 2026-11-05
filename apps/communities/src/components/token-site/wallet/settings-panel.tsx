@@ -20,7 +20,7 @@ import {
 import {useColorMode} from "@/components/ui/color-mode";
 import {useFeeMode} from "@/hooks/token-site/useTokenFeeMode";
 
-import {TsButton, TsCard, TsField, ts, tsLabel, tsMix} from "../kit";
+import {TsButton, TsCard, TsField, ts, tsLabel} from "../kit";
 
 // Connection health is a status, so it takes the shared status colours, never the kit's.
 const STATUS: Record<ConnectionType, { label: string; color: string }> = {
@@ -70,7 +70,7 @@ function SwitchRow({id, label, hint, checked, onChange}: {
                 border="0"
                 borderRadius="999px"
                 cursor="pointer"
-                bg={checked ? ts.gradient : tsMix(ts.fg, 18)}
+                bg={checked ? ts.gradient : ts.borderStrong}
                 _focusVisible={{outline: `2px solid ${ts.fg}`, outlineOffset: "2px"}}
             >
                 <chakra.span

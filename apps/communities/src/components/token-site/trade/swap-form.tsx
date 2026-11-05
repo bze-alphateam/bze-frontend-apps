@@ -23,7 +23,7 @@ import {type SwapDirection, useTokenSwap} from "@/hooks/token-site/useTokenSwap"
 import {DEFAULT_SLIPPAGE, formatPriceImpact, payableTokens, receivableTokens, SLIPPAGE_OPTIONS} from "@/lib/token-site/swap";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsChip, TsField, TsNotice, TsTokenSelect, ts, tsMix} from "../kit";
+import {TsButton, TsChip, TsField, TsNotice, TsTokenSelect, ts} from "../kit";
 
 /** Why `amount` (display units) can't be swapped, or '' when it can as far as the balance goes. */
 function amountProblem(amount: string, balance: BigNumber, decimals: number, ticker: string): string {
@@ -176,7 +176,7 @@ export function SwapForm({asset, direction, idPrefix, cta, notice}: SwapFormProp
                 </chakra.button>
             </Flex>
 
-            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)} data-testid={`${idPrefix}-quote`}>
+            <Flex direction="column" gap="8px" borderRadius="14px" px="16px" py="14px" bg={ts.card} data-testid={`${idPrefix}-quote`}>
                 <chakra.span color={ts.muted} fontSize="13px">{buying ? "You get" : "You receive"}</chakra.span>
                 <Flex align="center" justify="space-between" gap="10px">
                     <chakra.span fontSize="22px" fontWeight={600} fontVariantNumeric="tabular-nums" overflowWrap="anywhere">

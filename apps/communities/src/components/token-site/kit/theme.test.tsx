@@ -50,9 +50,9 @@ describe("TokenSiteTheme toasts", () => {
         const toast = await screen.findByText("Staked");
         expect(screen.getByTestId("token-site")).not.toContainElement(toast);
         expect(rootVar("--hg-toast-fg")).toBe("#FAFAFA");
-        expect(rootVar("--hg-toast-bg")).toBe("color-mix(in oklab, #FAFAFA 4%, #0A0A0A)");
+        expect(rootVar("--hg-toast-bg")).toBe("#151515");
         expect(rootVar("--hg-toast-muted")).toBe("color-mix(in oklab, #FAFAFA 64%, #0A0A0A)");
-        expect(rootVar("--hg-toast-border")).toBe("color-mix(in oklab, #FAFAFA 11%, #0A0A0A)");
+        expect(rootVar("--hg-toast-border")).toBe("#252525");
         expect(rootVar("--hg-toast-font")).toBe("'Inter', system-ui, sans-serif");
         expect(rootVar("--hg-toast-shadow")).toContain("color-mix(in oklab, #ABCDEF 55%, transparent)");
     });

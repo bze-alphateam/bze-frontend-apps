@@ -22,7 +22,7 @@ import {useNextBurning} from "@/hooks/useNextBurning";
 import {burnCoin, burnCountdown} from "@/lib/token-site/burn";
 import {walletAmount} from "@/lib/token-site/wallet";
 
-import {TsButton, TsField, TsNotice, ts, tsMix} from "../kit";
+import {TsButton, TsField, TsNotice, ts} from "../kit";
 import {useNow} from "./use-now";
 
 const {fundBurner} = bze.burner.MessageComposer.withTypeUrl;
@@ -114,7 +114,7 @@ export function BurnForm({asset, onDone, onConnect}: BurnFormProps) {
         <chakra.form onSubmit={submit} display="flex" flexDirection="column" gap="12px" noValidate data-testid="burn-form">
             {confirming ? (
                 <>
-                    <Flex direction="column" gap="6px" borderRadius="14px" px="16px" py="14px" bg={tsMix(ts.fg, 4)} data-testid="burn-confirm">
+                    <Flex direction="column" gap="6px" borderRadius="14px" px="16px" py="14px" bg={ts.card} data-testid="burn-confirm">
                         <chakra.span color={ts.muted} fontSize="13px">You burn</chakra.span>
                         <chakra.span fontVariantNumeric="tabular-nums" fontSize="24px" fontWeight={700} overflowWrap="anywhere">{amount}</chakra.span>
                     </Flex>

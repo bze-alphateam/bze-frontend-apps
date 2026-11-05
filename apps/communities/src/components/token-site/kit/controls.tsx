@@ -22,7 +22,7 @@ export function TsChip({selected, ...props}: HTMLChakraProps<"button"> & { selec
             cursor="pointer"
             bg={selected ? ts.fg : "transparent"}
             color={selected ? ts.bg : ts.fg}
-            borderColor={selected ? ts.fg : tsMix(ts.fg, 18)}
+            borderColor={selected ? ts.fg : ts.borderStrong}
             _focusVisible={{outline: `2px solid ${ts.fg}`, outlineOffset: "2px"}}
             {...props}
         />

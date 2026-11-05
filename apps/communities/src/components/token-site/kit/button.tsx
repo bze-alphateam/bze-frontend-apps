@@ -12,7 +12,7 @@ const VARIANTS = {
     primary: {bg: ts.gradient, color: ts.onPri, borderColor: "transparent", fontWeight: 700, boxShadow: `0 10px 28px -12px ${ts.pri}`},
     // A tint of the secondary ("Buy tickets", Earn's "Stake T").
     secondary: {bg: tsMix(ts.sec, 16), color: ts.fg, borderColor: tsMix(ts.sec, 45)},
-    ghost: {bg: tsMix(ts.fg, 4, "transparent"), color: ts.fg, borderColor: tsMix(ts.fg, 22)},
+    ghost: {bg: tsMix(ts.fg, 4, "transparent"), color: ts.fg, borderColor: ts.borderGhost},
     // Never filled, so it stays distinct from a red brand's primary.
     danger: {bg: tsMix(ts.danger, 10), color: ts.danger, borderColor: ts.danger},
 } as const;
