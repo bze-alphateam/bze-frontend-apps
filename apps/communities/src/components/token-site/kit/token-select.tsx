@@ -29,7 +29,8 @@ const LOGO = 20;
  * its ticker and a chevron, with a transparent native select stretched over it, so the list,
  * keyboard and screen readers behave as the platform's. The row sizes itself from its content in
  * any kit font (a long ticker ends in an ellipsis at the cap), so nothing is laid over the text.
- * Subtle border at rest, the kit's primary on hover, a primary ring on keyboard focus only:
+ * Subtle border at rest, a stronger one on hover (a neutral mix: a pale primary would vanish on a
+ * light kit), a primary ring on keyboard focus only:
  * Chromium counts a mouse click on a select as `:focus-visible`, so a pointer press hides the ring
  * until the next key press or blur.
  */
@@ -40,7 +41,6 @@ export function TsTokenSelect({label, value, options, onChange}: TsTokenSelectPr
     return (
         <chakra.span
             data-pointer={pointer ? "" : undefined}
-            onPointerDown={() => setPointer(true)}
             position="relative"
             display="inline-flex"
             alignItems="center"
@@ -59,7 +59,7 @@ export function TsTokenSelect({label, value, options, onChange}: TsTokenSelectPr
             borderColor={tsMix(ts.fg, 10, ts.inset)}
             borderRadius="999px"
             transition="background-color 120ms ease, border-color 120ms ease"
-            _hover={{bg: tsMix(ts.fg, 8, ts.inset), borderColor: tsMix(ts.pri, 70, ts.inset)}}
+            _hover={{bg: tsMix(ts.fg, 8, ts.inset), borderColor: tsMix(ts.fg, 28, ts.inset)}}
             _active={{bg: tsMix(ts.fg, 14, ts.inset)}}
             css={{"&:has(select:focus-visible):not([data-pointer])": {outline: `2px solid ${ts.pri}`, outlineOffset: "2px"}}}
         >
@@ -79,6 +79,7 @@ export function TsTokenSelect({label, value, options, onChange}: TsTokenSelectPr
                 aria-label={label}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
+                onPointerDown={() => setPointer(true)}
                 onKeyDown={() => setPointer(false)}
                 onBlur={() => setPointer(false)}
                 position="absolute"

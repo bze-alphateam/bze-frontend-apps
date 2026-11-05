@@ -123,6 +123,31 @@ describe("TsTokenSelect", () => {
         expect(ticker.parentElement).toHaveStyle({maxWidth: "11rem"});
     });
 
+    it("draws the select transparent over the whole pill, the rest for sight only", () => {
+        renderPicker();
+
+        const select = screen.getByRole("combobox", {name: "Pay with"});
+        expect(select).toHaveStyle({position: "absolute", inset: "0", width: "100%", height: "100%", opacity: "0"});
+        expect(select.parentElement).toHaveStyle({position: "relative"});
+        for (const child of select.parentElement!.children) {
+            if (child !== select) expect(child).toHaveAttribute("aria-hidden", "true");
+        }
+        expect(select.parentElement!.children).toHaveLength(4);
+    });
+
+    it("keeps the keyboard ring for Tab after a press on the pill's edge", async () => {
+        const user = userEvent.setup();
+        renderPicker();
+
+        const select = screen.getByRole("combobox", {name: "Pay with"});
+        const pill = select.parentElement!;
+        await user.pointer({keys: "[MouseLeft]", target: pill});
+        await user.tab();
+
+        expect(select).toHaveFocus();
+        expect(pill).not.toHaveAttribute("data-pointer");
+    });
+
     it("drops the keyboard ring for a mouse press and brings it back on a key press", async () => {
         const user = userEvent.setup();
         renderPicker();
