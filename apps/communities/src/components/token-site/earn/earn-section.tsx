@@ -32,12 +32,13 @@ const rowLayout = {
 
 /**
  * One term of a row. On a phone the terms share a second line, each with its own words
- * (`label` before, `suffix` after); from md the column header says what it is.
+ * (`label` before, `suffix` after); from md the column header says what it is, unless `keepLabel`
+ * (the header can't tell a pool's "Funded for" from a program's "Ends in").
  */
-function Term({label, suffix, children, ...props}: BoxProps & { label?: string; suffix?: string }) {
+function Term({label, suffix, keepLabel, children, ...props}: BoxProps & { label?: string; suffix?: string; keepLabel?: boolean }) {
     return (
         <Box role="cell" fontVariantNumeric="tabular-nums" whiteSpace="nowrap" {...props}>
-            {label && <chakra.span hideFrom="md">{label} </chakra.span>}
+            {label && <chakra.span hideFrom={keepLabel ? undefined : "md"} fontSize={{md: "13px"}}>{label} </chakra.span>}
             <chakra.span fontWeight={600} color={ts.fg}>{children}</chakra.span>
             {suffix && <chakra.span hideFrom="md">{suffix}</chakra.span>}
         </Box>
@@ -105,7 +106,7 @@ function EarnRowView({asset, row: {item, position}, onOpen, featured}: EarnRowPr
                 </Term>
                 <Term suffix={` ${asset.ticker}/day`} data-testid="earn-daily">{walletAmount(item.daily)}</Term>
                 <Term label="Unlock" data-testid="earn-unlock">{item.lock > 0 ? formatDays(item.lock) : "Instant"}</Term>
-                <Term label={pool ? "Funded for" : "Ends in"} data-testid="earn-left">{formatDays(item.daysLeft)}</Term>
+                <Term label={pool ? "Funded for" : "Ends in"} keepLabel data-testid="earn-left">{formatDays(item.daysLeft)}</Term>
             </Flex>
 
             <Flex role="cell" justify="flex-end" order={{base: 2, md: 0}}>
