@@ -11,7 +11,7 @@ import {useColorMode} from "@/components/ui/color-mode";
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
 import type {SiteSection} from "@/lib/token-site/sections";
 
-import {TsButton, TsChip, ts, tsContainer} from "./kit";
+import {TsButton, TsChip, TsLink, ts, tsContainer} from "./kit";
 import {TokenMark} from "./token-mark";
 
 export type {SiteSection};
@@ -99,16 +99,16 @@ export function SiteHeader({asset, sections, current, homeHref = "#top"}: SiteHe
         <Box as="header" position="relative" {...tsContainer} py={{base: "12px", md: "18px"}}>
             {/* One row on a phone: the name truncates so the wallet and menu stay beside it. */}
             <Flex align="center" gap={{base: "12px", md: "32px"}} wrap={{base: "nowrap", md: "wrap"}}>
-                <chakra.a href={homeHref} display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0" flex={{base: "0 1 auto", md: "none"}}>
+                <TsLink href={homeHref} display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0" flex={{base: "0 1 auto", md: "none"}}>
                     <TokenMark asset={asset} size={40}/>
                     <chakra.span fontWeight={700} fontSize={{base: "18px", md: "20px"}} letterSpacing="-0.01em" truncate>
                         {asset.name}
                     </chakra.span>
-                </chakra.a>
+                </TsLink>
 
                 <Flex as="nav" aria-label="Sections" display={{base: "none", md: "flex"}} wrap="wrap" gap="4px 24px" flex="1 1 auto">
                     {sections.map((section) => (
-                        <chakra.a
+                        <TsLink
                             key={section.id}
                             href={section.href ?? `#${section.id}`}
                             aria-current={section.id === current ? "page" : undefined}
@@ -116,7 +116,7 @@ export function SiteHeader({asset, sections, current, homeHref = "#top"}: SiteHe
                             {...(section.id === current ? currentStyle : {})}
                         >
                             {section.label}
-                        </chakra.a>
+                        </TsLink>
                     ))}
                 </Flex>
 
@@ -154,7 +154,7 @@ export function SiteHeader({asset, sections, current, homeHref = "#top"}: SiteHe
                     pt="12px"
                 >
                     {sections.map((section) => (
-                        <chakra.a
+                        <TsLink
                             key={section.id}
                             href={section.href ?? `#${section.id}`}
                             aria-current={section.id === current ? "page" : undefined}
@@ -163,7 +163,7 @@ export function SiteHeader({asset, sections, current, homeHref = "#top"}: SiteHe
                             onClick={() => setMenuOpen(false)}
                         >
                             {section.label}
-                        </chakra.a>
+                        </TsLink>
                     ))}
                     <Flex pt="8px" gap="10px" align="center">
                         <ModeButton/>
