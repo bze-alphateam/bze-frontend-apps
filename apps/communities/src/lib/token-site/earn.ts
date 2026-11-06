@@ -3,6 +3,7 @@ import type {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/b
 import {
     calculateRewardsStakingPendingRewards,
     type DenomReward,
+    type DenomRewardCoin,
     type DenomRewardParticipant,
     type DenomRewardSchedule,
     uAmountToBigNumberAmount,
@@ -129,6 +130,11 @@ export function joinTickers(tickers: string[]): string {
 export interface EarnPositions {
     pools: DenomRewardParticipant[];
     programs: StakingRewardParticipantSDKType[];
+    /**
+     * What each staked holders pool lets the viewer claim, by staking denom (the chain's own
+     * `pending`, zero coins left out). A pool missing here couldn't be read.
+     */
+    poolPending: Map<string, DenomRewardCoin[]>;
 }
 
 /** The viewer's part in one way to earn, in base units. */
@@ -136,10 +142,10 @@ export interface EarnPosition {
     /** In the staked token's base units. */
     staked: BigNumber;
     /**
-     * T the viewer can claim, in T's base units. Only known for a program: a holders pool's
-     * claimable coins need a read per pool, which the list doesn't make.
+     * The coins the viewer can claim, in each coin's base units: T for a program, every prize
+     * still owed for a holders pool. Empty with nothing to claim; undefined when it couldn't be read.
      */
-    pending?: BigNumber;
+    pending?: DenomRewardCoin[];
 }
 
 export interface EarnRow {
@@ -151,14 +157,15 @@ function positionOf(item: EarnOpportunity, positions: EarnPositions): EarnPositi
     if (item.kind === "pool") {
         const stake = positions.pools.find((participant) => participant.staking_denom === item.stakingDenom);
         const staked = new BigNumber(stake?.amount ?? 0);
-        return staked.gt(0) ? {staked} : undefined;
+        return staked.gt(0) ? {staked, pending: positions.poolPending.get(item.stakingDenom)} : undefined;
     }
 
     const stake = positions.programs.find((participant) => participant.reward_id === item.rewardId);
     const staked = new BigNumber(stake?.amount ?? 0);
     if (!stake || !staked.gt(0)) return undefined;
 
-    return {staked, pending: calculateRewardsStakingPendingRewards(item.program, stake)};
+    const pending = calculateRewardsStakingPendingRewards(item.program, stake);
+    return {staked, pending: item.program && pending.gt(0) ? [{denom: item.program.prize_denom, amount: pending.toFixed(0)}] : []};
 }
 
 /**

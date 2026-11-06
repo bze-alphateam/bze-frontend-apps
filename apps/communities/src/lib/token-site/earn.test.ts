@@ -131,13 +131,15 @@ describe("earnRows", () => {
         opportunity("program", "program-8", {stakingDenom: "ubze", rewardId: "8", program: program("8")}),
     ];
 
+    const none = {pools: [], programs: [], poolPending: new Map()};
+
     it("keeps the order without positions", () => {
         expect(earnRows(list).map((row) => [row.item.key, row.position])).toEqual([
             ["pool-a", undefined], ["program-7", undefined], ["pool-b", undefined], ["program-8", undefined],
         ]);
     });
 
-    it("puts the viewer's stakes first, in their order, with the program's pending prize", () => {
+    it("puts the viewer's stakes first, in their order, with what each lets them claim", () => {
         const rows = earnRows(list, {
             pools: [
                 {address: "me", staking_denom: GUILD, amount: "4000000"},
@@ -147,14 +149,31 @@ describe("earnRows", () => {
                 {address: "me", reward_id: "7", amount: "2000000", joined_at: "0.25"},
                 {address: "me", reward_id: "99", amount: "5", joined_at: "0"}, // not on the list
             ],
+            poolPending: new Map([[GUILD, [{denom: T, amount: "1500000"}, {denom: VDL, amount: "20"}]]]),
         });
 
         expect(rows.map((row) => row.item.key)).toEqual(["program-7", "pool-b", "pool-a", "program-8"]);
         expect(rows[0].position?.staked.toString()).toBe("2000000");
         // 2,000,000 × (0.5 − 0.25), the stake dialog's own math.
-        expect(rows[0].position?.pending?.toString()).toBe("500000");
+        expect(rows[0].position?.pending).toEqual([{denom: T, amount: "500000"}]);
         expect(rows[1].position?.staked.toString()).toBe("4000000");
-        expect(rows[1].position?.pending).toBeUndefined();
+        // A holders pool's every prize, as the chain owes it.
+        expect(rows[1].position?.pending).toEqual([{denom: T, amount: "1500000"}, {denom: VDL, amount: "20"}]);
         expect(rows[2].position).toBeUndefined();
+    });
+
+    it("tells nothing to claim apart from a pending that couldn't be read", () => {
+        const rows = earnRows(list, {
+            ...none,
+            pools: [{address: "me", staking_denom: GUILD, amount: "4000000"}, {address: "me", staking_denom: "ubze", amount: "1"}],
+            programs: [{address: "me", reward_id: "7", amount: "2000000", joined_at: "0.5"}], // joined at the last payout
+            poolPending: new Map([[GUILD, []]]), // pool-a's read failed
+        });
+
+        const pending = Object.fromEntries(rows.map((row) => [row.item.key, row.position?.pending]));
+        expect(pending["program-7"]).toEqual([]);
+        expect(pending["pool-b"]).toEqual([]);
+        expect(pending["pool-a"]).toBeUndefined();
+        expect(rows.find((row) => row.item.key === "pool-a")?.position?.staked.toString()).toBe("1");
     });
 });
