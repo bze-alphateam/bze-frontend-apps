@@ -32,9 +32,10 @@ describe("TsDrawer", () => {
         expect(screen.getByTestId("token-site")).not.toContainElement(dialog);
 
         const layer = dialog.closest<HTMLElement>("[data-testid='token-site-layer']")!;
-        expect(layer.style.getPropertyValue("--ts-bg")).toBe("#0A0A0A");
-        expect(layer.style.getPropertyValue("--ts-pri")).toBe("#ABCDEF");
-        expect(layer.style.getPropertyValue("--ts-font")).toBe("'Inter', system-ui, sans-serif");
+        expect(layer.style.getPropertyValue("--ts-dark-bg")).toBe("#0A0A0A");
+        expect(layer.style.getPropertyValue("--ts-dark-pri")).toBe("#ABCDEF");
+        expect(layer.style.getPropertyValue("--ts-light-bg")).toBe("#FFFFFF");
+        expect(layer.style.getPropertyValue("--ts-dark-font")).toBe("'Inter', system-ui, sans-serif");
         expect(dialog).toHaveTextContent("balance");
     });
 
@@ -111,6 +112,6 @@ describe("TsDialog", () => {
         renderInTheme(<TsDialog open onClose={vi.fn()} title="Confirm burn"><p>sure?</p></TsDialog>);
 
         const layer = screen.getByRole("dialog", {name: "Confirm burn"}).closest<HTMLElement>("[data-testid='token-site-layer']")!;
-        expect(layer.style.getPropertyValue("--ts-sec")).toBe("#FEDCBA");
+        expect(layer.style.getPropertyValue("--ts-dark-sec")).toBe("#FEDCBA");
     });
 });

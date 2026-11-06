@@ -82,3 +82,36 @@ describe("TokenSiteTheme toasts", () => {
         }
     });
 });
+
+describe("TokenSiteTheme colour mode", () => {
+    const siteMarkup = () => {
+        const {container, unmount} = render(<ChakraProvider value={defaultSystem}><TokenSiteTheme kit={KIT}><p>page</p></TokenSiteTheme></ChakraProvider>);
+        const html = container.innerHTML;
+        unmount();
+        return html;
+    };
+
+    it("renders the same markup in either mode, so the server's HTML never disagrees with the browser", () => {
+        colorMode.value = "light";
+        const light = siteMarkup();
+        colorMode.value = "dark";
+        const dark = siteMarkup();
+        colorMode.value = undefined as unknown as string;
+        const unknown = siteMarkup();
+
+        expect(dark).toBe(light);
+        expect(unknown).toBe(light);
+    });
+
+    it("carries both palettes on the element", () => {
+        render(<ChakraProvider value={defaultSystem}><TokenSiteTheme kit={KIT}><p>page</p></TokenSiteTheme></ChakraProvider>);
+        const site = screen.getByTestId("token-site");
+
+        expect(site.style.getPropertyValue("--ts-light-bg")).toBe("#FFFFFF");
+        expect(site.style.getPropertyValue("--ts-dark-bg")).toBe("#0A0A0A");
+        expect(site.style.getPropertyValue("--ts-light-pri")).toBe("#123456");
+        expect(site.style.getPropertyValue("--ts-dark-pri")).toBe("#ABCDEF");
+        // The values never sit on the unprefixed names: those come from the mode rule in CSS.
+        expect(site.style.getPropertyValue("--ts-bg")).toBe("");
+    });
+});
