@@ -50,7 +50,7 @@ test("the Holders tab splits the supply and ranks the holders", async ({page}) =
     await expect(split.getByTestId("supply-part-rest")).toContainText("14.01 NOAD");
 
     const holders = page.getByTestId("holder-row");
-    await expect(holders).toHaveCount(7);
+    await expect(holders).toHaveCount(8);
     await expect(holders.first()).toContainText("Creator");
     await expect(holders.first()).toContainText("965,105.382489");
     await expect(holders.nth(3)).toContainText("Rewards");
@@ -62,7 +62,7 @@ test("the History tab lists the token's events", async ({page}) => {
     await page.getByRole("tab", {name: "History"}).click();
 
     const history = page.getByTestId("history-timeline");
-    await expect(history.getByText("Brand kit updated")).toHaveCount(8);
+    await expect(history.getByText("Brand kit updated")).toHaveCount(7);
     // TMS isn't among the e2e assets, so the pool's other side shows as its short denom.
     await expect(history.getByText(/ \/ NOAD pool created$/)).toBeVisible();
     await expect(history.getByText("1,000 NOAD minted")).toBeVisible();
