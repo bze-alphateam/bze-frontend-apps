@@ -1,0 +1,263 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token/transfers?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Ftestusd&limit=100",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token/transfers",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+    "limit": "100"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 4099206,
+        "tx_index": 0,
+        "tx_hash": "1EC71FEC475FF8A2A7368ED140CFF44152D211D57ED22395073C74BEB6E0ED52",
+        "time": "2026-11-05T21:04:44.50824Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "19058",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4099105,
+        "tx_index": 0,
+        "tx_hash": "46D4418D21692284978E9A420BCAA2D9CC38E091364FB3B21D8B30F3303E9617",
+        "time": "2026-11-05T20:55:46.851352Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 5,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "990628",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4099073,
+        "tx_index": 0,
+        "tx_hash": "92DBD65E8F05EAA28EBA5C8C75D437CCFF2E17E47107FC66CB8D02704642CDA3",
+        "time": "2026-11-05T20:52:56.365951Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 5,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "101246722",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4099033,
+        "tx_index": 0,
+        "tx_hash": "B0AB0253EED11E1921B2F4C180785BDE46F4CF2DF1CF57340C363B50B29EC4E4",
+        "time": "2026-11-05T20:49:23.34544Z",
+        "msg_type": "/bze.rewards.MsgJoinDenomReward",
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "99999999",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4091178,
+        "tx_index": 0,
+        "tx_hash": "17E8DEDE55806407FB0D2A1EF40BFB4D51A042C84F80793D7468914D6F44FA3E",
+        "time": "2026-11-05T09:12:05.23753Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 6,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "73",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4091178,
+        "tx_index": 0,
+        "tx_hash": "17E8DEDE55806407FB0D2A1EF40BFB4D51A042C84F80793D7468914D6F44FA3E",
+        "time": "2026-11-05T09:12:05.23753Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 5,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "73005",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4091178,
+        "tx_index": 0,
+        "tx_hash": "17E8DEDE55806407FB0D2A1EF40BFB4D51A042C84F80793D7468914D6F44FA3E",
+        "time": "2026-11-05T09:12:05.23753Z",
+        "msg_type": null,
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze1k8py7ynzrrnmzqwk2mkz3a6znatmqshdnnsehy",
+        "recipient_label": {
+          "name": "Stakers fee collector",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "2483",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4091178,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-05T09:12:05.23753Z",
+        "msg_type": null,
+        "seq": 1,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "2",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4091178,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-05T09:12:05.23753Z",
+        "msg_type": null,
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1k8py7ynzrrnmzqwk2mkz3a6znatmqshdnnsehy",
+        "sender_label": {
+          "name": "Stakers fee collector",
+          "kind": "module"
+        },
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "2483",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4083576,
+        "tx_index": 0,
+        "tx_hash": "EF6D934F87F41872EE22B2CCEE8E5E1B80025357C2F17E455845A82D2CB620F3",
+        "time": "2026-11-04T21:57:16.742535Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "1000",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "height": 4083576,
+        "tx_index": 0,
+        "tx_hash": "EF6D934F87F41872EE22B2CCEE8E5E1B80025357C2F17E455845A82D2CB620F3",
+        "time": "2026-11-04T21:57:16.742535Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "1000000",
+        "symbol": "TUSDC",
+        "exponent": 6
+      }
+    ],
+    "next_cursor": "NDA1ODU2NzowOjA"
+  },
+  "trimmed": "items cut to the rows of the newest 6 transactions (11 of 100); next_cursor kept"
+}

@@ -1,0 +1,144 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/txs/B0AB0253EED11E1921B2F4C180785BDE46F4CF2DF1CF57340C363B50B29EC4E4",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/txs/B0AB0253EED11E1921B2F4C180785BDE46F4CF2DF1CF57340C363B50B29EC4E4",
+  "query": {},
+  "status": 200,
+  "body": {
+    "height": 4099033,
+    "tx_index": 0,
+    "hash": "B0AB0253EED11E1921B2F4C180785BDE46F4CF2DF1CF57340C363B50B29EC4E4",
+    "time": "2026-11-05T20:49:23.34544Z",
+    "success": true,
+    "msg_count": 1,
+    "msg_types": [
+      "/bze.rewards.MsgJoinDenomReward"
+    ],
+    "fee": [
+      {
+        "denom": "ubze",
+        "amount": "3081"
+      }
+    ],
+    "signer": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+    "first_message": {
+      "type_url": "/bze.rewards.MsgJoinDenomReward",
+      "module": "rewards",
+      "body": {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+        "amount": "10000000",
+        "creator": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+      }
+    },
+    "code": 0,
+    "codespace": null,
+    "error_log": null,
+    "gas_wanted": 308050,
+    "gas_used": 256859,
+    "fee_payer": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+    "signers": [
+      "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+    ],
+    "memo": "communities.getbze.com",
+    "messages": [
+      {
+        "msg_index": 0,
+        "type_url": "/bze.rewards.MsgJoinDenomReward",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "module": "rewards",
+        "body": {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+          "amount": "10000000",
+          "creator": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+        },
+        "events": []
+      }
+    ],
+    "transfers": [
+      {
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2",
+        "recipient_label": {
+          "name": "Fee collector",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "3081",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "21000000",
+        "symbol": "NOAD",
+        "exponent": 6
+      },
+      {
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "99999999",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "seq": 3,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+        "amount": "149999999",
+        "symbol": "CTR",
+        "exponent": 6
+      },
+      {
+        "seq": 4,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "recipient_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+        "amount": "10000000",
+        "symbol": "CTR",
+        "exponent": 6
+      }
+    ],
+    "dex": null,
+    "ibc_transfers": null
+  },
+  "trimmed": "messages' events emptied, dex outcome dropped"
+}

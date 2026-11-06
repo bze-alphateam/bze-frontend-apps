@@ -9,14 +9,12 @@ import {type Asset, getChainName, shortNumberFormat, uAmountToBigNumberAmount, u
 
 import {useColorMode} from "@/components/ui/color-mode";
 import {useTokenWallet} from "@/hooks/token-site/useTokenWallet";
+import type {SiteSection} from "@/lib/token-site/sections";
 
 import {TsButton, TsChip, ts, tsContainer} from "./kit";
 import {TokenMark} from "./token-mark";
 
-export interface SiteSection {
-    id: string;
-    label: string;
-}
+export type {SiteSection};
 
 /** The header's wallet button: the connected wallet's T balance, or "Connect". Opens the drawer. */
 function WalletButton({asset}: { asset: Asset }) {
@@ -76,11 +74,24 @@ const linkStyle = {
     _hover: {opacity: 0.8},
 } as const;
 
+/** The current page's link: bold, underlined in the primary. */
+const currentStyle = {fontWeight: 700, boxShadow: `inset 0 -2px 0 ${ts.pri}`} as const;
+
+interface SiteHeaderProps {
+    asset: Asset;
+    sections: SiteSection[];
+    /** The id of the link that is the current page (an inner page: "activity"). */
+    current?: string;
+    /** Where the token's mark goes: the top of the page, or the token page from an inner page. */
+    homeHref?: string;
+}
+
 /**
  * Standalone header of the token site (Business Logic R2, R3): the token's mark and name, links to
- * the sections on the page, the light/dark switch and the wallet. Nothing from BeeZee.
+ * the sections on the page (or back to them from the Activity, holder and transaction pages), the
+ * light/dark switch and the wallet. Nothing from BeeZee.
  */
-export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSection[] }) {
+export function SiteHeader({asset, sections, current, homeHref = "#top"}: SiteHeaderProps) {
     const [menuOpen, setMenuOpen] = useState(false);
     const {openSettings} = useTokenWallet();
 
@@ -88,7 +99,7 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
         <Box as="header" position="relative" {...tsContainer} py={{base: "12px", md: "18px"}}>
             {/* One row on a phone: the name truncates so the wallet and menu stay beside it. */}
             <Flex align="center" gap={{base: "12px", md: "32px"}} wrap={{base: "nowrap", md: "wrap"}}>
-                <chakra.a href="#top" display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0" flex={{base: "0 1 auto", md: "none"}}>
+                <chakra.a href={homeHref} display="flex" alignItems="center" gap="12px" textDecoration="none" color={ts.fg} minW="0" flex={{base: "0 1 auto", md: "none"}}>
                     <TokenMark asset={asset} size={40}/>
                     <chakra.span fontWeight={700} fontSize={{base: "18px", md: "20px"}} letterSpacing="-0.01em" truncate>
                         {asset.name}
@@ -97,7 +108,15 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
 
                 <Flex as="nav" aria-label="Sections" display={{base: "none", md: "flex"}} wrap="wrap" gap="4px 24px" flex="1 1 auto">
                     {sections.map((section) => (
-                        <chakra.a key={section.id} href={`#${section.id}`} {...linkStyle}>{section.label}</chakra.a>
+                        <chakra.a
+                            key={section.id}
+                            href={section.href ?? `#${section.id}`}
+                            aria-current={section.id === current ? "page" : undefined}
+                            {...linkStyle}
+                            {...(section.id === current ? currentStyle : {})}
+                        >
+                            {section.label}
+                        </chakra.a>
                     ))}
                 </Flex>
 
@@ -135,7 +154,14 @@ export function SiteHeader({asset, sections}: { asset: Asset; sections: SiteSect
                     pt="12px"
                 >
                     {sections.map((section) => (
-                        <chakra.a key={section.id} href={`#${section.id}`} {...linkStyle} onClick={() => setMenuOpen(false)}>
+                        <chakra.a
+                            key={section.id}
+                            href={section.href ?? `#${section.id}`}
+                            aria-current={section.id === current ? "page" : undefined}
+                            {...linkStyle}
+                            {...(section.id === current ? {fontWeight: 700, color: ts.pri} : {})}
+                            onClick={() => setMenuOpen(false)}
+                        >
                             {section.label}
                         </chakra.a>
                     ))}

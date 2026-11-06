@@ -1,0 +1,109 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+    "symbol": "NOAD",
+    "name": "NoAdminToken",
+    "kind": "factory",
+    "exponent": 6,
+    "supply": "1000880000000",
+    "holders_count": 8,
+    "price_usd": "1.877786561385",
+    "price_change_24h_pct": null,
+    "price_source": "dex",
+    "halted": false,
+    "logo_url": null,
+    "origin_chain": null,
+    "ibc_hops": null,
+    "via_chain": null,
+    "lp_pair": null,
+    "created_time": null,
+    "ibc_channel": null,
+    "stranded": false,
+    "description": "no admin test token yes yes",
+    "origin_chain_id": null,
+    "ibc_base_denom": null,
+    "ibc_path": null,
+    "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "creator_label": null,
+    "admin": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "admin_label": null,
+    "created_height": null,
+    "created_tx_hash": null,
+    "website": null,
+    "markets": [],
+    "price_updated_at": "2026-11-06T09:10:20.289895Z",
+    "metadata": {
+      "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+      "name": "NoAdminToken",
+      "symbol": "NOAD",
+      "display": "NOAD",
+      "denom_units": [
+        {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+        },
+        {
+          "denom": "NOAD",
+          "exponent": 6
+        }
+      ],
+      "description": "no admin test token yes yes"
+    },
+    "updated_at": "2026-11-06T08:11:16.938549Z",
+    "events": [
+      {
+        "height": 4082925,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "86684BB3CA4FC285E006D2CA9A1A7CB4EF44464C5AB55BE62FA8CD2025109EB8",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-11-04T20:59:28.627861Z"
+      },
+      {
+        "height": 4076670,
+        "tx_index": 0,
+        "seq": 1,
+        "tx_hash": "AAE61448E2C7DDBEA18DD993D24D7907DE2A960C7D2129E4C9F93BC64DACCD7D",
+        "kind": "pool_created",
+        "actor": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "actor_label": null,
+        "amount": null,
+        "details": {
+          "base": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+          "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+          "lp_denom": "ulp/A716DEB65161660C152CC7E1F365DC8AADBB09981762F46D7B17C595A4D255EC"
+        },
+        "time": "2026-11-04T11:44:16.359689Z"
+      },
+      {
+        "height": 3928971,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "C93BF6279DBD7E1BE6EB1C05728B61E526C4ECE8B5442D9FAD554EEEFB422474",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-26T09:00:46.008548Z"
+      }
+    ],
+    "events_next_cursor": null,
+    "transfers_24h": {
+      "count": 9,
+      "amount": "1198872550"
+    }
+  },
+  "trimmed": "events cut to the newest 3, markets to 2"
+}
