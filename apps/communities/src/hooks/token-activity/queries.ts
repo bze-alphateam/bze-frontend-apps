@@ -14,6 +14,8 @@ export const scanKeys = {
     all: ["scan"] as const,
     token: (denom: string) => ["scan", "token", denom] as const,
     tokenTransfers: (denom: string, limit: number) => ["scan", "token", denom, "transfers", limit] as const,
+    /** `useTokenActivity`'s pages: Scan transfer pages read until `rows` complete transactions. */
+    tokenActivity: (denom: string, limit: number, rows: number) => ["scan", "token", denom, "activity", limit, rows] as const,
     tokenEvents: (denom: string, limit: number) => ["scan", "token", denom, "events", limit] as const,
     tokenHolders: (denom: string, limit: number) => ["scan", "token", denom, "holders", limit] as const,
     account: (address: string) => ["scan", "account", address] as const,

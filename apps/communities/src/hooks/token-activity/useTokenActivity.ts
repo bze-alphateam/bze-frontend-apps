@@ -1,11 +1,20 @@
 'use client';
 
-import {useCallback, useEffect, useMemo, useState} from "react";
-import {useQueries} from "@tanstack/react-query";
+import {useCallback, useMemo, useState} from "react";
+import {useInfiniteQuery, useQueries} from "@tanstack/react-query";
 
-import {activityRow, type ActivityRow, type ActivityToken, groupTransfers, type ScanTx} from "@/lib/token-activity";
+import {
+    activityRow,
+    type ActivityRow,
+    type ActivityToken,
+    groupTransfers,
+    type ScanClient,
+    type ScanPage,
+    type ScanTransfer,
+    type ScanTx,
+} from "@/lib/token-activity";
 
-import {scanKeys, scanRetry, useScanTokenTransfers} from "./queries";
+import {scanKeys, scanRetry} from "./queries";
 import {useScanClient} from "./scan-client";
 
 export interface TokenActivityOptions {
@@ -17,7 +26,7 @@ export interface TokenActivityOptions {
 
 export interface TokenActivity {
     rows: ActivityRow[];
-    /** Nothing to show yet: the first page, or more pages before the first complete transaction. */
+    /** Nothing to show yet. */
     isLoading: boolean;
     /** The first read failed; nothing to show. */
     isError: boolean;
@@ -32,16 +41,51 @@ export interface TokenActivity {
     retry: () => void;
 }
 
+// Scan pages read for one page of rows at most, so a token whose history is nothing but
+// block-level rows can't keep the loop going.
+const MAX_SCAN_PAGES = 10;
+
+/**
+ * One page of rows: Scan transfer pages from `cursor` until they hold `rows` complete
+ * transactions (block-level rows can fill whole Scan pages), or Scan has no more.
+ */
+async function readRows(
+    client: ScanClient,
+    denom: string,
+    cursor: string | null,
+    {rows, pageSize}: { rows: number; pageSize: number },
+    signal: AbortSignal,
+): Promise<ScanPage<ScanTransfer>> {
+    const items: ScanTransfer[] = [];
+    let next = cursor;
+    for (let read = 0; read < MAX_SCAN_PAGES; read++) {
+        const page = await client.tokenTransfers(denom, {cursor: next, limit: pageSize}, signal);
+        items.push(...page.items);
+        next = page.next_cursor;
+        if (!next || groupTransfers(items, true).length >= rows) break;
+    }
+
+    return {items, next_cursor: next};
+}
+
 /**
  * The token's Activity: one row per transaction (see lib/token-activity/rows.ts), newest first.
- * Scan pages by transfer row, so pages are read until `rows` complete transactions are loaded
- * (block-level rows can fill a whole page). Each row's transaction is read for its fee, signer
- * and message count; the row shows at once and fills in when it arrives.
+ * Each row's transaction is read for its fee, signer and message count; the row shows at once
+ * and fills in when it arrives.
  */
 export function useTokenActivity(token: ActivityToken | undefined, {rows: step = 25, pageSize = 100}: TokenActivityOptions = {}): TokenActivity {
     const client = useScanClient();
+    const denom = token?.denom ?? "";
     const [wanted, setWanted] = useState(step);
-    const transfers = useScanTokenTransfers(token?.denom, pageSize);
+
+    const transfers = useInfiniteQuery({
+        queryKey: scanKeys.tokenActivity(denom, pageSize, step),
+        queryFn: ({pageParam, signal}) => readRows(client, denom, pageParam, {rows: step, pageSize}, signal),
+        initialPageParam: null as string | null,
+        getNextPageParam: (last: ScanPage<ScanTransfer>) => last.next_cursor ?? undefined,
+        enabled: Boolean(denom),
+        retry: scanRetry,
+    });
     const {data, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage, refetch} = transfers;
 
     const groups = useMemo(
@@ -70,25 +114,23 @@ export function useTokenActivity(token: ActivityToken | undefined, {rows: step =
         [shown, txs, token],
     );
 
-    const needsPage = groups.length < wanted && hasNextPage && !isFetchingNextPage && !isFetchNextPageError;
-    useEffect(() => {
-        if (needsPage) void fetchNextPage();
-    }, [needsPage, fetchNextPage]);
-
-    const loadMore = useCallback(() => setWanted((current) => current + step), [step]);
+    const loadMore = useCallback(() => {
+        const next = wanted + step;
+        setWanted(next);
+        if (groups.length < next && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+    }, [wanted, step, groups.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
     const retry = useCallback(() => {
         if (isFetchNextPageError) void fetchNextPage();
         else void refetch();
     }, [isFetchNextPageError, fetchNextPage, refetch]);
 
     const isError = transfers.isError && !data;
-    const isLoadingMore = !isError && (isFetchingNextPage || needsPage);
 
     return {
         rows,
-        isLoading: Boolean(token) && (transfers.isPending || (rows.length === 0 && isLoadingMore)),
+        isLoading: Boolean(token) && transfers.isPending && !isError,
         isError,
-        isLoadingMore,
+        isLoadingMore: isFetchingNextPage,
         isLoadMoreError: isFetchNextPageError,
         hasMore: groups.length > wanted || hasNextPage,
         loadMore,

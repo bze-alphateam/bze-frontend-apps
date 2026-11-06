@@ -6,7 +6,7 @@ const ok = (body: unknown) => new Response(JSON.stringify(body), {status: 200});
 
 describe("createScanClient", () => {
     it("asks the app's Scan route with the denom URL-encoded in the query", async () => {
-        const fetcher = vi.fn().mockResolvedValue(ok({items: [], next_cursor: null}));
+        const fetcher = vi.fn(async () => ok({items: [], next_cursor: null}));
         const client = createScanClient({fetcher});
 
         await client.tokenTransfers("factory/bze1x/uabc", {cursor: "NDA=", limit: 100});
@@ -25,7 +25,7 @@ describe("createScanClient", () => {
     });
 
     it("leaves out empty parameters and honours another base", async () => {
-        const fetcher = vi.fn().mockResolvedValue(ok({items: [], next_cursor: null}));
+        const fetcher = vi.fn(async () => ok({items: [], next_cursor: null}));
 
         await createScanClient({baseUrl: "https://scan.test/api/v1/", fetcher}).tokenHolders("ubze", {cursor: null});
 
