@@ -1,0 +1,398 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token/transfers?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fvidulum&limit=100",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token/transfers",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+    "limit": "100"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 4076635,
+        "tx_index": 0,
+        "tx_hash": "A08223EAB7AEF34CC970867D2EF2E1AB9C6B7FDC2898A9E784A66DEF1E5FC6F9",
+        "time": "2026-11-04T11:41:10.272068Z",
+        "msg_type": "/bze.tradebin.MsgCreateLiquidityPool",
+        "seq": 4,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "5000000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075474,
+        "tx_index": 0,
+        "tx_hash": "BF41DA8ED6ECC75E18CEF47D9BC5D964E65CB3848F39F86907200E9B5AAFE87C",
+        "time": "2026-11-04T09:58:08.352575Z",
+        "msg_type": "/bze.tradebin.MsgAddLiquidity",
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2000000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075353,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:23.791613Z",
+        "msg_type": null,
+        "seq": 2,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075353,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:23.791613Z",
+        "msg_type": null,
+        "seq": 1,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "recipient_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075353,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:23.791613Z",
+        "msg_type": null,
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "sender_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2812",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": 0,
+        "tx_hash": "FF07FC133FF1706FF4FA5F03D5324155FF9BDC4638A7E38C8AF0D621A7574AEB",
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 3,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "3750000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": 0,
+        "tx_hash": "FF07FC133FF1706FF4FA5F03D5324155FF9BDC4638A7E38C8AF0D621A7574AEB",
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "recipient_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "3750000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": 0,
+        "tx_hash": "FF07FC133FF1706FF4FA5F03D5324155FF9BDC4638A7E38C8AF0D621A7574AEB",
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "5000000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": null,
+        "seq": 3,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2812",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": null,
+        "seq": 2,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "recipient_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2812",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075352,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-04T09:47:18.45302Z",
+        "msg_type": null,
+        "seq": 1,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "sender_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "3750000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4075344,
+        "tx_index": 0,
+        "tx_hash": "A8E398B144FA64752F1ED5F8120ACB3B594A62DBA53FC32768FF185243757171",
+        "time": "2026-11-04T09:46:35.699862Z",
+        "msg_type": "/bze.tradebin.MsgMultiSwap",
+        "seq": 5,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "2294471843",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4051000,
+        "tx_index": 0,
+        "tx_hash": "D05A3AA3A16605931FDC0A7FD317AB2D2C0A334E311B503E4216FD695758AD6E",
+        "time": "2026-11-02T21:35:29.080455Z",
+        "msg_type": "/bze.tradebin.MsgAddLiquidity",
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "10000000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4050955,
+        "tx_index": 0,
+        "tx_hash": "AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+        "time": "2026-11-02T21:31:27.962181Z",
+        "msg_type": "/bze.rewards.MsgClaimStakingRewards",
+        "seq": 5,
+        "msg_index": 3,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "19999999",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4050955,
+        "tx_index": 0,
+        "tx_hash": "AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+        "time": "2026-11-02T21:31:27.962181Z",
+        "msg_type": "/bze.rewards.MsgClaimDenomRewards",
+        "seq": 4,
+        "msg_index": 2,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "56000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4042441,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-11-02T08:51:01.964326Z",
+        "msg_type": null,
+        "seq": 2,
+        "msg_index": null,
+        "kind": "burn",
+        "sender": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "sender_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "recipient": null,
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "10000822",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "height": 4003455,
+        "tx_index": -1,
+        "tx_hash": null,
+        "time": "2026-10-30T22:51:03.034569Z",
+        "msg_type": null,
+        "seq": 0,
+        "msg_index": null,
+        "kind": "burn",
+        "sender": "bze18hsqalgwlzqavrrkfnxmrjmygwyjy8senx5tgs",
+        "sender_label": {
+          "name": "Burner raffle",
+          "kind": "module"
+        },
+        "recipient": null,
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "1001000000",
+        "symbol": "VDL",
+        "exponent": 6
+      }
+    ],
+    "next_cursor": null
+  },
+  "trimmed": "items cut to the rows of the newest 6 transactions (17 of 44); next_cursor kept"
+}

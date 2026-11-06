@@ -1,0 +1,94 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/txs/8E56E5C0AC8A84FF0F0D6175ECC6784AAA74E2E285C4F644EE156100DBAEF595",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/txs/8E56E5C0AC8A84FF0F0D6175ECC6784AAA74E2E285C4F644EE156100DBAEF595",
+  "query": {},
+  "status": 200,
+  "body": {
+    "height": 4099257,
+    "tx_index": 0,
+    "hash": "8E56E5C0AC8A84FF0F0D6175ECC6784AAA74E2E285C4F644EE156100DBAEF595",
+    "time": "2026-11-05T21:09:16.590514Z",
+    "success": true,
+    "msg_count": 1,
+    "msg_types": [
+      "/bze.burner.MsgFundBurner"
+    ],
+    "fee": [
+      {
+        "denom": "ubze",
+        "amount": "930"
+      }
+    ],
+    "signer": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+    "first_message": {
+      "type_url": "/bze.burner.MsgFundBurner",
+      "module": "burner",
+      "body": {
+        "amount": "14000000factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "creator": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+      }
+    },
+    "code": 0,
+    "codespace": null,
+    "error_log": null,
+    "gas_wanted": 92963,
+    "gas_used": 77580,
+    "fee_payer": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+    "signers": [
+      "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+    ],
+    "memo": "communities.getbze.com",
+    "messages": [
+      {
+        "msg_index": 0,
+        "type_url": "/bze.burner.MsgFundBurner",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "module": "burner",
+        "body": {
+          "amount": "14000000factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+          "creator": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k"
+        },
+        "events": []
+      }
+    ],
+    "transfers": [
+      {
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2",
+        "recipient_label": {
+          "name": "Fee collector",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "930",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "sender_label": null,
+        "recipient": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "recipient_label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "14000000",
+        "symbol": "NOAD",
+        "exponent": 6
+      }
+    ],
+    "dex": null,
+    "ibc_transfers": null
+  },
+  "trimmed": "messages' events emptied, dex outcome dropped"
+}

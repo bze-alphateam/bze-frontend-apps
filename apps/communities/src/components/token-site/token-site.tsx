@@ -9,9 +9,11 @@ import {useEarnOpportunities} from "@/hooks/token-site/useEarnOpportunities";
 import {useTokenBrandKit} from "@/hooks/token-site/useTokenBrandKit";
 import {TokenFeeModeProvider} from "@/hooks/token-site/useTokenFeeMode";
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
+import {siteSections} from "@/lib/token-site/sections";
 import {isTradable} from "@/lib/token-site/swap";
 
 import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer} from "./kit";
+import {ActivitySnippet} from "./activity";
 import {BurnRaffle, BurnSection} from "./burn";
 import {EarnSection} from "./earn";
 import {Hero} from "./hero";
@@ -19,7 +21,7 @@ import {KeyNumbers} from "./key-numbers";
 import {PHONE_ACTION_BAR_SPACE, PhoneActionBar} from "./phone-action-bar";
 import {SiteFooter} from "./site-footer";
 import {StakeSection} from "./stake";
-import {type SiteSection, SiteHeader} from "./site-header";
+import {SiteHeader} from "./site-header";
 import {TokenDetails} from "./token-details";
 import {TradeSection} from "./trade";
 import {WalletDrawer} from "./wallet";
@@ -74,14 +76,13 @@ export function TokenSite({denom}: { denom: string }) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><NotFound/></TokenSiteTheme>;
     }
 
-    // Stake and Burn always exist (R5, R10), Earn while something pays T (R7), Trade while T sits in a pool (R8).
-    const sections: SiteSection[] = [
-        {id: "stake", label: "Stake"},
-        ...(opportunities.length > 0 ? [{id: "earn", label: "Earn"}] : []),
-        ...(isTradable(resolved.denom, pools) ? [{id: "trade", label: "Trade"}] : []),
-        {id: "burn", label: "Burn"},
-        {id: "details", label: "Token"},
-    ];
+    // Stake, Burn and Activity always exist (R5, R10), Earn while something pays T (R7), Trade while T sits in a pool (R8).
+    const sections = siteSections({
+        denom: resolved.denom,
+        hasEarn: opportunities.length > 0,
+        hasTrade: isTradable(resolved.denom, pools),
+        page: "main",
+    });
 
     return (
         <TokenSiteTheme kit={kit}>
@@ -106,6 +107,7 @@ export function TokenSite({denom}: { denom: string }) {
                             <EarnSection asset={resolved} opportunities={opportunities} featureFirst={hasHoldersPool === false}/>
                             <TradeSection asset={resolved}/>
                             <BurnSection asset={resolved} raffle={<BurnRaffle asset={resolved}/>}/>
+                            <ActivitySnippet asset={resolved}/>
                             <TokenDetails asset={resolved}/>
                         </chakra.main>
                         <SiteFooter asset={resolved}/>

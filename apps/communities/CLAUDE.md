@@ -22,7 +22,9 @@ src/
                     #         + "Liquidity pools" (hooks/token-site/useTokenPools): table of T's pools, inline Add/Remove liquidity forms (math in lib/token-site/liquidity)
                     # stake/ = the Stake section: holders pool (hooks/token-site/useHoldersPool), fixed-term programs (hooks/token-site/useFixedTermPrograms) + the StakeDialog both share
                     # earn/ = "Ways to earn T": programs paying T + other tokens' pools paying T (hooks/token-site/useEarnOpportunities, read by token-site.tsx
-                    #         so the header links it only when it renders); its Stake buttons open the StakeDialog on the *other* token
+                    #         so the header links it only when it renders) as a compact list (5 rows, then "Show all"); the viewer's stakes come first
+                    #         (hooks/token-site/useEarnPositions: two address-wide reads + one claimable read per staked holders pool), each with what it lets them claim;
+                    #         Stake / Manage (Stake, Claim — disabled with nothing to claim —, Unstake) open the StakeDialog on the *other* token
                     # burn/ = the Burn section (hooks/token-site/useTokenBurn) + BurnForm, shared by the Burn dialog and the wallet's Burn tab;
                     #         raffle.tsx = the burn raffle in its slot (hooks/token-site/useTokenRaffle: joins + per-ticket results, kept in localStorage per wallet+denom for 1h after the last draw, checked on each NewBlock of the shared chain feed with a timer fallback; the slot shows a per-block ticket strip, toasts once the dialog is closed)
                     # fee mode (R12/R13): hooks/token-site/useTokenFeeMode (TokenFeeModeProvider in token-site.tsx) pays fees in T when it's eligible unless opted out

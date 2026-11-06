@@ -49,6 +49,7 @@ vi.mock("@/components/token-site/stake/holders-pool", () => ({HoldersPool: () =>
 vi.mock("@/components/token-site/stake/fixed-term-programs", () => ({FixedTermPrograms: () => <div data-testid="fixed-term-programs"/>}));
 vi.mock("@/components/token-site/burn/burn-section", () => ({BurnSection: () => <div data-testid="burn-section"/>}));
 vi.mock("@/components/token-site/trade/trade-section", () => ({TradeSection: () => <div data-testid="trade-section"/>}));
+vi.mock("@/components/token-site/activity/activity-snippet", () => ({ActivitySnippet: () => <div data-testid="activity-snippet"/>}));
 vi.mock("@/components/token-site/earn/earn-section", () => ({
     EarnSection: ({opportunities}: { opportunities: unknown[] }) => (opportunities.length > 0 ? <div data-testid="earn-section"/> : null),
 }));
@@ -173,6 +174,22 @@ describe("Communities token page", () => {
 
         unmount();
         expect(updatePreferredFeeDenom).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it("links the Activity snippet from the header and shows it right before the token details", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        renderPage("factory/bze1owner/uactivity");
+
+        await screen.findByRole("heading", {level: 1, name: "Brand Token"});
+        const links = [...document.querySelectorAll("header nav")][0].querySelectorAll("a");
+        expect([...links].map((a) => a.textContent)).toEqual(["Stake", "Burn", "Activity", "Token"]);
+        expect(document.querySelector('header a[href="#activity"]')).toHaveTextContent("Activity");
+
+        const snippet = screen.getByTestId("activity-snippet");
+        const details = document.getElementById("details");
+        expect(details).not.toBeNull();
+        expect(snippet.compareDocumentPosition(details!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(snippet.nextElementSibling).toBe(details);
     });
 
     it("links the Trade section only while the token sits in a pool", async () => {

@@ -1,0 +1,88 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Ftestusd",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd"
+  },
+  "status": 200,
+  "body": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+    "symbol": "TUSDC",
+    "name": "USDollar",
+    "kind": "factory",
+    "exponent": 6,
+    "supply": "987043407821",
+    "holders_count": 13,
+    "price_usd": "1.000000000000",
+    "price_change_24h_pct": null,
+    "price_source": "dex",
+    "halted": false,
+    "logo_url": null,
+    "origin_chain": null,
+    "ibc_hops": null,
+    "via_chain": null,
+    "lp_pair": null,
+    "created_time": null,
+    "ibc_channel": null,
+    "stranded": false,
+    "description": "Testnet USDollar stable coin",
+    "origin_chain_id": null,
+    "ibc_base_denom": null,
+    "ibc_path": null,
+    "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "creator_label": null,
+    "admin": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "admin_label": null,
+    "created_height": null,
+    "created_tx_hash": null,
+    "website": null,
+    "markets": [
+      "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+      "ubze/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd"
+    ],
+    "price_updated_at": "2026-11-06T09:10:20.289895Z",
+    "metadata": {
+      "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+      "name": "USDollar",
+      "symbol": "TUSDC",
+      "display": "TUSDC",
+      "denom_units": [
+        {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd"
+        },
+        {
+          "denom": "TUSDC",
+          "exponent": 6
+        }
+      ],
+      "description": "Testnet USDollar stable coin"
+    },
+    "updated_at": "2026-11-06T08:11:16.938549Z",
+    "events": [
+      {
+        "height": 4011382,
+        "tx_index": 0,
+        "seq": 1,
+        "tx_hash": "227DBBA08C02321B80715C18D7FB9CBB0E8F33B3D7FFFA2A77464460A2DB6233",
+        "kind": "market_created",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": {
+          "base": "ubze",
+          "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+          "market_id": "ubze/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd"
+        },
+        "time": "2026-10-31T10:38:20.434008Z"
+      }
+    ],
+    "events_next_cursor": null,
+    "transfers_24h": {
+      "count": 9,
+      "amount": "202334453"
+    }
+  },
+  "trimmed": "events cut to the newest 3, markets to 2"
+}

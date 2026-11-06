@@ -1,0 +1,107 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/modules",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/modules",
+  "query": {},
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "address": "bze1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3gl9ytq",
+        "name": "Bonded tokens pool",
+        "module": "bonded_tokens_pool"
+      },
+      {
+        "address": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "name": "Burner",
+        "module": "burner"
+      },
+      {
+        "address": "bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4",
+        "name": "Burner black hole",
+        "module": "burner_black_hole"
+      },
+      {
+        "address": "bze1pj73qt0lk9q64vwx4veu53ez6la2409wewcfqq",
+        "name": "Burner fee collector",
+        "module": "txfeecollector_burner"
+      },
+      {
+        "address": "bze18hsqalgwlzqavrrkfnxmrjmygwyjy8senx5tgs",
+        "name": "Burner raffle",
+        "module": "burner_raffle"
+      },
+      {
+        "address": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "name": "CP fee collector",
+        "module": "txfeecollector_cp"
+      },
+      {
+        "address": "bze176rcyfn5k9d0wcxel3kmwvxh0hy3xcweyg0g5n",
+        "name": "Cross-chain relayer fees",
+        "module": "feeibc"
+      },
+      {
+        "address": "bze1yl6hdjhmkf37639730gffanpzndzdpmhnm6z95",
+        "name": "Cross-chain transfer",
+        "module": "transfer"
+      },
+      {
+        "address": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "name": "DEX",
+        "module": "tradebin"
+      },
+      {
+        "address": "bze1jv65s3grqf6v6jl3dp4t6c9t9rk99cd86mghmg",
+        "name": "Distribution",
+        "module": "distribution"
+      },
+      {
+        "address": "bze19ejy8n9qsectrf4semdp9cpknflld0j6qy3xlk",
+        "name": "Factory",
+        "module": "tokenfactory"
+      },
+      {
+        "address": "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2",
+        "name": "Fee collector",
+        "module": "fee_collector"
+      },
+      {
+        "address": "bze10d07y265gmmuvt4z0w9aw880jnsr700j8xlwyy",
+        "name": "Governance",
+        "module": "gov"
+      },
+      {
+        "address": "bze1vlthgax23ca9syk7xgaz347xmf4nunef6v6u78",
+        "name": "Interchain accounts",
+        "module": "interchainaccounts"
+      },
+      {
+        "address": "bze1m3h30wlvsf8llruxtpukdvsy0km2kum844tn4h",
+        "name": "Mint",
+        "module": "mint"
+      },
+      {
+        "address": "bze1hr93qzcjspaa32px0qqywlh9hf9a8plgju2a4s",
+        "name": "NFT",
+        "module": "nft"
+      },
+      {
+        "address": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "name": "Rewards",
+        "module": "rewards"
+      },
+      {
+        "address": "bze1k8py7ynzrrnmzqwk2mkz3a6znatmqshdnnsehy",
+        "name": "Stakers fee collector",
+        "module": "txfeecollector"
+      },
+      {
+        "address": "bze1tygms3xhhs3yv487phx3dw4a95jn7t7lule4a5",
+        "name": "Unbonding tokens pool",
+        "module": "not_bonded_tokens_pool"
+      }
+    ]
+  }
+}

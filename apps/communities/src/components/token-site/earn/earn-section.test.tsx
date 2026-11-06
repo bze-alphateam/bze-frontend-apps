@@ -27,6 +27,9 @@ const reloadPool = vi.fn();
 const reloadPrograms = vi.fn();
 const useTokenDenomReward = vi.fn();
 const useFixedTermPrograms = vi.fn();
+const getDenomRewardParticipations = vi.fn();
+const getDenomRewardParticipant = vi.fn();
+const getStakingRewardParticipantByAddress = vi.fn();
 let status: WalletState = WalletState.Connected;
 const balance = new BigNumber("1000000000"); // 1,000 of the staked token
 
@@ -36,6 +39,9 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useAssets: () => ({denomTicker: (denom: string) => ASSETS[denom]?.ticker ?? denom, denomDecimals: () => 6}),
     useAssetsContext: () => ({updateBalances: vi.fn()}),
     useTokenDenomReward: (denom: string, address?: string) => useTokenDenomReward(denom, address),
+    getDenomRewardParticipations: (address: string) => getDenomRewardParticipations(address),
+    getDenomRewardParticipant: (address: string, denom: string) => getDenomRewardParticipant(address, denom),
+    getStakingRewardParticipantByAddress: (address: string) => getStakingRewardParticipantByAddress(address),
     useBZETx: () => ({tx, progressTrack: ""}),
     useMaxSpendable: () => ({amount: balance, balance, inputValue: "1000", isLoading: false}),
     useCanAffordTx: () => ({
@@ -64,10 +70,6 @@ const POOL: EarnOpportunity = {
     kind: "pool", key: `pool-${GUILD}`, stakingDenom: GUILD, daily: new BigNumber(1200), apr: new BigNumber(22),
     lock: 5, daysLeft: 45, otherPrizes: ["ubze", "uusdc"],
 };
-const PROGRAM: EarnOpportunity = {
-    kind: "program", key: "program-07", stakingDenom: "ubze", rewardId: "07", daily: new BigNumber(8000),
-    lock: 0, daysLeft: 12, otherPrizes: [],
-};
 
 const guildPool: DenomRewardHolderItem = {
     denomReward: {staking_denom: GUILD, lock: 5, min_stake: "1000000", staked_amount: "2000000000000"},
@@ -79,6 +81,29 @@ const program: StakingRewardSDKType = {
     min_stake: 1_000_000n, lock: 0, staked_amount: "1000000000000", distributed_stake: "0",
 };
 const bzeProgram: FixedTermProgram = {program, unlocking: [], pending: new BigNumber(0)};
+
+// T's program for BZE stakers; 0.75 T accrued per staked unit so far.
+const PROGRAM: EarnOpportunity = {
+    kind: "program", key: "program-07", stakingDenom: "ubze", rewardId: "07", program: {...program, distributed_stake: "0.75"},
+    daily: new BigNumber(8000), lock: 0, daysLeft: 12, otherPrizes: [],
+};
+
+/** More ways to earn: GUILD-like pools on their own denoms, nothing else about them matters here. */
+const morePools = (count: number): EarnOpportunity[] => Array.from({length: count}, (_, i) => ({
+    ...POOL, key: `pool-extra-${i}`, stakingDenom: `factory/bze1x/u${i}`, otherPrizes: [],
+}));
+
+/** The viewer's 2 BZE in the program, joined at 0: 1.5 T to claim. */
+const myProgramStake = {address: ME, reward_id: "07", amount: "2000000", joined_at: "0"};
+/** The viewer's 40 GUILD in GUILD's holders pool. */
+const myPoolStake = {address: ME, staking_denom: GUILD, amount: "40000000"};
+/** What that pool owes them: 2 BZE, 3.25 T and dust-free zero GUILD, as the chain reads it. */
+const myPoolPosition = {
+    participant: myPoolStake,
+    pending: [{denom: "ubze", amount: "2000000"}, {denom: GUILD, amount: "0"}, {denom: T, amount: "3250000"}],
+};
+
+const rowKeys = () => screen.getAllByTestId(/^earn-(pool|program)-/).map((row) => row.dataset.testid);
 
 function renderSection(opportunities: EarnOpportunity[] = [POOL, PROGRAM], featureFirst?: boolean) {
     const user = userEvent.setup();
@@ -96,6 +121,9 @@ beforeEach(() => {
     useTokenDenomReward.mockReturnValue({item: guildPool, prizeDenoms: [], isLoading: false, hasError: false, reload: reloadPool});
     useFixedTermPrograms.mockReturnValue({programs: [bzeProgram], isLoading: false, reload: reloadPrograms});
     tx.mockResolvedValue(true);
+    getDenomRewardParticipations.mockResolvedValue([]);
+    getDenomRewardParticipant.mockResolvedValue(myPoolPosition);
+    getStakingRewardParticipantByAddress.mockResolvedValue({list: []});
 });
 
 describe("EarnSection", () => {
@@ -105,29 +133,117 @@ describe("EarnSection", () => {
         expect(screen.getByTestId("token-site")).toBeEmptyDOMElement();
     });
 
-    it("shows a card per way to earn, with the staked token, its kind and its terms", () => {
+    it("shows a row per way to earn, with the staked token, its kind and its terms", () => {
         renderSection();
 
         expect(screen.getByRole("heading", {name: "Ways to earn PAGE"})).toBeInTheDocument();
         expect(screen.getByText("Don't hold PAGE yet? Stake one of these tokens and get paid in PAGE every day.")).toBeInTheDocument();
+        expect(screen.getAllByRole("columnheader").map((header) => header.textContent))
+            .toEqual(["Stake", "APR", "PAGE daily", "Unlock", "Time left", "Actions"]);
 
         const pool = screen.getByTestId(`earn-pool-${GUILD}`);
-        expect(within(pool).getByRole("heading", {name: "GUILD"})).toBeInTheDocument();
+        expect(within(pool).getByTestId("earn-ticker")).toHaveTextContent("GUILD");
         expect(within(pool).getByTestId("earn-kind")).toHaveTextContent("Holders pool");
-        expect(within(pool).getByTestId("earn-apr")).toHaveTextContent("22.0%APR");
-        expect(within(pool).getByTestId("earn-daily")).toHaveTextContent("1,200PAGE paid out daily");
-        expect(within(pool).getByText("Funded for")).toBeInTheDocument();
-        expect(within(pool).getByText("45 days")).toBeInTheDocument();
-        expect(within(pool).getByText("5 days")).toBeInTheDocument();
+        expect(within(pool).getByTestId("earn-apr")).toHaveTextContent("APR 22.0%");
+        expect(within(pool).getByTestId("earn-daily")).toHaveTextContent("1,200 PAGE/day");
+        expect(within(pool).getByTestId("earn-unlock")).toHaveTextContent("Unlock 5 days");
+        expect(within(pool).getByTestId("earn-left")).toHaveTextContent("Funded for 45 days");
         expect(within(pool).getByTestId("earn-also-pays")).toHaveTextContent("Also pays BZE and USDC.");
+        expect(within(pool).getByRole("button", {name: "Stake GUILD"})).toHaveTextContent("Stake");
 
         const sr = screen.getByTestId("earn-program-07");
-        expect(within(sr).getByTestId("earn-kind")).toHaveTextContent("Fixed-term program");
-        expect(within(sr).queryByTestId("earn-apr")).not.toBeInTheDocument();
-        expect(within(sr).getByText("Ends in")).toBeInTheDocument();
-        expect(within(sr).getByText("12 days")).toBeInTheDocument();
-        expect(within(sr).getByText("Instant")).toBeInTheDocument();
+        expect(within(sr).getByTestId("earn-kind")).toHaveTextContent("Fixed-term");
+        expect(within(sr).getByTestId("earn-apr")).toHaveTextContent("—");
+        expect(within(sr).getByTestId("earn-daily")).toHaveTextContent("8,000 PAGE/day");
+        expect(within(sr).getByTestId("earn-unlock")).toHaveTextContent("Unlock Instant");
+        expect(within(sr).getByTestId("earn-left")).toHaveTextContent("Ends in 12 days");
         expect(within(sr).queryByTestId("earn-also-pays")).not.toBeInTheDocument();
+        expect(within(sr).queryByTestId("earn-position")).not.toBeInTheDocument();
+        expect(within(sr).getByRole("button", {name: "Stake BZE"})).toBeInTheDocument();
+    });
+
+    it("puts the viewer's stakes first, with the stake, what is left to claim and Manage", async () => {
+        getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
+        getDenomRewardParticipations.mockResolvedValue([]);
+        renderSection([POOL, ...morePools(2), PROGRAM]);
+
+        await waitFor(() => expect(rowKeys()[0]).toBe("earn-program-07"));
+        expect(rowKeys()).toEqual(["earn-program-07", `earn-pool-${GUILD}`, "earn-pool-extra-0", "earn-pool-extra-1"]);
+
+        const sr = screen.getByTestId("earn-program-07");
+        expect(within(sr).getByTestId("earn-position")).toHaveTextContent("Your stake: 2 BZE · 1.5 PAGE to claim");
+        expect(within(sr).getByRole("button", {name: "Manage BZE"})).toHaveTextContent("Manage");
+        expect(within(screen.getByTestId(`earn-pool-${GUILD}`)).queryByTestId("earn-position")).not.toBeInTheDocument();
+
+        // Two address-wide reads, not one per row.
+        expect(getDenomRewardParticipations).toHaveBeenCalledTimes(1);
+        expect(getDenomRewardParticipations).toHaveBeenCalledWith(ME);
+        expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(1);
+        expect(getStakingRewardParticipantByAddress).toHaveBeenCalledWith(ME);
+    });
+
+    it("shows every coin a holders pool owes, T first, and says when a program paid nothing yet", async () => {
+        getDenomRewardParticipations.mockResolvedValue([myPoolStake]);
+        getStakingRewardParticipantByAddress.mockResolvedValue({list: [{...myProgramStake, joined_at: "0.75"}]});
+        renderSection([PROGRAM, POOL]);
+
+        await waitFor(() => expect(screen.getAllByTestId("earn-position")).toHaveLength(2));
+        // Both staked: the order stays.
+        expect(rowKeys()).toEqual(["earn-program-07", `earn-pool-${GUILD}`]);
+        expect(within(screen.getByTestId(`earn-pool-${GUILD}`)).getByTestId("earn-position"))
+            .toHaveTextContent(/^Your stake: 40 GUILD · 3.25 PAGE and 2 BZE to claim$/);
+        expect(within(screen.getByTestId("earn-program-07")).getByTestId("earn-position"))
+            .toHaveTextContent(/^Your stake: 2 BZE · nothing to claim yet$/);
+        expect(screen.getByRole("button", {name: "Manage GUILD"})).toBeInTheDocument();
+        // One read for the one pool staked in, not one per row.
+        expect(getDenomRewardParticipant).toHaveBeenCalledTimes(1);
+        expect(getDenomRewardParticipant).toHaveBeenCalledWith(ME, GUILD);
+    });
+
+    it("says nothing to claim yet on a holders pool that owes nothing, and nothing when its read failed", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        getDenomRewardParticipations.mockResolvedValue([myPoolStake]);
+        getDenomRewardParticipant.mockResolvedValue({participant: myPoolStake, pending: [{denom: T, amount: "0"}]});
+        const {unmount} = renderSection([POOL]);
+
+        expect(await screen.findByTestId("earn-position")).toHaveTextContent(/^Your stake: 40 GUILD · nothing to claim yet$/);
+        unmount();
+
+        getDenomRewardParticipant.mockRejectedValue(new Error("node down"));
+        renderSection([POOL]);
+
+        expect(await screen.findByTestId("earn-position")).toHaveTextContent(/^Your stake: 40 GUILD$/);
+    });
+
+    it("reads no positions without a wallet", () => {
+        status = WalletState.Disconnected;
+        renderSection();
+
+        expect(rowKeys()).toEqual([`earn-pool-${GUILD}`, "earn-program-07"]);
+        expect(screen.queryByTestId("earn-position")).not.toBeInTheDocument();
+        expect(getDenomRewardParticipations).not.toHaveBeenCalled();
+        expect(getStakingRewardParticipantByAddress).not.toHaveBeenCalled();
+    });
+
+    it("shows five rows, then all of them on request, with the viewer's stake among the five", async () => {
+        getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
+        const {user} = renderSection([...morePools(6), PROGRAM]);
+
+        await waitFor(() => expect(rowKeys()[0]).toBe("earn-program-07"));
+        expect(rowKeys()).toEqual(["earn-program-07", "earn-pool-extra-0", "earn-pool-extra-1", "earn-pool-extra-2", "earn-pool-extra-3"]);
+
+        await user.click(screen.getByRole("button", {name: "Show all 7"}));
+        expect(rowKeys()).toHaveLength(7);
+
+        await user.click(screen.getByRole("button", {name: "Show fewer"}));
+        expect(rowKeys()).toHaveLength(5);
+    });
+
+    it("has no Show all with five ways to earn or fewer", () => {
+        renderSection(morePools(5));
+
+        expect(rowKeys()).toHaveLength(5);
+        expect(screen.queryByRole("button", {name: /Show all/})).not.toBeInTheDocument();
     });
 
     it("stakes the other token into its holders pool", async () => {
@@ -137,6 +253,8 @@ describe("EarnSection", () => {
         expect(useTokenDenomReward).toHaveBeenCalledWith(GUILD, ME);
 
         const dialog = screen.getByRole("dialog", {name: "Stake GUILD"});
+        // Nothing staked yet: no current stake to show.
+        expect(within(dialog).queryByTestId("stake-dialog-current")).not.toBeInTheDocument();
         await user.type(within(dialog).getByLabelText("Amount"), "25");
         await user.click(within(dialog).getByRole("button", {name: "Stake"}));
 
@@ -147,6 +265,9 @@ describe("EarnSection", () => {
         }]);
         await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
         expect(reloadPool).toHaveBeenCalled();
+        // The list's positions are read again.
+        await waitFor(() => expect(getDenomRewardParticipations).toHaveBeenCalledTimes(2));
+        expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2);
     });
 
     it("stakes the other token into the program paying T", async () => {
@@ -164,6 +285,142 @@ describe("EarnSection", () => {
             value: {creator: ME, rewardId: "07", amount: "3000000"},
         }]);
         expect(reloadPrograms).toHaveBeenCalled();
+        await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
+    });
+
+    describe("Manage", () => {
+        /** The viewer is in both: 40 GUILD with coins to claim in the pool, 2 BZE with 1.5 T in the program. */
+        beforeEach(() => {
+            getDenomRewardParticipations.mockResolvedValue([myPoolStake]);
+            getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
+            useTokenDenomReward.mockReturnValue({
+                item: {...guildPool, position: {participant: myPoolStake, pending: [{denom: T, amount: "1500000"}]}},
+                prizeDenoms: [], isLoading: false, hasError: false, reload: reloadPool,
+            });
+            useFixedTermPrograms.mockReturnValue({
+                programs: [{...bzeProgram, stake: myProgramStake, pending: new BigNumber("1500000")}],
+                isLoading: false, reload: reloadPrograms,
+            });
+        });
+
+        /** Opens the row's actions, picks one, submits its dialog and returns the message sent. */
+        async function manage(user: ReturnType<typeof userEvent.setup>, ticker: string, pick: string, dialogName: string, submit: string) {
+            const toggle = await screen.findByRole("button", {name: `Manage ${ticker}`});
+            expect(toggle).toHaveAttribute("aria-expanded", "false");
+            await user.click(toggle);
+            expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+            await user.click(screen.getByRole("button", {name: `${pick} ${ticker}`}));
+            const dialog = screen.getByRole("dialog", {name: dialogName});
+            await user.click(within(dialog).getByRole("button", {name: submit}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+            return tx.mock.calls[0][0];
+        }
+
+        it("offers Stake, Claim and Unstake, only on a staked row", async () => {
+            getDenomRewardParticipations.mockResolvedValue([]);
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage BZE"}));
+            const actions = within(screen.getByTestId("earn-program-07")).getByTestId("earn-actions");
+            expect(within(actions).getAllByRole("button").map((button) => button.textContent)).toEqual(["Stake", "Claim", "Unstake"]);
+            expect(within(actions).getByRole("button", {name: "Claim from BZE"})).toBeEnabled();
+            expect(within(screen.getByTestId(`earn-pool-${GUILD}`)).queryByTestId("earn-actions")).not.toBeInTheDocument();
+
+            await user.click(within(actions).getByRole("button", {name: "Stake BZE"}));
+            // The stake dialog's own top-up title.
+            expect(screen.getByRole("dialog", {name: "Stake more BZE"})).toBeInTheDocument();
+        });
+
+        it("shows the current stake in the stake dialog of a holders pool and of a program", async () => {
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage GUILD"}));
+            await user.click(screen.getByRole("button", {name: "Stake GUILD"}));
+            expect(within(screen.getByRole("dialog", {name: "Stake more GUILD"})).getByTestId("stake-dialog-current"))
+                .toHaveTextContent(/^Your stake now40 GUILD$/);
+            await user.click(screen.getByRole("button", {name: "Close"}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+            await user.click(screen.getByRole("button", {name: "Manage BZE"}));
+            await user.click(screen.getByRole("button", {name: "Stake BZE"}));
+            expect(within(screen.getByRole("dialog", {name: "Stake more BZE"})).getByTestId("stake-dialog-current"))
+                .toHaveTextContent(/^Your stake now2 BZE$/);
+        });
+
+        it("disables Claim on a program with nothing to claim yet, and says why", async () => {
+            getStakingRewardParticipantByAddress.mockResolvedValue({list: [{...myProgramStake, joined_at: "0.75"}]});
+            const {user} = renderSection();
+
+            await user.click(await screen.findByRole("button", {name: "Manage BZE"}));
+
+            const claim = screen.getByRole("button", {name: "Claim from BZE"});
+            expect(claim).toBeDisabled();
+            expect(claim).toHaveAccessibleDescription("Nothing to claim yet");
+            expect(screen.getByRole("button", {name: "Unstake BZE"})).toBeEnabled();
+        });
+
+        it("disables Claim on a holders pool that owes nothing, or whose rewards couldn't be read", async () => {
+            vi.spyOn(console, "error").mockImplementation(() => undefined);
+            getDenomRewardParticipant.mockResolvedValue({participant: myPoolStake, pending: []});
+            const {user, unmount} = renderSection([POOL]);
+
+            await user.click(await screen.findByRole("button", {name: "Manage GUILD"}));
+            expect(screen.getByRole("button", {name: "Claim from GUILD"})).toBeDisabled();
+            expect(screen.getByRole("button", {name: "Claim from GUILD"})).toHaveAccessibleDescription("Nothing to claim yet");
+            unmount();
+
+            getDenomRewardParticipant.mockRejectedValue(new Error("node down"));
+            const second = renderSection([POOL]);
+            await second.user.click(await screen.findByRole("button", {name: "Manage GUILD"}));
+            expect(screen.getByRole("button", {name: "Claim from GUILD"})).toBeDisabled();
+            expect(screen.getByRole("button", {name: "Claim from GUILD"})).toHaveAccessibleDescription("Your rewards couldn't be read");
+        });
+
+        it("claims the program's T, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "BZE", "Claim from", "Claim your rewards", "Claim");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgClaimStakingRewards", value: {creator: ME, rewardId: "07"}}]);
+            expect(reloadPrograms).toHaveBeenCalled();
+            await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
+        });
+
+        it("leaves the program, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "BZE", "Unstake", "Unstake your BZE", "Unstake");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgExitStaking", value: {creator: ME, rewardId: "07"}}]);
+            await waitFor(() => expect(getStakingRewardParticipantByAddress).toHaveBeenCalledTimes(2));
+        });
+
+        it("claims the holders pool's rewards, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            expect(await screen.findByText(/3.25 PAGE and 2 BZE to claim/)).toBeInTheDocument();
+            getDenomRewardParticipant.mockResolvedValue({participant: myPoolStake, pending: []});
+
+            const msgs = await manage(user, "GUILD", "Claim from", "Claim your rewards", "Claim all");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgClaimDenomRewards", value: {creator: ME, denom: GUILD}}]);
+            expect(reloadPool).toHaveBeenCalled();
+            await waitFor(() => expect(getDenomRewardParticipations).toHaveBeenCalledTimes(2));
+            // The pending is read again too.
+            expect(await screen.findByText(/nothing to claim yet/)).toBeInTheDocument();
+            expect(getDenomRewardParticipant).toHaveBeenCalledTimes(2);
+        });
+
+        it("leaves the holders pool, then reads the positions again", async () => {
+            const {user} = renderSection();
+
+            const msgs = await manage(user, "GUILD", "Unstake", "Unstake your GUILD", "Unstake");
+
+            expect(msgs).toEqual([{typeUrl: "/bze.rewards.MsgExitDenomReward", value: {creator: ME, denom: GUILD}}]);
+            await waitFor(() => expect(getDenomRewardParticipations).toHaveBeenCalledTimes(2));
+        });
     });
 
     it("waits for the pool before the stake form, and says so when it is gone", async () => {
@@ -189,17 +446,25 @@ describe("EarnSection", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("features the first card when T has no holders pool", () => {
+    it("features the first row when T has no holders pool", () => {
         renderSection([POOL, PROGRAM], true);
 
         expect(screen.getByTestId(`earn-pool-${GUILD}`)).toHaveAttribute("data-featured");
         expect(screen.getByTestId("earn-program-07")).not.toHaveAttribute("data-featured");
     });
 
-    it("features no card while T's holders pool is the featured one", () => {
+    it("features no row while T's holders pool is the featured one", () => {
         renderSection([POOL, PROGRAM], false);
 
         expect(screen.getByTestId(`earn-pool-${GUILD}`)).not.toHaveAttribute("data-featured");
         expect(screen.getByTestId("earn-program-07")).not.toHaveAttribute("data-featured");
+    });
+
+    it("features the first row shown, the viewer's stake once it sorts first", async () => {
+        getStakingRewardParticipantByAddress.mockResolvedValue({list: [myProgramStake]});
+        renderSection([POOL, PROGRAM], true);
+
+        await waitFor(() => expect(screen.getByTestId("earn-program-07")).toHaveAttribute("data-featured"));
+        expect(screen.getByTestId(`earn-pool-${GUILD}`)).not.toHaveAttribute("data-featured");
     });
 });

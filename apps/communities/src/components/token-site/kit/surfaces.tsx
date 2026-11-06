@@ -40,30 +40,36 @@ interface TsSectionProps extends Omit<BoxProps, "title"> {
     eyebrow: string;
     title: React.ReactNode;
     description?: React.ReactNode;
+    /** A link beside the heading from md ("See all activity"); a phone shows it under the content. */
+    action?: React.ReactNode;
 }
 
 /** A page section: the anchor target of a header link, with its label, heading and lead text. */
-export function TsSection({id, eyebrow, title, description, children, ...props}: TsSectionProps) {
+export function TsSection({id, eyebrow, title, description, action, children, ...props}: TsSectionProps) {
     return (
         <Box as="section" id={id} aria-labelledby={`${id}-title`} {...tsContainer} pt={{base: "72px", md: "112px"}} {...props}>
             <Flex direction="column" gap={{base: "20px", md: "28px"}}>
-                <Flex direction="column" gap="12px" maxW="640px">
-                    <chakra.span {...tsEyebrow}>{eyebrow}</chakra.span>
-                    <chakra.h2
-                        id={`${id}-title`}
-                        m="0"
-                        fontSize={{base: "34px", md: "44px"}}
-                        lineHeight="1.05"
-                        letterSpacing="-0.03em"
-                        fontWeight={800}
-                    >
-                        {title}
-                    </chakra.h2>
-                    {description && (
-                        <chakra.p m="0" color={ts.muted} fontSize={{base: "16px", md: "17px"}} lineHeight="1.55">{description}</chakra.p>
-                    )}
+                <Flex justify="space-between" align="flex-end" gap="16px 24px">
+                    <Flex direction="column" gap="12px" maxW="640px">
+                        <chakra.span {...tsEyebrow}>{eyebrow}</chakra.span>
+                        <chakra.h2
+                            id={`${id}-title`}
+                            m="0"
+                            fontSize={{base: "34px", md: "44px"}}
+                            lineHeight="1.05"
+                            letterSpacing="-0.03em"
+                            fontWeight={800}
+                        >
+                            {title}
+                        </chakra.h2>
+                        {description && (
+                            <chakra.p m="0" color={ts.muted} fontSize={{base: "16px", md: "17px"}} lineHeight="1.55">{description}</chakra.p>
+                        )}
+                    </Flex>
+                    {action && <Box hideBelow="md" flex="none">{action}</Box>}
                 </Flex>
                 {children}
+                {action && <Box hideFrom="md">{action}</Box>}
             </Flex>
         </Box>
     );

@@ -1,0 +1,27 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/denom_reward_participant/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward_participant/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "participant": {
+      "address": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+      "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+      "amount": "20000000"
+    },
+    "pending": [
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "112000000"
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "32000000"
+      }
+    ]
+  }
+}

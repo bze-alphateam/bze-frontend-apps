@@ -10,6 +10,8 @@ import {test as base, expect, type Route} from "@playwright/test";
 // has no fixtures: its WebSocket is closed on connect and the app must render without it.
 // Requests to any other non-local host (logos, wallet SDKs) are aborted so no spec depends
 // on the internet; they are listed in the test's annotations.
+// BZE Scan is read through the app's own `/api/scan/*` route (Token Activity): those local
+// requests are answered from e2e/fixtures/scan/ the same way, so the route never calls Scan.
 
 export const MOCKED_HOSTS = {
     lcd: "lcd.e2e.test",
@@ -17,7 +19,10 @@ export const MOCKED_HOSTS = {
     rpc: "rpc.e2e.test",
 } as const;
 
-export type MockedHost = keyof typeof MOCKED_HOSTS;
+/** The app's BZE Scan route, answered from fixtures/scan/ like a mocked host. */
+export const SCAN_ROUTE_PREFIX = "/api/scan/";
+
+export type MockedHost = keyof typeof MOCKED_HOSTS | "scan";
 
 /** One recorded answer; the envelope written by e2e/support/record-fixture.mjs. */
 export interface Fixture {
@@ -72,10 +77,11 @@ const RECORDED: Record<MockedHost, Map<string, Fixture>> = {
     lcd: loadFixtures("lcd"),
     agg: loadFixtures("agg"),
     rpc: loadFixtures("rpc"),
+    scan: loadFixtures("scan"),
 };
 
 const hostByName = new Map<string, MockedHost>(
-    (Object.entries(MOCKED_HOSTS) as [MockedHost, string][]).map(([host, name]) => [name, host]),
+    (Object.entries(MOCKED_HOSTS) as [keyof typeof MOCKED_HOSTS, string][]).map(([host, name]) => [name, host]),
 );
 
 const isLocal = (hostname: string): boolean =>
@@ -94,7 +100,7 @@ export interface MockNetwork {
 export const test = base.extend<{ network: MockNetwork }>({
     network: [
         async ({context}, use, testInfo) => {
-            const overrides: Record<MockedHost, Map<string, Fixture>> = {lcd: new Map(), agg: new Map(), rpc: new Map()};
+            const overrides: Record<MockedHost, Map<string, Fixture>> = {lcd: new Map(), agg: new Map(), rpc: new Map(), scan: new Map()};
             const unmatched = new Set<string>();
             const blocked = new Set<string>();
 
@@ -136,6 +142,11 @@ export const test = base.extend<{ network: MockNetwork }>({
                 const host = hostByName.get(url.hostname);
                 if (host) {
                     await answer(route, host, url);
+                    return;
+                }
+
+                if (isLocal(url.hostname) && url.pathname.startsWith(SCAN_ROUTE_PREFIX)) {
+                    await answer(route, "scan", url);
                     return;
                 }
 

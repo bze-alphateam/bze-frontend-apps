@@ -1,0 +1,192 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/txs/A08223EAB7AEF34CC970867D2EF2E1AB9C6B7FDC2898A9E784A66DEF1E5FC6F9",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/txs/A08223EAB7AEF34CC970867D2EF2E1AB9C6B7FDC2898A9E784A66DEF1E5FC6F9",
+  "query": {},
+  "status": 200,
+  "body": {
+    "height": 4076635,
+    "tx_index": 0,
+    "hash": "A08223EAB7AEF34CC970867D2EF2E1AB9C6B7FDC2898A9E784A66DEF1E5FC6F9",
+    "time": "2026-11-04T11:41:10.272068Z",
+    "success": true,
+    "msg_count": 1,
+    "msg_types": [
+      "/bze.tradebin.MsgCreateLiquidityPool"
+    ],
+    "fee": [
+      {
+        "denom": "ubze",
+        "amount": "3159"
+      }
+    ],
+    "signer": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+    "first_message": {
+      "type_url": "/bze.tradebin.MsgCreateLiquidityPool",
+      "module": "tradebin",
+      "body": {
+        "fee": "0.001",
+        "base": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+        "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "stable": false,
+        "creator": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "fee_dest": "{\"providers\":\"0.50\",\"burner\":\"0.25\",\"treasury\":\"0.25\"}",
+        "initial_base": "1000000000",
+        "initial_quote": "5000000000"
+      }
+    },
+    "code": 0,
+    "codespace": null,
+    "error_log": null,
+    "gas_wanted": 315807,
+    "gas_used": 210649,
+    "fee_payer": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+    "signers": [
+      "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263"
+    ],
+    "memo": "factory.getbze.com",
+    "messages": [
+      {
+        "msg_index": 0,
+        "type_url": "/bze.tradebin.MsgCreateLiquidityPool",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "module": "tradebin",
+        "body": {
+          "fee": "0.001",
+          "base": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+          "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+          "stable": false,
+          "creator": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+          "fee_dest": "{\"providers\":\"0.50\",\"burner\":\"0.25\",\"treasury\":\"0.25\"}",
+          "initial_base": "1000000000",
+          "initial_quote": "5000000000"
+        },
+        "events": []
+      }
+    ],
+    "transfers": [
+      {
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2",
+        "recipient_label": {
+          "name": "Fee collector",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "3159",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "25000000000",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 2,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1knfjgvdsv67u2ksejka54ulpfzegr6semkvjn0",
+        "recipient_label": {
+          "name": "CP fee collector",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "25000000000",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 3,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+        "amount": "1000000000",
+        "symbol": "TMS",
+        "exponent": 6
+      },
+      {
+        "seq": 4,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "5000000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "seq": 5,
+        "msg_index": 0,
+        "kind": "mint",
+        "sender": null,
+        "sender_label": null,
+        "recipient": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "recipient_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "denom": "ulp/30EC562426888341EC061D5369B05A5679BCB21D8E55102D227679DD30C98EA2",
+        "amount": "2236067977499789",
+        "symbol": "TMS/VDL LP",
+        "exponent": 12
+      },
+      {
+        "seq": 6,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "sender_label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "recipient": "bze1pc5zjcvhx3e8l305zjl72grytfa30r5mdypmw4",
+        "recipient_label": {
+          "name": "Burner black hole",
+          "kind": "module"
+        },
+        "denom": "ulp/30EC562426888341EC061D5369B05A5679BCB21D8E55102D227679DD30C98EA2",
+        "amount": "2236067977499789",
+        "symbol": "TMS/VDL LP",
+        "exponent": 12
+      }
+    ],
+    "dex": null,
+    "ibc_transfers": null
+  },
+  "trimmed": "messages' events emptied, dex outcome dropped"
+}

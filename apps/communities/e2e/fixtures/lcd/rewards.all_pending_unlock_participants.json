@@ -1,0 +1,28 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/all_pending_unlock_participants?pagination.key=&pagination.offset=0&pagination.limit=1000&pagination.count_total=false&pagination.reverse=false",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/bze/rewards/all_pending_unlock_participants",
+  "query": {
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "1000",
+    "pagination.count_total": "false",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "index": "6278/dr/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr/bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "address": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "amount": "15000000",
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

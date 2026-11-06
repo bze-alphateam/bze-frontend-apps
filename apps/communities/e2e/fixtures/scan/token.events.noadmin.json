@@ -1,0 +1,130 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token/events?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin&limit=25",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token/events",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+    "limit": "25"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 4082925,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "86684BB3CA4FC285E006D2CA9A1A7CB4EF44464C5AB55BE62FA8CD2025109EB8",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-11-04T20:59:28.627861Z"
+      },
+      {
+        "height": 4076670,
+        "tx_index": 0,
+        "seq": 1,
+        "tx_hash": "AAE61448E2C7DDBEA18DD993D24D7907DE2A960C7D2129E4C9F93BC64DACCD7D",
+        "kind": "pool_created",
+        "actor": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "actor_label": null,
+        "amount": null,
+        "details": {
+          "base": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+          "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+          "lp_denom": "ulp/A716DEB65161660C152CC7E1F365DC8AADBB09981762F46D7B17C595A4D255EC"
+        },
+        "time": "2026-11-04T11:44:16.359689Z"
+      },
+      {
+        "height": 3928971,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "C93BF6279DBD7E1BE6EB1C05728B61E526C4ECE8B5442D9FAD554EEEFB422474",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-26T09:00:46.008548Z"
+      },
+      {
+        "height": 3895822,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "29488FB9386FD3B18A30F0C455494F27B7783676A3B92D08EDA3BDDFF12708F2",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-24T08:11:59.231551Z"
+      },
+      {
+        "height": 3835655,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "332616E2390C513FA6E0086C794A307A6276C864C1613D9DEF2D5B1266F803B9",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-20T15:32:16.385974Z"
+      },
+      {
+        "height": 3742587,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "09BCFD68381D8D4BFD0C297ED8D00DF53E5CB9EF93EF22C2D90650EAD95443D6",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-14T22:23:01.188099Z"
+      },
+      {
+        "height": 3704294,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "47EF1F048061827AAA800A92714D1E9698EAF133790076BAF3AD3831505D2EA4",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-12T13:59:25.143856Z"
+      },
+      {
+        "height": 3656399,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "F4E48986E6D96E07C023D4A88374F19038AA6CB572EDA83E336357550FF042F5",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-09T15:24:24.079104Z"
+      },
+      {
+        "height": 3656386,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "AF06227B1EF712EB4BDF3DD53F8BCF330CAB8BC71DA68C0E00362E54854A9EBE",
+        "kind": "minted",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": "1000000000",
+        "details": {
+          "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+        },
+        "time": "2026-10-09T15:23:14.776552Z"
+      }
+    ],
+    "next_cursor": null
+  }
+}

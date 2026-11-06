@@ -220,6 +220,12 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
                             aria-describedby={error ? "stake-dialog-error" : undefined}
                             suffix={asset.ticker}
                         />
+                        {staked && (
+                            <Flex justify="space-between" gap="8px" borderRadius="14px" px="16px" py="12px" bg={ts.inset} fontSize="14px" data-testid="stake-dialog-current">
+                                <chakra.span color={ts.muted}>Your stake now</chakra.span>
+                                <chakra.span fontWeight={600} color={ts.fg} fontVariantNumeric="tabular-nums">{stake}</chakra.span>
+                            </Flex>
+                        )}
                         <Flex justify="space-between" align="center" gap="8px" px="4px" fontSize="13px">
                             <chakra.span color={ts.muted}>
                                 Balance {walletAmount(uAmountToBigNumberAmount(maxSpendable.balance, asset.decimals))} {asset.ticker}
