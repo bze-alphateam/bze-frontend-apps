@@ -5,7 +5,7 @@ import {createPortal} from "react-dom";
 import {Box, chakra, Flex} from "@chakra-ui/react";
 import {LuX} from "react-icons/lu";
 
-import {useTokenSiteTheme} from "./theme";
+import {tokenSiteModeCss, useTokenSiteTheme} from "./theme";
 import {ts} from "./tokens";
 
 interface OverlayProps {
@@ -80,6 +80,7 @@ function OverlayLayer({open, onClose, title, icon, children, placement}: LayerPr
         <Box
             data-testid="token-site-layer"
             style={vars as React.CSSProperties}
+            css={tokenSiteModeCss}
             position="fixed"
             inset="0"
             zIndex="modal"

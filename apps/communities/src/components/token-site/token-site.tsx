@@ -61,14 +61,15 @@ export function TokenSite({denom}: { denom: string }) {
     const {asset, isLoading} = useAsset(denom);
 
     // A resolved non-factory denom (BZE, IBC) exists in the assets map but has no site.
-    const resolved = !isLoading && asset && isFactoryDenom(asset.denom) ? asset : undefined;
+    const resolved = asset && isFactoryDenom(asset.denom) ? asset : undefined;
     const kit = useTokenBrandKit(resolved?.denom);
     const {pools} = useLiquidityPools();
     const {opportunities} = useEarnOpportunities(resolved?.denom);
     // Undefined until the holders pool has loaded; the first Earn card is featured only without one.
     const [hasHoldersPool, setHasHoldersPool] = useState<boolean>();
 
-    if (isLoading || (resolved && !kit)) {
+    // A known token renders at once, even while balances reload; "not found" waits for the assets.
+    if ((!resolved && isLoading) || (resolved && !kit)) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><Loading/></TokenSiteTheme>;
     }
 

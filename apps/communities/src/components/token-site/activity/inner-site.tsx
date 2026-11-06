@@ -14,7 +14,7 @@ import {ACTIVITY_SECTION_ID} from "@/lib/token-activity";
 import {siteSections} from "@/lib/token-site/sections";
 import {isTradable} from "@/lib/token-site/swap";
 
-import {TokenSiteTheme, TsButton, TsCard, ts, tsContainer, tsEyebrow} from "../kit";
+import {TokenSiteTheme, TsButton, TsCard, TsLink, ts, tsContainer, tsEyebrow} from "../kit";
 import {SiteFooter} from "../site-footer";
 import {SiteHeader} from "../site-header";
 import {WalletDrawer} from "../wallet";
@@ -62,7 +62,7 @@ interface InnerHeroProps {
 export function InnerHero({back, eyebrow, title, titleId, children}: InnerHeroProps) {
     return (
         <Flex as="section" aria-labelledby={titleId} direction="column" gap="12px" pt={{base: "24px", md: "40px"}} pb={{base: "24px", md: "36px"}}>
-            <chakra.a
+            <TsLink
                 href={back.href}
                 alignSelf="flex-start"
                 display="inline-flex"
@@ -77,7 +77,7 @@ export function InnerHero({back, eyebrow, title, titleId, children}: InnerHeroPr
             >
                 <LuArrowLeft size={14} aria-hidden="true"/>
                 {back.label}
-            </chakra.a>
+            </TsLink>
             <chakra.span {...tsEyebrow} color={ts.pri}>{eyebrow}</chakra.span>
             {title}
             {children}
@@ -92,12 +92,13 @@ export function InnerHero({back, eyebrow, title, titleId, children}: InnerHeroPr
  */
 export function InnerSite({denom, children}: { denom: string; children: (asset: Asset) => React.ReactNode }) {
     const {asset, isLoading} = useAsset(denom);
-    const resolved = !isLoading && asset && hasActivityPage(asset.denom) ? asset : undefined;
+    const resolved = asset && hasActivityPage(asset.denom) ? asset : undefined;
     const kit = useTokenBrandKit(resolved?.denom);
     const {pools} = useLiquidityPools();
     const {opportunities} = useEarnOpportunities(resolved?.denom);
 
-    if (isLoading || (resolved && !kit)) {
+    // A known token renders at once, even while balances reload; "not found" waits for the assets.
+    if ((!resolved && isLoading) || (resolved && !kit)) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><Loading/></TokenSiteTheme>;
     }
 

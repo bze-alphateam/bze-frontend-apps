@@ -14,7 +14,7 @@ import {
     tokenTxPath,
 } from "@/lib/token-activity";
 
-import {TsTag, ts, tsMix} from "../kit";
+import {TsLink, TsTag, ts, tsMix} from "../kit";
 
 // One Token Activity row (the token page's snippet and the Activity tab): tag, title, who did it,
 // the token moved with the fee it paid, when, and the transaction. Desktop is one line; on a
@@ -37,7 +37,7 @@ const mono = {fontFamily: "mono", fontSize: "13px", whiteSpace: "nowrap", textDe
 /** An address as the canvas chips it: monospace on the inset, linking to the holder page. */
 function AddressChip({denom, address, name}: { denom: string; address: string; name?: string }) {
     return (
-        <chakra.a
+        <TsLink
             href={tokenHolderPath(denom, address)}
             title={address}
             {...mono}
@@ -50,7 +50,7 @@ function AddressChip({denom, address, name}: { denom: string; address: string; n
             _hover={{bg: ts.hover}}
         >
             {name ?? shortAddress(address)}
-        </chakra.a>
+        </TsLink>
     );
 }
 
@@ -115,9 +115,9 @@ export function ActivityRow({row, token, first, signed, hideActor}: ActivityRowP
                 {formatWhen(row.time)}
             </chakra.time>
 
-            <chakra.a gridArea="tx" href={tokenTxPath(token.denom, row.txHash)} title={row.txHash} {...mono} color={ts.muted} textAlign="right" _hover={{color: ts.fg}}>
+            <TsLink gridArea="tx" href={tokenTxPath(token.denom, row.txHash)} title={row.txHash} {...mono} color={ts.muted} textAlign="right" _hover={{color: ts.fg}}>
                 {shortHash(row.txHash)}
-            </chakra.a>
+            </TsLink>
         </Box>
     );
 }

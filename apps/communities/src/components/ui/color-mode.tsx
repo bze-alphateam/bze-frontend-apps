@@ -18,19 +18,29 @@ export function ColorModeProvider(props: ColorModeProviderProps) {
 export type ColorMode = "light" | "dark"
 
 export interface UseColorModeReturn {
-  colorMode: ColorMode
+  /** `undefined` on the server and while the page hydrates: the saved mode is only known in the browser. */
+  colorMode: ColorMode | undefined
   setColorMode: (colorMode: ColorMode) => void
   toggleColorMode: () => void
 }
 
+const subscribeNever = () => () => {}
+
+/** `false` on the server and during hydration, `true` once the browser has taken over. */
+const useHydrated = () => React.useSyncExternalStore(subscribeNever, () => true, () => false)
+
 export function useColorMode(): UseColorModeReturn {
   const { resolvedTheme, setTheme, forcedTheme } = useTheme()
-  const colorMode = forcedTheme || resolvedTheme
+  // next-themes reads the saved mode from localStorage on the browser's first render, which the
+  // server cannot see; anything rendered from it would differ from the server HTML, and React
+  // keeps the server's attributes on a mismatch. So the mode is reported only after hydration.
+  const hydrated = useHydrated()
+  const colorMode = hydrated ? forcedTheme || resolvedTheme : undefined
   const toggleColorMode = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
   return {
-    colorMode: colorMode as ColorMode,
+    colorMode: colorMode as ColorMode | undefined,
     setColorMode: setTheme,
     toggleColorMode,
   }
