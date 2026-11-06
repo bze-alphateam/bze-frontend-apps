@@ -92,12 +92,13 @@ export function InnerHero({back, eyebrow, title, titleId, children}: InnerHeroPr
  */
 export function InnerSite({denom, children}: { denom: string; children: (asset: Asset) => React.ReactNode }) {
     const {asset, isLoading} = useAsset(denom);
-    const resolved = !isLoading && asset && hasActivityPage(asset.denom) ? asset : undefined;
+    const resolved = asset && hasActivityPage(asset.denom) ? asset : undefined;
     const kit = useTokenBrandKit(resolved?.denom);
     const {pools} = useLiquidityPools();
     const {opportunities} = useEarnOpportunities(resolved?.denom);
 
-    if (isLoading || (resolved && !kit)) {
+    // A known token renders at once, even while balances reload; "not found" waits for the assets.
+    if ((!resolved && isLoading) || (resolved && !kit)) {
         return <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><Loading/></TokenSiteTheme>;
     }
 

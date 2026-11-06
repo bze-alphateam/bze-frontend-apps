@@ -267,6 +267,17 @@ describe("Communities token page", () => {
         expect(screen.getByRole("heading", {name: "Token not found"})).toBeInTheDocument();
     });
 
+    it("keeps showing a known token while the wallet balances reload", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        useDenomParam.mockReturnValue("factory/bze1owner/ureload");
+        useAsset.mockReturnValue({asset: makeAsset("factory/bze1owner/ureload"), isLoading: true});
+        render(<ChakraProvider value={defaultSystem}><TokenPage/></ChakraProvider>);
+
+        expect(await screen.findByRole("heading", {level: 1, name: "Brand Token"})).toBeInTheDocument();
+        expect(screen.queryByTestId("token-site-loading")).not.toBeInTheDocument();
+        expect(screen.queryByText("Token not found")).not.toBeInTheDocument();
+    });
+
     it("shows the loading state while the assets load", () => {
         useDenomParam.mockReturnValue("factory/bze1owner/uslow");
         useAsset.mockReturnValue({asset: undefined, isLoading: true});
