@@ -12,7 +12,7 @@ const BURNER = "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun";
 const FEES = "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2";
 const ESCROW = "bze1escrow0000000000000000000000000000000";
 
-const module = (name: string) => ({name, kind: "module"});
+const moduleLabel = (name: string) => ({name, kind: "module"});
 
 let seq = 0;
 /** A VDL transfer row, as `/token/transfers` sends it. */
@@ -55,7 +55,7 @@ const tx = (over: Partial<ScanTx>): ScanTx => ({
     gas_wanted: 0,
     gas_used: 0,
     messages: [],
-    transfers: [{seq: 0, msg_index: null, kind: "transfer", sender: TRADER, sender_label: null, recipient: FEES, recipient_label: module("Fee collector"), denom: "ubze", amount: "3902", symbol: "BZE", exponent: 6}],
+    transfers: [{seq: 0, msg_index: null, kind: "transfer", sender: TRADER, sender_label: null, recipient: FEES, recipient_label: moduleLabel("Fee collector"), denom: "ubze", amount: "3902", symbol: "BZE", exponent: 6}],
     dex: null,
     ibc_transfers: null,
     ...over,
@@ -115,8 +115,8 @@ describe("groupTransfers", () => {
 describe("activityRow — the canvas rows (testnet, 2026-11-05)", () => {
     it("AF3A…8900: four claims, two paying VDL → Claim +3, 75.999999 VDL, fee 0.003902 BZE", () => {
         const moves = [
-            move({msg_index: 3, msg_type: MSG.claimStakingRewards, sender: REWARDS, sender_label: module("Rewards"), recipient: CREATOR, amount: "19999999"}),
-            move({msg_index: 2, msg_type: MSG.claimDenomRewards, sender: REWARDS, sender_label: module("Rewards"), recipient: CREATOR, amount: "56000000"}),
+            move({msg_index: 3, msg_type: MSG.claimStakingRewards, sender: REWARDS, sender_label: moduleLabel("Rewards"), recipient: CREATOR, amount: "19999999"}),
+            move({msg_index: 2, msg_type: MSG.claimDenomRewards, sender: REWARDS, sender_label: moduleLabel("Rewards"), recipient: CREATOR, amount: "56000000"}),
         ];
         const row = rowOf(moves, {msg_count: 4, signer: CREATOR});
 
@@ -125,7 +125,7 @@ describe("activityRow — the canvas rows (testnet, 2026-11-05)", () => {
     });
 
     it("A082…C6F9: creating the TMS / VDL pool", () => {
-        const moves = [move({msg_type: MSG.createLiquidityPool, sender: TRADER, recipient: DEX, recipient_label: module("DEX"), amount: "5000000000"})];
+        const moves = [move({msg_type: MSG.createLiquidityPool, sender: TRADER, recipient: DEX, recipient_label: moduleLabel("DEX"), amount: "5000000000"})];
         const row = rowOf(moves, {
             messages: [{msg_index: 0, type_url: MSG.createLiquidityPool, sender: TRADER, module: "tradebin", events: [],
                 body: {base: "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms", quote: VDL}}],
@@ -139,8 +139,8 @@ describe("activityRow — the canvas rows (testnet, 2026-11-05)", () => {
     });
 
     it("FF07…4AEB / A8E3…7171: swaps read as Sold / Bought from the signer's side", () => {
-        const sold = rowOf([move({msg_type: MSG.multiSwap, sender: TRADER, recipient: DEX, recipient_label: module("DEX"), amount: "5000000000"})], {});
-        const bought = rowOf([move({msg_type: MSG.multiSwap, sender: DEX, sender_label: module("DEX"), recipient: TRADER, amount: "2294471843"})], {});
+        const sold = rowOf([move({msg_type: MSG.multiSwap, sender: TRADER, recipient: DEX, recipient_label: moduleLabel("DEX"), amount: "5000000000"})], {});
+        const bought = rowOf([move({msg_type: MSG.multiSwap, sender: DEX, sender_label: moduleLabel("DEX"), recipient: TRADER, amount: "2294471843"})], {});
 
         expect([sold.tag, sold.title, sold.amount]).toEqual(["Swap", "Sold VDL", "5000000000"]);
         expect([bought.tag, bought.title, bought.amount]).toEqual(["Swap", "Bought VDL", "2294471843"]);
@@ -148,10 +148,10 @@ describe("activityRow — the canvas rows (testnet, 2026-11-05)", () => {
 
     it("4822…F98F: a fee paid in VDL shows before the transaction is read, and the net is the signer's", () => {
         const moves = [
-            move({msg_type: MSG.multiSwap, sender: DEX, sender_label: module("DEX"), recipient: BURNER, recipient_label: module("Burner"), amount: "752"}),
-            move({msg_type: MSG.multiSwap, sender: CREATOR, recipient: DEX, recipient_label: module("DEX"), amount: "1002829"}),
-            move({msg_type: MSG.multiSwap, sender: DEX, sender_label: module("DEX"), recipient: CREATOR, amount: "99690964"}),
-            move({msg_index: null, msg_type: null, sender: CREATOR, recipient: FEES, recipient_label: module("Stakers fee collector"), amount: "94011"}),
+            move({msg_type: MSG.multiSwap, sender: DEX, sender_label: moduleLabel("DEX"), recipient: BURNER, recipient_label: moduleLabel("Burner"), amount: "752"}),
+            move({msg_type: MSG.multiSwap, sender: CREATOR, recipient: DEX, recipient_label: moduleLabel("DEX"), amount: "1002829"}),
+            move({msg_type: MSG.multiSwap, sender: DEX, sender_label: moduleLabel("DEX"), recipient: CREATOR, amount: "99690964"}),
+            move({msg_index: null, msg_type: null, sender: CREATOR, recipient: FEES, recipient_label: moduleLabel("Stakers fee collector"), amount: "94011"}),
         ];
         const row = rowOf(moves);
 
@@ -160,7 +160,7 @@ describe("activityRow — the canvas rows (testnet, 2026-11-05)", () => {
     });
 
     it("8E56…F595: sent to the burner", () => {
-        const row = rowOf([move({msg_type: MSG.fundBurner, recipient: BURNER, recipient_label: module("Burner"), amount: "14000000"})], {});
+        const row = rowOf([move({msg_type: MSG.fundBurner, recipient: BURNER, recipient_label: moduleLabel("Burner"), amount: "14000000"})], {});
 
         expect(row).toMatchObject({tag: "Burn", title: "Sent to the burner", amount: "14000000"});
     });
@@ -202,7 +202,7 @@ describe("activityRow — tags", () => {
     });
 
     it("titles an order by its side", () => {
-        const order = (side: string) => rowOf([move({msg_type: MSG.createOrder, recipient: DEX, recipient_label: module("DEX")})], {
+        const order = (side: string) => rowOf([move({msg_type: MSG.createOrder, recipient: DEX, recipient_label: moduleLabel("DEX")})], {
             messages: [{msg_index: 0, type_url: MSG.createOrder, sender: TRADER, module: "tradebin", events: [], body: {order_type: side}}],
         });
 
@@ -243,7 +243,7 @@ describe("activityRow — authz MsgExec and several messages", () => {
     });
 
     it("unwraps a mixed MsgExec through the transaction's message body", () => {
-        const moves = [move({msg_type: MSG.exec, recipient: DEX, recipient_label: module("DEX")})];
+        const moves = [move({msg_type: MSG.exec, recipient: DEX, recipient_label: moduleLabel("DEX")})];
         const detail = {
             messages: [{msg_index: 0, type_url: MSG.exec, sender: TRADER, module: "authz", events: [], body: {
                 grantee: TRADER,
@@ -258,8 +258,8 @@ describe("activityRow — authz MsgExec and several messages", () => {
 
     it("tags by the first message that moves the token and counts the others as +N", () => {
         const moves = [
-            move({msg_index: 2, msg_type: MSG.fundBurner, recipient: BURNER, recipient_label: module("Burner")}),
-            move({msg_index: 1, msg_type: MSG.multiSwap, recipient: DEX, recipient_label: module("DEX")}),
+            move({msg_index: 2, msg_type: MSG.fundBurner, recipient: BURNER, recipient_label: moduleLabel("Burner")}),
+            move({msg_index: 1, msg_type: MSG.multiSwap, recipient: DEX, recipient_label: moduleLabel("DEX")}),
         ];
 
         // Before the transaction is read, the count comes from the messages the rows show.
@@ -274,7 +274,7 @@ describe("activityRow — authz MsgExec and several messages", () => {
 
 describe("activityRow — actor, amount and fee", () => {
     it("falls back to the party the rows show before the transaction is read", () => {
-        const row = rowOf([move({sender: DEX, sender_label: module("DEX"), recipient: TRADER, msg_type: MSG.multiSwap})]);
+        const row = rowOf([move({sender: DEX, sender_label: moduleLabel("DEX"), recipient: TRADER, msg_type: MSG.multiSwap})]);
 
         expect([row.actor, row.title]).toEqual([TRADER, "Bought VDL"]);
     });
