@@ -1,0 +1,113 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fvidulum",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum"
+  },
+  "status": 200,
+  "body": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+    "symbol": "VDL",
+    "name": "Vidulum",
+    "kind": "factory",
+    "exponent": 6,
+    "supply": "20997865999178",
+    "holders_count": 5,
+    "price_usd": "0.073770585894",
+    "price_change_24h_pct": null,
+    "price_source": "dex",
+    "halted": false,
+    "logo_url": null,
+    "origin_chain": null,
+    "ibc_hops": null,
+    "via_chain": null,
+    "lp_pair": null,
+    "created_time": null,
+    "ibc_channel": null,
+    "stranded": false,
+    "description": "Vidulum app token",
+    "origin_chain_id": null,
+    "ibc_base_denom": null,
+    "ibc_path": null,
+    "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "creator_label": null,
+    "admin": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "admin_label": null,
+    "created_height": null,
+    "created_tx_hash": null,
+    "website": null,
+    "markets": [],
+    "price_updated_at": "2026-11-06T09:10:20.289895Z",
+    "metadata": {
+      "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+      "name": "Vidulum",
+      "symbol": "VDL",
+      "display": "VDL",
+      "denom_units": [
+        {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum"
+        },
+        {
+          "denom": "VDL",
+          "exponent": 6
+        }
+      ],
+      "description": "Vidulum app token"
+    },
+    "updated_at": "2026-11-06T08:11:16.938549Z",
+    "events": [
+      {
+        "height": 4076635,
+        "tx_index": 0,
+        "seq": 1,
+        "tx_hash": "A08223EAB7AEF34CC970867D2EF2E1AB9C6B7FDC2898A9E784A66DEF1E5FC6F9",
+        "kind": "pool_created",
+        "actor": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "actor_label": null,
+        "amount": null,
+        "details": {
+          "base": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+          "quote": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+          "lp_denom": "ulp/30EC562426888341EC061D5369B05A5679BCB21D8E55102D227679DD30C98EA2"
+        },
+        "time": "2026-11-04T11:41:10.272068Z"
+      },
+      {
+        "height": 3929054,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "93ECA5B05C3225E303F466ECC87AFDCECDF76A6F13EDA8DA31B4506CF377CB10",
+        "kind": "pool_created",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": {
+          "base": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+          "quote": "ubze",
+          "lp_denom": "ulp/FD2C3506F9D9312ABF5A1BB82AF7CE272A2ED0243D15AB3ADB348C97620FBC10"
+        },
+        "time": "2026-10-26T09:08:06.658861Z"
+      },
+      {
+        "height": 3928989,
+        "tx_index": 0,
+        "seq": 0,
+        "tx_hash": "93044476E6EC821FE6820C90D42234E149F3812233516F6F362648E82F3EAE4D",
+        "kind": "branding_changed",
+        "actor": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "actor_label": null,
+        "amount": null,
+        "details": null,
+        "time": "2026-10-26T09:02:21.609198Z"
+      }
+    ],
+    "events_next_cursor": null,
+    "transfers_24h": {
+      "count": 0,
+      "amount": "0"
+    }
+  },
+  "trimmed": "events cut to the newest 3, markets to 2"
+}

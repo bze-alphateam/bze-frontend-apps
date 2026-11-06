@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import type {ReactNode} from "react";
-import {render, screen} from "@testing-library/react";
+import type {ComponentProps, ReactNode} from "react";
+import {render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import {WalletState} from "@interchain-kit/core";
@@ -39,6 +39,7 @@ vi.mock("@/hooks/token-site/useTokenFeeMode", () => ({
 import {TokenWalletProvider} from "@/hooks/token-site/useTokenWallet";
 import {TokenSiteTheme} from "./kit";
 import {rulesFor} from "@/test-support/css-rules";
+import {siteSections} from "@/lib/token-site/sections";
 import {SiteHeader} from "./site-header";
 import {WalletDrawer} from "./wallet";
 
@@ -51,8 +52,8 @@ const ASSET: Asset = {
 
 const SECTIONS = [{id: "stake", label: "Stake"}, {id: "burn", label: "Burn"}];
 
-function renderHeader(asset: Asset = ASSET) {
-    return render(<><SiteHeader asset={asset} sections={SECTIONS}/><WalletDrawer asset={asset}/></>, {
+function renderHeader(asset: Asset = ASSET, props: Partial<ComponentProps<typeof SiteHeader>> = {}) {
+    return render(<><SiteHeader asset={asset} sections={SECTIONS} {...props}/><WalletDrawer asset={asset}/></>, {
         wrapper: ({children}: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>
                 <TokenSiteTheme kit={DEFAULT_DENOM_BRANDING}><TokenWalletProvider>{children}</TokenWalletProvider></TokenSiteTheme>
@@ -97,6 +98,22 @@ describe("SiteHeader", () => {
 
         const nav = screen.getByRole("navigation", {name: "Sections"});
         expect([...nav.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["#stake", "#burn"]);
+    });
+
+    it("links back to the token page from an inner page and marks the current one", async () => {
+        const user = userEvent.setup();
+        const sections = siteSections({denom: ASSET.denom, hasEarn: false, hasTrade: false, page: "inner"});
+        const {container} = renderHeader(ASSET, {sections, current: "activity", homeHref: "/token?denom=factory%2Fbze1owner%2Fupage"});
+
+        expect(container.querySelector('header a[href="/token?denom=factory%2Fbze1owner%2Fupage"]')).toHaveTextContent("Page Token");
+        const desktop = container.querySelectorAll("header nav")[0];
+        const current = [...desktop.querySelectorAll("a")].filter((a) => a.getAttribute("aria-current") === "page");
+        expect(current.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Activity", "/token/activity?denom=factory%2Fbze1owner%2Fupage"]]);
+        expect(desktop.querySelector('a[href="/token?denom=factory%2Fbze1owner%2Fupage#stake"]')).toHaveTextContent("Stake");
+
+        await user.click(screen.getByRole("button", {name: "Open menu"}));
+        const menu = screen.getByRole("navigation", {name: "Sections"});
+        expect(within(menu).getByRole("link", {name: "Activity"})).toHaveAttribute("aria-current", "page");
     });
 
     it("opens the wallet drawer with a connect prompt while disconnected", async () => {

@@ -55,3 +55,6 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `agg/dex.tickers.json` | `/api/dex/tickers` | **trimmed** to the first 3 tickers (mainnet markets, unused by testnet denoms), so every testnet pool has a 24h volume of $0 |
 | `agg/prices.json` | `/api/prices` | BZE/USD price |
 | `agg/dex.intervals.noadmin_testusd.240.json` | `/api/dex/intervals` for the NOAD/TUSDC pool, 240-minute candles, limit 180 (the Trade chart's default 30D) | recorded 2026-10-12; the aggregator indexes mainnet, so it answers **400** for this testnet pool and the chart shows no trades; specs that need candles answer with `network.use` |
+| `scan/token.<token>.json` | `/api/scan/token?denom=` (`noadmin`, `testusd`, `vidulum`) | recorded 2026-11-06 from the testnet explorer's `/api/v1/token`; **trimmed**: `events` to the newest 3, `markets` to 2. The Activity snippet's "holders · transfers in the last 24 hours" |
+| `scan/token.transfers.<token>.json` | `/api/scan/token/transfers?denom=…&limit=100` | **trimmed** to the rows of the newest 6 transactions (5 complete ones for the snippet), `next_cursor` kept |
+| `scan/txs.<hash prefix>.json` | `/api/scan/txs/{hash}` of the snippet's rows (15, one shared) | **trimmed**: messages' `events` emptied; fee, signer and message count are what the rows read |
