@@ -60,9 +60,16 @@ interface ActivityRowProps {
     token: { denom: string; symbol: string; exponent: number };
     /** Draws the line above every row but the first. */
     first?: boolean;
+    /** The amount with "+" when the actor received it, "−" when they sent it (a holder's own rows). */
+    signed?: boolean;
+    /** Leaves out "by <address>" (the holder page, where every row is the holder's own). */
+    hideActor?: boolean;
 }
 
-export function ActivityRow({row, token, first}: ActivityRowProps) {
+/** The sign of a row's amount from the actor's side; none when they only moved others' tokens. */
+const signOf = (direction: Row["direction"]) => (direction === "in" ? "+" : direction === "out" ? "−" : "");
+
+export function ActivityRow({row, token, first, signed, hideActor}: ActivityRowProps) {
     const moreTitle = `${row.more} more ${row.more === 1 ? "message" : "messages"} in this transaction`;
 
     return (
@@ -85,7 +92,7 @@ export function ActivityRow({row, token, first}: ActivityRowProps) {
 
             <Flex gridArea="main" direction="column" gap="6px" minW="0">
                 <chakra.span fontSize="16px" fontWeight={600}>{row.title}</chakra.span>
-                {row.actor && (
+                {row.actor && !hideActor && (
                     <Flex align="center" gap="6px" wrap="wrap" fontSize="14px" color={ts.muted}>
                         by<AddressChip denom={token.denom} address={row.actor} name={row.actorLabel?.name}/>
                     </Flex>
@@ -94,7 +101,7 @@ export function ActivityRow({row, token, first}: ActivityRowProps) {
 
             <Flex gridArea="amt" direction="column" gap="4px" textAlign={{base: "left", md: "right"}} fontVariantNumeric="tabular-nums">
                 <chakra.span fontSize="17px" fontWeight={700} whiteSpace="nowrap">
-                    {`${formatUnits(row.amount, token.exponent)} ${token.symbol}`}
+                    {`${signed ? signOf(row.direction) : ""}${formatUnits(row.amount, token.exponent)} ${token.symbol}`}
                 </chakra.span>
                 {row.fee ? (
                     <chakra.span fontSize="13px" color={ts.muted} whiteSpace="nowrap">Fee {formatCoins(row.fee)}</chakra.span>
