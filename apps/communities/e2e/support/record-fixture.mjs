@@ -3,6 +3,9 @@
 //
 //   node e2e/support/record-fixture.mjs '<url the app requested>' [file-name]
 //
+// The app's BZE Scan route (http://localhost:3004/api/scan/...) is recorded from the testnet
+// explorer's /api/v1 into e2e/fixtures/scan/, keyed by the route path the app asks for.
+//
 // The URL is the one the e2e build asks for, as printed by a failing spec
 // ("no e2e fixture for GET https://lcd.e2e.test/..."). The mocked host is swapped
 // for its real source, the answer is fetched and written to
@@ -27,7 +30,9 @@ if (!rawUrl) {
 }
 
 const url = new URL(rawUrl);
-const source = SOURCES[url.hostname];
+const SCAN_ROUTE = "/api/scan/";
+const isScanRoute = (url.hostname === "localhost" || url.hostname === "127.0.0.1") && url.pathname.startsWith(SCAN_ROUTE);
+const source = isScanRoute ? {dir: "scan", origin: "https://testnet-explorer.getbze.com"} : SOURCES[url.hostname];
 if (!source) {
     console.error(`unknown host ${url.hostname}; expected one of ${Object.keys(SOURCES).join(", ")}`);
     process.exit(1);
@@ -43,7 +48,8 @@ const defaultName = () => {
 };
 
 const name = (rawName ?? defaultName()).replace(/\.json$/, "");
-const sourceUrl = `${source.origin}${url.pathname}${url.search}`;
+const sourcePath = isScanRoute ? `/api/v1/${url.pathname.slice(SCAN_ROUTE.length)}` : url.pathname;
+const sourceUrl = `${source.origin}${sourcePath}${url.search}`;
 
 const response = await fetch(sourceUrl);
 const text = await response.text();

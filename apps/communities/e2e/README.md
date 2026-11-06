@@ -12,7 +12,7 @@ Playwright specs that drive a production build of the communities app in Chromiu
 | `../.env.e2e` | Build env: testnet chain settings with `lcd.e2e.test`, `rpc.e2e.test`, `agg.e2e.test` as hosts, cross-chain (Skip) off |
 | `support/mock-network.ts` | The `test` to import in every spec: answers the fake hosts from `fixtures/`, fails the test on a request no fixture covers |
 | `support/record-fixture.mjs` | Records one fixture from testnet |
-| `fixtures/lcd/`, `fixtures/agg/` | One JSON file per answered request (see `fixtures/README.md`) |
+| `fixtures/lcd/`, `fixtures/agg/`, `fixtures/scan/` | One JSON file per answered request (see `fixtures/README.md`); `scan/` answers the app's own `/api/scan/*` route (BZE Scan, Token Activity) |
 | `*.spec.ts` | The specs |
 
 ## Commands
@@ -32,6 +32,7 @@ pnpm --filter bze-communities e2e
 
 - Each fixture is keyed by method, path and query. Query order does not matter, but every parameter does, including the empty `pagination.key=` the LCD client always sends.
 - A request to `lcd.e2e.test` or `agg.e2e.test` that no fixture covers gets a 500 answer. The test then fails in its teardown with `requests to mocked hosts without a fixture`, followed by every such URL.
+- Requests to the app's own `/api/scan/*` route are answered from `fixtures/scan/` the same way (host `scan` for `network.use`), so the route never reaches BZE Scan. Record them with the local URL the app asked for (`http://localhost:3004/api/scan/token/transfers?denom=…`): the script reads the testnet explorer's `/api/v1`.
 - The RPC WebSocket (`wss://rpc.e2e.test`) is closed as soon as it opens. The app has to render without block/tx events.
 - `chain-feed.spec.ts` is the exception: it runs a fake RPC on 127.0.0.1 (`support/fake-rpc.ts`) and stores its address in the app settings, because `routeWebSocket` cannot intercept sockets opened inside a SharedWorker.
 - Requests to any other non-local host (token logos, wallet SDKs) are aborted and listed in the test's annotations (`blocked external request`). They never fail a test.
