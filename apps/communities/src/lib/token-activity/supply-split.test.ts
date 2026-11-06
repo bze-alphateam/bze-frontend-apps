@@ -2,7 +2,7 @@ import {describe, expect, it} from "vitest";
 
 import {formatShare, type SplitHolder, supplySplit, topWallets} from "./supply-split";
 
-const module = (address: string, balance: string): SplitHolder => ({address, balance, label: {kind: "module"}});
+const moduleHolder = (address: string, balance: string): SplitHolder => ({address, balance, label: {kind: "module"}});
 const wallet = (address: string, balance: string): SplitHolder => ({address, balance, label: null});
 
 // NOAD on testnet (2026-11-05), base units with 6 decimals.
@@ -10,11 +10,11 @@ const NOAD_HOLDERS: SplitHolder[] = [
     wallet("creator", "965105382489"),
     wallet("w2", "17000000000"),
     wallet("w3", "9995000000"),
-    module("rewards", "7056000000"),
-    module("dex", "964433611"),
+    moduleHolder("rewards", "7056000000"),
+    moduleHolder("dex", "964433611"),
     wallet("w6", "614317350"),
     wallet("w7", "130856550"),
-    module("burner", "14010000"),
+    moduleHolder("burner", "14010000"),
 ];
 
 const amounts = (parts: ReturnType<typeof supplySplit>) => Object.fromEntries(parts.map((part) => [part.key, part.amount.toFixed()]));
@@ -84,7 +84,7 @@ describe("supplySplit", () => {
 describe("topWallets", () => {
     it("keeps the ten biggest wallets and leaves modules and IBC escrows out", () => {
         const holders = [
-            module("rewards", "900"),
+            moduleHolder("rewards", "900"),
             {address: "escrow", balance: "800", label: {kind: "ibc_escrow"}},
             ...Array.from({length: 12}, (_, i) => wallet(`w${i}`, String(100 - i))),
         ];
