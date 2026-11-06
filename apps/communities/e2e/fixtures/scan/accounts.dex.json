@@ -1,0 +1,71 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/accounts/bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/accounts/bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+  "query": {},
+  "status": 200,
+  "body": {
+    "address": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+    "label": {
+      "name": "DEX",
+      "kind": "module"
+    },
+    "first_seen": null,
+    "last_seen_height": null,
+    "tx_count": 0,
+    "activity_count": 0,
+    "balances": [
+      {
+        "denom": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+        "amount": "458943199631",
+        "symbol": "TMS",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "964433611",
+        "symbol": "NOAD",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "186395481050",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+        "amount": "4797536939",
+        "symbol": "CTR",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "1109724497697",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "denom": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+        "amount": "585872490",
+        "symbol": "ULMN",
+        "exponent": 6
+      },
+      {
+        "denom": "ubze",
+        "amount": "420227031878",
+        "symbol": "BZE",
+        "exponent": 6
+      }
+    ],
+    "delegations": [],
+    "unbonding": [],
+    "rewards": [],
+    "total_staked": "0",
+    "total_rewards": [],
+    "live": {
+      "available": true
+    }
+  }
+}

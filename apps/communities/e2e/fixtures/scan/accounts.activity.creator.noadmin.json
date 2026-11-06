@@ -1,0 +1,228 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/accounts/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/activity?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin&limit=25",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/accounts/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/activity",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+    "limit": "25"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "time": "2026-11-05T21:08:07.299673Z",
+        "height": 4099244,
+        "tx_hash": "7FC2CF6CB23815BBDEA52752C5F2C4D38ED67F141236059EF3D72E3CB676E7C1",
+        "kind": "reward_program",
+        "category": "rewards",
+        "is_signer": true,
+        "success": true,
+        "counterparty": null,
+        "deltas": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "amount": "-1000000000",
+            "symbol": "NOAD",
+            "exponent": 6
+          },
+          {
+            "denom": "ubze",
+            "amount": "-50000002195",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ],
+        "msg_types": [
+          "/bze.rewards.MsgCreateDenomRewardSchedule"
+        ],
+        "details": null,
+        "fee": [
+          {
+            "denom": "ubze",
+            "amount": "2195",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ]
+      },
+      {
+        "time": "2026-11-04T21:15:21.347385Z",
+        "height": 4083104,
+        "tx_hash": "D8527EAA533776C92CEFFECDFF1CB3D76B750BCB458C36A352BDC7EFCA83661E",
+        "kind": "reward_program",
+        "category": "rewards",
+        "is_signer": true,
+        "success": true,
+        "counterparty": null,
+        "deltas": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "amount": "-2100000000",
+            "symbol": "NOAD",
+            "exponent": 6
+          },
+          {
+            "denom": "ubze",
+            "amount": "-50000002211",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ],
+        "msg_types": [
+          "/bze.rewards.MsgCreateDenomRewardSchedule"
+        ],
+        "details": null,
+        "fee": [
+          {
+            "denom": "ubze",
+            "amount": "2211",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ]
+      },
+      {
+        "time": "2026-11-04T21:00:11.192922Z",
+        "height": 4082933,
+        "tx_hash": "4791EE2EE8314E347E935348B9AE9AA68D2B2604C1664535C09DEFD8DF091140",
+        "kind": "reward_program",
+        "category": "rewards",
+        "is_signer": true,
+        "success": true,
+        "counterparty": null,
+        "deltas": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "amount": "-500000000",
+            "symbol": "NOAD",
+            "exponent": 6
+          },
+          {
+            "denom": "ubze",
+            "amount": "-25000001609",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ],
+        "msg_types": [
+          "/bze.rewards.MsgCreateDenomRewardSchedule"
+        ],
+        "details": null,
+        "fee": [
+          {
+            "denom": "ubze",
+            "amount": "1609",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ]
+      },
+      {
+        "time": "2026-11-02T21:35:02.363216Z",
+        "height": 4050995,
+        "tx_hash": "DF46DC491770CE77F75C2C1C013A11CFA543B710FABBDCCD683067DF7137AE33",
+        "kind": "liquidity",
+        "category": "dex",
+        "is_signer": true,
+        "success": true,
+        "counterparty": null,
+        "deltas": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "amount": "-1000000000",
+            "symbol": "NOAD",
+            "exponent": 6
+          },
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+            "amount": "-208539717",
+            "symbol": "TUSDC",
+            "exponent": 6
+          },
+          {
+            "denom": "ubze",
+            "amount": "-2366",
+            "symbol": "BZE",
+            "exponent": 6
+          },
+          {
+            "denom": "ulp/5A5BDA370AB071543FC6FFCD0F1EA65A92F591CBEA0A29B7E5AB85B7253DB1CE",
+            "amount": "456520935973734",
+            "symbol": "NOAD/TUSDC LP",
+            "exponent": 12
+          }
+        ],
+        "msg_types": [
+          "/bze.tradebin.MsgAddLiquidity"
+        ],
+        "details": null,
+        "fee": [
+          {
+            "denom": "ubze",
+            "amount": "2366",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ]
+      },
+      {
+        "time": "2026-11-02T21:31:27.962182Z",
+        "height": 4050955,
+        "tx_hash": "AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+        "kind": "reward_claim",
+        "category": "rewards",
+        "is_signer": true,
+        "success": true,
+        "counterparty": null,
+        "deltas": [
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+            "amount": "56000000",
+            "symbol": "NOAD",
+            "exponent": 6
+          },
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+            "amount": "99999999",
+            "symbol": "TUSDC",
+            "exponent": 6
+          },
+          {
+            "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+            "amount": "75999999",
+            "symbol": "VDL",
+            "exponent": 6
+          },
+          {
+            "denom": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+            "amount": "5000000",
+            "symbol": "ULMN",
+            "exponent": 6
+          },
+          {
+            "denom": "ubze",
+            "amount": "-3902",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ],
+        "msg_types": [
+          "/bze.rewards.MsgClaimStakingRewards",
+          "/bze.rewards.MsgClaimDenomRewards"
+        ],
+        "details": null,
+        "fee": [
+          {
+            "denom": "ubze",
+            "amount": "3902",
+            "symbol": "BZE",
+            "exponent": 6
+          }
+        ]
+      }
+    ],
+    "next_cursor": null
+  },
+  "trimmed": "items cut to the newest 5 (the canvas rows, each with its txs/ fixture); next_cursor set to null"
+}

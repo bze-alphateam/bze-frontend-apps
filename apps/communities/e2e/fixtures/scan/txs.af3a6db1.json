@@ -1,0 +1,194 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/txs/AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/txs/AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+  "query": {},
+  "status": 200,
+  "body": {
+    "height": 4050955,
+    "tx_index": 0,
+    "hash": "AF3A6DB10DC61691F09E3115868FD38D3CB4E26A8D7E35A6F56DE26610028900",
+    "time": "2026-11-02T21:31:27.962182Z",
+    "success": true,
+    "msg_count": 4,
+    "msg_types": [
+      "/bze.rewards.MsgClaimStakingRewards",
+      "/bze.rewards.MsgClaimDenomRewards",
+      "/bze.rewards.MsgClaimDenomRewards",
+      "/bze.rewards.MsgClaimStakingRewards"
+    ],
+    "fee": [
+      {
+        "denom": "ubze",
+        "amount": "3902"
+      }
+    ],
+    "signer": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "first_message": {
+      "type_url": "/bze.rewards.MsgClaimStakingRewards",
+      "module": "rewards",
+      "body": {
+        "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "reward_id": "000000000017"
+      }
+    },
+    "code": 0,
+    "codespace": null,
+    "error_log": null,
+    "gas_wanted": 390132,
+    "gas_used": 260156,
+    "fee_payer": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+    "signers": [
+      "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+    ],
+    "memo": "dex.getbze.com",
+    "messages": [
+      {
+        "msg_index": 0,
+        "type_url": "/bze.rewards.MsgClaimStakingRewards",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "module": "rewards",
+        "body": {
+          "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+          "reward_id": "000000000017"
+        },
+        "events": []
+      },
+      {
+        "msg_index": 1,
+        "type_url": "/bze.rewards.MsgClaimDenomRewards",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "module": "rewards",
+        "body": {
+          "denom": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+          "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+        },
+        "events": []
+      },
+      {
+        "msg_index": 2,
+        "type_url": "/bze.rewards.MsgClaimDenomRewards",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "module": "rewards",
+        "body": {
+          "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+          "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+        },
+        "events": []
+      },
+      {
+        "msg_index": 3,
+        "type_url": "/bze.rewards.MsgClaimStakingRewards",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "module": "rewards",
+        "body": {
+          "creator": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+          "reward_id": "000000000000"
+        },
+        "events": []
+      }
+    ],
+    "transfers": [
+      {
+        "seq": 0,
+        "msg_index": null,
+        "kind": "transfer",
+        "sender": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "sender_label": null,
+        "recipient": "bze17xpfvakm2amg962yls6f84z3kell8c5lda0te2",
+        "recipient_label": {
+          "name": "Fee collector",
+          "kind": "module"
+        },
+        "denom": "ubze",
+        "amount": "3902",
+        "symbol": "BZE",
+        "exponent": 6
+      },
+      {
+        "seq": 1,
+        "msg_index": 0,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "99999999",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "seq": 2,
+        "msg_index": 1,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+        "amount": "5000000",
+        "symbol": "ULMN",
+        "exponent": 6
+      },
+      {
+        "seq": 3,
+        "msg_index": 2,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "56000000",
+        "symbol": "NOAD",
+        "exponent": 6
+      },
+      {
+        "seq": 4,
+        "msg_index": 2,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "56000000",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "seq": 5,
+        "msg_index": 3,
+        "kind": "transfer",
+        "sender": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "sender_label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "recipient": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "recipient_label": null,
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "19999999",
+        "symbol": "VDL",
+        "exponent": 6
+      }
+    ],
+    "dex": null,
+    "ibc_transfers": null
+  },
+  "trimmed": "messages' events emptied"
+}
