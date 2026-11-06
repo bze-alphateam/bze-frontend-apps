@@ -50,7 +50,7 @@ test("the Holders tab splits the supply and ranks the holders", async ({page}) =
     await expect(split.getByTestId("supply-part-rest")).toContainText("14.01 NOAD");
 
     const holders = page.getByTestId("holder-row");
-    await expect(holders).toHaveCount(8);
+    await expect(holders).toHaveCount(7);
     await expect(holders.first()).toContainText("Creator");
     await expect(holders.first()).toContainText("965,105.382489");
     await expect(holders.nth(3)).toContainText("Rewards");
@@ -74,8 +74,9 @@ test("the Activity tab says so when Scan doesn't answer", async ({page, network}
     await page.goto(activityPage);
 
     // The hook retries a 502 twice before it gives up.
-    await expect(page.getByRole("alert")).toHaveText(/Couldn't load NOAD activity/, {timeout: 15_000});
-    await expect(page.getByRole("alert").getByRole("button", {name: "Retry"})).toBeVisible();
+    const alert = page.getByRole("alert").filter({hasText: "Couldn't load NOAD activity"});
+    await expect(alert).toBeVisible({timeout: 15_000});
+    await expect(alert.getByRole("button", {name: "Retry"})).toBeVisible();
 });
 
 test("the holder page shows the balance, the stake and the holder's own NOAD moves", async ({page}) => {

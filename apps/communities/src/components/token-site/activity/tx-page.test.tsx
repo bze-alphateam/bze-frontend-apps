@@ -104,8 +104,11 @@ describe("TxPage", () => {
         const tx = vi.fn().mockRejectedValue(new ScanError("BZE Scan unreachable", 0));
         renderWithScan(<TxPage/>, scanClient({tx}));
 
-        await userEvent.click(await screen.findByRole("button", {name: "Retry"}));
-        expect(screen.getByText(/Couldn.t load this transaction/)).toBeInTheDocument();
-        await waitFor(() => expect(tx.mock.calls.length).toBeGreaterThan(3));
+        expect(await screen.findByText(/Couldn.t load this transaction/)).toBeInTheDocument();
+        const calls = tx.mock.calls.length;
+        await userEvent.click(screen.getByRole("button", {name: "Retry"}));
+        // Retry refetches; with nothing loaded yet the page shows its skeleton, then the error again.
+        await waitFor(() => expect(tx.mock.calls.length).toBeGreaterThan(calls));
+        expect(await screen.findByText(/Couldn.t load this transaction/)).toBeInTheDocument();
     });
 });
