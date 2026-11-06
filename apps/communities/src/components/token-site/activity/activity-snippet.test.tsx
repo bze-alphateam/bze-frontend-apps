@@ -57,7 +57,7 @@ function client(over: Partial<ScanClient> = {}): ScanClient {
 }
 
 function renderSnippet(scan: ScanClient) {
-    const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+    const queryClient = new QueryClient({defaultOptions: {queries: {retry: false, retryDelay: 0}}});
 
     return render(<ActivitySnippet asset={ASSET}/>, {
         wrapper: ({children}: { children: ReactNode }) => (
@@ -110,9 +110,12 @@ describe("ActivitySnippet", () => {
     });
 
     it("reports Scan not answering and loads again on Retry", async () => {
-        const tokenTransfers = vi.fn()
-            .mockRejectedValueOnce(new ScanError("BZE Scan unreachable", 0))
-            .mockResolvedValue({items: [burn(1)], next_cursor: null});
+        // Scan stays down (through the hook's own retries) until the test brings it back.
+        let down = true;
+        const tokenTransfers = vi.fn(async () => {
+            if (down) throw new ScanError("BZE Scan unreachable", 0);
+            return {items: [burn(1)], next_cursor: null};
+        });
         renderSnippet(client({tokenTransfers, token: vi.fn(async () => { throw new ScanError("down", 502); })}));
 
         const alert = await screen.findByRole("alert");
@@ -120,6 +123,7 @@ describe("ActivitySnippet", () => {
         // Without the token's stats the lead line is left out.
         expect(screen.queryByText(/in the last 24 hours/)).not.toBeInTheDocument();
 
+        down = false;
         await userEvent.setup().click(within(alert).getByRole("button", {name: "Retry"}));
         expect(await screen.findAllByRole("listitem")).toHaveLength(1);
     });

@@ -46,7 +46,7 @@ function mockClient(pages: (ScanPage<ScanTransfer> | Error)[]): ScanClient & { t
 }
 
 function render(client: ScanClient, rows = 5) {
-    const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+    const queryClient = new QueryClient({defaultOptions: {queries: {retry: false, retryDelay: 0}}});
     const wrapper = ({children}: { children: React.ReactNode }) => (
         <QueryClientProvider client={queryClient}>
             <ScanClientProvider client={client}>{children}</ScanClientProvider>
