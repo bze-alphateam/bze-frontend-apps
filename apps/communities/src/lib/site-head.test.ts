@@ -1,11 +1,12 @@
 import {afterEach, describe, it, expect, vi} from "vitest";
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
-import {fileURLToPath} from "node:url";
+import {join} from "node:path";
 
 import {isTestnetBuild, SITE_OG_IMAGE, SITE_OG_IMAGE_VERSION} from "./site-head";
 
-const OG_IMAGE_FILE = fileURLToPath(new URL("../../public/images/og-image.png", import.meta.url));
+// Vitest runs from the app's directory (jsdom gives no file URL for import.meta.url).
+const OG_IMAGE_FILE = join(process.cwd(), "public/images/og-image.png");
 
 describe("SITE_OG_IMAGE", () => {
     // Share previews are cached by image URL: an image swapped under an unchanged URL keeps

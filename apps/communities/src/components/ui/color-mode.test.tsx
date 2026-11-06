@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {act} from "react";
 import {renderToString} from "react-dom/server";
 import {hydrateRoot, type Root} from "react-dom/client";
@@ -10,8 +10,15 @@ function ModeProbe() {
     return <span data-testid="probe" data-mode={colorMode ?? "unknown"}/>;
 }
 
-// jsdom has no matchMedia, so the system-preference listener stays off here.
 const app = <ColorModeProvider enableSystem={false}><ModeProbe/></ColorModeProvider>;
+
+// next-themes listens to the system preference even with enableSystem off; jsdom has no matchMedia.
+beforeEach(() => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+        matches: false, media: query, onchange: null,
+        addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    }));
+});
 
 let root: Root | undefined;
 afterEach(() => {
@@ -19,6 +26,7 @@ afterEach(() => {
     root = undefined;
     document.body.innerHTML = "";
     localStorage.clear();
+    vi.unstubAllGlobals();
 });
 
 describe("useColorMode", () => {
