@@ -1,0 +1,71 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/accounts/bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/accounts/bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+  "query": {},
+  "status": 200,
+  "body": {
+    "address": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+    "label": {
+      "name": "Rewards",
+      "kind": "module"
+    },
+    "first_seen": null,
+    "last_seen_height": null,
+    "tx_count": 0,
+    "activity_count": 0,
+    "balances": [
+      {
+        "denom": "factory/bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263/utms",
+        "amount": "100000000",
+        "symbol": "TMS",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "amount": "7056000000",
+        "symbol": "NOAD",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "amount": "2700000004",
+        "symbol": "TUSDC",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/uctr",
+        "amount": "14961000001",
+        "symbol": "CTR",
+        "exponent": 6
+      },
+      {
+        "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum",
+        "amount": "1839000003",
+        "symbol": "VDL",
+        "exponent": 6
+      },
+      {
+        "denom": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7",
+        "amount": "244698522",
+        "symbol": "ULMN",
+        "exponent": 6
+      },
+      {
+        "denom": "ulp_factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd_ubze",
+        "amount": "202919743405626043",
+        "symbol": "TUSDC/BZE LP",
+        "exponent": 12
+      }
+    ],
+    "delegations": [],
+    "unbonding": [],
+    "rewards": [],
+    "total_staked": "0",
+    "total_rewards": [],
+    "live": {
+      "available": true
+    }
+  }
+}

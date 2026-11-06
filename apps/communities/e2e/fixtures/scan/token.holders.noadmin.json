@@ -1,0 +1,81 @@
+{
+  "source": "https://testnet-explorer.getbze.com/api/v1/token/holders?denom=factory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Fnoadmin&limit=25",
+  "recorded": "2026-11-06",
+  "method": "GET",
+  "path": "/api/scan/token/holders",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+    "limit": "25"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "rank": 1,
+        "address": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+        "label": null,
+        "balance": "965105382489",
+        "share_pct": "96.42568"
+      },
+      {
+        "rank": 2,
+        "address": "bze13gf8772w8ru0rk7yul9dzdd2ecprg736tyvst2",
+        "label": null,
+        "balance": "17000000000",
+        "share_pct": "1.69851"
+      },
+      {
+        "rank": 3,
+        "address": "bze1n60y35rwk0zh03vxvwfzvxe0lxmhx6ek6r5nx5",
+        "label": null,
+        "balance": "9995000000",
+        "share_pct": "0.99862"
+      },
+      {
+        "rank": 4,
+        "address": "bze1245yut9zht8q4hz39sd0lzqtzkuw5us58k46ua",
+        "label": {
+          "name": "Rewards",
+          "kind": "module"
+        },
+        "balance": "7056000000",
+        "share_pct": "0.70498"
+      },
+      {
+        "rank": 5,
+        "address": "bze18mhtjwczlzqqgvw84uz8lrdv4hqule3jp8allp",
+        "label": {
+          "name": "DEX",
+          "kind": "module"
+        },
+        "balance": "964433611",
+        "share_pct": "0.09636"
+      },
+      {
+        "rank": 6,
+        "address": "bze142cru2h3xa6p4kajyg7wzcuweq0p72puyar263",
+        "label": null,
+        "balance": "614317350",
+        "share_pct": "0.06138"
+      },
+      {
+        "rank": 7,
+        "address": "bze1fkj4ngtlqcxs83q360fl6f8jn8phzh4y6y3y5k",
+        "label": null,
+        "balance": "130856550",
+        "share_pct": "0.01307"
+      },
+      {
+        "rank": 8,
+        "address": "bze1v7uw4xhrcv0vk7qp8jf9lu3hm5d8uu5yjp5qun",
+        "label": {
+          "name": "Burner",
+          "kind": "module"
+        },
+        "balance": "14010000",
+        "share_pct": "0.00140"
+      }
+    ],
+    "next_cursor": null
+  }
+}
