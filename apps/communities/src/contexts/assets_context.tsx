@@ -56,7 +56,11 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
     const [marketsMap, setMarketsMap] = useState<Map<string, Market>>(new Map());
     const [marketsDataMap, setMarketsDataMap] = useState<Map<string, MarketData>>(new Map());
     const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(new Map());
-    const [isLoading, setIsLoading] = useState(true);
+    // The chain data and the wallet balances load apart: one shared flag let a fast balances read
+    // report "loaded" while the assets map was still empty, and token pages flashed "not found".
+    const [isLoadingAssets, setIsLoadingAssets] = useState(true);
+    const [isLoadingBalances, setIsLoadingBalances] = useState(false);
+    const isLoading = isLoadingAssets || isLoadingBalances;
     const [ibcChains, setIbcChains] = useState<IBCData[]>([]);
     const [usdPricesMap, setUsdPricesMap] = useState<Map<string, BigNumber>>(new Map());
     const [isLoadingPrices, setIsLoadingPrices] = useState(true);
@@ -255,7 +259,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
 
     useEffect(() => {
         const init = async () => {
-            setIsLoading(true)
+            setIsLoadingAssets(true)
             const [assets, markets, tickers, epochsInfo, pools, nextBurn, burnHistory] = await Promise.all([
                 getChainAssets(),
                 getMarkets(),
@@ -272,7 +276,7 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
             doUpdateLiquidityPools(pools, tickers)
             doUpdateNextBurn(nextBurn)
             doUpdateBurnHistory(burnHistory.burnedCoins)
-            setIsLoading(false)
+            setIsLoadingAssets(false)
         }
         init();
         //eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,10 +298,10 @@ export function AssetsProvider({ children }: AssetsProviderProps) {
                 doUpdateBalances([]);
                 return
             }
-            setIsLoading(true)
+            setIsLoadingBalances(true)
             const balances = await getAddressBalances(address);
             doUpdateBalances(balances);
-            setIsLoading(false);
+            setIsLoadingBalances(false);
         }
         fetchBalances()
     }, [address, doUpdateBalances]);

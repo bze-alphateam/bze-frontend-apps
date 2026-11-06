@@ -2,6 +2,7 @@
 // come from the `--ts-*` variables of `TokenSiteTheme`; no Chakra palettes.
 export {TokenSiteTheme, useTokenSiteTheme} from "./theme";
 export {TsButton, TsLinkButton, type TsButtonVariant} from "./button";
+export {TsLink} from "./link";
 export {TsCard, TsFeaturedCard, TsInset, TsNotice, TsSection, TsStat, TsTag} from "./surfaces";
 export {TsChip, TsField, TsSegmented, TsTable} from "./controls";
 export {TsDialog, TsDrawer} from "./overlay";

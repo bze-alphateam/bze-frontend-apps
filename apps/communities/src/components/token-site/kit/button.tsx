@@ -3,6 +3,7 @@
 import React from "react";
 import {chakra, type HTMLChakraProps} from "@chakra-ui/react";
 
+import {TsLink} from "./link";
 import {ts, tsMix} from "./tokens";
 
 export type TsButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -46,7 +47,7 @@ export function TsButton({variant = "primary", ...props}: ButtonProps) {
     return <chakra.button type="button" data-variant={variant} {...base} {...VARIANTS[variant]} {...props}/>;
 }
 
-/** A link that looks like a `TsButton` (in-page anchors such as "Stake T"). */
+/** A link that looks like a `TsButton` (in-page anchors such as "Stake T", or another page of the site). */
 export function TsLinkButton({variant = "primary", ...props}: LinkProps) {
-    return <chakra.a data-variant={variant} {...base} {...VARIANTS[variant]} {...props}/>;
+    return <TsLink data-variant={variant} {...base} {...VARIANTS[variant]} {...props}/>;
 }

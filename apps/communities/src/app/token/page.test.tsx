@@ -85,7 +85,8 @@ function renderPage(denom: string, asset: Asset | null = makeAsset(denom)) {
 }
 
 const site = () => screen.getByTestId("token-site");
-const siteVar = (name: string) => site().style.getPropertyValue(name);
+/** A `--ts-*` value of one palette: both sit on the element, CSS picks one by the colour-mode class. */
+const siteVar = (name: string, mode: "light" | "dark" = "light") => site().style.getPropertyValue(name.replace(/^--ts-/, `--ts-${mode}-`));
 
 beforeEach(() => {
     colorMode = "light";
@@ -110,14 +111,15 @@ describe("Communities token page", () => {
         expect(siteVar("--ts-font")).toBe("'Roboto', system-ui, sans-serif");
     });
 
-    it("uses the kit's dark palette in dark mode", async () => {
+    it("carries the kit's dark palette next to the light one", async () => {
         colorMode = "dark";
         getDenomBranding.mockResolvedValue(KIT);
         renderPage("factory/bze1owner/udark");
 
         await screen.findByRole("heading", {level: 1, name: "Brand Token"});
-        expect(siteVar("--ts-bg")).toBe("#0A0A0A");
-        expect(siteVar("--ts-pri")).toBe("#ABCDEF");
+        expect(siteVar("--ts-bg", "dark")).toBe("#0A0A0A");
+        expect(siteVar("--ts-pri", "dark")).toBe("#ABCDEF");
+        expect(siteVar("--ts-bg", "light")).toBe("#FFFFFF");
     });
 
     it("draws a token without a kit in the default kit", async () => {
@@ -265,6 +267,17 @@ describe("Communities token page", () => {
         renderPage("factory/bze1owner/umissing", null);
 
         expect(screen.getByRole("heading", {name: "Token not found"})).toBeInTheDocument();
+    });
+
+    it("keeps showing a known token while the wallet balances reload", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        useDenomParam.mockReturnValue("factory/bze1owner/ureload");
+        useAsset.mockReturnValue({asset: makeAsset("factory/bze1owner/ureload"), isLoading: true});
+        render(<ChakraProvider value={defaultSystem}><TokenPage/></ChakraProvider>);
+
+        expect(await screen.findByRole("heading", {level: 1, name: "Brand Token"})).toBeInTheDocument();
+        expect(screen.queryByTestId("token-site-loading")).not.toBeInTheDocument();
+        expect(screen.queryByText("Token not found")).not.toBeInTheDocument();
     });
 
     it("shows the loading state while the assets load", () => {

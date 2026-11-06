@@ -6,7 +6,7 @@ import {Box, chakra, Flex} from "@chakra-ui/react";
 import {shortHash} from "@/lib/token-activity";
 import {describeTokenEvent, eventWhen, type TokenEventContext, type TokenHistoryEvent} from "@/lib/token-activity/token-events";
 
-import {TsCard, ts, tsMix} from "../kit";
+import {TsCard, TsLink, ts, tsMix} from "../kit";
 
 interface HistoryTimelineProps {
     events: TokenHistoryEvent[];
@@ -53,9 +53,9 @@ export function HistoryTimeline({events, denom, context, txHref, footer}: Histor
                                 <Flex gap="6px 14px" wrap="wrap" fontSize="13px" color={ts.muted} fontVariantNumeric="tabular-nums">
                                     <span>{eventWhen(event)}</span>
                                     {event.tx_hash && (
-                                        <chakra.a href={txHref(event.tx_hash)} fontFamily="'JetBrains Mono', monospace" color={ts.muted} textDecoration="none" aria-label={`Transaction ${event.tx_hash}`}>
+                                        <TsLink href={txHref(event.tx_hash)} fontFamily="'JetBrains Mono', monospace" color={ts.muted} textDecoration="none" aria-label={`Transaction ${event.tx_hash}`}>
                                             {shortHash(event.tx_hash)}
-                                        </chakra.a>
+                                        </TsLink>
                                     )}
                                 </Flex>
                             </Flex>

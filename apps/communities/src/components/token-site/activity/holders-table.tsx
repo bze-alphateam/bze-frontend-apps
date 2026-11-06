@@ -5,7 +5,7 @@ import {Box, chakra, Grid} from "@chakra-ui/react";
 import {shortAddress} from "@/lib/token-activity";
 import {formatShare} from "@/lib/token-activity/supply-split";
 
-import {ts, tsLabel, tsMix} from "../kit";
+import {TsLink, ts, tsLabel, tsMix} from "../kit";
 import {ListCard} from "./parts";
 
 /** A holder as the snapshot lists it. */
@@ -50,7 +50,7 @@ export function HoldersTable({rows, creator, holderHref}: { rows: HolderRow[]; c
                         <chakra.span fontSize="15px" fontWeight={700} color={ts.muted} fontVariantNumeric="tabular-nums">{row.rank}</chakra.span>
                         <chakra.span display="flex" alignItems="center" gap="8px" flexWrap="wrap" minW="0">
                             {row.label?.name && (
-                                <chakra.a href={holderHref(row.address)} fontSize="15px" fontWeight={600} textDecoration="none" color={ts.fg}>{row.label.name}</chakra.a>
+                                <TsLink href={holderHref(row.address)} fontSize="15px" fontWeight={600} textDecoration="none" color={ts.fg}>{row.label.name}</TsLink>
                             )}
                             <AddressChip address={row.address} href={holderHref(row.address)}/>
                             {tag && <TagPill creator={tag.creator}>{tag.text}</TagPill>}
@@ -75,7 +75,7 @@ export function HoldersTable({rows, creator, holderHref}: { rows: HolderRow[]; c
 /** An address as a mono chip that opens its holder page inside the token site. */
 export function AddressChip({address, href}: { address: string; href: string }) {
     return (
-        <chakra.a
+        <TsLink
             href={href}
             title={address}
             fontFamily="'JetBrains Mono', monospace"
@@ -90,7 +90,7 @@ export function AddressChip({address, href}: { address: string; href: string }) 
             whiteSpace="nowrap"
         >
             {shortAddress(address)}
-        </chakra.a>
+        </TsLink>
     );
 }
 
