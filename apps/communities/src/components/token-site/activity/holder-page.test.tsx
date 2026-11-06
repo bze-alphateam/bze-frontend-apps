@@ -103,6 +103,7 @@ describe("HolderPage", () => {
         expect(rows[1]).toHaveTextContent("+1,144.31735 NOAD");
         expect(rows[1]).toHaveTextContent("Bought NOAD");
         expect(within(rows[0]).queryByText("by")).not.toBeInTheDocument();
+        expect(rows[0]).toHaveTextContent("Fee 0.003156 BZE");
     });
 
     it("lists the holder's holders pool position", async () => {

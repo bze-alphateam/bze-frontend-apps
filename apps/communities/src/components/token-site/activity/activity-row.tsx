@@ -103,8 +103,9 @@ export function ActivityRow({row, token, first, signed, hideActor}: ActivityRowP
                 <chakra.span fontSize="17px" fontWeight={700} whiteSpace="nowrap">
                     {`${signed ? signOf(row.direction) : ""}${formatUnits(row.amount, token.exponent)} ${token.symbol}`}
                 </chakra.span>
+                {/* An empty fee: someone else paid it (a holder's row it didn't sign). */}
                 {row.fee ? (
-                    <chakra.span fontSize="13px" color={ts.muted} whiteSpace="nowrap">Fee {formatCoins(row.fee)}</chakra.span>
+                    row.fee.length > 0 && <chakra.span fontSize="13px" color={ts.muted} whiteSpace="nowrap">Fee {formatCoins(row.fee)}</chakra.span>
                 ) : (
                     <Skeleton aria-label="Loading the fee" h="13px" w="96px" ml={{md: "auto"}} borderRadius="6px" bg={tsMix(ts.fg, 8)}/>
                 )}
