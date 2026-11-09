@@ -96,7 +96,9 @@ export function TsField({label, suffix, id, ...props}: TsFieldProps) {
             <chakra.label htmlFor={inputId} color={ts.muted} fontSize="13px">{label}</chakra.label>
             <Flex align="center" gap="10px">
                 <chakra.input
-                    data-hg-keep-font-size
+                    // Only the 22px default may skip the theme's 16px touch rule: a size passed by the
+                    // caller can be under 16px, and iOS Safari zooms the page on those.
+                    data-hg-keep-font-size={props.fontSize === undefined ? "" : undefined}
                     id={inputId}
                     font="inherit"
                     fontSize="22px"
