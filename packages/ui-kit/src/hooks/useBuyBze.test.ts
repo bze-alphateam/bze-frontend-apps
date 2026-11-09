@@ -12,6 +12,8 @@ const { kit, keplr, route, evm, executeSkip } = vi.hoisted(() => {
         walletName: 'keplr-extension',
         chains: {} as Record<string, { status: string; address?: string }>,
         version: 0,
+        currentChain: 'beezee',
+        setCurrentChainName: vi.fn((name: string) => { kit.currentChain = name }),
         connect: vi.fn(),
         hasSourceWallet: true,
         set(name: string, state: { status: string; address?: string }) {
@@ -53,7 +55,7 @@ vi.mock('@interchain-kit/react', async () => {
             }
             return { ...state, wallet: name === 'beezee' || kit.hasSourceWallet ? wallet : undefined }
         },
-        useWalletManager: () => ({ addChains: vi.fn() }),
+        useWalletManager: () => ({ addChains: vi.fn(), setCurrentChainName: kit.setCurrentChainName }),
     }
 })
 vi.mock('../constants/chain', async (importOriginal) => ({
@@ -125,7 +127,10 @@ describe('useBuyBze source chain connection', () => {
         kit.walletName = 'keplr-extension'
         kit.hasSourceWallet = true
         kit.chains = { beezee: connected('bze1buyer') }
+        kit.currentChain = 'beezee'
         kit.connect.mockReset().mockImplementation(async (name: string) => {
+            // Like the real store, a successful connect makes that chain the current one.
+            kit.currentChain = name
             kit.set(name, connected('osmo1buyer'))
         })
         route.current = { required_chain_addresses: ['osmosis-1', 'beezee-1'] }
@@ -245,6 +250,54 @@ describe('useBuyBze source chain connection', () => {
 
         expect(result.current.connectError).toBe('')
         expect(result.current.allChainsConnected).toBe(false)
+    })
+
+    it('puts the kit back on BeeZee as the current chain after a source connect', async () => {
+        const result = await renderWithSource(OSMOSIS)
+
+        await connectAll(result)
+
+        expect(kit.connect).toHaveBeenCalledWith('osmosis')
+        expect(kit.currentChain).toBe('beezee')
+    })
+
+    it('puts the kit back on BeeZee as the current chain when the connect throws', async () => {
+        kit.connect.mockImplementation(async (name: string) => {
+            kit.currentChain = name
+            throw new Error('wallet crashed')
+        })
+        const result = await renderWithSource(OSMOSIS)
+
+        await connectAll(result)
+
+        expect(kit.currentChain).toBe('beezee')
+        expect(result.current.allChainsConnected).toBe(false)
+        expect(result.current.connectError).not.toBe('')
+    })
+
+    it('a superseded connect does not end the newer connect, and a reset clears the spinner', async () => {
+        const finishers: Array<() => void> = []
+        kit.connect.mockImplementation((name: string) => new Promise<void>(resolve => {
+            finishers.push(() => { kit.set(name, { status: WalletState.Disconnected }); resolve() })
+        }))
+        const result = await renderWithSource(OSMOSIS)
+
+        let first: Promise<void> = Promise.resolve()
+        act(() => { first = result.current.handleConnectAll() })
+        expect(result.current.isConnecting).toBe(true)
+
+        await act(async () => { await result.current.onChainSelect(OSMOSIS) })
+        expect(result.current.isConnecting).toBe(false)
+
+        let second: Promise<void> = Promise.resolve()
+        act(() => { second = result.current.handleConnectAll() })
+        expect(result.current.isConnecting).toBe(true)
+
+        await act(async () => { finishers[0](); await first })
+        expect(result.current.isConnecting).toBe(true)
+
+        await act(async () => { finishers[1](); await second })
+        expect(result.current.isConnecting).toBe(false)
     })
 
     it('keeps the buy button disabled until the source address exists', async () => {

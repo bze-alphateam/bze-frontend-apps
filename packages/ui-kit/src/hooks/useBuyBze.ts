@@ -60,6 +60,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         connectAttempt.current += 1;
         setChainsApproved(false);
         setConnectError('');
+        setIsConnecting(false);
     }, []);
 
     // ─── Chain type detection ──────────────────────────────────────────────
@@ -215,7 +216,14 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
                     if (!sourceWallet) {
                         throw new Error(`No wallet is available to connect to ${networkName}. Connect a wallet and try again.`);
                     }
-                    await sourceWallet.connect();
+                    try {
+                        await sourceWallet.connect();
+                    } finally {
+                        // A successful connect makes the source the kit's current chain, which
+                        // is persisted and decides when the wallet counts as disconnected.
+                        // BeeZee stays the app's current chain.
+                        walletManager.setCurrentChainName(getChainName());
+                    }
                     // connect() resolves on a refusal too: the outcome is in the kit's state.
                     if (sourceWallet.walletState !== WalletState.Connected) {
                         console.error('[buy] source connect failed:', sourceWallet.errorMessage);
@@ -245,9 +253,9 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
                 setConnectError(e instanceof Error && e.message ? e.message : 'Could not connect your wallet. Please try again.');
             }
         } finally {
-            setIsConnecting(false);
+            if (attempt === connectAttempt.current) setIsConnecting(false);
         }
-    }, [isSourceEvm, selectedChain, evmWallet, keplrAllowed, sourceDisplayName, sourceAddress, sourceWallet, intermediateChainIds]);
+    }, [isSourceEvm, selectedChain, evmWallet, keplrAllowed, sourceDisplayName, sourceAddress, sourceWallet, intermediateChainIds, walletManager]);
 
     // ─── Balance fetch (Cosmos only — EVM balance fetch deferred) ──────────
     useEffect(() => {
