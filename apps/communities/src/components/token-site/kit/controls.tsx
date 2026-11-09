@@ -96,6 +96,7 @@ export function TsField({label, suffix, id, ...props}: TsFieldProps) {
             <chakra.label htmlFor={inputId} color={ts.muted} fontSize="13px">{label}</chakra.label>
             <Flex align="center" gap="10px">
                 <chakra.input
+                    data-hg-keep-font-size
                     id={inputId}
                     font="inherit"
                     fontSize="22px"
