@@ -51,18 +51,6 @@ describe("AmmRouter chain-exact outputs", () => {
         expect(route!.feesPerHop.map((fee) => fee.toFixed())).toEqual(["3000000", "598"]);
     });
 
-    it("prices a cached route with the same truncation", () => {
-        const router = createAmmRouter([bzeUsdc, usdcAtom]);
-        router.findOptimalRoute("ubze", "uatom", new BigNumber("1000000000"), 3);
-
-        const again = router.findOptimalRoute("ubze", "uatom", new BigNumber("1000000000"), 3);
-        const output = router.calculateRouteOutput([bzeUsdc, usdcAtom], ["ubze", "uusdc", "uatom"], new BigNumber("1000000000"));
-
-        expect(again!.expectedOutput.toFixed()).toBe("19872");
-        expect(output.expectedOutput.toFixed()).toBe("19872");
-        expect(output.feesPerHop.map((fee) => fee.toFixed())).toEqual(["3000000", "598"]);
-    });
-
     it("has no route when the chain would pay nothing out", () => {
         const router = createAmmRouter([bzeUsdc]);
 
@@ -72,7 +60,7 @@ describe("AmmRouter chain-exact outputs", () => {
         expect(router.findOptimalRoute("ubze", "uusdc", new BigNumber(333), 3)).toBeNull();
     });
 
-    it("drops a cached route for an input the chain would refuse", () => {
+    it("has no route for dust even right after quoting a large input on the same pools", () => {
         const router = createAmmRouter([bzeUsdc]);
         expect(router.findOptimalRoute("ubze", "uusdc", new BigNumber("1000000000"), 3)).not.toBeNull();
 
@@ -87,5 +75,44 @@ describe("AmmRouter chain-exact outputs", () => {
         // floor(1e9 * 1e9 / (5e12 + 1e9)) = floor(199960.0079…)
         expect(route!.expectedOutput.toFixed()).toBe("199960");
         expect(route!.feesPerHop.map((fee) => fee.toFixed())).toEqual(["0"]);
+    });
+});
+
+// Mainnet's reserves when the swap form showed a 43 % price impact: at small inputs the two thin
+// pools through CTL pay slightly more than the deep BZE/USDC pool, at large inputs far less.
+const deepBzeUsdc = pool("deep", "uusdc", "ubze", "2713223193", "6548411597254", "0.001");
+const thinBzeCtl = pool("thin-1", "uctl", "ubze", "2394257896228", "71632801980", "0.002");
+const thinCtlUsdc = pool("thin-2", "uctl", "uusdc", "535991826238", "6822671", "0.002");
+const liveShapedPools = [deepBzeUsdc, thinBzeCtl, thinCtlUsdc];
+
+const DIRECT = ["ubze", "uusdc"];
+const THROUGH_CTL = ["ubze", "uctl", "uusdc"];
+const ONE_BZE = new BigNumber("1000000");
+const TEN_THOUSAND_BZE = new BigNumber("10000000000");
+
+describe("AmmRouter routes each amount on its own", () => {
+    it("takes the route that pays most for the amount", () => {
+        const router = createAmmRouter(liveShapedPools);
+
+        expect(router.findOptimalRoute("ubze", "uusdc", ONE_BZE, 3)!.path).toEqual(THROUGH_CTL);
+        expect(router.findOptimalRoute("ubze", "uusdc", TEN_THOUSAND_BZE, 3)!.path).toEqual(DIRECT);
+    });
+
+    it("does not reuse a small input's route for a large one", () => {
+        const router = createAmmRouter(liveShapedPools);
+        router.findOptimalRoute("ubze", "uusdc", ONE_BZE, 3);
+
+        const route = router.findOptimalRoute("ubze", "uusdc", TEN_THOUSAND_BZE, 3);
+
+        expect(route!.path).toEqual(DIRECT);
+        expect(route!.expectedOutput.toFixed()).toBe("4132881");
+        expect(route!.priceImpact.toNumber()).toBeLessThan(1);
+    });
+
+    it("does not reuse a large input's route for a small one", () => {
+        const router = createAmmRouter(liveShapedPools);
+        router.findOptimalRoute("ubze", "uusdc", TEN_THOUSAND_BZE, 3);
+
+        expect(router.findOptimalRoute("ubze", "uusdc", ONE_BZE, 3)!.path).toEqual(THROUGH_CTL);
     });
 });

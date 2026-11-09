@@ -164,7 +164,7 @@ describe("quoteExactOutput", () => {
 
         expect(quoteExactOutput(router, "a", "b", new BigNumber(1000))).toBeNull();
         expect(findOptimalRoute.mock.calls.length).toBeLessThan(10);
-        expect(findOptimalRoute).toHaveBeenCalledWith("a", "b", expect.anything(), SWAP_MAX_HOPS, true);
+        expect(findOptimalRoute).toHaveBeenCalledWith("a", "b", expect.anything(), SWAP_MAX_HOPS);
     });
 });
 
@@ -185,6 +185,51 @@ describe("quoteSwap", () => {
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "ubze", side: "from", amount: new BigNumber(1) })).toBeNull();
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "from", amount: new BigNumber(0) })).toBeNull();
         expect(quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "to", amount: new BigNumber(NaN) })).toBeNull();
+    });
+});
+
+describe("quotes do not depend on what was quoted before", () => {
+    // Mainnet's reserves when the form showed a 43 % price impact: the thin route through CTL
+    // wins for small amounts and is far worse for large ones.
+    const pools = [
+        pool("deep", "uusdc", "ubze", "2713223193", "6548411597254", "0.001"),
+        pool("thin-1", "uctl", "ubze", "2394257896228", "71632801980", "0.002"),
+        pool("thin-2", "uctl", "uusdc", "535991826238", "6822671", "0.002"),
+    ];
+    const typedAmounts = ["0.01", "0.1", "1", "10", "100", "1000", "10000"];
+    const requests = {
+        "selling BZE": { fromDenom: "ubze", toDenom: "uusdc", side: "from" },
+        "buying BZE": { fromDenom: "uusdc", toDenom: "ubze", side: "to" },
+    } as const;
+    const summary = (quote: ReturnType<typeof quoteSwap>) =>
+        quote && { amountIn: quote.amountIn.toFixed(), amountOut: quote.amountOut.toFixed(), path: quote.route.path };
+
+    describe.each(Object.entries(requests))("%s", (_name, request) => {
+        it.each([
+            ["typing digit by digit", typedAmounts],
+            ["deleting digit by digit", [...typedAmounts].reverse()],
+        ])("gives every amount the quote of a fresh form, %s", (_order, amounts) => {
+            const router = createAmmRouter(pools);
+
+            for (const typed of amounts) {
+                const amount = new BigNumber(typed).shiftedBy(6);
+                expect(summary(quoteSwap(router, { ...request, amount })))
+                    .toEqual(summary(quoteSwap(createAmmRouter(pools), { ...request, amount })));
+            }
+        });
+    });
+
+    it("prices both directions of a flip alike, after a small quote on the same pools", () => {
+        const router = createAmmRouter(pools);
+        const bze = new BigNumber(10_000).shiftedBy(6);
+        quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "from", amount: new BigNumber(1).shiftedBy(6) });
+
+        const bought = quoteSwap(router, { fromDenom: "uusdc", toDenom: "ubze", side: "to", amount: bze })!;
+        const sold = quoteSwap(router, { fromDenom: "ubze", toDenom: "uusdc", side: "from", amount: bze })!;
+
+        // Buying back and forth only loses two pool fees and a little depth.
+        expect(sold.amountOut.dividedBy(bought.amountIn).toNumber()).toBeGreaterThan(0.99);
+        expect(sold.amountOut.toFixed()).toBe("4132881");
     });
 });
 

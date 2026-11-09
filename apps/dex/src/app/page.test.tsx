@@ -313,6 +313,23 @@ describe("Swap page with a governance-halted denom", () => {
 });
 
 describe("Swap page quoting", () => {
+    it("quotes a typed amount on its own best route, not the route of an earlier keystroke", () => {
+        // Mainnet's reserves when this form showed 10,000 BZE -> 2.407 USDC at a 43 % price impact:
+        // the route through CTL wins while the amount is small and is far worse at 10,000 BZE.
+        setupBzeUsdc([
+            { ...pool("deep", "uusdc", "ubze", "2713223193", "6548411597254"), fee: "0.001" },
+            { ...pool("thin-1", "uctl", "ubze", "2394257896228", "71632801980"), fee: "0.002" },
+            { ...pool("thin-2", "uctl", "uusdc", "535991826238", "6822671"), fee: "0.002" },
+        ]);
+        renderSwap();
+
+        for (const typed of ["1", "10", "100", "1000", "10000"]) {
+            fireEvent.change(fromInput(), { target: { value: typed } });
+        }
+
+        expect(toInput().value).toBe("4.132881");
+    });
+
     it("quotes the bought amount from the typed sold amount", () => {
         setupBzeUsdc();
         renderSwap();

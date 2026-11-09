@@ -20,7 +20,6 @@ export interface SwapRouter {
         toDenom: string,
         amountIn: BigNumber,
         maxHops: number,
-        useCache?: boolean,
     ): SwapRouteResult | null;
 }
 
@@ -87,7 +86,7 @@ export function quoteExactInput(
     toDenom: string,
     amountIn: BigNumber,
 ): SwapQuote | null {
-    const route = router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS, true);
+    const route = router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS);
     return route ? { route, amountIn, amountOut: route.expectedOutput } : null;
 }
 
@@ -111,7 +110,7 @@ export function quoteExactOutput(
     // input is dust the chain would refuse (a hop with no fee or no whole-unit output), which a
     // larger input may still cure.
     const outputFor = (amountIn: BigNumber): BigNumber =>
-        router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS, true)?.expectedOutput ?? new BigNumber(0);
+        router.findOptimalRoute(fromDenom, toDenom, amountIn, SWAP_MAX_HOPS)?.expectedOutput ?? new BigNumber(0);
 
     // Bracket: `low` buys less than the target, `high` at least the target.
     let low = new BigNumber(0);
@@ -143,6 +142,6 @@ export function quoteExactOutput(
         }
     }
 
-    const route = router.findOptimalRoute(fromDenom, toDenom, high, SWAP_MAX_HOPS, true);
+    const route = router.findOptimalRoute(fromDenom, toDenom, high, SWAP_MAX_HOPS);
     return route ? { route, amountIn: high, amountOut: route.expectedOutput } : null;
 }

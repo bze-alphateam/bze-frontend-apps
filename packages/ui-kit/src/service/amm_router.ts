@@ -3,14 +3,8 @@ import { LiquidityPoolSDKType } from "@bze/bzejs/bze/tradebin/store";
 import { toBigNumber } from "../utils/amount";
 import {SwapRouteResult} from "../types/liquidity_pool";
 
-interface RouteCache {
-    result: SwapRouteResult;
-    timestamp: number;
-}
-
 export class AmmRouter {
     private static instance: AmmRouter;
-    private routeCache = new Map<string, RouteCache>();
     private routeMap: Map<string, Map<string, LiquidityPoolSDKType>> = new Map();
 
     private constructor() {}
@@ -35,7 +29,6 @@ export class AmmRouter {
 
     updatePools(pools: LiquidityPoolSDKType[]): void {
         this.routeMap = this.mapLiquidityPoolRoutes(pools);
-        this.clearCache();
     }
 
     private mapLiquidityPoolRoutes(
@@ -56,94 +49,6 @@ export class AmmRouter {
         }
 
         return routeMap;
-    }
-
-    findOptimalRoute(
-        fromDenom: string,
-        toDenom: string,
-        amountIn: BigNumber,
-        maxHops: number,
-        useCache: boolean = true
-    ): SwapRouteResult | null {
-        const cacheKey = this.getCacheKey(fromDenom, toDenom, maxHops);
-
-        if (useCache) {
-            const cached = this.routeCache.get(cacheKey);
-            if (cached) {
-                const output = this.calculateRouteOutput(cached.result.pools, cached.result.path, amountIn);
-                // Priced like the search: a route the chain would refuse for this input is no route.
-                if (output.expectedOutput.lte(0)) {
-                    return null;
-                }
-                return { ...cached.result, ...output };
-            }
-        }
-
-        const result = this.findOptimalSwapRoute(fromDenom, toDenom, amountIn, maxHops);
-
-        if (result) {
-            this.routeCache.set(cacheKey, {
-                result,
-                timestamp: Date.now()
-            });
-        }
-
-        return result;
-    }
-
-    calculateRouteOutput(
-        pools: LiquidityPoolSDKType[],
-        path: string[],
-        amountIn: BigNumber
-    ): Omit<SwapRouteResult, 'route' | 'path' | 'pools'> {
-        let currentAmount = amountIn;
-        const fees: BigNumber[] = [];
-
-        for (let i = 0; i < pools.length; i++) {
-            const pool = pools[i];
-            const currentDenom = path[i];
-            const isBaseToQuote = pool.base === currentDenom;
-
-            const { amountOut, fee } = this.calculateSwapOutput(pool, currentAmount, isBaseToQuote);
-            fees.push(fee);
-            currentAmount = amountOut;
-        }
-
-        const expectedOutput = currentAmount;
-
-        const theoretical = this.calculateTheoreticalOutputs(pools, path, amountIn);
-
-        const totalFees = theoretical.withoutFees.minus(theoretical.withFees);
-        const priceImpact = theoretical.withFees.isZero()
-            ? toBigNumber(0)
-            : theoretical.withFees.minus(expectedOutput).dividedBy(theoretical.withFees).multipliedBy(100);
-
-        return {
-            expectedOutput,
-            priceImpact,
-            totalFees,
-            feesPerHop: fees
-        };
-    }
-
-    clearCache(filter?: (key: string, cache: RouteCache) => boolean): void {
-        if (!filter) {
-            this.routeCache.clear();
-            return;
-        }
-
-        for (const [key, cache] of this.routeCache.entries()) {
-            if (filter(key, cache)) {
-                this.routeCache.delete(key);
-            }
-        }
-    }
-
-    getCacheStats() {
-        return {
-            size: this.routeCache.size,
-            keys: Array.from(this.routeCache.keys())
-        };
     }
 
     private calculateTheoreticalOutputs(
@@ -206,7 +111,12 @@ export class AmmRouter {
         return { amountOut, fee: feeAmount };
     }
 
-    private findOptimalSwapRoute(
+    /**
+     * The best route for exactly this input. Which route is best depends on the amount: a thin
+     * pool can beat a deep one on price for a small input and lose badly for a large one, so a
+     * route must never be reused for another amount.
+     */
+    findOptimalRoute(
         fromDenom: string,
         toDenom: string,
         amountIn: BigNumber,
@@ -311,10 +221,6 @@ export class AmmRouter {
             totalFees,
             feesPerHop: bestRoute.fees
         };
-    }
-
-    private getCacheKey(fromDenom: string, toDenom: string, maxHops: number): string {
-        return `${fromDenom}_${toDenom}_${maxHops}`;
     }
 }
 
