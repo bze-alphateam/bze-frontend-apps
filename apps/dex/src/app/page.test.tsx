@@ -43,6 +43,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         isNative: true,
         isLoading: false,
     };
+    // One reference across renders, like the real hook's callbacks: the page's router is memoised
+    // on them, so a new function per render would hide anything the router keeps between quotes.
+    const isDenomHalted = (denom: string) => mocks.halted.has(denom);
+    const isPoolHalted = (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote);
     return {
         ...actual,
         useAssets: () => ({
@@ -62,8 +66,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useLiquidityPools: () => ({ pools: mocks.pools, liquidAssets: mocks.liquidAssets, isLoading: false }),
         useHaltedDenoms: () => ({
             haltedDenoms: mocks.halted,
-            isDenomHalted: (denom: string) => mocks.halted.has(denom),
-            isPoolHalted: (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote),
+            isDenomHalted,
+            isPoolHalted,
             isMarketHalted: () => false,
             isLoading: false,
         }),
