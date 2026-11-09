@@ -133,6 +133,8 @@ export const SlippageRow = ({label, value, onChange, open, onToggle, disabled}: 
                         value={value}
                         onChange={(e) => onChange(sanitizeNumberInput(e.target.value))}
                         w="70px"
+                        // Touch devices draw fields at 16px, which needs more room for the placeholder.
+                        css={{'@media (hover: none) and (pointer: coarse)': {width: '84px'}}}
                         h="28px"
                         px="8px"
                         borderRadius="8px"

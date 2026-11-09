@@ -274,6 +274,7 @@ const SwapSide = ({label, balance, selector, input, children}: {
 /** The big amount field of a swap side. */
 const AmountInput = (props: ComponentProps<typeof chakra.input>) => (
     <chakra.input
+        data-hg-keep-font-size
         type="text"
         inputMode="decimal"
         autoComplete="off"
@@ -1167,6 +1168,8 @@ export default function SwapPage() {
                                 size="xs"
                                 h="30px"
                                 w="90px"
+                                // Touch devices draw fields at 16px, which needs more room for the placeholder.
+                                css={{ '@media (hover: none) and (pointer: coarse)': { width: '104px' } }}
                                 borderRadius="8px"
                                 bg="hg.card"
                                 type="text"

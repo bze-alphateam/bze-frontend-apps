@@ -138,6 +138,14 @@ function hiveGlowConfig(app: HiveGlowAppKey) {
                 position: 'relative',
                 zIndex: 'popover',
             },
+            // iOS Safari zooms the page when a focused field's text is under 16px and never zooms back,
+            // so touch devices get 16px fields. `!important` because this layer sits below the recipes and
+            // style props. Fields already above 16px (the big amount inputs) opt out with the data attribute.
+            'input:not([data-hg-keep-font-size]), textarea, select': {
+                '@media (hover: none) and (pointer: coarse)': {
+                    fontSize: '16px !important',
+                },
+            },
         },
         theme: {
             keyframes: {

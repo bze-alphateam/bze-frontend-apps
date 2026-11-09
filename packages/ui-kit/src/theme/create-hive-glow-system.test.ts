@@ -13,6 +13,16 @@ const modes = (app: HiveGlowAppKey, name: string) => {
     return { dark: _dark, light: _light };
 };
 
+const TOUCH_MEDIA = '@media (hover: none) and (pointer: coarse)';
+
+/** Every declaration of a compiled CSS object, with the at-rules and selectors it is nested in. */
+const compiledRules = (node: object, path: string[] = []): { path: string[]; prop: string; value: string }[] =>
+    Object.entries(node).flatMap(([key, value]) =>
+        typeof value === 'object' && value !== null
+            ? compiledRules(value, [...path, key])
+            : [{ path, prop: key, value: String(value) }],
+    );
+
 describe('createHiveGlowSystem', () => {
     it.each(APPS)('%s: the app palette uses its button colour, button text and accent on dark', (app) => {
         const a = HIVE_GLOW_APPS[app];
@@ -89,6 +99,19 @@ describe('createHiveGlowSystem', () => {
         expect(root?.position).toBe('relative');
         expect(z(root?.zIndex ?? '')).toBeGreaterThan(z('modal'));
         expect(z(root?.zIndex ?? '')).toBeGreaterThan(z('overlay'));
+    });
+
+    it.each(APPS)('%s: fields use 16px text on touch devices only, so iOS Safari does not zoom on focus', (app) => {
+        const rule = compiledRules(createHiveGlowSystem(app).getGlobalCss()).find(
+            ({ path, prop, value }) =>
+                /font-?size/i.test(prop) && /^16px\s*!important$/.test(value) && path.some((p) => p === TOUCH_MEDIA),
+        );
+
+        expect(rule, 'the 16px touch rule is missing from the compiled global CSS').toBeDefined();
+        const selector = rule!.path.filter((p) => p !== TOUCH_MEDIA && !p.startsWith('@')).join(' ');
+        expect(selector).toContain('input:not([data-hg-keep-font-size])');
+        expect(selector).toMatch(/\btextarea\b/);
+        expect(selector).toMatch(/\bselect\b/);
     });
 
     it('keeps the l1/l2/l3 radii and adds the Hive Glow radii', () => {
