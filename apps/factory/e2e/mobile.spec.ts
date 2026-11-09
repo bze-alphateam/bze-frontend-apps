@@ -52,6 +52,15 @@ for (const route of ROUTES) {
         // The page can still be settling right after its content appears; a lasting overflow fails.
         const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         await expect.poll(overflow, {message: "horizontal page scroll", timeout: 5000}).toBeLessThanOrEqual(0);
+
+        // iOS Safari zooms the page when a focused field's text is under 16px.
+        const smallFields = await page.evaluate(() =>
+            Array.from(document.querySelectorAll<HTMLElement>("input, textarea, select"))
+                .map((field) => ({field, size: parseFloat(getComputedStyle(field).fontSize)}))
+                .filter(({size}) => size < 16)
+                .map(({field, size}) => `${field.tagName} ${field.getAttribute("aria-label") ?? field.id}: ${size}px`),
+        );
+        expect(smallFields, "fields under 16px zoom the page on iOS").toEqual([]);
     });
 }
 

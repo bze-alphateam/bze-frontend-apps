@@ -244,6 +244,7 @@ function GetBzeForm({ticker, onDone}: { ticker: string; onDone: () => void }) {
                             <TsButton variant="primary" minH="52px" disabled={buy.isConnecting} onClick={buy.handleConnectAll}>
                                 {buy.isConnecting ? "Connecting…" : "Approve connections"}
                             </TsButton>
+                            {buy.connectError && <Problem>{buy.connectError}</Problem>}
                         </>
                     )}
                 </Flex>
