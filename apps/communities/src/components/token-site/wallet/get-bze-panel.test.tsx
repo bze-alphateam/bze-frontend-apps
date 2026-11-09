@@ -64,6 +64,18 @@ describe("GetBzePanel", () => {
         expect(hoverBackground(screen.getByRole("button", {name: "Osmosis"}))).toBe("var(--ts-hover)");
     });
 
+    it("shows why the wallet connection failed under the approve button", () => {
+        useBuyBze.mockReturnValue({
+            skipChains: [], filteredChains: [], assetBalances: new Map(), isLoadingChains: false,
+            needsConnect: true, isSourceEvm: false, requiredChainNames: ["Osmosis"],
+            connectError: "Could not connect your wallet to Osmosis.",
+        });
+        render(<GetBzePanel onBack={vi.fn()}/>, {wrapper});
+
+        expect(screen.getByRole("button", {name: "Approve connections"})).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Could not connect your wallet to Osmosis.");
+    });
+
     it("starts the Skip flow for Keplr", () => {
         render(<GetBzePanel onBack={vi.fn()}/>, {wrapper});
 
