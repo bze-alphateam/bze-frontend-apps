@@ -43,6 +43,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         isNative: true,
         isLoading: false,
     };
+    // One reference across renders, like the real hook's callbacks: the page's router is memoised
+    // on them, so a new function per render would hide anything the router keeps between quotes.
+    const isDenomHalted = (denom: string) => mocks.halted.has(denom);
+    const isPoolHalted = (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote);
     return {
         ...actual,
         useAssets: () => ({
@@ -62,8 +66,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useLiquidityPools: () => ({ pools: mocks.pools, liquidAssets: mocks.liquidAssets, isLoading: false }),
         useHaltedDenoms: () => ({
             haltedDenoms: mocks.halted,
-            isDenomHalted: (denom: string) => mocks.halted.has(denom),
-            isPoolHalted: (pool: { base: string; quote: string }) => mocks.halted.has(pool.base) || mocks.halted.has(pool.quote),
+            isDenomHalted,
+            isPoolHalted,
             isMarketHalted: () => false,
             isLoading: false,
         }),
@@ -313,6 +317,23 @@ describe("Swap page with a governance-halted denom", () => {
 });
 
 describe("Swap page quoting", () => {
+    it("quotes a typed amount on its own best route, not the route of an earlier keystroke", () => {
+        // Mainnet's reserves when this form showed 10,000 BZE -> 2.407 USDC at a 43 % price impact:
+        // the route through CTL wins while the amount is small and is far worse at 10,000 BZE.
+        setupBzeUsdc([
+            { ...pool("deep", "uusdc", "ubze", "2713223193", "6548411597254"), fee: "0.001" },
+            { ...pool("thin-1", "uctl", "ubze", "2394257896228", "71632801980"), fee: "0.002" },
+            { ...pool("thin-2", "uctl", "uusdc", "535991826238", "6822671"), fee: "0.002" },
+        ]);
+        renderSwap();
+
+        for (const typed of ["1", "10", "100", "1000", "10000"]) {
+            fireEvent.change(fromInput(), { target: { value: typed } });
+        }
+
+        expect(toInput().value).toBe("4.132881");
+    });
+
     it("quotes the bought amount from the typed sold amount", () => {
         setupBzeUsdc();
         renderSwap();
