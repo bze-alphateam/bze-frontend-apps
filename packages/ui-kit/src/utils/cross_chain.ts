@@ -1,7 +1,21 @@
 import type {
+    SkipChain,
     SkipMsg,
 } from "../types/cross_chain";
-import {getChainByChainId} from "../constants/chain";
+import {getChainByChainId, getWalletChainsNames} from "../constants/chain";
+
+/**
+ * Builds a lookup from a Skip chain to its wallet kit name, undefined when the kit does not have
+ * that chain. The kit's chains are fixed when ChainProvider mounts, and `useChain` throws for any
+ * other, so only a chain this finds may be handed to `useChain` or `useSDKTx`.
+ */
+export const createRegisteredChainLookup = () => {
+    const registered = new Set(getWalletChainsNames().map(c => c.chainName.toLowerCase()));
+    return (chain: Pick<SkipChain, 'chain_id' | 'chain_name'>): string | undefined => {
+        const name = getChainByChainId(chain.chain_id)?.chainName ?? chain.chain_name ?? '';
+        return registered.has(name.toLowerCase()) ? name : undefined;
+    };
+};
 
 /**
  * Format a duration in seconds to a human-readable string.

@@ -4,14 +4,15 @@ import {useEffect, useMemo, useState} from "react";
 import {skipGetChains} from "../query/skip";
 import type {SkipChain} from "../types/cross_chain";
 import {useEvmWalletState} from "../evm/context";
+import {createRegisteredChainLookup} from "../utils/cross_chain";
 
 /**
  * A Skip chain enriched with a `canSign` flag indicating whether the
- * current app can sign transactions on it (chain registered with
- * ChainProvider + Cosmos type).
+ * current app can sign transactions on it: a Cosmos chain registered with
+ * ChainProvider, or an EVM chain when EvmProvider is in the tree.
  */
 export interface SkipChainWithStatus extends SkipChain {
-    /** True when the chain is Cosmos AND registered with ChainProvider — we can useChain() on it. */
+    /** True when the user can pay from this chain. For Cosmos, that means useChain() works on it. */
     canSign: boolean;
 }
 
@@ -26,8 +27,8 @@ export interface UseSkipChainsResult {
  * filters out testnets, and annotates each with `canSign`:
  *
  *   • Cosmos chains in `getWalletChainsNames()` → `canSign: true`
- *   • EVM chains / unregistered Cosmos chains → `canSign: false`
- *     (shown in the picker with a "Coming soon" badge, not selectable)
+ *   • EVM chains → `canSign: true` when EvmProvider is in the tree
+ *   • Anything else → `canSign: false` (shown in the picker as "Soon", not selectable)
  *
  * The chain list excludes BZE itself (it's the destination, not a source).
  */
@@ -63,18 +64,16 @@ export function useSkipChains(): UseSkipChainsResult {
     const chains = useMemo<SkipChainWithStatus[]>(() => {
         if (allChains.length === 0) return [];
 
+        const registeredChainName = createRegisteredChainLookup();
         return allChains
             .filter(c => !c.is_testnet)
             // Exclude BZE itself — it's the destination
             .filter(c => c.chain_id !== 'beezee-1')
             .map(c => ({
                 ...c,
-                canSign:
-                    // Cosmos: always selectable — chains are dynamically registered
-                    // with ChainProvider when the user picks one in the Buy BZE form
-                    c.chain_type === 'cosmos'
-                    // EVM: selectable when EvmProvider is in the tree
-                    || (c.chain_type === 'evm' && evmAvailable),
+                canSign: c.chain_type === 'cosmos'
+                    ? registeredChainName(c) !== undefined
+                    : c.chain_type === 'evm' && evmAvailable,
             }))
             // Signable chains first, then alphabetical by name
             .sort((a, b) => {

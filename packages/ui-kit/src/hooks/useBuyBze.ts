@@ -11,7 +11,7 @@ import {useEvmWalletState} from '../evm/context';
 import {useEvmWallet} from './useEvmWallet';
 import {sanitizeNumberInput} from '../utils/number';
 import {prettyAmount, uAmountToBigNumberAmount} from '../utils/amount';
-import {getChainName, getChainByChainId, getWalletChainsNames, getChains, getAssetLists} from '../constants/chain';
+import {getChainName, getChainByChainId} from '../constants/chain';
 import {getChainRestURL} from '../constants/endpoints';
 import {BZE_SKIP_CHAIN_ID} from '../constants/cross_chain';
 import {skipChainIdToEvmChainId} from '../utils/evm';
@@ -19,6 +19,7 @@ import type {UseSkipTxTrackerReturn} from './useSkipTxTracker';
 import {useToast} from './useToast';
 import type {SkipAsset} from '../types/cross_chain';
 import {isBeePocketWallet, walletNameOf} from '../utils/wallet_sign_mode';
+import {createRegisteredChainLookup} from '../utils/cross_chain';
 
 /** SkipAsset enriched with optional balance data from the source chain. */
 export interface SkipAssetWithBalance extends SkipAsset {
@@ -75,44 +76,16 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
     );
 
     // ─── Cosmos wallet ─────────────────────────────────────────────────────
-    // Chains are dynamically registered with ChainProvider when the user selects
-    // them in the Buy BZE picker. Only BZE's IBC counterparties are pre-registered
-    // at mount; all other Cosmos chains (e.g. Injective, Stride) get added on demand
-    // via walletManager.addChains() when selected. This avoids loading 100+ chains
-    // at startup (which causes Keplr errors for broken/unknown chains) while still
-    // letting useChain() work for any chain the user actually picks.
+    // Only chains registered when ChainProvider mounted can be used here. The kit's addChains does
+    // not reach the store behind useChain, which throws for any chain it does not know.
     const walletManager = useWalletManager();
-    const [registeredChainNames, setRegisteredChainNames] = useState(() =>
-        new Set(getWalletChainsNames().map((c: any) => (c.chainName || '').toLowerCase()))
-    );
+    const registeredChainName = useMemo(() => createRegisteredChainLookup(), []);
 
-    // Dynamically register a chain with ChainProvider when user selects it
-    const ensureChainRegistered = useCallback(async (chainName: string) => {
-        if (registeredChainNames.has(chainName.toLowerCase())) return;
-        const allChains = getChains() as any[];
-        const chain = allChains.find((c: any) => (c.chainName || '').toLowerCase() === chainName.toLowerCase());
-        if (!chain) return;
-        const allAssetLists = getAssetLists() as any[];
-        const assetList = allAssetLists.find((a: any) => (a.chainName || '').toLowerCase() === chainName.toLowerCase());
-        try {
-            await (walletManager as any).addChains(
-                [chain],
-                assetList ? [assetList] : [],
-                {signing: () => ({preferredSignType: 'amino'})},
-            );
-            setRegisteredChainNames(prev => new Set([...prev, chainName.toLowerCase()]));
-        } catch (e) {
-            console.error('[buy] failed to register chain dynamically:', chainName, e);
-        }
-    }, [walletManager]);
-
-    // The selected Cosmos source, once the wallet kit knows it.
+    // The selected Cosmos source, when the wallet kit knows it.
     const cosmosSourceChainName = useMemo(() => {
         if (!selectedChain || !selectedChain.canSign || isSourceEvm) return undefined;
-        const registryChain = getChainByChainId(selectedChain.chain_id);
-        const name = registryChain?.chainName ?? selectedChain.chain_name ?? '';
-        return registeredChainNames.has(name.toLowerCase()) ? name : undefined;
-    }, [selectedChain, isSourceEvm, registeredChainNames]);
+        return registeredChainName(selectedChain);
+    }, [selectedChain, isSourceEvm, registeredChainName]);
 
     // useChain needs a registered chain, so BeeZee stands in until there is a Cosmos source. Its
     // address and wallet are never the source's: both stay undefined until the kit is connected
@@ -397,19 +370,12 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
     }, [rawRoute, selectedChain, selectedAsset, amount, routePreview, executeSkipTransfer, getAddressForChainId, addTransaction, toast, onDone, resetConnection]);
 
     // ─── Callbacks ─────────────────────────────────────────────────────────
-    const onChainSelect = useCallback(async (chain: SkipChainWithStatus) => {
+    const onChainSelect = useCallback((chain: SkipChainWithStatus) => {
         if (!chain.canSign) return;
-        // For Cosmos chains not yet registered with ChainProvider, register
-        // them now so useChain/useSDKTx can work when the user proceeds to sign.
-        if (chain.chain_type === 'cosmos') {
-            const registryChain = getChainByChainId(chain.chain_id);
-            const name = registryChain?.chainName ?? chain.chain_name ?? '';
-            if (name) await ensureChainRegistered(name);
-        }
         setSelectedChain(chain); setSelectedAsset(undefined);
         setAmount(''); setAmountError(''); setChainSearch(''); setAssetSearch('');
         setAssetBalances(new Map()); resetConnection();
-    }, [ensureChainRegistered, resetConnection]);
+    }, [resetConnection]);
 
     const onAssetSelect = useCallback((asset: SkipAsset) => {
         setSelectedAsset(asset); setAmount(''); setAmountError('');

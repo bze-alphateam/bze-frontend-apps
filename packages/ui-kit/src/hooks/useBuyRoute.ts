@@ -55,7 +55,10 @@ export function useBuyRoute(
             dest_asset_chain_id: BZE_SKIP_CHAIN_ID,
             amount_in: uAmount,
             allow_swaps: true,
-            allow_multi_tx: true,  // Allows multi-tx routes (e.g. ERC20 approve + bridge for EVM). Safe for all chain types.
+            // A later step would need a signature on another chain after the funds have left the
+            // wallet, and the transfer cannot do that yet. An ERC20 approval is part of the one
+            // EVM transaction, so it is still allowed here.
+            allow_multi_tx: false,
         };
         const route = await skipGetRoute(routeRequest);
 
@@ -65,7 +68,7 @@ export function useBuyRoute(
         if (!route) {
             setRoutePreview(undefined);
             setRawRoute(undefined);
-            setError('We couldn\u2019t find a way to swap this asset into BZE. Try a different asset or amount.');
+            setError('We couldn\u2019t find a single-transaction route into BZE for this. Try a different asset, amount or network.');
             setIsLoading(false);
             return;
         }

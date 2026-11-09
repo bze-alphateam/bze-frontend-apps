@@ -93,8 +93,7 @@ export const getWalletChainsNames = () => {
     // from chain-registry. These are known-good chains that Keplr supports.
     // We do NOT register ALL chains — many obscure/testnet chains in the
     // registry would cause Keplr errors ("no modular chain info for X").
-    // For Buy BZE (Skip), chains outside this list are handled via direct
-    // Keplr calls (keplr.enable + keplr.getKey) without needing ChainProvider.
+    // Buy BZE (Skip) can only use a Cosmos source from this list.
     if (isCrossChainEnabled()) {
         for (const name of getBzeIbcCounterparties()) {
             if (isChainDenied(name)) continue
