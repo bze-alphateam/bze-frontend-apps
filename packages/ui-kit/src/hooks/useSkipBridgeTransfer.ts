@@ -2,7 +2,8 @@
 
 /**
  * Skip-routed transfer orchestrator. Handles both Cosmos and EVM signing
- * paths, including multi-tx routes (ERC20 approve + bridge).
+ * paths. Every Cosmos transaction is signed on the one chain the hook is
+ * given, so a route can only have further steps if they are EVM ones.
  *
  * Reusable from any context — the Buy BZE form is the primary consumer,
  * but future features (USDC deposit via Skip, etc.) can call the same hook.
@@ -15,7 +16,7 @@ import {useToast} from "./useToast";
 import {skipGetMsgs} from "../query/skip";
 import {convertSkipMsgToEncodeObject} from "../utils/cross_chain";
 import {getChainName} from "../constants/chain";
-import type {SkipRouteResponse} from "../types/cross_chain";
+import type {SkipRouteResponse, SkipTx} from "../types/cross_chain";
 
 interface UseSkipBridgeTransferReturn {
     executeSkipTransfer: (
@@ -25,6 +26,13 @@ interface UseSkipBridgeTransferReturn {
     isExecuting: boolean;
     progressMessage: string;
 }
+
+/** Skip puts EVM data on `tx.evm_tx` (not inside `msgs[]`). */
+const evmTxOf = (skipTx: any) => (skipTx.msgs ?? skipTx.cosmos_tx?.msgs)?.[0]?.evm_tx ?? skipTx.evm_tx;
+
+/** Whether every step can be signed here: no Solana, and a Cosmos transaction only as the first step. */
+const canSignAllSteps = (txs: SkipTx[]) =>
+    txs.every((skipTx, index) => !(skipTx as any).svm_tx && (index === 0 || Boolean(evmTxOf(skipTx))));
 
 export function useSkipBridgeTransfer(signingChainName?: string): UseSkipBridgeTransferReturn {
     const {tx} = useSDKTx(signingChainName || getChainName());
@@ -72,6 +80,13 @@ export function useSkipBridgeTransfer(signingChainName?: string): UseSkipBridgeT
                 return {success: false, error: "Failed to build transfer messages."};
             }
 
+            // Checked before the first signature: stopping halfway would strand the funds.
+            if (!canSignAllSteps(msgsResponse.txs)) {
+                const error = "This route needs a step we can't sign yet. Nothing was sent.";
+                toast.error("Transfer failed", error);
+                return {success: false, error};
+            }
+
             const totalTxs = msgsResponse.txs.length;
             let lastTxHash: string | undefined;
             let lastChainId: string | undefined;
@@ -81,12 +96,9 @@ export function useSkipBridgeTransfer(signingChainName?: string): UseSkipBridgeT
                 const skipTx = msgsResponse.txs[txIdx];
                 const stepLabel = totalTxs > 1 ? `Step ${txIdx + 1}/${totalTxs}: ` : '';
 
-                // Check if this is an EVM transaction — Skip puts EVM data on
-                // `tx.evm_tx` (not inside `msgs[]`), and `tx.chain_id` may be
-                // absent for EVM txs (the chain_id lives on evm_tx instead).
+                // `tx.chain_id` may be absent for EVM txs (the chain_id lives on evm_tx instead).
                 const txMsgs = skipTx.msgs ?? (skipTx as any).cosmos_tx?.msgs;
-                const firstMsg = txMsgs?.[0];
-                const evmTx = firstMsg?.evm_tx ?? (skipTx as any).evm_tx;
+                const evmTx = evmTxOf(skipTx);
                 const isEvm = !!evmTx;
 
                 // Resolve chain_id: tx-level for Cosmos, evm_tx-level for EVM

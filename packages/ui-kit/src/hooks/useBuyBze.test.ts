@@ -15,6 +15,7 @@ const { kit, keplr, route, evm, executeSkip } = vi.hoisted(() => {
         currentChain: 'beezee',
         setCurrentChainName: vi.fn((name: string) => { kit.currentChain = name }),
         connect: vi.fn(),
+        addChains: vi.fn(),
         hasSourceWallet: true,
         set(name: string, state: { status: string; address?: string }) {
             kit.chains[name] = state
@@ -45,6 +46,8 @@ vi.mock('@interchain-kit/react', async () => {
     const { useSyncExternalStore } = await import('react')
     return {
         useChain: (name: string) => {
+            // Like the real store, which knows only the chains it was built with.
+            if (name !== 'beezee' && name !== 'osmosis') throw new Error(`Chain ${name} not found`)
             useSyncExternalStore(kit.subscribe, () => kit.version)
             const state = kit.chains[name] ?? { status: WalletState.Disconnected }
             const wallet = {
@@ -55,15 +58,15 @@ vi.mock('@interchain-kit/react', async () => {
             }
             return { ...state, wallet: name === 'beezee' || kit.hasSourceWallet ? wallet : undefined }
         },
-        useWalletManager: () => ({ addChains: vi.fn(), setCurrentChainName: kit.setCurrentChainName }),
+        useWalletManager: () => ({ addChains: kit.addChains, setCurrentChainName: kit.setCurrentChainName }),
     }
 })
 vi.mock('../constants/chain', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../constants/chain')>()),
     getChainName: () => 'beezee',
     getWalletChainsNames: () => [{ chainName: 'beezee' }, { chainName: 'osmosis' }],
-    // Nothing to add at runtime: a chain outside the list above stays unregistered.
-    getChains: () => [],
+    // In the registry but not among the kit's chains above.
+    getChains: () => [{ chainName: 'freshchain' }],
     getAssetLists: () => [],
     getChainByChainId: (chainId: string) => (
         { 'osmosis-1': { chainName: 'osmosis' }, 'beezee-1': { chainName: 'beezee' } } as Record<string, { chainName: string }>
@@ -314,6 +317,16 @@ describe('useBuyBze source chain connection', () => {
 
         expect(result.current.canExecute).toBe(false)
         expect(result.current.needsConnect).toBe(true)
+    })
+
+    it('does not crash or touch the kit for a source the kit was not built with', async () => {
+        kit.addChains.mockClear()
+
+        const result = await renderWithSource(cosmosChain('fresh-1', 'freshchain'))
+
+        expect(kit.addChains).not.toHaveBeenCalled()
+        expect(result.current.selectedChain?.chain_id).toBe('fresh-1')
+        expect(result.current.allChainsConnected).toBe(false)
     })
 
     it('never uses the BeeZee address for a source the kit does not know yet', async () => {
