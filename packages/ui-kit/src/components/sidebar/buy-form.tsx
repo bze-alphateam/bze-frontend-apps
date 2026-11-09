@@ -45,7 +45,7 @@ export const BuyForm = ({onClose, addTransaction}: BuyFormProps) => {
         amount, amountError, onAmountChange, setMaxAmount, assetBalances, isLoadingBalances,
         routePreview, rawRoute, isLoadingRoute, routeError, feeDisplay,
         isSourceEvm, needsConnect, requiredChainNames, allChainsConnected,
-        isConnecting, handleConnectAll, connectEvm, evmState, evmWallet,
+        isConnecting, connectError, handleConnectAll, connectEvm, evmState, evmWallet,
         canExecute, handleExecute, isExecuting, progressMessage,
     } = useBuyBze({onDone: onClose, addTransaction});
 
@@ -237,6 +237,7 @@ export const BuyForm = ({onClose, addTransaction}: BuyFormProps) => {
                                     onClick={handleConnectAll} loading={isConnecting} loadingText="Connecting...">
                                 Approve connections
                             </Button>
+                            {connectError && <ErrorText>{connectError}</ErrorText>}
                         </>
                     )}
                 </DrawerInset>

@@ -1,7 +1,8 @@
 'use client'
 
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useChain, useWalletManager} from '@interchain-kit/react';
+import {WalletState} from '@interchain-kit/core';
 import {useSkipChains, type SkipChainWithStatus} from './useSkipChains';
 import {useSkipAssets} from './useSkipAssets';
 import {useBuyRoute} from './useBuyRoute';
@@ -47,11 +48,24 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
     const [assetSearch, setAssetSearch] = useState('');
     const [assetBalances, setAssetBalances] = useState<Map<string, string>>(new Map());
     const [isLoadingBalances, setIsLoadingBalances] = useState(false);
-    const [allChainsConnected, setAllChainsConnected] = useState(false);
+    // The EVM wallet or the intermediate chains said yes. A Cosmos source also needs its address
+    // in the wallet kit: see `allChainsConnected`.
+    const [chainsApproved, setChainsApproved] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [connectError, setConnectError] = useState('');
+    // Bumped by every reset, so a connect still waiting on the wallet cannot touch the new selection.
+    const connectAttempt = useRef(0);
+
+    const resetConnection = useCallback(() => {
+        connectAttempt.current += 1;
+        setChainsApproved(false);
+        setConnectError('');
+        setIsConnecting(false);
+    }, []);
 
     // ─── Chain type detection ──────────────────────────────────────────────
     const isSourceEvm = selectedChain?.chain_type === 'evm';
+    const sourceDisplayName = selectedChain?.pretty_name || selectedChain?.chain_name || '';
 
     // ─── Data hooks ────────────────────────────────────────────────────────
     const {chains: skipChains, isLoading: isLoadingChains, error: chainsError} = useSkipChains();
@@ -92,18 +106,30 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         }
     }, [walletManager]);
 
-    const sourceChainName = useMemo(() => {
-        if (!selectedChain || !selectedChain.canSign || isSourceEvm) return getChainName();
+    // The selected Cosmos source, once the wallet kit knows it.
+    const cosmosSourceChainName = useMemo(() => {
+        if (!selectedChain || !selectedChain.canSign || isSourceEvm) return undefined;
         const registryChain = getChainByChainId(selectedChain.chain_id);
         const name = registryChain?.chainName ?? selectedChain.chain_name ?? '';
-        return registeredChainNames.has(name.toLowerCase()) ? name : getChainName();
+        return registeredChainNames.has(name.toLowerCase()) ? name : undefined;
     }, [selectedChain, isSourceEvm, registeredChainNames]);
 
-    const {address: sourceAddress} = useChain(sourceChainName);
+    // useChain needs a registered chain, so BeeZee stands in until there is a Cosmos source. Its
+    // address and wallet are never the source's: both stay undefined until the kit is connected
+    // to that chain (a failed connect leaves the previous account in the kit's state).
+    const sourceChainName = cosmosSourceChainName ?? getChainName();
+    const sourceChain = useChain(sourceChainName);
+    const sourceAddress = cosmosSourceChainName && sourceChain.status === WalletState.Connected
+        ? sourceChain.address
+        : undefined;
+    const sourceWallet = cosmosSourceChainName ? sourceChain.wallet : undefined;
     const bzeChain = useChain(getChainName());
-    // The Cosmos source and intermediate chains are reached through Keplr directly. BeePocket
-    // serves BeeZee only, so with it connected Keplr is never asked (EVM sources still work).
+    // A Cosmos source is reached through the wallet kit and intermediate chains through Keplr
+    // directly. BeePocket serves BeeZee only, so with it connected neither is ever asked (EVM
+    // sources still work).
     const keplrAllowed = !isBeePocketWallet(walletNameOf(bzeChain.wallet));
+    const isSourceReady = keplrAllowed && Boolean(sourceAddress);
+    const allChainsConnected = chainsApproved && (isSourceEvm || isSourceReady);
 
     // ─── EVM wallet ──────────────────────────────────────────────────────
     // Both hooks are safe to call without EvmProvider — they return inert
@@ -124,41 +150,52 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         });
     }, [requiredChainIds]);
 
+    // The chains between the source and BeeZee, whose addresses come from Keplr.
+    const intermediateChainIds = useMemo(() => {
+        return requiredChainIds.filter(chainId =>
+            skipChainIdToEvmChainId(chainId) === undefined
+            && chainId !== selectedChain?.chain_id
+            && chainId !== BZE_SKIP_CHAIN_ID
+            && getChainByChainId(chainId)?.chainName !== getChainName(),
+        );
+    }, [requiredChainIds, selectedChain]);
+
     // ─── Auto-detect existing connections ──────────────────────────────────
     useEffect(() => {
         if (!rawRoute?.required_chain_addresses?.length) return;
-        if (allChainsConnected) return;
+        if (chainsApproved) return;
 
         // For EVM source: check if EVM wallet is connected
         if (isSourceEvm) {
-            if (evmState.isConnected) setAllChainsConnected(true);
+            if (evmState.isConnected) setChainsApproved(true);
             return;
         }
 
-        // For Cosmos source: check Keplr keys
-        if (!keplrAllowed) return;
+        // For Cosmos source: the wallet kit must have the account already. While a connect is
+        // running, or after one failed, the wallet is not asked again behind the user's back.
+        if (!isSourceReady || isConnecting || connectError) return;
         let cancelled = false;
         (async () => {
-            const keplr = (window as any).keplr;
-            if (!keplr) return;
             try {
-                for (const chainId of rawRoute.required_chain_addresses) {
-                    // Skip EVM chain IDs in the required list (intermediate chains
-                    // on Cosmos routes are always Cosmos)
-                    if (skipChainIdToEvmChainId(chainId) !== undefined) continue;
+                const keplr = (window as any).keplr;
+                if (intermediateChainIds.length > 0 && !keplr) return;
+                for (const chainId of intermediateChainIds) {
                     const key = await keplr.getKey(chainId);
                     if (!key?.bech32Address) return;
                 }
-                if (!cancelled) setAllChainsConnected(true);
+                if (!cancelled) setChainsApproved(true);
             } catch {
                 // Not all connected
             }
         })();
         return () => { cancelled = true; };
-    }, [rawRoute, allChainsConnected, isSourceEvm, evmState.isConnected, keplrAllowed]);
+    }, [rawRoute, chainsApproved, isSourceEvm, evmState.isConnected, isSourceReady, isConnecting, connectError, intermediateChainIds]);
 
     // ─── Connect handler (Cosmos + EVM) ────────────────────────────────────
     const handleConnectAll = useCallback(async () => {
+        connectAttempt.current += 1;
+        const attempt = connectAttempt.current;
+        setConnectError('');
         setIsConnecting(true);
         try {
             if (isSourceEvm) {
@@ -172,22 +209,53 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
                 }
             } else {
                 if (!keplrAllowed) throw new Error('BeePocket supports BeeZee only');
-                // Cosmos: enable all required chains via Keplr
-                const keplr = (window as any).keplr;
-                if (keplr) {
-                    for (const chainId of requiredChainIds) {
-                        if (skipChainIdToEvmChainId(chainId) !== undefined) continue;
-                        await keplr.enable(chainId);
+                const networkName = sourceDisplayName || 'this network';
+                // Cosmos source: through the wallet kit, which fills useChain's address. The
+                // wallet shows its approval prompt if it has no access yet.
+                if (!sourceAddress) {
+                    if (!sourceWallet) {
+                        throw new Error(`No wallet is available to connect to ${networkName}. Connect a wallet and try again.`);
+                    }
+                    try {
+                        await sourceWallet.connect();
+                    } finally {
+                        // A successful connect makes the source the kit's current chain, which
+                        // is persisted and decides when the wallet counts as disconnected.
+                        // BeeZee stays the app's current chain.
+                        walletManager.setCurrentChainName(getChainName());
+                    }
+                    // connect() resolves on a refusal too: the outcome is in the kit's state.
+                    if (sourceWallet.walletState !== WalletState.Connected) {
+                        console.error('[buy] source connect failed:', sourceWallet.errorMessage);
+                        throw new Error(`Could not connect your wallet to ${networkName}. Approve the request in your wallet and try again.`);
+                    }
+                }
+                // Intermediate chains: via Keplr
+                if (intermediateChainIds.length > 0) {
+                    const keplr = (window as any).keplr;
+                    if (!keplr) {
+                        throw new Error('This route passes through other networks and needs Keplr. Try another asset or network.');
+                    }
+                    try {
+                        for (const chainId of intermediateChainIds) {
+                            await keplr.enable(chainId);
+                        }
+                    } catch (e) {
+                        console.error('[buy] intermediate chain connect failed:', e);
+                        throw new Error('Your wallet did not approve every network on this route. Approve the request and try again.');
                     }
                 }
             }
-            setAllChainsConnected(true);
+            if (attempt === connectAttempt.current) setChainsApproved(true);
         } catch (e) {
             console.error('[buy] connect failed:', e);
+            if (attempt === connectAttempt.current) {
+                setConnectError(e instanceof Error && e.message ? e.message : 'Could not connect your wallet. Please try again.');
+            }
         } finally {
-            setIsConnecting(false);
+            if (attempt === connectAttempt.current) setIsConnecting(false);
         }
-    }, [isSourceEvm, requiredChainIds, selectedChain, evmWallet, evmState, keplrAllowed]);
+    }, [isSourceEvm, selectedChain, evmWallet, keplrAllowed, sourceDisplayName, sourceAddress, sourceWallet, intermediateChainIds, walletManager]);
 
     // ─── Balance fetch (Cosmos only — EVM balance fetch deferred) ──────────
     useEffect(() => {
@@ -321,12 +389,12 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
             // the pending transaction in the balances view.
             setAmount(''); setSelectedAsset(undefined); setSelectedChain(undefined);
             setChainSearch(''); setAssetSearch(''); setAssetBalances(new Map());
-            setAllChainsConnected(false);
+            resetConnection();
             onDone?.();
         } else if (result.error) {
             setAmountError(result.error);
         }
-    }, [rawRoute, selectedChain, selectedAsset, amount, routePreview, executeSkipTransfer, getAddressForChainId, addTransaction, toast, onDone]);
+    }, [rawRoute, selectedChain, selectedAsset, amount, routePreview, executeSkipTransfer, getAddressForChainId, addTransaction, toast, onDone, resetConnection]);
 
     // ─── Callbacks ─────────────────────────────────────────────────────────
     const onChainSelect = useCallback(async (chain: SkipChainWithStatus) => {
@@ -340,13 +408,13 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         }
         setSelectedChain(chain); setSelectedAsset(undefined);
         setAmount(''); setAmountError(''); setChainSearch(''); setAssetSearch('');
-        setAssetBalances(new Map()); setAllChainsConnected(false);
-    }, [ensureChainRegistered]);
+        setAssetBalances(new Map()); resetConnection();
+    }, [ensureChainRegistered, resetConnection]);
 
     const onAssetSelect = useCallback((asset: SkipAsset) => {
         setSelectedAsset(asset); setAmount(''); setAmountError('');
-        setAssetSearch(''); setAllChainsConnected(false);
-    }, []);
+        setAssetSearch(''); resetConnection();
+    }, [resetConnection]);
 
     const onAmountChange = useCallback((value: string) => {
         setAmount(sanitizeNumberInput(value)); setAmountError('');
@@ -361,8 +429,6 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         setAmount(uAmountToBigNumberAmount(raw, selectedAsset.decimals).toString());
         setAmountError('');
     }, [selectedAsset, assetBalances]);
-
-    const sourceDisplayName = selectedChain?.pretty_name || selectedChain?.chain_name || '';
 
     const feeDisplay = useMemo(() => {
         if (!routePreview || routePreview.fees.length === 0) return undefined;
@@ -383,20 +449,20 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
     const clearChain = useCallback(() => {
         setSelectedChain(undefined); setSelectedAsset(undefined);
         setAmount(''); setAmountError(''); setAssetBalances(new Map());
-        setAllChainsConnected(false);
-    }, []);
+        resetConnection();
+    }, [resetConnection]);
 
     const clearAsset = useCallback(() => {
         setSelectedAsset(undefined); setAmount(''); setAmountError('');
-        setAllChainsConnected(false);
-    }, []);
+        resetConnection();
+    }, [resetConnection]);
 
     const connectEvm = useCallback(async (kind: 'injected' | 'walletconnect') => {
         setIsConnecting(true);
         try {
             if (kind === 'injected') await evmWallet.connectInjected();
             else await evmWallet.connectWalletConnect();
-            setAllChainsConnected(true);
+            setChainsApproved(true);
         } catch {
             // The wallet's own UI reports the refusal.
         } finally {
@@ -416,7 +482,7 @@ export function useBuyBze({onDone, addTransaction}: UseBuyBzeOptions = {}) {
         routePreview, rawRoute, isLoadingRoute, routeError, feeDisplay,
         // Connections
         isSourceEvm, needsConnect: Boolean(needsConnect), requiredChainNames, allChainsConnected,
-        isConnecting, handleConnectAll, connectEvm, evmState, evmWallet,
+        isConnecting, connectError, handleConnectAll, connectEvm, evmState, evmWallet,
         // Transfer
         canExecute: Boolean(canExecute), handleExecute, isExecuting, progressMessage,
     };
