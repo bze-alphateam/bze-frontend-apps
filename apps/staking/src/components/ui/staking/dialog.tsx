@@ -91,6 +91,7 @@ export const AmountField = ({value, onChange, aside, ticker, disabled, warning, 
         </Flex>
         <Box position="relative">
             <Input
+                data-hg-keep-font-size
                 ref={inputRef}
                 aria-label="Amount"
                 placeholder="0.00"

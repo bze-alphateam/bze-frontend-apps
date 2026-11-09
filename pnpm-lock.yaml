@@ -56,8 +56,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -84,7 +84,7 @@ importers:
         version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@next/third-parties':
         specifier: ^16.0.6
-        version: 16.2.9(next@16.4.1(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        version: 16.2.9(next@16.4.5(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
@@ -98,8 +98,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       lightweight-charts:
         specifier: ^5.0.9
         version: 5.2.0
@@ -107,8 +107,8 @@ importers:
         specifier: ^10.0.3
         version: 10.2.5
       next:
-        specifier: 16.4.1
-        version: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -183,8 +183,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -222,11 +222,11 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       next:
-        specifier: 16.4.1
-        version: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -298,8 +298,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -329,7 +329,7 @@ importers:
         version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@next/third-parties':
         specifier: ^16.0.6
-        version: 16.2.9(next@16.4.1(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
+        version: 16.2.9(next@16.4.5(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@tanstack/react-query':
         specifier: ^5.96.2
         version: 5.96.2(react@19.2.7)
@@ -343,8 +343,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       interchainjs:
         specifier: ^1.21.0
         version: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -355,8 +355,8 @@ importers:
         specifier: ^10.0.3
         version: 10.2.5
       next:
-        specifier: 16.4.1
-        version: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -431,8 +431,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -470,11 +470,11 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       next:
-        specifier: 16.4.1
-        version: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -549,8 +549,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/utils':
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -588,11 +588,11 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: ^2.0.284
-        version: 2.0.284
+        specifier: ^2.0.285
+        version: 2.0.285
       next:
-        specifier: 16.4.1
-        version: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -667,11 +667,11 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@chain-registry/types':
-        specifier: 2.0.284
-        version: 2.0.284
+        specifier: 2.0.285
+        version: 2.0.285
       '@chain-registry/utils':
-        specifier: 2.0.284
-        version: 2.0.284
+        specifier: 2.0.285
+        version: 2.0.285
       '@chakra-ui/react':
         specifier: ^3.22.0
         version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -709,8 +709,8 @@ importers:
         specifier: ^9.3.1
         version: 9.3.1
       chain-registry:
-        specifier: 2.0.284
-        version: 2.0.284
+        specifier: 2.0.285
+        version: 2.0.285
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -849,6 +849,10 @@ packages:
     resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
     engines: {node: '>=6.9.0'}
 
+  '@babel/runtime@7.29.13':
+    resolution: {integrity: sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ==}
+    engines: {node: '>=6.9.0'}
+
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
@@ -882,11 +886,11 @@ packages:
   '@chain-registry/types@2.0.282':
     resolution: {integrity: sha512-hyjLdj1K8SZtIMP7CnwTIrcJek1SM3ERGjWK7Fir56ysQFneWLZu/Pp3bGKPYw4zPzUVd5qBVIeMgzOrbac31g==}
 
-  '@chain-registry/types@2.0.284':
-    resolution: {integrity: sha512-5g9nQ94ci3FAsfwxk8M23QAjEdvguRmbzXYaONSV0PdrnffMrkfgEtBbXDKyrHxcrw+pdHZm2bHa+QEyL2rDMg==}
+  '@chain-registry/types@2.0.285':
+    resolution: {integrity: sha512-lHN0zIOcZ1WjL9ilQAe9hzRM9nJEu/lG6RqJ7b6EGs/q5fVHtJ/E7gegpipUCAuJMrppBeoPr/WYQ29fTHciuA==}
 
-  '@chain-registry/utils@2.0.284':
-    resolution: {integrity: sha512-CEEwckupBjmvueF7OH4u4BJ5jItJZikA9Iz9/tVdMx/usajmpinBhvZDCCF908p7RwXXupm9PfTogzeQMo4twA==}
+  '@chain-registry/utils@2.0.285':
+    resolution: {integrity: sha512-ZnNwnZ4kRQxt83vN8DKFwmDxQLbqg6L6OCTTqIsG0FdqXzp6gzXC2SywDMElke7LS9fbVN9CPDRf+ocGUTGlJQ==}
 
   '@chain-registry/v2-types@0.53.146':
     resolution: {integrity: sha512-GnqdNnEJ+ZTAc/0S9fQbwL5GpIvF3LZ/P3o6qh6EyITSiRA1Y55FXs59eSddltpPX5EgyWDwNpJjY+Q5uYlAkA==}
@@ -1627,67 +1631,67 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@napi-rs/wasm-runtime@1.2.6':
-    resolution: {integrity: sha512-mRyDmEw9/fCDXCGfL1sbgIw/GUK0PVxRW4YwgPN61F3LQ+fSyoBFarJVzgGyhF6kRzEQZ0FejDqm4WLXSeqQmw==}
+  '@napi-rs/wasm-runtime@1.2.7':
+    resolution: {integrity: sha512-zJccwplOAbgfZju95IUHazLnx9RAPtPN2YGJXI6UbrgeaR9QfPjGrQL6ERkSAtnVCA4Q+83ApGyaX5zdpCaKkQ==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
     peerDependencies:
-      '@emnapi/core': ^1.7.1 || 2.0.0-beta.2
-      '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2
+      '@emnapi/core': ^1.7.1 || 2.0.0-beta.2 || 2.0.0-beta.3
+      '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2 || 2.0.0-beta.3
 
-  '@next/env@16.4.1':
-    resolution: {integrity: sha512-5sUUrrSvs/2/2LnLoesybMGx12EtPB46fdZ6RhAw0XDGSPxU2LFyQBB7yuEiOFFJPKmBY6+q2jTr1/AMbnp0/g==}
+  '@next/env@16.4.5':
+    resolution: {integrity: sha512-JwSPwpdkZL5VMl2jA/q+JI8MZdweAL3xmw5/tb9y/TLtmS0YXZnmYDzSihwk8xTj1OL+WM53gTqaj96yuLp6Xw==}
 
   '@next/eslint-plugin-next@16.2.1':
     resolution: {integrity: sha512-r0epZGo24eT4g08jJlg2OEryBphXqO8aL18oajoTKLzHJ6jVr6P6FI58DLMug04MwD3j8Fj0YK0slyzneKVyzA==}
 
-  '@next/swc-darwin-arm64@16.4.1':
-    resolution: {integrity: sha512-U+hQ5Gj3fpzf4fveTIF3dpUFYhaSW8vHhdAnbiIomzXzg7boreYFgBqprepXFtW4sw+aTttiNmg0gew/iFNhbg==}
+  '@next/swc-darwin-arm64@16.4.5':
+    resolution: {integrity: sha512-W5TniBzWKASbNNwHZ/S/f1MxQUXU/LdjklVMWA0Ujbfl7SZnUzFls45hO0i/sF7Bx1jJBWp7WWmoQajXtX/O8A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@16.4.1':
-    resolution: {integrity: sha512-/hqC3V1XLUjhMASf/WridKdO9FXoEgN3HBWmtKbj00MPgnltutfraWJ3bYTpCRIgEIpbjJyOVLpYgAhh/BkdcQ==}
+  '@next/swc-darwin-x64@16.4.5':
+    resolution: {integrity: sha512-uWq4qkHapBDS1oFltWS4YxTb9pLHAtLNcpbuK6SmRsebLYZqpBML/j/C0op+50JYGTpZgVL/DWNt/6oWlamrrw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-linux-arm64-gnu@16.4.1':
-    resolution: {integrity: sha512-GHzncHbcaS9g95kcvTNtKQW3aCLoR+xc3Jm7qrkpk1R+D2BjMHIPyvQGRPKCdMX95BsH/421jBUK06q9tEwzjw==}
+  '@next/swc-linux-arm64-gnu@16.4.5':
+    resolution: {integrity: sha512-FdRcyOx5u5P51mlAqLB9EXdd8jZO5fsdHtk4BAQSkqOywCsbTNN/rmw+jO7pnmjNdAtu2AG46NzbCL2FPDrrgw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-arm64-musl@16.4.1':
-    resolution: {integrity: sha512-1SuJyDxW/PR9dHJat/ZRgcYLhuSZ+1psP4DlKb2tKIuXbjygqpLrJWRSq+onZQBv8LcmU67EIrmb6c3XTaJLjw==}
+  '@next/swc-linux-arm64-musl@16.4.5':
+    resolution: {integrity: sha512-cyvmmgtRXR8aGVT86wi9Py53IlfyCx7P2fZxuAXAoTummDnhKtUyjrMeXfapqp4qgD+gT5RqyGD/VfA16jEK7Q==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-linux-x64-gnu@16.4.1':
-    resolution: {integrity: sha512-Istng1hMGp9TGO4lUqeKLd70MPN/OOkucVTP2Nmj+gLkwBgmPqUw8CJYBCC7nbl/B/23bBCcjCI5Hsh6hazC1A==}
+  '@next/swc-linux-x64-gnu@16.4.5':
+    resolution: {integrity: sha512-hPc+Fl+N22DAvqZHq559NmamXboOX5Lu8I5Wl0DezfrhTk1Zz21NQeYoZDmNI/NjTcrdsVxM72Fzn2lI+Q+vAw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@next/swc-linux-x64-musl@16.4.1':
-    resolution: {integrity: sha512-aSC9wMNiZRRFVpPkPWBzRwLQxIGm/CiQcXyFF1XNcgodb+uMxdk7aSSGGpDXCbnvZdf4itjHxpOd5h7i7zaiYw==}
+  '@next/swc-linux-x64-musl@16.4.5':
+    resolution: {integrity: sha512-gbACYE8IP/jlprNTpiWXHb8N9CofOzpnEwH2SrIz1dUbiJf1FbDssDupCAPeP1Taxe8mgG20sGZamJI7KFOdZw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@next/swc-win32-arm64-msvc@16.4.1':
-    resolution: {integrity: sha512-t/myvwFDlypMUjRvbBf8qLPyuaB0iXYYdBtwMt6DM6f+60wtGr4bSYholdPqNeV5VUXZhrpMwfza829kmhS3iA==}
+  '@next/swc-win32-arm64-msvc@16.4.5':
+    resolution: {integrity: sha512-+8gj++ZMo8H20Xh2ijjNqyFk5LPLw0AC4Fs4Tq/G94rjjQXhOjN4jgSWsWKPFsyY26hfIeemJIwKtMxOsp5GBA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-x64-msvc@16.4.1':
-    resolution: {integrity: sha512-6ICqPo9awCkrtYNPhwkx1uU7rlFWrZRrIboDHS2LU+jv088UBYQtmJ25h6pCp27/+FZjF6BQ4Te4ErugyMeuBg==}
+  '@next/swc-win32-x64-msvc@16.4.5':
+    resolution: {integrity: sha512-qNZj66pYXnaWLiF9R9GUbfBdrCv7kC6TaZfIwB2KH5WPc/8pEM3nVOj8hpQhWJU8S94rlH5MPDcX15+RrgUhiw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -3716,8 +3720,8 @@ packages:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
 
-  chain-registry@2.0.284:
-    resolution: {integrity: sha512-jbTkxt2GBX65drvSuSOCYipkQqAdqpuhhBt6ekoR9B6VOhtmRtKi0DBDRmRqt0ihGgl5KkfcdSlMRq+4wxedBQ==}
+  chain-registry@2.0.285:
+    resolution: {integrity: sha512-j2cPA9FPEW1kGN36hu4GuVI28NocNUCl3rPMCon6Qq6VlPtTiem6KrbPe64PvRJv2h2d5c4UfrPndEcgKu6w0A==}
 
   chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -5262,8 +5266,8 @@ packages:
       react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
       react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
 
-  next@16.4.1:
-    resolution: {integrity: sha512-uc657V62E34fOI6W5NtG9IzwsPcms0Z60grz2MJGtglgD+pTFnNt4Yw2PzaU622tfX4vhrDgLZzicE2YlhI20Q==}
+  next@16.4.5:
+    resolution: {integrity: sha512-rmdfsWosjTUO+6R0S3KokoIk6Kj0sWDRTe86tZHdqaWH/oXq/udX3/4xb+YQi7aWbyEFoglDU54kaifLCdXbBw==}
     engines: {node: '>=20.9.0'}
     hasBin: true
     peerDependencies:
@@ -6234,6 +6238,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
   tsup@8.5.1:
     resolution: {integrity: sha512-xtgkqwdhpKWr3tKPmCkvYmS9xnQK3m3XgxZHwSUjvfTjp7YfXe5tT3GgWi0F2N+ZSMsOeWeZFh7ZZFg5iPhing==}
     engines: {node: '>=18'}
@@ -6995,6 +7002,8 @@ snapshots:
 
   '@babel/runtime@7.29.10': {}
 
+  '@babel/runtime@7.29.13': {}
+
   '@babel/runtime@7.29.7': {}
 
   '@babel/template@7.29.7':
@@ -7119,22 +7128,22 @@ snapshots:
 
   '@chain-registry/keplr@2.0.216':
     dependencies:
-      '@chain-registry/types': 2.0.284
+      '@chain-registry/types': 2.0.285
       '@keplr-wallet/cosmos': 0.12.28
       '@keplr-wallet/crypto': 0.12.28
       '@types/semver': 7.7.1
-      chain-registry: 2.0.284
+      chain-registry: 2.0.285
       semver: 7.8.4
 
   '@chain-registry/types@2.0.282': {}
 
-  '@chain-registry/types@2.0.284': {}
+  '@chain-registry/types@2.0.285': {}
 
-  '@chain-registry/utils@2.0.284':
+  '@chain-registry/utils@2.0.285':
     dependencies:
-      '@chain-registry/types': 2.0.284
+      '@chain-registry/types': 2.0.285
       bignumber.js: 9.1.2
-      chain-registry: 2.0.284
+      chain-registry: 2.0.285
       sha.js: 2.4.12
 
   '@chain-registry/v2-types@0.53.146': {}
@@ -7213,7 +7222,7 @@ snapshots:
   '@emnapi/core@1.11.1':
     dependencies:
       '@emnapi/wasi-threads': 1.2.2
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emnapi/runtime@1.10.0':
@@ -7223,7 +7232,7 @@ snapshots:
 
   '@emnapi/runtime@1.11.1':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emnapi/runtime@1.11.3':
@@ -7238,7 +7247,7 @@ snapshots:
 
   '@emnapi/wasi-threads@1.2.2':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@emotion/babel-plugin@11.13.5':
@@ -7714,7 +7723,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.284
+      chain-registry: 2.0.285
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -7767,7 +7776,7 @@ snapshots:
       bowser: 2.14.1
       bs58: 6.0.0
       buffer: 6.0.3
-      chain-registry: 2.0.284
+      chain-registry: 2.0.285
       events: 3.3.0
       interchainjs: 1.21.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       long: 5.3.2
@@ -8505,46 +8514,46 @@ snapshots:
       '@tybys/wasm-util': 0.10.2
     optional: true
 
-  '@napi-rs/wasm-runtime@1.2.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
+  '@napi-rs/wasm-runtime@1.2.7(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
       '@emnapi/core': 1.11.1
       '@emnapi/runtime': 1.11.1
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@next/env@16.4.1': {}
+  '@next/env@16.4.5': {}
 
   '@next/eslint-plugin-next@16.2.1':
     dependencies:
       fast-glob: 3.3.1
 
-  '@next/swc-darwin-arm64@16.4.1':
+  '@next/swc-darwin-arm64@16.4.5':
     optional: true
 
-  '@next/swc-darwin-x64@16.4.1':
+  '@next/swc-darwin-x64@16.4.5':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@16.4.1':
+  '@next/swc-linux-arm64-gnu@16.4.5':
     optional: true
 
-  '@next/swc-linux-arm64-musl@16.4.1':
+  '@next/swc-linux-arm64-musl@16.4.5':
     optional: true
 
-  '@next/swc-linux-x64-gnu@16.4.1':
+  '@next/swc-linux-x64-gnu@16.4.5':
     optional: true
 
-  '@next/swc-linux-x64-musl@16.4.1':
+  '@next/swc-linux-x64-musl@16.4.5':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@16.4.1':
+  '@next/swc-win32-arm64-msvc@16.4.5':
     optional: true
 
-  '@next/swc-win32-x64-msvc@16.4.1':
+  '@next/swc-win32-x64-msvc@16.4.5':
     optional: true
 
-  '@next/third-parties@16.2.9(next@16.4.1(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@next/third-parties@16.2.9(next@16.4.5(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
-      next: 16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       third-party-capital: 1.0.20
 
@@ -9439,7 +9448,7 @@ snapshots:
     dependencies:
       '@emnapi/core': 1.11.1
       '@emnapi/runtime': 1.11.1
-      '@napi-rs/wasm-runtime': 1.2.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+      '@napi-rs/wasm-runtime': 1.2.7(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
     optional: true
 
   '@rolldown/binding-win32-arm64-msvc@1.1.5':
@@ -10141,7 +10150,7 @@ snapshots:
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
-      '@babel/runtime': 7.29.10
+      '@babel/runtime': 7.29.13
       '@types/aria-query': 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -10198,7 +10207,7 @@ snapshots:
 
   '@tybys/wasm-util@0.10.4':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
     optional: true
 
   '@types/aria-query@5.0.4': {}
@@ -12582,9 +12591,9 @@ snapshots:
 
   chai@6.2.2: {}
 
-  chain-registry@2.0.284:
+  chain-registry@2.0.285:
     dependencies:
-      '@chain-registry/types': 2.0.284
+      '@chain-registry/types': 2.0.285
 
   chalk@2.4.2:
     dependencies:
@@ -14573,9 +14582,9 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  next@16.4.1(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  next@16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
-      '@next/env': 16.4.1
+      '@next/env': 16.4.5
       '@swc/helpers': 0.5.23
       baseline-browser-mapping: 2.10.37
       caniuse-lite: 1.0.30001799
@@ -14584,14 +14593,14 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
       styled-jsx: 5.1.6(@babel/core@7.29.7)(babel-plugin-macros@3.1.0)(react@19.2.7)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 16.4.1
-      '@next/swc-darwin-x64': 16.4.1
-      '@next/swc-linux-arm64-gnu': 16.4.1
-      '@next/swc-linux-arm64-musl': 16.4.1
-      '@next/swc-linux-x64-gnu': 16.4.1
-      '@next/swc-linux-x64-musl': 16.4.1
-      '@next/swc-win32-arm64-msvc': 16.4.1
-      '@next/swc-win32-x64-msvc': 16.4.1
+      '@next/swc-darwin-arm64': 16.4.5
+      '@next/swc-darwin-x64': 16.4.5
+      '@next/swc-linux-arm64-gnu': 16.4.5
+      '@next/swc-linux-arm64-musl': 16.4.5
+      '@next/swc-linux-x64-gnu': 16.4.5
+      '@next/swc-linux-x64-musl': 16.4.5
+      '@next/swc-win32-arm64-msvc': 16.4.5
+      '@next/swc-win32-x64-msvc': 16.4.5
       '@playwright/test': 1.64.0
       sharp: 0.35.5(@types/node@20.19.43)
     transitivePeerDependencies:
@@ -15822,6 +15831,9 @@ snapshots:
   tslib@1.14.1: {}
 
   tslib@2.8.1: {}
+
+  tslib@2.9.1:
+    optional: true
 
   tsup@8.5.1(postcss@8.5.30)(typescript@5.9.3)(yaml@2.9.0):
     dependencies:
