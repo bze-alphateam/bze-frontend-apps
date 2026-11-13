@@ -66,6 +66,12 @@ describe('estimateGasUsed', () => {
         expect(estimateGasUsed({ kind: 'send' }).toNumber()).toBe(GAS_ESTIMATES.send.base)
     })
 
+    it('sizes a cancel-unbonding tx by its message count', () => {
+        expect(estimateGasUsed({ kind: 'cancel-unbonding-delegation' }).toNumber()).toBe(280_000)
+        // 11 entries across 11 validators in one tx
+        expect(estimateGasUsed({ kind: 'cancel-unbonding-delegation', count: 11 }).toNumber()).toBe(280_000 + 10 * 260_000)
+    })
+
     it('estimates a governance vote', () => {
         expect(estimateGasUsed('vote').toNumber()).toBe(120_000)
     })

@@ -54,6 +54,7 @@ export type TxKind =
     | 'delegate'
     | 'undelegate'
     | 'redelegate'
+    | 'cancel-unbonding-delegation'
     | 'withdraw-delegator-reward'
     | 'fund-burner'
     | 'join-raffle'
@@ -134,6 +135,9 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'delegate': {base: 260_000},                              // measured p90 233k, max 241k
     'undelegate': {base: 320_000},                            // measured p90 275k, max 284k
     'redelegate': {base: 460_000},                            // measured p90 404k, max 425k
+    // Re-delegates the entry's balance, so the distribution hook withdraws pending rewards: every
+    // extra message costs about as much as the first. Measured on mainnet 2026-11-13 (10 txs).
+    'cancel-unbonding-delegation': {base: 280_000, perItem: 260_000}, // measured 193k–237k per message
     'withdraw-delegator-reward': {base: 200_000, perItem: 120_000}, // measured max 179k per message
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
