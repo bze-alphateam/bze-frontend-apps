@@ -8,13 +8,14 @@ import {
     getAnnualProvisions, getDistributionParams, getStakingParams, getStakingPool,
     calcNativeStakingApr, parseUnbondingDays,
     useAssets,
-    getValidators, getDelegatorValidators, getDelegatorDelegations, getAddressUnbondingDelegations, getAddressRewards,
+    getValidators, getValidator, getDelegatorValidators, getDelegatorDelegations, getAddressUnbondingDelegations, getAddressRewards,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {ValidatorSDKType, UnbondingDelegationSDKType} from "@bze/bzejs/cosmos/staking/v1beta1/staking";
 import {DelegationDelegatorRewardSDKType} from "@bze/bzejs/cosmos/distribution/v1beta1/distribution";
 import {buildMyValidators, type ValidatorWithDelegation} from "@/lib/my-validators";
 import {sortValidatorsByTokens} from "@/lib/validator-list";
+import {missingValidatorAddresses} from "@/lib/cancel-unbonding";
 
 export type {ValidatorWithDelegation};
 
@@ -23,6 +24,11 @@ export interface StakingFullData {
     allValidators: ValidatorSDKType[];
     myValidators: ValidatorWithDelegation[];
     unbondingDelegations: UnbondingDelegationSDKType[];
+    /**
+     * The validators of the unbonding entries, whatever their status. A jailed validator is not
+     * in `allValidators` (bonded only), and cancelling its unbonding is refused by the chain.
+     */
+    unbondingValidators: ValidatorSDKType[];
     validatorRewards: DelegationDelegatorRewardSDKType[];
 }
 
@@ -72,6 +78,7 @@ export function useNativeStakingData() {
 
             let myValidators: ValidatorWithDelegation[] = [];
             let unbondingDelegations: UnbondingDelegationSDKType[] = [];
+            let unbondingValidators: ValidatorSDKType[] = [];
             let validatorRewards: DelegationDelegatorRewardSDKType[] = [];
 
             if (address) {
@@ -96,6 +103,14 @@ export function useNativeStakingData() {
                 }
 
                 unbondingDelegations = unbonding;
+
+                const known = [...allValidators, ...delegatorValidators];
+                const fetched = await Promise.all(
+                    missingValidatorAddresses(unbonding, known).map(addr => getValidator(addr))
+                );
+                const unbondingAddresses = new Set(unbonding.map(d => d.validator_address));
+                unbondingValidators = [...known, ...fetched.filter((v): v is ValidatorSDKType => !!v)]
+                    .filter(v => unbondingAddresses.has(v.operator_address));
                 validatorRewards = rewards.rewards;
 
                 // Merge the bonded global list with the delegator's own validators so
@@ -114,6 +129,7 @@ export function useNativeStakingData() {
                 allValidators: sortValidatorsByTokens(allValidators),
                 myValidators,
                 unbondingDelegations,
+                unbondingValidators,
                 validatorRewards,
             })
         } catch (error) {

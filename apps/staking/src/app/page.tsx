@@ -176,8 +176,9 @@ export default function StakingPage() {
                 {isConnected && fullData && fullData.unbondingDelegations.length > 0 && (
                     <UnbondingDelegations
                         unbondingDelegations={fullData.unbondingDelegations}
-                        allValidators={fullData.allValidators}
+                        allValidators={[...fullData.allValidators, ...fullData.unbondingValidators]}
                         logos={logos}
+                        onActionComplete={handleRefresh}
                     />
                 )}
 

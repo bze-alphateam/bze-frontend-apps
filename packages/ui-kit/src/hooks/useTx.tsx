@@ -82,6 +82,14 @@ export interface TxOptions {
      */
     letWalletSetFee?: boolean;
     /**
+     * Stop before the wallet opens when the fee simulation fails, instead of signing with the
+     * default fee (500k gas). Set it for transactions whose simulation error means the chain
+     * would reject the messages, or whose gas exceeds the default (many messages): signing
+     * anyway would only burn the fee. The simulation's reason is shown (or sent to
+     * `onFailure` with stage `prepare`).
+     */
+    abortOnSimulationError?: boolean;
+    /**
      * Show the progress, success and failure toasts (default `true`). A page that draws its own
      * transaction panel sets `false`; it then also gets `onFailure` for the checks that only
      * toasted before the wallet opened (no wallet connected, no signing client).
@@ -94,6 +102,11 @@ export enum TxStatus {
     Successful = 'Transaction Successful',
     Broadcasting = 'Transaction Pending',
 }
+
+/** The fee simulation failed and the caller asked not to sign with the default fee. */
+const SIMULATION_ERROR = 'simulation-aborted';
+const simulationError = (message: string): Error => Object.assign(new Error(message), {name: SIMULATION_ERROR});
+const isSimulationError = (e: unknown): e is Error => (e as {name?: unknown} | null)?.name === SIMULATION_ERROR;
 
 const defaultFee = {
     amount: coins(20000, getChainNativeAssetDenom()),
@@ -278,6 +291,9 @@ const useTx = (chainName: string) => {
                 return await simulateFee(messages, options?.memo);
             }
         } catch (e) {
+            if (options?.abortOnSimulationError) {
+                throw simulationError((e as any)?.message ?? String(e));
+            }
             console.error("could not get fee, using default fee: ", e);
             return defaultFee;
         }
@@ -374,27 +390,39 @@ const useTx = (chainName: string) => {
                 }
             } catch (e) {
                 console.error(e);
-                // Disconnect on any signer-related error — the signing client is out of sync
-                // with the wallet (e.g. account switched outside the UI between sessions).
-                const errMsg = (e as any)?.message ?? "";
-                const isSignerError = [
-                    "Failed to retrieve account from signer",
-                    "Signer address does not match",
-                    "signers mismatch",
-                    "Signer mismatched",
-                ].some(pattern => errMsg.includes(pattern));
-                if (isSignerError) {
-                    disconnect();
-                }
-                if (showToasts) {
-                    toast.error(TxStatus.Failed, prettyError(errMsg));
-                }
-                if (options?.onFailure) {
-                    // interchainjs' wait() gives up after 30 s with "... not found within timeout period".
-                    const stage: TxFailureStage = !broadcastHash
-                        ? 'sign'
-                        : errMsg.includes('not found within timeout') ? 'timeout' : 'chain'
-                    options.onFailure(prettyError(errMsg) || "Unknown error", {stage, txHash: broadcastHash, rawLog: errMsg || undefined})
+                if (isSimulationError(e)) {
+                    // Nothing was signed or sent: report the chain's reason and stop.
+                    setProgressTrack("Transaction failed")
+                    const reason = prettyError(e.message) || "Transaction simulation failed"
+                    if (showToasts) {
+                        toast.error(TxStatus.Failed, reason);
+                    }
+                    if (options?.onFailure) {
+                        options.onFailure(reason, {stage: 'prepare', rawLog: e.message || undefined})
+                    }
+                } else {
+                    // Disconnect on any signer-related error — the signing client is out of sync
+                    // with the wallet (e.g. account switched outside the UI between sessions).
+                    const errMsg = (e as any)?.message ?? "";
+                    const isSignerError = [
+                        "Failed to retrieve account from signer",
+                        "Signer address does not match",
+                        "signers mismatch",
+                        "Signer mismatched",
+                    ].some(pattern => errMsg.includes(pattern));
+                    if (isSignerError) {
+                        disconnect();
+                    }
+                    if (showToasts) {
+                        toast.error(TxStatus.Failed, prettyError(errMsg));
+                    }
+                    if (options?.onFailure) {
+                        // interchainjs' wait() gives up after 30 s with "... not found within timeout period".
+                        const stage: TxFailureStage = !broadcastHash
+                            ? 'sign'
+                            : errMsg.includes('not found within timeout') ? 'timeout' : 'chain'
+                        options.onFailure(prettyError(errMsg) || "Unknown error", {stage, txHash: broadcastHash, rawLog: errMsg || undefined})
+                    }
                 }
             }
         }

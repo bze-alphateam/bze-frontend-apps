@@ -206,6 +206,21 @@ export const getValidators = async (status: BondStatus = BondStatus.BOND_STATUS_
     }
 }
 
+/**
+ * One validator by operator address, whatever its status (a jailed validator is unbonding or
+ * unbonded, so it is missing from the bonded list). Undefined when the lookup fails.
+ */
+export const getValidator = async (validatorAddress: string): Promise<ValidatorSDKType | undefined> => {
+    try {
+        const client = await getRestClient();
+        const resp = await client.cosmos.staking.v1beta1.validator({validatorAddr: validatorAddress});
+        return resp.validator;
+    } catch (e) {
+        console.error("failed to get validator", validatorAddress, e);
+        return undefined;
+    }
+}
+
 export const getDelegatorValidators = async (address: string): Promise<ValidatorSDKType[]> => {
     try {
         const client = await getRestClient();
