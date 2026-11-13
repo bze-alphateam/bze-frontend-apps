@@ -21,6 +21,10 @@ const errorsMap: { [key: string]: string } = {
     "staking reward still has staked funds": "Someone still has a stake in this program — it can only be deleted once every staker has exited. Refresh the page.",
     // Token brand kit (MsgSetDenomBranding, chain v8.2.0)
     "invalid branding": "The brand kit was refused: it needs a lowercase font slug and all eight colours as 6-digit hex values like #1A2B3C. Check the fields and try again.",
+    // Cancel unbonding (cosmos x/staking MsgCancelUnbondingDelegation)
+    "validator for this address is currently jailed": "This validator is jailed, so its unbonding can not be cancelled until it is unjailed.",
+    "unbonding delegation is already processed": "This unbonding has already completed, so it can not be cancelled any more. Refresh the page.",
+    "unbonding delegation entry is not found at block height": "This unbonding entry no longer exists — it may have completed or been cancelled already. Refresh the page.",
     "broadcast failed with code 7": "Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.",
 };
 

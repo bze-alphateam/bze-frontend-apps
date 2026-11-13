@@ -68,6 +68,8 @@ beforeEach(() => {
             allValidators: [{ operator_address: ALICE, description: { moniker: "Alice Node" } }],
             myValidators: [],
             unbondingDelegations: [],
+            unbondingValidators: [],
+            uncheckedValidators: [],
             validatorRewards: [],
         },
     });

@@ -262,7 +262,7 @@ export {
     getAddressUnbondingDelegations, getAddressUnbondingDelegationsSummary,
     getAddressRewards, getAddressNativeTotalRewards,
     getAnnualProvisions, getDistributionParams, getStakingParams, getStakingPool,
-    getValidators, getDelegatorValidators, getDelegatorDelegations, getValidatorDelegatorRewards
+    getValidators, getValidator, getDelegatorValidators, getDelegatorDelegations, getValidatorDelegatorRewards
 } from './query/staking';
 export {
     getGovParams, getOpenProposals, getFinishedProposals, getProposal, getProposalTally, getProposalVote
