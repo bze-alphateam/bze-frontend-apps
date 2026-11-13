@@ -62,6 +62,7 @@ function fullData(overrides: Record<string, unknown> = {}) {
         myValidators: [],
         unbondingDelegations: [],
         unbondingValidators: [],
+        uncheckedValidators: [],
         validatorRewards: [],
         ...overrides,
     };

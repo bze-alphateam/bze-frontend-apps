@@ -2,11 +2,12 @@ import BigNumber from 'bignumber.js';
 import type {UnbondingDelegationSDKType, ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 
 /**
- * Entries closer to completion than this are not offered for cancelling: the chain compares
- * against the block time, which can run ahead of the browser clock, and the tx still has to
- * be signed and included. The chain refuses an entry whose completion time has passed.
+ * Entries closer to completion than this are not offered for cancelling. The chain refuses an
+ * entry only once its completion time is before the block time; the margin covers the browser
+ * clock running behind and the tx being signed and included. Kept short on purpose: every second
+ * of margin is a second the owner is locked out while the chain would still accept the cancel.
  */
-export const CANCEL_COMPLETION_MARGIN_MS = 5 * 60 * 1000;
+export const CANCEL_COMPLETION_MARGIN_MS = 60 * 1000;
 
 /** Why an entry can not be cancelled, or undefined when it can. */
 export type CancelBlockReason = 'jailed' | 'completed' | 'empty';
@@ -30,6 +31,12 @@ export interface UnbondingEntryView {
     /** True once the completion time is in the past (by the browser clock). */
     completed: boolean;
     jailed: boolean;
+    /**
+     * The validator could not be looked up, so whether it is jailed is unknown. The entry can
+     * still be cancelled on its own (the chain decides, the simulation stops a refused tx before
+     * signing) but is left out of "Cancel all", where one refused message fails them all.
+     */
+    statusUnknown: boolean;
     blockReason?: CancelBlockReason;
 }
 
@@ -41,21 +48,25 @@ interface BuildEntriesInput {
     now: number;
     /** Fallback name when the validator is unknown. */
     fallbackName: (validatorAddress: string) => string;
+    /** Validators whose lookup failed: their jailed status is unknown. */
+    uncheckedValidators?: string[];
 }
 
 /**
  * One view per unbonding entry, sorted by completion time, with the reason the chain would
  * refuse cancelling it (x/staking `CancelUnbondingDelegation`: jailed validator, entry whose
- * completion time has passed). A validator missing from `validators` is not treated as
- * jailed: the chain decides, and the tx simulation stops the transaction before signing.
+ * completion time has passed). A validator in `uncheckedValidators` (or missing from
+ * `validators`) has an unknown status: it is not blocked, the chain decides.
  */
-export function buildUnbondingEntries({unbondingDelegations, validators, now, fallbackName}: BuildEntriesInput): UnbondingEntryView[] {
+export function buildUnbondingEntries({unbondingDelegations, validators, now, fallbackName, uncheckedValidators = []}: BuildEntriesInput): UnbondingEntryView[] {
     const byAddress = new Map<string, ValidatorSDKType>();
     validators.forEach(v => byAddress.set(v.operator_address, v));
+    const unchecked = new Set(uncheckedValidators);
 
     return unbondingDelegations.flatMap(d => {
         const validator = byAddress.get(d.validator_address);
         const jailed = validator?.jailed === true;
+        const statusUnknown = !validator || unchecked.has(d.validator_address);
         const moniker = validator?.description?.moniker || fallbackName(d.validator_address);
 
         return d.entries.map(entry => {
@@ -83,18 +94,32 @@ export function buildUnbondingEntries({unbondingDelegations, validators, now, fa
                 completionTime,
                 completed,
                 jailed,
+                statusUnknown: statusUnknown && !jailed,
                 blockReason,
             };
         });
     }).sort((a, b) => a.completionTime.getTime() - b.completionTime.getTime());
 }
 
-/** The entries a "Cancel all" sends, and how many it leaves out. */
+/**
+ * The entries a "Cancel all" sends, and the ones it leaves out: those the chain refuses, and
+ * those whose validator status is unknown (a jailed one would make the whole tx fail).
+ */
 export function splitCancellable(entries: UnbondingEntryView[]): {cancellable: UnbondingEntryView[]; skipped: UnbondingEntryView[]} {
+    const inBatch = (e: UnbondingEntryView) => !e.blockReason && !e.statusUnknown;
     return {
-        cancellable: entries.filter(e => !e.blockReason),
-        skipped: entries.filter(e => !!e.blockReason),
+        cancellable: entries.filter(inBatch),
+        skipped: entries.filter(e => !inBatch(e)),
     };
+}
+
+/**
+ * True when one of the entries completes within {@link CANCEL_COMPLETION_MARGIN_MS} of the
+ * current clock. Read at click time: the page's clock was read when it loaded.
+ */
+export function anyCompletesSoon(entries: UnbondingEntryView[], now: number = Date.now()): boolean {
+    const cutoff = now + CANCEL_COMPLETION_MARGIN_MS;
+    return entries.some(e => e.completionTime.getTime() <= cutoff);
 }
 
 /** Total balance of the entries, micro-units. */

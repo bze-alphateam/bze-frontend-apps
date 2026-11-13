@@ -57,12 +57,13 @@ const UNBONDING = [
     ubd("valJ", "300", 15 * DAY, "4000000"),
 ];
 
-function renderSection(onActionComplete = vi.fn()) {
+function renderSection(onActionComplete = vi.fn(), uncheckedValidators?: string[]) {
     render(
         <UnbondingDelegations
             unbondingDelegations={UNBONDING}
             allValidators={VALIDATORS}
             logos={{}}
+            uncheckedValidators={uncheckedValidators}
             onActionComplete={onActionComplete}
         />,
         {
@@ -86,7 +87,7 @@ describe("Cancel unbonding", () => {
         expect(screen.getByText(/Validator is jailed/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cancel unbonding from Alpha" })).toBeEnabled();
         expect(screen.getByRole("button", { name: /Cancel all \(2\)/ })).toBeInTheDocument();
-        expect(screen.getByText("1 can't be cancelled")).toBeInTheDocument();
+        expect(screen.getByText("1 not included")).toBeInTheDocument();
     });
 
     it("confirms and sends one MsgCancelUnbondingDelegation per cancellable entry in one tx", async () => {
@@ -100,7 +101,7 @@ describe("Cancel unbonding", () => {
         expect(within(list).getByText("Alpha")).toBeInTheDocument();
         expect(within(list).getByText("Beta")).toBeInTheDocument();
         expect(within(list).queryByText("Jailbird")).not.toBeInTheDocument();
-        expect(screen.getByText(/1 entry skipped/)).toBeInTheDocument();
+        expect(screen.getByText(/1 entry left out/)).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Cancel 2 unbondings" }));
 
@@ -148,5 +149,27 @@ describe("Cancel unbonding", () => {
         await user.click(await screen.findByRole("button", { name: "Keep unbonding" }));
 
         expect(txMock).not.toHaveBeenCalled();
+    });
+
+    it("refreshes the entries when the tx does not confirm, since it may still have landed", async () => {
+        txMock.mockResolvedValue(false);
+        const user = userEvent.setup();
+        const { onActionComplete } = renderSection();
+
+        await user.click(screen.getByRole("button", { name: "Cancel unbonding from Alpha" }));
+        const dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("button", { name: "Cancel unbonding" }));
+
+        await waitFor(() => expect(onActionComplete).toHaveBeenCalledTimes(1));
+    });
+
+    it("keeps an entry with an unchecked validator cancellable on its own but out of Cancel all", () => {
+        renderSection(vi.fn(), ["valB"]);
+
+        expect(screen.getByRole("button", { name: "Cancel unbonding from Beta" })).toBeEnabled();
+        expect(screen.getByText(/Could not check whether Beta is jailed/)).toBeInTheDocument();
+        // Alpha only: Beta's status is unknown and Jailbird is jailed.
+        expect(screen.getByRole("button", { name: /Cancel all \(1\)/ })).toBeInTheDocument();
+        expect(screen.getByText("2 not included")).toBeInTheDocument();
     });
 });

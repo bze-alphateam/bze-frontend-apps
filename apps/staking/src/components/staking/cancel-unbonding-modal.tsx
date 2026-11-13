@@ -21,7 +21,7 @@ import {LuWallet} from 'react-icons/lu';
 import {ValidatorAvatar} from './validator-avatar';
 import {InsetRow, ProgressLine, StakingDialog} from '@/components/ui/staking/dialog';
 import {
-    CANCEL_COMPLETION_MARGIN_MS,
+    anyCompletesSoon,
     cancelUnbondingValues,
     totalBalance,
     type UnbondingEntryView,
@@ -36,13 +36,18 @@ interface CancelUnbondingModalProps {
     skippedCount?: number;
     logos: Record<string, string>;
     onSuccess: () => void;
+    /**
+     * After a tx that did not confirm: it may still have landed (a confirmation timeout), so the
+     * page reloads the entries rather than showing stale ones.
+     */
+    onFailure?: () => void;
 }
 
 /**
  * Confirms and sends one `MsgCancelUnbondingDelegation` per entry, in one transaction: each puts
  * the entry's full balance back into delegation with its validator.
  */
-export function CancelUnbondingModal({isOpen, onClose, entries, skippedCount = 0, logos, onSuccess}: CancelUnbondingModalProps) {
+export function CancelUnbondingModal({isOpen, onClose, entries, skippedCount = 0, logos, onSuccess, onFailure}: CancelUnbondingModalProps) {
     const {nativeAsset} = useAssets();
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
@@ -70,8 +75,7 @@ export function CancelUnbondingModal({isOpen, onClose, entries, skippedCount = 0
             return;
         }
         // The page's clock was read when it loaded: re-check that no entry completed since.
-        const cutoff = Date.now() + CANCEL_COMPLETION_MARGIN_MS;
-        if (entries.some(e => e.completionTime.getTime() <= cutoff)) {
+        if (anyCompletesSoon(entries)) {
             toast.error('Unbonding completed', 'An entry completed while the page was open. Refresh the page and try again.');
             return;
         }
@@ -91,10 +95,13 @@ export function CancelUnbondingModal({isOpen, onClose, entries, skippedCount = 0
                     `${prettyAmount(totalHuman)} ${ticker} staked again with ${validatorCount} validator${validatorCount > 1 ? 's' : ''}`,
                 );
                 onSuccess();
+            } else {
+                onFailure?.();
             }
         } catch (e) {
             console.error('Cancel unbonding failed:', e);
             toast.error('Cancel unbonding failed', 'Transaction failed. Please try again.');
+            onFailure?.();
         } finally {
             setIsSubmitting(false);
         }
@@ -143,7 +150,7 @@ export function CancelUnbondingModal({isOpen, onClose, entries, skippedCount = 0
 
             {skippedCount > 0 && (
                 <chakra.span fontSize="12px" color="hg.text.faint" textAlign="center">
-                    {skippedCount} entr{skippedCount > 1 ? 'ies' : 'y'} skipped: jailed validator or unbonding already completed.
+                    {skippedCount} entr{skippedCount > 1 ? 'ies' : 'y'} left out: jailed validator, unbonding completed, or validator status unknown.
                 </chakra.span>
             )}
 
