@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
@@ -123,7 +123,7 @@ describe("Cancel unbonding", () => {
             amount: { denom: "ubze", amount: "2000000" },
             creationHeight: BigInt(200),
         });
-        expect(onActionComplete).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(onActionComplete).toHaveBeenCalledTimes(1));
     });
 
     it("cancels a single entry from its card", async () => {
