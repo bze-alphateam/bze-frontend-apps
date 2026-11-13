@@ -69,6 +69,7 @@ beforeEach(() => {
             myValidators: [],
             unbondingDelegations: [],
             unbondingValidators: [],
+            uncheckedValidators: [],
             validatorRewards: [],
         },
     });

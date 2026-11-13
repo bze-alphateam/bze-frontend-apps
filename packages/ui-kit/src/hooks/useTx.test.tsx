@@ -247,6 +247,35 @@ describe('useTx simulateFee', () => {
         expect(fee.amount).toEqual([{ denom: 'ubze', amount: '1481' }])
     })
 
+    describe('when the simulation fails', () => {
+        const SIM_ERROR = 'failed to execute message; message index: 0: validator for this address is currently jailed'
+
+        beforeEach(() => {
+            simulateMock.mockRejectedValue(new Error(SIM_ERROR))
+        })
+
+        it('signs and broadcasts nothing with abortOnSimulationError, and reports the prepare stage', async () => {
+            const onFailure = vi.fn()
+            const { result } = renderHook(() => useBZETx())
+
+            let ok = true
+            await act(async () => { ok = await result.current.tx([MSG], { abortOnSimulationError: true, onFailure }) })
+
+            expect(ok).toBe(false)
+            expect(signAndBroadcastMock).not.toHaveBeenCalled()
+            expect(onFailure).toHaveBeenCalledWith(expect.stringContaining('jailed'), { stage: 'prepare', rawLog: SIM_ERROR })
+            expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, expect.stringContaining('jailed'))
+            expect(toastMock.dismiss).toHaveBeenCalledWith('toast-id')
+        })
+
+        it('still falls back to the default fee without the option', async () => {
+            const fee = await sentFee()
+
+            expect(fee.gas).toBe('500000')
+            expect(fee.amount).toEqual([{ denom: expect.any(String), amount: '20000' }])
+        })
+    })
+
     // Forms reserve the pre-submit estimate on MAX and warn with it, so for the same gas it must
     // be exactly the fee the tx is sent with, in either denom.
     describe('matches the pre-submit estimate', () => {

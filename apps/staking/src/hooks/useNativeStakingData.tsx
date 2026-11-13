@@ -29,6 +29,8 @@ export interface StakingFullData {
      * in `allValidators` (bonded only), and cancelling its unbonding is refused by the chain.
      */
     unbondingValidators: ValidatorSDKType[];
+    /** Unbonding validators whose lookup failed (after one retry): their jailed status is unknown. */
+    uncheckedValidators: string[];
     validatorRewards: DelegationDelegatorRewardSDKType[];
 }
 
@@ -79,6 +81,7 @@ export function useNativeStakingData() {
             let myValidators: ValidatorWithDelegation[] = [];
             let unbondingDelegations: UnbondingDelegationSDKType[] = [];
             let unbondingValidators: ValidatorSDKType[] = [];
+            let uncheckedValidators: string[] = [];
             let validatorRewards: DelegationDelegatorRewardSDKType[] = [];
 
             if (address) {
@@ -105,9 +108,11 @@ export function useNativeStakingData() {
                 unbondingDelegations = unbonding;
 
                 const known = [...allValidators, ...delegatorValidators];
-                const fetched = await Promise.all(
-                    missingValidatorAddresses(unbonding, known).map(addr => getValidator(addr))
-                );
+                // Retry a failed lookup once; what still fails is reported as unchecked.
+                const lookup = async (addr: string) => (await getValidator(addr)) ?? (await getValidator(addr));
+                const missing = missingValidatorAddresses(unbonding, known);
+                const fetched = await Promise.all(missing.map(lookup));
+                uncheckedValidators = missing.filter((_, i) => !fetched[i]);
                 const unbondingAddresses = new Set(unbonding.map(d => d.validator_address));
                 unbondingValidators = [...known, ...fetched.filter((v): v is ValidatorSDKType => !!v)]
                     .filter(v => unbondingAddresses.has(v.operator_address));
@@ -130,6 +135,7 @@ export function useNativeStakingData() {
                 myValidators,
                 unbondingDelegations,
                 unbondingValidators,
+                uncheckedValidators,
                 validatorRewards,
             })
         } catch (error) {

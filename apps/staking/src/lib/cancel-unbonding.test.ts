@@ -1,6 +1,7 @@
 import {describe, it, expect} from 'vitest';
 import type {UnbondingDelegationSDKType, ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {
+    anyCompletesSoon,
     buildUnbondingEntries,
     cancelUnbondingValues,
     CANCEL_COMPLETION_MARGIN_MS,
@@ -34,8 +35,8 @@ const validator = (address: string, moniker: string, jailed = false) => ({
     description: {moniker},
 }) as unknown as ValidatorSDKType;
 
-const build = (unbonding: UnbondingDelegationSDKType[], validators: ValidatorSDKType[]) =>
-    buildUnbondingEntries({unbondingDelegations: unbonding, validators, now: NOW, fallbackName: a => `short:${a}`});
+const build = (unbonding: UnbondingDelegationSDKType[], validators: ValidatorSDKType[], uncheckedValidators?: string[]) =>
+    buildUnbondingEntries({unbondingDelegations: unbonding, validators, now: NOW, fallbackName: a => `short:${a}`, uncheckedValidators});
 
 describe('buildUnbondingEntries', () => {
     it('makes one view per entry, sorted by completion time, with its creation height and balance', () => {
@@ -84,6 +85,17 @@ describe('buildUnbondingEntries', () => {
         const [view] = build([ubd('valX', [entry('1', 10 * DAY, '10')])], []);
         expect(view.moniker).toBe('short:valX');
         expect(view.blockReason).toBeUndefined();
+        expect(view.statusUnknown).toBe(true);
+    });
+
+    it('marks a validator whose lookup failed as unknown, not as unjailed', () => {
+        const [view] = build([ubd('valA', [entry('1', 10 * DAY, '10')])], [validator('valA', 'Alpha')], ['valA']);
+        expect(view.statusUnknown).toBe(true);
+        expect(view.blockReason).toBeUndefined();
+    });
+
+    it('keeps the margin at a minute, so the owner is not locked out long before the chain refuses', () => {
+        expect(CANCEL_COMPLETION_MARGIN_MS).toBe(60_000);
     });
 });
 
@@ -102,6 +114,24 @@ describe('splitCancellable / totalBalance', () => {
         expect(cancellable.map(v => v.key).sort()).toEqual(['valA-1', 'valB-4']);
         expect(skipped.map(v => v.key).sort()).toEqual(['valB-3', 'valJ-2']);
         expect(totalBalance(cancellable).toFixed()).toBe('9000');
+    });
+
+    it('leaves entries with an unknown validator status out of Cancel all', () => {
+        const views = build(
+            [ubd('valA', [entry('1', 10 * DAY, '1000')]), ubd('valX', [entry('2', 10 * DAY, '2000')])],
+            [validator('valA', 'Alpha')],
+        );
+        const {cancellable, skipped} = splitCancellable(views);
+        expect(cancellable.map(v => v.key)).toEqual(['valA-1']);
+        expect(skipped.map(v => v.key)).toEqual(['valX-2']);
+    });
+});
+
+describe('anyCompletesSoon', () => {
+    it('is true once an entry is within the margin of the given clock', () => {
+        const views = build([ubd('valA', [entry('1', 10 * 60_000, '10')])], [validator('valA', 'Alpha')]);
+        expect(anyCompletesSoon(views, NOW)).toBe(false);
+        expect(anyCompletesSoon(views, NOW + 10 * 60_000 - CANCEL_COMPLETION_MARGIN_MS + 1)).toBe(true);
     });
 });
 

@@ -28,11 +28,13 @@ interface UnbondingDelegationsProps {
     /** Every validator the page knows: the bonded list plus the unbonding entries' own (jailed included). */
     allValidators: ValidatorSDKType[];
     logos: Record<string, string>;
-    /** After a cancel: reload the unbonding list and the delegations. */
+    /** Validators whose lookup failed: their jailed status is unknown. */
+    uncheckedValidators?: string[];
+    /** After a cancel (sent or failed): reload the unbonding list and the delegations. */
     onActionComplete?: () => void;
 }
 
-export function UnbondingDelegations({unbondingDelegations, allValidators, logos, onActionComplete}: UnbondingDelegationsProps) {
+export function UnbondingDelegations({unbondingDelegations, allValidators, logos, uncheckedValidators, onActionComplete}: UnbondingDelegationsProps) {
     const {nativeAsset} = useAssets();
     const decimals = nativeAsset?.decimals ?? 6;
     // Capture "now" once at mount rather than calling the impure Date.now() during render.
@@ -48,7 +50,8 @@ export function UnbondingDelegations({unbondingDelegations, allValidators, logos
         validators: allValidators,
         now,
         fallbackName: truncateAddress,
-    }), [unbondingDelegations, allValidators, now]);
+        uncheckedValidators,
+    }), [unbondingDelegations, allValidators, now, uncheckedValidators]);
     const {cancellable, skipped} = splitCancellable(entries);
 
     if (entries.length === 0) {
@@ -69,7 +72,7 @@ export function UnbondingDelegations({unbondingDelegations, allValidators, logos
         <Flex align="center" gap="10px" wrap="wrap">
             {skipped.length > 0 && (
                 <chakra.span fontSize="12px" color="hg.text.faint">
-                    {skipped.length} can&apos;t be cancelled
+                    {skipped.length} not included
                 </chakra.span>
             )}
             <Button size="md" {...neutralButton} onClick={() => openCancel(cancellable, skipped.length)}>
@@ -141,6 +144,11 @@ export function UnbondingDelegations({unbondingDelegations, allValidators, logos
                                         {CANCEL_BLOCK_REASON_TEXT[entry.blockReason]}
                                     </chakra.span>
                                 )}
+                                {!entry.blockReason && entry.statusUnknown && (
+                                    <chakra.span fontSize="12px" color="hg.warning.text">
+                                        Could not check whether {entry.moniker} is jailed: refresh to retry. You can still cancel this entry on its own; it is left out of Cancel all.
+                                    </chakra.span>
+                                )}
                             </Flex>
                         </HgCard>
                     );
@@ -155,6 +163,7 @@ export function UnbondingDelegations({unbondingDelegations, allValidators, logos
                 skippedCount={toCancel?.skipped ?? 0}
                 logos={logos}
                 onSuccess={handleSuccess}
+                onFailure={() => onActionComplete?.()}
             />
         </Flex>
     );
