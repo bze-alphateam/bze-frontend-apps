@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
@@ -12,9 +12,12 @@ const NEW = "bze1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrlr237u";
 const VALOPER = "bzevaloper1qyqszqgpqyqszqgpqyqszqgpqyqszqgphnj7t5";
 const COSMOS = "cosmos1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrz8x6vt";
 
-const { txMock, withdrawAddressMock } = vi.hoisted(() => ({
+const { txMock, withdrawAddressMock, toastErrorMock, chainState } = vi.hoisted(() => ({
     txMock: vi.fn(),
     withdrawAddressMock: vi.fn(),
+    toastErrorMock: vi.fn(),
+    // The connected account; a test switches it to mimic an account change in the wallet.
+    chainState: { address: "" },
 }));
 
 // Stub the wallet, tx, fee and chain-query hooks; keep the rest of ui-kit (address check, Notice, …) real.
@@ -24,30 +27,33 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ...actual,
         useSDKTx: () => ({ tx: txMock, progressTrack: "" }),
         useCanAffordTx: () => ({ canAfford: true, message: "" }),
-        useToast: () => ({ toast: { success: vi.fn(), error: vi.fn() } }),
+        useToast: () => ({ toast: { success: vi.fn(), error: toastErrorMock } }),
         getChainAddressPrefix: () => "bze",
         getDelegatorWithdrawAddress: withdrawAddressMock,
     };
 });
 vi.mock("@interchain-kit/react", () => ({
-    useChain: () => ({ address: ME, status: WalletState.Connected, connect: vi.fn() }),
+    useChain: () => ({ address: chainState.address, status: WalletState.Connected, connect: vi.fn() }),
 }));
 
 import { WithdrawAddressModal } from "./withdraw-address-modal";
 
 function renderModal() {
     const onSuccess = vi.fn();
-    render(<WithdrawAddressModal isOpen onClose={vi.fn()} onSuccess={onSuccess} />, {
+    const ui = () => <WithdrawAddressModal isOpen onClose={vi.fn()} onSuccess={onSuccess} />;
+    const { rerender } = render(ui(), {
         wrapper: ({ children }: { children: ReactNode }) => (
             <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
         ),
     });
-    return { onSuccess };
+    return { onSuccess, rerender: () => rerender(ui()) };
 }
 
 beforeEach(() => {
     txMock.mockReset();
     withdrawAddressMock.mockReset();
+    toastErrorMock.mockReset();
+    chainState.address = ME;
 });
 
 describe("WithdrawAddressModal", () => {
@@ -120,5 +126,76 @@ describe("WithdrawAddressModal", () => {
         await screen.findByText("This wallet");
 
         expect(screen.queryByRole("button", { name: "Use this wallet" })).not.toBeInTheDocument();
+    });
+
+    it("still allows setting an address when the current one could not be loaded", async () => {
+        withdrawAddressMock.mockResolvedValue(undefined);
+        txMock.mockResolvedValue(true);
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+
+        expect(await screen.findByText(/Could not load the current address/)).toBeInTheDocument();
+        await user.type(screen.getByLabelText("New rewards address"), NEW);
+        await user.click(screen.getByRole("button", { name: "Set address" }));
+
+        expect(txMock.mock.calls[0][0][0].value).toMatchObject({ delegatorAddress: ME, withdrawAddress: NEW });
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays open and usable when the transaction does not go through", async () => {
+        withdrawAddressMock.mockResolvedValue(ME);
+        txMock.mockResolvedValue(false);
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+        await screen.findByText("This wallet");
+
+        await user.type(screen.getByLabelText("New rewards address"), NEW);
+        await user.click(screen.getByRole("button", { name: "Set address" }));
+
+        expect(txMock).toHaveBeenCalledTimes(1);
+        expect(onSuccess).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.getByRole("button", { name: "Set address" })).toBeEnabled());
+        expect(screen.getByLabelText("New rewards address")).toHaveValue(NEW);
+    });
+
+    it("shows an error and recovers when the transaction throws", async () => {
+        withdrawAddressMock.mockResolvedValue(ME);
+        txMock.mockRejectedValue(new Error("simulation failed"));
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const user = userEvent.setup();
+        const { onSuccess } = renderModal();
+        await screen.findByText("This wallet");
+
+        await user.type(screen.getByLabelText("New rewards address"), NEW);
+        await user.click(screen.getByRole("button", { name: "Set address" }));
+
+        expect(toastErrorMock).toHaveBeenCalledWith("Could not update the rewards address", expect.any(String));
+        expect(onSuccess).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.getByRole("button", { name: "Set address" })).toBeEnabled());
+        consoleError.mockRestore();
+    });
+
+    it("drops the previous account's address and draft when the wallet switches accounts", async () => {
+        withdrawAddressMock.mockResolvedValueOnce(ME);
+        const user = userEvent.setup();
+        const { rerender } = renderModal();
+        await screen.findByText("This wallet");
+        await user.type(screen.getByLabelText("New rewards address"), NEW);
+        expect(screen.getByRole("button", { name: "Set address" })).toBeEnabled();
+
+        // The new account's lookup has not answered yet.
+        let answer: (value: string) => void = () => {};
+        withdrawAddressMock.mockReturnValueOnce(new Promise<string>(resolve => { answer = resolve; }));
+        chainState.address = OTHER;
+        rerender();
+
+        expect(withdrawAddressMock).toHaveBeenLastCalledWith(OTHER);
+        expect(screen.getByLabelText("New rewards address")).toHaveValue("");
+        expect(screen.getByText("Loading…")).toBeInTheDocument();
+        expect(screen.queryByText("This wallet")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Set address" })).toBeDisabled();
+
+        answer(OTHER);
+        expect(await screen.findByText("This wallet")).toBeInTheDocument();
     });
 });

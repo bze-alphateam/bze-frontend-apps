@@ -26,7 +26,10 @@ interface WithdrawAddressModalProps {
     onSuccess: () => void;
 }
 
-type CurrentAddress = {loaded: false} | {loaded: true; address?: string};
+/** The withdraw address read for one account (`owner`); `address` is undefined when the read failed. */
+type Lookup = {owner: string; address?: string};
+/** What was typed, and for which account: switching accounts in the wallet clears it. */
+type Draft = {owner?: string; value: string};
 
 /**
  * Shows where the wallet's staking rewards are paid and sends one `MsgSetWithdrawAddress` to
@@ -39,10 +42,12 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
     const {tx, progressTrack} = useSDKTx();
     const {toast} = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [input, setInput] = useState('');
-    const [current, setCurrent] = useState<CurrentAddress>({loaded: false});
+    const [draft, setDraft] = useState<Draft>({value: ''});
+    const [lookup, setLookup] = useState<Lookup | null>(null);
 
-    // Read on open: the parent remounts the dialog on each open, so this is always fresh.
+    // Read on open: the parent remounts the dialog on each open, so this is always fresh. Both
+    // the lookup and the draft carry the account they belong to, so after an account switch in
+    // the wallet the old account's data is ignored until the new read lands.
     useEffect(() => {
         if (!isOpen || !address) {
             return;
@@ -50,7 +55,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
         let cancelled = false;
         getDelegatorWithdrawAddress(address).then(withdrawAddress => {
             if (!cancelled) {
-                setCurrent({loaded: true, address: withdrawAddress});
+                setLookup({owner: address, address: withdrawAddress});
             }
         });
         return () => {
@@ -58,7 +63,10 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
         };
     }, [isOpen, address]);
 
-    const currentAddress = current.loaded ? current.address : undefined;
+    const loaded = !!address && lookup?.owner === address;
+    const currentAddress = loaded ? lookup?.address : undefined;
+    const input = draft.owner === address ? draft.value : '';
+    const setInput = (value: string) => setDraft({owner: address, value});
     const target = withdrawTarget(currentAddress, address);
     const prefix = getChainAddressPrefix();
     const check = checkWithdrawAddress(input, {prefix, current: currentAddress, validate: validateBech32Address});
@@ -69,7 +77,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
 
     const handleConfirm = async () => {
         // Until the current address is known, the same-address check cannot run.
-        if (!address || !current.loaded || !check.ok) {
+        if (!address || !loaded || !check.ok) {
             return;
         }
         if (!feeCheck.canAfford) {
@@ -111,18 +119,18 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
 
             <Flex direction="column" gap="6px" px="14px" py="12px" borderRadius="hg.md" bg="hg.inset" fontSize="14px">
                 <chakra.span color="hg.text.secondary">Rewards are paid to</chakra.span>
-                {!current.loaded && isConnected && (
+                {!loaded && isConnected && (
                     <chakra.span color="hg.text.faint">Loading…</chakra.span>
                 )}
-                {current.loaded && target === 'self' && (
+                {loaded && target === 'self' && (
                     <chakra.strong>This wallet</chakra.strong>
                 )}
-                {current.loaded && target === 'other' && (
+                {loaded && target === 'other' && (
                     <chakra.strong color="hg.warning.text" overflowWrap="anywhere" data-testid="current-withdraw-address">
                         {currentAddress}
                     </chakra.strong>
                 )}
-                {current.loaded && target === 'unknown' && (
+                {loaded && target === 'unknown' && (
                     <chakra.span color="hg.text.faint">Could not load the current address. You can still set a new one.</chakra.span>
                 )}
                 {target === 'other' && (
@@ -135,7 +143,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
             <Flex direction="column" gap="8px">
                 <Flex justify="space-between" align="baseline" gap="12px">
                     <chakra.label htmlFor="withdraw-address-input" fontSize="14px" fontWeight="600">New rewards address</chakra.label>
-                    {address && current.loaded && target !== 'self' && (
+                    {address && loaded && target !== 'self' && (
                         <Button
                             size="xs"
                             variant="ghost"
@@ -197,7 +205,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
                         size="lg"
                         onClick={handleConfirm}
                         loading={isSubmitting}
-                        disabled={!address || !current.loaded || !check.ok || !feeCheck.canAfford}
+                        disabled={!address || !loaded || !check.ok || !feeCheck.canAfford}
                     >
                         Set address
                     </Button>
