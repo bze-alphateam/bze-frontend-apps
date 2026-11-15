@@ -56,6 +56,7 @@ export type TxKind =
     | 'redelegate'
     | 'cancel-unbonding-delegation'
     | 'withdraw-delegator-reward'
+    | 'set-withdraw-address'
     | 'fund-burner'
     | 'join-raffle'
     | 'start-raffle'
@@ -139,6 +140,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     // extra message costs about as much as the first. Measured on mainnet 2026-11-13 (10 txs).
     'cancel-unbonding-delegation': {base: 280_000, perItem: 260_000}, // measured 193k–237k per message
     'withdraw-delegator-reward': {base: 200_000, perItem: 120_000}, // measured max 179k per message
+    'set-withdraw-address': {base: 130_000},                  // measured (mainnet 2026-11-15) p90 102k, max 102k
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
     'start-raffle': {base: 200_000},                          // no on-chain sample — denom/raffle lookups + pot capture + two writes; re-measure on bzetestnet-3
