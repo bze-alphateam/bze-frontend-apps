@@ -42,7 +42,8 @@ describe('fee maths', () => {
         expect(effectiveGasPrice(0.01)).toBe(ATOMONE_MIN_GAS_PRICE);
         expect(effectiveGasPrice(undefined)).toBe(ATOMONE_MIN_GAS_PRICE);
         expect(effectiveGasPrice(NaN)).toBe(ATOMONE_MIN_GAS_PRICE);
-        expect(effectiveGasPrice(0.5)).toBe(0.5);
+        expect(effectiveGasPrice(0.5)).toBeCloseTo(0.55);
+        expect(effectiveGasPrice(0.2)).toBe(ATOMONE_MIN_GAS_PRICE);
     });
 
     it('rounds gas and amount up, in uphoton', () => {

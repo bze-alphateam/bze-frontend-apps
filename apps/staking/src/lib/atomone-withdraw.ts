@@ -23,6 +23,8 @@ export const PHOTON_DECIMALS = 6;
 /** Floor for the gas price: chain-registry's `fixedMinGasPrice` for uphoton, also the validators' default. */
 export const ATOMONE_MIN_GAS_PRICE = 0.225;
 export const ATOMONE_GAS_MULTIPLIER = 1.3;
+/** Headroom on the dynamic gas price, which can rise between the estimate and the signature. */
+export const ATOMONE_GAS_PRICE_BUFFER = 1.1;
 /** Sent with both the simulation and the signed tx, so the measured gas matches. */
 export const ATOMONE_TX_MEMO = '';
 
@@ -43,14 +45,14 @@ export function explorerTxUrl(txHash: string, txPageTemplate?: string): string {
 }
 
 /**
- * The gas price to pay: the dynamic fee module's current price, never below the static
- * minimum validators enforce in their mempool.
+ * The gas price to pay: the dynamic fee module's current price plus a 10% buffer, never below
+ * the static minimum validators enforce in their mempool.
  */
 export function effectiveGasPrice(dynamicPrice: number | undefined): number {
     if (dynamicPrice === undefined || !Number.isFinite(dynamicPrice) || dynamicPrice <= 0) {
         return ATOMONE_MIN_GAS_PRICE;
     }
-    return Math.max(dynamicPrice, ATOMONE_MIN_GAS_PRICE);
+    return Math.max(dynamicPrice * ATOMONE_GAS_PRICE_BUFFER, ATOMONE_MIN_GAS_PRICE);
 }
 
 /** gas = ceil(gasUsed × multiplier), amount = ceil(gas × price), in uphoton. */
