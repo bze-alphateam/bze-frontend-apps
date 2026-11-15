@@ -72,6 +72,10 @@ describe('estimateGasUsed', () => {
         expect(estimateGasUsed({ kind: 'cancel-unbonding-delegation', count: 11 }).toNumber()).toBe(280_000 + 10 * 260_000)
     })
 
+    it('estimates setting the rewards withdraw address', () => {
+        expect(estimateGasUsed({ kind: 'set-withdraw-address' }).toNumber()).toBe(130_000)
+    })
+
     it('estimates a governance vote', () => {
         expect(estimateGasUsed('vote').toNumber()).toBe(120_000)
     })
