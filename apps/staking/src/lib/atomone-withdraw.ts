@@ -88,18 +88,24 @@ export function toBase64(bytes: Uint8Array): string {
 
 const trimBase = (restUrl: string) => restUrl.replace(/\/+$/, '');
 
-async function getJson(fetchFn: FetchFn, url: string, init?: RequestInit): Promise<any> {
+async function getJson<T>(fetchFn: FetchFn, url: string, init?: RequestInit): Promise<T | undefined> {
     const res = await fetchFn(url, init);
-    const body = await res.json().catch(() => undefined);
+    const body: unknown = await res.json().catch(() => undefined);
     if (!res.ok) {
-        throw new Error(body?.message || `Request failed (${res.status})`);
+        throw new Error((body as {message?: string} | undefined)?.message || `Request failed (${res.status})`);
     }
-    return body;
+    return body as T | undefined;
+}
+
+interface AccountJson {
+    sequence?: string;
+    base_account?: {sequence?: string};
+    base_vesting_account?: {base_account?: {sequence?: string}};
 }
 
 /** The address the account's staking rewards are paid to (the account itself unless changed). */
 export async function fetchWithdrawAddress(restUrl: string, address: string, fetchFn: FetchFn = fetch): Promise<string> {
-    const body = await getJson(fetchFn, `${trimBase(restUrl)}/cosmos/distribution/v1beta1/delegators/${address}/withdraw_address`);
+    const body = await getJson<{withdraw_address?: string}>(fetchFn, `${trimBase(restUrl)}/cosmos/distribution/v1beta1/delegators/${address}/withdraw_address`);
     const withdraw = body?.withdraw_address;
     if (typeof withdraw !== 'string' || withdraw === '') {
         throw new Error('Unexpected withdraw address response');
@@ -109,14 +115,14 @@ export async function fetchWithdrawAddress(restUrl: string, address: string, fet
 
 /** The account's balance of `denom` in base units, '0' when it holds none. */
 export async function fetchBalance(restUrl: string, address: string, denom: string, fetchFn: FetchFn = fetch): Promise<string> {
-    const body = await getJson(fetchFn, `${trimBase(restUrl)}/cosmos/bank/v1beta1/balances/${address}/by_denom?denom=${encodeURIComponent(denom)}`);
+    const body = await getJson<{balance?: {amount?: string}}>(fetchFn, `${trimBase(restUrl)}/cosmos/bank/v1beta1/balances/${address}/by_denom?denom=${encodeURIComponent(denom)}`);
     return body?.balance?.amount ?? '0';
 }
 
 /** The dynamic fee module's current uphoton gas price, or undefined when it can't be read. */
 export async function fetchDynamicGasPrice(restUrl: string, fetchFn: FetchFn = fetch): Promise<number | undefined> {
     try {
-        const body = await getJson(fetchFn, `${trimBase(restUrl)}/cosmos/dynamicfee/v1/gas_price/${ATOMONE_FEE_DENOM}`);
+        const body = await getJson<{price?: {amount?: string}}>(fetchFn, `${trimBase(restUrl)}/cosmos/dynamicfee/v1/gas_price/${ATOMONE_FEE_DENOM}`);
         const price = parseFloat(body?.price?.amount ?? '');
         return Number.isFinite(price) && price > 0 ? price : undefined;
     } catch {
@@ -126,13 +132,13 @@ export async function fetchDynamicGasPrice(restUrl: string, fetchFn: FetchFn = f
 
 /** The account's sequence. Throws a readable error for an account the chain doesn't know yet. */
 export async function fetchSequence(restUrl: string, address: string, fetchFn: FetchFn = fetch): Promise<bigint> {
-    let body: any;
+    let body: {account?: AccountJson} | undefined;
     try {
-        body = await getJson(fetchFn, `${trimBase(restUrl)}/cosmos/auth/v1beta1/accounts/${address}`);
+        body = await getJson<{account?: AccountJson}>(fetchFn, `${trimBase(restUrl)}/cosmos/auth/v1beta1/accounts/${address}`);
     } catch (e) {
         throw new Error(`This account was not found on AtomOne (it needs a PHOTON balance first). ${(e as Error).message}`);
     }
-    const acc = body?.account ?? {};
+    const acc: AccountJson = body?.account ?? {};
     const seq = acc.sequence ?? acc.base_account?.sequence ?? acc.base_vesting_account?.base_account?.sequence ?? '0';
     return BigInt(seq);
 }
@@ -146,7 +152,7 @@ export async function simulateSetWithdrawAddress(
 ): Promise<number> {
     const sequence = await fetchSequence(restUrl, delegatorAddress, fetchFn);
     const txBytes = buildSimulationTxBytes(delegatorAddress, withdrawAddress, sequence);
-    const body = await getJson(fetchFn, `${trimBase(restUrl)}/cosmos/tx/v1beta1/simulate`, {
+    const body = await getJson<{gas_info?: {gas_used?: string}}>(fetchFn, `${trimBase(restUrl)}/cosmos/tx/v1beta1/simulate`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({tx_bytes: toBase64(txBytes)}),
