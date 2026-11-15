@@ -6,6 +6,7 @@ import {WalletState} from '@interchain-kit/core';
 
 const ME = 'atone1qyqszqgpqyqszqgpqyqszqgpqyqszqgpunaemy';
 const TARGET = 'atone1qgpqyqszqgpqyqszqgpqyqszqgpqyqszdhmusj';
+const OTHER = 'atone1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrfake';
 const BZE_ADDR = 'bze1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz7nts5a';
 const FEE = {amount: [{denom: 'uphoton', amount: '29250'}], gas: '130000'};
 
@@ -87,6 +88,41 @@ describe('WithdrawAddressPanel', () => {
         expect(msgs[0].value).toMatchObject({delegatorAddress: ME, withdrawAddress: TARGET});
         expect(opts.fee).toEqual(FEE);
         expect(opts.memo).toBe('');
+    });
+
+    it('lowercases an uppercase address before checking and sending it', async () => {
+        txMock.mockResolvedValue(true);
+        renderPanel();
+        await userEvent.type(await screen.findByPlaceholderText('atone1…'), TARGET.toUpperCase());
+        await userEvent.click(screen.getByRole('button', {name: 'Review'}));
+        expect(await screen.findByText(TARGET)).toBeInTheDocument();
+        expect(estimateMock).toHaveBeenCalledWith('https://rest.example', ME, TARGET);
+        await userEvent.click(screen.getByRole('button', {name: 'Sign and send'}));
+        await waitFor(() => expect(txMock).toHaveBeenCalled());
+        expect(txMock.mock.calls[0][0][0].value.withdrawAddress).toBe(TARGET);
+    });
+
+    it('returns to the form when the wallet can not sign (no callback from tx)', async () => {
+        txMock.mockResolvedValue(false);
+        renderPanel();
+        await userEvent.type(await screen.findByPlaceholderText('atone1…'), TARGET);
+        await userEvent.click(screen.getByRole('button', {name: 'Review'}));
+        await userEvent.click(await screen.findByRole('button', {name: 'Sign and send'}));
+        expect(await screen.findByText(/wallet could not sign/)).toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Review'})).toBeInTheDocument();
+    });
+
+    it('drops the confirmation when the wallet switches accounts', async () => {
+        const {rerender} = renderPanel();
+        await userEvent.type(await screen.findByPlaceholderText('atone1…'), TARGET);
+        await userEvent.click(screen.getByRole('button', {name: 'Review'}));
+        expect(await screen.findByRole('button', {name: 'Sign and send'})).toBeInTheDocument();
+
+        useChainMock.mockReturnValue({status: WalletState.Connected, address: OTHER, connect: vi.fn()});
+        rerender(<ChakraProvider value={defaultSystem}><WithdrawAddressPanel /></ChakraProvider>);
+        expect(screen.queryByRole('button', {name: 'Sign and send'})).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Review'})).toBeInTheDocument();
+        expect(txMock).not.toHaveBeenCalled();
     });
 
     it('does not open the wallet when the simulation fails', async () => {

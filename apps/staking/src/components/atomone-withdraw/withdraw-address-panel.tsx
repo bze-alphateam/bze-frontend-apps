@@ -31,7 +31,8 @@ const errText = (e: unknown) => (e as Error)?.message || String(e);
 type Step =
     | {kind: 'edit'}
     | {kind: 'estimating'}
-    | {kind: 'confirm'; target: string; fee: StdFee}
+    /** `from` is the account the fee was simulated for. */
+    | {kind: 'confirm'; from: string; target: string; fee: StdFee}
     | {kind: 'signing'; target: string}
     | {kind: 'done'; txHash: string; target: string; failed?: string};
 
@@ -102,7 +103,8 @@ export function WithdrawAddressPanel() {
     const [step, setStep] = useState<Step>({kind: 'edit'});
     const [stepError, setStepError] = useState('');
 
-    const target = input.trim();
+    // Bech32 is case-insensitive; the chain stores the lowercase form.
+    const target = input.trim().toLowerCase();
     const validation = useMemo(() => (target ? validateBech32Address(target, ATOMONE_PREFIX) : undefined), [target]);
     const isSameAsCurrent = !!accountLoaded?.value && accountLoaded.value.withdraw === target;
     const noPhoton = !!accountLoaded?.value && accountLoaded.value.photon === '0';
@@ -126,7 +128,7 @@ export function WithdrawAddressPanel() {
         setStep({kind: 'estimating'});
         try {
             const fee = await estimateSetWithdrawAddressFee(restUrl.value, address, target);
-            setStep({kind: 'confirm', target, fee});
+            setStep({kind: 'confirm', from: address, target, fee});
         } catch (e) {
             setStep({kind: 'edit'});
             setStepError(`The transaction would fail: ${errText(e)}`);
@@ -134,9 +136,11 @@ export function WithdrawAddressPanel() {
     }, [restUrl.value, address, validation, target]);
 
     const handleSign = useCallback(async () => {
-        if (step.kind !== 'confirm' || !address) return;
+        if (step.kind !== 'confirm' || !address || step.from !== address) return;
         const {target: to, fee} = step;
         let hash = '';
+        // useTx returns false without a callback when it has no signing client.
+        let reported = false;
         setStep({kind: 'signing', target: to});
         const ok = await tx([buildSetWithdrawAddressMsg(address, to)], {
             fee,
@@ -146,6 +150,7 @@ export function WithdrawAddressPanel() {
                 hash = h;
             },
             onFailure: (reason, details) => {
+                reported = true;
                 if (details?.txHash) hash = details.txHash;
                 if (hash) {
                     setStep({kind: 'done', txHash: hash, target: to, failed: reason});
@@ -155,14 +160,21 @@ export function WithdrawAddressPanel() {
                 }
             },
             onSuccess: (res) => {
+                reported = true;
                 setStep({kind: 'done', txHash: res.txhash || hash, target: to});
             },
         });
         if (ok) {
             setInput('');
             setRefresh(r => r + 1);
+        } else if (!reported) {
+            setStep(s => (s.kind === 'signing' ? {kind: 'edit'} : s));
+            setStepError('The wallet could not sign. Make sure it is unlocked and connected to AtomOne, then try again.');
         }
     }, [step, address, tx]);
+
+    // A confirmation priced for another account (the wallet switched accounts) is dropped: review again.
+    const view: Step = step.kind === 'confirm' && step.from !== address ? {kind: 'edit'} : step;
 
     if (restUrl.key && restUrl.error) {
         return <HgCard p="18px"><chakra.span color="fg.error">{`Can't reach AtomOne: ${restUrl.error}`}</chakra.span></HgCard>;
@@ -207,36 +219,36 @@ export function WithdrawAddressPanel() {
                 )}
             </HgCard>
 
-            {step.kind === 'done' ? (
+            {view.kind === 'done' ? (
                 <HgCard p="18px" display="flex" flexDirection="column" gap="10px">
-                    <chakra.span fontWeight="700" color={step.failed ? 'fg.error' : undefined}>
-                        {step.failed ? `Transaction failed or not confirmed yet: ${step.failed}` : 'Withdraw address changed.'}
+                    <chakra.span fontWeight="700" color={view.failed ? 'fg.error' : undefined}>
+                        {view.failed ? `Transaction failed or not confirmed yet: ${view.failed}` : 'Withdraw address changed.'}
                     </chakra.span>
-                    <Box><Label>New withdraw address</Label><Box><Mono>{step.target}</Mono></Box></Box>
-                    <Box><Label>Transaction hash</Label><Box><Mono>{step.txHash}</Mono></Box></Box>
-                    <Link href={explorerTxUrl(step.txHash, txPageTemplate)} target="_blank" rel="noopener noreferrer" color="hg.accent">
+                    <Box><Label>New withdraw address</Label><Box><Mono>{view.target}</Mono></Box></Box>
+                    <Box><Label>Transaction hash</Label><Box><Mono>{view.txHash}</Mono></Box></Box>
+                    <Link href={explorerTxUrl(view.txHash, txPageTemplate)} target="_blank" rel="noopener noreferrer" color="hg.accent">
                         View on an AtomOne explorer
                     </Link>
                     <Button variant={hgVariant('secondary')} onClick={() => setStep({kind: 'edit'})}>Done</Button>
                 </HgCard>
-            ) : step.kind === 'confirm' || step.kind === 'signing' ? (
+            ) : view.kind === 'confirm' || view.kind === 'signing' ? (
                 <HgCard p="18px" display="flex" flexDirection="column" gap="12px">
                     <chakra.span fontWeight="700">Confirm</chakra.span>
                     <chakra.span>
                         From now on, all staking rewards of <Mono>{address}</Mono> on AtomOne will be paid to:
                     </chakra.span>
-                    <Box p="12px" borderWidth="1px" borderRadius="md"><Mono>{step.target}</Mono></Box>
+                    <Box p="12px" borderWidth="1px" borderRadius="md"><Mono>{view.target}</Mono></Box>
                     <chakra.span fontSize="13px" color="fg.muted">
                         Check every character. Rewards sent to a wrong address can not be recovered. This also applies when rewards are withdrawn automatically (e.g. on delegation changes).
                     </chakra.span>
-                    {step.kind === 'confirm' && (
+                    {view.kind === 'confirm' && (
                         <chakra.span fontSize="13px" color="fg.muted">
-                            {`Network fee: ${formatPhoton(step.fee.amount[0]?.amount ?? '0')} PHOTON (gas ${step.fee.gas})`}
+                            {`Network fee: ${formatPhoton(view.fee.amount[0]?.amount ?? '0')} PHOTON (gas ${view.fee.gas})`}
                         </chakra.span>
                     )}
                     <Flex gap="8px">
-                        <Button variant={hgVariant('secondary')} onClick={() => setStep({kind: 'edit'})} disabled={step.kind === 'signing'}>Back</Button>
-                        <Button variant={hgVariant('primary')} onClick={handleSign} loading={step.kind === 'signing'} flex="1">
+                        <Button variant={hgVariant('secondary')} onClick={() => setStep({kind: 'edit'})} disabled={view.kind === 'signing'}>Back</Button>
+                        <Button variant={hgVariant('primary')} onClick={handleSign} loading={view.kind === 'signing'} flex="1">
                             Sign and send
                         </Button>
                     </Flex>
@@ -261,7 +273,7 @@ export function WithdrawAddressPanel() {
                     <Button
                         variant={hgVariant('primary')}
                         onClick={handleReview}
-                        loading={step.kind === 'estimating'}
+                        loading={view.kind === 'estimating'}
                         disabled={!validation?.isValid || isSameAsCurrent || !restUrl.value}
                     >
                         Review
