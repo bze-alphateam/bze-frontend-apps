@@ -68,7 +68,8 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
     });
 
     const handleConfirm = async () => {
-        if (!address || !check.ok) {
+        // Until the current address is known, the same-address check cannot run.
+        if (!address || !current.loaded || !check.ok) {
             return;
         }
         if (!feeCheck.canAfford) {
@@ -134,7 +135,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
             <Flex direction="column" gap="8px">
                 <Flex justify="space-between" align="baseline" gap="12px">
                     <chakra.label htmlFor="withdraw-address-input" fontSize="14px" fontWeight="600">New rewards address</chakra.label>
-                    {address && target !== 'self' && (
+                    {address && current.loaded && target !== 'self' && (
                         <Button
                             size="xs"
                             variant="ghost"
@@ -196,7 +197,7 @@ export function WithdrawAddressModal({isOpen, onClose, onSuccess}: WithdrawAddre
                         size="lg"
                         onClick={handleConfirm}
                         loading={isSubmitting}
-                        disabled={!address || !check.ok || !feeCheck.canAfford}
+                        disabled={!address || !current.loaded || !check.ok || !feeCheck.canAfford}
                     >
                         Set address
                     </Button>
