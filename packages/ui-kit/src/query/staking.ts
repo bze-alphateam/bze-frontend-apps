@@ -221,6 +221,22 @@ export const getValidator = async (validatorAddress: string): Promise<ValidatorS
     }
 }
 
+/**
+ * Where the delegator's staking rewards are paid: its own address unless it set another one
+ * with `MsgSetWithdrawAddress`. One address per delegator account, for every delegation.
+ * Undefined when the lookup fails.
+ */
+export const getDelegatorWithdrawAddress = async (delegatorAddress: string): Promise<string | undefined> => {
+    try {
+        const client = await getRestClient();
+        const resp = await client.cosmos.distribution.v1beta1.delegatorWithdrawAddress({delegatorAddress});
+        return resp.withdraw_address || undefined;
+    } catch (e) {
+        console.error("failed to get delegator withdraw address", delegatorAddress, e);
+        return undefined;
+    }
+}
+
 export const getDelegatorValidators = async (address: string): Promise<ValidatorSDKType[]> => {
     try {
         const client = await getRestClient();
