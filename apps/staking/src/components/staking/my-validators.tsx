@@ -1,7 +1,7 @@
 'use client';
 
 import {Button, chakra, Flex, Grid} from '@chakra-ui/react';
-import {LuArrowUpRight, LuArrowDownRight, LuShuffle, LuGift} from 'react-icons/lu';
+import {LuArrowUpRight, LuArrowDownRight, LuShuffle, LuGift, LuWalletCards} from 'react-icons/lu';
 import {
     useAssets,
     prettyAmount,
@@ -22,6 +22,7 @@ import {DelegateModal} from './delegate-modal';
 import {UndelegateModal} from './undelegate-modal';
 import {RedelegateModal} from './redelegate-modal';
 import {ClaimRewardsModal, ValidatorRewardEntry} from './claim-rewards-modal';
+import {WithdrawAddressModal} from './withdraw-address-modal';
 import {ValidatorAvatar} from './validator-avatar';
 import type {ValidatorSDKType} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
 import {BondStatus, bondStatusFromJSON} from '@bze/bzejs/cosmos/staking/v1beta1/staking';
@@ -32,11 +33,11 @@ interface MyValidatorsProps {
     onActionComplete: () => void;
     logos: Record<string, string>;
     unbondingDays?: string;
-    /** Buttons before Claim All (Refresh). */
+    /** Buttons before Rewards address and Claim All (Refresh). */
     actions?: ReactNode;
 }
 
-type ModalType = 'delegate' | 'undelegate' | 'redelegate' | 'claim' | null;
+type ModalType = 'delegate' | 'undelegate' | 'redelegate' | 'claim' | 'withdraw-address' | null;
 
 function isValidatorActive(validator: ValidatorSDKType): boolean {
     return bondStatusFromJSON(validator.status) === BondStatus.BOND_STATUS_BONDED;
@@ -89,9 +90,12 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
         <Flex as="section" direction="column" gap={{base: '12px', md: '16px'}}>
             <SectionHeader
                 title="My Validators"
-                actions={(actions || hasClaimableRewards) && (
+                actions={(
                     <>
                         {actions}
+                        <Button size="md" {...neutralButton} borderRadius="hg.md" onClick={() => openModal('withdraw-address')}>
+                            <LuWalletCards /> Rewards address
+                        </Button>
                         {hasClaimableRewards && (
                             <Button size="md" {...softButton} borderRadius="hg.md" onClick={() => openModal('claim')}>
                                 <LuGift /> Claim All ({prettyAmount(totalRewardsHuman)} {nativeAsset?.ticker})
@@ -224,6 +228,12 @@ export function MyValidators({myValidators, allValidators, onActionComplete, log
                 isOpen={activeModal === 'claim'}
                 onClose={closeModal}
                 rewardEntries={rewardEntries}
+                onSuccess={handleActionComplete}
+            />
+            <WithdrawAddressModal
+                key={`withdraw-address-${modalNonce}`}
+                isOpen={activeModal === 'withdraw-address'}
+                onClose={closeModal}
                 onSuccess={handleActionComplete}
             />
         </Flex>
