@@ -15,6 +15,14 @@ describe("ibcTransferTxOptions", () => {
         expect(ibcTransferTxOptions(true).letWalletSetFee).toBe(true);
         expect(ibcTransferTxOptions(false).letWalletSetFee).toBe(false);
     });
+
+    // A refused withdrawal (rate limit, blocked denom, closed channel, paused message type) fails
+    // in the simulation; signing anyway with the fallback fee would only burn the fee. A deposit
+    // is signed on the foreign chain with no simulation, so there is nothing to abort on.
+    it("aborts on a failed simulation for withdrawals only", () => {
+        expect(ibcTransferTxOptions(false).abortOnSimulationError).toBe(true);
+        expect(ibcTransferTxOptions(true).abortOnSimulationError).toBe(false);
+    });
 });
 
 // Expected values are the vouchers chain-registry lists for BZE coins on Osmosis

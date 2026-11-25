@@ -74,9 +74,12 @@ export const getIbcTransferTimeout = (): BigNumber => {
  *
  * Deposits sign on the foreign chain, where we don't know its gas price, so
  * the wallet is asked to fill the fee; withdrawals sign on BZE and use our own
- * fee simulation.
+ * fee simulation. A withdrawal also aborts when the simulation fails: the
+ * chain refuses it (rate limit, blocked denom, closed channel, paused message
+ * type) and signing anyway with a fallback fee would only burn the fee.
  */
 export const ibcTransferTxOptions = (isDeposit: boolean) => ({
     useDirectSign: true,
     letWalletSetFee: isDeposit,
+    abortOnSimulationError: !isDeposit,
 });

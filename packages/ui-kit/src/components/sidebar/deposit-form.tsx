@@ -28,6 +28,7 @@ import {getChainName} from '../../constants/chain';
 import type {LegacyAssetNotice} from '../../constants/assets';
 import {assetNotice} from '../../utils/ibc_inbound';
 import {LegacyAssetNoticeBox} from '../legacy-asset-notice';
+import {DepositLimitNote} from './deposit-limit-note';
 import {MaxInputGroup} from '../max-input-group';
 
 /**
@@ -44,6 +45,7 @@ export const DepositForm = () => {
     const [selectedAsset, setSelectedAsset] = useState<BridgeableAsset | undefined>();
     const [amount, setAmount] = useState('');
     const [amountError, setAmountError] = useState('');
+    const [sent, setSent] = useState(false);
 
     const {assets: bridgeableAssets, blockedAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
 
@@ -185,6 +187,7 @@ export const DepositForm = () => {
     const handleExecute = useCallback(async () => {
         const success = await executeTransfer();
         if (success) {
+            setSent(true);
             setAmount('');
             setSelectedAsset(undefined);
             setTimeout(() => refetchDepositBalance(), 4000);
@@ -196,6 +199,7 @@ export const DepositForm = () => {
     const onAssetChange = useCallback((denom: string) => {
         if (!denom) return;
         setSelectedAsset(routesByDenom.get(denom)?.[0]);
+        setSent(false);
         setAmount('');
         setAmountError('');
     }, [routesByDenom]);
@@ -205,12 +209,14 @@ export const DepositForm = () => {
         const route = selectedRoutes.find(r => r.counterparty.chainName === chainName);
         if (!route) return;
         setSelectedAsset(route);
+        setSent(false);
         setAmount('');
         setAmountError('');
     }, [selectedRoutes]);
 
     const onAmountChange = useCallback((value: string) => {
         setAmount(sanitizeNumberInput(value, selectedAsset?.bzeAsset.decimals));
+        setSent(false);
         setAmountError('');
     }, [selectedAsset?.bzeAsset.decimals]);
 
@@ -410,6 +416,9 @@ export const DepositForm = () => {
                     )}
                 </Box>
             )}
+
+            {/* Daily limit per route; after a send it also says where a refused deposit is refunded */}
+            {selectedAsset || sent ? <DepositLimitNote sent={sent}/> : null}
 
             {/* Route preview */}
             {routePreview && amount && (

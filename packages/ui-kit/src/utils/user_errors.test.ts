@@ -34,3 +34,35 @@ describe('prettyError — Denom Rewards (x/rewards)', () => {
         expect(prettyError('something else')).toBe('something else')
     })
 })
+
+describe('prettyError — v8.3.0 refusals', () => {
+    it.each([
+        ['failed to execute message; message index: 0: Outflow exceeds quota - Net Outflow: 5, Channel Value: 100, Threshold: 2%: quota exceeded', /over today's limit for this route/],
+        ['failed to execute message; message index: 0: denom factory/bze1abc/x is blacklisted: denom is blacklisted', /to and from other chains are stopped/],
+        ['failed to execute message; message index: 0: channel channel-3: ibc transfers on this channel are stopped', /Transfers on this route are stopped/],
+        ['circuit breaker disables execution of this message: /bze.tradebin.MsgMultiSwap', /paused on BeeZee/],
+        ['failed to execute message; message index: 0: minting is disabled for this denom', /Minting is turned off/],
+        ['failed to execute message; message index: 0: spendable balance 5ubze is smaller than 10ubze: insufficient funds', /don't have enough balance/],
+    ])('maps %s', (raw, expected) => {
+        expect(prettyError(raw)).toMatch(expected)
+    })
+})
+
+// Regression table: the messages that existed before v8.3.0 keep their mapping.
+describe('prettyError — existing keys', () => {
+    it.each([
+        ['failed to execute message; message index: 0: amount is smaller than staking reward min stake', 'Amount is smaller than minimum required stake'],
+        ['the resulted amount is too low', 'The minimum amount could not be met (the price moved). Increase the slippage and try again.'],
+        ['amount is too low to be traded', 'Amount is too low to be traded'],
+        ['can not buy more than 50 tickets', 'You can only contribute up to 50 times per transaction.'],
+        ['x can be used to pay for fees only if enough liquidity is available', 'Your selected fee token does not have enough liquidity. Please switch to the native token in Settings.'],
+        ['broadcast failed with code 7', 'Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.'],
+    ])('maps %s', (raw, expected) => {
+        expect(prettyError(raw)).toBe(expected)
+    })
+
+    it('returns undefined for an empty message', () => {
+        expect(prettyError(undefined)).toBeUndefined()
+        expect(prettyError('')).toBeUndefined()
+    })
+})
