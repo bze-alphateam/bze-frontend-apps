@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
+import BigNumber from 'bignumber.js'
 
 // The wallet, signing client and toasts are fed directly. Most tests pass a fixed fee, which
 // skips simulation, so a tx only signs, broadcasts and reports the result; the simulateFee
 // tests leave the fee out and feed the simulate query and the chain params instead.
-const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings, getDenomsPoolMock, connected, queryClient } = vi.hoisted(() => ({
+const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, denomConfigMock, settings, getDenomsPoolMock, connected, queryClient } = vi.hoisted(() => ({
     toastMock: {
         loading: vi.fn(() => 'toast-id'),
         dismiss: vi.fn(),
@@ -16,6 +17,7 @@ const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, settings
     signAndBroadcastMock: vi.fn(),
     simulateMock: vi.fn(),
     txFeeParamsMock: vi.fn(),
+    denomConfigMock: vi.fn(),
     settings: { feeDenom: 'ubze' },
     getDenomsPoolMock: vi.fn(),
     // The useChain() wallet (a ChainWalletStore); undefined unless a test connects one.
@@ -58,6 +60,7 @@ vi.mock('./useLiquidityPools', () => ({ useLiquidityPools: () => ({ getDenomsPoo
 vi.mock('./useSettings', () => ({ useSettings: () => settings }))
 vi.mock('./useFeeTokens', () => ({ useFeeTokens: () => ({ isValidFeeDenom: () => true }) }))
 vi.mock('@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func', () => ({ getSimulate: simulateMock }))
+vi.mock('../query/denom_config', () => ({ getDenomConfig: denomConfigMock }))
 vi.mock('../query/txfeecollector_params', () => ({ getTxFeeCollectorParams: txFeeParamsMock }))
 vi.mock('../constants/chain', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../constants/chain')>()),
@@ -202,6 +205,7 @@ describe('useTx simulateFee', () => {
             blockedIbcInbound: [],
         })
         getDenomsPoolMock.mockReset().mockReturnValue(undefined)
+        denomConfigMock.mockReset().mockResolvedValue({ gasSurcharge: new BigNumber(0), transferFee: new BigNumber(0) })
         settings.feeDenom = 'ubze'
     })
 
@@ -235,6 +239,21 @@ describe('useTx simulateFee', () => {
         expect(fee.gas).toBe('148092')                                   // ceil(123410 × 1.2), as in ubze
         expect(fee.amount).toEqual([{ denom: 'uusdc', amount: '17' }])   // ceil(ceil(148092 × 0.01) / 100 × 1.1)
         const required = Math.ceil(Number(fee.gas) * CHAIN_GAS_PRICE / 100)
+        expect(Number(fee.amount[0].amount)).toBeGreaterThanOrEqual(required)
+    })
+
+    // v8.3.0: the chain multiplies the token's gas price by 1 + gas_surcharge.
+    it('prices a foreign fee with the fee token gas surcharge', async () => {
+        settings.feeDenom = 'uusdc'
+        getDenomsPoolMock.mockReturnValue(pool)
+        denomConfigMock.mockResolvedValue({ gasSurcharge: new BigNumber(0.5), transferFee: new BigNumber(0) })
+
+        const fee = await sentFee()
+
+        expect(denomConfigMock).toHaveBeenCalledWith('uusdc')
+        expect(fee.gas).toBe('148092')
+        expect(fee.amount).toEqual([{ denom: 'uusdc', amount: '25' }])   // ceil(14.81 × 1.5 × 1.1 = 24.4365)
+        const required = Math.ceil(Number(fee.gas) * CHAIN_GAS_PRICE / 100 * 1.5)
         expect(Number(fee.amount[0].amount)).toBeGreaterThanOrEqual(required)
     })
 

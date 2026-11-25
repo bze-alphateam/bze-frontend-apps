@@ -20,6 +20,7 @@ import {useSettings} from "./useSettings";
 import {useFeeTokens} from "./useFeeTokens";
 import {coins} from "../utils/coins";
 import {registerBzeEncoders} from "../utils/signing_client_setup";
+import {getDenomConfig} from "../query/denom_config";
 import {computeForeignGasFee, computeNativeGasFee, resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
 import {signModeFor, walletNameOf} from "../utils/wallet_sign_mode";
@@ -271,7 +272,9 @@ const useTx = (chainName: string) => {
         // Same gas limit as the native fee (the simulation already ran with this token), priced at
         // the pool's spot ratio with the slippage buffer (default 10%) to absorb pool drift between
         // simulation and inclusion. See computeForeignGasFee.
-        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getForeignFeeSlippage(), pool, nativeDenom);
+        // A factory token may carry a gas surcharge (v8.3.0 DenomConfig) the chain multiplies its gas price by.
+        const {gasSurcharge} = await getDenomConfig(feeDenom);
+        const foreignGasFee = computeForeignGasFee(nativeGasFee.gas, gasPrice, getForeignFeeSlippage(), pool, nativeDenom, gasSurcharge);
         if (!foreignGasFee) {
             return nativeFee;
         }

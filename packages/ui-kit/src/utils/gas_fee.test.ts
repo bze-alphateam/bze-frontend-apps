@@ -190,6 +190,32 @@ describe('computeForeignGasFee', () => {
         expect(fee.amount.toNumber()).toBe(17)
     })
 
+    // The chain requires ceil(gas × minGasPrice / spot × (1 + s)) (txfeecollector ante handler);
+    // here gas 148092 × 0.01 = 1480.92 native, spot 0.01 uusdc per ubze → 14.8092 uusdc at s = 0.
+    it.each([
+        [0, 15],     // ceil(14.8092)
+        [0.5, 23],   // ceil(14.8092 × 1.5 = 22.2138)
+        [2, 45],     // ceil(14.8092 × 3 = 44.4276)
+    ])('covers the chain fee with a gas surcharge of %s', (surcharge, chainRequired) => {
+        const fee = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1, pool, NATIVE, surcharge)!
+        expect(fee.amount.toNumber()).toBeGreaterThanOrEqual(chainRequired)
+        const withSlippage = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE, surcharge)!
+        expect(withSlippage.amount.toNumber()).toBeGreaterThanOrEqual(chainRequired)
+    })
+
+    it('keeps the surcharge separate from the slippage buffer', () => {
+        // 14.81 × (1 + 0.5) × 1.1 = 24.4365 → 25, not 14.81 × 1.6 = 23.696 → 24
+        const fee = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE, 0.5)!
+        expect(fee.amount.toNumber()).toBe(25)
+    })
+
+    it('is identical to the surcharge-free fee when the surcharge is 0 or omitted', () => {
+        const plain = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE)!
+        const zero = computeForeignGasFee(nativeGas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE, new BigNumber(0))!
+        expect(zero).toEqual(plain)
+        expect(plain.amount.toNumber()).toBe(17)
+    })
+
     it('is the native fee for that gas limit at spot, times the slippage buffer', () => {
         const native = computeNativeGasFee(123_410, CHAIN_GAS_PRICE, 1.2)
         const fee = computeForeignGasFee(native.gas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE)!
@@ -258,6 +284,20 @@ describe('estimateGasFee', () => {
         expect(result.nativeAmount.eq(expected.nativeAmount)).toBe(true)
         expect(result.amount.eq(expected.amount)).toBe(true)
         expect(result.amount.mod(1).isZero()).toBe(true)
+    })
+
+    it.each([0, 0.5, 2])('covers the chain fee with a gas surcharge of %s', (surcharge) => {
+        const native = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE })
+        const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: USDC, pool, gasSurcharge: surcharge })
+        // 1920 ubze → 19.2 uusdc at spot; the chain needs ceil(19.2 × (1 + s))
+        expect(result.gas.eq(native.gas)).toBe(true)
+        expect(result.amount.toNumber()).toBeGreaterThanOrEqual(Math.ceil(19.2 * (1 + surcharge)))
+    })
+
+    it('leaves a native fee alone whatever the surcharge', () => {
+        const plain = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE })
+        const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE, gasSurcharge: 2 })
+        expect(result.amount.eq(plain.amount)).toBe(true)
     })
 
     it('adds the module fee swap to the gas limit in another token, with one margin', () => {

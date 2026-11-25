@@ -22,7 +22,7 @@ import {FeeCoin} from "../types/fees";
  * so
  *   gas        = ceil(gasUsed × gasMultiplier)                         (the same limit in every fee token)
  *   nativeFee  = ceil(gas × gasPrice)                                   (paying in the native denom)
- *   foreignFee = ceil(spot⁻¹(ceil(gas × gasPrice)) × foreignFeeSlippage) (paying in another token)
+ *   foreignFee = ceil(spot⁻¹(ceil(gas × gasPrice)) × (1 + gasSurcharge) × foreignFeeSlippage) (paying in another token)
  * Every rounding is up: a fee one micro-unit short is rejected with "insufficient fees".
  *
  * One gas margin serves every fee token. The simulation carries the fee denom
@@ -277,6 +277,10 @@ export interface ForeignGasFee {
  *
  * `nativeGas` is the gas limit of {@link computeNativeGasFee}. Returns undefined when the pool
  * cannot price the fee (empty reserves), in which case the native fee must be sent instead.
+ *
+ * `gasSurcharge` is the token's v8.3.0 `DenomConfig.gas_surcharge` (0 when it has none): the
+ * chain multiplies the token's gas price by `1 + gasSurcharge`, so the converted fee is too.
+ * It is separate from `foreignFeeSlippage`, which only absorbs pool drift.
  */
 export function computeForeignGasFee(
     nativeGas: BigNumber,
@@ -284,6 +288,7 @@ export function computeForeignGasFee(
     foreignFeeSlippage: number,
     pool: LiquidityPoolSDKType,
     nativeDenom: string,
+    gasSurcharge: BigNumber.Value = 0,
 ): ForeignGasFee | undefined {
     const gas = nativeGas.integerValue(BigNumber.ROUND_CEIL);
     const nativeAmount = gas.multipliedBy(gasPrice).integerValue(BigNumber.ROUND_CEIL);
@@ -294,7 +299,9 @@ export function computeForeignGasFee(
     }
     // ROUND_CEIL also guarantees at least 1 unit of the foreign denom; if the swap rounds to 0
     // on-chain, the txfeecollector module accumulates the dust until it can be swapped.
-    const amount = spot.multipliedBy(foreignFeeSlippage).integerValue(BigNumber.ROUND_CEIL);
+    const surcharge = new BigNumber(gasSurcharge);
+    const factor = (surcharge.isFinite() && surcharge.gt(0) ? surcharge : new BigNumber(0)).plus(1);
+    const amount = spot.multipliedBy(factor).multipliedBy(foreignFeeSlippage).integerValue(BigNumber.ROUND_CEIL);
     return {gas, amount, nativeAmount};
 }
 
@@ -318,6 +325,8 @@ export interface GasFeeEstimateInput {
     pool?: LiquidityPoolSDKType;
     /** Tradebin `min_native_liquidity_for_module_swap` — the pool must exceed it to be usable. */
     minNativeLiquidity: BigNumber | string | number;
+    /** `DenomConfig.gas_surcharge` of `txFeeDenom` (v8.3.0); 0 or omitted when it has none. */
+    gasSurcharge?: BigNumber | string | number;
 }
 
 export interface GasFeeEstimate {
@@ -339,7 +348,7 @@ export interface GasFeeEstimate {
  * captured module fee, which the simulation measures and the native-paid samples lack.
  */
 export function estimateGasFee(input: GasFeeEstimateInput): GasFeeEstimate {
-    const {spec, nativeDenom, txFeeDenom, gasPrice, gasMultiplier, foreignFeeSlippage, pool, minNativeLiquidity} = input;
+    const {spec, nativeDenom, txFeeDenom, gasPrice, gasMultiplier, foreignFeeSlippage, pool, minNativeLiquidity, gasSurcharge} = input;
 
     const {gas, amount: nativeAmount} = computeNativeGasFee(estimateGasUsed(spec), gasPrice, gasMultiplier);
     const native: GasFeeEstimate = {denom: nativeDenom, amount: nativeAmount, gas, nativeAmount, isNative: true};
@@ -349,7 +358,7 @@ export function estimateGasFee(input: GasFeeEstimateInput): GasFeeEstimate {
     }
 
     const foreignGas = computeNativeGasFee(estimateGasUsed(spec, {foreignFee: true}), gasPrice, gasMultiplier).gas;
-    const foreign = computeForeignGasFee(foreignGas, gasPrice, foreignFeeSlippage, pool, nativeDenom);
+    const foreign = computeForeignGasFee(foreignGas, gasPrice, foreignFeeSlippage, pool, nativeDenom, gasSurcharge);
     if (!foreign) {
         return native;
     }

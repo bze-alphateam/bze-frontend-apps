@@ -4,6 +4,7 @@ import BigNumber from 'bignumber.js';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {getChainNativeAssetDenom} from '../constants/assets';
 import {getForeignFeeSlippage, getGasMultiplier, getGasPrice} from '../constants/chain';
+import {getDenomConfig} from '../query/denom_config';
 import {getTxFeeCollectorParams} from '../query/txfeecollector_params';
 import {Asset} from '../types/asset';
 import {uAmountToBigNumberAmount} from '../utils/amount';
@@ -34,6 +35,29 @@ export function useGasPrice(): number {
     return gasPrice;
 }
 
+/**
+ * The v8.3.0 gas surcharge of the denom the fee is paid in (0 for tokens without a config and on
+ * v8.2.0 nodes), so estimates match the fee `useTx` signs. `isLoading` is true until the config
+ * of the *current* denom is in: a value loaded for another denom is never used.
+ */
+export function useGasSurcharge(denom: string): {surcharge: BigNumber; isLoading: boolean} {
+    const [loaded, setLoaded] = useState<{denom: string; surcharge: BigNumber}>();
+
+    useEffect(() => {
+        let cancelled = false;
+        getDenomConfig(denom).then(config => {
+            if (!cancelled) setLoaded({denom, surcharge: config.gasSurcharge});
+        });
+        return () => { cancelled = true; };
+    }, [denom]);
+
+    const isCurrent = loaded?.denom === denom;
+    return useMemo(
+        () => ({surcharge: isCurrent ? loaded.surcharge : new BigNumber(0), isLoading: !isCurrent}),
+        [isCurrent, loaded],
+    );
+}
+
 export interface UseGasFeeEstimatorResult {
     /** Estimate the gas fee of any transaction shape with the current chain data. */
     estimate: (spec: TxSpec) => GasFeeEstimate;
@@ -57,6 +81,7 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
     const {minLiquidity} = useFeeTokens();
     const {asset, isLoading: assetsLoading} = useAsset(txFeeDenom);
     const gasPrice = useGasPrice();
+    const {surcharge: gasSurcharge, isLoading: surchargeLoading} = useGasSurcharge(txFeeDenom);
 
     const pool = txFeeDenom !== nativeDenom ? getDenomsPool(txFeeDenom, nativeDenom) : undefined;
 
@@ -69,13 +94,15 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
         foreignFeeSlippage: getForeignFeeSlippage(),
         pool,
         minNativeLiquidity: minLiquidity,
-    }), [nativeDenom, txFeeDenom, gasPrice, pool, minLiquidity]);
+        gasSurcharge,
+    }), [nativeDenom, txFeeDenom, gasPrice, pool, minLiquidity, gasSurcharge]);
 
     return {
         estimate,
         denom: txFeeDenom,
         asset,
-        isLoading: feeDenomLoading || poolsLoading || assetsLoading,
+        // the native denom never has a surcharge, so it does not wait for one
+        isLoading: feeDenomLoading || poolsLoading || assetsLoading || (txFeeDenom !== nativeDenom && surchargeLoading),
     };
 }
 
