@@ -229,7 +229,7 @@ describe("Renounce dialog", () => {
 
         expect(dialog.getByText("Permanent.")).toBeInTheDocument();
         expect(within(dialog.getByRole("region", { name: "Gone forever" })).getAllByRole("listitem").map(li => li.textContent)).toEqual([
-            "Minting more HONEY (renouncing turns minting off for good)",
+            "Minting more HONEY: renouncing turns minting off for good",
             "Editing name, logo and description",
             "Editing the brand kit",
             "Transferring admin",

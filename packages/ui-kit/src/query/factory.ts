@@ -21,7 +21,9 @@ export async function getFactoryDenomAuthority(denom: string): Promise<FactoryDe
         const body = await res.json() as { denomAuthority?: { admin?: string; mintable?: boolean } };
         const admin = body.denomAuthority?.admin ?? '';
 
-        return {admin, mintable: body.denomAuthority?.mintable ?? admin !== ''};
+        const flag = body.denomAuthority?.mintable;
+
+        return {admin, mintable: typeof flag === 'boolean' ? flag : admin !== ''};
     } catch (e) {
         console.error('failed to fetch authority of', denom, e);
 

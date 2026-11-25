@@ -36,6 +36,8 @@ describe('getFactoryDenomAuthority', () => {
         ['v8.3.0 renounced', { admin: '', mintable: false }, { admin: '', mintable: false }],
         ['v8.2.0 admin set (no field)', { admin: ADMIN }, { admin: ADMIN, mintable: true }],
         ['v8.2.0 renounced (no field)', { admin: '' }, { admin: '', mintable: false }],
+        ['a non-boolean flag falls back to the admin rule ("false")', { admin: ADMIN, mintable: 'false' }, { admin: ADMIN, mintable: true }],
+        ['a non-boolean flag falls back to the admin rule ("true", renounced)', { admin: '', mintable: 'true' }, { admin: '', mintable: false }],
         ['v8.2.0 empty authority', {}, { admin: '', mintable: false }],
     ])('%s', async (_, denomAuthority, expected) => {
         fetchMock.mockResolvedValue(answer({ denomAuthority }))

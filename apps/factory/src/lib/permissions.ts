@@ -37,7 +37,7 @@ export const ADMIN_POWERS = 'Mint and edit details'
 
 /** What renouncing ends for good. Branding is admin-gated too (`MsgSetDenomBranding`). */
 export const goneForever = (ticker: string) => [
-    `Minting more ${ticker} (renouncing turns minting off for good)`,
+    `Minting more ${ticker}: renouncing turns minting off for good`,
     'Editing name, logo and description',
     'Editing the brand kit',
     'Transferring admin',

@@ -171,6 +171,14 @@ describe("token page: the seven admin states", () => {
         expectBurnOnBurner();
     });
 
+    it("v8.3.0 answer with mintable true: Mint and the Mintable badge", async () => {
+        m.mintable = true;
+        await renderSettled();
+        expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
+        expect(screen.queryByTestId("minting-off-item")).not.toBeInTheDocument();
+        expect(screen.getByText("Mintable")).toBeInTheDocument();
+    });
+
     it("your token, admin kept but minting turned off: no Mint, Fixed supply, the note, other admin actions stay", async () => {
         m.mintable = false;
         await renderSettled();
