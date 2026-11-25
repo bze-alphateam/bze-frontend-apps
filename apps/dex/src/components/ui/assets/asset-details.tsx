@@ -20,7 +20,7 @@ import {
     uAmountToBigNumberAmount,
     createMarketId,
     HighlightText,
-    getFactoryDenomAdminAddress,
+    getFactoryDenomAuthority,
     LiquidityPoolData,
     useAssetLiquidityPools,
     useAssetMarkets,
@@ -273,6 +273,8 @@ const Divider = () => <Box h="1px" bg="hg.divider"/>
  */
 export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surface?: RowSurface }) {
     const [adminAddress, setAdminAddress] = useState<string>("")
+    // Minting can be off while an admin stays (v8.3.0); the supply is then fixed too.
+    const [mintable, setMintable] = useState<boolean>(false)
 
     const {assetMarketsData, asset24hTradedVolume: marketsVolume, assetMarkets} = useAssetMarkets(asset.denom)
     const {assetPools, asset24HoursVolume: lpVolume, assetPoolsData} = useAssetLiquidityPools(asset.denom)
@@ -331,7 +333,11 @@ export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surfa
 
     useEffect(() => {
         if (asset.denom === '' || asset.type !== ASSET_TYPE_FACTORY) return;
-        const loadAdminAddress = async () => setAdminAddress(await getFactoryDenomAdminAddress(asset.denom))
+        const loadAdminAddress = async () => {
+            const authority = await getFactoryDenomAuthority(asset.denom)
+            setAdminAddress(authority?.admin ?? '')
+            setMintable(authority?.mintable ?? false)
+        }
 
         loadAdminAddress()
     }, [asset.denom, asset.type]);
@@ -372,13 +378,15 @@ export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surfa
                     </Grid>
 
                     {/* Admin Warning/Notice */}
-                    {adminAddress !== '' ? (
+                    {adminAddress !== '' && mintable ? (
                         <Notice status="warning" title="Centralized Supply Control">
                             This token has an admin who can mint new tokens or burn existing ones, potentially affecting the total supply.
                         </Notice>
                     ) : (
                         <Notice status="success" title="Decentralized Supply">
-                            Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.
+                            {adminAddress === ''
+                                ? 'Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.'
+                                : 'Minting has been turned off for good. No new tokens can ever be minted, so the supply can never increase.'}
                         </Notice>
                     )}
                 </>

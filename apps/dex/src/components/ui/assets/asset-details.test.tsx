@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
@@ -14,11 +14,14 @@ const { BZE, USDC } = vi.hoisted(() => {
     return { BZE: asset("ubze", "BZE"), USDC: asset("uusdc", "USDC") };
 });
 
+const authority = vi.hoisted(() => ({ value: { admin: "", mintable: false } as { admin: string; mintable: boolean } | undefined }));
+
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     const assets: Record<string, unknown> = { ubze: BZE, uusdc: USDC };
     return {
         ...actual,
+        getFactoryDenomAuthority: async () => authority.value,
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useAssetMarkets: () => ({
             assetMarketsData: [],
@@ -70,5 +73,36 @@ describe("AssetDetails pair logos", () => {
         const logo = within(screen.getByRole("button", { name: "BZE/USDC liquidity pool" })).getByTestId("pair-logo");
         const token = logo.firstElementChild!.firstElementChild as HTMLElement;
         expect(rulesFor(token)).toMatch(/width:\s*var\(--chakra-sizes-8\)/);
+    });
+});
+
+describe("AssetDetails supply notice of a factory token", () => {
+    const FACTORY = { ...BZE, type: "Factory", denom: "factory/bze1creator/utok", ticker: "UTOK" } as unknown as Asset;
+    const renderFactory = () => render(
+        <ChakraProvider value={defaultSystem}>
+            <AssetDetails asset={FACTORY} />
+        </ChakraProvider>,
+    );
+
+    it("warns about supply control for an admin who can still mint", async () => {
+        authority.value = { admin: "bze1admin", mintable: true };
+        renderFactory();
+
+        expect(await screen.findByText("Centralized Supply Control")).toBeInTheDocument();
+    });
+
+    it("calls the supply decentralized when the admin turned minting off", async () => {
+        authority.value = { admin: "bze1admin", mintable: false };
+        renderFactory();
+
+        await waitFor(() => expect(screen.getByText(/Minting has been turned off for good/)).toBeInTheDocument());
+        expect(screen.queryByText("Centralized Supply Control")).not.toBeInTheDocument();
+    });
+
+    it("calls the supply decentralized when the admin was renounced", async () => {
+        authority.value = { admin: "", mintable: false };
+        renderFactory();
+
+        expect(await screen.findByText(/Ownership has been renounced/)).toBeInTheDocument();
     });
 });

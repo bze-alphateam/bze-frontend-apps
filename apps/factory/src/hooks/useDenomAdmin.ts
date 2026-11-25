@@ -1,16 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { getFactoryDenomAdmin } from '@bze/bze-ui-kit'
+import { getFactoryDenomAuthority } from '@bze/bze-ui-kit'
 
 interface Lookup {
     denom: string;
     admin: string | undefined;
+    mintable: boolean | undefined;
 }
 
 /**
  * The current tokenfactory admin of one denom, asked live from the chain (`DenomAuthority`) each
- * time the token page opens: an address, '' when renounced, undefined when the query failed.
+ * time the token page opens: an address, '' when renounced, undefined when the query failed;
+ * `mintable` is whether minting is still on (undefined with the admin when the query failed).
  * A changed denom is loading until its own answer arrives. `refresh()` asks again (Retry, or
  * after a transfer or renounce). An empty denom never queries.
  */
@@ -20,8 +22,8 @@ export function useDenomAdmin(denom: string) {
     useEffect(() => {
         if (!denom) return
         let cancelled = false
-        getFactoryDenomAdmin(denom).then(admin => {
-            if (!cancelled) setLookup({ denom, admin })
+        getFactoryDenomAuthority(denom).then(authority => {
+            if (!cancelled) setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable })
         })
         return () => { cancelled = true }
     }, [denom])
@@ -29,12 +31,14 @@ export function useDenomAdmin(denom: string) {
     const refresh = useCallback(async () => {
         if (!denom) return
         setLookup(undefined)
-        setLookup({ denom, admin: await getFactoryDenomAdmin(denom) })
+        const authority = await getFactoryDenomAuthority(denom)
+        setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable })
     }, [denom])
 
     const isCurrent = lookup?.denom === denom
     return {
         admin: isCurrent ? lookup.admin : undefined,
+        mintable: isCurrent ? lookup.mintable : undefined,
         isLoading: Boolean(denom) && !isCurrent,
         refresh,
     }
