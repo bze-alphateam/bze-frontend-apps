@@ -11,7 +11,7 @@ import {forbidNetwork} from "@bze/vitest-preset/no-network";
 // The page's data comes from ui-kit hooks and queries; each is mocked.
 const useAsset = vi.fn();
 const getDenomBranding = vi.fn();
-const getFactoryDenomAdmin = vi.fn();
+const getFactoryDenomAuthority = vi.fn();
 let pools: { base: string; quote: string }[] = [];
 const preferredFeeDenom = "ubze";
 const updatePreferredFeeDenom = vi.fn();
@@ -19,7 +19,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
     useAsset: (denom: string) => useAsset(denom),
     getDenomBranding: (denom: string) => getDenomBranding(denom),
-    getFactoryDenomAdmin: (denom: string) => getFactoryDenomAdmin(denom),
+    getFactoryDenomAuthority: (denom: string) => getFactoryDenomAuthority(denom),
     useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
     useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
     useFeeTokens: () => ({isLoading: false, nativeDenom: "ubze", isValidFeeDenom: () => true}),
@@ -94,7 +94,7 @@ beforeEach(() => {
     opportunities = [];
     useAsset.mockReset();
     getDenomBranding.mockReset();
-    getFactoryDenomAdmin.mockReset().mockResolvedValue("");
+    getFactoryDenomAuthority.mockReset().mockResolvedValue({admin: "", mintable: false});
     useDenomParam.mockReset();
     updatePreferredFeeDenom.mockReset();
 });
@@ -249,10 +249,18 @@ describe("Communities token page", () => {
 
     it("shows the admin of a token that still has one", async () => {
         getDenomBranding.mockResolvedValue(KIT);
-        getFactoryDenomAdmin.mockResolvedValue("bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l");
+        getFactoryDenomAuthority.mockResolvedValue({admin: "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l", mintable: true});
         renderPage("factory/bze1owner/uadmin");
 
         await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent(/^Admin bze1z3/));
+    });
+
+    it("says minting is off when the admin stays but disabled minting", async () => {
+        getDenomBranding.mockResolvedValue(KIT);
+        getFactoryDenomAuthority.mockResolvedValue({admin: "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l", mintable: false});
+        renderPage("factory/bze1owner/uadmin");
+
+        await waitFor(() => expect(screen.getByTestId("supply-control")).toHaveTextContent(/^Minting off, admin bze1z3/));
     });
 
     it("shows not found for a denom that isn't a factory token", () => {

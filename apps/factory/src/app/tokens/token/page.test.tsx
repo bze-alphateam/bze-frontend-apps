@@ -12,6 +12,8 @@ const m = vi.hoisted(() => ({
     query: {} as Record<string, string | undefined>,
     address: "bze1owner" as string | undefined,
     admin: vi.fn<(denom: string) => Promise<string | undefined>>(),
+    /** Undefined = a v8.2.0-style answer: mintable follows the admin. */
+    mintable: undefined as boolean | undefined,
     assets: [] as { denom: string; ticker: string; name: string; decimals: number; logo: string; supply: bigint; halted?: boolean }[],
     assetsLoading: false,
     setup: vi.fn(),
@@ -56,7 +58,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return {
         ...actual,
         TokenLogo: () => null,
-        getFactoryDenomAdmin: (denom: string) => m.admin(denom),
+        getFactoryDenomAuthority: async (denom: string) => {
+            const admin = await m.admin(denom);
+            return admin === undefined ? undefined : { admin, mintable: m.mintable ?? admin !== "" };
+        },
         useAssets: () => ({
             assets: m.assets,
             isLoading: m.assetsLoading,
@@ -130,6 +135,7 @@ beforeEach(() => {
     m.assets = [TOK, BZE];
     m.assetsLoading = false;
     m.admin.mockResolvedValue(OWNER);
+    m.mintable = undefined;
     m.setup.mockReturnValue(setup());
     m.denomReward.mockReturnValue(noDenomReward());
     m.stakingRewards.mockReturnValue({ rewards: [], isLoading: false, hasError: false, refresh: vi.fn() });
@@ -162,6 +168,28 @@ describe("token page: the seven admin states", () => {
         expect(permissions.getByRole("button", { name: "Renounce…" })).toBeInTheDocument();
         expect(within(screen.getByTestId("token-stats")).getByText("You hold")).toBeInTheDocument();
         expect(screen.queryByTestId("admin-unknown")).not.toBeInTheDocument();
+        expectBurnOnBurner();
+    });
+
+    it("v8.3.0 answer with mintable true: Mint and the Mintable badge", async () => {
+        m.mintable = true;
+        await renderSettled();
+        expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
+        expect(screen.queryByTestId("minting-off-item")).not.toBeInTheDocument();
+        expect(screen.getByText("Mintable")).toBeInTheDocument();
+    });
+
+    it("your token, admin kept but minting turned off: no Mint, Fixed supply, the note, other admin actions stay", async () => {
+        m.mintable = false;
+        await renderSettled();
+        expect(screen.queryByRole("button", { name: "Mint" })).not.toBeInTheDocument();
+        expect(screen.queryByTestId("mint-item")).not.toBeInTheDocument();
+        expect(screen.getByTestId("minting-off-item")).toHaveTextContent("Minting is turned off for this token for good.");
+        expect(screen.getByText("Fixed supply")).toBeInTheDocument();
+        expect(screen.queryByText("Mintable")).not.toBeInTheDocument();
+        const permissions = within(screen.getByTestId("permissions-section"));
+        expect(permissions.getByTestId("transfer-admin-item")).toBeInTheDocument();
+        expect(permissions.getByTestId("renounce-admin-item")).toBeInTheDocument();
         expectBurnOnBurner();
     });
 

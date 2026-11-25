@@ -72,7 +72,9 @@ function RaffleItem({ asset, back, burnerHref }: Pick<GroupProps, 'asset' | 'bac
 }
 
 /** Supply: mint for the admin, burning on Burner for everyone, the burning raffle. */
-export function SupplyGroup({ asset, access, back, supplyDisplay, onMinted }: GroupProps & {
+export function SupplyGroup({ asset, access, back, mintable, supplyDisplay, onMinted }: GroupProps & {
+    /** Whether minting is still on; undefined while unknown (no Mint until the chain says so). */
+    mintable: boolean | undefined;
     /** Current total supply in display units. */
     supplyDisplay: BigNumber;
     onMinted: () => void;
@@ -83,7 +85,7 @@ export function SupplyGroup({ asset, access, back, supplyDisplay, onMinted }: Gr
     return (
         <ActionGroup id="supply" title="Supply">
             {access === 'checking' && <AdminItemShimmer />}
-            {access === 'admin' && (
+            {access === 'admin' && mintable === true && (
                 <ActionItem
                     testId="mint-item"
                     title="Mint tokens"
@@ -95,6 +97,9 @@ export function SupplyGroup({ asset, access, back, supplyDisplay, onMinted }: Gr
                 >
                     {isMintOpen && <MintForm asset={asset} currentSupply={supplyDisplay} onDone={onMinted} />}
                 </ActionItem>
+            )}
+            {access === 'admin' && mintable === false && (
+                <ActionItem testId="minting-off-item" title="Minting" line="Minting is turned off for this token for good." />
             )}
             {/* tokenfactory MsgBurn is admin-only, so burning lives on Burner for everyone (epic decision 13). */}
             <ActionItem

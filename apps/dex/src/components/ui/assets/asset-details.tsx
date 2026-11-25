@@ -20,7 +20,8 @@ import {
     uAmountToBigNumberAmount,
     createMarketId,
     HighlightText,
-    getFactoryDenomAdminAddress,
+    getFactoryDenomAuthority,
+    type FactoryDenomAuthority,
     LiquidityPoolData,
     useAssetLiquidityPools,
     useAssetMarkets,
@@ -272,7 +273,10 @@ const Divider = () => <Box h="1px" bg="hg.divider"/>
  * `surface` is the tiles' fill: inset on a card (the details page), card on an inset (the expanded row).
  */
 export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surface?: RowSurface }) {
-    const [adminAddress, setAdminAddress] = useState<string>("")
+    // The answer of the authority query for one denom. Minting can be off while an admin stays
+    // (v8.3.0); the supply is then fixed too. Unknown (loading, failed, another denom) is undefined.
+    const [lookup, setLookup] = useState<{ denom: string; authority: FactoryDenomAuthority | undefined } | undefined>(undefined)
+    const authority = lookup?.denom === asset.denom ? lookup.authority : undefined
 
     const {assetMarketsData, asset24hTradedVolume: marketsVolume, assetMarkets} = useAssetMarkets(asset.denom)
     const {assetPools, asset24HoursVolume: lpVolume, assetPoolsData} = useAssetLiquidityPools(asset.denom)
@@ -331,9 +335,14 @@ export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surfa
 
     useEffect(() => {
         if (asset.denom === '' || asset.type !== ASSET_TYPE_FACTORY) return;
-        const loadAdminAddress = async () => setAdminAddress(await getFactoryDenomAdminAddress(asset.denom))
+        let cancelled = false
+        getFactoryDenomAuthority(asset.denom)
+            .catch(() => undefined)
+            .then(result => {
+                if (!cancelled) setLookup({ denom: asset.denom, authority: result })
+            })
 
-        loadAdminAddress()
+        return () => { cancelled = true }
     }, [asset.denom, asset.type]);
 
     return (
@@ -368,17 +377,19 @@ export function AssetDetails({ asset, surface = 'inset' }: { asset: Asset; surfa
                     <BlockTitle icon={<LuFactory size={16}/>} title="Factory Details"/>
                     <Grid gridTemplateColumns={{ base: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }} gap="10px">
                         <InfoTile label="Creator" mono link surface={surface}>{assetCreatorAddress}</InfoTile>
-                        <InfoTile label="Admin" mono link surface={surface}>{adminAddress !== '' ? adminAddress : 'Nobody'}</InfoTile>
+                        <InfoTile label="Admin" mono link surface={surface}>{authority === undefined ? '…' : authority.admin !== '' ? authority.admin : 'Nobody'}</InfoTile>
                     </Grid>
 
                     {/* Admin Warning/Notice */}
-                    {adminAddress !== '' ? (
+                    {authority === undefined ? null : authority.admin !== '' && authority.mintable ? (
                         <Notice status="warning" title="Centralized Supply Control">
                             This token has an admin who can mint new tokens or burn existing ones, potentially affecting the total supply.
                         </Notice>
                     ) : (
                         <Notice status="success" title="Decentralized Supply">
-                            Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.
+                            {authority.admin === ''
+                                ? 'Ownership has been renounced. No new tokens can ever be minted, so the supply can never increase.'
+                                : 'Minting has been turned off for good. No new tokens can ever be minted, so the supply can never increase.'}
                         </Notice>
                     )}
                 </>
