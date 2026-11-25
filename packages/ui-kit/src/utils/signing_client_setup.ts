@@ -47,7 +47,7 @@ import {MsgGrantAllowance, MsgRevokeAllowance} from "@bze/bzejs/cosmos/feegrant/
 // IBC
 import {MsgTransfer} from "@bze/bzejs/ibc/applications/transfer/v1/tx";
 
-export type MsgCodec = {
+type MsgCodec = {
     typeUrl: string;
     aminoType?: string;
     fromPartial: (object: any) => any;
@@ -116,15 +116,13 @@ const ALL_MSG_TYPES: MsgCodec[] = [
 
 const CODECS_BY_TYPE_URL = new Map(ALL_MSG_TYPES.map(g => [g.typeUrl, g]));
 
-/** The registered codec of a message type URL (the same list the signing client gets), if any. */
-export const getMsgCodec = (typeUrl: string): MsgCodec | undefined => CODECS_BY_TYPE_URL.get(typeUrl);
 
 /**
  * Encode a message the way the signing client does: `fromPartial`, then the protobuf bytes.
  * Throws for a type URL that is not registered.
  */
 export const encodeMsgValue = (typeUrl: string, value: unknown): Uint8Array => {
-    const codec = getMsgCodec(typeUrl);
+    const codec = CODECS_BY_TYPE_URL.get(typeUrl);
     if (!codec) {
         throw new Error(`no encoder registered for ${typeUrl}`);
     }

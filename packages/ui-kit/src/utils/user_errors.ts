@@ -45,7 +45,7 @@ const errorsMap: { [key: string]: string } = {
     "invalid dao electorate": "The voters were refused: every staking reward and Denom Reward must exist, stake the same token and have an unstaking lock of at least the chain's minimum.",
     "dao not found": "This DAO doesn't exist. Check the link or refresh the page.",
     "signer is not the dao's admin": "Only this DAO's admin can do that. Connect the admin's wallet.",
-    "message must be signed by the dao account only": "Every action in a DAO proposal must be signed by the DAO's own account. Rebuild the action from the DAO's address.",
+    "message must be signed by the dao account only": "One of the actions would move funds or act for an account other than the DAO. A DAO can only act as itself: change that action so it comes from the DAO's address.",
     "an admin nomination is already pending": "An admin handover is already pending. Withdraw it before nominating someone else.",
     "the dao electorate cannot vote": "This DAO has nobody who can vote yet: it needs members, or stake in at least one of its sources.",
     "invalid admin nominee": "The nominee must be a valid address other than the current admin and the DAO itself.",

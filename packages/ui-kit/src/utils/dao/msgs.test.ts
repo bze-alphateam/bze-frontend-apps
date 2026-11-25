@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+// Load the whole bzejs bundle, as the apps do: every module registers its codecs in bzejs's
+// global decoder registry, which the nested Any messages go through.
+import '@bze/bzejs'
 import { Any } from '@bze/bzejs/google/protobuf/any'
 import { MsgSend } from '@bze/bzejs/cosmos/bank/v1beta1/tx'
 import { DaoType, DepositRefundPolicy, FundsDestination, VoteOption } from '@bze/bzejs/bze/dao/store'
@@ -18,7 +21,7 @@ import {
     MsgVote,
     MsgWithdrawAdminNomination,
 } from '@bze/bzejs/bze/dao/tx'
-import { encodeMsgValue, getMsgCodec } from '../signing_client_setup'
+import { encodeMsgValue } from '../signing_client_setup'
 import type { DaoConfig } from '../../types/dao'
 import {
     buildAcceptAdminNominationMsg,
@@ -104,6 +107,16 @@ describe('config helpers', () => {
         expect(() => durationSeconds('3d')).toThrow()
         expect(daysHoursFromDuration('262800s')).toEqual({ days: 3, hours: 1 })
         expect(durationFromSeconds(86_400)).toEqual({ seconds: 86_400n, nanos: 0 })
+        expect(durationFromSeconds(1.5)).toEqual({ seconds: 1n, nanos: 500_000_000 })
+        expect(() => durationFromSeconds(-1)).toThrow()
+    })
+
+    it('throws on an enum name the chain does not have instead of encoding the default', () => {
+        expect(() => daoConfigFromWire({ ...CONFIG, deposit_refund_policy: 'SOMETIMES' as never })).toThrow('deposit_refund_policy')
+        expect(() => daoConfigFromWire({ ...CONFIG, cost_destination: 'burn' as never })).toThrow('cost_destination')
+        expect(() => daoConfigFromWire({ ...CONFIG, kept_deposit_destination: '' as never })).toThrow('kept_deposit_destination')
+        expect(() => buildCreateDaoMsg({ creator: ME, type: 'STATIC' as never, name: 'n', config: CONFIG })).toThrow('dao type')
+        expect(() => buildDaoVoteMsg({ voter: ME, proposalId: 1, option: 'VOTE_OPTION_UNSPECIFIED' as never })).toThrow('vote option')
     })
 
     it('maps the gateway config to the protobuf one', () => {
@@ -151,7 +164,7 @@ describe('message builders', () => {
             '/bze.dao.MsgUpdateElectorate', '/bze.dao.MsgUpdateMembers',
         ])
         for (const m of msgs) {
-            expect(getMsgCodec(m.typeUrl), m.typeUrl).toBeDefined()
+            expect(() => encodeMsgValue(m.typeUrl, m.value), m.typeUrl).not.toThrow()
         }
     })
 

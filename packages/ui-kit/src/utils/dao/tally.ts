@@ -12,9 +12,12 @@
 // A zero denominator never passes, nor a regular tally with no yes and no no
 // votes, nor an expedite tally with no yes.
 
-const ONE = 10n ** 18n;
+// bigint constants without literals: ui-kit targets ES2017
+const ZERO = BigInt(0);
+const UNIT = BigInt(1);
+const ONE = BigInt('1000000000000000000');
 
-/** Integer weights as the chain sends them (decimal strings) or as bigints. */
+/** Integer weights as the chain sends them (decimal strings), bigints, or safe integers. */
 export type DaoWeight = string | number | bigint;
 
 export interface DaoTallyInput {
@@ -36,7 +39,13 @@ export interface DaoExpediteTallyResult {
     passes: boolean;
 }
 
-const int = (v: DaoWeight): bigint => (typeof v === 'bigint' ? v : BigInt(String(v)));
+const int = (v: DaoWeight): bigint => {
+    if (typeof v === 'number' && !Number.isSafeInteger(v)) {
+        // 1e21 would print as "1e+21": weights that large must come as strings or bigints
+        throw new Error(`weight is not a safe integer: ${v}`);
+    }
+    return typeof v === 'bigint' ? v : BigInt(String(v));
+}
 
 /**
  * The atomics (10^-18 units) of a decimal ratio: `"0.4"` and
@@ -58,37 +67,37 @@ const compareRatio = (part: bigint, whole: bigint, ratio: bigint): number => {
     return left === right ? 0 : left > right ? 1 : -1;
 }
 
-const ceilDiv = (a: bigint, b: bigint): bigint => (a <= 0n ? 0n : (a + b - 1n) / b);
+const ceilDiv = (a: bigint, b: bigint): bigint => (a <= ZERO ? ZERO : (a + b - UNIT) / b);
 
 /** The regular bars, as the chain applies them at or after `voting_end`. */
 export const daoRegularTally = (t: DaoTallyInput, minQuorum: string, threshold: string): DaoRegularTallyResult => {
     const denominator = int(t.denominator), yes = int(t.yes), no = int(t.no), abstain = int(t.abstain);
-    if (denominator <= 0n) {
+    if (denominator <= ZERO) {
         return {quorumMet: false, thresholdMet: false, passes: false};
     }
 
     const decided = yes + no;
     const quorumMet = compareRatio(decided + abstain, denominator, ratioAtomics(minQuorum)) >= 0;
-    const thresholdMet = decided > 0n && compareRatio(yes, decided, ratioAtomics(threshold)) > 0;
+    const thresholdMet = decided > ZERO && compareRatio(yes, decided, ratioAtomics(threshold)) > 0;
     return {quorumMet, thresholdMet, passes: quorumMet && thresholdMet};
 }
 
 /** The expedite bars, both against the full denominator, as the chain applies them before `voting_end`. */
 export const daoExpediteTally = (t: DaoTallyInput, expediteQuorum: string, expediteThreshold: string): DaoExpediteTallyResult => {
     const denominator = int(t.denominator), yes = int(t.yes), no = int(t.no), abstain = int(t.abstain);
-    if (denominator <= 0n) {
+    if (denominator <= ZERO) {
         return {quorumMet: false, yesMet: false, passes: false};
     }
 
     const quorumMet = compareRatio(yes + no + abstain, denominator, ratioAtomics(expediteQuorum)) >= 0;
-    const yesMet = yes > 0n && compareRatio(yes, denominator, ratioAtomics(expediteThreshold)) > 0;
+    const yesMet = yes > ZERO && compareRatio(yes, denominator, ratioAtomics(expediteThreshold)) > 0;
     return {quorumMet, yesMet, passes: quorumMet && yesMet};
 }
 
 /** The voting power that has not voted yet (never negative). */
 export const daoRemainingWeight = (t: DaoTallyInput): bigint => {
     const left = int(t.denominator) - int(t.yes) - int(t.no) - int(t.abstain);
-    return left > 0n ? left : 0n;
+    return left > ZERO ? left : ZERO;
 }
 
 /**
@@ -99,7 +108,7 @@ export const daoRemainingWeight = (t: DaoTallyInput): bigint => {
  */
 export const daoYesNeededRegular = (t: DaoTallyInput, minQuorum: string, threshold: string): bigint | null => {
     const denominator = int(t.denominator), yes = int(t.yes), no = int(t.no), abstain = int(t.abstain);
-    if (denominator <= 0n) return null;
+    if (denominator <= ZERO) return null;
 
     const q = ratioAtomics(minQuorum), th = ratioAtomics(threshold);
     if (th >= ONE) return null;
@@ -107,10 +116,10 @@ export const daoYesNeededRegular = (t: DaoTallyInput, minQuorum: string, thresho
     // quorum: (turnout + x) · 10^18 ≥ q · denominator
     const forQuorum = ceilDiv(q * denominator, ONE) - (yes + no + abstain);
     // threshold: (yes + x) · 10^18 > th · (yes + x + no)  ⇔  (yes + x) · (10^18 − th) > th · no
-    const forThreshold = (th * no) / (ONE - th) + 1n - yes;
+    const forThreshold = (th * no) / (ONE - th) + UNIT - yes;
 
     let needed = forQuorum > forThreshold ? forQuorum : forThreshold;
-    if (needed < 0n) needed = 0n;
+    if (needed < ZERO) needed = ZERO;
     return needed <= daoRemainingWeight(t) ? needed : null;
 }
 
@@ -121,15 +130,15 @@ export const daoYesNeededRegular = (t: DaoTallyInput, minQuorum: string, thresho
  */
 export const daoYesNeededExpedite = (t: DaoTallyInput, expediteQuorum: string, expediteThreshold: string): bigint | null => {
     const denominator = int(t.denominator), yes = int(t.yes), no = int(t.no), abstain = int(t.abstain);
-    if (denominator <= 0n) return null;
+    if (denominator <= ZERO) return null;
 
     const q = ratioAtomics(expediteQuorum), th = ratioAtomics(expediteThreshold);
     const forQuorum = ceilDiv(q * denominator, ONE) - (yes + no + abstain);
     // yes: (yes + x) · 10^18 > th · denominator, and yes + x ≥ 1
-    let forYes = (th * denominator) / ONE + 1n - yes;
-    if (yes + forYes < 1n) forYes = 1n - yes;
+    let forYes = (th * denominator) / ONE + UNIT - yes;
+    if (yes + forYes < UNIT) forYes = UNIT - yes;
 
     let needed = forQuorum > forYes ? forQuorum : forYes;
-    if (needed < 0n) needed = 0n;
+    if (needed < ZERO) needed = ZERO;
     return needed <= daoRemainingWeight(t) ? needed : null;
 }

@@ -1,7 +1,7 @@
 import BigNumber from "bignumber.js";
 import {fromBech32} from "@interchainjs/encoding";
 import {getChainAddressPrefix} from "../../constants/chain";
-import {DaoConfig, DaoParams, DaoStakeElectorate} from "../../types/dao";
+import {DaoConfig, DaoParams, DaoStakeElectorate, DaoType} from "../../types/dao";
 import {durationSeconds} from "./msgs";
 
 // Client-side mirrors of the x/dao rules (chain v8.3.0), so a form can show the
@@ -197,6 +197,21 @@ export const validateDaoMemberChanges = (
     if (size < 1) return 'The DAO must keep at least one member.';
     const max = Number(params.max_static_members);
     if (size > max) return `A member list can have at most ${max} members (it would have ${size}).`;
+    return undefined;
+}
+
+/**
+ * The two kinds of electorate are never mixed (MsgCreateDao): a static-list
+ * DAO has no stake electorate, a stake DAO no member list.
+ */
+export const validateDaoElectorateKind = (
+    type: DaoType,
+    members: string[],
+    electorate: DaoStakeElectorate | null | undefined,
+): string | undefined => {
+    const hasElectorate = !!electorate && (electorate.sr_ids.length > 0 || electorate.dr_denom !== '');
+    if (type === 'DAO_TYPE_STATIC_LIST' && hasElectorate) return 'A member-list DAO cannot also vote with stake.';
+    if (type === 'DAO_TYPE_STAKE' && members.length > 0) return 'A stakers DAO cannot also have a member list.';
     return undefined;
 }
 

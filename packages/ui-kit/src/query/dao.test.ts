@@ -23,7 +23,6 @@ import {
     daoDenomRewardSource,
     daoStakingRewardSource,
     isDaoModuleSupported,
-    resetDaoModuleSupportCache,
 } from './dao'
 import {
     ADDRESS,
@@ -49,7 +48,9 @@ import {
     RECORDED_PROPOSAL_NOT_FOUND,
 } from './dao.fixtures'
 
-const REST = 'https://rest.example'
+// A fresh endpoint per test: isDaoModuleSupported remembers its answer per endpoint.
+let endpointCount = 0
+let REST = ''
 const respond = (status: number, body: unknown) => ({ status, json: async () => body }) as Response
 
 describe('x/dao queries', () => {
@@ -58,8 +59,8 @@ describe('x/dao queries', () => {
     beforeEach(() => {
         fetchMock.mockReset()
         vi.stubGlobal('fetch', fetchMock)
+        REST = `https://rest-${++endpointCount}.example`
         settingsMock.mockReturnValue({ endpoints: { restEndpoint: REST } })
-        resetDaoModuleSupportCache()
     })
 
     afterEach(() => {
@@ -85,6 +86,12 @@ describe('x/dao queries', () => {
             fetchMock.mockResolvedValue(respond(501, RECORDED_MAINNET_501))
 
             await expect(getDaoParams()).rejects.toBeInstanceOf(DaoModuleNotSupportedError)
+        })
+
+        it('throws when a 200 carries no params', async () => {
+            fetchMock.mockResolvedValue(respond(200, {}))
+
+            await expect(getDaoParams()).rejects.toBeInstanceOf(DaoQueryError)
         })
     })
 
@@ -171,6 +178,16 @@ describe('x/dao queries', () => {
             await expect(getDao(1)).rejects.toThrow('network down')
         })
 
+        it('throws on a 200 that is not JSON instead of reading it as a missing object or an empty list', async () => {
+            const notJson = () => ({ status: 200, json: async () => { throw new SyntaxError('Unexpected token <') } }) as unknown as Response
+
+            fetchMock.mockResolvedValueOnce(notJson())
+            await expect(getDao(1)).rejects.toMatchObject({ httpStatus: 200 })
+
+            fetchMock.mockResolvedValueOnce(notJson())
+            await expect(getDaos()).rejects.toBeInstanceOf(DaoQueryError)
+        })
+
         it('treats a 404 without the NotFound code as an error, not as a missing object', async () => {
             fetchMock.mockResolvedValueOnce(respond(404, '<html>no route</html>'))
             await expect(getDao(1)).rejects.toBeInstanceOf(DaoQueryError)
@@ -251,6 +268,14 @@ describe('x/dao queries', () => {
             expect(await isDaoModuleSupported()).toBe(false)
             expect(await isDaoModuleSupported()).toBe(false)
             expect(fetchMock).toHaveBeenCalledTimes(1)
+        })
+
+        it('does not remember a node that answers 200 without params', async () => {
+            fetchMock.mockResolvedValueOnce(respond(200, {}))
+            await expect(isDaoModuleSupported()).rejects.toBeInstanceOf(DaoQueryError)
+
+            fetchMock.mockResolvedValueOnce(respond(200, RECORDED_PARAMS))
+            expect(await isDaoModuleSupported()).toBe(true)
         })
 
         it('throws on a network failure and asks again next time', async () => {

@@ -106,7 +106,7 @@ describe('prettyError — DAOs (x/dao)', () => {
         [1105, raw('staking reward 3 stakes ubze, the electorate stakes uvdl: all sources must share one staking denom: invalid dao electorate'), /voters were refused/],
         [1108, raw('dao 5: dao not found'), /DAO doesn't exist/],
         [1109, raw('dao 5: signer is not the dao\'s admin'), /Only this DAO's admin/],
-        [1111, raw('message 0: message must be signed by the dao account only'), /signed by the DAO's own account/],
+        [1111, raw('message 0: message must be signed by the dao account only'), /A DAO can only act as itself/],
         [1112, raw('dao 5: an admin nomination is already pending'), /already pending/],
         [1113, raw('a self-owned dao needs voters: the dao electorate cannot vote'), /nobody who can vote/],
         [1114, raw('the nominee is the current admin: invalid admin nominee'), /nominee must be a valid address/],

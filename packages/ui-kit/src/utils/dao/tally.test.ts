@@ -102,6 +102,13 @@ describe('daoRegularTally', () => {
     })
 })
 
+describe('weights', () => {
+    it('refuses a number that is not a safe integer', () => {
+        expect(() => daoRegularTally({ denominator: 1e21, yes: 1, no: 0, abstain: 0 }, half, half)).toThrow('safe integer')
+        expect(() => daoRegularTally({ denominator: 10, yes: 1.5, no: 0, abstain: 0 }, half, half)).toThrow('safe integer')
+    })
+})
+
 describe('daoExpediteTally', () => {
     it.each([
         ['yes one unit above the bar', 150, 100, 0, 0, true],

@@ -73,8 +73,13 @@ const pageQuery = (page?: DaoPageRequest): Query => {
 
 const readBody = async (resp: Response): Promise<{code?: number; message?: string} & Record<string, unknown>> => {
     try {
-        return await resp.json();
+        const body = await resp.json();
+        return body && typeof body === 'object' ? body : {};
     } catch {
+        // a 200 that is not JSON (a proxy or error page) must not read as an empty answer
+        if (resp.status === 200) {
+            throw new DaoQueryError(200, 0, 'the node answered with an unreadable body');
+        }
         return {};
     }
 }
@@ -112,8 +117,13 @@ const page = <T>(items: T[] | undefined, pagination?: {next_key?: string | null;
 
 const idPath = (id: string | number | bigint): string => encodeURIComponent(String(id));
 
-export const getDaoParams = async (): Promise<DaoParams> =>
-    (await getJson<{params: DaoParams}>('params')).params;
+export const getDaoParams = async (): Promise<DaoParams> => {
+    const {params} = await getJson<{params?: DaoParams}>('params');
+    if (!params) {
+        throw new DaoQueryError(200, 0, 'the node answered without params');
+    }
+    return params;
+}
 
 /** One DAO; null when the chain doesn't have it. */
 export const getDao = async (id: string | number | bigint): Promise<Dao | null> =>
@@ -214,9 +224,4 @@ export const isDaoModuleSupported = async (): Promise<boolean> => {
         pending.catch(() => supportByEndpoint.delete(endpoint));
     }
     return pending;
-}
-
-/** Forget the remembered module support (tests, or after a chain upgrade without a reload). */
-export const resetDaoModuleSupportCache = (): void => {
-    supportByEndpoint.clear();
 }

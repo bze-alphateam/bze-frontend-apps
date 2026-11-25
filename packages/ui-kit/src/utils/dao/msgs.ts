@@ -88,6 +88,14 @@ const VOTE: Record<Exclude<DaoVoteOption, 'VOTE_OPTION_UNSPECIFIED'>, VoteOption
 
 type Id = string | number | bigint;
 
+/** The protobuf enum value of a gateway enum name; throws on a name the chain doesn't have. */
+const enumValue = <K extends string, V>(map: Record<K, V>, name: string, field: string): V => {
+    if (!Object.prototype.hasOwnProperty.call(map, name)) {
+        throw new Error(`unknown ${field}: ${name}`);
+    }
+    return map[name as K];
+}
+
 const toId = (id: Id): bigint => BigInt(id.toString());
 
 // ---------------------------------------------------------------------------
@@ -135,8 +143,14 @@ export const daysHoursFromDuration = (duration: string): {days: number; hours: n
     return {days, hours: Math.floor((seconds - days * SECONDS_PER_DAY) / SECONDS_PER_HOUR)};
 }
 
-/** A protobuf Duration from seconds (whole seconds only, as the DAO periods are). */
-export const durationFromSeconds = (seconds: number): Duration => ({seconds: BigInt(Math.trunc(seconds)), nanos: 0});
+/** A protobuf Duration from seconds; a fraction is kept as nanoseconds. */
+export const durationFromSeconds = (seconds: number): Duration => {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+        throw new Error(`invalid duration: ${seconds}`);
+    }
+    const whole = Math.trunc(seconds);
+    return {seconds: BigInt(whole), nanos: Math.round((seconds - whole) * 1e9)};
+}
 
 const coin = (c?: {denom: string; amount: string} | null): Coin | undefined =>
     c ? {denom: c.denom, amount: c.amount} : undefined;
@@ -144,7 +158,8 @@ const coin = (c?: {denom: string; amount: string} | null): Coin | undefined =>
 /**
  * The protobuf config from its gateway JSON (a `Dao.config` the chain sent, or
  * one a form filled in). Ratios keep their decimal strings, periods become
- * Durations, enums their numbers. The config coins stay unset when null.
+ * Durations, enums their numbers (an unknown enum name throws instead of
+ * encoding the default). The config coins stay unset when null.
  */
 export const daoConfigFromWire = (config: DaoConfig): DaoConfigProto => ({
     minQuorum: config.min_quorum,
@@ -157,9 +172,9 @@ export const daoConfigFromWire = (config: DaoConfig): DaoConfigProto => ({
     openSubmission: config.open_submission,
     proposalCost: coin(config.proposal_cost),
     proposalDeposit: coin(config.proposal_deposit),
-    depositRefundPolicy: REFUND[config.deposit_refund_policy],
-    costDestination: DESTINATION[config.cost_destination],
-    keptDepositDestination: DESTINATION[config.kept_deposit_destination],
+    depositRefundPolicy: enumValue(REFUND, config.deposit_refund_policy, 'deposit_refund_policy'),
+    costDestination: enumValue(DESTINATION, config.cost_destination, 'cost_destination'),
+    keptDepositDestination: enumValue(DESTINATION, config.kept_deposit_destination, 'kept_deposit_destination'),
 });
 
 const electorateFromWire = (electorate?: DaoStakeElectorate | null): StakeElectorate | undefined =>
@@ -203,7 +218,7 @@ export const buildCreateDaoMsg = (p: {
     value: MsgCreateDao.fromPartial({
         creator: p.creator,
         admin: p.admin ?? '',
-        type: TYPE[p.type],
+        type: enumValue(TYPE, p.type, 'dao type'),
         name: p.name,
         description: p.description ?? '',
         config: daoConfigFromWire(p.config),
@@ -261,7 +276,7 @@ export const buildSubmitProposalMsg = (p: {
 
 export const buildDaoVoteMsg = (p: {voter: string; proposalId: Id; option: Exclude<DaoVoteOption, 'VOTE_OPTION_UNSPECIFIED'>}): EncodeObject => ({
     typeUrl: MsgVote.typeUrl,
-    value: MsgVote.fromPartial({voter: p.voter, proposalId: toId(p.proposalId), option: VOTE[p.option]}),
+    value: MsgVote.fromPartial({voter: p.voter, proposalId: toId(p.proposalId), option: enumValue(VOTE, p.option, 'vote option')}),
 });
 
 export const buildCancelDaoProposalMsg = (p: {proposer: string; proposalId: Id}): EncodeObject => ({

@@ -280,7 +280,7 @@ export {
     getDaoParams, getDao, getDaoByAddress, getDaoController, getDaos, getDaosByAdmin,
     getDaoProposal, getDaoProposals, getDaoBallot, getDaoBallots, getDaoVotingPower,
     getDaoJoinRecord, daoStakingRewardSource, daoDenomRewardSource,
-    isDaoModuleSupported, resetDaoModuleSupportCache
+    isDaoModuleSupported
 } from './query/dao';
 export {
     daoTxOptions, ratioFromPercent, percentFromRatio, secondsFromDaysHours, durationString,
@@ -294,7 +294,7 @@ export {
 export {
     DAO_MAX_NAME_BYTES, DAO_MAX_DESCRIPTION_BYTES, utf8Length,
     validateDaoName, validateDaoDescription, validateDaoConfig, validateDaoMembers,
-    validateDaoMemberChanges, validateDaoElectorate, validateDaoProposalContent, validateDaoAdminExecute
+    validateDaoMemberChanges, validateDaoElectorate, validateDaoElectorateKind, validateDaoProposalContent, validateDaoAdminExecute
 } from './utils/dao/validate';
 export {
     ratioAtomics, daoRegularTally, daoExpediteTally, daoRemainingWeight,

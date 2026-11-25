@@ -7,6 +7,7 @@ import {
     validateDaoConfig,
     validateDaoDescription,
     validateDaoElectorate,
+    validateDaoElectorateKind,
     validateDaoMemberChanges,
     validateDaoMembers,
     validateDaoName,
@@ -153,6 +154,11 @@ describe('validateDaoMembers', () => {
         expect(validateDaoMembers([A, A.toUpperCase()], PARAMS)).toMatch(/twice/)
     })
 
+    it('refuses a mixed-case address, as bech32 and the chain do', () => {
+        const mixed = A.slice(0, 10).toUpperCase() + A.slice(10)
+        expect(validateDaoMembers([mixed], PARAMS)).toMatch(/not a valid address/)
+    })
+
     it('refuses invalid addresses and another chain\'s', () => {
         expect(validateDaoMembers(['bze1notanaddress'], PARAMS)).toMatch(/not a valid address/)
         expect(validateDaoMembers([addr(1, 'osmo')], PARAMS)).toMatch(/not a valid address/)
@@ -188,6 +194,18 @@ describe('validateDaoMemberChanges', () => {
         expect(validateDaoMemberChanges({ add: [C], remove: [] }, current, PARAMS)).toBeUndefined()
         expect(validateDaoMemberChanges({ add: [C, addr(4)], remove: [] }, current, PARAMS)).toMatch(/at most 3/)
         expect(validateDaoMemberChanges({ add: [C, addr(4)], remove: [A] }, current, PARAMS)).toBeUndefined()
+    })
+})
+
+describe('validateDaoElectorateKind', () => {
+    it('never mixes members and stake', () => {
+        expect(validateDaoElectorateKind('DAO_TYPE_STATIC_LIST', [A], null)).toBeUndefined()
+        expect(validateDaoElectorateKind('DAO_TYPE_STATIC_LIST', [A], { sr_ids: [], dr_denom: '' })).toBeUndefined()
+        expect(validateDaoElectorateKind('DAO_TYPE_STATIC_LIST', [A], { sr_ids: ['1'], dr_denom: '' })).toMatch(/cannot also vote with stake/)
+        expect(validateDaoElectorateKind('DAO_TYPE_STATIC_LIST', [A], { sr_ids: [], dr_denom: 'ubze' })).toMatch(/cannot also vote with stake/)
+        expect(validateDaoElectorateKind('DAO_TYPE_STAKE', [], { sr_ids: ['1'], dr_denom: '' })).toBeUndefined()
+        expect(validateDaoElectorateKind('DAO_TYPE_STAKE', [], null)).toBeUndefined()
+        expect(validateDaoElectorateKind('DAO_TYPE_STAKE', [A], null)).toMatch(/cannot also have a member list/)
     })
 })
 
