@@ -35,10 +35,12 @@ export interface HeaderStats {
  * The token page's band: breadcrumb, identity with the trust badge and the one owner badge, the denom
  * with copy, the stats and the links to the token's pages in other BZE apps.
  */
-export function TokenHeader({ asset, admin, isAdminLoading, badge, stats }: {
+export function TokenHeader({ asset, admin, mintable, isAdminLoading, badge, stats }: {
     asset: Asset;
     /** The live admin (address, '' renounced, undefined unknown) for the trust badge. */
     admin: string | undefined;
+    /** Whether minting is still on; undefined with an unknown admin. */
+    mintable: boolean | undefined;
     /** The admin query is still running: no trust badge yet. */
     isAdminLoading: boolean;
     /** "Created by you · you are admin" and friends; undefined shows none. */
@@ -76,7 +78,7 @@ export function TokenHeader({ asset, admin, isAdminLoading, badge, stats }: {
                                     {asset.name}
                                 </Text>
                                 <Text fontSize="16px" color="fg.muted">{asset.ticker}</Text>
-                                {!isAdminLoading && <TrustBadge admin={admin} />}
+                                {!isAdminLoading && <TrustBadge admin={admin} mintable={mintable} />}
                             </HStack>
                             {badge && (
                                 <chakra.span

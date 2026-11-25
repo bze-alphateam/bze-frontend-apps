@@ -5,13 +5,13 @@ import { chakra } from '@chakra-ui/react'
 import { LuCircleHelp, LuLock, LuTriangleAlert } from 'react-icons/lu'
 import { StatusPill } from '@bze/bze-ui-kit'
 
-// Same trust semantics as the dex assets page: an active admin can mint more,
-// only a renounced admin makes the supply provably fixed. A failed lookup
-// (undefined) gets a neutral badge — it must never read as "fixed supply".
-export function TrustBadge({ admin }: { admin: string | undefined }) {
-    const [tone, icon, label] = admin === undefined
+// Same trust semantics as the dex assets page: an admin of a mintable token can mint more; the
+// supply is provably fixed once minting is off (renounced admin, or minting disabled while the
+// admin stays). A failed lookup (undefined) gets a neutral badge — it must never read as "fixed supply".
+export function TrustBadge({ admin, mintable }: { admin: string | undefined; mintable: boolean | undefined }) {
+    const [tone, icon, label] = admin === undefined || mintable === undefined
         ? ['neutral', <LuCircleHelp key="i" />, 'Admin unknown'] as const
-        : admin === ''
+        : !mintable
             ? ['success', <LuLock key="i" />, 'Fixed supply'] as const
             : ['warning', <LuTriangleAlert key="i" />, 'Mintable'] as const
 

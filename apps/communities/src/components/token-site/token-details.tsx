@@ -2,7 +2,7 @@
 
 import React, {useCallback, useEffect, useState} from "react";
 import {chakra, Flex} from "@chakra-ui/react";
-import {type Asset, getFactoryDenomAdmin, truncateAddress} from "@bze/bze-ui-kit";
+import {type Asset, getFactoryDenomAuthority, truncateAddress} from "@bze/bze-ui-kit";
 
 import {TsCard, TsChip, TsSection, TsStat, ts, tsLabel} from "./kit";
 
@@ -10,6 +10,8 @@ interface AdminState {
     denom: string;
     /** '' = renounced; undefined = the query failed. */
     admin?: string;
+    /** Whether minting is still on. */
+    mintable?: boolean;
 }
 
 /** The tokenfactory admin of `denom`: undefined until known or when the query failed. */
@@ -18,8 +20,8 @@ function useDenomAdmin(denom: string): AdminState | undefined {
 
     useEffect(() => {
         let cancelled = false;
-        getFactoryDenomAdmin(denom).then((admin) => {
-            if (!cancelled) setState({denom, admin});
+        getFactoryDenomAuthority(denom).then((authority) => {
+            if (!cancelled) setState({denom, admin: authority?.admin, mintable: authority?.mintable});
         });
 
         return () => { cancelled = true; };
@@ -52,7 +54,11 @@ export function TokenDetails({asset}: { asset: Asset }) {
 
     let supplyControl: string | undefined;
     if (adminState && adminState.admin !== undefined) {
-        supplyControl = adminState.admin === "" ? "Admin renounced" : `Admin ${truncateAddress(adminState.admin)}`;
+        supplyControl = adminState.admin === ""
+            ? "Admin renounced"
+            : adminState.mintable === false
+                ? `Minting off, admin ${truncateAddress(adminState.admin)}`
+                : `Admin ${truncateAddress(adminState.admin)}`;
     }
 
     const cell = {px: {base: "18px", md: "24px"}, py: {base: "18px", md: "22px"}} as const;

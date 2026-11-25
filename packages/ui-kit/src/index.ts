@@ -216,7 +216,8 @@ export {
     getCurrentWeekEpochEndTime, getPeriodicWeekEpochEndTime, getPeriodicEpochEndTime,
     getEpochDurationByIdentifier
 } from './query/epoch';
-export { getFactoryDenomAdmin, getFactoryDenomAdminAddress } from './query/factory';
+export { getFactoryDenomAdmin, getFactoryDenomAdminAddress, getFactoryDenomAuthority } from './query/factory';
+export type { FactoryDenomAuthority } from './query/factory';
 export { getDenomBranding, getAllDenomBranding } from './query/branding';
 export type { DenomBranding, BrandingColors, DenomBrandingRecord, BrandingPalette, BrandingColorKey, BrandingTemplate, BrandingTemplateMood } from './types/branding';
 export { BRANDING_FONTS, BRANDING_PALETTES, BRANDING_COLOR_KEYS, DEFAULT_DENOM_BRANDING } from './constants/branding';
