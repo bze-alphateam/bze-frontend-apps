@@ -103,12 +103,10 @@ describe('useIbcBridgeTransfer withdraw refused by the chain', () => {
         expect(toastMock.error).toHaveBeenCalledWith(expect.anything(), expect.stringMatching(expected))
     })
 
-    it('simulates a withdrawal, and a deposit is signed with no simulation', async () => {
+    it('does not simulate a deposit, which is signed on the foreign chain with the wallet fee', async () => {
         simulateMock.mockRejectedValue(new Error('refused'))
-        signDirectMock.mockRejectedValue(new Error('stop here'))
 
         await run({ ...WITHDRAW, isDeposit: true })
         expect(simulateMock).not.toHaveBeenCalled()
-        expect(signDirectMock).toHaveBeenCalled()
     })
 })

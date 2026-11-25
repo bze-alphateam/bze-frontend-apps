@@ -125,7 +125,7 @@ describe('useTx toasts and failure details', () => {
     it('keeps today\'s toasts when the new options are not set', async () => {
         signAndBroadcastMock.mockResolvedValue({
             transactionHash: 'HASH',
-            wait: async () => ({ code: 5, txhash: 'HASH', rawLog: 'insufficient funds', height: 10 }),
+            wait: async () => ({ code: 32, txhash: 'HASH', rawLog: 'account sequence mismatch', height: 10 }),
         })
         const onFailure = vi.fn()
         const { result } = renderHook(() => useBZETx())
@@ -133,10 +133,10 @@ describe('useTx toasts and failure details', () => {
         await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure }) })
 
         expect(toastMock.loading).toHaveBeenCalledTimes(1)
-        expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, 'insufficient funds')
+        expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, 'account sequence mismatch')
         expect(toastMock.dismiss).toHaveBeenCalledWith('toast-id')
         // The first argument is unchanged; the details are an extra, optional argument.
-        expect(onFailure).toHaveBeenCalledWith('insufficient funds', { stage: 'chain', txHash: 'HASH', rawLog: 'insufficient funds', code: 5 })
+        expect(onFailure).toHaveBeenCalledWith('account sequence mismatch', { stage: 'chain', txHash: 'HASH', rawLog: 'account sequence mismatch', code: 32 })
     })
 
     it('fires no toast at all with toasts: false', async () => {
