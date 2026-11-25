@@ -20,7 +20,7 @@ const POOL: LiquidityPoolSDKType = {
     lp_denom: "ulp_page_ubze",
     creator: "bze1owner",
     fee: "0.003",
-    fee_dest: {treasury: "0", burner: "0.5", providers: "0.5", liquidity: "0"},
+    fee_dest: {treasury: "0", burner: "0.5", providers: "0.5"},
     reserve_base: "1000000000",
     reserve_quote: "500000000",
     stable: false,
@@ -63,7 +63,7 @@ describe("poolData", () => {
         // first (the old DEX formula) gave 0.003 / 10,000 × 36,500 ≈ 0.01%.
         const pool: LiquidityPoolSDKType = {
             ...POOL, base: "ubze", quote: "uusdc", id: "ubze_uusdc",
-            fee_dest: {treasury: "0", burner: "0", providers: "1", liquidity: "0"},
+            fee_dest: {treasury: "0", burner: "0", providers: "1"},
             reserve_base: "5000000000", reserve_quote: "5000000000",
         };
         const data = poolData(pool, prices([["ubze", 1], ["uusdc", 1]]), asset("ubze"), asset("uusdc"),

@@ -17,7 +17,7 @@ const TICKERS: Record<string, string> = {[T]: "PAGE", ubze: "BZE", uusdc: "USDC"
 
 const pool = (base: string, quote: string, reserveBase: string, reserveQuote: string): LiquidityPoolSDKType => ({
     id: `${base}_${quote}`, base, quote, lp_denom: `ulp_${base}_${quote}`, creator: "bze1creator",
-    fee: "0.003", fee_dest: {treasury: "0", burner: "0", providers: "1", liquidity: "0"},
+    fee: "0.003", fee_dest: {treasury: "0", burner: "0", providers: "1"},
     reserve_base: reserveBase, reserve_quote: reserveQuote, stable: false,
 });
 
