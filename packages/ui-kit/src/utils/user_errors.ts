@@ -25,6 +25,19 @@ const errorsMap: { [key: string]: string } = {
     "validator for this address is currently jailed": "This validator is jailed, so its unbonding can not be cancelled until it is unjailed.",
     "unbonding delegation is already processed": "This unbonding has already completed, so it can not be cancelled any more. Refresh the page.",
     "unbonding delegation entry is not found at block height": "This unbonding entry no longer exists — it may have completed or been cancelled already. Refresh the page.",
+    // v8.3.0 refusals. The chain's raw texts are matched by substring (prefixes vary).
+    // IBC rate limit (x/ratelimit, outgoing transfer over the daily quota)
+    "exceeds quota": "This transfer is over today's limit for this route. Try a smaller amount or try again later.",
+    // Guardian: denom blocked for ICS-20 (x/ratelimit)
+    "is blacklisted": "Transfers of this token to and from other chains are stopped for now.",
+    // Guardian: channel closed (x/txfeecollector)
+    "ibc transfers on this channel are stopped": "Transfers on this route are stopped for now.",
+    // Guardian: message type paused (x/circuit, raised by the baseapp message router)
+    "circuit breaker disables execution of this message": "This action is paused on BeeZee for now. Please try again later.",
+    // Non-mintable factory token (x/tokenfactory)
+    "minting is disabled for this denom": "Minting is turned off for this token, so no new supply can be created.",
+    // Bank error (sdk code 5), e.g. a swap with too little balance
+    "insufficient funds": "You don't have enough balance for this transaction (including fees).",
     "broadcast failed with code 7": "Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.",
 };
 
