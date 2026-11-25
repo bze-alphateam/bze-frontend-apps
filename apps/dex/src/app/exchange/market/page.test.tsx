@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { Asset } from "@bze/bze-ui-kit";
@@ -221,9 +221,14 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         await waitFor(() => expect(mocks.fetchOrders).toHaveBeenCalled());
         fill(sell, "Price", "3");
         fill(buy, "Price", "2");
+        // positive control: the same sell price as the resting order does show the hint
+        fill(sell, "Price", "2");
+        expect(await within(sell).findByText(MERGE)).toBeInTheDocument();
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(screen.queryByText(MERGE)).toBeNull();
+        // only the sell form shows it, the buy form at the same price does not
+        expect(screen.getAllByText(MERGE)).toHaveLength(1);
+        fill(sell, "Price", "3");
+        await waitFor(() => expect(screen.queryByText(MERGE)).toBeNull());
     });
 
     it("tells the user when part of an order was returned for hitting the fill cap", async () => {
@@ -234,6 +239,30 @@ describe("order book after the v8.3.0 in-tx execution", () => {
                 txhash: "H", height: 1, code: 0,
                 events: [{ type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }] }],
             });
+            return true;
+        });
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("at most 250 resting orders")));
+        vi.unstubAllGlobals();
+    });
+
+    it("reads the events from the node when the tx response carries none", async () => {
+        const refund = { type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }] };
+        vi.stubGlobal("fetch", vi.fn(async (url: string) => ({
+            ok: true,
+            json: async () => (url.includes("/cosmos/tx/v1beta1/txs/H")
+                ? { tx_response: { events: [refund] } }
+                : { params: { maxFillsPerOrder: "250" } }),
+        })));
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
+            options?.onSuccess?.({ txhash: "H", height: 1, code: 0, events: [] });
             return true;
         });
         renderPage();
@@ -261,7 +290,8 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
 
         await waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        // the success handler ran inside tx(); let its promises settle before asserting
+        await act(async () => { await Promise.resolve(); });
         expect(mocks.info).not.toHaveBeenCalled();
     });
 

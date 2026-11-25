@@ -4,13 +4,18 @@ import {buildFillEntries, hasOrderAtPrice, maxFillsReachedMessage} from "./order
 
 describe("buildFillEntries", () => {
     it("writes amounts without exponent notation at 1e21 and above", () => {
-        const entries = buildFillEntries([{price: "2", amount: "1000000000000000000000"}]);
+        // BigNumber.toString() is what the page used to send: "1e+21"
+        const exponent = new BigNumber("1e21").toString();
+        expect(exponent).toBe("1e+21");
+
+        const entries = buildFillEntries([{price: "2", amount: exponent}]);
 
         expect(entries).toEqual([{price: "2", amount: "1000000000000000000000"}]);
     });
 
     it("normalises chain amounts written with decimals", () => {
         expect(buildFillEntries([{price: "2", amount: "150.000"}])[0].amount).toBe("150");
+        expect(buildFillEntries([{price: "2", amount: "1.5e+3"}])[0].amount).toBe("1500");
     });
 
     it("merges entries at the same price written differently", () => {
