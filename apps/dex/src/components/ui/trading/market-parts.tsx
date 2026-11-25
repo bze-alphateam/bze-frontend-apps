@@ -139,10 +139,12 @@ export const EmptyTableRow = ({colSpan, message}: { colSpan: number; message: st
 );
 
 /** A Buy or Sell form: its title and button in the side colour, the fields, the multi-fill hint. */
-export const OrderForm = ({side, title, fillMessage, disabled, onSubmit, children}: {
+export const OrderForm = ({side, title, fillMessage, mergeHint, disabled, onSubmit, children}: {
     side: TradeSide;
     title: string;
     fillMessage?: string;
+    /** Shown when the user already rests an order at the typed price (it merges into it). */
+    mergeHint?: string;
     disabled?: boolean;
     onSubmit: () => void;
     children: ReactNode;
@@ -153,6 +155,12 @@ export const OrderForm = ({side, title, fillMessage, disabled, onSubmit, childre
         <Panel label={title} p="16px" gap="12px" role="group">
             <chakra.strong fontSize="15px" fontWeight="700" color={color}>{title}</chakra.strong>
             {children}
+            {mergeHint && (
+                <Flex gap="8px" align="flex-start" px="12px" py="10px" borderRadius="12px" bg="hg.inset" fontSize="12px" color="hg.text.muted">
+                    <Box as="span" flex="none" mt="1px" color="hg.text.faint"><LuInfo size={14} aria-hidden="true"/></Box>
+                    {mergeHint}
+                </Flex>
+            )}
             {fillMessage && (
                 <Flex gap="8px" align="flex-start" px="12px" py="10px" borderRadius="12px" bg="hg.inset" fontSize="12px" color="hg.text.muted">
                     <Box as="span" flex="none" mt="1px" color="hg.text.faint"><LuInfo size={14} aria-hidden="true"/></Box>

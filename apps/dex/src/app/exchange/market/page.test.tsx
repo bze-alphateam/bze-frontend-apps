@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0" },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", info: vi.fn(), fetchOrders: vi.fn() },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -43,7 +43,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssetPrice: () => ({ totalUsdValue: () => new BigNumber(0), hasPrice: false }),
         useBZETx: () => ({ tx: mocks.tx }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
-        useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
+        useToast: () => ({ toast: { error: vi.fn(), success: vi.fn(), info: mocks.info } }),
         useConnectionType: () => ({ connectionType: undefined }),
         useMaxSpendable: () => ({ inputValue: "0", displayAmount: new BigNumber(0), amount: new BigNumber(0), gasFee, isLoading: false }),
         useGasFeeEstimator: () => ({ estimate: () => gasFee }),
@@ -59,7 +59,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         getMarketSellOrders: async () => ({ list: [] }),
         getMarketHistory: async () => ({ list: [] }),
         getAddressHistory: async () => [],
-        getAddressFullMarketOrders: async () => mocks.myOrders,
+        getAddressFullMarketOrders: async () => { mocks.fetchOrders(); return mocks.myOrders; },
         getTradingViewIntervals: async () => [],
         FeeEstimateRow: () => null,
     };
@@ -85,6 +85,8 @@ beforeEach(() => {
     mocks.tx.mockReset();
     mocks.myOrders = [ORDER];
     mocks.balance = "0";
+    mocks.info.mockReset();
+    mocks.fetchOrders.mockReset();
 });
 
 describe("trading page on a governance-halted market", () => {
@@ -192,5 +194,86 @@ describe("market header", () => {
         expect(back.getAttribute("aria-label")).toBe("Back to markets");
         expect(css).toMatch(/padding-inline:\s*0(px)?[;\s}]/);
         expect(css).toMatch(/min-width:\s*24px/);
+    });
+});
+
+describe("order book after the v8.3.0 in-tx execution", () => {
+    const fill = (form: HTMLElement, label: string, value: string) =>
+        fireEvent.change(within(form).getByLabelText(label), { target: { value } });
+    const MERGE = /You already have an order at this price/;
+
+    it("hints that a new order merges into the user's resting order at an equal price", async () => {
+        renderPage();
+
+        const sell = await screen.findByRole("group", { name: "Sell HALT" });
+        await waitFor(() => expect(mocks.fetchOrders).toHaveBeenCalled());
+        fill(sell, "Price", "2.000");
+
+        expect(await within(sell).findByText(MERGE)).toBeInTheDocument();
+        expect(within(sell).getByText(/moves to the back of the queue at this price/)).toBeInTheDocument();
+    });
+
+    it("shows no hint at another price or on the other side", async () => {
+        renderPage();
+
+        const sell = await screen.findByRole("group", { name: "Sell HALT" });
+        const buy = screen.getByRole("group", { name: "Buy HALT" });
+        await waitFor(() => expect(mocks.fetchOrders).toHaveBeenCalled());
+        fill(sell, "Price", "3");
+        fill(buy, "Price", "2");
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(screen.queryByText(MERGE)).toBeNull();
+    });
+
+    it("tells the user when part of an order was returned for hitting the fill cap", async () => {
+        vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ params: { maxFillsPerOrder: "250" } }) })));
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
+            options?.onSuccess?.({
+                txhash: "H", height: 1, code: 0,
+                events: [{ type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }] }],
+            });
+            return true;
+        });
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("at most 250 resting orders")));
+        vi.unstubAllGlobals();
+    });
+
+    it("stays quiet when no order was returned for the fill cap", async () => {
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
+            options?.onSuccess?.({ txhash: "H", height: 1, code: 0, events: [{ type: "bze.tradebin.OrderSavedEvent", attributes: [] }] });
+            return true;
+        });
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.tx).toHaveBeenCalledTimes(1));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(mocks.info).not.toHaveBeenCalled();
+    });
+
+    it("reloads Your Orders after a cancel the chain refused (order merged away)", async () => {
+        mocks.tx.mockResolvedValue(false);
+        renderPage();
+
+        const cancelAll = await screen.findByRole("button", { name: "Cancel All" });
+        await waitFor(() => expect(mocks.fetchOrders).toHaveBeenCalled());
+        const before = mocks.fetchOrders.mock.calls.length;
+        fireEvent.click(cancelAll);
+
+        await waitFor(() => expect(mocks.fetchOrders.mock.calls.length).toBeGreaterThan(before));
     });
 });

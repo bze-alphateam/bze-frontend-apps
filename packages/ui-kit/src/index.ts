@@ -71,7 +71,10 @@ export {
     isAddressTransfer, isOrderBookEvent, isOrderExecutedEvent, isSwapEvent,
     isCoinbaseEvent, isBurnEvent, isBurnerCoinsBurnedEvent, isEpochStartEvent, getMintedAmount,
     getNewBlockEvents, blockHasAddressTransfer,
+    hasMaxFillsReachedRefund, getTxResponseEvents, parseMaxFillsPerOrder,
+    MAX_FILLS_REACHED_REASON, DEFAULT_MAX_FILLS_PER_ORDER,
 } from './utils/events';
+export { getMaxFillsPerOrder, getTxEventsByHash } from './query/tradebin_order_params';
 export {
     formatUsdAmount, shortNumberFormat, intlDateFormat,
     formatDate, formatTimeRemaining, formatTimeRemainingFromEpochs
