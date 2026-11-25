@@ -97,3 +97,46 @@ export const blockHasAddressTransfer = (address: string, result: unknown): boole
     if (!address) return false;
     return getNewBlockEvents(result).some(event => isAddressTransfer(address, event));
 }
+
+export const MAX_FILLS_REACHED_REASON = 'max_fills_reached';
+/** What one order may examine on a v8.2.0 node or when the params can not be read (chain default). */
+export const DEFAULT_MAX_FILLS_PER_ORDER = 500;
+
+// Typed-event attribute values are JSON-quoted strings ("\"max_fills_reached\""); plain ones pass.
+const unquote = (value: string | undefined): string | undefined => {
+    if (value === undefined) return undefined;
+    try {
+        const parsed = JSON.parse(value);
+        return typeof parsed === 'string' ? parsed : value;
+    } catch {
+        return value;
+    }
+}
+
+/**
+ * Whether any `OrderMessageRefundedEvent` carries the reason `max_fills_reached` (chain v8.3.0): the
+ * order examined its maximum number of resting orders and the remainder was returned in the same tx.
+ */
+export const hasMaxFillsReachedRefund = (events: TendermintEvent[] | undefined): boolean => {
+    return (events ?? []).some(event =>
+        event.type.includes('bze.tradebin.OrderMessageRefundedEvent')
+        && unquote(getEventKeyValue(event, 'reason')) === MAX_FILLS_REACHED_REASON
+    );
+}
+
+/** The events of a tx result (interchainjs TxResponse or REST tx_response); empty when it has none. */
+export const getTxResponseEvents = (resp: unknown): TendermintEvent[] => {
+    const events = (resp as { events?: unknown } | undefined)?.events;
+    if (!Array.isArray(events)) return [];
+
+    return events.filter((e): e is TendermintEvent => !!e && typeof e.type === 'string' && Array.isArray(e.attributes));
+}
+
+/** `maxFillsPerOrder` from a `/bze/tradebin/params` answer; the default when absent or invalid. */
+export const parseMaxFillsPerOrder = (json: unknown): number => {
+    const params = (json as { params?: Record<string, unknown> } | undefined)?.params;
+    const raw = params?.maxFillsPerOrder ?? params?.max_fills_per_order;
+    const n = Number(raw);
+
+    return Number.isInteger(n) && n > 0 ? n : DEFAULT_MAX_FILLS_PER_ORDER;
+}

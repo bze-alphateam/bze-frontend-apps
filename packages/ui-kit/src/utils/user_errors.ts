@@ -36,6 +36,8 @@ const errorsMap: { [key: string]: string } = {
     "circuit breaker disables execution of this message": "This action is paused on BeeZee for now. Please try again later.",
     // Non-mintable factory token (x/tokenfactory)
     "minting is disabled for this denom": "Minting is turned off for this token, so no new supply can be created.",
+    // Order book (x/tradebin): a cancel by an id that was filled, cancelled or merged away
+    "order not found": "This order no longer exists. It was filled, cancelled, or merged into a newer order at the same price.",
     // Bank error (sdk code 5), e.g. a swap with too little balance
     "insufficient funds": "You don't have enough balance for this transaction (including fees).",
     // DAOs (x/dao, chain v8.3.0, codespace "dao"). Keys are the chain's registered error messages,

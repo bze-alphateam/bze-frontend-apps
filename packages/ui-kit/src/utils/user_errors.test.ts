@@ -88,6 +88,12 @@ describe('prettyError — every existing key', () => {
     })
 })
 
+describe('prettyError - order book', () => {
+    it('explains a cancel of an order that was merged, filled or cancelled', () => {
+        expect(prettyError('failed to execute message; message index: 0: order not found')).toMatch(/merged into a newer order/)
+    })
+})
+
 describe('prettyError — empty input', () => {
     it('returns undefined for an empty message', () => {
         expect(prettyError(undefined)).toBeUndefined()

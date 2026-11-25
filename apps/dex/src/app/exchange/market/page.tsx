@@ -14,7 +14,7 @@ import { LuTrendingUp, LuTrendingDown, LuActivity, LuArrowLeft, LuX, LuInfo } fr
 import {useNavigationWithParams} from "@/hooks/useNavigation";
 import {
     useMarket, useAsset,
-    amountToBigNumberUAmount, prettyAmount, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
+    amountToBigNumberUAmount, prettyAmount, getMaxFillsPerOrder, getTxEventsByHash, getTxResponseEvents, hasMaxFillsReachedRefund, type TxSuccessResponse, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
     getAddressFullMarketOrders, getMarketBuyOrders, getMarketHistory, getMarketSellOrders,
     ActiveOrders, ORDER_TYPE_BUY, ORDER_TYPE_SELL,
     HistoryOrder,
@@ -41,6 +41,7 @@ import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
 import {balanceToFormValue, isPositiveOrderValue, orderPriceSent} from "@/lib/trading-form";
 import {isAboveChainMinPrice} from "@/lib/order-price";
+import {buildFillEntries, hasOrderAtPrice, MERGE_HINT, maxFillsReachedMessage} from "@/lib/order-fills";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -526,19 +527,29 @@ const TradingPageContent = () => {
 
         return result;
     }, [activeOrders])
+    // v8.3.0 runs orders inside their tx: an order that would examine more than maxFillsPerOrder
+    // resting orders gets the remainder back in the same tx. Tell the user, so it is not a surprise.
+    const notifyIfMaxFills = useCallback(async (res: TxSuccessResponse) => {
+        try {
+            let events = getTxResponseEvents(res);
+            if (events.length === 0 && res.txhash) {
+                events = await getTxEventsByHash(res.txhash);
+            }
+            if (!hasMaxFillsReachedRefund(events)) return;
+
+            toast.info(maxFillsReachedMessage(await getMaxFillsPerOrder()));
+        } catch (e) {
+            console.error('Failed to check the order tx for a max fills refund', e);
+        }
+    }, [toast])
     const submitFillOrdersMsg = useCallback(async (toFill: AggregatedOrderSDKType[]) => {
         if (!marketId || marketId === '' || !address || !tx) {
             return;
         }
 
         setSubmittingOrder(true)
-        const msgOrders: FillOrderItem[] = [];
-        for (let i = 0; i < toFill.length; i++) {
-            msgOrders.push({
-                price: toFill[i].price,
-                amount: toFill[i].amount,
-            })
-        }
+        // canonical integer amounts, normalised prices (the chain refuses anything else)
+        const msgOrders: FillOrderItem[] = buildFillEntries(toFill);
 
         const msg = fillOrders({
             creator: address,
@@ -547,10 +558,10 @@ const TradingPageContent = () => {
             orders: msgOrders,
         })
 
-        await tx([msg]);
+        await tx([msg], {onSuccess: notifyIfMaxFills});
 
         setSubmittingOrder(false);
-    }, [marketId, address, tx])
+    }, [marketId, address, tx, notifyIfMaxFills])
     const submitCreateOrderMsg = useCallback(async (orderType: string, uPrice: BigNumber, uAmount: BigNumber) => {
         if (!address || !tx || !activeOrders || !marketId || marketId === '') {
             toast.error('Please connect your wallet');
@@ -579,10 +590,10 @@ const TradingPageContent = () => {
         setSubmittingOrder(true);
         const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toFixed(0), uPriceToMsgPrice(uPrice));
 
-        await tx(msgs);
+        await tx(msgs, {onSuccess: notifyIfMaxFills});
 
         setSubmittingOrder(false);
-    }, [address, tx, activeOrders, toast, marketId])
+    }, [address, tx, activeOrders, toast, marketId, notifyIfMaxFills])
     const onOrderSubmit = useCallback(async (orderType: string) => {
         if (!address || !tx) {
             toast.error('Please connect your wallet');
@@ -672,6 +683,14 @@ const TradingPageContent = () => {
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeOrders, baseAsset, quoteAsset])
+    const mergeHintFor = useCallback((orderType: string, price: string) => {
+        if (price === '' || !quoteAsset || !baseAsset) return undefined;
+        const uPrice = priceToBigNumberUPrice(price, quoteAsset.decimals, baseAsset.decimals);
+
+        return hasOrderAtPrice(myOrders, orderType, uPrice) ? MERGE_HINT : undefined;
+    }, [myOrders, quoteAsset, baseAsset])
+    const buyMergeHint = useMemo(() => mergeHintFor(ORDER_TYPE_BUY, buyPrice), [mergeHintFor, buyPrice])
+    const sellMergeHint = useMemo(() => mergeHintFor(ORDER_TYPE_SELL, sellPrice), [mergeHintFor, sellPrice])
     const buyFillMessage = useMemo(() => {
         if (buyPrice === '' || buyAmount === '') return undefined;
 
@@ -923,6 +942,7 @@ const TradingPageContent = () => {
                                 side="buy"
                                 title={`Buy ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={buyFillMessage}
+                                mergeHint={buyMergeHint}
                                 disabled={submittingOrder}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_BUY)}
                             >
@@ -957,6 +977,7 @@ const TradingPageContent = () => {
                                 side="sell"
                                 title={`Sell ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={sellFillMessage}
+                                mergeHint={sellMergeHint}
                                 disabled={submittingOrder}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_SELL)}
                             >

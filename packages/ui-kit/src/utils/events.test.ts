@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest'
-import {blockHasAddressTransfer, getNewBlockEvents, isBurnEvent, isBurnerCoinsBurnedEvent} from './events'
+import {blockHasAddressTransfer, getEventMarketId, getNewBlockEvents, getTxResponseEvents, hasMaxFillsReachedRefund, isBurnEvent, isBurnerCoinsBurnedEvent, isOrderBookEvent, parseMaxFillsPerOrder} from './events'
 import type {TendermintEvent} from '../types/events'
 
 const event = (type: string): TendermintEvent => ({type, attributes: [{key: 'amount', value: '1ubze', index: true}]})
@@ -99,5 +99,61 @@ describe('isBurnerCoinsBurnedEvent', () => {
         expect(isBurnerCoinsBurnedEvent(event('burn'))).toBe(false)
         // isBurnEvent is the broad one: a fund is "burn" to it too.
         expect(isBurnEvent(event('bze.burner.FundBurnerEvent'))).toBe(true)
+    })
+})
+
+describe('order book events in tx results (chain v8.3.0)', () => {
+    const quoted = (type: string, attrs: Record<string, string>): TendermintEvent => ({
+        type,
+        attributes: Object.entries(attrs).map(([key, value]) => ({key, value: JSON.stringify(value), index: true})),
+    })
+    const types = ['OrderAmendedEvent', 'OrderSavedEvent', 'OrderExecutedEvent', 'OrderMessageRefundedEvent']
+
+    it('picks every order event up from tx_results with its quoted market_id', () => {
+        const events = types.map(t => quoted(`bze.tradebin.${t}`, {market_id: 'ubze/uusdc'}))
+        const result = {data: {value: {result_finalize_block: {events: [], tx_results: [{events}]}}}}
+
+        const found = getNewBlockEvents(result).filter(isOrderBookEvent)
+
+        expect(found.map(getEventMarketId)).toEqual(types.map(() => 'ubze/uusdc'))
+    })
+
+    it('still picks them up from block-level events (v8.2.0 queue)', () => {
+        const result = {data: {value: {result_finalize_block: {events: [quoted('bze.tradebin.OrderExecutedEvent', {market_id: 'a/b'})], tx_results: []}}}}
+
+        expect(getNewBlockEvents(result).filter(isOrderBookEvent).map(getEventMarketId)).toEqual(['a/b'])
+    })
+})
+
+describe('hasMaxFillsReachedRefund', () => {
+    const refund = (reason: string): TendermintEvent => ({
+        type: 'bze.tradebin.OrderMessageRefundedEvent',
+        attributes: [{key: 'reason', value: JSON.stringify(reason), index: true}],
+    })
+
+    it('detects the reason, quoted or plain', () => {
+        expect(hasMaxFillsReachedRefund([refund('max_fills_reached')])).toBe(true)
+        expect(hasMaxFillsReachedRefund([{type: 'bze.tradebin.OrderMessageRefundedEvent', attributes: [{key: 'reason', value: 'max_fills_reached', index: true}]}])).toBe(true)
+    })
+
+    it('ignores other reasons, other events and no events', () => {
+        expect(hasMaxFillsReachedRefund([refund('something_else')])).toBe(false)
+        expect(hasMaxFillsReachedRefund([{type: 'bze.tradebin.OrderSavedEvent', attributes: [{key: 'reason', value: '"max_fills_reached"', index: true}]}])).toBe(false)
+        expect(hasMaxFillsReachedRefund(undefined)).toBe(false)
+    })
+})
+
+describe('getTxResponseEvents / parseMaxFillsPerOrder', () => {
+    it('returns the events of a tx response, empty when absent', () => {
+        const e = {type: 'x', attributes: []}
+        expect(getTxResponseEvents({events: [e, null, {foo: 1}]})).toEqual([e])
+        expect(getTxResponseEvents({})).toEqual([])
+    })
+
+    it('reads the gateway key, falling back to 500', () => {
+        expect(parseMaxFillsPerOrder({params: {maxFillsPerOrder: '250'}})).toBe(250)
+        expect(parseMaxFillsPerOrder({params: {max_fills_per_order: '120'}})).toBe(120)
+        expect(parseMaxFillsPerOrder({params: {}})).toBe(500)
+        expect(parseMaxFillsPerOrder(undefined)).toBe(500)
     })
 })
