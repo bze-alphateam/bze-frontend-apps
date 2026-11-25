@@ -94,3 +94,53 @@ describe('prettyError — empty input', () => {
         expect(prettyError('')).toBeUndefined()
     })
 })
+
+// x/dao (chain v8.3.0): raw logs as the chain builds them (errorsmod.Wrapf(<sentinel>, <detail>)
+// puts the detail first), one per listed code.
+describe('prettyError — DAOs (x/dao)', () => {
+    const raw = (detail: string) => `failed to execute message; message index: 0: ${detail}`
+
+    it.each([
+        [1103, raw('expedite_quorum 0.300000000000000000 is lower than min_quorum 0.400000000000000000: invalid dao config'), /DAO rules were refused/],
+        [1104, raw('duplicate member bze1abc: invalid dao members'), /member list was refused/],
+        [1105, raw('staking reward 3 stakes ubze, the electorate stakes uvdl: all sources must share one staking denom: invalid dao electorate'), /voters were refused/],
+        [1108, raw('dao 5: dao not found'), /DAO doesn't exist/],
+        [1109, raw('dao 5: signer is not the dao\'s admin'), /Only this DAO's admin/],
+        [1111, raw('message 0: message must be signed by the dao account only'), /signed by the DAO's own account/],
+        [1112, raw('dao 5: an admin nomination is already pending'), /already pending/],
+        [1113, raw('a self-owned dao needs voters: the dao electorate cannot vote'), /nobody who can vote/],
+        [1114, raw('the nominee is the current admin: invalid admin nominee'), /nominee must be a valid address/],
+        [1116, raw('dao 5: signer is not the dao\'s pending admin'), /Only the nominated address/],
+        [1118, raw('dao 5: signer cannot submit proposals to this dao'), /Only this DAO's voters/],
+        [1119, raw('dao 5 has no voters: no voting power'), /no voting power to count/],
+        [1120, raw('dao 5 already has 10 proposals in voting: the dao has too many open proposals'), /most proposals open/],
+        [1121, raw('dao 5: the dao does not allow expedited proposals'), /doesn't allow expedited/],
+        [1124, raw('proposal 7: the proposal is not open for voting'), /Voting on this proposal is closed/],
+        [1125, raw('proposal 7: the ballot already has this option'), /already voted this way/],
+        [1126, raw('proposal 7: signer is not the proposal\'s proposer'), /Only the address that submitted/],
+        [1127, raw('proposal 7: the proposal\'s voting period has not ended'), /Voting is still open/],
+        [1128, raw('proposal 7 is EXECUTED: the proposal is finished'), /already finished/],
+        [1130, raw('proposal 7: the expedited proposal does not meet the expedite bars yet'), /enough votes to settle early/],
+        [1131, raw('proposal 7 is VOTING: the proposal is not finished'), /can't be cleaned up yet/],
+        [1132, raw('proposal 7: the expedited proposal cannot settle early yet'), /minimum time to react/],
+        [1133, raw('message 0 (/cosmos.authz.v1beta1.MsgGrant): the message is not allowed in this dao execution'), /isn't allowed here/],
+        [1135, raw('dao 5: the admin nomination is stale: control of the nominating dao changed since'), /no longer valid/],
+    ])('maps code %i', (_code, log, expected) => {
+        expect(prettyError(log)).toMatch(expected)
+    })
+
+    it('tells the pending-admin and admin errors apart', () => {
+        expect(prettyError(raw('signer is not the dao\'s pending admin'))).toMatch(/nominated address/)
+        expect(prettyError(raw('signer is not the dao\'s admin'))).toMatch(/admin's wallet/)
+    })
+
+    it('tells finished and not-finished proposals apart', () => {
+        expect(prettyError(raw('the proposal is not finished'))).toMatch(/cleaned up/)
+        expect(prettyError(raw('the proposal is finished'))).toMatch(/already finished/)
+    })
+
+    it('leaves the existing mappings as they were', () => {
+        expect(prettyError(raw('denom reward not found'))).toMatch(/no denom reward yet/)
+        expect(prettyError('broadcast failed with code 7')).toMatch(/fee token/)
+    })
+})
