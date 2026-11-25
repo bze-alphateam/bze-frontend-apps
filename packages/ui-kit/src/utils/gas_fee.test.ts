@@ -59,8 +59,8 @@ describe('GAS_ESTIMATES', () => {
         })
     })
 
-    // Highest gas_used measured on bzetestnet-3 (chain v8.3.0-rc1, 2026-11-25): every estimate must cover it.
-    it('covers the gas measured on chain v8.3.0 for the order book and swaps', () => {
+    // Highest gas_used measured on bzetestnet-3 (v8.3.0-rc1, 2026-11-25): every estimate must cover it.
+    it('covers the gas measured on v8.3.0-rc1 for the order book and swaps', () => {
         const gas = (kind: TxKind, count?: number) => estimateGasUsed({ kind, count }).toNumber()
         expect(gas('create-order')).toBeGreaterThanOrEqual(207_574)   // maker
         expect(gas('create-order')).toBeGreaterThanOrEqual(196_898)   // taker, 1 fill
@@ -71,6 +71,14 @@ describe('GAS_ESTIMATES', () => {
         expect(gas('fill-orders', 10)).toBeGreaterThanOrEqual(1_293_267)
         expect(gas('swap', 1)).toBeGreaterThanOrEqual(182_853)
         expect(gas('swap', 2)).toBeGreaterThanOrEqual(226_326)
+        expect(gas('swap', 3)).toBeGreaterThanOrEqual(318_000)        // known pre-upgrade 3-hop max
+    })
+
+    it('covers the measured gas through estimateGasFee with the gas multiplier', () => {
+        const maker = estimateGasFee({ ...env, spec: 'create-order', txFeeDenom: NATIVE })
+        expect(maker.gas.toNumber()).toBeGreaterThanOrEqual(Math.ceil(207_574 * 1.2))
+        const fill = estimateGasFee({ ...env, spec: { kind: 'fill-orders', count: 10 }, txFeeDenom: NATIVE })
+        expect(fill.gas.toNumber()).toBeGreaterThanOrEqual(Math.ceil(1_293_267 * 1.2))
     })
 })
 
