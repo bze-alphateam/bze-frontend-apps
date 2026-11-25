@@ -109,6 +109,17 @@ export const FEE_SWAP_GAS = 100_000;
  * `gas_used` per message kind, rounded UP with headroom from real transactions (2026-09-09):
  * testnet `bzetestnet-3` for the kinds it had traffic for (create/cancel order), mainnet
  * `beezee-1` for everything else — p90/max of the latest successful single-message txs.
+ * The order-book kinds (`create-order`, `fill-orders`, `cancel-order`) and `swap` were
+ * re-measured on 2026-11-25 on `bzetestnet-3` running chain v8.3.0-rc1 (the upgrade changed the
+ * order engine): organic txs since the upgrade plus a controlled run with 1, 3, 5 and 10 entries
+ * per fill and 1 and 2 swap hops. Example txs (max gas_used): maker create
+ * D3FF445F022C7DD6B5390B34E79FC6A045CCE7588CE1E5EFC737EF0A2566274A 207,574; taker create with one
+ * fill E1A744B4A0C3DC8010798AE7C8B7E0553062AD99F4D9E662E10ED4DB036396B2 196,898; fill 10 entries
+ * E0DF2D5A6616ADBC271C4CAE0712D206E2D629055FF5B7229DFA293DFF1393A0 1,293,267; cancel
+ * A589ECD87960062A1A9D4C8E7B056E6483D29A524186D6EA08FE45C42F95FCB4 96,486; 2-hop swap
+ * 66CA7C348CD72A992A379AAFF1ED1C4CF148D8E1197A7E2AB30697D4ECAA1EA7 226,326. A taker `create-order`
+ * filling many makers could not be produced (it only fills the best price level); the form sends
+ * such fills as `fill-orders`, whose per-entry increment is measured above.
  * Kinds marked "no on-chain sample" had no transaction to measure yet and carry a generous
  * estimate instead. Conservative on purpose: `useTx` still simulates the real gas at submit,
  * these only decide how much MAX leaves behind and when to warn — over-estimating by a few
@@ -125,10 +136,10 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'send': {base: 160_000},                                  // measured p90 123k, max 146k
     'multi-send': {base: 200_000, perItem: 35_000},           // no on-chain sample — bank send of one output measured p90 123k; estimate with headroom, re-measure on bzetestnet-3
     'ibc-transfer': {base: 450_000},                          // measured p90 330k, max 419k
-    'create-order': {base: 180_000, feeSwaps: 1},             // measured (testnet) p90 155k, max 162k
-    'fill-orders': {base: 220_000, perItem: 60_000, feeSwaps: 1}, // measured 2 orders 240k … 15 orders 961k
-    'cancel-order': {base: 100_000},                          // measured (testnet) 84k
-    'swap': {base: 260_000, perItem: 60_000, feeSwaps: 1},    // measured 1 hop 224k–242k, 2 hops 251k
+    'create-order': {base: 220_000, feeSwaps: 1},             // measured (testnet, chain v8.3.0) maker max 208k, taker with 1 fill 197k
+    'fill-orders': {base: 200_000, perItem: 130_000, feeSwaps: 1}, // measured (testnet, chain v8.3.0) 1 entry 196k, 3 entries 405k, 5 entries 634k, 10 entries 1.29M (~110-130k per extra entry)
+    'cancel-order': {base: 110_000},                          // measured (testnet, chain v8.3.0) max 96k
+    'swap': {base: 190_000, perItem: 60_000, feeSwaps: 1},    // measured (testnet, chain v8.3.0) 1 hop 183k, 2 hops 226k
     'add-liquidity': {base: 220_000},                         // measured p90 194k, max 201k
     'remove-liquidity': {base: 220_000},                      // measured max 203k
     'create-market': {base: 220_000, feeSwaps: 1},            // measured 165k (single sample)
