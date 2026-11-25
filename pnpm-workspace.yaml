@@ -4,7 +4,7 @@ packages:
 
 # Dependency version pins shared across the whole workspace (was dex's package.json "overrides").
 overrides:
-  axios: "1.13.2"
+  axios: "1.21.1"
   # Pin the wagmi/viem set to the versions dex's old package-lock resolved (known-good).
   # A fresh install drifted upward to wagmi 3.6.16 / @wagmi/core 3.5.0, whose "tempo"
   # connector has an unresolvable `accounts` import that breaks the Next build.
