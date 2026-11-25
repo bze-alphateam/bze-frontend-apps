@@ -4,6 +4,7 @@ import BigNumber from 'bignumber.js';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {getChainNativeAssetDenom} from '../constants/assets';
 import {getForeignFeeSlippage, getGasMultiplier, getGasPrice} from '../constants/chain';
+import {getDenomConfig} from '../query/denom_config';
 import {getTxFeeCollectorParams} from '../query/txfeecollector_params';
 import {Asset} from '../types/asset';
 import {uAmountToBigNumberAmount} from '../utils/amount';
@@ -34,6 +35,24 @@ export function useGasPrice(): number {
     return gasPrice;
 }
 
+/**
+ * The v8.3.0 gas surcharge of the denom the fee is paid in (0 while loading, for tokens without
+ * a config and on v8.2.0 nodes), so estimates match the fee `useTx` signs.
+ */
+export function useGasSurcharge(denom: string): BigNumber {
+    const [loaded, setLoaded] = useState<{denom: string; surcharge: BigNumber}>();
+
+    useEffect(() => {
+        let cancelled = false;
+        getDenomConfig(denom).then(config => {
+            if (!cancelled) setLoaded({denom, surcharge: config.gasSurcharge});
+        });
+        return () => { cancelled = true; };
+    }, [denom]);
+
+    return useMemo(() => loaded?.denom === denom ? loaded.surcharge : new BigNumber(0), [loaded, denom]);
+}
+
 export interface UseGasFeeEstimatorResult {
     /** Estimate the gas fee of any transaction shape with the current chain data. */
     estimate: (spec: TxSpec) => GasFeeEstimate;
@@ -57,6 +76,7 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
     const {minLiquidity} = useFeeTokens();
     const {asset, isLoading: assetsLoading} = useAsset(txFeeDenom);
     const gasPrice = useGasPrice();
+    const gasSurcharge = useGasSurcharge(txFeeDenom);
 
     const pool = txFeeDenom !== nativeDenom ? getDenomsPool(txFeeDenom, nativeDenom) : undefined;
 
@@ -69,7 +89,8 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
         foreignFeeSlippage: getForeignFeeSlippage(),
         pool,
         minNativeLiquidity: minLiquidity,
-    }), [nativeDenom, txFeeDenom, gasPrice, pool, minLiquidity]);
+        gasSurcharge,
+    }), [nativeDenom, txFeeDenom, gasPrice, pool, minLiquidity, gasSurcharge]);
 
     return {
         estimate,
