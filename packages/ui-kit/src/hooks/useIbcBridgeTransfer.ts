@@ -81,7 +81,6 @@ export function useIbcBridgeTransfer(chainName: string): UseIbcBridgeTransferRet
                 timeoutTimestamp: BigInt(getIbcTransferTimeout().toFixed(0)),
                 memo: "",
                 encoding: "",
-                useAliasing: false,
             });
 
             setProgressMessage('Waiting for signature...');
