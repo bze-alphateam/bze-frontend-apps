@@ -1,5 +1,6 @@
 import {getSettings} from "../storage/settings";
 import {CounterpartyChainForChannel, DenomTrace} from "../types/ibc";
+import {sha256, stringToBytes} from "viem";
 import {getFromLocalStorage, setInLocalStorage} from "../storage/storage";
 
 const TRACES_CACHE_KEY = "ibc:traces";
@@ -42,14 +43,32 @@ interface DenomV10 {
     trace?: Hop[];
 }
 
-const denomV10ToTrace = (denom: DenomV10): DenomTrace => ({
-    base_denom: denom.base,
-    path: (denom.trace ?? []).map(h => `${h.port_id}/${h.channel_id}`).join("/"),
-});
+const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v !== "";
+
+// An ibc denom always has at least one hop, so a missing trace is a malformed answer, not path "".
+const denomV10ToTrace = (denom: DenomV10 | undefined | null): DenomTrace | undefined => {
+    if (!denom || !isNonEmptyString(denom.base) || !Array.isArray(denom.trace) || denom.trace.length === 0) {
+        return undefined;
+    }
+    if (!denom.trace.every(h => h && isNonEmptyString(h.port_id) && isNonEmptyString(h.channel_id))) {
+        return undefined;
+    }
+
+    return {
+        base_denom: denom.base,
+        path: denom.trace.map(h => `${h.port_id}/${h.channel_id}`).join("/"),
+    };
+}
+
+// ibc/ + upper(sha256(path/base_denom)) is the denom, so an answer is only good for the hash it hashes to.
+const traceMatchesHash = (trace: DenomTrace, hash: string): boolean => {
+    const computed = sha256(stringToBytes(`${trace.path}/${trace.base_denom}`)).slice(2).toUpperCase();
+    return computed === hash.toUpperCase();
+}
 
 const stripIbcPrefix = (hash: string): string => hash.replace(/^ibc\//, "");
 
-const getIBCTracesV10 = async (): Promise<DenomTrace[] | undefined> => {
+const getIBCTracesV10 = async (): Promise<{ traces: DenomTrace[]; complete: boolean } | undefined> => {
     const traces: DenomTrace[] = [];
     let nextKey: string | undefined;
     for (let page = 0; page < MAX_LIST_PAGES; page++) {
@@ -63,14 +82,20 @@ const getIBCTracesV10 = async (): Promise<DenomTrace[] | undefined> => {
             return undefined;
         }
 
-        traces.push(...(responseJson.denoms as DenomV10[]).map(denomV10ToTrace));
+        for (const denom of responseJson.denoms as DenomV10[]) {
+            const trace = denomV10ToTrace(denom);
+            if (trace) {
+                traces.push(trace);
+            }
+        }
         nextKey = responseJson.pagination?.next_key ?? undefined;
         if (!nextKey) {
-            break;
+            return {traces, complete: true};
         }
     }
 
-    return traces;
+    console.error("[IBC] denoms list not complete after", MAX_LIST_PAGES, "pages");
+    return {traces, complete: false};
 }
 
 const getIBCTracesV1 = async (): Promise<DenomTrace[] | undefined> => {
@@ -92,7 +117,12 @@ export const getIBCTraces = async (): Promise<DenomTrace[]> => {
 
     let traces: DenomTrace[] | undefined;
     try {
-        traces = await getIBCTracesV10();
+        const v10 = await getIBCTracesV10();
+        if (v10 && !v10.complete) {
+            // A partial list is returned for this call only; caching it would hide the rest.
+            return v10.traces;
+        }
+        traces = v10?.traces;
     } catch (e) {
         console.error("[IBC] failed to fetch denoms", e);
     }
@@ -131,11 +161,12 @@ const fetchHashTraceV10 = async (hash: string): Promise<HashTraceResult | undefi
     }
 
     const responseJson = await resp.json();
-    if (!responseJson.denom || typeof responseJson.denom.base !== "string") {
+    const trace = denomV10ToTrace(responseJson.denom);
+    if (!trace || !traceMatchesHash(trace, hash)) {
         return undefined;
     }
 
-    return {trace: denomV10ToTrace(responseJson.denom)};
+    return {trace};
 }
 
 const fetchHashTraceV1 = async (hash: string): Promise<DenomTrace | undefined> => {
@@ -146,7 +177,12 @@ const fetchHashTraceV1 = async (hash: string): Promise<DenomTrace | undefined> =
     }
 
     const responseJson = await resp.json();
-    return responseJson.denom_trace ?? undefined;
+    const trace = responseJson.denom_trace;
+    if (!trace || !isNonEmptyString(trace.path) || !isNonEmptyString(trace.base_denom) || !traceMatchesHash(trace, hash)) {
+        return undefined;
+    }
+
+    return trace;
 }
 
 export const getHashIBCTrace = async (rawHash: string): Promise<DenomTrace|undefined> => {

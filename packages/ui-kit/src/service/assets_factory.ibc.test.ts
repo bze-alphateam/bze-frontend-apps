@@ -30,7 +30,7 @@ const json = (status: number, body: unknown) => ({ status, ok: status >= 200 && 
 
 // Everything under /ibc/ is answered here; BZE Scan and any other host is down.
 const stubNode = (version: 'v8' | 'v10') => {
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    const fetchMock = vi.fn(async (url: string) => {
         if (url.includes(`/ibc/apps/transfer/v1/denoms/${HASH}`)) {
             return version === 'v10'
                 ? json(200, { denom: { base: 'ulmn', trace: [{ port_id: 'transfer', channel_id: 'channel-0' }] } })
@@ -51,7 +51,9 @@ const stubNode = (version: 'v8' | 'v10') => {
             return json(200, { client_state: { chain_id: 'osmosis-1' } })
         }
         throw new TypeError('fetch failed')
-    }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    return fetchMock
 }
 
 const resolve = async () => {
@@ -72,10 +74,16 @@ describe('getChainAssets IBC coin resolved through either denom route', () => {
     })
 
     it('builds the same asset from a v10 answer as from a v8 answer', async () => {
-        stubNode('v8')
+        const v8Fetch = stubNode('v8')
         const fromV8 = await resolve()
-        stubNode('v10')
+        const v8Urls = v8Fetch.mock.calls.map(([url]) => url)
+        expect(v8Urls.some(u => u.includes(`/ibc/apps/transfer/v1/denom_traces/${HASH}`))).toBe(true)
+
+        const v10Fetch = stubNode('v10')
         const fromV10 = await resolve()
+        const v10Urls = v10Fetch.mock.calls.map(([url]) => url)
+        expect(v10Urls.some(u => u.includes(`/ibc/apps/transfer/v1/denoms/${HASH}`))).toBe(true)
+        expect(v10Urls.some(u => u.includes('/denom_traces/'))).toBe(false)
 
         expect(fromV8?.IBCData?.chain.channelId).toBe('channel-0')
         expect(fromV8?.IBCData?.counterparty.baseDenom).toBe('ulmn')
