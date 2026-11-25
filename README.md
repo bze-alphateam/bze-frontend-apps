@@ -375,6 +375,10 @@ keeps its own fee reserve:
   shared with `useTx`), converted through the fee token's pool with the same slippage / non-native
   multiplier `useTx` uses, so the estimate is never below what `useTx` sends.
   `useGasFeeEstimator()` returns the same as a function for shapes only known at submit time.
+  A factory token paying the fee may carry a v8.3.0 `gas_surcharge` (`getDenomConfig`, cached
+  5 minutes, zero on v8.2.0 nodes): the chain multiplies that token's gas price by
+  `1 + gas_surcharge`, so `useTx` and the estimate multiply the converted fee by it too, apart
+  from the slippage buffer. The estimator reports `isLoading` until the surcharge is in.
 - **`useMaxSpendable(denom, spec)`** — what a MAX / ALL / 100 % button may fill in: the balance
   minus the gas fee *only* when `denom` is the tx fee denom (floored at 0), the full balance
   otherwise. `inputValue` is ready for an input.

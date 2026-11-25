@@ -36,10 +36,11 @@ export function useGasPrice(): number {
 }
 
 /**
- * The v8.3.0 gas surcharge of the denom the fee is paid in (0 while loading, for tokens without
- * a config and on v8.2.0 nodes), so estimates match the fee `useTx` signs.
+ * The v8.3.0 gas surcharge of the denom the fee is paid in (0 for tokens without a config and on
+ * v8.2.0 nodes), so estimates match the fee `useTx` signs. `isLoading` is true until the config
+ * of the *current* denom is in: a value loaded for another denom is never used.
  */
-export function useGasSurcharge(denom: string): BigNumber {
+export function useGasSurcharge(denom: string): {surcharge: BigNumber; isLoading: boolean} {
     const [loaded, setLoaded] = useState<{denom: string; surcharge: BigNumber}>();
 
     useEffect(() => {
@@ -50,7 +51,11 @@ export function useGasSurcharge(denom: string): BigNumber {
         return () => { cancelled = true; };
     }, [denom]);
 
-    return useMemo(() => loaded?.denom === denom ? loaded.surcharge : new BigNumber(0), [loaded, denom]);
+    const isCurrent = loaded?.denom === denom;
+    return useMemo(
+        () => ({surcharge: isCurrent ? loaded.surcharge : new BigNumber(0), isLoading: !isCurrent}),
+        [isCurrent, loaded],
+    );
 }
 
 export interface UseGasFeeEstimatorResult {
@@ -76,7 +81,7 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
     const {minLiquidity} = useFeeTokens();
     const {asset, isLoading: assetsLoading} = useAsset(txFeeDenom);
     const gasPrice = useGasPrice();
-    const gasSurcharge = useGasSurcharge(txFeeDenom);
+    const {surcharge: gasSurcharge, isLoading: surchargeLoading} = useGasSurcharge(txFeeDenom);
 
     const pool = txFeeDenom !== nativeDenom ? getDenomsPool(txFeeDenom, nativeDenom) : undefined;
 
@@ -96,7 +101,8 @@ export function useGasFeeEstimator(): UseGasFeeEstimatorResult {
         estimate,
         denom: txFeeDenom,
         asset,
-        isLoading: feeDenomLoading || poolsLoading || assetsLoading,
+        // the native denom never has a surcharge, so it does not wait for one
+        isLoading: feeDenomLoading || poolsLoading || assetsLoading || (txFeeDenom !== nativeDenom && surchargeLoading),
     };
 }
 

@@ -17,21 +17,65 @@ export interface DenomConfigRatios {
 
 const zeroRatios = (): DenomConfigRatios => ({gasSurcharge: new BigNumber(0), transferFee: new BigNumber(0)});
 
-const parseRatio = (value: unknown): BigNumber => {
-    if (value === undefined || value === null || value === "") {
-        return new BigNumber(0);
-    }
-    const parsed = new BigNumber(value as BigNumber.Value);
-    if (!parsed.isFinite() || parsed.isNegative()) {
+// Chain bounds of DenomConfig: gas_surcharge 0-2, transfer_fee 0-0.05
+const MAX_GAS_SURCHARGE = new BigNumber(2);
+const MAX_TRANSFER_FEE = new BigNumber("0.05");
+const PLAIN_DECIMAL = /^\d+(\.\d+)?$/;
+
+/** A plain non-negative decimal string, clamped to `max`. Anything else (hex, exponent, sign, text) throws. */
+const parseRatio = (value: unknown, max: BigNumber): BigNumber => {
+    if (typeof value !== "string" || !PLAIN_DECIMAL.test(value)) {
         throw new Error(`invalid ratio: ${String(value)}`);
     }
-    return parsed;
+    return BigNumber.minimum(new BigNumber(value), max);
+}
+
+const parseRatios = (gasSurcharge: unknown, transferFee: unknown): DenomConfigRatios => ({
+    gasSurcharge: parseRatio(gasSurcharge, MAX_GAS_SURCHARGE),
+    transferFee: parseRatio(transferFee, MAX_TRANSFER_FEE),
+});
+
+const inFlight = new Map<string, Promise<DenomConfigRatios>>();
+
+const cacheRatios = (cacheKey: string, ratios: DenomConfigRatios) => {
+    setInLocalStorage(
+        cacheKey,
+        JSON.stringify({gasSurcharge: ratios.gasSurcharge.toFixed(), transferFee: ratios.transferFee.toFixed()}),
+        DENOM_CONFIG_CACHE_TTL,
+    );
+}
+
+const fetchDenomConfig = async (denom: string, cacheKey: string): Promise<DenomConfigRatios> => {
+    try {
+        const url = `${getSettings().endpoints.restEndpoint}/bze/tokenfactory/denom_config?denom=${encodeURIComponent(denom)}`;
+        const resp = await fetch(url);
+        if (resp.status !== 200) {
+            // 501 on v8.2.0 nodes: no denom config yet. Remember it so every tx does not ask again.
+            const zeros = zeroRatios();
+            cacheRatios(cacheKey, zeros);
+            return zeros;
+        }
+
+        const body = await resp.json();
+        if (!body?.config) {
+            throw new Error("missing config");
+        }
+        const ratios = parseRatios(body.config.gas_surcharge, body.config.transfer_fee);
+        cacheRatios(cacheKey, ratios);
+        return ratios;
+    } catch (e) {
+        // not cached: a failing node may answer on the next call
+        console.error("[DenomConfig] failed to fetch denom config", denom, e);
+        return zeroRatios();
+    }
 }
 
 /**
  * The tokenfactory config of a denom (v8.3.0). Only factory denoms have one; any other denom
- * returns zeros without a request. A v8.2.0 node answers 501 and a failing node cannot be
- * priced against, so both read as zeros, like an unparseable answer. Cached for 5 minutes.
+ * returns zeros without a request. A non-200 answer (501 on v8.2.0 nodes) reads as zeros and is
+ * cached; a network error or an invalid answer reads as zeros and is not. Ratios are plain
+ * decimals clamped to the chain bounds (gas surcharge 2, transfer fee 0.05). Cached 5 minutes;
+ * concurrent callers share one request.
  */
 export const getDenomConfig = async (denom: string): Promise<DenomConfigRatios> => {
     if (!denom || !denom.startsWith(FACTORY_PREFIX)) {
@@ -43,33 +87,18 @@ export const getDenomConfig = async (denom: string): Promise<DenomConfigRatios> 
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
-            return {gasSurcharge: parseRatio(parsed.gasSurcharge), transferFee: parseRatio(parsed.transferFee)};
+            return parseRatios(parsed.gasSurcharge, parsed.transferFee);
         } catch (e) {
             console.error("[DenomConfig] ignoring unreadable cache entry", e);
         }
     }
 
-    try {
-        const url = `${getSettings().endpoints.restEndpoint}/bze/tokenfactory/denom_config?denom=${encodeURIComponent(denom)}`;
-        const resp = await fetch(url);
-        if (resp.status !== 200) {
-            // 501 on v8.2.0 nodes: no denom config yet
-            return zeroRatios();
-        }
-
-        const body = await resp.json();
-        const ratios = {
-            gasSurcharge: parseRatio(body?.config?.gas_surcharge),
-            transferFee: parseRatio(body?.config?.transfer_fee),
-        };
-        setInLocalStorage(
-            cacheKey,
-            JSON.stringify({gasSurcharge: ratios.gasSurcharge.toFixed(), transferFee: ratios.transferFee.toFixed()}),
-            DENOM_CONFIG_CACHE_TTL,
-        );
-        return ratios;
-    } catch (e) {
-        console.error("[DenomConfig] failed to fetch denom config", denom, e);
-        return zeroRatios();
+    let pending = inFlight.get(denom);
+    if (!pending) {
+        pending = fetchDenomConfig(denom, cacheKey).finally(() => {
+            inFlight.delete(denom);
+        });
+        inFlight.set(denom, pending);
     }
+    return pending;
 }

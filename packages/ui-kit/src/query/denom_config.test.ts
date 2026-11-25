@@ -75,33 +75,103 @@ describe('getDenomConfig', () => {
         expect(config.transferFee.isZero()).toBe(true)
     })
 
-    it('reads zeros on a v8.2.0 node (501) without caching', async () => {
+    it('reads zeros on a v8.2.0 node (501) and caches them so the next call makes no request', async () => {
         fetchMock.mockResolvedValue(respond(501, { code: 12, message: 'Not Implemented' }))
 
         const config = await getDenomConfig(FACTORY)
 
         expect(config.gasSurcharge.isZero()).toBe(true)
         expect(config.transferFee.isZero()).toBe(true)
-        expect(setInLocalStorageMock).not.toHaveBeenCalled()
+        expect(setInLocalStorageMock).toHaveBeenCalledWith(
+            `tokenfactory:denom_config:${FACTORY}`,
+            JSON.stringify({ gasSurcharge: '0', transferFee: '0' }),
+            300,
+        )
+        // the stored entry is what the next call reads
+        getFromLocalStorageMock.mockReturnValue(setInLocalStorageMock.mock.calls[0][1])
+        fetchMock.mockClear()
+        await getDenomConfig(FACTORY)
+        expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    it('reads zeros on a network error', async () => {
-        fetchMock.mockRejectedValue(new Error('network down'))
+    it('reads zeros and caches them on an HTTP 500', async () => {
+        fetchMock.mockResolvedValue(respond(500, {}))
+
+        const config = await getDenomConfig(FACTORY)
+
+        expect(config.gasSurcharge.isZero()).toBe(true)
+        expect(setInLocalStorageMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('reads zeros on a network error without caching, so the next call asks again', async () => {
+        fetchMock.mockRejectedValueOnce(new Error('network down'))
 
         const config = await getDenomConfig(FACTORY)
 
         expect(config.gasSurcharge.isZero()).toBe(true)
         expect(setInLocalStorageMock).not.toHaveBeenCalled()
+
+        fetchMock.mockResolvedValue(respond(200, configBody('0.5')))
+        expect((await getDenomConfig(FACTORY)).gasSurcharge.toNumber()).toBe(0.5)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
-    it('reads zeros, logs and does not cache an unparseable ratio', async () => {
-        fetchMock.mockResolvedValue(respond(200, configBody('not-a-number')))
+    it('shares one request between concurrent callers', async () => {
+        fetchMock.mockResolvedValue(respond(200, configBody('0.5')))
+
+        const [a, b] = await Promise.all([getDenomConfig(FACTORY), getDenomConfig(FACTORY)])
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(a.gasSurcharge.toNumber()).toBe(0.5)
+        expect(b.gasSurcharge.toNumber()).toBe(0.5)
+    })
+
+    it.each([
+        ['1000', 2],
+        ['3', 2],
+        ['2.000000000000000001', 2],
+        ['1.5', 1.5],
+    ])('clamps a gas surcharge of %s to the chain maximum of 2 (%s)', async (raw, expected) => {
+        fetchMock.mockResolvedValue(respond(200, configBody(raw)))
+
+        expect((await getDenomConfig(FACTORY)).gasSurcharge.toNumber()).toBe(expected)
+    })
+
+    it('clamps a transfer fee to the chain maximum of 0.05', async () => {
+        fetchMock.mockResolvedValue(respond(200, configBody('0', '0.5')))
+
+        expect((await getDenomConfig(FACTORY)).transferFee.toNumber()).toBe(0.05)
+    })
+
+    it.each(['0x10', '-1', '1e9', 'abc', '', ' 1', 'Infinity', 'NaN'])(
+        'reads zeros, logs and does not cache an invalid ratio "%s"',
+        async (raw) => {
+            fetchMock.mockResolvedValue(respond(200, configBody(raw)))
+
+            const config = await getDenomConfig(FACTORY)
+
+            expect(config.gasSurcharge.isZero()).toBe(true)
+            expect(config.transferFee.isZero()).toBe(true)
+            expect(console.error).toHaveBeenCalled()
+            expect(setInLocalStorageMock).not.toHaveBeenCalled()
+        },
+    )
+
+    it('reads zeros and does not cache a 200 without a config', async () => {
+        fetchMock.mockResolvedValue(respond(200, {}))
+
+        expect((await getDenomConfig(FACTORY)).gasSurcharge.isZero()).toBe(true)
+        expect(setInLocalStorageMock).not.toHaveBeenCalled()
+    })
+
+    it('validates cached values too', async () => {
+        getFromLocalStorageMock.mockReturnValue(JSON.stringify({ gasSurcharge: '1000', transferFee: '0x10' }))
+        fetchMock.mockResolvedValue(respond(200, configBody('0.5')))
 
         const config = await getDenomConfig(FACTORY)
 
-        expect(config.gasSurcharge.isZero()).toBe(true)
-        expect(console.error).toHaveBeenCalled()
-        expect(setInLocalStorageMock).not.toHaveBeenCalled()
+        // the bad cache entry is ignored and the node asked instead
+        expect(config.gasSurcharge.toNumber()).toBe(0.5)
     })
 
     it.each(['ubze', 'ibc/6490A7EAB61059BFC1CDDEB05917DD70BDF3A611654162A1A47DB930D40D8AF4', ''])(

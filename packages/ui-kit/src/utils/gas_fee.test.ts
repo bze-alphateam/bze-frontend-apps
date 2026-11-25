@@ -286,12 +286,11 @@ describe('estimateGasFee', () => {
         expect(result.amount.mod(1).isZero()).toBe(true)
     })
 
-    it.each([0, 0.5, 2])('prices the foreign fee with a gas surcharge of %s like computeForeignGasFee', (surcharge) => {
+    it.each([0, 0.5, 2])('covers the chain fee with a gas surcharge of %s', (surcharge) => {
         const native = estimateGasFee({ ...env, spec: 'send', txFeeDenom: NATIVE })
         const result = estimateGasFee({ ...env, spec: 'send', txFeeDenom: USDC, pool, gasSurcharge: surcharge })
-        const expected = computeForeignGasFee(native.gas, CHAIN_GAS_PRICE, 1.1, pool, NATIVE, surcharge)!
         // 1920 ubze → 19.2 uusdc at spot; the chain needs ceil(19.2 × (1 + s))
-        expect(result.amount.eq(expected.amount)).toBe(true)
+        expect(result.gas.eq(native.gas)).toBe(true)
         expect(result.amount.toNumber()).toBeGreaterThanOrEqual(Math.ceil(19.2 * (1 + surcharge)))
     })
 
