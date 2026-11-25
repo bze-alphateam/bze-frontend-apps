@@ -198,11 +198,11 @@ describe("useWizardTx", () => {
 
         it("found and refused: Failed with the chain's log", async () => {
             const { result } = await slow();
-            getTx.mockResolvedValue({ txhash: "HASH1", code: 5, height: 77, rawLog: "insufficient funds", messages: [] });
+            getTx.mockResolvedValue({ txhash: "HASH1", code: 32, height: 77, rawLog: "account sequence mismatch", messages: [] });
             await act(async () => { await result.current.panelProps?.onCheckStatus?.(); });
             expect(result.current.panelProps).toMatchObject({
                 status: "failed",
-                error: { reason: "insufficient funds", details: "insufficient funds", feeSpent: true },
+                error: { reason: "account sequence mismatch", details: "account sequence mismatch", feeSpent: true },
             });
         });
     });
