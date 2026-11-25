@@ -25,6 +25,9 @@ import {
     MsgCreateDenom, MsgMint, MsgBurn, MsgChangeAdmin, MsgSetDenomMetadata, MsgSetDenomBranding,
 } from "@bze/bzejs/bze/tokenfactory/tx";
 import {MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher} from "@bze/bzejs/bze/cointrunk/tx";
+// x/dao (chain v8.3.0); a namespace import because MsgSubmitProposal, MsgVote and
+// MsgCancelProposal share their names with the gov messages below.
+import * as daoTx from "@bze/bzejs/bze/dao/tx";
 
 // Cosmos modules
 import {MsgSend, MsgMultiSend} from "@bze/bzejs/cosmos/bank/v1beta1/tx";
@@ -44,7 +47,7 @@ import {MsgGrantAllowance, MsgRevokeAllowance} from "@bze/bzejs/cosmos/feegrant/
 // IBC
 import {MsgTransfer} from "@bze/bzejs/ibc/applications/transfer/v1/tx";
 
-type MsgCodec = {
+export type MsgCodec = {
     typeUrl: string;
     aminoType?: string;
     fromPartial: (object: any) => any;
@@ -89,6 +92,11 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     MsgSetDenomBranding,
     // BZE cointrunk
     MsgAddArticle, MsgPayPublisherRespect, MsgAcceptDomain, MsgSavePublisher,
+    // BZE dao (chain v8.3.0). Always signed direct, see daoTxOptions.
+    daoTx.MsgCreateDao, daoTx.MsgAdminExecute, daoTx.MsgNominateAdmin, daoTx.MsgAcceptAdminNomination,
+    daoTx.MsgWithdrawAdminNomination, daoTx.MsgSubmitProposal, daoTx.MsgVote, daoTx.MsgCancelProposal,
+    daoTx.MsgSettleProposal, daoTx.MsgCleanupProposal, daoTx.MsgUpdateDaoConfig, daoTx.MsgUpdateMetadata,
+    daoTx.MsgUpdateElectorate, daoTx.MsgUpdateMembers,
     // Cosmos bank
     MsgSend, MsgMultiSend,
     // Cosmos staking
@@ -105,6 +113,23 @@ const ALL_MSG_TYPES: MsgCodec[] = [
     // IBC transfer
     MsgTransfer,
 ];
+
+const CODECS_BY_TYPE_URL = new Map(ALL_MSG_TYPES.map(g => [g.typeUrl, g]));
+
+/** The registered codec of a message type URL (the same list the signing client gets), if any. */
+export const getMsgCodec = (typeUrl: string): MsgCodec | undefined => CODECS_BY_TYPE_URL.get(typeUrl);
+
+/**
+ * Encode a message the way the signing client does: `fromPartial`, then the protobuf bytes.
+ * Throws for a type URL that is not registered.
+ */
+export const encodeMsgValue = (typeUrl: string, value: unknown): Uint8Array => {
+    const codec = getMsgCodec(typeUrl);
+    if (!codec) {
+        throw new Error(`no encoder registered for ${typeUrl}`);
+    }
+    return toEncoder(codec).encode(value);
+};
 
 export const registerBzeEncoders = (client: any): void => {
     if (!client) return;

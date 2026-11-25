@@ -37,6 +37,12 @@ export type {
     GovProposalStatus, GovVoteOption, GovCoin, GovProposalMessage, GovTally, GovProposal,
     GovWeightedVoteOption, GovVote, GovParams, GovProposalsPage
 } from './types/gov';
+export type {
+    DaoType, DaoDepositRefundPolicy, DaoFundsDestination, DaoVoteOption, DaoProposalStatus,
+    DaoControllerEndReason, DaoCoin, DaoConfig, DaoStakeElectorate, Dao, DaoProposalMessage,
+    DaoProposal, DaoBallotShare, DaoBallot, DaoParams, DaoProposalResponse, DaoProposalVotingPower,
+    DaoVotingPowerResponse, DaoControllerResponse, DaoPage, DaoPageRequest
+} from './types/dao';
 export type { AddressValidationResult } from './types/validation';
 export type { BurnHistoryItem, NextBurn } from './types/burn';
 export type { BlockResults } from './types/block';
@@ -269,6 +275,34 @@ export {
 export {
     getGovParams, getOpenProposals, getFinishedProposals, getProposal, getProposalTally, getProposalVote
 } from './query/gov';
+export {
+    DaoQueryError, DaoModuleNotSupportedError,
+    getDaoParams, getDao, getDaoByAddress, getDaoController, getDaos, getDaosByAdmin,
+    getDaoProposal, getDaoProposals, getDaoBallot, getDaoBallots, getDaoVotingPower,
+    getDaoJoinRecord, daoStakingRewardSource, daoDenomRewardSource,
+    isDaoModuleSupported, resetDaoModuleSupportCache
+} from './query/dao';
+export {
+    daoTxOptions, ratioFromPercent, percentFromRatio, secondsFromDaysHours, durationString,
+    durationSeconds, daysHoursFromDuration, durationFromSeconds, daoConfigFromWire,
+    packDaoMsgs, daoMsgsSize,
+    buildCreateDaoMsg, buildAdminExecuteMsg, buildNominateAdminMsg, buildAcceptAdminNominationMsg,
+    buildWithdrawAdminNominationMsg, buildSubmitProposalMsg, buildDaoVoteMsg, buildCancelDaoProposalMsg,
+    buildSettleDaoProposalMsg, buildCleanupDaoProposalMsg, buildUpdateDaoConfigMsg,
+    buildUpdateDaoMetadataMsg, buildUpdateDaoElectorateMsg, buildUpdateDaoMembersMsg
+} from './utils/dao/msgs';
+export {
+    DAO_MAX_NAME_BYTES, DAO_MAX_DESCRIPTION_BYTES, utf8Length,
+    validateDaoName, validateDaoDescription, validateDaoConfig, validateDaoMembers,
+    validateDaoMemberChanges, validateDaoElectorate, validateDaoProposalContent, validateDaoAdminExecute
+} from './utils/dao/validate';
+export {
+    ratioAtomics, daoRegularTally, daoExpediteTally, daoRemainingWeight,
+    daoYesNeededRegular, daoYesNeededExpedite
+} from './utils/dao/tally';
+export type {
+    DaoWeight, DaoTallyInput, DaoRegularTallyResult, DaoExpediteTallyResult
+} from './utils/dao/tally';
 export {
     getAllTickers, getMarketOrdersHistory, getAddressHistory,
     getTradingViewIntervals, getAddressSwapHistory
