@@ -4,9 +4,8 @@ import { act, renderHook } from '@testing-library/react'
 
 // The real useIBCTx runs over a faked wallet, signing client and node, so the withdraw path is
 // driven end to end: simulation, fee, signing and broadcast.
-const { toastMock, signAndBroadcastMock, simulateMock, signDirectMock, queryClient } = vi.hoisted(() => ({
+const { toastMock, simulateMock, signDirectMock, queryClient } = vi.hoisted(() => ({
     toastMock: { loading: vi.fn(() => 'toast-id'), dismiss: vi.fn(), error: vi.fn(), success: vi.fn(), clickableSuccess: vi.fn() },
-    signAndBroadcastMock: vi.fn(),
     simulateMock: vi.fn(),
     signDirectMock: vi.fn(),
     queryClient: { getBaseAccount: vi.fn(), broadcastTxSync: vi.fn(), getTx: vi.fn() },
@@ -32,7 +31,7 @@ vi.mock('@interchainjs/cosmos', () => ({ createCosmosQueryClient: async () => qu
 vi.mock('./useSigningClient', () => ({
     useSigningClient: () => ({
         signingClient: {
-            signAndBroadcast: signAndBroadcastMock,
+            signAndBroadcast: vi.fn(),
             getEncoder: () => ({ encode: () => ({ finish: () => new Uint8Array([1, 2, 3]) }) }),
             getSequence: async () => BigInt(7),
             config: { queryClient: {} },
@@ -78,7 +77,6 @@ const run = async (plan: IbcTransferPlan) => {
 describe('useIbcBridgeTransfer withdraw refused by the chain', () => {
     beforeEach(() => {
         Object.values(toastMock).forEach(m => m.mockClear())
-        signAndBroadcastMock.mockReset()
         signDirectMock.mockReset()
         simulateMock.mockReset()
         queryClient.broadcastTxSync.mockReset()
@@ -97,7 +95,6 @@ describe('useIbcBridgeTransfer withdraw refused by the chain', () => {
 
         expect(ok).toBe(false)
         expect(signDirectMock).not.toHaveBeenCalled()
-        expect(signAndBroadcastMock).not.toHaveBeenCalled()
         expect(queryClient.broadcastTxSync).not.toHaveBeenCalled()
         expect(toastMock.error).toHaveBeenCalledTimes(1)
         expect(toastMock.error).toHaveBeenCalledWith(expect.anything(), expect.stringMatching(expected))

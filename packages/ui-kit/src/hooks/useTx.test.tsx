@@ -139,6 +139,22 @@ describe('useTx toasts and failure details', () => {
         expect(onFailure).toHaveBeenCalledWith('account sequence mismatch', { stage: 'chain', txHash: 'HASH', rawLog: 'account sequence mismatch', code: 32 })
     })
 
+    // v8.3.0: a bank "insufficient funds" refusal reads as plain copy, the raw log stays in the details.
+    it('maps an insufficient funds refusal to the plain message', async () => {
+        signAndBroadcastMock.mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 5, txhash: 'HASH', rawLog: 'insufficient funds', height: 10 }),
+        })
+        const onFailure = vi.fn()
+        const { result } = renderHook(() => useBZETx())
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onFailure }) })
+
+        const copy = "You don't have enough balance for this transaction (including fees)."
+        expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, copy)
+        expect(onFailure).toHaveBeenCalledWith(copy, { stage: 'chain', txHash: 'HASH', rawLog: 'insufficient funds', code: 5 })
+    })
+
     it('fires no toast at all with toasts: false', async () => {
         signAndBroadcastMock.mockResolvedValue({
             transactionHash: 'HASH',

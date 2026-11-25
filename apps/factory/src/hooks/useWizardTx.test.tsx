@@ -205,6 +205,20 @@ describe("useWizardTx", () => {
                 error: { reason: "account sequence mismatch", details: "account sequence mismatch", feeSpent: true },
             });
         });
+
+        it("found and refused for lack of balance: the reason is the plain message, the details the chain's log", async () => {
+            const { result } = await slow();
+            getTx.mockResolvedValue({ txhash: "HASH1", code: 5, height: 77, rawLog: "insufficient funds", messages: [] });
+            await act(async () => { await result.current.panelProps?.onCheckStatus?.(); });
+            expect(result.current.panelProps).toMatchObject({
+                status: "failed",
+                error: {
+                    reason: "You don't have enough balance for this transaction (including fees).",
+                    details: "insufficient funds",
+                    feeSpent: true,
+                },
+            });
+        });
     });
 
     it("coming back to the page: shows the stored hash, checks it, and Continue uses the stored input", async () => {
