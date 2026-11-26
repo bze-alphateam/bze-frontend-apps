@@ -1,0 +1,37 @@
+{
+  "source": "hand-written (proposal pages, BFE-373: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/ballots/9",
+  "query": {
+    "pagination.limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "ballots": [
+      {
+        "proposal_id": "9",
+        "voter": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+        "option": "YES",
+        "weight": "7500000000",
+        "shares": [
+          {
+            "source": "sr/000000000017",
+            "amount": "7500000000"
+          }
+        ]
+      },
+      {
+        "proposal_id": "9",
+        "voter": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "option": "NO",
+        "weight": "500000000",
+        "shares": []
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

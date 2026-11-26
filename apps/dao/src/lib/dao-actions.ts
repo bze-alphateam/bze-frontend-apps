@@ -4,14 +4,16 @@ import type {Dao} from '@bze/bze-ui-kit';
  * The actions of other stories this page links to. A flag turns on when its story has shipped, so
  * until then the page shows no button that leads nowhere: the proposal composer (BFE-375), the
  * members composer (BFE-376, "Request to join" and "Leave") and the admin console (BFE-377).
+ * `proposalActions` is the proposal page's action area (BFE-374: vote, settle, retry, cancel, clean up).
  */
 export interface DaoFeatures {
     newProposal: boolean;
     memberComposer: boolean;
     adminConsole: boolean;
+    proposalActions: boolean;
 }
 
-export const DAO_FEATURES: DaoFeatures = {newProposal: false, memberComposer: false, adminConsole: false};
+export const DAO_FEATURES: DaoFeatures = {newProposal: false, memberComposer: false, adminConsole: false, proposalActions: false};
 
 export interface DaoActions {
     newProposal: boolean;

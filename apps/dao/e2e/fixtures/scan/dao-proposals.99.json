@@ -1,0 +1,11 @@
+{
+  "source": "hand-written (BFE-354 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/dao-proposals/99",
+  "query": {},
+  "status": 404,
+  "body": {
+    "error": "dao proposal 99 is not known"
+  }
+}

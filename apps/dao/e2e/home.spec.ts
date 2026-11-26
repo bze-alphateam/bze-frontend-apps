@@ -66,12 +66,12 @@ test("shows what a DAO is and the creation fee from the chain's params", async (
     await expect(page.getByRole("link", {name: "Create a DAO"})).toHaveAttribute("href", "/create");
 });
 
-test("the Create route asks for a wallet, and the proposal stub opens", async ({page}) => {
+test("the Create route asks for a wallet, and a proposal opens", async ({page}) => {
     await page.goto("/create");
     await expect(page.getByText("Connect your wallet")).toBeVisible();
 
     await page.goto("/proposal/9");
-    await expect(page.getByText("Proposal 9")).toBeVisible();
+    await expect(page.getByTestId("proposal-number")).toHaveText("Proposal #9");
 });
 
 test("the navbar lists DAOs and Create, and the Apps menu lists the other apps without DAO itself", async ({page}) => {

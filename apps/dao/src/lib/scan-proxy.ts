@@ -2,8 +2,9 @@
 // Scan's API (Scan sends no CORS headers for this app). Only the routes below
 // are forwarded, each with its own list of query parameters (repeatable ones
 // stay repeated). Every answer is read fresh, except a finished DAO proposal:
-// its page never changes again, so it is kept in memory for good and marked
-// immutable for browsers.
+// its page never changes again once the chain has cleaned it up (a settled one
+// still gains its cleanup, its votes and a retry), so only a cleaned-up one is
+// kept in memory for good and marked immutable for browsers.
 
 export type Fetcher = (url: string, init: {signal: AbortSignal}) => Promise<Response>;
 
@@ -22,6 +23,8 @@ interface Route {
     pattern: RegExp;
     /** Query parameters forwarded (all their values). */
     params: string[];
+    /** Parameters whose values are limited to a list (anything else is dropped), in Scan's spelling. */
+    allowed?: Record<string, string[]>;
 }
 
 /** The DAO routes of Scan's /api/v1 the app reads. */
@@ -32,7 +35,7 @@ const ROUTES: Route[] = [
     {pattern: /^daos\/\d+\/proposals$/, params: ["status", ...PAGE]},
     {pattern: /^dao-proposals$/, params: ["status", ...PAGE]},
     {pattern: /^dao-proposals\/\d+$/, params: []},
-    {pattern: /^dao-proposals\/\d+\/votes$/, params: PAGE},
+    {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
     {pattern: /^dao-votes$/, params: ["voter", ...PAGE]},
 ];
 
@@ -45,11 +48,11 @@ const OPEN_STATUSES = new Set(["voting", "execution_failed"]);
 const json = (body: string, status: number, cacheControl: string) =>
     new Response(body, {status, headers: {"Content-Type": "application/json", "Cache-Control": cacheControl}});
 
-/** Whether Scan's answer can be kept forever: a single DAO proposal that is finished. */
+/** Whether Scan's answer can be kept forever: a single DAO proposal that is finished and cleaned up. */
 function isImmutable(path: string, body: unknown): boolean {
     if (!/^dao-proposals\/\d+$/.test(path)) return false;
-    const status = (body as {status?: unknown})?.status;
-    return typeof status === "string" && status !== "" && !OPEN_STATUSES.has(status);
+    const {status, cleaned_height: cleaned} = (body ?? {}) as {status?: unknown; cleaned_height?: unknown};
+    return typeof status === "string" && status !== "" && !OPEN_STATUSES.has(status) && typeof cleaned === "number" && cleaned > 0;
 }
 
 export function createScanProxyHandler(options: ScanProxyOptions) {
@@ -68,7 +71,7 @@ export function createScanProxyHandler(options: ScanProxyOptions) {
         const query = new URLSearchParams();
         for (const key of route.params) {
             for (const value of incoming.getAll(key)) {
-                if (value) query.append(key, value);
+                if (value && (!route.allowed?.[key] || route.allowed[key].includes(value))) query.append(key, value);
             }
         }
         const target = `${baseUrl}/api/v1/${path}${query.size ? `?${query}` : ""}`;

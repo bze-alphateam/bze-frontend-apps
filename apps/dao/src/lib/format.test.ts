@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {formatCoin, formatDateTime, formatDay, formatDuration, formatRatio, isoFromUnix, shortAddress} from "./format";
+import {formatCoin, formatDateTime, formatDay, formatDuration, formatRatio, formatRelative, isoFromUnix, shortAddress} from "./format";
 
 describe("formatCoin", () => {
     it("shifts by the decimals and shows the ticker", () => {
@@ -53,5 +53,20 @@ describe("DAO page formats", () => {
     it("shortAddress", () => {
         expect(shortAddress("bze1short")).toBe("bze1short");
         expect(shortAddress("bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw")).toBe("bze1qqqpkg…u395lw");
+    });
+});
+
+describe("formatRelative", () => {
+    const now = Date.parse("2026-11-01T12:00:00Z");
+    it("says how far a time is, in the largest unit", () => {
+        expect(formatRelative("2026-11-03T12:00:00Z", now)).toBe("in 2 days");
+        expect(formatRelative("2026-11-01T15:00:00Z", now)).toBe("in 3 hours");
+        expect(formatRelative("2026-11-01T11:59:00Z", now)).toBe("1 minute ago");
+        expect(formatRelative("2026-10-30T12:00:00Z", now)).toBe("2 days ago");
+    });
+    it("is 'just now' within seconds and empty for no time", () => {
+        expect(formatRelative("2026-11-01T12:00:20Z", now)).toBe("just now");
+        expect(formatRelative(null, now)).toBe("");
+        expect(formatRelative("not a time", now)).toBe("");
     });
 });
