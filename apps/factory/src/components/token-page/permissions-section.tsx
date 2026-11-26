@@ -7,7 +7,9 @@ import { LuRefreshCw, LuTriangleAlert } from 'react-icons/lu'
 import { Asset, HgCard, Shimmer, hgVariant } from '@bze/bze-ui-kit'
 import { softButton } from '@/components/ui/soft-button'
 import { permissionsStatus } from '@/lib/permissions'
+import type { Dao } from '@bze/bze-ui-kit'
 import type { AdminState } from '@/lib/workspace'
+import { DaoAdminDetails } from '@/components/dao-admin/dao-admin-summary'
 import { ActionItem, ItemButton } from './action-group'
 import { RenounceDialog } from './renounce-dialog'
 import { TransferAdminDialog } from './transfer-admin-dialog'
@@ -48,6 +50,8 @@ export interface PermissionsSectionProps {
     isChecking: boolean;
     /** From useDenomAdmin: an address, '' when renounced, undefined when the lookup failed. */
     admin: string | undefined;
+    /** The DAO behind the admin address (BFE-387), when the admin is a DAO's account. */
+    daoAdmin?: Dao;
     adminState: AdminState;
     /** Total supply in display units (live, falling back to the asset's snapshot). */
     supplyDisplay: BigNumber;
@@ -61,7 +65,7 @@ export interface PermissionsSectionProps {
  * only (live `DenomAuthority`), Transfer admin and Renounce admin. Renouncing lives only here, behind
  * its own review dialog; nothing else links to it.
  */
-export function PermissionsSection({ asset, isChecking, admin, adminState, supplyDisplay, supply, refreshAdmins }: PermissionsSectionProps) {
+export function PermissionsSection({ asset, isChecking, admin, daoAdmin, adminState, supplyDisplay, supply, refreshAdmins }: PermissionsSectionProps) {
     const ticker = asset.ticker
     const [dialog, setDialog] = useState<'transfer' | 'renounce' | undefined>(undefined)
     const close = () => setDialog(undefined)
@@ -88,7 +92,7 @@ export function PermissionsSection({ asset, isChecking, admin, adminState, suppl
     } else {
         status = (
             <Text fontSize="14px" color="fg.muted" overflowWrap="anywhere" title={admin || undefined} data-testid="permissions-status">
-                {permissionsStatus(adminState, admin, ticker)}
+                {permissionsStatus(adminState, admin, ticker, daoAdmin)}
             </Text>
         )
     }
@@ -98,6 +102,7 @@ export function PermissionsSection({ asset, isChecking, admin, adminState, suppl
             <HgCard px={{ base: '18px', md: '22px' }} pt="20px" pb={adminState === 'admin' && !isChecking ? '8px' : '20px'}>
                 <Text as="h2" fontSize="18px" fontWeight="700">Permissions</Text>
                 <Box mt="6px" mb={adminState === 'admin' && !isChecking ? '8px' : '0'}>{status}</Box>
+                {daoAdmin && !isChecking && adminState === 'not-admin' && <DaoAdminDetails dao={daoAdmin} />}
 
                 {adminState === 'admin' && !isChecking && (
                     <VStack align="stretch" gap="0">
