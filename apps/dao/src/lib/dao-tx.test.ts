@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
 import {daoTxOptions, type TxFailureDetails, type TxOptions} from "@bze/bze-ui-kit";
 import type {EncodeObject} from "@bze/bzejs/types";
-import {cleanupBatchResult, createTxLookup, sendDaoTx, type SignAndSend} from "./dao-tx";
+import {cleanupBatchResult, sendDaoTx, type SignAndSend} from "./dao-tx";
 
 const MSGS: EncodeObject[] = [{typeUrl: "/bze.dao.MsgVote", value: {}}];
 
@@ -73,38 +73,5 @@ describe("cleanupBatchResult", () => {
         expect(cleanupBatchResult({height: 1, txhash: "H", code: 0})).toBeNull();
         expect(cleanupBatchResult(cleaned({processed: '"3"'}))).toBeNull();
         expect(cleanupBatchResult(cleaned({completed: "maybe"}))).toBeNull();
-    });
-});
-
-describe("createTxLookup", () => {
-    const lookup = (status: number, body: unknown = null) => {
-        const getJson = vi.fn(async () => ({status, body}));
-        return {getJson, find: createTxLookup(() => "https://lcd.test/", getJson)};
-    };
-
-    it("asks the node's tx route for the hash", async () => {
-        const {getJson, find} = lookup(200, {tx_response: {code: 0}});
-        await find("AB12");
-        expect(getJson).toHaveBeenCalledWith("https://lcd.test/cosmos/tx/v1beta1/txs/AB12");
-    });
-
-    it("code 0 is found and succeeded", async () => {
-        expect(await lookup(200, {tx_response: {code: 0}}).find("H")).toEqual({state: "found", ok: true});
-    });
-
-    it("a refused transaction is found and failed, with the mapped reason", async () => {
-        const out = await lookup(200, {tx_response: {code: 1124, raw_log: "failed to execute message; dao: the proposal is not open for voting"}}).find("H");
-        expect(out).toMatchObject({state: "found", ok: false, error: expect.stringContaining("closed")});
-    });
-
-    it("only a 404 is missing", async () => {
-        expect(await lookup(404).find("H")).toEqual({state: "missing"});
-    });
-
-    it("any other answer is an error, never 'missing'", async () => {
-        await expect(lookup(500).find("H")).rejects.toThrow();
-        await expect(lookup(200, {}).find("H")).rejects.toThrow();
-        const failing = createTxLookup(() => "https://lcd.test", async () => { throw new Error("offline"); });
-        await expect(failing("H")).rejects.toThrow("offline");
     });
 });

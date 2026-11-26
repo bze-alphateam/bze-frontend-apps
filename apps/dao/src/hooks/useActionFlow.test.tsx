@@ -1,8 +1,9 @@
 import {describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
 import type {EncodeObject} from "@bze/bzejs/types";
+import type {TxLanding} from "@bze/bze-ui-kit";
 import {useActionFlow, type ActionFlowDeps} from "./useActionFlow";
-import {sendDaoTx, type SignAndSend, type TxLookup, type TxOutcome} from "@/lib/dao-tx";
+import {sendDaoTx, type SignAndSend, type TxOutcome} from "@/lib/dao-tx";
 
 const MSGS: EncodeObject[] = [{typeUrl: "/bze.dao.MsgSettleProposal", value: {}}];
 const OK: TxOutcome = {ok: true, txHash: "H1"};
@@ -13,7 +14,7 @@ const setup = (over: Partial<ActionFlowDeps> = {}) => {
         refresh: vi.fn(async () => "ok" as const),
         isGone: vi.fn(async () => false),
         fingerprint: () => "VOTING|1|0|0",
-        lookupTx: vi.fn(async (): Promise<TxLookup> => ({state: "missing"})),
+        lookupTx: vi.fn(async (): Promise<TxLanding> => "notfound"),
         ...over,
     };
     return {deps, hook: renderHook(() => useActionFlow(deps))};
@@ -102,7 +103,7 @@ describe("useActionFlow", () => {
 
         it("a vote is judged by the transaction, not by a tally other voters move too", async () => {
             let tally = "VOTING|1|0|0";
-            const lookupTx = vi.fn(async (): Promise<TxLookup> => ({state: "missing"}));
+            const lookupTx = vi.fn(async (): Promise<TxLanding> => "notfound");
             const {hook} = setup({send: timeout, lookupTx, fingerprint: () => tally, refresh: async () => { tally = "VOTING|2|0|0"; return "ok" as const; }});
             await act(async () => { await hook.result.current.run("vote", MSGS); });
             await act(async () => { await hook.result.current.recheck(); });
@@ -110,15 +111,15 @@ describe("useActionFlow", () => {
             expect(hook.result.current.state.phase).toBe("rechecked");
         });
 
-        it("found and succeeded: sent", async () => {
-            const {hook} = await timedOut({lookupTx: async () => ({state: "found", ok: true})});
+        it("landed: sent", async () => {
+            const {hook} = await timedOut({lookupTx: async () => "landed"});
             expect(hook.result.current.state).toMatchObject({phase: "sent", txHash: "H9", reread: "ok"});
             expect(hook.result.current.locked).toBe(false);
         });
 
-        it("found and failed: the mapped error, actions open", async () => {
-            const {hook} = await timedOut({lookupTx: async () => ({state: "found", ok: false, error: "Voting on this proposal is closed."})});
-            expect(hook.result.current.state).toMatchObject({phase: "failed", error: "Voting on this proposal is closed."});
+        it("found and failed: it says nothing happened, actions open", async () => {
+            const {hook} = await timedOut({lookupTx: async () => "failed"});
+            expect(hook.result.current.state).toMatchObject({phase: "failed", error: expect.stringContaining("nothing happened")});
             expect(hook.result.current.locked).toBe(false);
         });
 

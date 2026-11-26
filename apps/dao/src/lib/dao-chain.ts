@@ -2,9 +2,8 @@ import {
     DaoModuleNotSupportedError,
     getAddressBalances, getDao, getDaoBallot, getDaoBallots, getDaoProposal, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
     getDaos, getDaosByAdmin, getDenomReward, getDenomRewardParticipations, getRestClient,
-    getSettings, getStakingRewardParticipantByAddress, isDaoModuleSupported,
+    getStakingRewardParticipantByAddress, isDaoModuleSupported,
 } from '@bze/bze-ui-kit';
-import {createTxLookup} from './dao-tx';
 import {createDaoScanClient, browserScanGetter} from './dao-scan';
 import {createDaoPageScan} from './dao-page-scan';
 import {createDaoProposalScan} from './dao-proposal-scan';
@@ -104,12 +103,3 @@ export const liveProposalDeps: ProposalDeps = {
     chain: liveProposalChain,
     scan: createDaoProposalScan(browserScanGetter),
 };
-
-/** Looks a transaction up on the node's REST endpoint (a 404 is "missing", any other failure is thrown). */
-export const liveTxLookup = createTxLookup(
-    () => getSettings().endpoints.restEndpoint,
-    async (url) => {
-        const response = await fetch(url);
-        return {status: response.status, body: response.ok ? await response.json() : null};
-    },
-);

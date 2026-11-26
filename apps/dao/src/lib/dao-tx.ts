@@ -1,4 +1,4 @@
-import {daoTxOptions, prettyError, type TxFailureDetails, type TxOptions, type TxSuccessResponse} from '@bze/bze-ui-kit';
+import {daoTxOptions, type TxFailureDetails, type TxOptions, type TxSuccessResponse} from '@bze/bze-ui-kit';
 import type {EncodeObject} from '@bze/bzejs/types';
 
 /** The signing function of ui-kit's `useSDKTx`, injected so the flows are tested without a wallet. */
@@ -76,32 +76,4 @@ export function cleanupBatchResult(response: TxSuccessResponse | undefined): {co
     if (completed !== 'true' && completed !== 'false') return null;
     const processed = Number(attribute(event, 'processed'));
     return {completed: completed === 'true', processed: Number.isFinite(processed) ? processed : null};
-}
-
-/** What the node says about a transaction hash. */
-export type TxLookup =
-    | {state: 'missing'}
-    | {state: 'found'; ok: true}
-    /** In a block and refused by the chain: `error` is the reason in plain words. */
-    | {state: 'found'; ok: false; error: string};
-
-/** A GET answered as status + JSON body, injected so the lookup is tested without a network. */
-export type GetJson = (url: string) => Promise<{status: number; body: unknown}>;
-
-/**
- * Looks a transaction up by its hash on the node (`/cosmos/tx/v1beta1/txs/{hash}`). Only a 404 is
- * "missing" (not in a block yet, or never broadcast); every other failure is thrown, so the caller never
- * mistakes an unreadable node for an absent transaction.
- */
-export function createTxLookup(restEndpoint: () => string, getJson: GetJson): (hash: string) => Promise<TxLookup> {
-    return async (hash) => {
-        const {status, body} = await getJson(`${restEndpoint().replace(/\/+$/, '')}/cosmos/tx/v1beta1/txs/${encodeURIComponent(hash)}`);
-        if (status === 404) return {state: 'missing'};
-        if (status < 200 || status >= 300) throw new Error(`the node answered ${status}`);
-        const response = (body as {tx_response?: {code?: unknown; raw_log?: unknown}} | null)?.tx_response;
-        if (!response || typeof response.code !== 'number') throw new Error('the node answered with an unreadable transaction');
-        if (response.code === 0) return {state: 'found', ok: true};
-        const raw = typeof response.raw_log === 'string' ? response.raw_log : '';
-        return {state: 'found', ok: false, error: prettyError(raw) || raw || 'The chain refused the transaction.'};
-    };
 }

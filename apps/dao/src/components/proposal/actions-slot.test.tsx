@@ -48,7 +48,7 @@ function renderSlot(data: ProposalPageData, over: {wallet?: string | null; ballo
                 formatCoin={(c) => `${c.amount} ${c.denom}`}
                 refresh={refresh}
                 fingerprint={() => "VOTING"}
-                lookupTx={async () => ({state: "missing"})}
+                lookupTx={async () => "notfound"}
             />
         </ChakraProvider>,
     );

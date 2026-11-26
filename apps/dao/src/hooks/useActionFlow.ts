@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {EncodeObject} from '@bze/bzejs/types';
-import type {TxLookup, TxOutcome} from '@/lib/dao-tx';
+import type {TxLanding} from '@bze/bze-ui-kit';
+import type {TxOutcome} from '@/lib/dao-tx';
 import {cleanupProposal} from '@/lib/proposal-cleanup';
 
 export type ActionKind = 'vote' | 'vote-settle' | 'settle' | 'cancel' | 'cleanup';
@@ -29,7 +30,7 @@ export interface ActionFlowDeps {
     /** A short text of what the proposal shows (status and tally), compared before and after to see that a transaction landed. */
     fingerprint: () => string;
     /** Looks a transaction up on the node by its hash; throws when the node cannot be read. */
-    lookupTx: (hash: string) => Promise<TxLookup>;
+    lookupTx: (hash: string) => Promise<TxLanding>;
 }
 
 export interface ActionFlow {
@@ -136,15 +137,15 @@ export function useActionFlow(deps: ActionFlowDeps): ActionFlow {
             setState({phase: 'rechecked', kind: current.kind});
             return;
         }
-        let found: TxLookup;
+        let found: TxLanding;
         try {
             found = await latest.current.lookupTx(current.txHash);
         } catch {
             return stillLocked('The node could not be asked about the transaction, so it is not known whether it landed.');
         }
-        if (found.state === 'missing') setState({phase: 'rechecked', kind: current.kind, txHash: current.txHash});
-        else if (found.ok) setState({phase: 'sent', kind: current.kind, txHash: current.txHash, reread: 'ok', batches: current.batches});
-        else setState({phase: 'failed', kind: current.kind, error: found.error, batches: current.batches});
+        if (found === 'notfound') setState({phase: 'rechecked', kind: current.kind, txHash: current.txHash});
+        else if (found === 'landed') setState({phase: 'sent', kind: current.kind, txHash: current.txHash, reread: 'ok', batches: current.batches});
+        else setState({phase: 'failed', kind: current.kind, error: 'The chain refused the transaction, so nothing happened. You can try again.', batches: current.batches});
     }, []);
 
     return {state, locked: isLocked(state), run, runCleanup, recheck};

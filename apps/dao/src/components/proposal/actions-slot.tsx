@@ -4,14 +4,13 @@ import {useState, type ReactNode} from 'react';
 import {Button, chakra, Flex} from '@chakra-ui/react';
 import {
     buildCancelDaoProposalMsg, buildCleanupDaoProposalMsg, buildDaoVoteMsg, buildSettleDaoProposalMsg,
-    getChainNativeAssetDenom, getExplorerTxURL, hgVariant, HgCard, Notice, useBalance, useSDKTx, useSettings,
-    type DaoCoin, type DaoProposalStatus,
+    getChainNativeAssetDenom, getExplorerTxURL, getTxLanding, hgVariant, HgCard, Notice, useBalance, useSDKTx, useSettings,
+    type DaoCoin, type DaoProposalStatus, type TxLanding,
 } from '@bze/bze-ui-kit';
 import type {EncodeObject} from '@bze/bzejs/types';
 import {useActionFlow, type ActionKind, type FlowState} from '@/hooks/useActionFlow';
 import type {AsyncValue} from '@/hooks/useAsync';
-import {liveTxLookup} from '@/lib/dao-chain';
-import {sendDaoTx, type TxLookup} from '@/lib/dao-tx';
+import {sendDaoTx} from '@/lib/dao-tx';
 import {
     blockedReason, cancelNotice, gasState, proposalActions, type MyVoteState, type VoteChoice,
 } from '@/lib/proposal-actions';
@@ -31,8 +30,8 @@ interface Props {
     refresh: () => Promise<'ok' | 'gone' | 'failed'>;
     /** What the proposal shows now (status and tally), read fresh after a re-read. */
     fingerprint: () => string;
-    /** Looks a transaction up on the node; the live one asks the REST endpoint. */
-    lookupTx?: (hash: string) => Promise<TxLookup>;
+    /** Where a broadcast transaction stands on the node (ui-kit's `getTxLanding` by default). */
+    lookupTx?: (hash: string) => Promise<TxLanding>;
 }
 
 const myVoteState = (wallet: string | null, mine: AsyncValue<MyVote>): MyVoteState => {
@@ -142,7 +141,7 @@ function sentTitle(kind: ActionKind, status: DaoProposalStatus, batches: number)
  * expired, cancel (the proposer) and clean up. What is offered comes from `proposalActions`; every
  * transaction uses `daoTxOptions` (direct signing, nothing signed when the simulation fails).
  */
-export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeight, formatCoin, refresh, fingerprint, lookupTx = liveTxLookup}: Props) => {
+export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeight, formatCoin, refresh, fingerprint, lookupTx = getTxLanding}: Props) => {
     const {model} = data;
     const {tx, progressTrack} = useSDKTx();
     const {feeDenom} = useSettings();
