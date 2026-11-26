@@ -47,7 +47,7 @@ describe('useFeeEstimate transfer fee', () => {
     it('with a zero transfer fee gives the plain converted fee (v8.2.0 reads zeros)', async () => {
         config('0')
         const { result } = render()
-        await waitFor(() => expect(getDenomConfigMock).toHaveBeenCalledWith(TOK))
+        await waitFor(() => expect(result.current.isLoading).toBe(false))
 
         expect(result.current.method).toBe('preferred')
         expect(result.current.estimate?.preferredAmount?.toFixed(0)).toBe(String(X))
@@ -102,5 +102,33 @@ describe('useFeeEstimate transfer fee', () => {
         render()
 
         expect(getDenomConfigMock).not.toHaveBeenCalled()
+    })
+
+    it('reports no decision or amount while the transfer fee is loading, then the full values', async () => {
+        let resolve!: (v: unknown) => void
+        getDenomConfigMock.mockReturnValue(new Promise(r => { resolve = r }))
+        // balance covers x but not x + transfer fee: a decision made without the fee would be wrong
+        state.balances = { ubze: '5000000', [TOK]: String(X) }
+        const { result } = render()
+
+        expect(result.current.isLoading).toBe(true)
+        expect(result.current.method).toBeUndefined()
+        expect(result.current.resolvedFee).toBeUndefined()
+        expect(result.current.preferredDisplayAmount).toBeUndefined()
+        expect(result.current.maxSpendReserve(TOK)).toBeUndefined()
+
+        resolve({ gasSurcharge: new BigNumber(0), transferFee: new BigNumber('0.05') })
+        await waitFor(() => expect(result.current.isLoading).toBe(false))
+        expect(result.current.method).toBe('fallback')
+        expect(result.current.estimate?.preferredTransferFee?.toFixed(0)).toBe(String(TRANSFER))
+    })
+
+    it('settles at a zero transfer fee when the config read rejects', async () => {
+        getDenomConfigMock.mockRejectedValue(new Error('boom'))
+        const { result } = render()
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false))
+        expect(result.current.method).toBe('preferred')
+        expect(result.current.resolvedFee).toEqual({ denom: TOK, amount: String(X) })
     })
 })

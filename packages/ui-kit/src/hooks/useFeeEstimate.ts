@@ -88,20 +88,29 @@ export interface UseFeeEstimateResult {
     isLoading: boolean;
 }
 
-/** The preferred token's DenomConfig transfer fee; zero (and no request) for a denom without a config. */
-function useTransferFee(denom: string, enabled: boolean): BigNumber {
+/**
+ * The preferred token's DenomConfig transfer fee. Zero (and no request, not loading) when the
+ * hook is disabled; loading until the config of the current denom has settled. A failed
+ * read settles at zero.
+ */
+function useTransferFee(denom: string, enabled: boolean): { fee: BigNumber; isLoading: boolean } {
     const [loaded, setLoaded] = useState<{ denom: string; fee: BigNumber }>();
 
     useEffect(() => {
         if (!enabled || !denom) return;
         let cancelled = false;
-        getDenomConfig(denom).then(config => {
-            if (!cancelled) setLoaded({ denom, fee: config.transferFee });
-        });
+        getDenomConfig(denom)
+            .then(config => config.transferFee)
+            .catch(() => new BigNumber(0))
+            .then(fee => {
+                if (!cancelled) setLoaded({ denom, fee });
+            });
         return () => { cancelled = true; };
     }, [denom, enabled]);
 
-    return enabled && loaded?.denom === denom ? loaded.fee : new BigNumber(0);
+    if (!enabled || !denom) return { fee: new BigNumber(0), isLoading: false };
+    const settled = loaded?.denom === denom;
+    return { fee: settled ? loaded.fee : new BigNumber(0), isLoading: !settled };
 }
 
 /**
@@ -132,7 +141,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
 
     const isPreferredSelected = Boolean(feeDenom) && feeDenom !== feeNativeDenom;
 
-    const transferFee = useTransferFee(feeDenom, isPreferredSelected && feeDenom.startsWith('factory/'));
+    const { fee: transferFee, isLoading: transferFeeLoading } = useTransferFee(feeDenom, isPreferredSelected && feeDenom.startsWith('factory/'));
 
     const estimate = fee
         ? estimateFeeInPreferredDenom({
@@ -151,7 +160,8 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
     const gasCoins = gasFee ? [gasFee] : [];
     const spent = [...reserved, ...gasCoins];
 
-    const method = estimate
+    // The transfer fee decides the method and the amount: until it is known, report neither.
+    const method = estimate && !transferFeeLoading
         ? resolveFeePayment(estimate, preferredBalance.amount, nativeBalance.amount, {
             reservedNative: sumIn(spent, feeNativeDenom),
             reservedPreferred: isPreferredSelected ? sumIn(spent, feeDenom) : undefined,
@@ -160,7 +170,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         })
         : undefined;
 
-    const maxSpendReserve = (denom: string) => estimate && denom
+    const maxSpendReserve = (denom: string) => estimate && denom && !transferFeeLoading
         ? maxSpendFeeReserve(estimate, denom, preferredBalance.amount, nativeBalance.amount, {
             reservedNative: sumIn(gasCoins, feeNativeDenom),
             reservedPreferred: isPreferredSelected ? sumIn(gasCoins, feeDenom) : undefined,
@@ -172,7 +182,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         : undefined;
 
     // The full amount the chain takes in the preferred token: the converted fee plus its transfer fee.
-    const preferredTotalAmount = estimate ? preferredTotal(estimate) : undefined;
+    const preferredTotalAmount = estimate && !transferFeeLoading ? preferredTotal(estimate) : undefined;
     const preferredDisplayAmount = preferredTotalAmount && preferredAsset
         ? uAmountToBigNumberAmount(preferredTotalAmount, preferredAsset.decimals)
         : undefined;
@@ -211,6 +221,6 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         gasFeeTicker: gasFee ? (gasAsset?.ticker ?? gasFee.denom) : undefined,
         resolvedFee,
         maxSpendReserve,
-        isLoading: feeDenomLoading || poolsLoading || feeTokensLoading || assetsLoading || balancesLoading,
+        isLoading: feeDenomLoading || poolsLoading || feeTokensLoading || assetsLoading || balancesLoading || transferFeeLoading,
     };
 }
