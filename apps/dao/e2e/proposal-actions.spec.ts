@@ -1,7 +1,8 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {expect, test, type MockNetwork} from "./support/mock-network";
-import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
+import {connectWallet as connect, installFakeKeplr} from "./support/fake-keplr";
+import type {Page} from "@playwright/test";
 
 // The actions on a proposal (BFE-374), against the same hand-written chain and Scan answers as
 // proposal-page.spec.ts. The e2e wallet approves connections and refuses to sign, so what these specs
@@ -19,6 +20,14 @@ const fixture = (name: string) => JSON.parse(readFileSync(join(__dirname, "fixtu
 function chainProposal(network: MockNetwork, id: number, over: {proposal?: Record<string, unknown>; voting_ended?: boolean}) {
     const base = fixture(`dao.proposal.${id}.json`);
     network.use("lcd", {path: base.path, status: 200, body: {...base.body, ...(over.voting_ended === undefined ? {} : {voting_ended: over.voting_ended}), proposal: {...base.body.proposal, ...over.proposal}}});
+}
+
+/** Connects the wallet and makes sure its sidebar is closed, so it does not cover the buttons. */
+async function connectWallet(page: Page) {
+    await connect(page);
+    const backdrop = page.getByTestId("sidebar-backdrop");
+    if (await backdrop.count()) await backdrop.click({position: {x: 5, y: 5}});
+    await expect(backdrop).toHaveCount(0);
 }
 
 /** The wallet holds some BZE, so the fee check lets it act. */
