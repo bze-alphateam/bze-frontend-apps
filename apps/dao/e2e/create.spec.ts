@@ -70,10 +70,10 @@ test("a member-list DAO: every step to the review, with the fee and the rules in
     await expect(page.getByTestId("review-name")).toHaveText("Hive Council");
     await expect(page.getByTestId("review-voters")).toContainText("2: you,");
     await expect(page.getByTestId("review-admin")).toContainText("None: the DAO governs itself");
-    await expect(page.getByTestId("fee-amount")).toContainText("50,000 BZE");
+    await expect(page.getByTestId("fee-amount")).toContainText("50,000 TBZE");
     await expect(page.getByTestId("fee-amount")).toContainText("is burned");
-    await expect(page.getByTestId("fee-balance")).toContainText("60,000 BZE");
-    await expect(page.getByRole("button", {name: /Create DAO · pay 50,000 BZE/})).toBeEnabled();
+    await expect(page.getByTestId("fee-balance")).toContainText("60,000 TBZE");
+    await expect(page.getByRole("button", {name: /Create DAO · pay 50,000 TBZE/})).toBeEnabled();
 });
 
 test("a stakers DAO: the sources, the same-token rule and the live-electorate rule", async ({page}) => {
