@@ -1,0 +1,13 @@
+{
+  "source": "https://testnet.getbze.com/bze/dao/params",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/params",
+  "query": {},
+  "status": 501,
+  "body": {
+    "code": 12,
+    "message": "Not Implemented",
+    "details": []
+  }
+}
