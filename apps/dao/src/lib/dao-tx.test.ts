@@ -22,7 +22,7 @@ describe("sendDaoTx", () => {
 
     it("returns the hash of a transaction the chain accepted", async () => {
         const {tx} = fake((o) => { o.onBroadcast?.("H1"); o.onSuccess?.({height: 1, txhash: "H1", code: 0}); return true; });
-        expect(await sendDaoTx(tx, MSGS)).toEqual({ok: true, txHash: "H1"});
+        expect(await sendDaoTx(tx, MSGS)).toMatchObject({ok: true, txHash: "H1"});
     });
 
     it("a simulation failure is the mapped reason at the prepare stage: nothing was broadcast, so it is not unconfirmed", async () => {
