@@ -1,0 +1,58 @@
+{
+  "source": "hand-written for the create flow (BFE-378): every staking reward, read by the source picker with pagination.limit=500",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/rewards/all_staking_rewards",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.limit": "500",
+    "pagination.offset": "0",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "reward_id": "000000000001",
+        "prize_amount": "10000000",
+        "prize_denom": "ubze",
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "duration": 15,
+        "payouts": 15,
+        "min_stake": "1000000",
+        "lock": 14,
+        "staked_amount": "37000000",
+        "distributed_stake": "0"
+      },
+      {
+        "reward_id": "000000000002",
+        "prize_amount": "10000000",
+        "prize_denom": "ubze",
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "duration": 15,
+        "payouts": 15,
+        "min_stake": "1000000",
+        "lock": 2,
+        "staked_amount": "5000000",
+        "distributed_stake": "0"
+      },
+      {
+        "reward_id": "000000000003",
+        "prize_amount": "10000000",
+        "prize_denom": "ubze",
+        "staking_denom": "ubze",
+        "duration": 15,
+        "payouts": 15,
+        "min_stake": "1000000",
+        "lock": 21,
+        "staked_amount": "9000000",
+        "distributed_stake": "0"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

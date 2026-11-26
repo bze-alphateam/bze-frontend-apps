@@ -10,7 +10,7 @@ All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builder
 
 ```
 src/
-  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (a stub until its story), `/create` (coming soon) + app/api/scan (proxy)
+  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (a stub until its story), `/create` (the ui-kit `CreateDaoFlow`, BFE-378; its unsent draft lives in localStorage via `lib/create-draft.ts`) + app/api/scan (proxy)
   components/
     dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
     dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported

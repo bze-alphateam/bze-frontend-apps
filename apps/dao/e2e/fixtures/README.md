@@ -34,6 +34,7 @@ The e2e wallet `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw` administers DAOs 3 a
 | `lcd/dao.daos_by_admin.wallet.json` | DAOs administered by the wallet |
 | `lcd/dao.daos.fallback.json` | the chain's DAO list, newest first (the Scan-down fallback) |
 | `lcd/rewards.staking_reward_participant.wallet.json`, `rewards.denom_reward_participations.wallet.json` | the wallet's x/rewards positions |
+| `lcd/rewards.all_staking_rewards.dao_sources.json` | hand-written: the staking rewards the create flow's source picker lists (one short lock, one other token) |
 
 ## The DAO page (BFE-372)
 
