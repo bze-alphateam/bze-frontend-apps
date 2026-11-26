@@ -1,6 +1,6 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
@@ -200,5 +200,81 @@ describe("DenomRewardExitPanel", () => {
     it("says the stake returns immediately on a lock-0 DR", () => {
         renderWith(<DenomRewardExitPanel item={{ denomReward: { ...DR, lock: 0 }, dailyPrizes: PAYS, position: positionOf("20000000"), unlocks: [] }} />);
         expect(screen.getByTestId("denom-reward-exit-unlock")).toHaveTextContent("Returns to your wallet immediately");
+    });
+});
+
+// ---- the DAO notice (BFE-394): BZE Scan stands behind a stubbed fetch ----
+
+let scanDaos: unknown;
+let scanProposals: unknown;
+let sourcesAsked: string[];
+
+const realFetch = globalThis.fetch;
+
+beforeEach(() => {
+    // a Scan that has the DAO filters (an invalid member is refused), where no DAO uses anything
+    scanDaos = { items: [], next_cursor: null };
+    scanProposals = { items: [], next_cursor: null };
+    sourcesAsked = [];
+    globalThis.fetch = (vi.fn(async (url: string) => {
+        const u = new URL(url, "http://dex.test");
+        if (u.searchParams.has("member")) return new Response("{}", { status: 400 });
+        if (u.pathname.endsWith("/daos")) {
+            sourcesAsked.push(u.searchParams.get("source") ?? "");
+            return new Response(JSON.stringify(scanDaos), { status: 200 });
+        }
+        return new Response(JSON.stringify(scanProposals), { status: 200 });
+    })) as unknown as typeof fetch;
+});
+afterEach(() => {
+    cleanup();
+    globalThis.fetch = realFetch;
+});
+
+// The shared reader keeps an answer a minute per source, so each test stakes a denom of its own.
+let denomCount = 0;
+const freshItem = (position?: ReturnType<typeof positionOf>) => {
+    const denom = `factory/bze1creator/dao${++denomCount}`;
+    return { denom, item: { denomReward: { ...DR, staking_denom: denom }, dailyPrizes: PAYS, position, unlocks: [] } };
+};
+const daoWithOpenProposals = (n: number) => {
+    scanDaos = { items: [{ id: 3, name: "Club", type: "stake" }], next_cursor: null };
+    scanProposals = { items: Array.from({ length: n }, (_, i) => ({ id: 10 + i, dao_id: 3, title: `P${i}`, status: "voting" })), next_cursor: null };
+};
+
+describe("Denom Reward DAO notice", () => {
+    it("warns a stake about the open proposals of a DAO that votes with the reward", async () => {
+        daoWithOpenProposals(2);
+        const { denom, item } = freshItem();
+        renderWith(<DenomRewardStakePanel item={item} />);
+
+        expect(await screen.findByTestId("dao-source-notice")).toHaveTextContent(
+            "Stake you add now won't count on its 2 open proposals, and a top-up makes your whole stake here stop counting on them. Vote first, then add.",
+        );
+        expect(sourcesAsked).toEqual([`dr/${denom}`]);
+    });
+
+    it("warns a top-up too, beside the still usable input", async () => {
+        daoWithOpenProposals(1);
+        renderWith(<DenomRewardStakePanel item={freshItem(positionOf("20000000")).item} />);
+
+        expect(await screen.findByTestId("dao-source-notice")).toHaveTextContent("its 1 open proposal,");
+        expect(stakeInput()).toBeEnabled();
+    });
+
+    it("warns an exit that it lowers the votes", async () => {
+        daoWithOpenProposals(2);
+        renderWith(<DenomRewardExitPanel item={freshItem(positionOf("20000000")).item} />);
+
+        expect(await screen.findByTestId("dao-source-notice")).toHaveTextContent(
+            "Leaving now lowers your votes on 2 open proposals of DAO Club, and joining again won't bring them back.",
+        );
+    });
+
+    it("shows nothing on a reward no DAO uses", async () => {
+        renderWith(<DenomRewardStakePanel item={freshItem().item} />);
+
+        await waitFor(() => expect(sourcesAsked).toHaveLength(1));
+        expect(screen.queryByTestId("dao-source-notice")).toBeNull();
     });
 });
