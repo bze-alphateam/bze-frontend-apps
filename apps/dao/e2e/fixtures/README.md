@@ -29,6 +29,7 @@ The e2e wallet `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw` administers DAOs 3 a
 | `scan/daos.member.wallet.json`, `daos.source.wallet.json` | `member=<wallet>`, `source=sr/000000000017` |
 | `scan/dao-proposals.voting.json` | the open proposals feed (`status=voting`, 10) |
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (copied from the communities suite; the price calculation asks for it depending on timing) |
+| `lcd/bank.spendable_balances.wallet.json` | the e2e wallet's balances (none) |
 | `lcd/dao.params.json` | x/dao params (creation fee 50000 BZE) |
 | `lcd/dao.daos_by_admin.wallet.json` | DAOs administered by the wallet |
 | `lcd/dao.daos.fallback.json` | the chain's DAO list, newest first (the Scan-down fallback) |
