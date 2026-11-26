@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
@@ -60,7 +60,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         TokenLogo: () => null,
         getFactoryDenomAuthority: async (denom: string) => {
             const admin = await m.admin(denom);
-            return admin === undefined ? undefined : { admin, mintable: m.mintable ?? admin !== "" };
+            return admin === undefined ? undefined : { admin, mintable: m.mintable ?? admin !== "", mintableKnown: m.mintable !== undefined };
         },
         useAssets: () => ({
             assets: m.assets,
@@ -177,6 +177,18 @@ describe("token page: the seven admin states", () => {
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
         expect(screen.queryByTestId("minting-off-item")).not.toBeInTheDocument();
         expect(screen.getByText("Mintable")).toBeInTheDocument();
+    });
+
+    it("v8.3.0 answer with mintable true: the admin gets Turn off minting; a v8.2.0 answer (no field) hides it", async () => {
+        m.mintable = true;
+        await renderSettled();
+        expect(screen.getByTestId("disable-minting-item")).toBeInTheDocument();
+        cleanup();
+
+        m.mintable = undefined;
+        await renderSettled();
+        expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
+        expect(screen.queryByTestId("disable-minting-item")).not.toBeInTheDocument();
     });
 
     it("your token, admin kept but minting turned off: no Mint, Fixed supply, the note, other admin actions stay", async () => {
