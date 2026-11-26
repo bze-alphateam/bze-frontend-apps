@@ -104,7 +104,7 @@ export {
 export { poolData, poolTickers } from './utils/pool_data';
 export { assetUsdPrice } from './utils/usd_price';
 export {
-    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
+    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve, preferredTotal
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {

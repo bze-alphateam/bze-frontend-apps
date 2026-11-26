@@ -263,3 +263,39 @@ describe('maxSpendFeeReserve', () => {
         expect(maxSpendFeeReserve(estimated, 'uatom', '0', '0')).toBeUndefined()
     })
 })
+
+describe('transfer fee', () => {
+    const withFee = (transferFee?: string) => estimateFeeInPreferredDenom({
+        fee: takerFee,
+        nativeDenom: NATIVE,
+        preferredDenom: USDC,
+        pool,
+        minNativeLiquidity: MIN_LIQUIDITY,
+        transferFee,
+    })
+
+    it('is zero without a rate, so the estimate equals the plain one', () => {
+        expect(withFee().preferredTransferFee?.toString()).toBe('0')
+        expect(withFee('0').preferredTransferFee?.toString()).toBe('0')
+    })
+
+    it('is ceil(preferredAmount x rate)', () => {
+        // 1004 x 0.05 = 50.2 -> 51
+        const result = withFee('0.05')
+        expect(result.preferredAmount?.toString()).toBe('1004')
+        expect(result.preferredTransferFee?.toString()).toBe('51')
+    })
+
+    it('moves the preferred/fallback boundary to amount + transfer fee', () => {
+        const result = withFee('0.05')
+        expect(resolveFeePayment(result, 1055, 100000)).toBe('preferred')
+        expect(resolveFeePayment(result, 1054, 100000)).toBe('fallback')
+    })
+
+    it('is not set when the preferred token is not used', () => {
+        const result = estimateFeeInPreferredDenom({
+            fee: takerFee, nativeDenom: NATIVE, preferredDenom: USDC, minNativeLiquidity: MIN_LIQUIDITY, transferFee: '0.05',
+        })
+        expect(result.preferredTransferFee).toBeUndefined()
+    })
+})
