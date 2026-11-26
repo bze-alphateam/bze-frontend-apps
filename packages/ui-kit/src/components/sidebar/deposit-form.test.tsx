@@ -3,9 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { executeTransfer, bridgeable } = vi.hoisted(() => ({
+const { executeTransfer, bridgeable, status } = vi.hoisted(() => ({
     executeTransfer: vi.fn(),
     bridgeable: { assets: [] as unknown[] },
+    status: { channels: [] as string[], denoms: [] as string[] },
+}))
+
+vi.mock('../../hooks/useIbcRouteStatus', () => ({
+    useIbcRouteStatus: () => ({
+        isChannelClosed: (c?: string) => !!c && status.channels.includes(c),
+        isDenomBlocked: (d?: string) => !!d && status.denoms.includes(d),
+        loading: false,
+    }),
 }))
 
 vi.mock('../../hooks/useBridgeableAssets', () => ({
@@ -56,6 +65,8 @@ const send = async () => {
 }
 
 beforeEach(() => {
+    status.channels = []
+    status.denoms = []
     executeTransfer.mockReset()
     bridgeable.assets = [route('uosmo', 'OSMO', 'osmosis'), route('uatom', 'ATOM', 'cosmoshub')]
 })
@@ -110,5 +121,52 @@ describe('DepositForm daily limit note', () => {
         pickAsset(container, 'uatom')
 
         await waitFor(() => expect(screen.getByTestId('deposit-limit-note').textContent).not.toContain(SENT))
+    })
+})
+
+describe('DepositForm guardian stops', () => {
+    const STOPPED = 'Transfers on this route are stopped for now.'
+    const BLOCKED = 'Transfers of this token to and from other chains are stopped for now.'
+    const submit = () => screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement
+
+    it('allows the transfer when nothing is stopped', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.queryByTestId('notice')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    it('shows the notice, disables submit and tags the asset when its route channel is closed', async () => {
+        status.channels = ['channel-0']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.getByText(STOPPED)).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+        expect(screen.getAllByText('stopped').length).toBeGreaterThan(0)
+    })
+
+    it('stops a blocked BZE denom, including native ubze coming back', async () => {
+        bridgeable.assets = [route('ubze', 'BZE', 'osmosis')]
+        status.denoms = ['ubze']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'ubze')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.getByText(BLOCKED)).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('matches the denom case-sensitively', async () => {
+        status.denoms = ['UOSMO']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.queryByTestId('notice')).toBeNull()
+        expect(submit().disabled).toBe(false)
     })
 })
