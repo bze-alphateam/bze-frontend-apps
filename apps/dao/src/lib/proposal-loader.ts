@@ -129,6 +129,21 @@ export async function refreshProposal(deps: ProposalDeps, data: ProposalPageData
         return data;
     }
     if (!resp) return data;
+    return mergeChainAnswer(deps, data, resp);
+}
+
+/**
+ * The re-read after a transaction. Unlike the poll it never hides a failure: a chain error is thrown, and
+ * `null` (a chain 404 only) says the chain no longer has the proposal (it was cleaned up), so the caller
+ * can switch to the archived view.
+ */
+export async function reloadProposalAfterTx(deps: ProposalDeps, data: ProposalPageData): Promise<ProposalPageData | null> {
+    if (data.model.archived) return data;
+    const resp = await deps.chain.getProposal(data.model.id);
+    return resp ? mergeChainAnswer(deps, data, resp) : null;
+}
+
+async function mergeChainAnswer(deps: ProposalDeps, data: ProposalPageData, resp: DaoProposalResponse): Promise<ProposalPageData> {
     const dao = data.dao.ok ? data.dao.value : null;
     // a status change (settled, executed, cancelled…) brings facts only Scan has: read them again
     let {scanDetail, scanFailed} = data;

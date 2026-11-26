@@ -15,7 +15,7 @@ src/
     dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
     dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported
     dao/page/proposals-tab.tsx   # the DAO page's Proposals tab (Active / Finished)
-    proposal/       # the proposal page: proposal-page (loading + composition), status-pill, tally-panel, actions-panel, timeline-money, votes-panel, my-vote, actions-slot (BFE-374 extension point)
+    proposal/       # the proposal page: proposal-page (loading + composition), status-pill, tally-panel, actions-panel, timeline-money, votes-panel, my-vote, actions-slot (the transaction buttons, BFE-374)
     propose/        # the composer: propose-page (loads the DAO view, holds the form state and the draft), basics, actions-list, action-forms (one form per registry entry), review, submit-area
     ui/             # provider, colour mode, navbar, inner hero, plain-text (untrusted text)
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
@@ -32,6 +32,7 @@ src/
     dao-control.ts, dao-rules.ts, dao-power.ts, dao-history.ts, dao-voters.ts, dao-actions.ts, dao-text.ts   # pure text/state helpers of the page (control chain, rules in words, voting-power messages, history renderer, sources, action flags, plain-text linkify)
     proposal-model.ts, proposal-loader.ts, dao-proposal-scan.ts, proposal-types.ts   # one proposal model for both sides (chain / Scan), the page's reads (chain and Scan injected), Scan client + DTOs
     proposal-status.ts, proposal-tally.ts, proposal-describe.ts, proposal-timeline.ts, proposal-money.ts, proposal-votes.ts   # pure: status words, the bars (ui-kit tally rules), message describers, timeline, cost/deposit text
+    proposal-actions.ts, proposal-cleanup.ts, dao-tx.ts   # what a wallet can do on a proposal (pure), the clean-up loop, the signing wrapper with `daoTxOptions` (BFE-374)
     dao-cards.ts, my-daos.ts, staker-sources.ts, format.ts, dao-types.ts   # pure helpers
 ```
 
@@ -60,7 +61,16 @@ Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public A
 - **Untrusted text** (title, summary, decoded message fields) is plain text: `PlainText` linkifies http(s) only; the summary is not Markdown here (a deliberate narrowing of the ticket: no new dependency and no HTML path). Unknown messages are shown as raw JSON in a `<pre>`.
 - **A config update** is shown against the rules pinned at submission (`before` = the proposal's `pinned_config`), since a diff against the live config is empty once it executed.
 - **Lists**: Scan lists one status per request, so Active = `voting` + `execution_failed` merged newest first (chain fallback: both statuses in one request); Finished = the unfiltered newest-first list with the moving and placeholder rows dropped (Scan down: a retry).
-- **Extension point for BFE-374**: `components/proposal/actions-slot.tsx` renders under the header once `DAO_FEATURES.proposalActions` is true (nothing before); the vote/settle/retry/cancel/clean-up buttons go there, using `canSettleNow` and the status/eligible weight already on the page.
+
+## Proposal actions (BFE-374)
+
+- **`lib/proposal-actions.ts` decides, the slot only draws.** `proposalActions({model, wallet, myVote, params, gas, nowMs})` returns which of vote / vote-and-settle / settle (retry, mark expired) / cancel / clean up are offered and enabled, each with its reason. Every unknown input (ballot read failed, eligible weight null, params unreadable, balance still loading) is its own state: it disables with "could not be read", never "no power". "Voting ended" and "settleable" are the chain's flags; the browser clock only picks Retry vs Mark expired (the chain decides by block time) and the stake-DAO early-settle delay.
+- **Tally rules are ui-kit's.** Vote and settle = `daoExpediteTally` on the live tally with the wallet's old ballot taken out and its eligible weight added to YES (offered only for an expedited proposal that is not already settleable early, never after a weighted YES, never before a stake DAO's `min_expedite_delay`). The settle outcome is `tallyView(...).passesRegular`.
+- **Signing**: `sendDaoTx(tx, msgs)` always passes `daoTxOptions` (direct sign, abort on simulation error) and turns the result into a `TxOutcome`; `unconfirmed` (a confirmation timeout, or a failure after the broadcast with no chain code) means the transaction may still land. `useActionFlow` runs one action at a time and **locks** the actions after an unconfirmed outcome (hash shown; "Check again" re-reads the proposal and, when it shows no change, looks the hash up on the node: landed = sent, failed = "the chain refused it, nothing happened" with the actions open, not found = actions reopen with a "may still land" warning, any other error stays locked) or after a success whose re-read failed.
+- **After a transaction** `useProposalPage().refresh()` re-reads the chain in place (`reloadProposalAfterTx`: any chain failure is "failed", only a 404 is "gone" and reloads into the Archived view) and bumps `version`, which re-reads the wallet's ballot/power (`mine`, read once in the page and shared with My vote) and the votes list.
+- **Clean-up** repeats `MsgCleanupProposal` (limit 0) until the chain no longer has the proposal (the batch events (`EventProposalCleaned`: `completed`, `processed`) lead, the 404 is the fallback and the confirmation); a batch that cannot be confirmed, a chain that cannot be read, or a batch that is not finished but deleted nothing (`no-progress`) stops the loop, never ends it as done.
+- **Fee check**: a wallet with neither a native nor a fee-token balance is blocked with the reason; the simulation judges everything else.
+- Ledger: DAO transactions are direct-signed, so the panel carries one faint line saying a Ledger cannot approve them yet (decision of BFE-366, canvas board E7).
 
 ## The proposal composer (BFE-375)
 

@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {loadProposal, refreshProposal, type ProposalDeps, type ProposalLoad, type ProposalPageData} from '@/lib/proposal-loader';
+import {loadProposal, refreshProposal, reloadProposalAfterTx, type ProposalDeps, type ProposalLoad, type ProposalPageData} from '@/lib/proposal-loader';
 import {useAsync, type AsyncValue} from './useAsync';
 
 /** The chain is re-read this often while a proposal is in voting and the tab is visible. */
@@ -10,6 +10,16 @@ export interface ProposalPage {
     /** The data to show: the polled copy once one has arrived, else the loaded one. */
     data: ProposalPageData | null;
     reload: () => void;
+    /**
+     * Re-reads the proposal from the chain in place (after a transaction) without leaving the page: 'ok' when
+     * it was read, 'gone' when the chain no longer has it (the page then reloads into the archived view),
+     * 'failed' when the chain could not be read (what is shown stays as it was).
+     */
+    refresh: () => Promise<'ok' | 'gone' | 'failed'>;
+    /** Changes after every refresh: parts that read the wallet's own state key on it. */
+    version: number;
+    /** What is shown right now, including a re-read that has not rendered yet. */
+    peek: () => ProposalPageData | null;
 }
 
 /**
@@ -45,5 +55,25 @@ export function useProposalPage(deps: ProposalDeps, id: string, pollMs = PROPOSA
     }, [live, pollMs]);
 
     const reload = useCallback(() => setReloads((n) => n + 1), []);
-    return {load, data, reload};
+    const [version, setVersion] = useState(0);
+    const refresh = useCallback(async (): Promise<'ok' | 'gone' | 'failed'> => {
+        const {data: current, deps: currentDeps, key: currentKey} = latest.current;
+        if (!current) return 'failed';
+        try {
+            const next = await reloadProposalAfterTx(currentDeps, current);
+            if (latest.current.key !== currentKey) return 'ok';
+            if (!next) {
+                setReloads((n) => n + 1);
+                return 'gone';
+            }
+            latest.current = {...latest.current, data: next};
+            setPolled({key: currentKey, data: next});
+            setVersion((n) => n + 1);
+            return 'ok';
+        } catch {
+            return 'failed';
+        }
+    }, []);
+    const peek = useCallback(() => latest.current.data, []);
+    return {load, data, reload, refresh, version, peek};
 }

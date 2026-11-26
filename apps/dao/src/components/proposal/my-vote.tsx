@@ -3,21 +3,20 @@
 import {chakra, Flex} from '@chakra-ui/react';
 import {Notice, Shimmer} from '@bze/bze-ui-kit';
 import {Panel} from '@/components/dao/page/panel';
-import {useAsync} from '@/hooks/useAsync';
-import {loadMyVote, noWeightReason, optionLabel, type ProposalDeps} from '@/lib/proposal-loader';
+import type {AsyncValue} from '@/hooks/useAsync';
+import {noWeightReason, optionLabel, type MyVote} from '@/lib/proposal-loader';
 import type {ProposalModel} from '@/lib/proposal-model';
 import {sourceLabel} from '@/lib/proposal-votes';
 
 interface Props {
-    deps: ProposalDeps;
     model: ProposalModel;
-    wallet: string;
+    /** The wallet's ballot and eligible weight, read once by the page. */
+    mine: AsyncValue<MyVote>;
     formatWeight: (amount: string) => string;
 }
 
 /** The connected wallet's ballot (weight and per-source shares) and what a vote of it would count. */
-export const MyVotePanel = ({deps, model, wallet, formatWeight}: Props) => {
-    const mine = useAsync(`${model.id}:${wallet}:${model.status}`, () => loadMyVote(deps, model, wallet));
+export const MyVotePanel = ({model, mine, formatWeight}: Props) => {
     const {ballot, eligibleWeight} = mine.data ?? {ballot: null, eligibleWeight: null};
 
     return (
