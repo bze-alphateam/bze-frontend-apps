@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { PendingTxProvider, createPendingTxStore } from "@/contexts/pending-tx";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
@@ -8,6 +9,7 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 // compounded reward and the simple rewards are mocked, so each admin state can be asserted on its own.
 const m = vi.hoisted(() => ({
     navigate: vi.fn(),
+    tx: vi.fn(),
     replace: vi.fn(),
     query: {} as Record<string, string | undefined>,
     address: "bze1owner" as string | undefined,
@@ -46,7 +48,7 @@ vi.mock("@/hooks/useDenomReward", () => ({ useDenomReward: () => m.denomReward()
 vi.mock("@/hooks/useStakingRewards", () => ({ useStakingRewards: () => m.stakingRewards() }));
 vi.mock("@/hooks/useRegistryListing", () => ({ useRegistryListing: () => ({ status: m.registry, retry: vi.fn() }) }));
 vi.mock("@/hooks/useTokenMetadata", () => ({ useTokenMetadata: () => ({ metadata: undefined, isLoading: false, refresh: vi.fn() }) }));
-vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: vi.fn() }) }));
+vi.mock("@/hooks/useFactoryTx", () => ({ useFactoryTx: () => ({ tx: m.tx }) }));
 vi.mock("@/hooks/useFactoryContext", () => ({ useFactoryContext: () => ({ refreshAssetsAfterTx: vi.fn(async () => {}) }) }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: m.address }) }));
 vi.mock("@/components/manage/brand-kit-card", () => ({ BrandKitCard: ({ access }: { access: string }) => <div>brand kit {access}</div> }));
@@ -58,6 +60,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return {
         ...actual,
         TokenLogo: () => null,
+        useGasFeeEstimate: () => ({ amount: new BigNumber(20000), displayAmount: new BigNumber("0.02"), ticker: "TBZE", denom: "ubze", isNative: true, isLoading: false }),
+        useToast: () => ({ toast: { success: vi.fn() } }),
         getFactoryDenomAuthority: async (denom: string) => {
             const admin = await m.admin(denom);
             return admin === undefined ? undefined : { admin, mintable: m.mintable ?? admin !== "", mintableKnown: m.mintable !== undefined };
@@ -114,7 +118,11 @@ const setup = (overrides: Record<string, unknown> = {}) => ({
 
 const noDenomReward = () => ({ denomReward: undefined, schedules: [], prizes: [], isLoading: false, hasError: false, refresh: vi.fn() });
 
-const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
+const wrapper = ({ children }: { children: ReactNode }) => {
+    let value: string | null = null;
+    const store = createPendingTxStore({ read: () => value, write: (v) => { value = v; } });
+    return <ChakraProvider value={defaultSystem}><PendingTxProvider store={store}>{children}</PendingTxProvider></ChakraProvider>;
+};
 const renderPage = () => render(<TokenPage />, { wrapper });
 
 /** The page once the admin query answered (the Burn item is always there; the setup chips too). */
@@ -189,6 +197,28 @@ describe("token page: the seven admin states", () => {
         await renderSettled();
         expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
         expect(screen.queryByTestId("disable-minting-item")).not.toBeInTheDocument();
+    });
+
+    it("turning minting off from the page: after the tx the admin is asked again, Mint goes and the minting-off state shows", async () => {
+        m.mintable = true;
+        m.tx.mockImplementation(async (_msgs: unknown, opts: { onBroadcast?: (h: string) => void; onSuccess?: (r: { txhash: string; height: number; code: number }) => void }) => {
+            m.mintable = false; // what the chain answers from now on
+            opts.onBroadcast?.("ABCDEF0123456789");
+            opts.onSuccess?.({ txhash: "ABCDEF0123456789", height: 42, code: 0 });
+            return true;
+        });
+        const user = userEvent.setup();
+        await renderSettled();
+        expect(screen.getByRole("button", { name: "Mint" })).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Turn off…" }));
+        await user.type(screen.getByPlaceholderText("TOK"), "TOK");
+        await user.click(screen.getByRole("button", { name: "Turn off minting" }));
+
+        expect(await screen.findByTestId("minting-off-item")).toHaveTextContent("Minting is turned off for this token for good.");
+        expect(screen.queryByRole("button", { name: "Mint" })).not.toBeInTheDocument();
+        expect(screen.queryByTestId("disable-minting-item")).not.toBeInTheDocument();
+        expect(screen.getByText("Fixed supply")).toBeInTheDocument();
     });
 
     it("your token, admin kept but minting turned off: no Mint, Fixed supply, the note, other admin actions stay", async () => {

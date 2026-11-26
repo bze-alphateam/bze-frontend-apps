@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import { bze } from "@bze/bzejs";
+import { prettyError } from "@bze/bze-ui-kit";
 
 // The Supply group with the real Turn off minting item and dialog, the real wizard tx hook and
 // pending-tx store. The wallet, the wallet side of the tx (useFactoryTx), the raffle lookup, the gas
@@ -150,10 +151,12 @@ describe("Turn off minting dialog", () => {
         expect(m.toast).toHaveBeenCalled();
     });
 
-    it("a refused tx leaves the state as it was (no refresh)", async () => {
+    it("a refused tx (code 1112) shows the friendly text, keeps the dialog open and leaves the state as it was", async () => {
         const p = props();
+        const raw = "minting is disabled for this denom";
         m.tx.mockImplementation(async (_msgs: unknown, opts: TxOpts) => {
-            opts.onFailure?.("minting is disabled for this denom", { stage: "simulate" });
+            // The wallet side (useTx) turns the chain's raw log into the plain reason.
+            opts.onFailure?.(prettyError(raw) ?? raw, { stage: "simulate" });
             return false;
         });
         const user = userEvent.setup();
@@ -162,7 +165,10 @@ describe("Turn off minting dialog", () => {
         await user.type(screen.getByPlaceholderText("HONEY"), "HONEY");
         await user.click(screen.getByRole("button", { name: "Turn off minting" }));
 
+        expect(await screen.findByText("Minting is turned off for this token, so no new supply can be created.")).toBeInTheDocument();
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
         expect(p.onMintingDisabled).not.toHaveBeenCalled();
+        expect(m.toast).not.toHaveBeenCalled();
     });
 });
 
