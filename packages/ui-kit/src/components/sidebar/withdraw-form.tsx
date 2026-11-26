@@ -31,6 +31,8 @@ import {amountToUAmount, prettyAmount, uAmountToBigNumberAmount} from '../../uti
 import {formatDuration} from '../../utils/cross_chain';
 import {getChainName} from '../../constants/chain';
 import {MaxInputGroup} from '../max-input-group';
+import {useIbcRouteStatus} from '../../hooks/useIbcRouteStatus';
+import {RouteStoppedNotice} from './route-stopped-notice';
 
 /**
  * Withdraw flow: send an asset from BeeZee to another chain.
@@ -50,6 +52,7 @@ export const WithdrawForm = () => {
     const [amountError, setAmountError] = useState('');
 
     const {assets: withdrawableAssets, isLoading: isLoadingAssets} = useWithdrawableBalances();
+    const {isChannelClosed, isDenomBlocked} = useIbcRouteStatus();
 
     // ─── Asset picker collection ───────────────────────────────────────────
     const assetsCollection = useMemo(() => {
@@ -66,7 +69,7 @@ export const WithdrawForm = () => {
 
     // ─── Destination picker collection (only for open-destination assets) ──
     const destinationsCollection = useMemo(() => {
-        type DestinationItem = { label: string; value: string; logo: string };
+        type DestinationItem = { label: string; value: string; logo: string; stopped: boolean };
         if (!selectedAsset || selectedAsset.isDestinationLocked) {
             return createListCollection<DestinationItem>({items: []});
         }
@@ -75,9 +78,10 @@ export const WithdrawForm = () => {
                 label: d.displayName,
                 value: d.chainName,
                 logo: d.logo,
+                stopped: isChannelClosed(d.bzeSideChannelId),
             })),
         });
-    }, [selectedAsset]);
+    }, [selectedAsset, isChannelClosed]);
 
     // Auto-set destination when the asset changes
     useEffect(() => {
@@ -156,9 +160,15 @@ export const WithdrawForm = () => {
     });
     const amountErrorText = amountError !== '' ? amountError : (amount !== '' ? affordability.message : '');
 
+    // Guardian stops (v8.3.0). The balance stays visible; only the transfer is refused.
+    const denomBlocked = !!selectedAsset && isDenomBlocked(selectedAsset.balance.denom);
+    const channelClosed = !!selectedDestination && isChannelClosed(selectedDestination.bzeSideChannelId);
+
     const canExecute = useMemo(() => {
         return selectedAsset
             && selectedDestination
+            && !denomBlocked
+            && !channelClosed
             && amount !== ''
             && amountError === ''
             && affordability.canAfford
@@ -166,7 +176,7 @@ export const WithdrawForm = () => {
             && destWalletStatus === WalletState.Connected
             && sourceBalance
             && sourceBalance.display.isGreaterThan(0);
-    }, [selectedAsset, selectedDestination, amount, amountError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
+    }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, amount, amountError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
 
     const handleExecute = useCallback(async () => {
         const success = await executeTransfer();
@@ -304,6 +314,7 @@ export const WithdrawForm = () => {
                                             <HStack gap="2">
                                                 <TokenLogo src={item.logo} symbol={item.label} size="16px"/>
                                                 <Text>{item.label}</Text>
+                                                {item.stopped && <Text fontSize="xs" color="hg.warning.text">stopped</Text>}
                                             </HStack>
                                             <Select.ItemIndicator/>
                                         </Select.Item>
@@ -314,6 +325,8 @@ export const WithdrawForm = () => {
                     </Select.Root>
                 </Box>
             )}
+
+            <RouteStoppedNotice denomBlocked={denomBlocked} channelClosed={channelClosed}/>
 
             {/* Transfer direction label */}
             {selectedAsset && selectedDestination && (
