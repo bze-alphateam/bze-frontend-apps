@@ -33,6 +33,14 @@ import {getChainName} from '../../constants/chain';
 import {MaxInputGroup} from '../max-input-group';
 import {useIbcRouteStatus} from '../../hooks/useIbcRouteStatus';
 import {RouteStoppedNotice} from './route-stopped-notice';
+import {useRouteLimit} from '../../hooks/useRouteLimit';
+import {RouteLimitLine, routeLimitError} from './route-limit';
+import {clearRateLimitCache} from '../../query/rate_limit';
+
+const toUAmountBigInt = (amount: string, decimals: number): bigint => {
+    const u = amountToUAmount(amount, decimals);
+    return /^\d+$/.test(u) ? BigInt(u) : BigInt(0);
+}
 
 /**
  * Withdraw flow: send an asset from BeeZee to another chain.
@@ -158,7 +166,14 @@ export const WithdrawForm = () => {
             ? {denom: selectedAsset.balance.denom, amount: amountToUAmount(amount, selectedAsset.balance.decimals)}
             : undefined,
     });
-    const amountErrorText = amountError !== '' ? amountError : (amount !== '' ? affordability.message : '');
+
+    // Daily IBC limit on this route (v8.3.0); the chain refuses a send over what is left.
+    const [limitRefresh, setLimitRefresh] = useState(0);
+    const routeLimit = useRouteLimit(selectedDestination?.bzeSideChannelId, selectedAsset?.balance.denom, 'send', limitRefresh);
+    const limitError = selectedAsset && selectedDestination
+        ? routeLimitError(routeLimit, toUAmountBigInt(amount, selectedAsset.balance.decimals), selectedAsset.balance.decimals, selectedAsset.balance.ticker, 'send')
+        : '';
+    const amountErrorText = amountError !== '' ? amountError : (limitError !== '' ? limitError : (amount !== '' ? affordability.message : ''));
 
     // Guardian stops (v8.3.0). The balance stays visible; only the transfer is refused.
     const denomBlocked = !!selectedAsset && isDenomBlocked(selectedAsset.balance.denom);
@@ -171,16 +186,19 @@ export const WithdrawForm = () => {
             && !channelClosed
             && amount !== ''
             && amountError === ''
+            && limitError === ''
             && affordability.canAfford
             && !isExecuting
             && destWalletStatus === WalletState.Connected
             && sourceBalance
             && sourceBalance.display.isGreaterThan(0);
-    }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, amount, amountError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
+    }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, amount, amountError, limitError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
 
     const handleExecute = useCallback(async () => {
         const success = await executeTransfer();
         if (success) {
+            clearRateLimitCache();
+            setLimitRefresh(n => n + 1);
             setAmount('');
             setSelectedAsset(undefined);
             setSelectedDestination(undefined);
@@ -357,6 +375,10 @@ export const WithdrawForm = () => {
                             </Field.HelperText>
                         )}
                     </Field.Root>
+
+                    {!denomBlocked && !channelClosed && (
+                        <RouteLimitLine limit={routeLimit} decimals={selectedAsset.balance.decimals} ticker={selectedAsset.balance.ticker} direction="send"/>
+                    )}
 
                     {sourceBalance && (
                         <HStack justify="space-between" mt="6px" fontSize="12px">
