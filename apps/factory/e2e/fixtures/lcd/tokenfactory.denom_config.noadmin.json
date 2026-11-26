@@ -1,0 +1,17 @@
+{
+  "source": "hand-written from the v8.3.0 denom_config answer shape (tokenfactory DenomConfig)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/tokenfactory/denom_config",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin"
+  },
+  "status": 200,
+  "body": {
+    "config": {
+      "community_pool": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l",
+      "transfer_fee": "0.010000000000000000",
+      "gas_surcharge": "0.500000000000000000"
+    }
+  }
+}
