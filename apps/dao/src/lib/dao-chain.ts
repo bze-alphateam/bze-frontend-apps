@@ -1,11 +1,13 @@
 import {
     DaoModuleNotSupportedError,
-    getAddressBalances, getDao, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
+    getAddressBalances, getDao, getDaoBallot, getDaoBallots, getDaoProposal, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
     getDaos, getDaosByAdmin, getDenomReward, getDenomRewardParticipations, getRestClient,
     getStakingRewardParticipantByAddress, isDaoModuleSupported,
 } from '@bze/bze-ui-kit';
 import {createDaoScanClient, browserScanGetter} from './dao-scan';
 import {createDaoPageScan} from './dao-page-scan';
+import {createDaoProposalScan} from './dao-proposal-scan';
+import type {ProposalChain, ProposalDeps} from './proposal-loader';
 import type {DaoChain, DaoDeps} from './dao-loader';
 import {DaoModuleUnsupported, type DaoViewChain, type DaoViewDeps} from './dao-view-loader';
 import type {StakeSource} from './dao-voters';
@@ -68,4 +70,36 @@ export const liveDaoViewChain: DaoViewChain = {
 export const liveDaoViewDeps: DaoViewDeps = {
     chain: liveDaoViewChain,
     scan: createDaoPageScan(browserScanGetter),
+};
+
+/** The chain side of the proposal pages. */
+export const liveProposalChain: ProposalChain = {
+    async getProposal(id) {
+        try {
+            return await getDaoProposal(id);
+        } catch (e) {
+            if (e instanceof DaoModuleNotSupportedError) throw new DaoModuleUnsupported();
+            throw e;
+        }
+    },
+    getDao,
+    getParams: getDaoParams,
+    getBallot: getDaoBallot,
+    getBallots: getDaoBallots,
+    getVotingPower: getDaoVotingPower,
+    getDaoProposals,
+    async getStakingDenom(electorate) {
+        if (electorate.dr_denom) return electorate.dr_denom;
+        const [rewardId] = electorate.sr_ids;
+        if (!rewardId) return null;
+        const client = await getRestClient();
+        const {staking_reward: reward} = await client.bze.rewards.stakingReward({rewardId});
+        return reward.staking_denom;
+    },
+};
+
+/** The app's real collaborators for the proposal pages. */
+export const liveProposalDeps: ProposalDeps = {
+    chain: liveProposalChain,
+    scan: createDaoProposalScan(browserScanGetter),
 };

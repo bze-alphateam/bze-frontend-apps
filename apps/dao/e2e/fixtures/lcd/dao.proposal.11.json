@@ -1,0 +1,13 @@
+{
+  "source": "hand-written (proposal pages, BFE-373: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/proposal/11",
+  "query": {},
+  "status": 404,
+  "body": {
+    "code": 5,
+    "message": "proposal 11 not found",
+    "details": []
+  }
+}

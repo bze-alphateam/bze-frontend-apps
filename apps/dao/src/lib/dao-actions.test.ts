@@ -2,7 +2,7 @@ import {describe, expect, it} from "vitest";
 import type {Dao} from "@bze/bze-ui-kit";
 import {actionsFor, DAO_FEATURES, staticJoinText, type DaoFeatures} from "./dao-actions";
 
-const ALL: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: true};
+const ALL: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: true, proposalActions: true};
 const dao = (over: Partial<Dao> = {}, open = false) => ({
     address: "bze1dao", admin: "bze1admin", pending_admin: "", type: "DAO_TYPE_STATIC_LIST", members: ["bze1member"],
     config: {open_submission: open} as Dao["config"], ...over,

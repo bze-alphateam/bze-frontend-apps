@@ -10,11 +10,13 @@ All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builder
 
 ```
 src/
-  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (a stub until its story), `/create` (coming soon) + app/api/scan (proxy)
+  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (the proposal page, BFE-373), `/create` (coming soon) + app/api/scan (proxy)
   components/
     dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
     dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported
-    ui/             # provider, colour mode, navbar, inner hero
+    dao/page/proposals-tab.tsx   # the DAO page's Proposals tab (Active / Finished)
+    proposal/       # the proposal page: proposal-page (loading + composition), status-pill, tally-panel, actions-panel, timeline-money, votes-panel, my-vote, actions-slot (BFE-374 extension point)
+    ui/             # provider, colour mode, navbar, inner hero, plain-text (untrusted text)
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
   hooks/            # useAsync (key-derived loading, no setState in effects), useDaoList (first page + Load more), useDaoContext, navigation, chain listener
   lib/
@@ -25,6 +27,8 @@ src/
     dao-view-loader.ts  # the DAO page's reads (loadDaoView: chain; loadDaoExtras / loadHistoryPage / loadMyVotes: Scan); chain and Scan injected, secondary reads settle as Part<T>
     dao-page-scan.ts    # Scan client of the page: daos/{id}, daos/{id}/history, dao-votes?voter=
     dao-control.ts, dao-rules.ts, dao-power.ts, dao-history.ts, dao-voters.ts, dao-actions.ts, dao-text.ts   # pure text/state helpers of the page (control chain, rules in words, voting-power messages, history renderer, sources, action flags, plain-text linkify)
+    proposal-model.ts, proposal-loader.ts, dao-proposal-scan.ts, proposal-types.ts   # one proposal model for both sides (chain / Scan), the page's reads (chain and Scan injected), Scan client + DTOs
+    proposal-status.ts, proposal-tally.ts, proposal-describe.ts, proposal-timeline.ts, proposal-money.ts, proposal-votes.ts   # pure: status words, the bars (ui-kit tally rules), message describers, timeline, cost/deposit text
     dao-cards.ts, my-daos.ts, staker-sources.ts, format.ts, dao-types.ts   # pure helpers
 ```
 
@@ -45,3 +49,12 @@ Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public A
 - **Failures stay local**: each secondary chain read settles as a `Part` (the panel says it could not be read), each Scan part has a Retry.
 - **Action buttons** (new proposal, request to join / leave, admin console) sit behind `DAO_FEATURES` in `lib/dao-actions.ts`; turn a flag on in the story that ships the target page. Until then nothing is rendered.
 - DAO name and description are untrusted: plain text, line breaks kept, links only through `safeHttpUrl` (http/https) in `lib/dao-text.ts`; never HTML.
+
+## The proposal pages (BFE-373)
+
+- **Source of truth**: while the chain has the proposal (`/bze/dao/proposal/{id}`: status, tally, pinned rules, `voting_ended`, `retry_deadline`, `expedite_settleable`) it is the chain; Scan only adds what the chain does not keep (settle height, execution error, deposit release, cleanup) as a retryable part. A chain 404 is the cleanup: the proposal is read from Scan alone and marked **Archived**; both 404 is "not found"; a chain miss with Scan down throws (cannot tell cleaned-up from never-existed). `useProposalPage` polls the chain in place every 60 s while it is voting and the tab is visible; a failed poll keeps what is shown.
+- **Bars** come from the pinned config and `pinned_denominator` through ui-kit's tally rules (`lib/proposal-tally.ts`); "met" is never derived from the shown percentages. The share achieved rounds down, the bar it has to reach rounds up, so the text never claims more than the rule.
+- **Untrusted text** (title, summary, decoded message fields) is plain text: `PlainText` linkifies http(s) only; the summary is not Markdown here (a deliberate narrowing of the ticket: no new dependency and no HTML path). Unknown messages are shown as raw JSON in a `<pre>`.
+- **A config update** is shown against the rules pinned at submission (`before` = the proposal's `pinned_config`), since a diff against the live config is empty once it executed.
+- **Lists**: Scan lists one status per request, so Active = `voting` + `execution_failed` merged newest first (chain fallback: both statuses in one request); Finished = the unfiltered newest-first list with the moving and placeholder rows dropped (Scan down: a retry).
+- **Extension point for BFE-374**: `components/proposal/actions-slot.tsx` renders under the header once `DAO_FEATURES.proposalActions` is true (nothing before); the vote/settle/retry/cancel/clean-up buttons go there, using `canSettleNow` and the status/eligible weight already on the page.

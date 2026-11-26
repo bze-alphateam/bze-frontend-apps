@@ -28,7 +28,8 @@ export type MockedHost = keyof typeof MOCKED_HOSTS | "scan";
 export interface Fixture {
     method?: string;
     path: string;
-    query?: Record<string, string>;
+    /** A repeated parameter (the chain's `statuses=A&statuses=B`) is an array, in the order the app sends it. */
+    query?: Record<string, string | string[]>;
     status: number;
     body: unknown;
 }
@@ -49,7 +50,11 @@ const fixtureKey = (method: string, path: string, query: Iterable<[string, strin
 };
 
 const keyOf = (fixture: Fixture): string =>
-    fixtureKey(fixture.method ?? "GET", fixture.path, Object.entries(fixture.query ?? {}));
+    fixtureKey(
+        fixture.method ?? "GET",
+        fixture.path,
+        Object.entries(fixture.query ?? {}).flatMap(([key, value]): [string, string][] => (Array.isArray(value) ? value : [value]).map((v) => [key, v])),
+    );
 
 const loadFixtures = (host: MockedHost): Map<string, Fixture> => {
     const fixtures = new Map<string, Fixture>();

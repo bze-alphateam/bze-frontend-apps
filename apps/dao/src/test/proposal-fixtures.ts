@@ -1,0 +1,83 @@
+// Hand-written proposal answers shared by the unit tests (the testnet has no DAO yet; written from the
+// protos at v8.3.0-rc1 and BZE Scan's DTOs). Not imported by the app.
+import type {DaoConfig, DaoProposal, DaoProposalResponse} from '@bze/bze-ui-kit';
+import type {ScanProposalDetail} from '@/lib/proposal-types';
+
+export const CONFIG: DaoConfig = {
+    min_quorum: '0.400000000000000000',
+    threshold: '0.500000000000000000',
+    voting_period: '259200s',
+    allow_expedite: true,
+    expedited_period: '86400s',
+    expedite_quorum: '0.600000000000000000',
+    expedite_threshold: '0.700000000000000000',
+    open_submission: false,
+    proposal_cost: {denom: 'ubze', amount: '5000000'},
+    proposal_deposit: {denom: 'ubze', amount: '9000000'},
+    deposit_refund_policy: 'ONLY_PASSED',
+    cost_destination: 'TREASURY',
+    kept_deposit_destination: 'BURN',
+};
+
+export const PROPOSAL: DaoProposal = {
+    id: '7',
+    dao_id: '4',
+    proposer: 'bze1proposer',
+    title: 'Fund the festival',
+    summary: 'Pay the festival.\nSee https://getbze.com/festival.',
+    msgs: [],
+    expedited: false,
+    status: 'VOTING',
+    submit_height: '100',
+    submit_time: '1793100000',
+    voting_end: '1793359200',
+    pinned_config: CONFIG,
+    pinned_electorate: {sr_ids: ['000000000017'], dr_denom: ''},
+    pinned_denominator: '1000',
+    pinned_deposit: {denom: 'ubze', amount: '9000000'},
+    yes: '300',
+    no: '100',
+    abstain: '50',
+    cleanup_cursor: '',
+};
+
+export const RESPONSE: DaoProposalResponse = {proposal: PROPOSAL, voting_ended: false, retry_deadline: '0', expedite_settleable: false};
+
+export const SCAN: ScanProposalDetail = {
+    id: 7,
+    dao_id: 4,
+    title: 'Fund the festival',
+    status: 'executed',
+    proposer: 'bze1proposer',
+    proposer_label: null,
+    expedited: false,
+    submit_time: '2026-10-27T10:00:00Z',
+    voting_end: '2026-10-30T10:00:00Z',
+    yes: '700',
+    no: '100',
+    abstain: '0',
+    denominator: '1000',
+    settled_height: 2000,
+    message_types: [],
+    dao: {id: 4, name: 'Stakers club', type: 'stake'},
+    summary: 'Pay the festival.',
+    msgs: [],
+    submit_height: 100,
+    submit_tx_hash: 'AB12',
+    pinned_config: CONFIG,
+    voting_ended: false,
+    expedite_settleable: false,
+    retry_deadline: null,
+    settled_tx_hash: 'CD34',
+    expedited_early: false,
+    executed: true,
+    execution_error: null,
+    deposit_refunded: true,
+    deposit_destination: 'bze1proposer',
+    deposit_amount: '9000000',
+    cancelled_height: null,
+    cleaned_height: null,
+    votes_count: 2,
+    weight_denom: {denom: 'ubze', symbol: 'BZE', exponent: 6},
+    checks: null,
+};

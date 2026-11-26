@@ -1,0 +1,115 @@
+{
+  "source": "hand-written (proposal pages, BFE-373: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/proposals/4",
+  "query": {
+    "statuses": [
+      "VOTING",
+      "EXECUTION_FAILED"
+    ],
+    "pagination.limit": "50",
+    "pagination.reverse": "true"
+  },
+  "status": 200,
+  "body": {
+    "proposals": [
+      {
+        "id": "10",
+        "dao_id": "4",
+        "proposer": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "title": "Pay the beekeepers",
+        "summary": "",
+        "msgs": [],
+        "expedited": false,
+        "status": "EXECUTION_FAILED",
+        "submit_height": "100",
+        "submit_time": "1793100000",
+        "voting_end": "1793400000",
+        "pinned_config": {
+          "min_quorum": "0.400000000000000000",
+          "threshold": "0.500000000000000000",
+          "voting_period": "259200s",
+          "allow_expedite": true,
+          "expedited_period": "86400s",
+          "expedite_quorum": "0.600000000000000000",
+          "expedite_threshold": "0.700000000000000000",
+          "open_submission": false,
+          "proposal_cost": {
+            "denom": "ubze",
+            "amount": "5000000"
+          },
+          "proposal_deposit": {
+            "denom": "ubze",
+            "amount": "9000000"
+          },
+          "deposit_refund_policy": "ONLY_PASSED",
+          "cost_destination": "TREASURY",
+          "kept_deposit_destination": "BURN"
+        },
+        "pinned_electorate": {
+          "sr_ids": [
+            "000000000017"
+          ],
+          "dr_denom": ""
+        },
+        "pinned_denominator": "10000000000",
+        "pinned_deposit": null,
+        "yes": "6000000000",
+        "no": "1000000000",
+        "abstain": "0",
+        "cleanup_cursor": "0"
+      },
+      {
+        "id": "9",
+        "dao_id": "4",
+        "proposer": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "title": "Fund the hive festival",
+        "summary": "",
+        "msgs": [],
+        "expedited": true,
+        "status": "VOTING",
+        "submit_height": "100",
+        "submit_time": "1793100000",
+        "voting_end": "1793400000",
+        "pinned_config": {
+          "min_quorum": "0.400000000000000000",
+          "threshold": "0.500000000000000000",
+          "voting_period": "259200s",
+          "allow_expedite": true,
+          "expedited_period": "86400s",
+          "expedite_quorum": "0.600000000000000000",
+          "expedite_threshold": "0.700000000000000000",
+          "open_submission": false,
+          "proposal_cost": {
+            "denom": "ubze",
+            "amount": "5000000"
+          },
+          "proposal_deposit": {
+            "denom": "ubze",
+            "amount": "9000000"
+          },
+          "deposit_refund_policy": "ONLY_PASSED",
+          "cost_destination": "TREASURY",
+          "kept_deposit_destination": "BURN"
+        },
+        "pinned_electorate": {
+          "sr_ids": [
+            "000000000017"
+          ],
+          "dr_denom": ""
+        },
+        "pinned_denominator": "10000000000",
+        "pinned_deposit": null,
+        "yes": "7500000000",
+        "no": "500000000",
+        "abstain": "0",
+        "cleanup_cursor": "0"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}
