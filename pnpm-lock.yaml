@@ -290,7 +290,7 @@ importers:
     dependencies:
       '@bze/beepocket-connector':
         specifier: 0.1.0
-        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@bze/bze-ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
@@ -308,19 +308,19 @@ importers:
         version: 11.14.0(@types/react@19.2.17)(react@19.2.7)
       '@interchain-kit/core':
         specifier: 0.11.0
-        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/cosmostation-extension':
         specifier: 0.11.0
-        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/keplr-extension':
         specifier: 0.11.0
-        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/leap-extension':
         specifier: 0.11.0
-        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-kit/react':
         specifier: 0.11.1
-        version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
       '@interchain-ui/react':
         specifier: 1.26.3
         version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -329,10 +329,10 @@ importers:
         version: 5.96.2(react@19.2.7)
       '@wagmi/core':
         specifier: 3.4.2
-        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
       '@walletconnect/ethereum-provider':
         specifier: ^2.23.9
-        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
       bignumber.js:
         specifier: ^9.3.1
         version: 9.3.1
@@ -341,7 +341,7 @@ importers:
         version: 2.0.285
       next:
         specifier: 16.4.5
-        version: 16.4.5(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -356,10 +356,10 @@ importers:
         version: 5.6.0(react@19.2.7)
       viem:
         specifier: 2.47.10
-        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
       wagmi:
         specifier: 3.6.1
-        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@10.2.0)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@3.25.76))(immer@10.2.0)(ox@0.14.29(typescript@5.9.3)(zod@3.25.76))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
+        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3))(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))
     devDependencies:
       '@bze/vitest-preset':
         specifier: workspace:*
@@ -393,7 +393,7 @@ importers:
         version: 9.39.4
       eslint-config-next:
         specifier: 16.2.1
-        version: 16.2.1(@typescript-eslint/parser@8.61.0(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
+        version: 16.2.1(eslint@9.39.4)(typescript@5.9.3)
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
