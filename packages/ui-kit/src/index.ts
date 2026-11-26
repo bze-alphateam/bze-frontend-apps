@@ -232,7 +232,7 @@ export { BRANDING_TEMPLATES, BRANDING_TEMPLATE_MOODS, brandingFromTemplate } fro
 export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsStylesheetUrl, validateDenomBranding, contrastRatio, contrastText } from './utils/branding';
 export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
-export { getClosedChannels, getBlockedDenoms, getAutomationPaused } from './query/guardian';
+export { getClosedChannels, getBlockedDenoms, getAutomationPaused, invalidateAutomationPaused } from './query/guardian';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';
 export {

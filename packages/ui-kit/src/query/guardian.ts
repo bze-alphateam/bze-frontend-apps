@@ -1,5 +1,5 @@
 import {getSettings} from "../storage/settings";
-import {getFromLocalStorage, setInLocalStorage} from "../storage/storage";
+import {getFromLocalStorage, removeFromLocalStorage, setInLocalStorage} from "../storage/storage";
 
 /**
  * x/guardian readers (chain v8.3.0). Raw REST because bzejs 3.2.0 has no guardian client.
@@ -89,3 +89,6 @@ export const getBlockedDenoms = cachedReader<string[]>(
 export const getAutomationPaused = cachedReader<boolean>(
     AUTOMATION_PAUSED_KEY, "automation_paused", false, isBoolean, b => b.paused ?? false,
 );
+
+/** Drops the cached pause flag so the next `getAutomationPaused()` asks the chain (after a pause/resume event). */
+export const invalidateAutomationPaused = (): void => removeFromLocalStorage(AUTOMATION_PAUSED_KEY);

@@ -4,6 +4,7 @@ import {
     blockchainEventManager, CURRENT_WALLET_BALANCE_EVENT, type TendermintEvent, EPOCH_START_EVENT, LOCK_CHANGED_EVENT, NEXT_BURN_CHANGED_EVENT,
     RAFFLE_CHANGED_EVENT, SUPPLY_CHANGED_EVENT, getBurnerModuleAddress, getHardcodedLockAddress, getRaffleModuleAddress,
 } from "@bze/bze-ui-kit";
+import {AUTOMATION_PAUSE_CHANGED_EVENT} from "@/lib/automation-pause";
 
 // The hook's NewBlock handler is captured here so each test can push a notification into it.
 const subscriptions = vi.hoisted(() => new Map<string, (result: unknown) => void>());
@@ -128,6 +129,42 @@ describe("useBlockchainListener NewBlock events", () => {
         expect(emit).toHaveBeenCalledWith(NEXT_BURN_CHANGED_EVENT);
         expect(emit).toHaveBeenCalledWith(RAFFLE_CHANGED_EVENT);
         expect(emit).not.toHaveBeenCalledWith(LOCK_CHANGED_EVENT);
+    });
+});
+
+describe("useBlockchainListener automation pause", () => {
+    let emit: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+        subscriptions.clear();
+        feedStatus.listeners.clear();
+        wallet.address = undefined;
+        emit = vi.spyOn(blockchainEventManager, "emit");
+        emit.mockClear();
+    });
+
+    it("signals a pause the guardian signed (tx event)", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("bze.guardian.v1.AutomationPausedEvent")]]));
+
+        expect(emit).toHaveBeenCalledWith(AUTOMATION_PAUSE_CHANGED_EVENT);
+    });
+
+    it("signals a pause or a resume that governance executed (block event)", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([event("bze.guardian.v1.AutomationResumedEvent")], []));
+
+        expect(emit).toHaveBeenCalledWith(AUTOMATION_PAUSE_CHANGED_EVENT);
+    });
+
+    it("does not signal for unrelated blocks", async () => {
+        renderHook(() => useBlockchainListener());
+
+        await pushNewBlock(newBlock([], [[event("coinbase", {amount: "5ubze"})]]));
+
+        expect(emit).not.toHaveBeenCalledWith(AUTOMATION_PAUSE_CHANGED_EVENT);
     });
 });
 
