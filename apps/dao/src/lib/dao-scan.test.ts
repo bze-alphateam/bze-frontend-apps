@@ -6,20 +6,33 @@ const client = (get: ScanGetter) => createDaoScanClient(get);
 describe("filtersSupported", () => {
     it("is true when Scan refuses the invalid member address", async () => {
         const get = vi.fn<ScanGetter>(async () => ({status: 400, body: {error: "bad"}}));
-        expect(await client(get).filtersSupported()).toBe(true);
+        expect(await client(get).filtersSupported()).toBe("yes");
         expect(get).toHaveBeenCalledWith("daos", [["member", "not-an-address"], ["limit", "1"]]);
     });
 
     it("is false when Scan ignores the unknown parameter and answers the whole list", async () => {
         const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], supported: true}}));
-        expect(await client(get).filtersSupported()).toBe(false);
+        expect(await client(get).filtersSupported()).toBe("no");
     });
 
-    it("is false when Scan is down, and is asked once", async () => {
-        const get = vi.fn<ScanGetter>(async () => { throw new Error("down"); });
+    it("is unknown, not 'no', when the probe fails or Scan answers 5xx, and asks again next time", async () => {
+        const get = vi.fn<ScanGetter>()
+            .mockRejectedValueOnce(new Error("down"))
+            .mockResolvedValueOnce({status: 502, body: null})
+            .mockResolvedValueOnce({status: 400, body: {error: "bad"}});
         const c = client(get);
-        expect(await c.filtersSupported()).toBe(false);
-        expect(await c.filtersSupported()).toBe(false);
+
+        expect(await c.filtersSupported()).toBe("unknown");
+        expect(await c.filtersSupported()).toBe("unknown");
+        expect(await c.filtersSupported()).toBe("yes");
+        expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it("remembers a definite answer", async () => {
+        const get = vi.fn<ScanGetter>(async () => ({status: 400, body: null}));
+        const c = client(get);
+        await c.filtersSupported();
+        await c.filtersSupported();
         expect(get).toHaveBeenCalledTimes(1);
     });
 });

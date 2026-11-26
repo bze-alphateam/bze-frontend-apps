@@ -54,7 +54,7 @@ const searchTerm = (search: string): string => {
 export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, cursor: string | null, source?: 'scan' | 'chain'): Promise<DaoListResult> {
     if (source !== 'chain') {
         try {
-            const withFilters = await deps.scan.filtersSupported();
+            const withFilters = (await deps.scan.filtersSupported()) === 'yes';
             const q = withFilters ? searchTerm(filter.search) : '';
             const list = await deps.scan.listDaos({type: filter.kind || undefined, q: q || undefined, cursor, limit: PAGE_SIZE});
             if (!list.supported) return {state: 'unsupported'};
@@ -79,7 +79,7 @@ async function loadChainPage(deps: DaoDeps, filter: DaoFilter, key: string | nul
 /** The open proposals of all DAOs, soonest end first. Empty when Scan lacks the route (before BFE-368) or is down. */
 export async function loadOpenProposals(deps: DaoDeps): Promise<ScanOpenProposal[]> {
     try {
-        if (!(await deps.scan.filtersSupported())) return [];
+        if ((await deps.scan.filtersSupported()) !== 'yes') return [];
         const list = await deps.scan.openProposals(null, 10);
         return list.supported ? list.items : [];
     } catch {
@@ -91,8 +91,12 @@ export interface MyDaosResult {
     rows: MyDaoRow[];
     /** The wallet's admin DAOs could not be read: the list may be missing some. */
     adminFailed: boolean;
-    /** Scan without the member / staker filters, or down: only the admin DAOs are listed. */
+    /** Scan runs without the member / staker filters (before BFE-368): only the admin DAOs can be listed. */
     onlyAdmin: boolean;
+    /** The DAOs the wallet joined could not be read (Scan unreachable or failing). */
+    memberFailed: boolean;
+    /** The DAOs the wallet stakes in could not be read (Scan, or the x/rewards queries). */
+    stakerFailed: boolean;
 }
 
 async function adminDaos(chain: DaoChain, address: string): Promise<DaoCard[]> {
@@ -125,30 +129,28 @@ async function allScanPages(read: (cursor: string | null) => Promise<{items: Dao
  * x/rewards failing, the rest still lists.
  */
 export async function loadMyDaos(deps: DaoDeps, address: string): Promise<MyDaosResult> {
-    const adminPromise = adminDaos(deps.chain, address).then((cards) => ({cards, failed: false}), () => ({cards: [] as DaoCard[], failed: true}));
+    const settle = (read: () => Promise<DaoCard[]>) => read().then((cards) => ({cards, failed: false}), () => ({cards: [] as DaoCard[], failed: true}));
 
-    let member: DaoCard[] = [];
-    let staker: DaoCard[] = [];
-    let onlyAdmin = true;
-    try {
-        if (await deps.scan.filtersSupported()) {
-            const [memberCards, stakerCards] = await Promise.all([
-                allScanPages(async (cursor) => {
-                    const list = await deps.scan.listDaos({member: address, cursor, limit: 100});
-                    return {items: list.items.map(cardFromScan), next: list.next_cursor};
-                }),
-                loadStakerDaos(deps, address),
-            ]);
-            member = memberCards;
-            staker = stakerCards;
-            onlyAdmin = false;
-        }
-    } catch {
-        // Scan is down: the administered DAOs below are still the wallet's
-    }
+    const adminPromise = settle(() => adminDaos(deps.chain, address));
+    const support = await deps.scan.filtersSupported();
+    const memberPromise = support === 'yes'
+        ? settle(() => allScanPages(async (cursor) => {
+            const list = await deps.scan.listDaos({member: address, cursor, limit: 100});
+            return {items: list.items.map(cardFromScan), next: list.next_cursor};
+        }))
+        : Promise.resolve({cards: [] as DaoCard[], failed: support === 'unknown'});
+    const stakerPromise = support === 'yes'
+        ? settle(() => loadStakerDaos(deps, address))
+        : Promise.resolve({cards: [] as DaoCard[], failed: support === 'unknown'});
 
-    const admin = await adminPromise;
-    return {rows: buildMyDaos({admin: admin.cards, member, staker}), adminFailed: admin.failed, onlyAdmin};
+    const [admin, member, staker] = await Promise.all([adminPromise, memberPromise, stakerPromise]);
+    return {
+        rows: buildMyDaos({admin: admin.cards, member: member.cards, staker: staker.cards}),
+        adminFailed: admin.failed,
+        onlyAdmin: support === 'no',
+        memberFailed: member.failed,
+        stakerFailed: staker.failed,
+    };
 }
 
 async function loadStakerDaos(deps: DaoDeps, address: string): Promise<DaoCard[]> {

@@ -29,6 +29,9 @@ export const browserScanGetter: ScanGetter = async (path, query = []) => {
     return {status: response.status, body};
 };
 
+/** 'unknown' is Scan not answering the probe (down or 5xx): not a verdict, and asked again next time. */
+export type FilterSupport = 'yes' | 'no' | 'unknown';
+
 export interface DaoListRequest {
     type?: 'static_list' | 'stake';
     /** Name search (min 2 characters, BFE-368). */
@@ -47,9 +50,9 @@ export interface DaoScanClient {
      * Whether Scan runs the filters of BFE-368 (`member`, `source`, `q`, the cross-DAO proposals).
      * A Scan without them ignores the unknown parameters and answers the whole list, so it is
      * probed once: with an invalid `member` address a newer Scan answers 400 where an older one
-     * answers 200. A probe that fails for any other reason reads as "not supported".
+     * answers 200. Only that definite answer is remembered; a probe that fails (thrown, 5xx) is "unknown" and asked again on the next call.
      */
-    filtersSupported(): Promise<boolean>;
+    filtersSupported(): Promise<FilterSupport>;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
@@ -67,7 +70,7 @@ const asList = <T,>(body: unknown): {items: T[]; next_cursor: string | null; sup
 };
 
 export function createDaoScanClient(get: ScanGetter): DaoScanClient {
-    let probe: Promise<boolean> | undefined;
+    let probe: Promise<FilterSupport> | undefined;
 
     const read = async (path: string, query: Query) => {
         let answer;
@@ -100,10 +103,16 @@ export function createDaoScanClient(get: ScanGetter): DaoScanClient {
         },
 
         filtersSupported() {
-            probe ??= get('daos', [['member', 'not-an-address'], ['limit', '1']]).then(
-                (answer) => answer.status === 400,
-                () => false,
-            );
+            if (!probe) {
+                const attempt: Promise<FilterSupport> = get('daos', [['member', 'not-an-address'], ['limit', '1']]).then(
+                    (answer): FilterSupport => (answer.status === 400 ? 'yes' : answer.status === 200 ? 'no' : 'unknown'),
+                    (): FilterSupport => 'unknown',
+                );
+                probe = attempt;
+                void attempt.then((verdict) => {
+                    if (verdict === 'unknown' && probe === attempt) probe = undefined;
+                });
+            }
             return probe;
         },
     };

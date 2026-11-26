@@ -23,7 +23,7 @@ function deps(scan: Partial<DaoScanClient> = {}, chain: Partial<DaoChain> = {}):
         scan: {
             listDaos: vi.fn(async () => list([])),
             openProposals: vi.fn(async () => ({items: [], next_cursor: null, supported: true})),
-            filtersSupported: vi.fn(async () => true),
+            filtersSupported: vi.fn(async () => 'yes' as const),
             ...scan,
         },
         chain: {
@@ -57,7 +57,7 @@ describe("loadDaoPage", () => {
 
     it("filters the name on the page itself when Scan ignores the search (before BFE-368)", async () => {
         const d = deps({
-            filtersSupported: vi.fn(async () => false),
+            filtersSupported: vi.fn(async () => 'no' as const),
             listDaos: vi.fn(async () => list([scanDao(1, {name: "Founders"}), scanDao(2, {name: "Stakers club"})])),
         });
         const result = await loadDaoPage(d, {kind: "", search: "club"}, null);
@@ -123,7 +123,7 @@ describe("loadOpenProposals", () => {
     });
 
     it("is empty without the BFE-368 route, when the node is not supported, and when Scan is down", async () => {
-        expect(await loadOpenProposals(deps({filtersSupported: vi.fn(async () => false)}))).toEqual([]);
+        expect(await loadOpenProposals(deps({filtersSupported: vi.fn(async () => 'no' as const)}))).toEqual([]);
         expect(await loadOpenProposals(deps({openProposals: vi.fn(async () => ({items: [proposal], next_cursor: null, supported: false}))}))).toEqual([]);
         expect(await loadOpenProposals(deps({openProposals: vi.fn(async () => { throw new Error("down"); })}))).toEqual([]);
     });
@@ -151,7 +151,7 @@ describe("loadMyDaos", () => {
     });
 
     it("shows the administered DAOs only, and never asks Scan for filters, while Scan lacks BFE-368", async () => {
-        const d = deps({filtersSupported: vi.fn(async () => false)}, {getDaosByAdmin: vi.fn(async () => ({items: [chainDao(4)], nextKey: null}))});
+        const d = deps({filtersSupported: vi.fn(async () => 'no' as const)}, {getDaosByAdmin: vi.fn(async () => ({items: [chainDao(4)], nextKey: null}))});
         const result = await loadMyDaos(d, ME);
 
         expect(result.onlyAdmin).toBe(true);
@@ -164,7 +164,28 @@ describe("loadMyDaos", () => {
         const d = deps({listDaos: vi.fn(async () => { throw new Error("down"); })}, {getDaosByAdmin: vi.fn(async () => ({items: [chainDao(4)], nextKey: null}))});
         const result = await loadMyDaos(d, ME);
         expect(result.rows.map((r) => r.dao.id)).toEqual(["4"]);
-        expect(result.onlyAdmin).toBe(true);
+        expect(result.onlyAdmin).toBe(false);
+        expect(result.memberFailed).toBe(true);
+    });
+
+    it("still lists the joined DAOs when the x/rewards read fails, and says the staked ones are missing", async () => {
+        const d = deps({listDaos: vi.fn(async (req) => (req.member ? list([scanDao(5)]) : list([])))}, {
+            denomRewardParticipations: vi.fn(async () => { throw new Error("rewards"); }),
+        });
+        const result = await loadMyDaos(d, ME);
+
+        expect(result.rows.map((r) => [r.dao.id, r.reasons])).toEqual([["5", ["Member"]]]);
+        expect(result.stakerFailed).toBe(true);
+        expect(result.memberFailed).toBe(false);
+        expect(result.onlyAdmin).toBe(false);
+    });
+
+    it("reports an unreachable Scan probe as failed reads, not as a Scan without the filters", async () => {
+        const d = deps({filtersSupported: vi.fn(async () => 'unknown' as const)});
+        const result = await loadMyDaos(d, ME);
+
+        expect(result).toMatchObject({onlyAdmin: false, memberFailed: true, stakerFailed: true});
+        expect(d.scan.listDaos).not.toHaveBeenCalled();
     });
 
     it("flags a failed admin read and still lists the rest", async () => {

@@ -28,8 +28,15 @@ export const MyDaos = ({deps, address}: {deps: DaoDeps; address: string}) => {
             {result?.adminFailed && (
                 <Notice status="warning">The DAOs you administer could not be read from the chain, so this list may be incomplete.</Notice>
             )}
-            {result?.onlyAdmin && !result.adminFailed && (
+            {result?.onlyAdmin && (
                 <Notice status="info">Only the DAOs you administer are listed for now. DAOs you joined or stake in appear once BZE Scan supports it.</Notice>
+            )}
+            {result && (result.memberFailed || result.stakerFailed) && (
+                <Notice status="warning">
+                    {result.memberFailed
+                        ? "The DAOs you joined or stake in couldn't be loaded right now, so this list may be incomplete."
+                        : "The DAOs you stake in couldn't be loaded right now, so this list may be incomplete."}
+                </Notice>
             )}
 
             {result && result.rows.length === 0 && (
