@@ -30,6 +30,7 @@ function deps(scan: Partial<DaoScanClient> = {}, chain: Partial<DaoChain> = {}):
             isSupported: vi.fn(async () => true),
             getDaos: vi.fn(async () => ({items: [], nextKey: null})),
             getDaosByAdmin: vi.fn(async () => ({items: [], nextKey: null})),
+            getDao: vi.fn(async () => null),
             stakingRewardParticipations: vi.fn(async () => []),
             denomRewardParticipations: vi.fn(async () => []),
             ...chain,
@@ -143,6 +144,57 @@ describe("loadMyDaos", () => {
         expect(d.scan.listDaos).toHaveBeenCalledWith(expect.objectContaining({sources: ["dr/ubze"]}));
         expect(onlyAdmin).toBe(false);
         expect(adminFailed).toBe(false);
+    });
+
+    describe("the DAOs that nominated the wallet", () => {
+        const nominating = (id: number) => chainDao(id, {pending_admin: ME});
+        const asks = (d: ReturnType<typeof deps>) => vi.mocked(d.scan.listDaos).mock.calls.map(([r]) => r).filter((r) => r.pendingAdmin);
+
+        it("lists them as Nominated, each one confirmed by the chain's own pending admin", async () => {
+            const d = deps({
+                listDaos: vi.fn(async (req) => (req.pendingAdmin ? list([scanDao(5), scanDao(6)]) : list([]))),
+            }, {
+                getDao: vi.fn(async (id: string) => (id === "5" ? nominating(5) : chainDao(6, {pending_admin: "bze1someoneelse"}))),
+            });
+            const result = await loadMyDaos(d, ME);
+
+            // Scan named two; only the one whose pending admin is this wallet is listed
+            expect(result.rows.map((r) => [r.dao.id, r.reasons])).toEqual([["5", ["Nominated"]]]);
+            expect(asks(d)).toEqual([expect.objectContaining({pendingAdmin: ME})]);
+            expect(result.nominatedFailed).toBe(false);
+        });
+
+        it("reads every page of the answer", async () => {
+            const listDaos = vi.fn(async (req: {pendingAdmin?: string; cursor?: string | null}) => {
+                if (!req.pendingAdmin) return list([]);
+                return req.cursor ? list([scanDao(6)]) : list([scanDao(5)], {next_cursor: "c2"});
+            });
+            const d = deps({listDaos}, {getDao: vi.fn(async (id: string) => nominating(Number(id)))});
+            expect((await loadMyDaos(d, ME)).rows.map((r) => r.dao.id)).toEqual(["6", "5"]);
+        });
+
+        it("a list that never ends is a failed read, not a short list", async () => {
+            const d = deps({listDaos: vi.fn(async (req) => (req.pendingAdmin ? list([scanDao(5)], {next_cursor: "more"}) : list([])))}, {getDao: vi.fn(async () => nominating(5))});
+            const result = await loadMyDaos(d, ME);
+            expect(result.nominatedFailed).toBe(true);
+            expect(result.rows).toEqual([]);
+        });
+
+        it("a chain read that fails is a failed read, and a DAO the chain does not have is no nomination", async () => {
+            const scan = {listDaos: vi.fn(async (req: {pendingAdmin?: string}) => (req.pendingAdmin ? list([scanDao(5)]) : list([])))};
+            const down = await loadMyDaos(deps(scan, {getDao: vi.fn(async () => { throw new Error("rest"); })}), ME);
+            expect(down.nominatedFailed).toBe(true);
+            const gone = await loadMyDaos(deps(scan, {getDao: vi.fn(async () => null)}), ME);
+            expect(gone).toMatchObject({nominatedFailed: false, rows: []});
+        });
+
+        it("asks nothing from a Scan without the filters (it would answer every DAO), and flags an unknown probe", async () => {
+            const no = deps({filtersSupported: vi.fn(async () => 'no' as const)});
+            expect((await loadMyDaos(no, ME)).nominatedFailed).toBe(false);
+            expect(asks(no)).toEqual([]);
+            const unknown = deps({filtersSupported: vi.fn(async () => 'unknown' as const)});
+            expect((await loadMyDaos(unknown, ME)).nominatedFailed).toBe(true);
+        });
     });
 
     it("leaves the self-owned DAOs out of the admin list", async () => {

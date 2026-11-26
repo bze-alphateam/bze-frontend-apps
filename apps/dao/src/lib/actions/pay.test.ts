@@ -65,6 +65,13 @@ describe("the pay-from-the-treasury action", () => {
         expect(payEntry.warnings?.(fields({amount: "250"}), ctxWith()).join(" ")).not.toMatch(/holds less/);
     });
 
+    it("blocks it when the action runs in the signed transaction: a treasury that is short fails the whole batch", () => {
+        const now = ctxWith({runsNow: true});
+        expect(payEntry.validate(fields({amount: "250.000001"}), now)).toMatch(/holds less than this: the payment would fail/);
+        expect(payEntry.warnings?.(fields({amount: "250.000001"}), now).join(" ")).not.toMatch(/holds less/);
+        expect(payEntry.validate(fields({amount: "250"}), now)).toBeUndefined();
+    });
+
     it("warns about paying the DAO to itself", () => {
         expect(payEntry.warnings?.(fields({to: DAO_ADDRESS}), ctxWith()).join(" ")).toMatch(/own account/);
     });

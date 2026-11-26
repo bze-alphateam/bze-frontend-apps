@@ -27,6 +27,7 @@ The e2e wallet `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw` administers DAOs 3 a
 | `scan/daos.page-1.json`, `daos.page-2.json` | the unfiltered list, 20 per page, cursor `c1` |
 | `scan/daos.type-stake.json`, `daos.search-club.json` | `type=stake`, `q=club` |
 | `scan/daos.member.wallet.json`, `daos.source.wallet.json` | `member=<wallet>`, `source=sr/000000000017` |
+| `scan/daos.pending-admin.wallet.json` | `pending_admin=<wallet>` (My DAOs, "Nominated"): empty; the admin console spec overrides it |
 | `scan/dao-proposals.voting.json` | the open proposals feed (`status=voting`, 10) |
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (copied from the communities suite; the price calculation asks for it depending on timing) |
 | `lcd/bank.spendable_balances.wallet.json` | the e2e wallet's balances (none) |

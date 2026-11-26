@@ -118,7 +118,7 @@ export function parseCustomMessage(text: string, ctx: Pick<ActionContext, 'dao'>
     }
 
     if (typeUrl === SETTLE || (typeUrl === AUTHZ_EXEC && mentionsSettle(parsed))) {
-        return {ok: false, error: 'A proposal cannot run a settle message (MsgSettleProposal), not even inside an authz exec: the chain refuses it when the proposal runs, and the proposal would end as failed.'};
+        return {ok: false, error: 'A DAO execution cannot run a settle message (MsgSettleProposal), not even inside an authz exec: the chain refuses it when the actions run.'};
     }
 
     const {'@type': _type, ...body} = parsed;
@@ -129,11 +129,11 @@ export function parseCustomMessage(text: string, ctx: Pick<ActionContext, 'dao'>
     if (signers.addresses.length === 0) return {ok: false, error: `Set "${signers.field}" to the DAO's address, ${ctx.dao.address}: the DAO has to be the one who signs.`};
     const wrong = signers.addresses.find((a) => a.toLowerCase() !== ctx.dao.address.toLowerCase());
     if (wrong !== undefined) {
-        return {ok: false, error: `"${signers.field}" is ${wrong}, but a proposal's messages run as the DAO and must be signed by the DAO only (${ctx.dao.address}). The chain refuses any other signer.`};
+        return {ok: false, error: `"${signers.field}" is ${wrong}, but these messages run as the DAO and must be signed by the DAO only (${ctx.dao.address}). The chain refuses any other signer.`};
     }
 
     if (typeUrl === ADMIN_EXECUTE && String(body.dao_id ?? '') === ctx.dao.id) {
-        return {ok: false, error: 'A DAO cannot run messages as itself through admin execute: put the message in the proposal directly.'};
+        return {ok: false, error: 'A DAO cannot run messages as itself through admin execute: add the message itself instead.'};
     }
 
     let value: unknown;

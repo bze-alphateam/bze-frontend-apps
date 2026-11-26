@@ -11,6 +11,7 @@ import type {ProposalChain, ProposalDeps} from './proposal-loader';
 import type {DaoChain, DaoDeps} from './dao-loader';
 import {DaoModuleUnsupported, type DaoViewChain, type DaoViewDeps} from './dao-view-loader';
 import type {StakeSource} from './dao-voters';
+import type {NominationChain} from './admin/nomination';
 import {createRelationScan, type RelationChain, type RelationDeps} from './propose/relations';
 
 /** The chain side of the loaders: ui-kit's x/dao and x/rewards queries. */
@@ -18,6 +19,7 @@ export const liveDaoChain: DaoChain = {
     isSupported: isDaoModuleSupported,
     getDaos,
     getDaosByAdmin,
+    getDao,
     stakingRewardParticipations: async (address) => (await getStakingRewardParticipantByAddress(address)).list,
     denomRewardParticipations: getDenomRewardParticipations,
 };
@@ -131,4 +133,10 @@ export const liveRelationChain: RelationChain = {
 export const liveRelationDeps: RelationDeps = {
     chain: liveRelationChain,
     scan: createRelationScan(browserScanGetter),
+};
+
+/** The chain reads that tell whether a nomination is still valid (the nominated DAO's admin chain). */
+export const liveNominationChain: NominationChain = {
+    getController: getDaoController,
+    getDaoByAddress,
 };

@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DraftStorage} from "./draft";
-import {clearPending, loadPending, pendingKey, readProposalId, savePending} from "./pending";
+import {clearPending, clearPendingAt, loadPending, loadPendingAt, pendingKey, readProposalId, savePending, savePendingAt} from "./pending";
 
 const memory = (): DraftStorage & {data: Map<string, string>} => {
     const data = new Map<string, string>();
@@ -38,6 +38,20 @@ describe("the pending transaction of a DAO", () => {
         expect(loadPending(broken, "4")).toBeNull();
         expect(() => savePending(null, "4", HASH)).not.toThrow();
         expect(loadPending(null, "4")).toBeNull();
+    });
+});
+
+describe("a pending transaction under any key", () => {
+    it("keeps what it was, and drops a record that is not valid", () => {
+        const s = memory();
+        savePendingAt(s, "k", HASH, "accept");
+        expect(loadPendingAt(s, "k")).toEqual({hash: HASH, kind: "accept"});
+        savePendingAt(s, "k", HASH);
+        expect(loadPendingAt(s, "k")).toEqual({hash: HASH, kind: null});
+        s.setItem("k", JSON.stringify({v: 1, hash: "nope", kind: "accept"}));
+        expect(loadPendingAt(s, "k")).toBeNull();
+        clearPendingAt(s, "k");
+        expect(s.data.size).toBe(0);
     });
 });
 

@@ -23,6 +23,8 @@ interface Props {
     onChange: (drafts: ActionDraft[]) => void;
     /** The list inside another action (run as a sub-DAO): no panel of its own. */
     nested?: boolean;
+    /** The wording of a list that is not a proposal's (the admin console's); the defaults are a proposal's. */
+    wording?: {title?: string; intro: string; empty: string; full?: (max: number) => string};
 }
 
 const iconButton = {
@@ -92,7 +94,7 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
 };
 
 /** The ordered list of actions: add from the registry, edit, move, remove. */
-export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false}: Props) => {
+export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, wording}: Props) => {
     const [picking, setPicking] = useState(false);
     const entries = availableActions(ctx.dao, ctx);
     const composed = given ?? drafts.map((draft) => composeAction(draft, ctx, findAction));
@@ -113,11 +115,11 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
     const body = (
         <>
             <chakra.p m="0" fontSize="14px" color="fg.muted">
-                {nested
+                {wording?.intro ?? (nested
                     ? `What ${ctx.dao.name} does, in this order, all or nothing.`
-                    : "What the DAO does if the proposal passes, in this order, all or nothing. Leave the list empty for a text-only proposal that just records the DAO's decision."}
+                    : "What the DAO does if the proposal passes, in this order, all or nothing. Leave the list empty for a text-only proposal that just records the DAO's decision.")}
             </chakra.p>
-            {drafts.length === 0 && <chakra.p m="0" fontSize="14px" data-testid={nested ? 'no-inner-actions' : 'no-actions'}>{nested ? 'No actions yet.' : 'No actions: this is a text-only proposal.'}</chakra.p>}
+            {drafts.length === 0 && <chakra.p m="0" fontSize="14px" data-testid={nested ? 'no-inner-actions' : 'no-actions'}>{wording?.empty ?? (nested ? 'No actions yet.' : 'No actions: this is a text-only proposal.')}</chakra.p>}
             {drafts.length > 0 && (
                 <chakra.ol m="0" p="0" display="flex" flexDirection="column" gap="12px">
                     {drafts.map((draft, i) => (
@@ -136,7 +138,7 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
                     ))}
                 </chakra.ol>
             )}
-            {full && <chakra.p m="0" fontSize="13px" color="fg.muted">{`A proposal can run at most ${maxActions} actions.`}</chakra.p>}
+            {full && <chakra.p m="0" fontSize="13px" color="fg.muted">{wording?.full?.(maxActions) ?? `A proposal can run at most ${maxActions} actions.`}</chakra.p>}
             {!full && !picking && (
                 <chakra.button type="button" alignSelf="flex-start" color="hg.link" fontWeight="600" cursor="pointer" onClick={() => setPicking(true)} data-testid="add-action">
                     + Add an action
@@ -170,5 +172,5 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
 
     return nested
         ? <Flex direction="column" gap="12px" ps="12px" borderStartWidth="2px" borderColor="app.border" data-testid="nested-actions">{body}</Flex>
-        : <Panel id="actions" title="Actions" testId="actions-editor">{body}</Panel>;
+        : <Panel id="actions" title={wording?.title ?? 'Actions'} testId="actions-editor">{body}</Panel>;
 };

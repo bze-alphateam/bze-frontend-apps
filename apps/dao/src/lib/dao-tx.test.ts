@@ -75,3 +75,12 @@ describe("cleanupBatchResult", () => {
         expect(cleanupBatchResult(cleaned({completed: "maybe"}))).toBeNull();
     });
 });
+
+describe("sendDaoTx: the broadcast", () => {
+    it("tells the caller the hash as soon as the transaction is out, before the outcome is known", async () => {
+        const heard: string[] = [];
+        const {tx} = failing("not found within timeout", {stage: "timeout", txHash: "H5"}, "H5");
+        await sendDaoTx(tx, MSGS, (hash) => heard.push(hash));
+        expect(heard).toEqual(["H5"]);
+    });
+});

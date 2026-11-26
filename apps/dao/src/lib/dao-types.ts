@@ -55,7 +55,7 @@ export interface ScanProposalList {
     supported: boolean;
 }
 
-export type Reason = 'Admin' | 'Member' | 'Staker';
+export type Reason = 'Admin' | 'Nominated' | 'Member' | 'Staker';
 
 export interface MyDaoRow {
     dao: DaoCard;

@@ -130,6 +130,8 @@ describe('prettyError — DAOs (x/dao)', () => {
         [1131, raw('proposal 7 is VOTING: the proposal is not finished'), /can't be cleaned up yet/],
         [1132, raw('proposal 7: the expedited proposal cannot settle early yet'), /minimum time to react/],
         [1133, raw('message 0 (/cosmos.authz.v1beta1.MsgGrant): the message is not allowed in this dao execution'), /isn't allowed here/],
+        [1115, raw('dao 5: no admin nomination is pending'), /no pending admin nomination/],
+        [1134, raw('at most 5 nested dao executions: dao executions are nested too deep'), /nested too deep/],
         [1135, raw('dao 5: the admin nomination is stale: control of the nominating dao changed since'), /no longer valid/],
     ])('maps code %i', (_code, log, expected) => {
         expect(prettyError(log)).toMatch(expected)

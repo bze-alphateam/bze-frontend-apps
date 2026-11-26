@@ -1,4 +1,5 @@
 import {ratioAtomics, type DaoCoin, type DaoProposalMessage} from '@bze/bze-ui-kit';
+import {MAX_EXECUTION_DEPTH} from './actions/execution';
 import {formatDuration, formatRatio} from './format';
 import {fieldName} from './dao-history';
 import {secondsOf} from './dao-rules';
@@ -41,8 +42,8 @@ export interface DescribeContext {
     beforeOf?: (daoId: string) => PinnedConfig | null;
 }
 
-/** Nested `MsgAdminExecute` stop being read here (the chain caps the depth too); deeper ones are raw JSON. */
-export const MAX_NESTING = 3;
+/** Nested `MsgAdminExecute` stop being read here at the chain's own depth limit; deeper ones are raw JSON. */
+export const MAX_NESTING = MAX_EXECUTION_DEPTH;
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

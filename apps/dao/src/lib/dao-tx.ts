@@ -22,10 +22,10 @@ export type TxOutcome =
 
 /**
  * Signs and sends x/dao messages with `daoTxOptions` (direct signing, and no signing at all when the fee
- * simulation fails). The page draws its own panels, so ui-kit's toasts are off and every failure, including
+ * simulation fails). `onBroadcast` hears the hash as soon as the transaction is out, before anyone knows its fate. The page draws its own panels, so ui-kit's toasts are off and every failure, including
  * the ones before the wallet opens, arrives through the outcome.
  */
-export async function sendDaoTx(signAndSend: SignAndSend, msgs: EncodeObject[]): Promise<TxOutcome> {
+export async function sendDaoTx(signAndSend: SignAndSend, msgs: EncodeObject[], onBroadcast?: (txHash: string) => void): Promise<TxOutcome> {
     let failure: {error: string; details?: TxFailureDetails} | null = null;
     let broadcastHash: string | undefined;
     let success: TxSuccessResponse | undefined;
@@ -33,7 +33,10 @@ export async function sendDaoTx(signAndSend: SignAndSend, msgs: EncodeObject[]):
         const sent = await signAndSend(msgs, {
             ...daoTxOptions,
             toasts: false,
-            onBroadcast: (hash) => { broadcastHash = hash; },
+            onBroadcast: (hash) => {
+                broadcastHash = hash;
+                onBroadcast?.(hash);
+            },
             onSuccess: (response) => { success = response; },
             onFailure: (error, details) => { failure = {error, details}; },
         });

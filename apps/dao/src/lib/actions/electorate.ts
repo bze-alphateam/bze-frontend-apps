@@ -47,6 +47,22 @@ export const electorateVoterStake = (electorate: DaoStakeElectorate, options: El
     return 'found' in read ? votingStake(read.found) : null;
 };
 
+/**
+ * Why a DAO cannot be handed to its own voters (the chain's live-electorate check, error 1113), or undefined
+ * when it can: a member list needs a member; a stake DAO needs voting stake in its sources, without its own.
+ * `sources` are the staking sources with the DAO's own stake in each; null when they could not be read, which
+ * is never read as "no voters".
+ */
+export function handOverProblem(dao: Pick<ActionContext['dao'], 'name' | 'type' | 'members' | 'electorate'>, sources: ElectorateOption[] | null): string | undefined {
+    const none = `${dao.name} has no voters to hand it to: set up its voters first (the chain refuses it, error 1113).`;
+    if (dao.type === 'DAO_TYPE_STATIC_LIST') return dao.members.length > 0 ? undefined : none;
+    const unreadable = `The stake of ${dao.name} could not be read, so it cannot be checked that it has voters. Try again in a moment.`;
+    if (!dao.electorate || sources === null) return dao.electorate ? unreadable : none;
+    const stake = electorateVoterStake(dao.electorate, sources);
+    if (stake === null) return unreadable;
+    return stake.isGreaterThan(0) ? undefined : none;
+}
+
 const check = (fields: ActionFields, ctx: ActionContext): string | undefined => {
     if (ctx.dao.type !== 'DAO_TYPE_STAKE') return 'Only a stakers DAO has an electorate: this DAO has a member list.';
     if (ctx.sources === null) return 'The staking rewards could not be read, so the voters cannot be changed right now. Try again in a moment.';

@@ -10,14 +10,32 @@ export const isSelfOwned = (dao: Pick<ActionContext['dao'], 'admin' | 'address'>
 
 const EXTERNAL_ADMIN_POWER = 'An external admin can run any message as the DAO, including spending the whole treasury, and the DAO\'s voters can no longer overrule it.';
 
-const nomineeCheck = (nominee: string, dao: Pick<ActionContext['dao'], 'address' | 'admin'>): string | undefined => {
+export interface NomineeRules {
+    /** The DAO's account: it cannot be its own nominee (it is handed to its voters with an empty nominee). */
+    daoAddress: string;
+    /** The current admin's account: it cannot be nominated again. */
+    adminAddress: string;
+    /** The sentence for each of the two refusals, worded for who is asking. */
+    isDao: string;
+    isAdmin: string;
+}
+
+/** The nominee rules of the chain (1114) as a sentence, or undefined; one check for every place a nominee is typed. */
+export const nomineeProblem = (nominee: string, rules: NomineeRules): string | undefined => {
     if (nominee === '') return 'Enter the address of the new admin.';
     const canonical = canonicalAddress(nominee);
     if (!canonical) return 'The new admin is not a valid BeeZee address (it starts with bze1).';
-    if (canonical === dao.address.toLowerCase()) return 'The DAO cannot nominate itself: it is already its own admin.';
-    if (canonical === dao.admin.toLowerCase()) return 'This address is already the admin.';
+    if (canonical === rules.daoAddress.toLowerCase()) return rules.isDao;
+    if (canonical === rules.adminAddress.toLowerCase()) return rules.isAdmin;
     return undefined;
 };
+
+const nomineeCheck = (nominee: string, dao: Pick<ActionContext['dao'], 'address' | 'admin'>): string | undefined => nomineeProblem(nominee, {
+    daoAddress: dao.address,
+    adminAddress: dao.admin,
+    isDao: 'The DAO cannot nominate itself: it is already its own admin.',
+    isAdmin: 'This address is already the admin.',
+});
 
 /** Nominate an admin for a self-owned DAO. The DAO stays self-owned until the nominee accepts. */
 export const nominateEntry: ActionEntry = {

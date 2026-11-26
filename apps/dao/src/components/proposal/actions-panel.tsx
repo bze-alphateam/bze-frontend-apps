@@ -14,7 +14,27 @@ interface Props {
     signer?: string;
     /** The account of a DAO an admin execute runs actions as (the composer knows its sub-DAOs). */
     signerOf?: (daoId: string) => string | undefined;
+    /** The wording around the actions; the defaults are a proposal's. The admin console words them for what it signs. */
+    wording?: Partial<PanelWording>;
+    /** Every action shown open (what is about to be signed is read, not folded away). */
+    expanded?: boolean;
 }
+
+export interface PanelWording {
+    title: string;
+    /** The sentence under the title when there are actions; null for none. */
+    runs: string | null;
+    /** What the signer line starts with, before the account. */
+    signedBy: string;
+    empty: string;
+}
+
+const PROPOSAL_WORDING: PanelWording = {
+    title: 'Actions if it passes',
+    runs: 'They run as the DAO, all or nothing, once the proposal passes.',
+    signedBy: 'Every message is signed by the DAO account',
+    empty: "This is a text-only proposal: it asks for no action. Passing it only records the DAO's decision.",
+};
 
 const Fact = ({children, testId}: {children: React.ReactNode; testId?: string}) => (
     <chakra.p m="0" fontSize="14px" overflowWrap="anywhere" data-testid={testId}>{children}</chakra.p>
@@ -96,9 +116,12 @@ export const Described = ({action, formatCoin, nameOf, signerOf}: {action: MsgAc
                 <Flex direction="column" gap="8px">
                     <Fact testId="action-title">{`Run ${action.actions.length === 1 ? 'an action' : `${action.actions.length} actions`} as the DAO it administers (DAO ${action.daoId})`}</Fact>
                     <Flex direction="column" gap="8px" ps="12px" borderStartWidth="2px" borderColor="app.border">
-                        {signerOf?.(action.daoId) && (
+                        {signerOf && (
                             <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="run-as">
-                                <span>Signed by</span><AddressLine address={signerOf(action.daoId) as string} name={nameOf(signerOf(action.daoId) as string)} />
+                                <span>Signed by</span>
+                                {signerOf(action.daoId)
+                                    ? <AddressLine address={signerOf(action.daoId) as string} name={nameOf(signerOf(action.daoId) as string)} />
+                                    : <span>{`DAO ${action.daoId} (its account is not known here)`}</span>}
                             </Flex>
                         )}
                         {action.actions.map((inner, i) => <Described key={i} action={inner} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} />)}
@@ -117,27 +140,30 @@ export const Described = ({action, formatCoin, nameOf, signerOf}: {action: MsgAc
 };
 
 /** What the proposal does if it passes, one collapsed item per message. A proposal without messages says so. */
-export const ActionsPanel = ({actions, formatCoin, nameOf, signer, signerOf}: Props) => (
-    <Panel id="actions" title="Actions if it passes" testId="actions-panel">
-        {actions.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="text-only">This is a text-only proposal: it asks for no action. Passing it only records the DAO&apos;s decision.</chakra.p>}
-        {actions.length > 0 && <chakra.p m="0" fontSize="13px" color="fg.muted">They run as the DAO, all or nothing, once the proposal passes.</chakra.p>}
-        {actions.length > 0 && signer && (
-            <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="signed-by">
-                <span>Every message is signed by the DAO account</span><AddressLine address={signer} name={nameOf(signer)} />{signerOf && <span>(the actions an admin runs for a sub-DAO are signed by that DAO)</span>}
+export const ActionsPanel = ({actions, formatCoin, nameOf, signer, signerOf, wording, expanded = false}: Props) => {
+    const words = {...PROPOSAL_WORDING, ...wording};
+    return (
+        <Panel id="actions" title={words.title} testId="actions-panel">
+            {actions.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="text-only">{words.empty}</chakra.p>}
+            {actions.length > 0 && words.runs && <chakra.p m="0" fontSize="13px" color="fg.muted">{words.runs}</chakra.p>}
+            {actions.length > 0 && signer && (
+                <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="signed-by">
+                    <span>{words.signedBy}</span><AddressLine address={signer} name={nameOf(signer)} />{signerOf && <span>(the actions an admin runs for a sub-DAO are signed by that DAO)</span>}
+                </Flex>
+            )}
+            <Flex direction="column" gap="8px">
+                {actions.map((action, i) => (
+                    <chakra.details key={i} open={expanded || undefined} borderWidth="1px" borderColor="app.border" borderRadius="12px" px="14px" py="10px" data-testid="action">
+                        <chakra.summary cursor="pointer" fontWeight="600" fontSize="14px">
+                            {`${i + 1}. ${summaryOf(action)}`}
+                        </chakra.summary>
+                        <chakra.div mt="10px"><Described action={action} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} /></chakra.div>
+                    </chakra.details>
+                ))}
             </Flex>
-        )}
-        <Flex direction="column" gap="8px">
-            {actions.map((action, i) => (
-                <chakra.details key={i} borderWidth="1px" borderColor="app.border" borderRadius="12px" px="14px" py="10px" data-testid="action">
-                    <chakra.summary cursor="pointer" fontWeight="600" fontSize="14px">
-                        {`${i + 1}. ${summaryOf(action)}`}
-                    </chakra.summary>
-                    <chakra.div mt="10px"><Described action={action} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} /></chakra.div>
-                </chakra.details>
-            ))}
-        </Flex>
-    </Panel>
-);
+        </Panel>
+    );
+};
 
 const SUMMARY: Record<MsgAction['type'], string> = {
     send: 'Send funds',
