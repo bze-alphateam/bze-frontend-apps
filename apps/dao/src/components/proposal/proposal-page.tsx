@@ -9,12 +9,14 @@ import {PlainText} from '@/components/ui/plain-text';
 import {AddressLine, Panel, Tag} from '@/components/dao/page/panel';
 import {useCoinFormat} from '@/components/dao/page/use-coin-format';
 import {Unsupported} from '@/components/dao/unsupported';
+import {useAsync} from '@/hooks/useAsync';
 import {useNow} from '@/hooks/useNow';
 import {useProposalPage} from '@/hooks/useProposalPage';
 import {liveProposalDeps} from '@/lib/dao-chain';
+import {DAO_FEATURES} from '@/lib/dao-actions';
 import {formatDateTime, formatRelative} from '@/lib/format';
 import {describeMessages} from '@/lib/proposal-describe';
-import type {ProposalDeps, ProposalPageData} from '@/lib/proposal-loader';
+import {loadMyVote, type ProposalDeps, type ProposalPageData} from '@/lib/proposal-loader';
 import {canSettleNow, describeStatus} from '@/lib/proposal-status';
 import {ActionsPanel} from './actions-panel';
 import {ProposalActionsSlot} from './actions-slot';
@@ -25,11 +27,24 @@ import {MoneyPanel, TimelinePanel} from './timeline-money';
 import {useWeightFormat} from './use-weight-format';
 import {VotesPanel} from './votes-panel';
 
-const Body = ({deps, data, wallet, nowMs, onRetryScan}: {deps: ProposalDeps; data: ProposalPageData; wallet: string | null; nowMs: number; onRetryScan: () => void}) => {
+interface BodyProps {
+    deps: ProposalDeps;
+    data: ProposalPageData;
+    wallet: string | null;
+    nowMs: number;
+    onRetryScan: () => void;
+    refresh: () => Promise<'ok' | 'gone' | 'failed'>;
+    /** Changes after every in-place refresh: the wallet's own reads and the votes list follow it. */
+    version: number;
+}
+
+const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version}: BodyProps) => {
     const {model} = data;
     const coins = useCoinFormat();
     const formatWeight = useWeightFormat(data.weightDenom);
     const status = describeStatus(model);
+    // read once for both the actions and the "My vote" panel; re-read after every transaction
+    const mine = useAsync(wallet ? `${model.id}:${wallet}:${model.status}:${version}` : null, () => loadMyVote(deps, model, wallet as string));
     const dao = data.dao.ok ? data.dao.value : null;
     const actions = describeMessages(model.msgs, {daoAddress: dao?.address ?? null, before: model.config, formatCoin: coins.format});
     const proposerName = data.scanDetail?.proposer_label?.name;
@@ -78,7 +93,9 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan}: {deps: ProposalDeps; dat
                 </Flex>
             )}
 
-            <ProposalActionsSlot model={model} wallet={wallet} />
+            {DAO_FEATURES.proposalActions && (
+                <ProposalActionsSlot deps={deps} data={data} wallet={wallet} nowMs={nowMs} mine={mine} formatWeight={formatWeight} formatCoin={coins.format} refresh={refresh} />
+            )}
 
             {model.summary && (
                 <Panel id="summary" title="Summary" testId="summary-panel">
@@ -91,8 +108,8 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan}: {deps: ProposalDeps; dat
                 <TimelinePanel data={data} nowMs={nowMs} />
                 <MoneyPanel data={data} formatCoin={coins.format} />
             </SimpleGrid>
-            {wallet && <MyVotePanel deps={deps} model={model} wallet={wallet} formatWeight={formatWeight} />}
-            <VotesPanel deps={deps} proposalId={model.id} formatWeight={formatWeight} />
+            {wallet && <MyVotePanel model={model} mine={mine} formatWeight={formatWeight} />}
+            <VotesPanel key={version} deps={deps} proposalId={model.id} formatWeight={formatWeight} />
         </Flex>
     );
 };
@@ -100,7 +117,7 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan}: {deps: ProposalDeps; dat
 /** The page of one proposal: status, summary, actions, the tally against its bars, timeline, money and votes. Read only. */
 export const ProposalPage = ({id, deps = liveProposalDeps}: {id: string; deps?: ProposalDeps}) => {
     const {address} = useChain(getChainName());
-    const {load, data, reload} = useProposalPage(deps, id);
+    const {load, data, reload, refresh, version} = useProposalPage(deps, id);
     const nowMs = useNow();
     const state = load.data;
 
@@ -131,7 +148,7 @@ export const ProposalPage = ({id, deps = liveProposalDeps}: {id: string; deps?: 
                         action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">Back to the DAOs</NextLink></chakra.a>}
                     />
                 )}
-                {data && <Body deps={deps} data={data} wallet={address ?? null} nowMs={nowMs} onRetryScan={reload} />}
+                {data && <Body deps={deps} data={data} wallet={address ?? null} nowMs={nowMs} onRetryScan={reload} refresh={refresh} version={version} />}
             </PageContainer>
         </>
     );
