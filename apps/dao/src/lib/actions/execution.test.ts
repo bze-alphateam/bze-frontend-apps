@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import type {EncodeObject} from "@bze/bzejs/types";
 import {buildAcceptAdminNominationMsg, buildAdminExecuteMsg, buildUpdateDaoMetadataMsg} from "@bze/bze-ui-kit";
-import {DAO_ADDRESS, OTHER, SUB_ADDRESS} from "@/test/composer-fixtures";
+import {DAO_ADDRESS, OTHER, SUB_ADDRESS, THIRD} from "@/test/composer-fixtures";
 import {ADMIN_EXECUTE_TYPE, inspectExecution, MAX_EXECUTION_DEPTH} from "./execution";
 
 const send = (): EncodeObject => ({
@@ -49,5 +49,36 @@ describe("inspectExecution", () => {
     it("knows the type it counts", () => {
         expect(ADMIN_EXECUTE_TYPE).toBe(exec(send()).typeUrl);
         expect(SUB_ADDRESS).toBeTruthy();
+    });
+});
+
+describe("inspectExecution: who signs, at every level", () => {
+    const sendFrom = (from: string): EncodeObject => ({typeUrl: "/cosmos.bank.v1beta1.MsgSend", value: {fromAddress: from, toAddress: OTHER, amount: [{denom: "ubze", amount: "5"}]}});
+    const asDao = (...msgs: EncodeObject[]) => buildAdminExecuteMsg({admin: DAO_ADDRESS, daoId: "7", msgs});
+    const signing = {dao: DAO_ADDRESS, addressOf: (id: string) => (id === "7" ? SUB_ADDRESS : undefined)};
+
+    it("passes messages signed by the DAO that runs them: the top DAO, then the target of each nested execute", () => {
+        expect(inspectExecution([sendFrom(DAO_ADDRESS), asDao(sendFrom(SUB_ADDRESS))], signing)).toEqual({ok: true, depth: 2});
+    });
+
+    it("refuses a foreign signer below the top level, which only the chain's own check would catch", () => {
+        const result = inspectExecution([asDao(sendFrom(THIRD))], signing);
+        expect(result).toMatchObject({ok: false, index: 0, error: expect.stringMatching(/message 1 inside it is signed by .*must be signed by that DAO only/)});
+        // the top DAO's own signature is not the sub-DAO's
+        expect(inspectExecution([asDao(sendFrom(DAO_ADDRESS))], signing)).toMatchObject({ok: false});
+    });
+
+    it("refuses a foreign signer at depth 2", () => {
+        const deep = asDao(buildAdminExecuteMsg({admin: SUB_ADDRESS, daoId: "8", msgs: [sendFrom(THIRD)]}));
+        const known = {...signing, addressOf: (id: string) => ({"7": SUB_ADDRESS, "8": OTHER}[id])};
+        expect(inspectExecution([deep], known)).toMatchObject({ok: false, error: expect.stringMatching(/message 1 inside it, message 1 inside it is signed by/)});
+    });
+
+    it("refuses a nested DAO whose account is not known, never passes it", () => {
+        expect(inspectExecution([asDao(sendFrom(SUB_ADDRESS))], {...signing, addressOf: () => undefined})).toMatchObject({ok: false, error: expect.stringMatching(/not known here/)});
+    });
+
+    it("a top-level message signed by someone else is refused too", () => {
+        expect(inspectExecution([sendFrom(OTHER)], signing)).toMatchObject({ok: false, index: 0});
     });
 });

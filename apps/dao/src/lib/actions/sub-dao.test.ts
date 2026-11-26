@@ -251,6 +251,17 @@ describe("the actions an admin makes a DAO run", () => {
         expect(composeAdminActions([pay({amount: "9999"})], ctxWith(), findAction, 0).ready).toBe(true);
     });
 
+    it("adds the payments up over the whole batch: each fits the treasury, together they do not", () => {
+        const two = [pay({amount: "200"}), {...pay({amount: "100"}), key: "a2"}];
+        expect(composeAdminActions([pay({amount: "200"})], adminCtx(), findAction, 0).ready).toBe(true);
+        expect(composeAdminActions([pay({amount: "100"})], adminCtx(), findAction, 0).ready).toBe(true);
+        const c = composeAdminActions(two, adminCtx(), findAction, 0);
+        expect(c).toMatchObject({ready: false, msgs: []});
+        expect(c.error).toMatch(/The payments add up to 300000000 .* more than the treasury holds \(250000000\)/);
+        // later, in a proposal, the treasury may still fill up: no such check
+        expect(composeAdminActions(two, ctxWith(), findAction, 0).ready).toBe(true);
+    });
+
     it("hides what the DAO cannot do for itself: an admin-run DAO hands over through the console", () => {
         const c = composeAdminActions([draft("nominate-admin", {nominee: THIRD})], adminCtx({dao: {...DAO, admin: THIRD}}), findAction, 0);
         expect(c.error).toMatch(/Action 1: This action is not available for Founders/);

@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import type {EncodeObject} from '@bze/bzejs/types';
 import {
     buildAdminExecuteMsg, buildNominateAdminMsg, buildWithdrawAdminNominationMsg,
@@ -147,6 +148,22 @@ interface Inner {
     warnings: string[];
 }
 
+/** The first denom whose payments from the DAO, summed over the whole batch, exceed what its treasury holds; undefined when it covers them (or the treasury is unknown, which each payment's own check reports). */
+function paymentsShortage(msgs: readonly EncodeObject[], ctx: ActionContext): string | undefined {
+    if (ctx.treasury === null) return undefined;
+    const totals = new Map<string, BigNumber>();
+    for (const msg of msgs) {
+        const value = msg.value as {fromAddress?: string; amount?: {denom: string; amount: string}[]};
+        if (msg.typeUrl !== '/cosmos.bank.v1beta1.MsgSend' || value.fromAddress?.toLowerCase() !== ctx.dao.address.toLowerCase()) continue;
+        for (const coin of value.amount ?? []) totals.set(coin.denom, (totals.get(coin.denom) ?? new BigNumber(0)).plus(coin.amount));
+    }
+    for (const [denom, total] of totals) {
+        const held = new BigNumber(ctx.treasury.find((c) => c.denom === denom)?.amount ?? 0);
+        if (total.gt(held)) return `The payments add up to ${total.toFixed(0)} ${ctx.ticker(denom)} in base units, more than the treasury holds (${held.toFixed(0)}): the batch would fail as a whole.`;
+    }
+    return undefined;
+}
+
 /** What an admin's list of actions composes to: each action, and every reason the list cannot be sent. */
 export interface AdminComposition {
     actions: ComposedAction[];
@@ -200,8 +217,12 @@ export function composeAdminActions(drafts: readonly ActionDraft[], ctx: ActionC
     const content = validateDaoAdminExecute({msgCount: msgs.length, msgsSize: size}, ctx.params);
     if (content) return {...base, msgs: [], size, ready: false, error: content};
 
+    // an action that runs in the signed transaction cannot wait for the treasury: all the payments together must fit
+    const shortage = ctx.runsNow ? paymentsShortage(msgs, ctx) : undefined;
+    if (shortage) return {...base, msgs: [], size, ready: false, error: shortage};
+
     // the messages as the chain reads them, nested ones included: refused types at any level, and how deep it runs
-    const inspected = inspectExecution(msgs);
+    const inspected = inspectExecution(msgs, {dao: ctx.dao.address, addressOf: (id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address});
     if (!inspected.ok) return {...base, msgs: [], size, ready: false, error: inspected.error};
     if (inspected.depth + levelsAbove > MAX_EXECUTION_DEPTH) {
         return {...base, msgs: [], size, ready: false, error: `The actions nest ${inspected.depth + levelsAbove} executions deep, and the chain allows at most ${MAX_EXECUTION_DEPTH} (error 1134).`};

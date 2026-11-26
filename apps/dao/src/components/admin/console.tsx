@@ -13,7 +13,7 @@ import type {NominationChain} from '@/lib/admin/nomination';
 import type {DaoView} from '@/lib/dao-view-loader';
 import {browserStorage} from '@/lib/propose/draft';
 import type {Relations} from '@/lib/propose/relations';
-import {FlowMessage} from '@/components/flow-message';
+import {FlowMessage, TxLink} from '@/components/flow-message';
 import {AcceptPanel, ExecutePanel, HandOverPanel, NominatePanel, WithdrawPanel} from './panels';
 
 const SENT: Record<ActionKind, string> = {
@@ -52,7 +52,7 @@ export const Console = ({view, relations, wallet, flowWallet, nominationChain, r
     const router = useRouter();
     const {tx, progressTrack} = useSDKTx();
     const storage = useMemo(() => browserStorage(), []);
-    const {flow, run} = useAdminFlow({sign: tx, daoId: dao.id, wallet: flowWallet, storage, refresh, fingerprint, lookupTx});
+    const {flow, run, foreignLock} = useAdminFlow({sign: tx, daoId: dao.id, wallet: flowWallet, storage, refresh, fingerprint, lookupTx});
 
     const back = `/dao/${dao.id}`;
     const done = flow.state.phase === 'sent' && flow.state.reread === 'ok';
@@ -61,13 +61,21 @@ export const Console = ({view, relations, wallet, flowWallet, nominationChain, r
     }, [done, router, back]);
 
     const onSend = (kind: ActionKind, msgs: Parameters<typeof run>[1]) => void run(kind, msgs);
-    const panels = wallet ? {view, wallet, locked: flow.locked, onSend} : null;
+    const panels = wallet ? {view, wallet, locked: flow.locked || foreignLock !== null, onSend} : null;
 
     return (
         <Flex direction="column" gap="16px" data-testid="admin-console" data-role={role}>
             <chakra.a asChild color="hg.link" fontWeight="600" fontSize="14px" alignSelf="flex-start"><NextLink href={back}>{`← ${dao.name}`}</NextLink></chakra.a>
 
             <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind) => SENT[kind]} subject="DAO" onRelease={flow.state.phase === 'unconfirmed' && flow.state.kind === 'admin-execute' ? flow.release : undefined} />
+
+            {foreignLock && (
+                <div data-testid="foreign-lock">
+                    <Notice status="warning" title="Another tab has a transaction that may still land">
+                        <span>{'Nothing is sent from here until it is settled there. Its hash: '}<TxLink hash={foreignLock} /></span>
+                    </Notice>
+                </div>
+            )}
 
             {!wallet && !done && (
                 <div data-testid="admin-needs-wallet">

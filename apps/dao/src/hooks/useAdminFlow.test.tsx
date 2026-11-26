@@ -173,4 +173,24 @@ describe("a confirmation timeout", () => {
         const {result} = renderHook(() => useAdminFlow(deps));
         expect(result.current.flow.state).toEqual({phase: "idle"});
     });
+
+    it("another tab's unconfirmed transaction for the same DAO and wallet blocks a send here, and its end lifts the block", async () => {
+        const first = setup(timeout());
+        // a second tab of the same wallet, opened while nothing was pending
+        const secondSign = signer(() => true);
+        const second = renderHook(() => useAdminFlow({...first.deps, sign: secondSign}));
+        await act(async () => { await first.hook.result.current.run("admin-execute", MSGS); });
+        expect(first.storage.data.size).toBe(1);
+
+        await act(async () => { await second.result.current.run("admin-execute", MSGS); });
+        expect(secondSign).not.toHaveBeenCalled();
+        expect(second.result.current.foreignLock).toBe(HASH);
+
+        // the first tab settles it: the record goes, the storage event reaches the second tab
+        first.storage.data.clear();
+        act(() => { window.dispatchEvent(new StorageEvent("storage", {key: adminPendingKey("4", WALLET)})); });
+        expect(second.result.current.foreignLock).toBeNull();
+        await act(async () => { await second.result.current.run("admin-execute", MSGS); });
+        expect(secondSign).toHaveBeenCalledTimes(1);
+    });
 });

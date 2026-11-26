@@ -7,6 +7,10 @@ const fmt = (c: DaoCoin) => `${Number(c.amount) / 1e6} ${c.denom === "ubze" ? "B
 const ctx: DescribeContext = {daoAddress: "bze1dao", before: CONFIG, formatCoin: fmt};
 const msg = (type: string, rest: Record<string, unknown> = {}): DaoProposalMessage => ({"@type": type, ...rest});
 
+it("a nested admin execute is read as deep as the chain allows it to nest", () => {
+    expect(MAX_NESTING).toBe(5);
+});
+
 describe("describeMessage", () => {
     it("a bank send from the DAO, and one from someone else", () => {
         const body = {to_address: "bze1to", amount: [{denom: "ubze", amount: "2500000"}]};

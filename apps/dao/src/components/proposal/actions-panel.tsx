@@ -116,9 +116,12 @@ export const Described = ({action, formatCoin, nameOf, signerOf}: {action: MsgAc
                 <Flex direction="column" gap="8px">
                     <Fact testId="action-title">{`Run ${action.actions.length === 1 ? 'an action' : `${action.actions.length} actions`} as the DAO it administers (DAO ${action.daoId})`}</Fact>
                     <Flex direction="column" gap="8px" ps="12px" borderStartWidth="2px" borderColor="app.border">
-                        {signerOf?.(action.daoId) && (
+                        {signerOf && (
                             <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="run-as">
-                                <span>Signed by</span><AddressLine address={signerOf(action.daoId) as string} name={nameOf(signerOf(action.daoId) as string)} />
+                                <span>Signed by</span>
+                                {signerOf(action.daoId)
+                                    ? <AddressLine address={signerOf(action.daoId) as string} name={nameOf(signerOf(action.daoId) as string)} />
+                                    : <span>{`DAO ${action.daoId} (its account is not known here)`}</span>}
                             </Flex>
                         )}
                         {action.actions.map((inner, i) => <Described key={i} action={inner} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} />)}
