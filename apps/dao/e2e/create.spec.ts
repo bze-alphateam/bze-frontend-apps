@@ -19,12 +19,12 @@ test.beforeEach(async ({page, network}) => {
     await installFakeKeplr(page, WALLET);
 });
 
-// connectWallet leaves the wallet sidebar closing; wait until its backdrop no longer covers the page.
+// connectWallet leaves the wallet sidebar open (Escape does not close it): click the backdrop away.
 const connectWallet = async (page: import("@playwright/test").Page) => {
     await connect(page);
     const backdrop = page.getByTestId("sidebar-backdrop");
     await expect(async () => {
-        if (await backdrop.count()) await page.keyboard.press("Escape");
+        if (await backdrop.count()) await backdrop.click({position: {x: 10, y: 300}});
         await expect(backdrop).toHaveCount(0, {timeout: 1_000});
     }).toPass({timeout: 15_000});
 };
