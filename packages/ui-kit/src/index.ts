@@ -302,7 +302,7 @@ export {
 } from './utils/dao/validate';
 export {
     CREATE_DAO_STEPS, DAO_RULE_PRESETS, presetRules, rulesToConfig, rulesFromConfig, freeProposalsWarning,
-    initialDraft, restoreDraft, validateCreateDaoStep, firstInvalidStep, liveElectorateError, buildCreateDaoFromDraft,
+    initialDraft, restoreDraft, withPresetDeposit, describeProposalMoney, validateCreateDaoStep, firstInvalidStep, liveElectorateError, buildCreateDaoFromDraft,
     memberRows, parseMemberTokens, validMembers, validateDaoAdminAddress, daoCreationFeeText, daoFeeDestinationText, rulesSentence
 } from './utils/dao/create';
 export type {
@@ -314,7 +314,8 @@ export {
 export type {DaoStakeSource, DaoSourceRow, DaoElectorateSummary} from './utils/dao/create-sources';
 export {daoCreatedFromEvents, readDaoCreated} from './utils/dao/created';
 export type {DaoCreated, FetchTxEvents} from './utils/dao/created';
-export {getDaoStakeSources, getTxEvents} from './query/dao_sources';
+export {getDaoStakeSources, getTxEvents, getTxLanding} from './query/dao_sources';
+export type {TxLanding} from './query/dao_sources';
 export {useCreateDao} from './hooks/useCreateDao';
 export type {CreateDaoTx, CreateDaoStatus, UseCreateDaoDeps} from './hooks/useCreateDao';
 export {CreateDaoFlow, defaultCreateDaoServices} from './components/dao/create-dao-flow';

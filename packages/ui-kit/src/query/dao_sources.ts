@@ -36,3 +36,18 @@ export const getTxEvents = async (txHash: string): Promise<unknown> => {
     const body = await resp.json();
     return body?.tx_response?.events;
 }
+
+/**
+ * Where a broadcast transaction stands: `landed` (in a block, code 0), `failed` (in a block, refused
+ * by the chain, so nothing happened), `notfound` (the node does not know it, yet). Throws when the node
+ * cannot be asked.
+ */
+export type TxLanding = 'landed' | 'failed' | 'notfound';
+
+export const getTxLanding = async (txHash: string): Promise<TxLanding> => {
+    const resp = await fetch(`${getSettings().endpoints.restEndpoint}/cosmos/tx/v1beta1/txs/${encodeURIComponent(txHash)}`);
+    if (resp.status === 404 || resp.status === 400) return 'notfound';
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const body = await resp.json();
+    return Number(body?.tx_response?.code ?? 0) === 0 ? 'landed' : 'failed';
+}

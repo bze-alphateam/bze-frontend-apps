@@ -1,8 +1,9 @@
 "use client";
 
-import {useCallback, useState} from "react";
+import {useCallback, useMemo} from "react";
 import {useRouter} from "next/navigation";
-import {CreateDaoFlow, PageContainer, PageHero, type CreateDaoDraft} from "@bze/bze-ui-kit";
+import {useChain} from "@interchain-kit/react";
+import {CreateDaoFlow, getChainName, PageContainer, PageHero, type CreateDaoDraft} from "@bze/bze-ui-kit";
 import {loadDraft, saveDraft, type DraftStorage} from "@/lib/create-draft";
 
 const browserStorage = (): DraftStorage | undefined => {
@@ -15,8 +16,10 @@ const browserStorage = (): DraftStorage | undefined => {
 
 export default function CreatePage() {
     const router = useRouter();
-    const [saved] = useState(() => loadDraft(browserStorage()));
-    const onDraftChange = useCallback((draft: CreateDaoDraft | undefined) => saveDraft(browserStorage(), draft), []);
+    const {address} = useChain(getChainName());
+    // the draft of this wallet only; read when the wallet is known (the flow mounts after that)
+    const saved = useMemo(() => loadDraft(browserStorage(), address), [address]);
+    const onDraftChange = useCallback((draft: CreateDaoDraft | undefined) => saveDraft(browserStorage(), address, draft), [address]);
 
     return (
         <PageContainer py={{base: "32px", md: "48px"}} display="flex" flexDirection="column" gap="24px">

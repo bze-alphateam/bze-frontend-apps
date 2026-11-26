@@ -1,7 +1,5 @@
 import BigNumber from "bignumber.js";
-import {fromBech32} from "@interchainjs/encoding";
 import {EncodeObject} from "@bze/bzejs/types";
-import {getChainAddressPrefix} from "../../constants/chain";
 import {
     DaoConfig,
     DaoCoin,
@@ -27,6 +25,7 @@ import {
     validateDaoSources,
 } from "./create-sources";
 import {
+    canonicalAddress,
     validateDaoConfig,
     validateDaoDescription,
     validateDaoElectorate,
@@ -93,8 +92,10 @@ export interface CreateDaoPreset {
 
 /** What a host fixes: the type step and/or the staking token. */
 export interface CreateDaoLocked {
+    /** The type of the preset cannot be changed: the Type step is skipped. */
     type?: boolean;
-    stakingDenom?: boolean;
+    /** The staking token the voters must stake; only its rewards can be picked. */
+    stakingDenom?: string;
 }
 
 export interface CreateDaoContext {
@@ -189,18 +190,8 @@ export const presetRules = (id: DaoRulePresetId, depositDenom?: string): DaoRule
 // ---------------------------------------------------------------------------
 // Addresses and members
 
-/** The canonical (lowercase) form of an address of this chain, or undefined. */
-const canonical = (address: string): string | undefined => {
-    try {
-        const {prefix} = fromBech32(address);
-        return prefix.toLowerCase() === getChainAddressPrefix() ? address.toLowerCase() : undefined;
-    } catch {
-        return undefined;
-    }
-}
-
 export const validateDaoAdminAddress = (address: string): string | undefined =>
-    canonical(address.trim()) ? undefined : 'Enter a valid BZE address.';
+    canonicalAddress(address.trim()) ? undefined : 'Enter a valid BZE address.';
 
 /** The addresses of a pasted list or CSV: separated by lines, commas, semicolons or spaces. */
 export const parseMemberTokens = (text: string): string[] => text.split(/[\s,;]+/).filter(t => t !== '');
@@ -216,7 +207,7 @@ export const memberRows = (text: string): MemberRow[] => {
     const seen = new Map<string, number>();
     return parseMemberTokens(text).map((address, i) => {
         const line = i + 1;
-        const key = canonical(address);
+        const key = canonicalAddress(address);
         if (!key) return {line, address, error: 'Not a BZE address'};
         const first = seen.get(key);
         if (first !== undefined) return {line, address, error: `Already in the list (line ${first})`};
@@ -337,8 +328,9 @@ export const freeProposalsWarning = (config: DaoConfig, maxOpen?: string): strin
 // ---------------------------------------------------------------------------
 // The draft
 
-export const initialDraft = (input: {creator: string; preset?: CreateDaoPreset; ctx?: Pick<CreateDaoContext, 'decimalsOf' | 'nativeDenom'>}): CreateDaoDraft => {
+export const initialDraft = (input: {creator: string; preset?: CreateDaoPreset; locked?: CreateDaoLocked; ctx?: Pick<CreateDaoContext, 'decimalsOf' | 'nativeDenom'>}): CreateDaoDraft => {
     const {creator, preset} = input;
+    const depositDenom = input.locked?.stakingDenom ?? preset?.stakingDenom;
     const decimalsOf = input.ctx?.decimalsOf ?? (() => 6);
     const type = preset?.type ?? 'DAO_TYPE_STATIC_LIST';
     const admin = preset?.admin ?? '';
@@ -355,22 +347,44 @@ export const initialDraft = (input: {creator: string; preset?: CreateDaoPreset; 
         presetId: hasConfig ? 'custom' : type === 'DAO_TYPE_STAKE' ? 'token-community' : 'simple-majority',
         rules: hasConfig
             ? rulesFromConfig(preset!.config!, decimalsOf)
-            : presetRules(type === 'DAO_TYPE_STAKE' ? 'token-community' : 'simple-majority', type === 'DAO_TYPE_STAKE' ? preset?.stakingDenom : undefined),
+            : presetRules(type === 'DAO_TYPE_STAKE' ? 'token-community' : 'simple-majority', type === 'DAO_TYPE_STAKE' ? depositDenom : undefined),
     };
 }
 
 /**
- * A draft restored from storage, with what the host fixed laid over it: a locked type and the
- * preset's voters beat whatever was saved.
+ * A draft restored from storage with what the host gave laid over it: every field the preset
+ * fills in, and a locked type or staking token, beats whatever was saved. The rest of the saved
+ * draft is kept.
  */
-export const restoreDraft = (saved: CreateDaoDraft | undefined, base: CreateDaoDraft, locked?: CreateDaoLocked): CreateDaoDraft => {
+export const restoreDraft = (
+    saved: CreateDaoDraft | undefined,
+    base: CreateDaoDraft,
+    locked?: CreateDaoLocked,
+    preset?: CreateDaoPreset,
+): CreateDaoDraft => {
     if (!saved) return base;
-    return {
-        ...base,
-        ...saved,
-        ...(locked?.type ? {type: base.type} : {}),
-        ...(locked?.stakingDenom ? {electorate: base.electorate} : {}),
-    };
+    const win: Partial<CreateDaoDraft> = {};
+    if (preset?.type !== undefined || locked?.type) win.type = base.type;
+    if (preset?.name !== undefined) win.name = base.name;
+    if (preset?.description !== undefined) win.description = base.description;
+    if (preset?.members !== undefined) win.membersText = base.membersText;
+    if (preset?.electorate !== undefined || locked?.stakingDenom) win.electorate = base.electorate;
+    if (preset?.admin !== undefined) { win.adminChoice = base.adminChoice; win.adminAddress = base.adminAddress; }
+    if (preset?.config !== undefined) { win.presetId = base.presetId; win.rules = base.rules; }
+    return {...base, ...saved, ...win};
+}
+
+/**
+ * The Token community preset pays its deposit in the staking token, which a DAO app only knows
+ * once the voters are picked. Once it is known (and again if the voters change token), an
+ * unedited Token community preset gets its deposit; any edit turns the preset into Custom and
+ * is left alone.
+ */
+export const withPresetDeposit = (draft: CreateDaoDraft, stakingDenom: string | undefined): CreateDaoDraft => {
+    if (draft.type !== 'DAO_TYPE_STAKE' || draft.presetId !== 'token-community' || !stakingDenom) return draft;
+    if (draft.rules.depositDenom === stakingDenom && draft.rules.depositAmount !== '') return draft;
+    const {depositAmount, depositDenom} = presetRules('token-community', stakingDenom);
+    return {...draft, rules: {...draft.rules, depositAmount, depositDenom}};
 }
 
 // ---------------------------------------------------------------------------
@@ -497,4 +511,24 @@ export const rulesSentence = (config: DaoConfig, voters: string): string => {
     const base = `A proposal passes when at least ${q} % of all ${voters} vote and more than ${t} % of the yes and no votes are yes, after ${period}.`;
     if (!config.allow_expedite) return `${base} No expedited voting.`;
     return `${base} With expedite, more than ${trimNumber(percentFromRatio(config.expedite_threshold))} % of ALL ${voters} voting yes settles it right away.`;
+}
+
+/** What a proposal costs and what must be put down with it, in words, from the config that is signed. */
+export const describeProposalMoney = (
+    config: DaoConfig,
+    fmt: {decimalsOf: (denom: string) => number; tickerOf: (denom: string) => string},
+): {cost: string; deposit: string} => {
+    const coin = (c: DaoCoin) => `${prettyAmount(uAmountToBigNumberAmount(c.amount, fmt.decimalsOf(c.denom)))} ${fmt.tickerOf(c.denom)}`;
+    const dest = (d: DaoFundsDestination) => (d === 'BURN' ? 'burned' : "sent to the DAO's treasury");
+    const refund: Record<DaoDepositRefundPolicy, string> = {
+        ALWAYS: 'returned whatever the result',
+        ONLY_PASSED: 'returned only when the proposal passes',
+        NEVER: 'never returned',
+    };
+    return {
+        cost: isSet(config.proposal_cost) ? `${coin(config.proposal_cost!)}, paid on submit and ${dest(config.cost_destination)}` : 'None',
+        deposit: isSet(config.proposal_deposit)
+            ? `${coin(config.proposal_deposit!)}, ${refund[config.deposit_refund_policy]}${config.deposit_refund_policy === 'ALWAYS' ? '' : `; a kept deposit is ${dest(config.kept_deposit_destination)}`}`
+            : 'None',
+    };
 }

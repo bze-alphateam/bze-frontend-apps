@@ -17,6 +17,8 @@ import {
     memberRows,
     presetRules,
     restoreDraft,
+    withPresetDeposit,
+    describeProposalMoney,
     rulesFromConfig,
     rulesToConfig,
     validateCreateDaoStep,
@@ -260,12 +262,67 @@ describe('preset and locked', () => {
         expect(initialDraft({creator: CREATOR}).membersText).toBe(CREATOR)
     })
 
-    it('locked fields beat a restored draft, the rest of the draft is kept', () => {
+    it('every preset field and a lock beat a restored draft; fields the preset leaves out are kept', () => {
         const base = initialDraft({creator: CREATOR, preset})
         const saved = {...base, type: 'DAO_TYPE_STATIC_LIST' as const, name: 'Mine', electorate: {sr_ids: ['9'], dr_denom: ''}}
-        expect(restoreDraft(saved, base, {type: true, stakingDenom: true})).toMatchObject({type: 'DAO_TYPE_STAKE', name: 'Mine', electorate: preset.electorate})
+        expect(restoreDraft(saved, base, {type: true, stakingDenom: 'factory/bze1x/honey'}, preset)).toMatchObject({type: 'DAO_TYPE_STAKE', name: 'HONEY Holders', electorate: preset.electorate})
+        const noName = {...preset, name: undefined}
+        const lockOnly = restoreDraft({...saved, name: 'Mine', adminChoice: 'me'}, initialDraft({creator: CREATOR, preset: noName}), {type: true}, noName)
+        expect(lockOnly).toMatchObject({type: 'DAO_TYPE_STAKE', name: 'Mine', adminChoice: 'me'})
+        const named = restoreDraft({...saved, adminChoice: 'me'}, initialDraft({creator: CREATOR, preset: {...preset, admin: addr(4)}}), undefined, {...preset, admin: addr(4)})
+        expect(named).toMatchObject({adminChoice: 'other', adminAddress: addr(4)})
         expect(restoreDraft(saved, base)).toMatchObject({type: 'DAO_TYPE_STATIC_LIST'})
         expect(restoreDraft(undefined, base)).toBe(base)
+    })
+})
+
+describe('the Token community deposit', () => {
+    const honey = 'factory/bze1x/honey'
+    const unknownDenom = () => initialDraft({creator: CREATOR, preset: {type: 'DAO_TYPE_STAKE'}})
+
+    it('is empty while the staking token is unknown and applied once the voters name it', () => {
+        const d = unknownDenom()
+        expect(d.presetId).toBe('token-community')
+        expect(d.rules.depositAmount).toBe('')
+        const applied = withPresetDeposit(d, honey)
+        expect(applied.rules).toMatchObject({depositAmount: '1000', depositDenom: honey, refundPolicy: 'ONLY_PASSED'})
+        const r = rulesToConfig(applied.rules, ctx())
+        expect(r).toMatchObject({config: {proposal_deposit: {denom: honey, amount: '1000000000'}}})
+    })
+
+    it('follows the token when the voters change it, but never touches an edited (Custom) deposit', () => {
+        const first = withPresetDeposit(unknownDenom(), honey)
+        expect(withPresetDeposit(first, 'factory/bze1x/other').rules.depositDenom).toBe('factory/bze1x/other')
+        const edited = {...first, presetId: 'custom' as const, rules: {...first.rules, depositAmount: '5'}}
+        expect(withPresetDeposit(edited, 'factory/bze1x/other')).toBe(edited)
+    })
+
+    it('does nothing for a member list or without a token', () => {
+        const d = unknownDenom()
+        expect(withPresetDeposit(d, undefined)).toBe(d)
+        const staticDraft = draft()
+        expect(withPresetDeposit(staticDraft, honey)).toBe(staticDraft)
+    })
+
+    it('a locked token is used from the start', () => {
+        expect(initialDraft({creator: CREATOR, preset: {type: 'DAO_TYPE_STAKE'}, locked: {type: true, stakingDenom: honey}}).rules.depositDenom).toBe(honey)
+    })
+})
+
+describe('what a proposal costs, for the review', () => {
+    const fmt = {decimalsOf: ctx().decimalsOf, tickerOf: ctx().tickerOf}
+    const configOf = (over: object) => {
+        const r = rulesToConfig({...presetRules('simple-majority'), ...over}, ctx())
+        if (!('config' in r)) throw new Error('invalid')
+        return r.config
+    }
+    it('says none when free', () => {
+        expect(describeProposalMoney(configOf({}), fmt)).toEqual({cost: 'None', deposit: 'None'})
+    })
+    it('spells the amounts, tokens, destinations and refund policy of what is signed', () => {
+        const m = describeProposalMoney(configOf({costAmount: '2.5', costDestination: 'TREASURY', depositAmount: '10', depositDenom: 'factory/bze1x/honey', refundPolicy: 'ONLY_PASSED', keptDepositDestination: 'BURN'}), fmt)
+        expect(m.cost).toBe("2.5 BZE, paid on submit and sent to the DAO's treasury")
+        expect(m.deposit).toBe('10 HONEY, returned only when the proposal passes; a kept deposit is burned')
     })
 })
 

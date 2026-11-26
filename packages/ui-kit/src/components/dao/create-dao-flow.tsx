@@ -7,12 +7,13 @@ import {getChainName, getExplorerTxURL} from '../../constants/chain';
 import {getChainNativeAssetDenom} from '../../constants/assets';
 import {Dao, DaoParams} from '../../types/dao';
 import {DaoModuleNotSupportedError, getDaoByAddress, getDaoParams} from '../../query/dao';
-import {getDaoStakeSources, getTxEvents} from '../../query/dao_sources';
+import {getDaoStakeSources, getTxEvents, getTxLanding, type TxLanding} from '../../query/dao_sources';
 import {useAssets} from '../../hooks/useAssets';
 import {useBalance} from '../../hooks/useBalances';
 import {useBZETx} from '../../hooks/useTx';
 import {useCreateDao} from '../../hooks/useCreateDao';
 import {useFeeEstimate} from '../../hooks/useFeeEstimate';
+import {useGasFeeEstimate} from '../../hooks/useGasFeeEstimate';
 import {useTxFeeDenom} from '../../hooks/useTxFeeDenom';
 import {FeeEstimateRow} from '../fee-estimate';
 import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
@@ -27,6 +28,9 @@ import {
     CreateDaoPreset,
     CreateDaoStep,
     daoCreationFeeText,
+    describeProposalMoney,
+    freeProposalsWarning,
+    withPresetDeposit,
     initialDraft,
     memberRows,
     presetRules,
@@ -57,6 +61,8 @@ export interface CreateDaoServices {
     /** The DAO that owns an address (null when none), to name a DAO admin. */
     getDaoByAddress: (address: string) => Promise<Dao | null>;
     fetchTxEvents: FetchTxEvents;
+    /** Looks a broadcast transaction up by hash (resolves a timed-out creation). */
+    getTxLanding: (txHash: string) => Promise<TxLanding>;
 }
 
 export const defaultCreateDaoServices: CreateDaoServices = {
@@ -64,18 +70,19 @@ export const defaultCreateDaoServices: CreateDaoServices = {
     getSources: getDaoStakeSources,
     getDaoByAddress,
     fetchTxEvents: getTxEvents,
+    getTxLanding,
 };
 
 export interface CreateDaoFlowProps {
     /** Fills the form in beforehand (the Factory's stake DAO of a token). */
     preset?: CreateDaoPreset;
-    /** What the host fixes: the type step, the staking token. */
+    /** What the host fixes: the type step, the staking token (the token itself, not a flag). */
     locked?: CreateDaoLocked;
     /** Who fixed it, for "Set by …" on a locked step. Default "the app". */
     lockedBy?: string;
     /** Called once the DAO exists. The host routes to it. */
     onCreated: (created: DaoCreated) => void;
-    /** An unsent draft the host kept (preset and locked fields win over it). */
+    /** An unsent draft the host kept. Every field the `preset` fills in, and a locked type or token, wins over it; the rest of the draft is kept. */
     draft?: CreateDaoDraft;
     /** The draft changed; `undefined` once the DAO was created, so the host can forget it. */
     onDraftChange?: (draft: CreateDaoDraft | undefined) => void;
@@ -171,9 +178,9 @@ interface WizardProps extends CreateDaoFlowProps {
 const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDraft, onDraftChange, services, params, creator}: WizardProps) => {
     const {denomTicker, denomDecimals} = useAssets();
     const nativeDenom = getChainNativeAssetDenom();
-    const lockedStakingDenom = locked?.stakingDenom ? (preset?.stakingDenom ?? undefined) : undefined;
+    const lockedStakingDenom = locked?.stakingDenom;
     const [draft, setDraft] = useState<CreateDaoDraft>(() =>
-        restoreDraft(savedDraft, initialDraft({creator, preset, ctx: {decimalsOf: denomDecimals, nativeDenom}}), locked));
+        restoreDraft(savedDraft, initialDraft({creator, preset, locked, ctx: {decimalsOf: denomDecimals, nativeDenom}}), locked, preset));
     const [step, setStep] = useState<CreateDaoStep>(locked?.type ? 'name' : 'type');
     const [attempt, setAttempt] = useState(draft.type === 'DAO_TYPE_STAKE' ? 1 : 0);
     const [sources, setSources] = useState<Loaded<DaoStakeSource[]>>({status: draft.type === 'DAO_TYPE_STAKE' ? 'loading' : 'idle'});
@@ -208,8 +215,13 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
 
     const patch = (p: Partial<CreateDaoDraft>) => setDraft(d => ({...d, ...p}));
     const idx = CREATE_DAO_STEPS.indexOf(step);
-    const next = () => setStep(CREATE_DAO_STEPS[idx + 1]);
-    const back = () => setStep(CREATE_DAO_STEPS[Math.max(idx - 1, locked?.type ? 1 : 0)]);
+    // the Token community deposit is paid in the staking token, known once the voters are picked
+    const goTo = (s: CreateDaoStep) => {
+        if (s === 'rules' || s === 'review') setDraft(d => withPresetDeposit(d, stakingDenomOf(d, ctx)));
+        setStep(s);
+    };
+    const next = () => goTo(CREATE_DAO_STEPS[idx + 1]);
+    const back = () => goTo(CREATE_DAO_STEPS[Math.max(idx - 1, locked?.type ? 1 : 0)]);
     const stateOf = (s: CreateDaoStep) => (s === step ? 'current' : CREATE_DAO_STEPS.indexOf(s) < idx ? 'done' : 'todo') as 'done' | 'current' | 'todo';
 
     const chooseType = (type: CreateDaoDraft['type']) => {
@@ -259,34 +271,38 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
     const adminIsDao = adminValid && adminDao?.address === adminTyped ? adminDao.dao : null;
 
     const {tx} = useBZETx();
-    const {submit, status, error: submitError, txHash} = useCreateDao({tx, fetchTxEvents: services.fetchTxEvents});
+    const {submit, check, status, error: submitError, txHash} = useCreateDao({tx, fetchTxEvents: services.fetchTxEvents, getTxLanding: services.getTxLanding});
     const fee = params.dao_creation_fee;
     const hasFee = /[1-9]/.test(fee.amount);
-    const estimate = useFeeEstimate(hasFee ? {denom: fee.denom, amount: fee.amount} : undefined);
+    const gas = useGasFeeEstimate('create-dao');
+    const estimate = useFeeEstimate(hasFee ? {denom: fee.denom, amount: fee.amount} : undefined, {gasFee: gas.estimate});
     const {denom: txFeeDenom} = useTxFeeDenom();
-    const {balance} = useBalance(fee.denom);
+    // what the chain will really take (fee token or BZE) and the balance it is taken from
+    const payDenom = estimate.resolvedFee?.denom ?? fee.denom;
+    const {balance} = useBalance(payDenom);
     const feeText = daoCreationFeeText({fee, destination: params.dao_creation_fee_destination, txFeeDenom, decimalsOf: denomDecimals, tickerOf: denomTicker});
     const cannotPay = hasFee && !estimate.isLoading && estimate.method === 'insufficient';
 
+    const finish = (result: {status: string; created?: DaoCreated}) => {
+        // the DAO exists, so the draft is spent, whether or not its id could be read
+        if (result.status === 'created' || result.status === 'unread') onDraftChange?.(undefined);
+        if (result.status === 'created' && result.created) onCreated(result.created);
+    };
     const create = async () => {
         const built = buildCreateDaoFromDraft(draft, ctx);
         if ('error' in built) return;
-        const created = await submit(built.msg);
-        if (created) {
-            onDraftChange?.(undefined);
-            onCreated(created);
-        }
+        finish(await submit(built.msg));
     };
 
     const reviewError = errorOf('review');
     const denoms = [...new Set([nativeDenom, ...(stakingDenom ? [stakingDenom] : []), ...(stake && lockedStakingDenom ? [lockedStakingDenom] : [])])];
-    const done = status === 'created' || status === 'unread';
+    const done = status === 'created' || status === 'unread' || status === 'pending';
 
     return (
         <Flex direction="column" gap="12px" data-testid="create-dao-flow">
             {CREATE_DAO_STEPS.map((s, i) => {
                 const state = stateOf(s);
-                const common = {n: i + 1, title: STEP_TITLES[s], state, summary: summaries[s], onEdit: done ? undefined : () => setStep(s)};
+                const common = {n: i + 1, title: STEP_TITLES[s], state, summary: summaries[s], onEdit: done ? undefined : () => goTo(s)};
                 if (s === 'type') {
                     return (
                         <StepCard key={s} {...common} locked={locked?.type ? lockedBy : undefined}>
@@ -418,6 +434,8 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
                 }
                 // review
                 const config = 'config' in parsed ? parsed.config : undefined;
+                const money = config ? describeProposalMoney(config, {decimalsOf: denomDecimals, tickerOf: denomTicker}) : {cost: '', deposit: ''};
+                const freeWarning = config ? freeProposalsWarning(config, params.max_open_proposals) : null;
                 const rowsText: [string, ReactNode][] = [
                     ['Type', stake ? 'Stakers: voting power = stake' : 'Member list: one vote per member'],
                     ['Name', draft.name],
@@ -428,6 +446,7 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
                     ['Admin', draft.adminChoice === 'voters' ? 'None: the DAO governs itself' : adminIsDao ? `DAO #${adminIsDao.id} · ${adminIsDao.name}` : adminOf(draft, creator) === creator ? 'You' : adminOf(draft, creator)],
                     ['Rules', config ? rulesSentence(config, voters) : ''],
                     ['Proposals', draft.rules.openSubmission ? 'Anyone can submit' : stake ? 'Stakers only' : 'Members only'],
+                    ...(config ? ([['Proposal cost', money.cost], ['Proposal deposit', money.deposit]] as [string, ReactNode][]) : []),
                 ];
                 return (
                     <StepCard key={s} {...common}>
@@ -442,14 +461,15 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
                         </chakra.dl>
                         <Flex direction="column" gap="8px" p="16px" borderRadius="hg.md" bg="hg.inset" data-testid="review-fee">
                             <chakra.span fontSize="12px" fontWeight="700" letterSpacing="0.12em" textTransform="uppercase" color="fg.muted">What leaves your wallet</chakra.span>
-                            {hasFee && <FeeEstimateRow fee={{denom: fee.denom, amount: fee.amount}} label="Creation fee" description={`A one-time payment to create the DAO. It ${feeText.destination}.`}/>}
+                            {hasFee && <FeeEstimateRow txKind="create-dao" fee={{denom: fee.denom, amount: fee.amount}} label="Creation fee" description={`A one-time payment to create the DAO. It ${feeText.destination}.`}/>}
                             <chakra.span fontSize="14px" data-testid="fee-amount">{hasFee ? <><strong>{feeText.amount}</strong>, {feeText.destination}</> : 'No creation fee'}</chakra.span>
                             {hasFee && <chakra.span fontSize="13px" color="fg.muted">Paid in: {feeText.paidIn} {feeText.transferFeeNote}</chakra.span>}
                             <chakra.span fontSize="14px" data-testid="fee-balance">
-                                You hold {prettyAmount(uAmountToBigNumberAmount(balance.amount, denomDecimals(fee.denom)))} {denomTicker(fee.denom)}{' '}
+                                You hold {prettyAmount(uAmountToBigNumberAmount(balance.amount, denomDecimals(payDenom)))} {denomTicker(payDenom)}{' '}
                                 {hasFee && (cannotPay ? <chakra.span color="hg.danger">not enough</chakra.span> : <chakra.span color="hg.success">✓ enough</chakra.span>)}
                             </chakra.span>
                         </Flex>
+                        {freeWarning && <Notice status="warning" title="Free proposals">{freeWarning}</Notice>}
                         <Notice status="info">Permanent: the DAO, its address and its type can never be deleted. Members, rules and admin can change later by proposal.</Notice>
                         {status === 'unread' && (
                             <Notice status="success" title="The DAO was created">
@@ -457,7 +477,15 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
                                 {txHash && <a href={getExplorerTxURL(txHash)} target="_blank" rel="noreferrer">View the transaction</a>} Find the DAO in the list of all DAOs.
                             </Notice>
                         )}
-                        {submitError && <Notice status="danger" title="The DAO was not created" >{submitError}</Notice>}
+                        {status === 'pending' && (
+                            <Notice status="warning" title="Waiting for the chain">
+                                The transaction was sent but is not confirmed yet. It may still land, so it cannot be sent again.{' '}
+                                {txHash && <><a href={getExplorerTxURL(txHash)} target="_blank" rel="noreferrer">View the transaction</a>{' '}</>}
+                                <Button size="xs" variant="outline" onClick={async () => finish(await check())} data-testid="check-tx">Check again</Button>
+                                {submitError && <><br/>{submitError}</>}
+                            </Notice>
+                        )}
+                        {status === 'failed' && submitError && <Notice status="danger" title="The DAO was not created" >{submitError}</Notice>}
                         <Nav
                             onBack={done ? undefined : back}
                             onNext={create}
