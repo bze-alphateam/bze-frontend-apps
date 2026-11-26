@@ -28,6 +28,7 @@ function Setting({ label, value, title, text, testId }: { label: string; value: 
 export function FeeSettingsItem({ asset, access }: { asset: Asset; access: AdminAccess }) {
     const { config, refresh } = useDenomConfig(asset.denom)
     const [isOpen, setIsOpen] = useState(false)
+    const [isOpening, setIsOpening] = useState(false)
 
     if (!config) return <AdminItemShimmer testId="fee-settings-loading" />
     if (config.status === 'unsupported') return null
@@ -43,6 +44,18 @@ export function FeeSettingsItem({ asset, access }: { asset: Asset; access: Admin
         )
     }
 
+    // The form prefills and diffs against the live config, so opening it reads past the cache.
+    const toggle = async () => {
+        if (isOpen) return setIsOpen(false)
+        setIsOpening(true)
+        try {
+            await refresh()
+            setIsOpen(true)
+        } finally {
+            setIsOpening(false)
+        }
+    }
+
     const current = settingsFromConfig(config)
     const hasPool = current.communityPool !== ''
     return (
@@ -51,7 +64,7 @@ export function FeeSettingsItem({ asset, access }: { asset: Asset; access: Admin
             title={TITLE}
             line={access === 'renounced' ? 'Frozen: nobody can change these settings.' : undefined}
             action={access === 'admin' && (
-                <ItemButton onClick={() => setIsOpen(open => !open)} aria-expanded={isOpen}>
+                <ItemButton onClick={() => void toggle()} disabled={isOpening} aria-expanded={isOpen}>
                     {isOpen ? 'Close' : 'Edit'}
                 </ItemButton>
             )}

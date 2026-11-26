@@ -33,7 +33,7 @@ export function transferAdminError(input: string, address: string | undefined): 
 export const renounceArmed = (typed: string, ticker: string) => ticker !== '' && typed === ticker
 
 /** What the admin can do: the token form's Admin row and the token page. */
-export const ADMIN_POWERS = 'Mint and edit details'
+export const ADMIN_POWERS = 'Mint, edit details and change fee settings'
 
 /** What renouncing ends for good. Branding is admin-gated too (`MsgSetDenomBranding`). */
 export const goneForever = (ticker: string) => [

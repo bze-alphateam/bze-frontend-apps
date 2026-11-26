@@ -35,8 +35,8 @@ describe("MsgSetDenomConfig amino sign doc", () => {
             const value = denomConfigValue("bze1me", DENOM, settings);
             const decoded = MsgSetDenomConfig.decode(MsgSetDenomConfig.encode(MsgSetDenomConfig.fromPartial(value)).finish());
             expect(decoded.communityPool).toBe(value.communityPool);
-            expect(Number(decoded.transferFee)).toBe(Number(value.transferFee));
-            expect(Number(decoded.gasSurcharge)).toBe(Number(value.gasSurcharge));
+            expect(decoded.transferFee).toBe(value.transferFee);
+            expect(decoded.gasSurcharge).toBe(value.gasSurcharge);
         }
     });
 });
