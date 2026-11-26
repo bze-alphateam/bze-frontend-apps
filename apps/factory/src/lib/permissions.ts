@@ -1,4 +1,6 @@
 import { truncateAddress, validateBZEBech32Address } from '@bze/bze-ui-kit'
+import type { Dao } from '@bze/bze-ui-kit'
+import { daoLabel } from '@/lib/dao-admin'
 import type { AdminState } from '@/lib/workspace'
 import { workspaceHref } from '@/lib/workspace'
 
@@ -6,12 +8,12 @@ import { workspaceHref } from '@/lib/workspace'
 // Both are MsgChangeAdmin: to an address, or to '' (renounced for good). Pure, so the dialogs stay views.
 
 /** The section's one status line, from the live `DenomAuthority` answer. '' while unknown (the section says so itself). */
-export function permissionsStatus(state: AdminState, admin: string | undefined, ticker: string): string {
+export function permissionsStatus(state: AdminState, admin: string | undefined, ticker: string, dao?: Pick<Dao, 'id' | 'name'>): string {
     switch (state) {
         case 'admin':
             return 'Admin: your wallet'
         case 'not-admin':
-            return `Admin: ${truncateAddress(admin ?? '')}`
+            return dao ? `Admin: ${daoLabel(dao)}` : `Admin: ${truncateAddress(admin ?? '')}`
         case 'renounced':
             return 'Admin renounced'
         default:

@@ -19,7 +19,9 @@ import { useChain } from '@interchain-kit/react'
 import { InnerHero } from '@/components/ui/inner-hero'
 import { FilterChip } from '@/components/ui/filter-chip'
 import { TokenDirectoryRow } from '@/components/tokens/token-directory-row'
+import { useDaoAdmins } from '@/hooks/useDaoAdmin'
 import { useMyTokens } from '@/hooks/useMyTokens'
+import { daoOf } from '@/lib/dao-admin'
 import { useNavigationWithParams } from '@/hooks/useNavigation'
 import {
     TOKENS_PAGE_SIZE,
@@ -130,6 +132,7 @@ function TokensDirectory() {
     const { usdPricesMap, updateAssets } = useAssetsContext()
     const { address } = useChain(getChainName())
     const { tokens: myTokens, isLoading: isMineLoading, refreshAdmins } = useMyTokens()
+    const { lookups: daoLookups } = useDaoAdmins(myTokens.map(t => t.admin === address ? undefined : t.admin))
     const denomRewards = useDenomRewardsByDenom()
     const drs = denomRewards.status === 'ready' ? denomRewards.byDenom : NO_DENOM_REWARDS
 
@@ -222,7 +225,7 @@ function TokensDirectory() {
                                 <TokenDirectoryRow
                                     key={row.asset.denom}
                                     row={row}
-                                    admin={{ badge: adminBadge(row.admin, address, isMineLoading), onRetry: () => void refreshAdmins() }}
+                                    admin={{ badge: adminBadge(row.admin, address, isMineLoading, row.admin ? daoOf(daoLookups[row.admin]) : undefined), onRetry: () => void refreshAdmins() }}
                                 />
                             ))}
                         </chakra.ul>

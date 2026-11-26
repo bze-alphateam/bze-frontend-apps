@@ -11,6 +11,9 @@ import { TxPanel } from '@/components/guided/tx-panel'
 import { WarningNote } from '@/components/guided/notes'
 import { useWizardTx } from '@/hooks/useWizardTx'
 import { adminTxHref, transferAdminError } from '@/lib/permissions'
+import { daoAddressHint, daoHandoverNote } from '@/lib/dao-admin'
+import { useDaoAdmin, useDaoModuleSupported } from '@/hooks/useDaoAdmin'
+import { DaoAdminSummary } from '@/components/dao-admin/dao-admin-summary'
 
 const { changeAdmin } = bze.tokenfactory.MessageComposer.withTypeUrl
 
@@ -51,21 +54,26 @@ interface TransferAdminDialogProps {
     onClose: () => void;
     /** After the chain confirmed it: reload the admin, so the section shows the new one. */
     onTransferred: () => void;
+    /** An address to start with (the create-a-DAO flow opens the dialog with the new DAO's address). */
+    initialAddress?: string;
 }
 
 /** The dialog's body: mounted only while open, so the address starts empty every time. */
-function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferAdminDialogProps) {
+function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddress = '' }: TransferAdminDialogProps) {
     const ticker = asset.ticker
     const { address } = useChain(getChainName())
     const { toast } = useToast()
     const gasFee = useGasFeeEstimate('change-admin')
 
-    const [recipient, setRecipient] = useState('')
+    const [recipient, setRecipient] = useState(initialAddress)
     const [touched, setTouched] = useState(false)
     const [step, setStep] = useState<'address' | 'review'>('address')
 
     const newAdmin = recipient.trim()
     const error = transferAdminError(recipient, address)
+    // The lookup only informs: it never blocks the transfer, and a failed one reads as a plain address.
+    const daoSupported = useDaoModuleSupported()
+    const { dao } = useDaoAdmin(error === '' ? newAdmin : undefined)
 
     const buildMsgs = () => {
         if (!address || error) return undefined
@@ -115,6 +123,11 @@ function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferA
                         onBlur={() => setTouched(true)}
                     />
                     <Field.ErrorText>{error}</Field.ErrorText>
+                    {dao ? (
+                        <Box mt="8px" w="full"><DaoAdminSummary dao={dao} showController /></Box>
+                    ) : daoSupported && (
+                        <Field.HelperText data-testid="dao-address-hint">{daoAddressHint(ticker)}</Field.HelperText>
+                    )}
                 </Field.Root>
                 <Box>
                     <Button type="submit" variant={hgVariant('primary')} size="md" disabled={touched && error !== ''}>
@@ -140,6 +153,12 @@ function TransferAdminContent({ asset, open, onClose, onTransferred }: TransferA
                     <ReviewRow label="They get" value="Admin" />
                     <ReviewRow label="You lose" value="Admin" warn />
                 </VStack>
+                {dao && (
+                    <>
+                        <DaoAdminSummary dao={dao} showController />
+                        <Text fontSize="13px" data-testid="dao-handover-note">{daoHandoverNote(ticker)}</Text>
+                    </>
+                )}
                 <WarningNote>Triple-check the address.</WarningNote>
                 {gasFee.amount.gt(0) && (
                     <Text fontSize="13px" color="fg.muted">{`Network fee ≈ ${prettyAmount(gasFee.displayAmount)} ${gasFee.ticker}`}</Text>
