@@ -241,21 +241,22 @@ test.describe("accept a nomination", () => {
     });
 });
 
-test("nominate, then accept as the nominee: two wallets, each stopping before the signature", async ({page, network, context}) => {
+test("nominate, then accept as the nominee: two wallets, each stopping before the signature", async ({page, network}) => {
     adminRun(network);
     asWallet(network, NOMINEE);
     await openConsole(page, WALLET);
     await page.getByTestId("nominee").fill(NOMINEE);
     await expect(page.getByTestId("nominate-submit")).toBeEnabled();
+    await page.getByTestId("nominate-submit").click();
+    await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
 
     // the chain after the nomination: the e2e wallet is still the admin, the nominee has been named
     adminRun(network, {pending_admin: NOMINEE, pending_admin_seq: "2", admin_seq: "1"});
-    const nomineePage = await context.newPage();
-    // the same browser context shares localStorage: the second wallet must not inherit the first one's session
-    await nomineePage.addInitScript(() => window.localStorage.clear());
-    await openConsole(nomineePage, NOMINEE);
-    await expect(nomineePage.getByTestId("admin-console")).toHaveAttribute("data-role", "nominee");
-    await expect(nomineePage.getByTestId("accept-submit")).toBeVisible();
-    await nomineePage.getByTestId("accept-submit").click();
-    await expect(nomineePage.getByTestId("action-error")).toBeVisible({timeout: 20_000});
+    // the second wallet is a fresh session of the same page: nothing of the first one is kept
+    await page.evaluate(() => window.localStorage.clear());
+    await openConsole(page, NOMINEE);
+    await expect(page.getByTestId("admin-console")).toHaveAttribute("data-role", "nominee");
+    await expect(page.getByTestId("accept-submit")).toBeVisible();
+    await page.getByTestId("accept-submit").click();
+    await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
 });
