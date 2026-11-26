@@ -146,7 +146,7 @@ describe('estimateGasUsed', () => {
     it('marks every kind whose message captures a module fee', () => {
         const swapping = (Object.keys(GAS_ESTIMATES) as TxKind[]).filter(kind => GAS_ESTIMATES[kind].feeSwaps).sort()
         expect(swapping).toEqual([
-            'create-denom', 'create-denom-reward', 'create-denom-reward-schedule', 'create-market', 'create-order',
+            'create-dao', 'create-denom', 'create-denom-reward', 'create-denom-reward-schedule', 'create-market', 'create-order',
             'create-pool', 'create-staking-reward', 'create-trading-reward', 'distribute-denom-rewards', 'fill-orders', 'swap',
         ])
     })

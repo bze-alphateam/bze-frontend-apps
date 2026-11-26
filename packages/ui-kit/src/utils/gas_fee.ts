@@ -81,7 +81,8 @@ export type TxKind =
     | 'join-denom-reward'
     | 'claim-denom-rewards'
     | 'exit-denom-reward'
-    | 'vote';
+    | 'vote'
+    | 'create-dao';
 
 /**
  * Gas profile of a message kind: `base` is the gas one message uses; `perItem`, when set,
@@ -158,6 +159,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'fund-burner': {base: 160_000},                           // measured p90 133k, max 147k
     'join-raffle': {base: 600_000},                           // measured median 207k, max 559k (varies with tickets)
     'start-raffle': {base: 200_000},                          // no on-chain sample — denom/raffle lookups + pot capture + two writes; re-measure on bzetestnet-3
+    'create-dao': {base: 400_000, feeSwaps: 1},                // x/dao MsgCreateDao (v8.3.0): no on-chain sample — estimate with headroom, fee captured through tradebin
     'create-denom': {base: 300_000, feeSwaps: 1},             // no on-chain sample — estimate with headroom
     'mint': {base: 200_000},                                  // no on-chain sample — estimate with headroom
     'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom

@@ -26,7 +26,7 @@ export const utf8Length = (text: string): number => encoder.encode(text).length;
  * undefined. Bech32 is case-insensitive, so `BZE1…` and `bze1…` are the same
  * address, as the chain's AccAddressFromBech32 reads them.
  */
-const canonicalAddress = (address: string): string | undefined => {
+export const canonicalAddress = (address: string): string | undefined => {
     try {
         const {prefix} = fromBech32(address);
         return prefix.toLowerCase() === getChainAddressPrefix() ? address.toLowerCase() : undefined;

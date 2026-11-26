@@ -44,6 +44,8 @@ const errorsMap: { [key: string]: string } = {
     // which it wraps with the details ("dao 5: dao not found").
     "invalid dao config": "The DAO rules were refused: check the quorum, threshold and voting periods (the expedite values can't be lower than the regular ones, and the periods must be within the chain's limits).",
     "invalid dao members": "The member list was refused: use valid, distinct addresses (never the DAO's own), at least one and no more than the chain allows.",
+    "a self-owned dao needs a live electorate": "A DAO with no admin must be able to vote from day one: pick a reward that has something staked, or choose an admin who sets the voters up later.",
+    "an account already exists at the dao address": "This DAO cannot be created right now. Nothing was charged. Please report it to the BZE team.",
     "invalid dao electorate": "The voters were refused: every staking reward and Denom Reward must exist, stake the same token and have an unstaking lock of at least the chain's minimum.",
     "dao not found": "This DAO doesn't exist. Check the link or refresh the page.",
     "signer is not the dao's admin": "Only this DAO's admin can do that. Connect the admin's wallet.",
