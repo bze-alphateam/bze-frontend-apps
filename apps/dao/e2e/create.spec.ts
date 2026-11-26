@@ -1,5 +1,5 @@
 import {expect, test} from "./support/mock-network";
-import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
+import {connectWallet as connect, installFakeKeplr} from "./support/fake-keplr";
 import {bzeWallets} from "./support/wallets";
 
 // The create flow (BFE-378) against hand-written chain answers: the wizard of both DAO types up
@@ -18,6 +18,16 @@ test.beforeEach(async ({page, network}) => {
     });
     await installFakeKeplr(page, WALLET);
 });
+
+// connectWallet leaves the wallet sidebar closing; wait until its backdrop no longer covers the page.
+const connectWallet = async (page: import("@playwright/test").Page) => {
+    await connect(page);
+    const backdrop = page.getByTestId("sidebar-backdrop");
+    await expect(async () => {
+        if (await backdrop.count()) await page.keyboard.press("Escape");
+        await expect(backdrop).toHaveCount(0, {timeout: 1_000});
+    }).toPass({timeout: 15_000});
+};
 
 const toStep = async (page: import("@playwright/test").Page, name: string) => {
     await expect(page.getByTestId(`step-${name}`)).toHaveAttribute("data-state", "current");
