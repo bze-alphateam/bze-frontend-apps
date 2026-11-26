@@ -34,3 +34,7 @@ The e2e wallet `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw` administers DAOs 3 a
 | `lcd/dao.daos_by_admin.wallet.json` | DAOs administered by the wallet |
 | `lcd/dao.daos.fallback.json` | the chain's DAO list, newest first (the Scan-down fallback) |
 | `lcd/rewards.staking_reward_participant.wallet.json`, `rewards.denom_reward_participations.wallet.json` | the wallet's x/rewards positions |
+
+## The DAO page (BFE-372)
+
+Hand-written as well (testnet still has no DAO): `lcd/dao.dao.{2,4,9}.json` (9 answers the chain's NotFound), `dao.controller.*`, `dao.dao_by_address.*` (404: not a DAO), `dao.proposals.{2,4}`, `dao.voting_power.*.wallet`, `bank.spendable_balances.dao{2,4}`, `rewards.staking_reward.17`; `scan/daos.{2,4}` (creation info), `daos.2.history` + `daos.2.history.page2` (cursor `c1`), `dao-votes.wallet` (a vote in DAO 2 and one in DAO 4, to prove the page keeps only its own). DAO 2 "Founders" is a self-owned static list with the e2e wallet and one other member; DAO 4 "Stakers club" is a stake DAO (staking reward 17) run by an outside account that nominated DAO 1's account as successor. Re-record them (and the ui-kit `dao.fixtures.ts`, ticket item 11) once testnet has DAOs on v8.3.0.

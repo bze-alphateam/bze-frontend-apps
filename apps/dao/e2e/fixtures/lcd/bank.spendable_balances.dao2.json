@@ -1,0 +1,20 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/cosmos/bank/v1beta1/spendable_balances/bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+  "query": {},
+  "status": 200,
+  "body": {
+    "balances": [
+      {
+        "denom": "ubze",
+        "amount": "5000000000"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "1"
+    }
+  }
+}

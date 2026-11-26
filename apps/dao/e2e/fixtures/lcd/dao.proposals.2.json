@@ -1,0 +1,54 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/proposals/2",
+  "query": {
+    "statuses": "VOTING",
+    "pagination.limit": "50"
+  },
+  "status": 200,
+  "body": {
+    "proposals": [
+      {
+        "id": "8",
+        "dao_id": "2",
+        "proposer": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "title": "Rotate the keys",
+        "summary": "",
+        "msgs": [],
+        "expedited": false,
+        "status": "VOTING",
+        "submit_height": "100",
+        "submit_time": "1793100000",
+        "voting_end": "1793400000",
+        "pinned_config": {
+          "min_quorum": "0.400000000000000000",
+          "threshold": "0.500000000000000000",
+          "voting_period": "259200s",
+          "allow_expedite": false,
+          "expedited_period": "0s",
+          "expedite_quorum": "0.000000000000000000",
+          "expedite_threshold": "0.000000000000000000",
+          "open_submission": false,
+          "proposal_cost": null,
+          "proposal_deposit": null,
+          "deposit_refund_policy": "ALWAYS",
+          "cost_destination": "BURN",
+          "kept_deposit_destination": "BURN"
+        },
+        "pinned_electorate": null,
+        "pinned_denominator": "2",
+        "pinned_deposit": null,
+        "yes": "0",
+        "no": "0",
+        "abstain": "0",
+        "cleanup_cursor": "0"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

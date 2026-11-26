@@ -10,8 +10,9 @@ All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builder
 
 ```
 src/
-  app/              # pages: `/` (home), `/dao/[id]` and `/proposal/[id]` (stubs until their stories), `/create` (coming soon) + app/api/scan (proxy)
+  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (a stub until its story), `/create` (coming soon) + app/api/scan (proxy)
   components/
+    dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
     dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported
     ui/             # provider, colour mode, navbar, inner hero
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
@@ -21,6 +22,9 @@ src/
     dao-scan.ts     # client of the proxy: listDaos / openProposals / filtersSupported probe; getter injected
     dao-loader.ts   # the home page's reads with their fallbacks (loadDaoPage, loadMyDaos, loadOpenProposals); Scan and chain injected as interfaces
     dao-chain.ts    # composition root: ui-kit's chain queries + the browser Scan client
+    dao-view-loader.ts  # the DAO page's reads (loadDaoView: chain; loadDaoExtras / loadHistoryPage / loadMyVotes: Scan); chain and Scan injected, secondary reads settle as Part<T>
+    dao-page-scan.ts    # Scan client of the page: daos/{id}, daos/{id}/history, dao-votes?voter=
+    dao-control.ts, dao-rules.ts, dao-power.ts, dao-history.ts, dao-voters.ts, dao-actions.ts, dao-text.ts   # pure text/state helpers of the page (control chain, rules in words, voting-power messages, history renderer, sources, action flags, plain-text linkify)
     dao-cards.ts, my-daos.ts, staker-sources.ts, format.ts, dao-types.ts   # pure helpers
 ```
 
@@ -34,3 +38,10 @@ src/
 ## Tests
 
 Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public API, collaborators injected). Playwright e2e in `e2e/` (CI only, workflow `e2e-dao`): fixtures for the chain, aggregator and Scan answer fake `*.e2e.test` hosts; a fake Keplr (`e2e/support/fake-keplr.ts`) connects a wallet. See `e2e/README.md`.
+
+## The DAO page
+
+- **Live state is always the chain** (`dao/{id}`, `params`, `dao_controller`, `dao_by_address` to name admin-chain DAOs, bank balances for the treasury, open proposals, the staking reward / Denom Reward of each source, `voting_power`). Scan adds only the creator, labels, the history and the wallet's votes (`dao-votes?voter=`, no DAO filter on Scan's side: pages are read up to a cap and filtered here). A chain miss on the DAO is "not found" (a non-numeric id too, without any request); a Scan miss never is.
+- **Failures stay local**: each secondary chain read settles as a `Part` (the panel says it could not be read), each Scan part has a Retry.
+- **Action buttons** (new proposal, request to join / leave, admin console) sit behind `DAO_FEATURES` in `lib/dao-actions.ts`; turn a flag on in the story that ships the target page. Until then nothing is rendered.
+- DAO name and description are untrusted: plain text, line breaks kept, links only through `safeHttpUrl` (http/https) in `lib/dao-text.ts`; never HTML.

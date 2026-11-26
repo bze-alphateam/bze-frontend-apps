@@ -15,5 +15,5 @@ pnpm --filter bze-dao e2e
 
 - `playwright.config.ts` serves on port 3005 and `.env.e2e` points the Scan links at nothing real (the route answers from `fixtures/scan/`).
 - **A wallet**: `support/fake-keplr.ts` installs a fake Keplr before the app loads (`installFakeKeplr`) and `connectWallet(page)` picks it in the header's wallet picker, as a user does. It approves connections and refuses to sign. `support/wallets.ts` makes valid `bze1…` addresses.
-- Specs: `home.spec.ts` (list, filter, search, paging, open feed, explainer, navbar), `my-daos.spec.ts` (each reason, the Scan-without-filters case), `fallbacks.spec.ts` (v8.2 node, Scan down, Scan without the BFE-368 filters).
+- Specs: `home.spec.ts` (list, filter, search, paging, open feed, explainer, navbar), `my-daos.spec.ts` (each reason, the Scan-without-filters case), `fallbacks.spec.ts` (v8.2 node, Scan down, Scan without the BFE-368 filters), `dao-page.spec.ts` (the page of a static-list and of a stake DAO, wallet and no wallet, history, not found, Scan down, v8.2 node).
 - Later DAO stories add their specs and fixtures here.

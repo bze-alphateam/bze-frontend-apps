@@ -1,0 +1,18 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/voting_power/2/bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+  "query": {},
+  "status": 200,
+  "body": {
+    "current": "1",
+    "proposals": [
+      {
+        "proposal_id": "8",
+        "eligible_weight": "1",
+        "shares": []
+      }
+    ]
+  }
+}
