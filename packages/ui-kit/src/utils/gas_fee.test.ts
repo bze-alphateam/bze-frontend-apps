@@ -58,6 +58,28 @@ describe('GAS_ESTIMATES', () => {
             }
         })
     })
+
+    // Highest gas_used measured on bzetestnet-3 (v8.3.0-rc1, 2026-11-25): every estimate must cover it.
+    it('covers the gas measured on v8.3.0-rc1 for the order book and swaps', () => {
+        const gas = (kind: TxKind, count?: number) => estimateGasUsed({ kind, count }).toNumber()
+        expect(gas('create-order')).toBeGreaterThanOrEqual(207_574)   // maker
+        expect(gas('create-order')).toBeGreaterThanOrEqual(196_898)   // taker, 1 fill
+        expect(gas('cancel-order')).toBeGreaterThanOrEqual(96_486)
+        expect(gas('fill-orders', 1)).toBeGreaterThanOrEqual(196_302)
+        expect(gas('fill-orders', 3)).toBeGreaterThanOrEqual(405_072)
+        expect(gas('fill-orders', 5)).toBeGreaterThanOrEqual(633_842)
+        expect(gas('fill-orders', 10)).toBeGreaterThanOrEqual(1_293_267)
+        expect(gas('swap', 1)).toBeGreaterThanOrEqual(182_853)
+        expect(gas('swap', 2)).toBeGreaterThanOrEqual(226_326)
+        expect(gas('swap', 3)).toBeGreaterThanOrEqual(318_000)        // known pre-upgrade 3-hop max
+    })
+
+    it('covers the measured gas through estimateGasFee with the gas multiplier', () => {
+        const maker = estimateGasFee({ ...env, spec: 'create-order', txFeeDenom: NATIVE })
+        expect(maker.gas.toNumber()).toBeGreaterThanOrEqual(Math.ceil(207_574 * 1.2))
+        const fill = estimateGasFee({ ...env, spec: { kind: 'fill-orders', count: 10 }, txFeeDenom: NATIVE })
+        expect(fill.gas.toNumber()).toBeGreaterThanOrEqual(Math.ceil(1_293_267 * 1.2))
+    })
 })
 
 describe('estimateGasUsed', () => {
@@ -302,12 +324,12 @@ describe('estimateGasFee', () => {
 
     it('adds the module fee swap to the gas limit in another token, with one margin', () => {
         const result = estimateGasFee({ ...env, spec: 'create-order', txFeeDenom: USDC, pool })
-        // ceil((180000 + 100000) × 1.2)
+        // ceil((220000 + 100000) × 1.2)
         expect(result.gas.toNumber()).toBe(Math.ceil((GAS_ESTIMATES['create-order'].base + FEE_SWAP_GAS) * 1.2))
-        expect(result.gas.toNumber()).toBe(336_000)
-        expect(result.nativeAmount.toNumber()).toBe(3360)
+        expect(result.gas.toNumber()).toBe(384_000)
+        expect(result.nativeAmount.toNumber()).toBe(3840)
         const native = estimateGasFee({ ...env, spec: 'create-order', txFeeDenom: NATIVE })
-        expect(native.gas.toNumber()).toBe(216_000)               // ceil(180000 × 1.2), no swap in ubze
+        expect(native.gas.toNumber()).toBe(264_000)               // ceil(220000 × 1.2), no swap in ubze
     })
 
     it('is exactly what useTx would send, and satisfies ceil(gasLimit × 0.01 / spot)', () => {
