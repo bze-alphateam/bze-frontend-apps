@@ -19,7 +19,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ubze: { denom: "ubze", ticker: "BZE", decimals: 6 },
         [TOK]: { denom: TOK, ticker: "TOK", decimals: 6 },
     };
-    // 1:1 pool, 1e12 reserves, no swap fee: a 100,000,000 ubze fee costs 100,000,011 TOK.
+    // 1:1 pool, 1e12 reserves, no swap fee: a 100,000,000 ubze fee costs 100,010,001 TOK.
     const pool = { base: TOK, quote: "ubze", fee: "0", reserve_base: "1000000000000", reserve_quote: "1000000000000" };
     return {
         ...actual,
@@ -64,7 +64,7 @@ beforeEach(() => {
 describe("PayPanel with a fee token that has a transfer fee", () => {
     it("without a transfer fee shows the converted fee only", () => {
         const { container } = renderPanel();
-        expect(screen.getByText(/≈ 100 TOK/)).toBeInTheDocument();
+        expect(screen.getByText(/≈ 100\.01 TOK/)).toBeInTheDocument();
         expect(screen.getByText("You hold enough TOK")).toBeInTheDocument();
         expect(container.textContent).not.toMatch(/transfer/i);
     });
@@ -72,15 +72,15 @@ describe("PayPanel with a fee token that has a transfer fee", () => {
     it("shows fee + transfer fee in the ≈ amount, with no extra row or wording", () => {
         tok.transferFee = "0.05";
         const { container } = renderPanel();
-        // 100,000,011 + ceil(100,000,011 x 0.05) = 105,000,012 (the panel rounds to 3 decimals)
-        expect(screen.getByText(/≈ 105 TOK/)).toBeInTheDocument();
+        // 100,010,001 + ceil(100,010,001 x 0.05) = 100,010,001 + 5,000,501 = 105,010,502 (shown with 3 decimals)
+        expect(screen.getByText(/≈ 105\.011 TOK/)).toBeInTheDocument();
         expect(screen.getByText("You hold enough TOK")).toBeInTheDocument();
         expect(container.textContent).not.toMatch(/transfer/i);
     });
 
     it("follows the full amount for the balance line", () => {
         tok.transferFee = "0.05";
-        tok.balance = "105000011"; // covers the fee (100,000,011), not the full 105,000,012
+        tok.balance = "105010501"; // covers the fee (100,010,001), not the full 105,010,502
         renderPanel();
         expect(screen.getByText("Not enough TOK · paid in BZE")).toBeInTheDocument();
         expect(screen.queryByText("You hold enough TOK")).not.toBeInTheDocument();
