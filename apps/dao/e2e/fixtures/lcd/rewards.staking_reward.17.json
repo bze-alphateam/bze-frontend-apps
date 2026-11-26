@@ -1,0 +1,22 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/rewards/staking_reward/000000000017",
+  "query": {},
+  "status": 200,
+  "body": {
+    "staking_reward": {
+      "reward_id": "000000000017",
+      "prize_amount": "10000000",
+      "prize_denom": "ubze",
+      "staking_denom": "ubze",
+      "duration": 15,
+      "payouts": 15,
+      "min_stake": "1000000",
+      "lock": 7,
+      "staked_amount": "5000000000",
+      "distributed_stake": "0.000000000000000000"
+    }
+  }
+}

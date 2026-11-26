@@ -1,0 +1,13 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/dao_by_address/bze1qpj3kg3fxqmnu32v2ddxz6r0we7cfzujwuwqqk",
+  "query": {},
+  "status": 404,
+  "body": {
+    "code": 5,
+    "message": "dao not found: key not found",
+    "details": []
+  }
+}

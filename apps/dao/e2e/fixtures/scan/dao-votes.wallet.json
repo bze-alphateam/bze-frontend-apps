@@ -1,0 +1,53 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/dao-votes",
+  "query": {
+    "voter": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+    "limit": "100"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "proposal": {
+          "id": 7,
+          "title": "Buy honey",
+          "status": "executed",
+          "voting_end": "2026-11-07T10:00:00Z"
+        },
+        "dao": {
+          "id": 2,
+          "name": "Founders"
+        },
+        "option": "YES",
+        "weight": "1",
+        "effective_weight": "1",
+        "height": 150,
+        "tx_hash": "EF56",
+        "time": "2026-11-06T10:00:00Z"
+      },
+      {
+        "proposal": {
+          "id": 3,
+          "title": "Elsewhere",
+          "status": "executed",
+          "voting_end": "2026-11-07T10:00:00Z"
+        },
+        "dao": {
+          "id": 4,
+          "name": "Stakers club"
+        },
+        "option": "YES",
+        "weight": "1",
+        "effective_weight": "1",
+        "height": 150,
+        "tx_hash": "EF56",
+        "time": "2026-11-06T10:00:00Z"
+      }
+    ],
+    "next_cursor": null,
+    "supported": true
+  }
+}

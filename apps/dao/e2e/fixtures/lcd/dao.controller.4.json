@@ -1,0 +1,15 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/dao_controller/4",
+  "query": {},
+  "status": 200,
+  "body": {
+    "controller": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+    "end_reason": "ACCOUNT",
+    "path": [
+      "bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s"
+    ]
+  }
+}

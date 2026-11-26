@@ -1,0 +1,21 @@
+{
+  "source": "hand-written (the DAO account has no stake of its own, BFE-372)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/rewards/staking_reward_participant/bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s",
+  "query": {
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "500",
+    "pagination.count_total": "false",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

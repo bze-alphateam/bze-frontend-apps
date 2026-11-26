@@ -1,0 +1,47 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos/2/history",
+  "query": {
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 300,
+        "tx_index": 0,
+        "msg_index": 0,
+        "seq": 0,
+        "type": "EventDaoMembersUpdated",
+        "attrs": {
+          "id": "2",
+          "added": [
+            "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g"
+          ],
+          "removed": []
+        },
+        "tx_hash": "CD34",
+        "time": "2026-11-10T09:00:00Z"
+      },
+      {
+        "height": 200,
+        "tx_index": 0,
+        "msg_index": 0,
+        "seq": 0,
+        "type": "EventDaoConfigUpdated",
+        "attrs": {
+          "id": "2",
+          "fields": [
+            "min_quorum",
+            "voting_period"
+          ]
+        },
+        "tx_hash": null,
+        "time": "2026-11-08T09:00:00Z"
+      }
+    ],
+    "next_cursor": "c1"
+  }
+}

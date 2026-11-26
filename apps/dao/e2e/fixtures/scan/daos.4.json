@@ -1,0 +1,41 @@
+{
+  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos/4",
+  "query": {},
+  "status": 200,
+  "body": {
+    "id": 4,
+    "name": "x",
+    "type": "static_list",
+    "address": "x",
+    "admin": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+    "admin_label": null,
+    "self_governed": false,
+    "created_time": "2026-11-04T10:00:00Z",
+    "pending_admin": "bze1qpj3kg3fxqmnu32v2ddxz6r0we7cfzujwuwqqk",
+    "proposals_open": 1,
+    "address_label": null,
+    "created_height": 10,
+    "created_tx_hash": "AB12",
+    "creator": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+    "creator_label": {
+      "name": "Hive founder",
+      "kind": "user"
+    },
+    "updated_height": 10,
+    "live": {
+      "available": true
+    },
+    "controller": {
+      "address": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+      "label": null,
+      "end_reason": "ACCOUNT",
+      "path": [
+        "bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s"
+      ]
+    },
+    "treasury": []
+  }
+}
