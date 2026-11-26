@@ -52,6 +52,22 @@ describe("useDaoAdmin", () => {
     });
 });
 
+describe("useDaoAdmin racing lookups", () => {
+    it("follows the address typed last, not the slower earlier answer", async () => {
+        let releaseA: (d: Dao | null) => void = () => {};
+        const services = make({
+            byAddress: vi.fn((a: string) => a === DAO_ADDRESS ? new Promise<Dao | null>((r) => { releaseA = r; }) : Promise.resolve(null)),
+        });
+        const { result, rerender } = renderHook(({ a }) => useDaoAdmin(a, services), { initialProps: { a: DAO_ADDRESS as string } });
+        rerender({ a: PLAIN });
+        await waitFor(() => expect(result.current.lookup?.status).toBe("none"));
+        releaseA(DAO);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(result.current.lookup?.status).toBe("none");
+        expect(result.current.dao).toBeUndefined();
+    });
+});
+
 describe("useDaoAdmins", () => {
     it("looks each distinct address up once", async () => {
         const services = make();

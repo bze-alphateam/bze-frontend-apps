@@ -38,16 +38,18 @@ describe("lookupDaoAdmin", () => {
         expect(await lookupDaoAdmin(ADDRESS, s)).toEqual({ status: "dao", dao: DAO });
     });
 
-    it("answers a repeat from the cache, DAO and plain address alike", async () => {
+    it("answers a repeat for a DAO from the cache", async () => {
         const s = services();
         await lookupDaoAdmin(ADDRESS, s);
         await lookupDaoAdmin(ADDRESS, s);
         expect(s.byAddress).toHaveBeenCalledTimes(1);
+    });
 
-        const plain = services({ byAddress: vi.fn(async () => null) });
-        await lookupDaoAdmin("bze1plain", plain);
-        expect(await lookupDaoAdmin("bze1plain", plain)).toEqual({ status: "none" });
-        expect(plain.byAddress).toHaveBeenCalledTimes(1);
+    it("never caches 'not a DAO': the address may become one a moment later", async () => {
+        const byAddress = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(DAO);
+        const s = services({ byAddress });
+        expect(await lookupDaoAdmin(ADDRESS, s)).toEqual({ status: "none" });
+        expect(await lookupDaoAdmin(ADDRESS, s)).toEqual({ status: "dao", dao: DAO });
     });
 
     it("forgets the answer after five minutes", async () => {

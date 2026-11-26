@@ -35,7 +35,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 (for the comm
 | `lcd/bank.denom_metadata.vidulum.json` | VDL bank metadata (query-string route) | the registry entry `/official` generates (`official.spec.ts`). Recorded 2026-10-14 |
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | |
 | `lcd/burner.params.json` | burner params | |
-| `lcd/dao.params.json` | x/dao params (the DAO-support probe) | answers 501, as a v8.2.x node does: the token page and the token directory then keep today's address-only admin (BFE-387). Recorded 2026-11-26 |
+| `lcd/dao.params.json` | x/dao params (the DAO-support probe) | answers 501, as a v8.2.x node does: the token page and the token directory then keep today's address-only admin (BFE-387). Synthetic, not recorded: testnet runs v8.3.0 and answers 200 here |
 | `lcd/tokenfactory.denom_authority.noadmin.json` | NOAD's admin (`DenomAuthority`) | the token page's live admin check (`token-page.spec.ts`); still its creator on testnet, despite the name. Recorded 2026-10-21 |
 | `lcd/tokenfactory.denom_branding.noadmin.json` | NOAD's brand kit | the token page's Brand kit chip. Recorded 2026-10-21 |
 | `lcd/bank.supply_by_denom.noadmin.json` | NOAD's live total supply | the token page's Supply stat. Recorded 2026-10-21 |
