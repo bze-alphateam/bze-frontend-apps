@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import NextLink from 'next/link'
 import { Box, Button, chakra, Field, HStack, Input, Text, VStack } from '@chakra-ui/react'
 import { bze } from '@bze/bzejs'
 import { LuPencil, LuTriangleAlert } from 'react-icons/lu'
@@ -12,6 +13,9 @@ import { WarningNote } from '@/components/guided/notes'
 import { useWizardTx } from '@/hooks/useWizardTx'
 import { adminTxHref, transferAdminError } from '@/lib/permissions'
 import { daoAddressHint, daoHandoverNote } from '@/lib/dao-admin'
+import { tokenDaoHref } from '@/lib/token-dao'
+import { tokenPageReturn } from '@/lib/workspace'
+import { withReturn } from '@/components/guided/return-to'
 import { useDaoAdmin, useDaoModuleSupported } from '@/hooks/useDaoAdmin'
 import { DaoAdminSummary } from '@/components/dao-admin/dao-admin-summary'
 
@@ -126,7 +130,12 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
                     {dao ? (
                         <Box mt="8px" w="full"><DaoAdminSummary dao={dao} showController /></Box>
                     ) : daoSupported && (
-                        <Field.HelperText data-testid="dao-address-hint">{daoAddressHint(ticker)}</Field.HelperText>
+                        <Field.HelperText data-testid="dao-address-hint">
+                            {daoAddressHint(ticker)}{' '}
+                            <chakra.a asChild color="hg.link" fontWeight="600">
+                                <NextLink href={withReturn(tokenDaoHref(asset.denom), tokenPageReturn(asset))} data-testid="create-dao-link">{`Create a DAO for ${ticker}`}</NextLink>
+                            </chakra.a>
+                        </Field.HelperText>
                     )}
                 </Field.Root>
                 <Box>

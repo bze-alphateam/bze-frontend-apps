@@ -25,6 +25,7 @@ import {
 } from '@bze/bze-ui-kit'
 import { Chip, ChipRow, LinkCard } from '@/components/create/choose-parts'
 import { ContinueHint } from '@/components/home/continue-hint'
+import { useDaoParams } from '@/hooks/useDaoParams'
 import { useLastWizard } from '@/hooks/useLastWizard'
 import { DOCS_HREF, STARTING_POINTS, type StartingPoint, dexPoolsHref } from '@/lib/create-routes'
 
@@ -118,6 +119,9 @@ function Footer() {
  */
 export default function FactoryHomePage() {
     const { hint, dismiss } = useLastWizard()
+    // The DAO tile is live only where the node runs x/dao (v8.3.0); on a v8.2.x node it stays "Coming soon".
+    const daoUnsupported = useDaoParams().status === 'unsupported'
+    const points = STARTING_POINTS.map(p => (p.id === 'dao' && daoUnsupported ? { ...p, href: undefined } : p))
 
     return (
         <Box position="relative" minH="100vh">
@@ -136,7 +140,7 @@ export default function FactoryHomePage() {
                         templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' }}
                         gap="16px"
                     >
-                        {STARTING_POINTS.map(point => <StartTile key={point.id} point={point} />)}
+                        {points.map(point => <StartTile key={point.id} point={point} />)}
                     </Grid>
                     <WorkOnExisting />
                     <Footer />

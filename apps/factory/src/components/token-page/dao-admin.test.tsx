@@ -201,6 +201,9 @@ describe("Transfer admin dialog and DAOs", () => {
         renderDialog();
         const d = await dialog();
         expect(await d.findByTestId("dao-address-hint")).toHaveTextContent("Hand HONEY to a DAO: paste the DAO's address.");
+        const create = d.getByTestId("create-dao-link");
+        expect(create).toHaveTextContent("Create a DAO for HONEY");
+        expect(create.getAttribute("href")).toContain(`/dao/new?denom=${encodeURIComponent(DENOM)}`);
         await enter(d, PLAIN);
         await waitFor(() => expect(m.byAddress).toHaveBeenCalledWith(PLAIN));
         expect(d.queryByTestId("dao-admin-summary")).not.toBeInTheDocument();

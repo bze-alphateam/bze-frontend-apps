@@ -3,21 +3,23 @@
 import React, { useMemo, useState } from 'react'
 import { Box, Button, VStack } from '@chakra-ui/react'
 import { LuRefreshCw } from 'react-icons/lu'
-import { Shimmer, useLiquidityPools } from '@bze/bze-ui-kit'
+import { Shimmer, useLiquidityPools, type Dao } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
 import { MakeStakableDialog } from '@/components/rewards/make-stakable-dialog'
 import { CompoundedRewardItem, SimpleRewardItem } from '@/components/rewards/reward-items'
 import { softButton } from '@/components/ui/soft-button'
+import { useDaoParams } from '@/hooks/useDaoParams'
 import { useDenomReward } from '@/hooks/useDenomReward'
 import { useStakingRewards } from '@/hooks/useStakingRewards'
 import { compoundedNewHref } from '@/lib/denom-reward'
 import { stakesToken } from '@/lib/token-page'
 import { ActionGroup, ActionItem, ItemButton, type GroupProps } from './action-group'
+import { CreateDaoItem } from './create-dao-item'
 
 /** The compounded reward of the token, or the way to make it stakable. */
-function Compounded({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
+function Compounded({ asset, back, dr }: Pick<GroupProps, 'asset' | 'back'> & { dr: ReturnType<typeof useDenomReward> }) {
     const ticker = asset.ticker
-    const { denomReward, schedules, isLoading, hasError, refresh } = useDenomReward(asset.denom)
+    const { denomReward, schedules, isLoading, hasError, refresh } = dr
     const [isExplaining, setExplaining] = useState(false)
 
     if (isLoading) {
@@ -68,15 +70,17 @@ function Compounded({ asset, back }: Pick<GroupProps, 'asset' | 'back'>) {
  * same items as a token's row on /rewards: the compounded reward with its daily prizes, then the
  * simple rewards that stake the token or its LP shares.
  */
-export function RewardsGroup({ asset, back }: GroupProps) {
+export function RewardsGroup({ asset, back, daoAdmin }: GroupProps & { daoAdmin?: Pick<Dao, 'id' | 'name'> }) {
     const { rewards, isLoading, hasError, refresh } = useStakingRewards()
+    const dr = useDenomReward(asset.denom)
+    const daoParams = useDaoParams()
     const { pools } = useLiquidityPools()
     const simple = useMemo(() => rewards.filter(r => stakesToken(r, asset.denom, pools)), [rewards, asset.denom, pools])
 
     return (
         <ActionGroup id="rewards" title={`Rewards on ${asset.ticker}`}>
             <VStack align="stretch" gap="8px" pt="4px" pb="14px">
-                <Compounded asset={asset} back={back} />
+                <Compounded asset={asset} back={back} dr={dr} />
                 {isLoading ? (
                     <Box data-testid="simple-rewards-loading">
                         <Shimmer h="16px" w="160px" />
@@ -101,6 +105,14 @@ export function RewardsGroup({ asset, back }: GroupProps) {
                         />
                     ))
                 )}
+                <CreateDaoItem
+                    asset={asset}
+                    back={back}
+                    params={daoParams}
+                    staking={{ rewards, isLoading, hasError }}
+                    denomReward={{ value: dr.denomReward, isLoading: dr.isLoading, hasError: dr.hasError }}
+                    daoAdmin={daoAdmin}
+                />
             </VStack>
         </ActionGroup>
     )

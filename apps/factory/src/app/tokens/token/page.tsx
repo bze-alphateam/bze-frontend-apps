@@ -89,7 +89,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                         <SupplyGroup {...groupProps} mintable={mintable} supplyDisplay={supplyDisplay} onMinted={refreshSupply} />
                         <DetailsGroup {...groupProps} />
                         <TradingGroup {...groupProps} />
-                        <RewardsGroup {...groupProps} />
+                        <RewardsGroup {...groupProps} daoAdmin={daoAdmin} />
                     </Grid>
 
                     <PermissionsSection
