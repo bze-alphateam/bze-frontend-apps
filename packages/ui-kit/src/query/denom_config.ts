@@ -35,39 +35,84 @@ const parseRatios = (gasSurcharge: unknown, transferFee: unknown): DenomConfigRa
     transferFee: parseRatio(transferFee, MAX_TRANSFER_FEE),
 });
 
-const inFlight = new Map<string, Promise<DenomConfigRatios>>();
+/** The whole tokenfactory `DenomConfig` of a denom, as the settings UI needs it. */
+export interface DenomConfigInfo {
+    /**
+     * `ok`: the node answered with a config. `unsupported`: a v8.2.0 node (HTTP 501), the feature does
+     * not exist there. `error`: any other failure, nothing known (never cached, ratios read as zero).
+     */
+    status: 'ok' | 'unsupported' | 'error';
+    /** The address that receives the token's fee coins, '' when none. */
+    communityPool: string;
+    gasSurcharge: BigNumber;
+    transferFee: BigNumber;
+}
 
-const cacheRatios = (cacheKey: string, ratios: DenomConfigRatios) => {
+export interface DenomConfigInfoOptions {
+    /** Skip the 5-minute cache and ask the node (after the admin changed the config). */
+    fresh?: boolean;
+}
+
+const DENOM_CONFIG_INFO_CACHE_KEY = "tokenfactory:denom_config_info";
+const unsupportedInfo = (): DenomConfigInfo => ({status: 'unsupported', communityPool: '', ...zeroRatios()});
+const errorInfo = (): DenomConfigInfo => ({status: 'error', communityPool: '', ...zeroRatios()});
+
+const inFlight = new Map<string, Promise<DenomConfigInfo>>();
+
+const cacheInfo = (denom: string, info: DenomConfigInfo) => {
     setInLocalStorage(
-        cacheKey,
-        JSON.stringify({gasSurcharge: ratios.gasSurcharge.toFixed(), transferFee: ratios.transferFee.toFixed()}),
+        `${DENOM_CONFIG_CACHE_KEY}:${denom}`,
+        JSON.stringify({gasSurcharge: info.gasSurcharge.toFixed(), transferFee: info.transferFee.toFixed()}),
+        DENOM_CONFIG_CACHE_TTL,
+    );
+    setInLocalStorage(
+        `${DENOM_CONFIG_INFO_CACHE_KEY}:${denom}`,
+        JSON.stringify({
+            status: info.status,
+            communityPool: info.communityPool,
+            gasSurcharge: info.gasSurcharge.toFixed(),
+            transferFee: info.transferFee.toFixed(),
+        }),
         DENOM_CONFIG_CACHE_TTL,
     );
 }
 
-const fetchDenomConfig = async (denom: string, cacheKey: string): Promise<DenomConfigRatios> => {
+const fetchDenomConfig = async (denom: string): Promise<DenomConfigInfo> => {
     try {
         const url = `${getSettings().endpoints.restEndpoint}/bze/tokenfactory/denom_config?denom=${encodeURIComponent(denom)}`;
         const resp = await fetch(url);
         if (resp.status !== 200) {
             // 501 on v8.2.0 nodes: no denom config yet. Remember it so every tx does not ask again.
-            const zeros = zeroRatios();
-            cacheRatios(cacheKey, zeros);
-            return zeros;
+            const info = resp.status === 501 ? unsupportedInfo() : errorInfo();
+            cacheInfo(denom, info);
+            return info;
         }
 
         const body = await resp.json();
         if (!body?.config) {
             throw new Error("missing config");
         }
+        const communityPool = typeof body.config.community_pool === "string" ? body.config.community_pool : "";
         const ratios = parseRatios(body.config.gas_surcharge, body.config.transfer_fee);
-        cacheRatios(cacheKey, ratios);
-        return ratios;
+        const info: DenomConfigInfo = {status: 'ok', communityPool, ...ratios};
+        cacheInfo(denom, info);
+        return info;
     } catch (e) {
         // not cached: a failing node may answer on the next call
         console.error("[DenomConfig] failed to fetch denom config", denom, e);
-        return zeroRatios();
+        return errorInfo();
     }
+}
+
+const requestDenomConfig = (denom: string): Promise<DenomConfigInfo> => {
+    let pending = inFlight.get(denom);
+    if (!pending) {
+        pending = fetchDenomConfig(denom).finally(() => {
+            inFlight.delete(denom);
+        });
+        inFlight.set(denom, pending);
+    }
+    return pending;
 }
 
 /**
@@ -82,8 +127,7 @@ export const getDenomConfig = async (denom: string): Promise<DenomConfigRatios> 
         return zeroRatios();
     }
 
-    const cacheKey = `${DENOM_CONFIG_CACHE_KEY}:${denom}`;
-    const cached = getFromLocalStorage(cacheKey);
+    const cached = getFromLocalStorage(`${DENOM_CONFIG_CACHE_KEY}:${denom}`);
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
@@ -93,12 +137,35 @@ export const getDenomConfig = async (denom: string): Promise<DenomConfigRatios> 
         }
     }
 
-    let pending = inFlight.get(denom);
-    if (!pending) {
-        pending = fetchDenomConfig(denom, cacheKey).finally(() => {
-            inFlight.delete(denom);
-        });
-        inFlight.set(denom, pending);
+    const {gasSurcharge, transferFee} = await requestDenomConfig(denom);
+    return {gasSurcharge, transferFee};
+}
+
+/**
+ * The whole config of a denom, community pool included, with the "not supported" case
+ * (`unsupported`, HTTP 501 on v8.2.0 nodes) told apart from a failed read (`error`). Same cache
+ * and shared request as `getDenomConfig`; `{fresh: true}` skips the cache. A non-factory denom is
+ * `unsupported` (it has no config), without a request.
+ */
+export const getDenomConfigInfo = async (denom: string, options: DenomConfigInfoOptions = {}): Promise<DenomConfigInfo> => {
+    if (!denom || !denom.startsWith(FACTORY_PREFIX)) {
+        return unsupportedInfo();
     }
-    return pending;
+
+    if (!options.fresh) {
+        const cached = getFromLocalStorage(`${DENOM_CONFIG_INFO_CACHE_KEY}:${denom}`);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                const ratios = parseRatios(parsed.gasSurcharge, parsed.transferFee);
+                if ((parsed.status === 'ok' || parsed.status === 'unsupported') && typeof parsed.communityPool === 'string') {
+                    return {status: parsed.status, communityPool: parsed.communityPool, ...ratios};
+                }
+            } catch (e) {
+                console.error("[DenomConfig] ignoring unreadable cache entry", e);
+            }
+        }
+    }
+
+    return requestDenomConfig(denom);
 }

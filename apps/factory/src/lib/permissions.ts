@@ -41,6 +41,7 @@ export const goneForever = (ticker: string) => [
     'Editing name, logo and description',
     'Editing the brand kit',
     'Transferring admin',
+    'Changing the fee settings',
 ]
 
 /** What renouncing leaves as it is. */
@@ -48,6 +49,7 @@ export const staysTheSame = (ticker: string) => [
     `Everyone keeps their ${ticker}`,
     'Pools, markets and rewards keep running',
     `Anyone can still burn ${ticker} they hold on Burner`,
+    'Fee settings stay as they are',
 ]
 
 /** A setup fact worth a last look before renouncing. `ok` false = it can't be changed afterwards (or, unaffected, is still open). */
