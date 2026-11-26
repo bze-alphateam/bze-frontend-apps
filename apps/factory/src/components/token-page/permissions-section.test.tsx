@@ -37,6 +37,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ...actual,
         useToast: () => ({ toast: { success: m.toast } }),
         useGasFeeEstimate: () => ({ amount: new BigNumber(20000), displayAmount: new BigNumber("0.02"), ticker: "TBZE", denom: "ubze", isNative: true, isLoading: false }),
+        isDaoModuleSupported: async () => false,
         getExplorerTxURL: (hash: string) => `https://explorer.example/tx/${hash}`,
     };
 });

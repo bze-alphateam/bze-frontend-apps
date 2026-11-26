@@ -82,10 +82,15 @@ const fetchDenomConfig = async (denom: string): Promise<DenomConfigInfo> => {
         const url = `${getSettings().endpoints.restEndpoint}/bze/tokenfactory/denom_config?denom=${encodeURIComponent(denom)}`;
         const resp = await fetch(url);
         if (resp.status !== 200) {
-            // 501 on v8.2.0 nodes: no denom config yet. Remember it so every tx does not ask again.
-            const info = resp.status === 501 ? unsupportedInfo() : errorInfo();
-            cacheInfo(denom, info);
-            return info;
+            if (resp.status === 501) {
+                // v8.2.0 nodes: no denom config yet. Remember it so every tx does not ask again.
+                const info = unsupportedInfo();
+                cacheInfo(denom, info);
+                return info;
+            }
+            // any other status is a failing node: not cached, the next call asks again
+            console.error("[DenomConfig] denom config request answered", resp.status, denom);
+            return errorInfo();
         }
 
         const body = await resp.json();
@@ -104,7 +109,12 @@ const fetchDenomConfig = async (denom: string): Promise<DenomConfigInfo> => {
     }
 }
 
-const requestDenomConfig = (denom: string): Promise<DenomConfigInfo> => {
+const requestDenomConfig = (denom: string, fresh = false): Promise<DenomConfigInfo> => {
+    // A fresh read never joins a request that started earlier: it could carry the config from
+    // before the change the caller just made. Its answer is cached like any other.
+    if (fresh) {
+        return fetchDenomConfig(denom);
+    }
     let pending = inFlight.get(denom);
     if (!pending) {
         pending = fetchDenomConfig(denom).finally(() => {
@@ -117,8 +127,9 @@ const requestDenomConfig = (denom: string): Promise<DenomConfigInfo> => {
 
 /**
  * The tokenfactory config of a denom (v8.3.0). Only factory denoms have one; any other denom
- * returns zeros without a request. A non-200 answer (501 on v8.2.0 nodes) reads as zeros and is
- * cached; a network error or an invalid answer reads as zeros and is not. Ratios are plain
+ * returns zeros without a request. A 501 answer (v8.2.0 nodes) reads as zeros and is cached; any
+ * other failure (another status, a network error, an invalid answer) reads as zeros and is not
+ * cached. Ratios are plain
  * decimals clamped to the chain bounds (gas surcharge 2, transfer fee 0.05). Cached 5 minutes;
  * concurrent callers share one request.
  */
@@ -167,5 +178,5 @@ export const getDenomConfigInfo = async (denom: string, options: DenomConfigInfo
         }
     }
 
-    return requestDenomConfig(denom);
+    return requestDenomConfig(denom, options.fresh);
 }

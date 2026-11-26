@@ -10,6 +10,7 @@ import { useTokenRaffle } from '@/hooks/useTokenRaffle'
 import { burnerCoinHref, displayAmount, oneInFromChances, percentFromRatio, raffleHref } from '@/lib/raffle-new'
 import { ActionGroup, ActionItem, AdminItemShimmer, ItemButton, ItemLink, type GroupProps } from './action-group'
 import { MintForm } from './mint-form'
+import { DisableMintingItem } from './disable-minting-dialog'
 
 /** One raffle figure on the inset. */
 function RaffleFact({ label, value }: { label: string; value: React.ReactNode }) {
@@ -72,9 +73,13 @@ function RaffleItem({ asset, back, burnerHref }: Pick<GroupProps, 'asset' | 'bac
 }
 
 /** Supply: mint for the admin, burning on Burner for everyone, the burning raffle. */
-export function SupplyGroup({ asset, access, back, mintable, supplyDisplay, onMinted }: GroupProps & {
+export function SupplyGroup({ asset, access, back, mintable, mintableKnown, supplyDisplay, onMinted, onMintingDisabled }: GroupProps & {
     /** Whether minting is still on; undefined while unknown (no Mint until the chain says so). */
     mintable: boolean | undefined;
+    /** The node's answer carried `mintable` (v8.3.0+): "Turn off minting" does not exist on v8.2.0. */
+    mintableKnown: boolean;
+    /** After minting was turned off: reload the admin state, so Mint disappears. */
+    onMintingDisabled: () => void;
     /** Current total supply in display units. */
     supplyDisplay: BigNumber;
     onMinted: () => void;
@@ -97,6 +102,9 @@ export function SupplyGroup({ asset, access, back, mintable, supplyDisplay, onMi
                 >
                     {isMintOpen && <MintForm asset={asset} currentSupply={supplyDisplay} onDone={onMinted} />}
                 </ActionItem>
+            )}
+            {access === 'admin' && mintable === true && mintableKnown && (
+                <DisableMintingItem asset={asset} supplyDisplay={supplyDisplay} onDisabled={onMintingDisabled} />
             )}
             {access === 'admin' && mintable === false && (
                 <ActionItem testId="minting-off-item" title="Minting" line="Minting is turned off for this token for good." />

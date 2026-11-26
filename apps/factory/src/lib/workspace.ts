@@ -50,12 +50,12 @@ export function adminState(admin: string | undefined, address: string | undefine
  * The header's one badge, the first that applies: your own token with its admin state, admin
  * handed to you, or nothing. Undefined while the admin query runs or failed, and for anyone else.
  */
-export function ownerBadge(denom: string, admin: string | undefined, address: string | undefined): string | undefined {
+export function ownerBadge(denom: string, admin: string | undefined, address: string | undefined, dao?: { name: string }): string | undefined {
     if (!address || admin === undefined) return undefined
     if (factoryCreator(denom) === address) {
         if (admin === address) return 'Created by you · you are admin'
         if (admin === '') return 'Created by you · admin given up'
-        return `Created by you · admin is ${truncateAddress(admin)}`
+        return `Created by you · admin is ${dao ? `DAO ${dao.name}` : truncateAddress(admin)}`
     }
     return admin === address ? 'You are admin' : undefined
 }

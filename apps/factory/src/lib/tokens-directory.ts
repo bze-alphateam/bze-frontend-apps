@@ -145,11 +145,11 @@ export type AdminBadge =
     | { kind: 'checking'; label: string }
     | { kind: 'error'; label: string }
 
-export function adminBadge(admin: string | undefined, address: string | undefined, isLoading: boolean): AdminBadge {
+export function adminBadge(admin: string | undefined, address: string | undefined, isLoading: boolean, dao?: { name: string }): AdminBadge {
     if (admin === undefined) {
         return isLoading ? { kind: 'checking', label: 'Checking admin…' } : { kind: 'error', label: "Couldn't check admin" }
     }
     if (admin === '') return { kind: 'renounced', label: 'Admin given up' }
     if (address && admin === address) return { kind: 'you', label: 'You are admin' }
-    return { kind: 'transferred', label: `Admin is ${truncateAddress(admin)}` }
+    return { kind: 'transferred', label: `Admin is ${dao ? `DAO ${dao.name}` : truncateAddress(admin)}` }
 }

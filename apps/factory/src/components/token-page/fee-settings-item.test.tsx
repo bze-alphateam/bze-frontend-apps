@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 
 describe("FeeSettingsItem read-only", () => {
-    it.each(["not-admin", "none", "unknown", "checking"] as AdminAccess[])("shows the summary and no Edit for %s", async (access) => {
+    it.each(["not-admin", "unknown", "checking"])("shows the summary and no Edit for %s", async (access) => {
         const view = await (renderItem(access), item());
         expect(view.getByTestId("fee-setting-transfer")).toHaveTextContent("Transfer fee: 1%");
         expect(view.getByTestId("fee-setting-surcharge")).toHaveTextContent("Gas surcharge: 50%");
@@ -102,6 +102,18 @@ describe("FeeSettingsItem form for the admin", () => {
         expect(form.getByLabelText("Community pool (optional)")).toHaveValue(POOL);
         expect(form.getByLabelText("Transfer fee (%, 0 to 5)")).toHaveValue("1");
         expect(form.getByLabelText("Gas surcharge (%, 0 to 200)")).toHaveValue("50");
+        expect(form.getByRole("button", { name: "Save fee settings" })).toBeDisabled();
+    });
+
+    it("reads the live config when Edit opens, so the form prefills and diffs against it, not the cache", async () => {
+        m.getInfo.mockImplementation(async (_denom: string, opts?: { fresh?: boolean }) => (
+            opts?.fresh ? info({ communityPool: POOL, transferFee: new BigNumber("0.02"), gasSurcharge: new BigNumber("0.5") }) : info({ communityPool: POOL, transferFee: new BigNumber("0.01"), gasSurcharge: new BigNumber("0.5") })
+        ));
+        const form = await openForm();
+
+        expect(m.getInfo).toHaveBeenLastCalledWith(DENOM, { fresh: true });
+        expect(form.getByLabelText("Transfer fee (%, 0 to 5)")).toHaveValue("2");
+        // nothing differs from the live 2 %, so Save stays disabled
         expect(form.getByRole("button", { name: "Save fee settings" })).toBeDisabled();
     });
 

@@ -94,14 +94,17 @@ describe('getDenomConfig', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    it('reads zeros and caches them on an HTTP 500', async () => {
+    it('reads zeros on an HTTP 500 without caching, so the next call asks again', async () => {
         fetchMock.mockResolvedValue(respond(500, {}))
 
         const config = await getDenomConfig(FACTORY)
 
         expect(config.gasSurcharge.isZero()).toBe(true)
-        // the ratios entry and the info entry
-        expect(setInLocalStorageMock).toHaveBeenCalledTimes(2)
+        expect(setInLocalStorageMock).not.toHaveBeenCalled()
+
+        fetchMock.mockResolvedValue(respond(200, configBody('0.500000000000000000')))
+        expect((await getDenomConfig(FACTORY)).gasSurcharge.toString()).toBe('0.5')
+        expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 
     it('reads zeros on a network error without caching, so the next call asks again', async () => {
@@ -248,16 +251,28 @@ describe('getDenomConfigInfo', () => {
         expect((await getDenomConfigInfo(FACTORY)).status).toBe('error')
     })
 
-    it('does not serve a cached error: it asks again', async () => {
-        fetchMock.mockResolvedValue(respond(500, {}))
-        await getDenomConfigInfo(FACTORY)
-        const infoEntry = setInLocalStorageMock.mock.calls.find(call => String(call[0]).startsWith('tokenfactory:denom_config_info:'))
-        getFromLocalStorageMock.mockImplementation((key: string) => (key === infoEntry![0] ? infoEntry![1] : null))
+    it('writes nothing on an HTTP 500, so the next call asks the node again', async () => {
+        fetchMock.mockResolvedValueOnce(respond(500, {}))
+        expect((await getDenomConfigInfo(FACTORY)).status).toBe('error')
+        expect(setInLocalStorageMock).not.toHaveBeenCalled()
 
-        fetchMock.mockClear()
         fetchMock.mockResolvedValue(respond(200, configBody('0.000000000000000000')))
         expect((await getDenomConfigInfo(FACTORY)).status).toBe('ok')
-        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not let a fresh read join a request that started before it', async () => {
+        let release: (r: Response) => void = () => {}
+        fetchMock.mockReturnValueOnce(new Promise<Response>(resolve => { release = resolve }))
+        const stale = getDenomConfigInfo(FACTORY)
+
+        fetchMock.mockResolvedValueOnce(respond(200, { config: { community_pool: POOL, transfer_fee: '0.020000000000000000', gas_surcharge: '0.000000000000000000' } }))
+        const fresh = await getDenomConfigInfo(FACTORY, { fresh: true })
+
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        expect(fresh.communityPool).toBe(POOL)
+        release(respond(200, configBody('0.000000000000000000')))
+        expect((await stale).communityPool).toBe('')
     })
 
     it('bypasses a fresh cache with fresh: true and refreshes the ratios cache the fee engine reads', async () => {

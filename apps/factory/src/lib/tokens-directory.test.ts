@@ -146,6 +146,13 @@ describe("admin badge", () => {
     });
 });
 
+describe("adminBadge with a DAO", () => {
+    it("names the DAO; a renounced admin is never a DAO", () => {
+        expect(adminBadge(CREATOR, "bze1me", false, { name: "Honey Guild" })).toEqual({ kind: "transferred", label: "Admin is DAO Honey Guild" });
+        expect(adminBadge("", "bze1me", false, { name: "Honey Guild" })).toEqual({ kind: "renounced", label: "Admin given up" });
+    });
+});
+
 describe("shortFactoryDenom", () => {
     it("shortens the creator, keeps the subdenom; other denoms stay as they are", () => {
         expect(shortFactoryDenom(`factory/${CREATOR}/uhoney`)).toBe("factory/bze1z3…qwg3l/uhoney");
