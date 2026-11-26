@@ -61,9 +61,12 @@ env:
   DEPLOY_REPO: bze-alphateam/bze-deploy
   # Apps whose deploy targets exist on the server: only these are dispatched to the deploy
   # repo (the image of any other app is still built and pushed). To start deploying an app,
-  # add its dir here, e.g. '["dex","burner","staking","factory","communities","dao"]'. The `dao`
-  # entry waits for BFE-371 (dao.getbze.com / testnet-dao.getbze.com on the server).
-  DEPLOYABLE_APPS: '["dex","burner","staking","factory","communities"]'
+  # add its dir here.
+  DEPLOYABLE_APPS: '["dex","burner","staking","factory","communities","dao"]'
+  # Deployable apps that go to testnet only: a main push still builds and pushes their
+  # mainnet image but does not dispatch it. `dao` stays here until mainnet runs chain
+  # v8.3.0 (x/dao); remove it then and the next main push deploys dao.getbze.com.
+  TESTNET_ONLY_APPS: '["dao"]'
 
 jobs:
   changes:
@@ -203,9 +206,11 @@ jobs:
       # it makes a failed release on the server a red job here.
       - name: Deploy (dispatch the deploy repo's workflow and wait for it)
         # a manual run deploys only from the two deploy branches, and only apps in DEPLOYABLE_APPS
+        # (on main, minus TESTNET_ONLY_APPS)
         if: >-
           steps.buildenv.outputs.present == 'true'
           && contains(fromJSON(env.DEPLOYABLE_APPS), matrix.app)
+          && !(steps.vars.outputs.flavor == 'mainnet' && contains(fromJSON(env.TESTNET_ONLY_APPS), matrix.app))
           && (github.event_name == 'push' || (inputs.deploy && (github.ref_name == 'main' || github.ref_name == 'develop')))
         id: deploy
         env:
