@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { withdrawable, status, limitState } = vi.hoisted(() => ({
+const { withdrawable, status, executeTransfer, limitState } = vi.hoisted(() => ({
     limitState: { value: { stopped: false } as Record<string, unknown>, calls: [] as unknown[][] },
+    executeTransfer: vi.fn(),
     withdrawable: { assets: [] as unknown[] },
-    status: { channels: [] as string[], denoms: [] as string[] },
+    status: { channels: [] as string[], denoms: [] as string[], afterRefresh: undefined as undefined | {channels?: string[]; denoms?: string[]} },
 }))
 
 vi.mock('../../hooks/useRouteLimit', () => ({
@@ -20,10 +21,18 @@ vi.mock('../../hooks/useIbcRouteStatus', () => ({
         isChannelClosed: (c?: string) => !!c && status.channels.includes(c),
         isDenomBlocked: (d?: string) => !!d && status.denoms.includes(d),
         loading: false,
+        // The last look before signing re-reads the lists: tests change `status` (or `afterRefresh`) mid-flight.
+        refresh: async () => {
+            Object.assign(status, status.afterRefresh ?? {})
+            return {
+                isChannelClosed: (c?: string) => !!c && status.channels.includes(c),
+                isDenomBlocked: (d?: string) => !!d && status.denoms.includes(d),
+            }
+        },
     }),
 }))
 vi.mock('../../hooks/useBridgeTransfer', () => ({
-    useBridgeTransfer: () => ({ executeTransfer: vi.fn(), isExecuting: false, progressMessage: '' }),
+    useBridgeTransfer: () => ({ executeTransfer, isExecuting: false, progressMessage: '' }),
 }))
 vi.mock('../../hooks/useMaxSpendable', () => ({
     useMaxSpendable: () => ({ inputValue: '1', isReserving: false, gasFee: { displayAmount: '0', ticker: '' } }),
@@ -69,6 +78,8 @@ beforeEach(() => {
     status.denoms = []
     limitState.value = { stopped: false }
     limitState.calls = []
+    status.afterRefresh = undefined
+    executeTransfer.mockReset().mockResolvedValue(true)
     withdrawable.assets = [
         asset('ubze', 'BZE', [dest('osmosis', 'channel-0'), dest('cosmoshub', 'channel-3')]),
         asset('ibc/AAA', 'ATOM', [dest('cosmoshub', 'channel-3')], true),
@@ -125,6 +136,41 @@ describe('WithdrawForm guardian stops', () => {
 
         expect(screen.queryByTestId('notice')).toBeNull()
         expect(submit().disabled).toBe(false)
+    })
+
+    it('tags a destination whose channel is closed in the destination picker', async () => {
+        status.channels = ['channel-3']
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await screen.findByPlaceholderText('0.00')
+
+        const item = (name: string) => screen.getAllByText(name).map(e => e.closest('[data-part="item"]')).find(Boolean)!
+        expect(item('cosmoshub').textContent).toContain('stopped')
+        expect(item('osmosis').textContent).not.toContain('stopped')
+    })
+
+    it('signs when the last look finds the route open', async () => {
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+
+        fireEvent.click(submit())
+
+        await waitFor(() => expect(executeTransfer).toHaveBeenCalledTimes(1))
+    })
+
+    it('does not sign when the route was stopped while the form was open', async () => {
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+        expect(submit().disabled).toBe(false)
+        status.afterRefresh = { channels: ['channel-0'] }
+
+        fireEvent.click(submit())
+
+        await waitFor(() => expect(executeTransfer).not.toHaveBeenCalled())
+        await new Promise(r => setTimeout(r, 20))
+        expect(executeTransfer).not.toHaveBeenCalled()
     })
 })
 

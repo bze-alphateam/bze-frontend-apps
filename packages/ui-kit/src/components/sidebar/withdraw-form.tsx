@@ -60,7 +60,7 @@ export const WithdrawForm = () => {
     const [amountError, setAmountError] = useState('');
 
     const {assets: withdrawableAssets, isLoading: isLoadingAssets} = useWithdrawableBalances();
-    const {isChannelClosed, isDenomBlocked} = useIbcRouteStatus();
+    const {isChannelClosed, isDenomBlocked, refresh: refreshRouteStatus} = useIbcRouteStatus();
 
     // ─── Asset picker collection ───────────────────────────────────────────
     const assetsCollection = useMemo(() => {
@@ -195,6 +195,11 @@ export const WithdrawForm = () => {
     }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, amount, amountError, limitError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
 
     const handleExecute = useCallback(async () => {
+        // Last look before signing: the guardian may have stopped the route while the form was open.
+        // The refresh also updates the notice; nothing is signed when the route is stopped now.
+        const fresh = await refreshRouteStatus();
+        if (selectedAsset && (fresh.isDenomBlocked(selectedAsset.balance.denom) || fresh.isChannelClosed(selectedDestination?.bzeSideChannelId))) return;
+
         const success = await executeTransfer();
         if (success) {
             clearRateLimitCache();
@@ -203,7 +208,7 @@ export const WithdrawForm = () => {
             setSelectedAsset(undefined);
             setSelectedDestination(undefined);
         }
-    }, [executeTransfer]);
+    }, [executeTransfer, refreshRouteStatus, selectedAsset, selectedDestination]);
 
     // ─── Callbacks ─────────────────────────────────────────────────────────
     const onAssetChange = useCallback((denom: string) => {

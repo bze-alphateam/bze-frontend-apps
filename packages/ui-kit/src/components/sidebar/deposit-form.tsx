@@ -58,7 +58,7 @@ export const DepositForm = () => {
     const [sent, setSent] = useState(false);
 
     const {assets: bridgeableAssets, blockedAssets, isLoading: isLoadingAssets} = useBridgeableAssets();
-    const {isChannelClosed, isDenomBlocked} = useIbcRouteStatus();
+    const {isChannelClosed, isDenomBlocked, refresh: refreshRouteStatus} = useIbcRouteStatus();
 
     // Assets the chain stopped accepting (e.g. USDC.n) vanish from the picker; when one
     // has a wind-down notice, show it so users looking for it learn why it's gone.
@@ -214,6 +214,11 @@ export const DepositForm = () => {
     }, [selectedAsset, denomBlocked, channelClosed, amount, amountError, limitError, routePreview, isExecuting, sourceWalletStatus, balanceAllowsTransfer]);
 
     const handleExecute = useCallback(async () => {
+        // Last look before signing: the guardian may have stopped the route while the form was open.
+        // The refresh also updates the notice; nothing is signed when the route is stopped now.
+        const fresh = await refreshRouteStatus();
+        if (selectedAsset && (fresh.isDenomBlocked(selectedAsset.bzeAsset.denom) || fresh.isChannelClosed(selectedAsset.ibcData.chain.channelId))) return;
+
         const success = await executeTransfer();
         if (success) {
             clearRateLimitCache();
@@ -224,7 +229,7 @@ export const DepositForm = () => {
             setTimeout(() => refetchDepositBalance(), 4000);
             setTimeout(() => refetchDepositBalance(), 10000);
         }
-    }, [executeTransfer, refetchDepositBalance]);
+    }, [executeTransfer, refetchDepositBalance, refreshRouteStatus, selectedAsset]);
 
     // ─── Callbacks ─────────────────────────────────────────────────────────
     const onAssetChange = useCallback((denom: string) => {
