@@ -17,6 +17,8 @@ const Step = ({step, nameOf}: {step: ControlStep; nameOf: (address: string) => s
             : <AddressLine address={step.address} />;
     }
     if (step.kind === 'account') return <AddressLine address={step.address} name={nameOf(step.address)} />;
+    if (step.kind === 'loop') return <span>{`back to ${step.dao?.name ?? step.address}`}</span>;
+    if (step.kind === 'cap') return <span>{`the 16th DAO${step.dao ? `, ${step.dao.name}` : ''}`}</span>;
     return <span>{`voters of ${step.of.dao?.name ?? 'the last DAO'}`}</span>;
 };
 
@@ -24,7 +26,7 @@ const Step = ({step, nameOf}: {step: ControlStep; nameOf: (address: string) => s
 export const ControlPanel = ({view, nameOf}: {view: DaoView; nameOf: (address: string) => string | undefined}) => {
     const {dao} = view;
     const controller = view.controller.ok ? view.controller.value : null;
-    const state = describeControl(dao, controller, view.knownDaos);
+    const state = describeControl(dao, controller, view.knownDaos, view.unresolved);
 
     return (
         <Panel id="control" title="Who controls this DAO" testId="control-panel">

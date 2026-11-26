@@ -63,7 +63,7 @@ export function describeRules(
             `ends early once ${formatRatio(config.expedite_quorum)} of all ${voters} has voted and more than ${formatRatio(config.expedite_threshold)} of all ${voters} has voted yes`,
         ];
         const delay = params ? secondsOf(params.min_expedite_delay) : null;
-        if (stake && delay !== null) parts.push(`not before ${formatDuration(delay)} after submission`);
+        if (stake && delay !== null && delay > 0) parts.push(`not before ${formatDuration(delay)} after submission`);
         rows.push({id: 'expedited', label: 'Expedited voting', value: parts.join('; ')});
     }
 

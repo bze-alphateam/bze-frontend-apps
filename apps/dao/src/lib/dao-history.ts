@@ -72,6 +72,11 @@ const people = (addresses: string[], name: (a: string) => string): string => {
 
 /** One history item in plain words. An event type this app does not know still gets a readable line. */
 export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
+    const described = describe(event, context);
+    return {...described, title: described.title.charAt(0).toUpperCase() + described.title.slice(1)};
+}
+
+function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const a = attrsOf(event.attrs);
     const name = (address: string): string => context.nameOf?.(address) ?? shortAddress(address);
     const who = (address: string): string => (address === context.daoAddress ? "the DAO's own voters" : name(address));
@@ -86,18 +91,18 @@ export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, co
             };
         }
         case 'EventAdminNominated':
-            return {title: `${name(text(a.admin))} nominated ${name(text(a.nominee))} as the new admin`, details};
+            return {title: `${who(text(a.admin))} nominated ${name(text(a.nominee))} as the new admin`, details};
         case 'EventAdminChanged': {
             const next = text(a.new_admin);
             return {
                 title: next === context.daoAddress
                     ? `The admin handed the DAO to its own voters`
-                    : `The admin changed from ${name(text(a.old_admin))} to ${who(next)}`,
+                    : `The admin changed from ${who(text(a.old_admin))} to ${who(next)}`,
                 details,
             };
         }
         case 'EventAdminNominationWithdrawn':
-            return {title: `The nomination of ${name(text(a.nominee))} as admin was withdrawn`, details};
+            return {title: `The nomination of ${who(text(a.nominee))} as admin was withdrawn`, details};
         case 'EventDaoConfigUpdated': {
             const fields = list(a.fields);
             return {
@@ -127,7 +132,7 @@ export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, co
         case 'EventAdminExecuted': {
             const count = Number(text(a.msg_count));
             return {
-                title: `${name(text(a.admin))} ran ${count === 1 ? 'a message' : Number.isFinite(count) && count > 0 ? `${count} messages` : 'messages'} as the DAO`,
+                title: `${who(text(a.admin))} ran ${count === 1 ? 'a message' : Number.isFinite(count) && count > 0 ? `${count} messages` : 'messages'} as the DAO`,
                 details,
             };
         }

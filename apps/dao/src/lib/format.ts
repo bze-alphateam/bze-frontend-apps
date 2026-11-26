@@ -51,11 +51,17 @@ export function formatDuration(totalSeconds: number): string {
     return plural(s, 'second');
 }
 
-/** A chain ratio ("0.400000000000000000") as a percentage for people: "40%", "33.33%". */
+/**
+ * A chain ratio ("0.400000000000000000") as a percentage for people: "40%", "33.34%". It rounds
+ * up at two decimals so the bar shown is never below the real one; a ratio just under 1 would
+ * round to a full 100%, which no threshold can be, so it reads "just under 100%".
+ */
 export function formatRatio(ratio: string): string {
-    const percent = new BigNumber(ratio).multipliedBy(100);
-    if (!percent.isFinite()) return ratio;
-    return `${percent.decimalPlaces(2).toFormat()}%`;
+    const value = new BigNumber(ratio);
+    if (!value.isFinite()) return ratio;
+    const percent = value.multipliedBy(100).decimalPlaces(2, BigNumber.ROUND_CEIL);
+    if (percent.gte(100) && value.lt(1)) return 'just under 100%';
+    return `${percent.toFormat()}%`;
 }
 
 /** "bze1abcd…wxyz": an address short enough for a sentence. */

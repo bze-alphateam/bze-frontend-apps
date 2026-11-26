@@ -1,9 +1,9 @@
 import BigNumber from 'bignumber.js';
 
-/** One source of a stake DAO's electorate, read from x/rewards. */
+/** One source of a stake DAO's electorate, read from x/rewards. `own` is what the DAO's own account has staked in it. */
 export type StakeSource =
-    | {kind: 'sr'; id: string; stakingDenom: string; lockDays: number; staked: string}
-    | {kind: 'dr'; stakingDenom: string; lockDays: number; staked: string};
+    | {kind: 'sr'; id: string; stakingDenom: string; lockDays: number; staked: string; own: string}
+    | {kind: 'dr'; stakingDenom: string; lockDays: number; staked: string; own: string};
 
 /** The id the DEX staking page uses for a source (`simple:<reward id>` or `compounded:<denom>`). */
 export const sourceRowId = (source: StakeSource): string =>
@@ -17,11 +17,19 @@ export const sourceName = (source: StakeSource, ticker: string): string =>
     source.kind === 'sr' ? `Staking reward ${Number(source.id) || source.id} (${ticker})` : `Denom Reward of ${ticker}`;
 
 /**
- * Total voting power: the sum of what is staked in the sources (they all stake the same denom).
- * The chain's denominator leaves out the DAO's own stake in its sources; this sum does not.
+ * Total voting power: what is staked in the sources, less the DAO's own stake in them (a treasury
+ * staked in its own sources never votes, and the chain leaves it out of the denominator).
  */
 export function totalVotingPower(sources: readonly StakeSource[]): string {
-    return sources.reduce((sum, s) => sum.plus(s.staked || '0'), new BigNumber(0)).toFixed(0);
+    return sources.reduce((sum, s) => {
+        const voters = new BigNumber(s.staked || '0').minus(s.own || '0');
+        return sum.plus(voters.isPositive() ? voters : 0);
+    }, new BigNumber(0)).toFixed(0);
+}
+
+/** The staking denom to write an amount in: a current source's, else the Denom Reward a proposal pinned. */
+export function stakingDenomFor(sources: readonly StakeSource[], pinned: ReadonlyArray<{dr_denom: string} | null | undefined>): string | undefined {
+    return sources[0]?.stakingDenom ?? pinned.map((p) => p?.dr_denom).find((d): d is string => !!d);
 }
 
 /** The shortest member list shown at once; the rest sits behind "Show all". */

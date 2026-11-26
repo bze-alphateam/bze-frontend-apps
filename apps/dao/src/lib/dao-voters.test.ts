@@ -1,8 +1,8 @@
 import {describe, expect, it} from "vitest";
-import {dexSourceHref, memberPreview, MEMBERS_PREVIEW, sourceName, sourceRowId, totalVotingPower, type StakeSource} from "./dao-voters";
+import {dexSourceHref, stakingDenomFor, memberPreview, MEMBERS_PREVIEW, sourceName, sourceRowId, totalVotingPower, type StakeSource} from "./dao-voters";
 
-const sr: StakeSource = {kind: "sr", id: "000000000017", stakingDenom: "ubze", lockDays: 7, staked: "1000"};
-const dr: StakeSource = {kind: "dr", stakingDenom: "ubze", lockDays: 5, staked: "250"};
+const sr: StakeSource = {kind: "sr", id: "000000000017", stakingDenom: "ubze", lockDays: 7, staked: "1000", own: "0"};
+const dr: StakeSource = {kind: "dr", stakingDenom: "ubze", lockDays: 5, staked: "250", own: "0"};
 
 describe("stake sources", () => {
     it("ids follow the DEX staking rows", () => {
@@ -14,6 +14,17 @@ describe("stake sources", () => {
     it("totals the staked amounts of all sources", () => {
         expect(totalVotingPower([sr, dr])).toBe("1250");
         expect(totalVotingPower([])).toBe("0");
+    });
+
+    it("leaves out what the DAO itself has staked in its own sources, and never goes below zero", () => {
+        expect(totalVotingPower([{...sr, own: "300"}, {...dr, own: "50"}])).toBe("900");
+        expect(totalVotingPower([{...sr, own: "5000"}, dr])).toBe("250");
+    });
+
+    it("the staking denom comes from a current source, else from a Denom Reward a proposal pinned", () => {
+        expect(stakingDenomFor([sr], [{dr_denom: "uother"}])).toBe("ubze");
+        expect(stakingDenomFor([], [null, {dr_denom: ""}, {dr_denom: "uold"}])).toBe("uold");
+        expect(stakingDenomFor([], [])).toBeUndefined();
     });
 
     it("names", () => {

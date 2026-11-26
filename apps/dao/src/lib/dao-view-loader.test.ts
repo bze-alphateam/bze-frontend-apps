@@ -89,9 +89,22 @@ describe("loadDaoView", () => {
         expect(result.state === "ok" && result.view.knownDaos.has("bze1n")).toBe(false);
     });
 
-    it("reads the sources of a stake electorate, and a failure there is a failed part", async () => {
+    it("tells an admin whose lookup failed from one that is no DAO", async () => {
+        const d = deps({
+            getDao: vi.fn(async () => dao({admin: "bze1person"})),
+            getDaoByAddress: vi.fn(async () => { throw new Error("down"); }),
+        });
+        const result = await loadDaoView(d, "2");
+        expect(result.state === "ok" && [...result.view.unresolved]).toEqual(["bze1person"]);
+        const clean = await loadDaoView(deps({getDao: vi.fn(async () => dao({admin: "bze1person"}))}), "2");
+        expect(clean.state === "ok" && clean.view.unresolved.size).toBe(0);
+    });
+
+    it("reads the sources of a stake electorate, passing the DAO's own address, and a failure there is a failed part", async () => {
         const stake = dao({type: "DAO_TYPE_STAKE", electorate: {sr_ids: ["1"], dr_denom: ""}});
-        const ok = await loadDaoView(deps({getDao: vi.fn(async () => stake), getStakeSources: vi.fn(async () => [{kind: "dr" as const, stakingDenom: "ubze", lockDays: 5, staked: "1"}])}), "2");
+        const getStakeSources = vi.fn(async () => [{kind: "dr" as const, stakingDenom: "ubze", lockDays: 5, staked: "1", own: "0"}]);
+        const ok = await loadDaoView(deps({getDao: vi.fn(async () => stake), getStakeSources}), "2");
+        expect(getStakeSources).toHaveBeenCalledWith({sr_ids: ["1"], dr_denom: ""}, "bze1dao2");
         expect(ok.state === "ok" && ok.view.sources.ok).toBe(true);
         const failed = await loadDaoView(deps({getDao: vi.fn(async () => stake), getStakeSources: vi.fn(async () => { throw new Error("x"); })}), "2");
         expect(failed.state === "ok" && failed.view.sources.ok).toBe(false);

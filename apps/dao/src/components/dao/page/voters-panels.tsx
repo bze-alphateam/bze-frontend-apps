@@ -55,9 +55,6 @@ export const VotersPanel = ({dao, sources, nameOf}: {dao: Dao; sources: Part<Sta
                     <chakra.p m="0" fontWeight="600" data-testid="total-power">
                         {`Total voting power: ${coins.format({denom: sources.value[0].stakingDenom, amount: totalVotingPower(sources.value)})}`}
                     </chakra.p>
-                    <chakra.p m="0" fontSize="13px" color="fg.muted">
-                        This adds up everything staked in the sources. The DAO&apos;s own stake in its sources never votes, so the chain leaves it out when it counts a proposal.
-                    </chakra.p>
                 </>
             )}
         </Panel>

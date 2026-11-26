@@ -27,7 +27,7 @@ export interface DaoViewChain {
     /** The proposals in VOTING. */
     getOpenProposals(id: string): Promise<DaoProposal[]>;
     /** The sources of a stake electorate, with what is staked in each. */
-    getStakeSources(electorate: DaoStakeElectorate): Promise<StakeSource[]>;
+    getStakeSources(electorate: DaoStakeElectorate, daoAddress: string): Promise<StakeSource[]>;
     getVotingPower(id: string, address: string): Promise<DaoVotingPowerResponse | null>;
 }
 
@@ -53,6 +53,8 @@ export interface DaoView {
     controller: Part<DaoControllerResponse | null>;
     /** The DAOs among the addresses of the admin chain (this DAO included), by account address. */
     knownDaos: Map<string, KnownDao>;
+    /** Addresses whose by-address lookup failed: not known to be a DAO or not. */
+    unresolved: Set<string>;
     treasury: Part<DaoCoin[]>;
     openProposals: Part<DaoProposal[]>;
     /** Null for a static-list DAO and for a stake DAO without sources. */
@@ -91,20 +93,22 @@ export async function loadDaoView(deps: DaoViewDeps, rawId: string): Promise<Dao
         settle(() => chain.getOpenProposals(id)),
     ]);
     const sources: Part<StakeSource[]> = dao.electorate
-        ? await settle(() => chain.getStakeSources(dao.electorate!))
+        ? await settle(() => chain.getStakeSources(dao.electorate!, dao.address))
         : {ok: true, value: []};
 
     const knownDaos = new Map<string, KnownDao>([[dao.address, {id: dao.id, name: dao.name}]]);
+    const unresolved = new Set<string>();
     const others = new Set<string>();
     if (dao.admin && dao.admin !== dao.address) others.add(dao.admin);
     if (dao.pending_admin) others.add(dao.pending_admin);
     if (controller.ok && controller.value) controller.value.path.forEach((a) => a !== dao.address && others.add(a));
     await Promise.all([...others].map(async (address) => {
         const found = await settle(() => chain.getDaoByAddress(address));
-        if (found.ok && found.value) knownDaos.set(address, {id: found.value.id, name: found.value.name});
+        if (!found.ok) unresolved.add(address);
+        else if (found.value) knownDaos.set(address, {id: found.value.id, name: found.value.name});
     }));
 
-    return {state: 'ok', view: {dao, params, controller, knownDaos, treasury, openProposals, sources}};
+    return {state: 'ok', view: {dao, params, controller, knownDaos, unresolved, treasury, openProposals, sources}};
 }
 
 /** What Scan adds: who created the DAO. Null when Scan does not know the DAO (yet). */

@@ -6,7 +6,7 @@ import type {Dao, DaoProposal} from '@bze/bze-ui-kit';
 import {Notice, Shimmer} from '@bze/bze-ui-kit';
 import {describeVotingPower} from '@/lib/dao-power';
 import {loadMyVotes, loadVotingPower, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
-import type {StakeSource} from '@/lib/dao-voters';
+import {stakingDenomFor, type StakeSource} from '@/lib/dao-voters';
 import {useAsync} from '@/hooks/useAsync';
 import {formatDay} from '@/lib/format';
 import {Panel, ScanRetry} from './panel';
@@ -26,7 +26,7 @@ export const MyPower = ({deps, dao, wallet, sources, openProposals}: {
     const [retry, setRetry] = useState(0);
     const power = useAsync(`${dao.id}:${wallet}`, () => loadVotingPower(deps, dao.id, wallet));
     const votes = useAsync(`${dao.id}:${wallet}:${retry}`, () => loadMyVotes(deps, dao.id, wallet));
-    const stakingDenom = sources.ok ? sources.value[0]?.stakingDenom : undefined;
+    const stakingDenom = stakingDenomFor(sources.ok ? sources.value : [], openProposals.ok ? openProposals.value.map((p) => p.pinned_electorate) : []);
     const titles = new Map((openProposals.ok ? openProposals.value : []).map((p) => [p.id, p.title]));
 
     const formatStake = (amount: string) => stakingDenom ? coins.format({denom: stakingDenom, amount}) : amount;

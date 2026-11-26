@@ -34,13 +34,16 @@ describe("describeControl", () => {
         expect(state.warning).toMatch(/external admin/);
     });
 
-    it.each([
-        ["CYCLE", /loops back/],
-        ["DEPTH_CAP", /too long/],
-    ] as const)("a %s walk is explained", (reason, text) => {
-        const state = describeControl(dao({admin: "bze1b"}), walk(reason, [DAO, "bze1b"], "bze1b"), known({bze1b: {id: "2", name: "B"}}));
-        expect(state.note).toMatch(text);
-        expect(state.steps.some((s) => s.kind === "voters" || s.kind === "account")).toBe(false);
+    it("a CYCLE walk names the DAO it loops back to and says control stays with these DAOs", () => {
+        const state = describeControl(dao({admin: "bze1b"}), walk("CYCLE", [DAO, "bze1b"], DAO), known({bze1b: {id: "2", name: "B"}}));
+        expect(state.note).toBe("The admin chain loops back to Mine, so control stays with these DAOs.");
+        expect(state.steps.at(-1)).toEqual({kind: "loop", address: DAO, dao: {id: "1", name: "Mine"}});
+    });
+
+    it("a DEPTH_CAP walk ends on the 16th DAO", () => {
+        const state = describeControl(dao({admin: "bze1b"}), walk("DEPTH_CAP", [DAO, "bze1b"], "bze1b"), known({bze1b: {id: "2", name: "B"}}));
+        expect(state.note).toMatch(/16th DAO/);
+        expect(state.steps.at(-1)).toMatchObject({kind: "cap", address: "bze1b"});
     });
 
     it("an admin DAO is still named when the controller query failed", () => {
@@ -59,5 +62,15 @@ describe("describeControl", () => {
     it("a nominee that is a DAO is shown by name", () => {
         const state = describeControl(dao({pending_admin: "bze1n"}), null, known({bze1n: {id: "7", name: "Nominee DAO"}}));
         expect(state.pending?.text).toMatch(/^Nominee DAO is nominated/);
+    });
+
+    it("an admin whose type could not be checked is neither called an account nor warned about", () => {
+        const state = describeControl(dao(), null, known(), new Set(["bze1person"]));
+        expect(state).toMatchObject({kind: "unknown", warning: null, headline: "Admin bze1person (type could not be checked right now)"});
+    });
+
+    it("a controller answer settles the admin even when the by-address lookup failed", () => {
+        const state = describeControl(dao(), walk("ACCOUNT", [DAO], "bze1person"), known(), new Set(["bze1person"]));
+        expect(state.kind).toBe("account");
     });
 });

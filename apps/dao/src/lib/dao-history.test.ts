@@ -20,6 +20,12 @@ describe("describeDaoEvent", () => {
         expect(describe1("EventAdminChanged", {old_admin: "bze1named", new_admin: DAO}).title).toBe("The admin handed the DAO to its own voters");
     });
 
+    it("a self-owned DAO acting is named as its voters, not by its raw address", () => {
+        expect(describe1("EventAdminNominated", {admin: DAO, nominee: "bze1named"}).title).toBe("The DAO's own voters nominated Alice as the new admin");
+        expect(describe1("EventAdminChanged", {old_admin: DAO, new_admin: "bze1named"}).title).toBe("The admin changed from the DAO's own voters to Alice");
+        expect(describe1("EventAdminExecuted", {admin: DAO, msg_count: "2"}).title).toBe("The DAO's own voters ran 2 messages as the DAO");
+    });
+
     it("EventAdminNominationWithdrawn", () => {
         expect(describe1("EventAdminNominationWithdrawn", {nominee: "bze1named"}).title).toBe("The nomination of Alice as admin was withdrawn");
     });

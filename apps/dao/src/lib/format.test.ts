@@ -36,6 +36,9 @@ describe("DAO page formats", () => {
     it("formatRatio", () => {
         expect(formatRatio("0.400000000000000000")).toBe("40%");
         expect(formatRatio("0.3333")).toBe("33.33%");
+        expect(formatRatio("0.333334")).toBe("33.34%");
+        expect(formatRatio("0.999999")).toBe("just under 100%");
+        expect(formatRatio("1")).toBe("100%");
         expect(formatRatio("nope")).toBe("nope");
     });
 

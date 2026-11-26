@@ -38,6 +38,11 @@ describe("describeRules", () => {
         expect(value(describeRules("DAO_TYPE_STATIC_LIST", c, PARAMS, fmt), "expedited")).not.toMatch(/not before/);
     });
 
+    it("a zero expedite delay leaves the delay clause out", () => {
+        const c = config({allow_expedite: true, expedited_period: "86400s", expedite_quorum: "0.6", expedite_threshold: "0.7"});
+        expect(value(describeRules("DAO_TYPE_STAKE", c, {...PARAMS, min_expedite_delay: "0s"}, fmt), "expedited")).not.toMatch(/not before/);
+    });
+
     it("who can propose: anyone with open submission, voters only for stake", () => {
         expect(value(describeRules("DAO_TYPE_STAKE", config({open_submission: true}), null, fmt), "who-proposes")).toBe("Anyone");
         expect(value(describeRules("DAO_TYPE_STAKE", config(), null, fmt), "who-proposes")).toMatch(/Voters only/);
