@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", info: vi.fn(), fetchOrders: vi.fn() },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", info: vi.fn(), clickable: vi.fn(), fetchOrders: vi.fn() },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -43,7 +43,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssetPrice: () => ({ totalUsdValue: () => new BigNumber(0), hasPrice: false }),
         useBZETx: () => ({ tx: mocks.tx }),
         useTradingFees: () => ({ fees: {}, isLoading: false }),
-        useToast: () => ({ toast: { error: vi.fn(), success: vi.fn(), info: mocks.info } }),
+        useToast: () => ({ toast: { error: vi.fn(), success: vi.fn(), info: mocks.info, clickableSuccess: mocks.clickable } }),
         useConnectionType: () => ({ connectionType: undefined }),
         useMaxSpendable: () => ({ inputValue: "0", displayAmount: new BigNumber(0), amount: new BigNumber(0), gasFee, isLoading: false }),
         useGasFeeEstimator: () => ({ estimate: () => gasFee }),
@@ -237,7 +237,7 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
             options?.onSuccess?.({
                 txhash: "H", height: 1, code: 0,
-                events: [{ type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }] }],
+                events: [{ type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }, { key: "owner", value: "\"bze1owner\"", index: true }, { key: "amount", value: "\"5\"", index: true }, { key: "refund", value: "\"5ubze\"", index: true }] }],
             });
             return true;
         });
@@ -248,12 +248,13 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         fill(buy, "Amount", "2");
         fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
 
-        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("at most 250 resting orders")));
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith("Order result", expect.any(Function), "View on Explorer", expect.stringContaining("at most 250 resting orders"), expect.anything()));
+        expect(mocks.info).not.toHaveBeenCalled();
         vi.unstubAllGlobals();
     });
 
     it("reads the events from the node when the tx response carries none", async () => {
-        const refund = { type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }] };
+        const refund = { type: "bze.tradebin.OrderMessageRefundedEvent", attributes: [{ key: "reason", value: "\"max_fills_reached\"", index: true }, { key: "owner", value: "\"bze1owner\"", index: true }, { key: "amount", value: "\"5\"", index: true }, { key: "refund", value: "\"5ubze\"", index: true }] };
         vi.stubGlobal("fetch", vi.fn(async (url: string) => ({
             ok: true,
             json: async () => (url.includes("/cosmos/tx/v1beta1/txs/H")
@@ -272,7 +273,8 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         fill(buy, "Amount", "2");
         fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
 
-        await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("at most 250 resting orders")));
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith("Order result", expect.any(Function), "View on Explorer", expect.stringContaining("at most 250 resting orders"), expect.anything()));
+        expect(mocks.info).not.toHaveBeenCalled();
         vi.unstubAllGlobals();
     });
 
@@ -293,6 +295,54 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         // the success handler ran inside tx(); let its promises settle before asserting
         await act(async () => { await Promise.resolve(); });
         expect(mocks.info).not.toHaveBeenCalled();
+    });
+
+    it("shows the result summary of a filled order, and the order tx's success toast is suppressed", async () => {
+        const q = (v: string) => JSON.stringify(v);
+        const ev = (type: string, attrs: Record<string, string>) => ({ type, attributes: Object.entries(attrs).map(([key, value]) => ({ key, value: q(value), index: true })) });
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void; successToast?: boolean }) => {
+            expect(options?.successToast).toBe(false);
+            options?.onSuccess?.({
+                txhash: "H", height: 1, code: 0,
+                events: [
+                    ev("bze.tradebin.OrderExecutedEvent", { order_type: "sell", amount: "1000000", price: "2", taker: "bze1owner" }),
+                    ev("bze.tradebin.OrderSavedEvent", { amount: "250000", price: "3", owner: "bze1owner" }),
+                ],
+            });
+            return true;
+        });
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith(
+            "Order result", expect.any(Function), "View on Explorer",
+            "Bought 1 HALT at an average price of 2 BZE. 0.250000 HALT placed on the order book at 3.", expect.anything(),
+        ));
+    });
+
+    it("falls back to the generic success toast when the tx carries no order events (v8.2.0)", async () => {
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
+            options?.onSuccess?.({ txhash: "H", height: 1, code: 0, events: [{ type: "transfer", attributes: [] }] });
+            return true;
+        });
+        vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ tx_response: { events: [] } }) })));
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith(
+            "Transaction Successful", expect.any(Function), "View on Explorer", undefined, undefined,
+        ));
+        vi.unstubAllGlobals();
     });
 
     it("reloads Your Orders after a cancel the chain refused (order merged away)", async () => {
