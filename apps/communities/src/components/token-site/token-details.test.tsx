@@ -69,6 +69,12 @@ describe("TokenDetails fee settings", () => {
         expect(getAddressDenomBalance).not.toHaveBeenCalled();
     });
 
+    it("treats ratios that round to 0% as no setting", () => {
+        useDenomConfig.mockReturnValue(config("", "0.00001", "0.00001"));
+        renderDetails();
+        expect(screen.queryByTestId("fee-settings")).toBeNull();
+    });
+
     it("renders as before when every setting is zero", () => {
         useDenomConfig.mockReturnValue(config("", "0", "0"));
         renderDetails();

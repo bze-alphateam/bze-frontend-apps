@@ -83,8 +83,9 @@ function FeeSettings({asset, cell, small}: { asset: Asset; cell: object; small: 
     const poolBalance = usePoolBalance(pool, asset.denom);
 
     if (!config || config.status !== "ok") return null;
-    const hasTransfer = config.transferFee.gt(0);
-    const hasSurcharge = config.gasSurcharge.gt(0);
+    // a ratio that rounds to "0%" is no setting
+    const hasTransfer = formatRatioPercent(config.transferFee) !== "0";
+    const hasSurcharge = formatRatioPercent(config.gasSurcharge) !== "0";
     if (!pool && !hasTransfer && !hasSurcharge) return null;
 
     const ticker = asset.ticker;
