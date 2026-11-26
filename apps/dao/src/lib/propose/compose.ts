@@ -1,21 +1,16 @@
 import type {EncodeObject} from '@bze/bzejs/types';
 import {daoMsgsSize, packDaoMsgs, validateDaoProposalContent} from '@bze/bze-ui-kit';
+import {composeAction, type ComposedAction} from '../actions/compose-action';
 import {findAction} from '../actions/registry';
 import type {ActionContext, ActionDraft} from '../actions/types';
+
+export type {ComposedAction};
 
 export interface ComposerInput {
     title: string;
     summary: string;
     expedited: boolean;
     actions: ActionDraft[];
-}
-
-export interface ComposedAction {
-    key: string;
-    /** Why this action cannot be sent; undefined when it is complete. */
-    error?: string;
-    warnings: string[];
-    msg?: EncodeObject;
 }
 
 export interface Composition {
@@ -38,17 +33,7 @@ export interface Composition {
  * their boundaries without a page.
  */
 export function composeProposal(input: ComposerInput, ctx: ActionContext): Composition {
-    const actions = input.actions.map((draft): ComposedAction => {
-        const entry = findAction(draft.type);
-        if (!entry) return {key: draft.key, error: 'This kind of action is not known.', warnings: []};
-        const problem = entry.validate(draft.fields, ctx);
-        if (problem) return {key: draft.key, error: problem, warnings: []};
-        try {
-            return {key: draft.key, msg: entry.build(draft.fields, ctx), warnings: entry.warnings?.(draft.fields, ctx) ?? []};
-        } catch (e) {
-            return {key: draft.key, error: (e as Error).message, warnings: []};
-        }
-    });
+    const actions = input.actions.map((draft) => composeAction(draft, ctx, findAction));
 
     const built = actions.flatMap((a) => (a.msg ? [a.msg] : []));
     let size = 0;

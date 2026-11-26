@@ -1,0 +1,17 @@
+{
+  "source": "hand-written (chain shape of daos_by_admin; a self-owned DAO is listed under its own address)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/daos_by_admin/bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s",
+  "query": {
+    "pagination.limit": "50"
+  },
+  "status": 200,
+  "body": {
+    "daos": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

@@ -1,12 +1,14 @@
 'use client';
 
 import {useState} from 'react';
+import NextLink from 'next/link';
 import {chakra, Flex} from '@chakra-ui/react';
 import type {Dao} from '@bze/bze-ui-kit';
 import {getDexApp, Notice, Shimmer} from '@bze/bze-ui-kit';
 import {staticJoinText, type DaoActions} from '@/lib/dao-actions';
 import {dexSourceHref, memberPreview, sourceName, totalVotingPower, type StakeSource} from '@/lib/dao-voters';
 import type {Part} from '@/lib/dao-view-loader';
+import {shortcutHref} from '@/lib/propose/shortcuts';
 import {AddressLine, Panel, Row} from './panel';
 import {useCoinFormat} from './use-coin-format';
 
@@ -73,9 +75,10 @@ export const JoinPanel = ({dao, sources, wallet, actions}: {dao: Dao; sources: P
             <Panel id="join" title="How to join" testId="join-panel">
                 {staticJoinText(dao, member).map((line) => <chakra.p key={line} m="0" fontSize="14px">{line}</chakra.p>)}
                 {(actions.requestToJoin || actions.leave) && (
-                    <Flex gap="10px" data-testid="join-actions">
-                        {actions.requestToJoin && <chakra.span fontWeight="600" color="hg.link">Request to join</chakra.span>}
-                        {actions.leave && <chakra.span fontWeight="600" color="hg.link">Leave</chakra.span>}
+                    <Flex gap="10px" wrap="wrap" align="center" data-testid="join-actions">
+                        {actions.requestToJoin && <chakra.a asChild fontWeight="600" color="hg.link"><NextLink href={shortcutHref(dao.id, 'join')} data-testid="request-to-join">Request to join</NextLink></chakra.a>}
+                        {actions.leave && !actions.leaveBlocked && <chakra.a asChild fontWeight="600" color="hg.link"><NextLink href={shortcutHref(dao.id, 'leave')} data-testid="leave-dao">Leave</NextLink></chakra.a>}
+                        {actions.leave && actions.leaveBlocked && <chakra.span fontSize="14px" color="fg.muted" data-testid="leave-blocked">{actions.leaveBlocked}</chakra.span>}
                     </Flex>
                 )}
             </Panel>

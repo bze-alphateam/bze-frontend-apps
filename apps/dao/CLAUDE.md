@@ -73,3 +73,11 @@ Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public A
 - **Draft**: `localStorage` `bze-dao:proposal-draft:{daoId}`, version 1, restored field by field (wrong types, unknown actions, oversized fields dropped, an expedited flag or summary the DAO no longer takes dropped), cleared after success; storage that throws loses the draft only.
 - The summary preview is plain text (`PlainText`), like the proposal page: no Markdown renderer (deliberate narrowing of the ticket, as in BFE-373).
 - `describeBuilt` (`lib/propose/describe.ts`) reads a built message back through the codec and hands it to BFE-373's describers (`asRest` turns the codec's ratios/durations/enums of a `config` back into the chain's REST form). A new entry whose message the describers do not know shows as raw JSON until a describer is added there.
+
+## DAO self-management actions (BFE-376)
+
+- **Entries** in the registry: `update-metadata` (rename), `update-rules` (whole config; a setting nobody touched is sent exactly as the DAO has it, because the form rounds), `update-members` (member lists), `update-electorate` (stake DAOs; the lock minimum is checked for added sources only, a self-owned DAO needs voting stake without its own), `nominate-admin` / `withdraw-nomination` (self-owned DAOs only: the chain wants the current admin as signer), `accept-nomination` (nominations Scan finds, confirmed on the chain), `sub-dao-admin` and `sub-dao-execute` (DAOs this DAO administers; the inner actions come from the same registry with the sub-DAO as `ctx.dao` through `subContext`).
+- **Relations** (`lib/propose/relations.ts`): sub-DAOs (with treasuries), incoming nominations and the staking sources are read before the composer opens, each `null` when unreadable (never "none"); only the nominations may be skipped when Scan is down. `ActionContext` carries them, `available(dao, ctx)` reads them.
+- **Admin execute** refuses `authz.MsgGrant`, `feegrant.MsgGrantAllowance` and `authz.MsgExec` (1133) and never a settle message; `msgValueToJson` (ui-kit) reads the messages an admin execute packs, so the review shows every inner message.
+- **Shortcuts**: "Request to join" / "Leave" link to `/dao/{id}/propose?shortcut=join|leave`; the composer fills the connected wallet's address (never one from the link) unless an unsent draft exists, then drops the query.
+

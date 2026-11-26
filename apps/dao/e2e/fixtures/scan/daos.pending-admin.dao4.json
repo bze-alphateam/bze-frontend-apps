@@ -1,0 +1,16 @@
+{
+  "source": "hand-written (BFE-368 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos",
+  "query": {
+    "pending_admin": "bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s",
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [],
+    "next_cursor": null,
+    "supported": true
+  }
+}

@@ -3,7 +3,7 @@ import type {Dao} from '@bze/bze-ui-kit';
 /**
  * The actions of other stories this page links to. A flag turns on when its story has shipped, so
  * until then the page shows no button that leads nowhere: the proposal composer (BFE-375), the
- * members composer (BFE-376, "Request to join" and "Leave") and the admin console (BFE-377).
+ * members shortcuts (BFE-376, "Request to join" and "Leave") and the admin console (BFE-377).
  * `proposalActions` is the proposal page's action area (BFE-374: vote, settle, retry, cancel, clean up).
  */
 export interface DaoFeatures {
@@ -13,13 +13,15 @@ export interface DaoFeatures {
     proposalActions: boolean;
 }
 
-export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: false, adminConsole: false, proposalActions: false};
+export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: false, proposalActions: false};
 
 export interface DaoActions {
     newProposal: boolean;
     adminConsole: boolean;
     requestToJoin: boolean;
     leave: boolean;
+    /** Why a member cannot leave (it would leave the DAO with no member); null when leaving is possible. */
+    leaveBlocked: string | null;
 }
 
 /** Which action buttons the page shows for `wallet` (null when none is connected). */
@@ -35,6 +37,9 @@ export function actionsFor(features: DaoFeatures, dao: Pick<Dao, 'address' | 'ad
         adminConsole: features.adminConsole && (externalAdmin || nominee),
         requestToJoin: features.memberComposer && staticList && dao.config.open_submission && connected && !isMember,
         leave: features.memberComposer && isMember,
+        leaveBlocked: features.memberComposer && isMember && dao.members.length <= 1
+            ? 'You are the only member, and a DAO must keep at least one member: add someone else first.'
+            : null,
     };
 }
 

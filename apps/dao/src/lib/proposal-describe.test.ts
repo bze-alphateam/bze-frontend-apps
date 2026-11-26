@@ -48,10 +48,10 @@ describe("describeMessage", () => {
     });
 
     it("an admin nomination, an empty nominee handing the DAO to its voters, the withdrawal and the acceptance", () => {
-        expect(describeMessage(msg("/bze.dao.MsgNominateAdmin", {nominee: "bze1next"}), ctx)).toEqual({type: "nominate_admin", nominee: "bze1next", toVoters: false});
-        expect(describeMessage(msg("/bze.dao.MsgNominateAdmin", {nominee: ""}), ctx)).toEqual({type: "nominate_admin", nominee: "", toVoters: true});
-        expect(describeMessage(msg("/bze.dao.MsgWithdrawAdminNomination", {}), ctx)).toEqual({type: "withdraw_nomination"});
-        expect(describeMessage(msg("/bze.dao.MsgAcceptAdminNomination", {nominee: "bze1next"}), ctx)).toEqual({type: "accept_admin", nominee: "bze1next"});
+        expect(describeMessage(msg("/bze.dao.MsgNominateAdmin", {nominee: "bze1next"}), ctx)).toEqual({type: "nominate_admin", daoId: "", nominee: "bze1next", toVoters: false});
+        expect(describeMessage(msg("/bze.dao.MsgNominateAdmin", {nominee: ""}), ctx)).toEqual({type: "nominate_admin", daoId: "", nominee: "", toVoters: true});
+        expect(describeMessage(msg("/bze.dao.MsgWithdrawAdminNomination", {}), ctx)).toEqual({type: "withdraw_nomination", daoId: ""});
+        expect(describeMessage(msg("/bze.dao.MsgAcceptAdminNomination", {nominee: "bze1next"}), ctx)).toEqual({type: "accept_admin", daoId: "", nominee: "bze1next"});
     });
 
     it("an admin execute describes its inner messages as the sub-DAO's, not this DAO's", () => {

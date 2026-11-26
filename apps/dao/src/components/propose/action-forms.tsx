@@ -5,20 +5,21 @@ import {Field, Input, NativeSelect, Textarea} from '@chakra-ui/react';
 import {chakra, Flex} from '@chakra-ui/react';
 import BigNumber from 'bignumber.js';
 import {uAmountToAmount} from '@bze/bze-ui-kit';
+import {ACCEPT_ID, NOMINATE_ID, WITHDRAW_ID} from '@/lib/actions/admin';
 import {CUSTOM_ID, customPlaceholder} from '@/lib/actions/custom';
+import {ELECTORATE_ID} from '@/lib/actions/electorate';
+import {MEMBERS_ID} from '@/lib/actions/members';
+import {METADATA_ID} from '@/lib/actions/metadata';
 import {PAY_ID} from '@/lib/actions/pay';
-import type {ActionContext, ActionFields} from '@/lib/actions/types';
+import {RULES_ID} from '@/lib/actions/rules';
+import {SUB_ADMIN_ID, SUB_EXECUTE_ID} from '@/lib/actions/sub-dao';
+import type {ActionFields} from '@/lib/actions/types';
+import {
+    AcceptForm, ElectorateForm, inputProps, MembersForm, MetadataForm, NominateForm, RulesForm, SubAdminForm, SubExecuteForm, WithdrawForm,
+    type ActionFormProps,
+} from './forms';
 
-/** What every action form gets: the fields typed so far, how to change them, and the DAO. */
-export interface ActionFormProps {
-    fields: ActionFields;
-    onChange: (fields: ActionFields) => void;
-    ctx: ActionContext;
-    /** The first problem of these fields, shown only once the user has typed something. */
-    error?: string;
-}
-
-const inputProps = {h: '44px', borderRadius: '12px', fontSize: '16px', bg: 'bg.panel'} as const;
+export type {ActionFormProps};
 
 const PayForm = ({fields, onChange, ctx, error}: ActionFormProps) => {
     const set = (patch: ActionFields) => onChange({...fields, ...patch});
@@ -87,5 +88,14 @@ const CustomForm = ({fields, onChange, ctx, error}: ActionFormProps) => (
  */
 export const ACTION_FORMS: Record<string, ComponentType<ActionFormProps>> = {
     [PAY_ID]: PayForm,
+    [METADATA_ID]: MetadataForm,
+    [RULES_ID]: RulesForm,
+    [MEMBERS_ID]: MembersForm,
+    [ELECTORATE_ID]: ElectorateForm,
+    [NOMINATE_ID]: NominateForm,
+    [WITHDRAW_ID]: WithdrawForm,
+    [ACCEPT_ID]: AcceptForm,
+    [SUB_ADMIN_ID]: SubAdminForm,
+    [SUB_EXECUTE_ID]: SubExecuteForm,
     [CUSTOM_ID]: CustomForm,
 };

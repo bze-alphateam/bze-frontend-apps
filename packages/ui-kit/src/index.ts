@@ -297,7 +297,7 @@ export {
     buildUpdateDaoMetadataMsg, buildUpdateDaoElectorateMsg, buildUpdateDaoMembersMsg
 } from './utils/dao/msgs';
 export {
-    DAO_MAX_NAME_BYTES, DAO_MAX_DESCRIPTION_BYTES, utf8Length,
+    DAO_MAX_NAME_BYTES, DAO_MAX_DESCRIPTION_BYTES, utf8Length, canonicalAddress,
     validateDaoName, validateDaoDescription, validateDaoConfig, validateDaoMembers,
     validateDaoMemberChanges, validateDaoElectorate, validateDaoElectorateKind, validateDaoProposalContent, validateDaoAdminExecute
 } from './utils/dao/validate';
