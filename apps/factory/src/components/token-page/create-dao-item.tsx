@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react'
 import NextLink from 'next/link'
-import { Box, Button, Link, Text, VStack } from '@chakra-ui/react'
-import { LuRefreshCw } from 'react-icons/lu'
-import { Shimmer, prettyAmount, uAmountToBigNumberAmount, type Dao, type DenomReward } from '@bze/bze-ui-kit'
+import { Link, Text, VStack } from '@chakra-ui/react'
+import { prettyAmount, uAmountToBigNumberAmount, type Dao, type DenomReward } from '@bze/bze-ui-kit'
 import { withReturn } from '@/components/guided/return-to'
-import { softButton } from '@/components/ui/soft-button'
 import type { DaoParamsState } from '@/hooks/useDaoParams'
 import { compoundedNewHref } from '@/lib/denom-reward'
 import { simpleRewardHref } from '@/lib/create-routes'
@@ -25,7 +23,7 @@ interface CreateDaoItemProps extends Pick<GroupProps, 'asset' | 'back'> {
 
 /**
  * "Create a DAO for <TICKER>" (BFE-388): a stake DAO voted by the token's stakers. For anyone. Hidden on
- * a node without x/dao and while the rewards load or failed (the group has its own retry for those).
+ * a node without x/dao and while the DAO params or the rewards load or failed.
  */
 export function CreateDaoItem({ asset, back, params, staking, denomReward, daoAdmin }: CreateDaoItemProps) {
     const ticker = asset.ticker
@@ -38,17 +36,8 @@ export function CreateDaoItem({ asset, back, params, staking, denomReward, daoAd
     )
 
     if (params.status === 'unsupported') return null
-    if (params.status === 'loading') return <Box py="14px" borderTopWidth="1px" borderColor="hg.divider" aria-busy="true" data-testid="create-dao-loading"><Shimmer h="16px" w="160px" /></Box>
-    if (params.status === 'error') {
-        return (
-            <ActionItem
-                testId="create-dao-item"
-                title={`Create a DAO for ${ticker}`}
-                line="Couldn't check whether this network supports DAOs."
-                action={<Button {...softButton} size="sm" h="36px" onClick={params.retry}><LuRefreshCw /> Retry</Button>}
-            />
-        )
-    }
+    // A failed check reads like loading: the row stays out (the rewards group has its own retries).
+    if (params.status === 'loading' || params.status === 'error') return null
     if (!electorate) return null
 
     const stakedText = `${prettyAmount(uAmountToBigNumberAmount(electorate.totalStaked.toFixed(0), asset.decimals))} ${ticker}`

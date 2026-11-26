@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { DaoParams } from "@bze/bze-ui-kit";
 import { CreateDaoItem } from "./create-dao-item";
@@ -69,10 +68,11 @@ describe("Create a DAO row of the token page", () => {
         expect(b.container).toBeEmptyDOMElement();
     });
 
-    it("offers a retry when the DAO params failed", async () => {
-        const retry = vi.fn();
-        show({ params: { status: "error", retry } });
-        await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
-        expect(retry).toHaveBeenCalled();
+    it("is hidden while the DAO params load or when their query failed", () => {
+        const a = show({ params: { status: "loading", retry: vi.fn() } });
+        expect(a.container).toBeEmptyDOMElement();
+        a.unmount();
+        const b = show({ params: { status: "error", retry: vi.fn() } });
+        expect(b.container).toBeEmptyDOMElement();
     });
 });

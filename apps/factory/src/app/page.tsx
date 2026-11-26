@@ -119,9 +119,9 @@ function Footer() {
  */
 export default function FactoryHomePage() {
     const { hint, dismiss } = useLastWizard()
-    // The DAO tile is live only where the node runs x/dao (v8.3.0); on a v8.2.x node it stays "Coming soon".
-    const daoUnsupported = useDaoParams().status === 'unsupported'
-    const points = STARTING_POINTS.map(p => (p.id === 'dao' && daoUnsupported ? { ...p, href: undefined } : p))
+    // The DAO tile is live only once the node is known to run x/dao (v8.3.0); while that loads, failed or on a v8.2.x node it is "Coming soon".
+    const daoLive = useDaoParams().status === 'ready'
+    const points = STARTING_POINTS.map(p => (p.id === 'dao' && !daoLive ? { ...p, href: undefined } : p))
 
     return (
         <Box position="relative" minH="100vh">

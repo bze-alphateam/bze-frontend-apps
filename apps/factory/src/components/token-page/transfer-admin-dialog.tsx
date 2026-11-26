@@ -139,7 +139,7 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
                         <Field.HelperText data-testid="dao-address-hint">
                             {daoAddressHint(ticker)}{' '}
                             <chakra.a asChild color="hg.link" fontWeight="600">
-                                <NextLink href={withReturn(tokenDaoHref(asset.denom), tokenPageReturn(asset))} data-testid="create-dao-link">{`Create a DAO for ${ticker}`}</NextLink>
+                                <NextLink href={withReturn(tokenDaoHref(asset.denom), tokenPageReturn(asset))} onClick={onClose} data-testid="create-dao-link">{`Create a DAO for ${ticker}`}</NextLink>
                             </chakra.a>
                         </Field.HelperText>
                     )}

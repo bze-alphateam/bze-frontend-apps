@@ -40,7 +40,9 @@ function DaoNewContent() {
     const { getAsset, isLoading: isAssetsLoading } = useAssets()
     const staking = useStakingRewards()
 
-    const [denom, setDenom] = useState(denomParam ?? '')
+    // The token is the link's (`?denom=`); a pick in the picker overrides it until the link changes.
+    const [pick, setPick] = useState<{ param: string; denom: string } | undefined>(undefined)
+    const denom = pick && pick.param === (denomParam ?? '') ? pick.denom : (denomParam ?? '')
     const [done, setDone] = useState<DaoCreated | undefined>(undefined)
 
     const asset: Asset | undefined = denom ? getAsset(denom) : undefined
@@ -83,7 +85,7 @@ function DaoNewContent() {
             </Frame>
         )
     }
-    if (denomParam && (!asset || !isFactoryToken(asset))) {
+    if (denom && (!asset || !isFactoryToken(asset))) {
         return (
             <Frame>
                 <PageState
@@ -105,8 +107,8 @@ function DaoNewContent() {
         return tokenRowState(e, `${prettyAmount(uAmountToBigNumberAmount(e.totalStaked.toFixed(0), a.decimals))} ${a.ticker} staked`)
     }
 
-    const pick = (a: Asset) => {
-        setDenom(a.denom)
+    const choose = (a: Asset) => {
+        setPick({ param: denomParam ?? '', denom: a.denom })
         steps.close()
     }
 
@@ -158,7 +160,7 @@ function DaoNewContent() {
                 {...steps.step('token')}
                 summary={ticker && `${ticker} stakers`}
             >
-                <StakedTokenPicker mode="anyToken" includeLP={false} factoryOnly value={denom} onChange={pick} stateOf={stateOf} />
+                <StakedTokenPicker mode="anyToken" includeLP={false} factoryOnly value={denom} onChange={choose} stateOf={stateOf} />
             </Question>
             {flow}
         </GuidedForm>

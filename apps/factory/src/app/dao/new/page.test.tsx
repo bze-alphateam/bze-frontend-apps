@@ -19,6 +19,10 @@ const h = vi.hoisted(() => ({
     query: { current: new URLSearchParams() },
     daoParams: { current: { status: "ready", params: { max_sr_per_dao: "5", min_electorate_lock_days: 5 } } as Record<string, unknown> },
     rewards: { current: [] as ReturnType<typeof sr>[] },
+    rewardsError: { current: false },
+    refreshRewards: vi.fn(),
+    retryParams: vi.fn(),
+    rerender: { current: undefined as undefined | (() => void) },
     drs: { current: {} as Record<string, { staking_denom: string; lock: number; staked_amount: string; min_stake: string }> },
     wallet: { address: "bze1me" as string | undefined },
     admins: { current: {} as Record<string, string> },
@@ -27,14 +31,18 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push: h.push, replace: vi.fn() }),
+    useRouter: () => ({
+        // a real router changes the URL: keep the query in step and re-render
+        push: (url: string) => { h.push(url); h.query.current = new URLSearchParams(url.split("?")[1] ?? ""); h.rerender.current?.(); },
+        replace: vi.fn(),
+    }),
     usePathname: () => "/dao/new",
     useSearchParams: () => h.query.current,
 }));
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: h.wallet.address }) }));
-vi.mock("@/hooks/useDaoParams", () => ({ useDaoParams: () => ({ ...h.daoParams.current, retry: vi.fn() }) }));
+vi.mock("@/hooks/useDaoParams", () => ({ useDaoParams: () => ({ ...h.daoParams.current, retry: h.retryParams }) }));
 vi.mock("@/hooks/useStakingRewards", () => ({
-    useStakingRewards: () => ({ rewards: h.rewards.current, isLoading: false, hasError: false, refresh: vi.fn() }),
+    useStakingRewards: () => ({ rewards: h.rewardsError.current ? [] : h.rewards.current, isLoading: false, hasError: h.rewardsError.current, refresh: h.refreshRewards }),
 }));
 vi.mock("@/hooks/useDenomReward", () => ({
     useDenomReward: (denom: string) => ({ denomReward: h.drs.current[denom], schedules: [], prizes: [], isLoading: false, hasError: false, refresh: vi.fn() }),
@@ -67,7 +75,11 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 import DaoNewPage from "./page";
 
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
-const renderPage = () => render(<DaoNewPage />, { wrapper });
+const renderPage = () => {
+    const view = render(<DaoNewPage />, { wrapper });
+    h.rerender.current = () => view.rerender(<DaoNewPage />);
+    return view;
+};
 const lastFlow = () => h.flowProps[h.flowProps.length - 1];
 
 beforeEach(() => {
@@ -77,6 +89,9 @@ beforeEach(() => {
     h.admins.current = {};
     h.flowProps.length = 0;
     h.push.mockReset();
+    h.rewardsError.current = false;
+    h.refreshRewards.mockReset();
+    h.retryParams.mockReset();
     h.rewards.current = [sr(1, HONEY, 7, "5000000"), sr(2, MOON, 5, "0"), sr(3, DUST, 2, "100")];
     h.drs.current = { [HONEY]: { staking_denom: HONEY, lock: 7, staked_amount: "1000000", min_stake: "0" } };
 });
@@ -160,6 +175,49 @@ describe("/dao/new?denom=", () => {
         const note = screen.getByTestId("dao-new-no-source");
         expect(within(note).getByRole("link", { name: "Make DUST stakable" })).toBeInTheDocument();
         expect(within(note).getByRole("link", { name: /Create a simple reward with at least 5 days/ })).toBeInTheDocument();
+    });
+});
+
+describe("/dao/new follows the link", () => {
+    it("Pick a token on an unknown denom shows the picker, with no stale token", async () => {
+        h.query.current = new URLSearchParams({ denom: "factory/bze1x/unope" });
+        renderPage();
+        await userEvent.click(screen.getByRole("button", { name: "Pick a token" }));
+        expect(screen.getByTestId("staked-token-picker")).toBeInTheDocument();
+        expect(screen.queryByText("We couldn't find this token.")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("create-dao-flow")).not.toBeInTheDocument();
+    });
+
+    it("another ?denom= switches the token, and no ?denom= goes back to the picker", () => {
+        h.query.current = new URLSearchParams({ denom: HONEY });
+        const view = renderPage();
+        expect(lastFlow().locked).toEqual({ type: true, stakingDenom: HONEY });
+        h.query.current = new URLSearchParams({ denom: MOON });
+        view.rerender(<DaoNewPage />);
+        expect(lastFlow().locked).toEqual({ type: true, stakingDenom: MOON });
+        h.query.current = new URLSearchParams();
+        view.rerender(<DaoNewPage />);
+        expect(screen.queryByTestId("create-dao-flow")).not.toBeInTheDocument();
+        expect(screen.getByTestId("staked-token-picker")).toBeInTheDocument();
+    });
+});
+
+describe("/dao/new when a query fails", () => {
+    it("a failed rewards load blocks the flow and Retry asks again", async () => {
+        h.query.current = new URLSearchParams({ denom: HONEY });
+        h.rewardsError.current = true;
+        renderPage();
+        expect(screen.queryByTestId("create-dao-flow")).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
+        expect(h.refreshRewards).toHaveBeenCalled();
+    });
+
+    it("a failed DAO params check shows an error with Retry", async () => {
+        h.daoParams.current = { status: "error" };
+        renderPage();
+        expect(screen.getByText("Couldn't check whether this network supports DAOs")).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: /Retry/ }));
+        expect(h.retryParams).toHaveBeenCalled();
     });
 });
 

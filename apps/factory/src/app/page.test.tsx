@@ -12,7 +12,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return { ...actual, getDexApp: () => ({ href: "https://dex.example" }) };
 });
 
-const daoParams = vi.hoisted(() => ({ status: "ready" as "ready" | "unsupported" }));
+const daoParams = vi.hoisted(() => ({ status: "ready" as "ready" | "unsupported" | "loading" | "error" }));
 vi.mock("@/hooks/useDaoParams", () => ({ useDaoParams: () => ({ status: daoParams.status, retry: () => {} }) }));
 
 import HomePage from "./page";
@@ -51,7 +51,7 @@ describe("Home: What are you building today?", () => {
         expect(screen.getAllByText("Start here")).toHaveLength(1);
     });
 
-    it.each([["dao", "Create a DAO", "unsupported"], ["contest", "Create a trading contest", "ready"]] as const)("the %s tile is Coming soon and not a link (dao params: %s)", (id, title, status) => {
+    it.each([["dao", "Create a DAO", "unsupported"], ["dao", "Create a DAO", "loading"], ["dao", "Create a DAO", "error"], ["contest", "Create a trading contest", "ready"]] as const)("the %s tile is Coming soon and not a link (dao params: %s)", (id, title, status) => {
         daoParams.status = status;
         renderPage();
         const t = tile(id);
