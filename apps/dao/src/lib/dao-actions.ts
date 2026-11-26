@@ -1,4 +1,5 @@
 import type {Dao} from '@bze/bze-ui-kit';
+import {consoleRole} from './admin/access';
 
 /**
  * The actions of other stories this page links to. A flag turns on when its story has shipped, so
@@ -13,7 +14,7 @@ export interface DaoFeatures {
     proposalActions: boolean;
 }
 
-export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: false, proposalActions: true};
+export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: true, proposalActions: true};
 
 export interface DaoActions {
     newProposal: boolean;
@@ -28,13 +29,11 @@ export interface DaoActions {
 export function actionsFor(features: DaoFeatures, dao: Pick<Dao, 'address' | 'admin' | 'pending_admin' | 'type' | 'members' | 'config'>, wallet: string | null): DaoActions {
     const connected = !!wallet;
     const isMember = connected && dao.type === 'DAO_TYPE_STATIC_LIST' && dao.members.includes(wallet);
-    const externalAdmin = connected && dao.admin !== dao.address && dao.admin === wallet;
-    const nominee = connected && !!dao.pending_admin && dao.pending_admin === wallet;
     const staticList = dao.type === 'DAO_TYPE_STATIC_LIST';
 
     return {
         newProposal: features.newProposal && connected,
-        adminConsole: features.adminConsole && (externalAdmin || nominee),
+        adminConsole: features.adminConsole && consoleRole(dao, wallet) !== 'none',
         requestToJoin: features.memberComposer && staticList && dao.config.open_submission && connected && !isMember,
         leave: features.memberComposer && isMember,
         leaveBlocked: features.memberComposer && isMember && dao.members.length <= 1

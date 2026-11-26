@@ -65,9 +65,10 @@ export const DaoHeader = ({dao, openProposals, extras, nameOf, onRetryExtras, ac
                     </Flex>
                     {extras.failed && <ScanRetry what="Who created this DAO" onRetry={onRetryExtras} />}
                 </Flex>
-                {actions.newProposal && (
-                    <Flex gap="10px" wrap="wrap" data-testid="dao-actions">
-                        <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}/propose`}>New proposal</NextLink></chakra.a>
+                {(actions.newProposal || actions.adminConsole) && (
+                    <Flex gap="16px" wrap="wrap" data-testid="dao-actions">
+                        {actions.newProposal && <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}/propose`}>New proposal</NextLink></chakra.a>}
+                        {actions.adminConsole && <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}/admin`} data-testid="admin-console-link">Admin console</NextLink></chakra.a>}
                     </Flex>
                 )}
             </Flex>

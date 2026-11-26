@@ -1,3 +1,5 @@
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {expect, test} from "./support/mock-network";
 import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
 
@@ -37,4 +39,22 @@ test("while Scan lacks the filters only the administered DAOs are listed, with a
     await expect(mine.getByTestId("dao-card")).toHaveCount(2);
     await expect(mine.getByTestId("dao-reason")).toHaveText(["Admin", "Admin"]);
     await expect(mine.getByText("Only the DAOs you administer are listed")).toBeVisible();
+});
+
+test("a DAO that nominated the wallet as its next admin is labelled, once the chain confirms it", async ({page, network}) => {
+    const dao4 = JSON.parse(readFileSync(join(__dirname, "fixtures", "lcd", "dao.dao.4.json"), "utf8")) as {body: {dao: Record<string, unknown>}};
+    const staker = JSON.parse(readFileSync(join(__dirname, "fixtures", "scan", "daos.source.wallet.json"), "utf8")) as {body: {items: unknown[]}};
+    // Scan names DAO 4 (and, wrongly, DAO 3); the chain's own pending admin decides
+    network.use("scan", {path: "/api/scan/daos", query: {pending_admin: WALLET, limit: "100"}, status: 200, body: {items: [...staker.body.items, {...(staker.body.items[0] as object), id: 3, name: "Treasury council"}], next_cursor: null, supported: true}});
+    network.use("lcd", {path: "/bze/dao/dao/4", status: 200, body: {dao: {...dao4.body.dao, pending_admin: WALLET}}});
+    network.use("lcd", {path: "/bze/dao/dao/3", status: 200, body: {dao: {...dao4.body.dao, id: "3", pending_admin: ""}}});
+    await installFakeKeplr(page, WALLET);
+    await page.goto("/");
+    await connectWallet(page);
+
+    const mine = page.getByTestId("my-daos");
+    await expect(mine.getByTestId("dao-card")).toHaveCount(4);
+    const row = (name: string) => mine.getByTestId("dao-card").filter({hasText: name});
+    await expect(row("Stakers club").getByTestId("dao-reason")).toHaveText(["Nominated", "Staker"]);
+    await expect(row("Treasury council").getByTestId("dao-reason")).toHaveText(["Admin", "Member"]);
 });

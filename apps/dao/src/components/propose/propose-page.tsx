@@ -7,7 +7,7 @@ import {chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import type {DaoVotingPowerResponse} from '@bze/bze-ui-kit';
 import {
-    buildSubmitProposalMsg, getChainName, getChainNativeAssetDenom, getTxEvents, getTxLanding, Notice, PageContainer, PageState, Shimmer, useAssets, useBalances, useBZETx,
+    buildSubmitProposalMsg, getChainName, getTxEvents, getTxLanding, Notice, PageContainer, PageState, Shimmer, useBalances, useBZETx,
 } from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {useProposalRedirect} from '@/hooks/useProposalRedirect';
@@ -15,7 +15,7 @@ import {useProposalSubmit, type SignAndBroadcast} from '@/hooks/useProposalSubmi
 import {liveDaoViewDeps, liveRelationDeps} from '@/lib/dao-chain';
 import {loadDaoView, loadVotingPower, type DaoView, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
 import {availableActions, findAction} from '@/lib/actions/registry';
-import type {ActionContext, ActionDraft} from '@/lib/actions/types';
+import type {ActionDraft} from '@/lib/actions/types';
 import {composeProposal} from '@/lib/propose/compose';
 import {summarizeCost} from '@/lib/propose/cost';
 import {describeAll} from '@/lib/propose/describe';
@@ -27,6 +27,7 @@ import {InnerHero} from '@/components/ui/layout-hero';
 import {useCoinFormat} from '@/components/dao/page/use-coin-format';
 import {Unsupported} from '@/components/dao/unsupported';
 import {ActionsList} from './actions-list';
+import {useActionContext} from './use-action-context';
 import {Basics} from './basics';
 import {Review} from './review';
 import {SubmitArea} from './submit-area';
@@ -34,26 +35,15 @@ import {SubmitArea} from './submit-area';
 const newKey = (): string => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; view: DaoView; relations: Relations; wallet: string | null; sign: SignAndBroadcast}) => {
-    const {dao, treasury, openProposals, sources} = view;
+    const {dao, openProposals, sources} = view;
     const params = view.params.ok ? view.params.value : null;
     const router = useRouter();
     const pathname = usePathname();
     const coins = useCoinFormat();
-    const {getAsset} = useAssets();
     const {getBalanceByDenom, isLoading: balancesLoading} = useBalances();
     const storage = useMemo(() => browserStorage(), []);
 
-    const ctx: ActionContext | null = useMemo(() => params && {
-        dao,
-        params,
-        nativeDenom: getChainNativeAssetDenom(),
-        subDaos: relations.subDaos,
-        incoming: relations.incoming,
-        sources: relations.sources,
-        treasury: treasury.ok ? treasury.value : null,
-        decimalsOf: (denom: string) => getAsset(denom)?.decimals ?? null,
-        ticker: coins.ticker,
-    }, [dao, params, relations, treasury, getAsset, coins.ticker]);
+    const ctx = useActionContext(view, relations);
 
     // an unsent draft wins; with none, a shortcut link ("Request to join", "Leave") opens with its one action filled in
     const [opening] = useState(() => {

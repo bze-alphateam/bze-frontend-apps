@@ -4,11 +4,12 @@ import {useState, type ReactNode} from 'react';
 import {Button, chakra, Flex} from '@chakra-ui/react';
 import {
     buildCancelDaoProposalMsg, buildCleanupDaoProposalMsg, buildDaoVoteMsg, buildSettleDaoProposalMsg,
-    getChainNativeAssetDenom, getExplorerTxURL, getTxLanding, hgVariant, HgCard, Notice, useBalance, useSDKTx, useSettings,
+    getChainNativeAssetDenom, getTxLanding, hgVariant, HgCard, useBalance, useSDKTx, useSettings,
     type DaoCoin, type DaoProposalStatus, type TxLanding,
 } from '@bze/bze-ui-kit';
 import type {EncodeObject} from '@bze/bzejs/types';
-import {useActionFlow, type ActionKind, type FlowState} from '@/hooks/useActionFlow';
+import {useActionFlow, type ActionKind} from '@/hooks/useActionFlow';
+import {FlowMessage, Link} from '@/components/flow-message';
 import type {AsyncValue} from '@/hooks/useAsync';
 import {sendDaoTx} from '@/lib/dao-tx';
 import {
@@ -48,14 +49,6 @@ const SETTLED_TEXT: Partial<Record<DaoProposalStatus, string>> = {
     EXPIRED: 'Marked as expired.',
 };
 
-const TxLink = ({hash}: {hash: string}) => hash
-    ? <chakra.a href={getExplorerTxURL(hash)} target="_blank" rel="noreferrer" color="hg.link" fontWeight="600" overflowWrap="anywhere" data-testid="tx-hash">{hash}</chakra.a>
-    : null;
-
-const Link = ({onClick, children, testId}: {onClick: () => void; children: ReactNode; testId?: string}) => (
-    <chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={onClick} data-testid={testId}>{children}</chakra.button>
-);
-
 const Section = ({title, testId, children}: {title: string; testId: string; children: ReactNode}) => (
     <Flex direction="column" gap="8px" pt="12px" borderTopWidth="1px" borderColor="app.border" data-testid={testId}>
         <chakra.h3 m="0" fontSize="14px" fontWeight="700">{title}</chakra.h3>
@@ -67,65 +60,6 @@ const Muted = ({children, testId}: {children: ReactNode; testId?: string}) => (
     <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid={testId}>{children}</chakra.p>
 );
 
-/** The message of a flow that is not idle: progress, failure, a transaction that may still land, success. */
-const FlowMessage = ({state, status, progress, onRecheck}: {state: FlowState; status: DaoProposalStatus; progress: string; onRecheck: () => void}) => {
-    switch (state.phase) {
-        case 'idle':
-            return null;
-        case 'signing':
-            return (
-                <Notice status="info" title={state.kind === 'cleanup' ? `Cleaning up${state.batches ? `: ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'} done${state.processed ? `, ${state.processed} ballots deleted` : ''}` : ''}` : 'Approve in your wallet'}>
-                    <span data-testid="action-progress">{progress || 'Waiting for the wallet…'}</span>
-                </Notice>
-            );
-        case 'failed':
-            return (
-                <div data-testid="action-error">
-                    <Notice status="danger" title={state.kind === 'cleanup' && state.batches ? `The clean-up stopped after ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'}` : 'Nothing was sent'}>{state.error}</Notice>
-                </div>
-            );
-        case 'unconfirmed':
-            return (
-                <div data-testid="action-unconfirmed">
-                    <Notice status="warning" title="Not confirmed yet: it may still land">
-                        <Flex direction="column" gap="6px">
-                            <span>{state.error}</span>
-                            {state.txHash && <span>{'Transaction: '}<TxLink hash={state.txHash} /></span>}
-                            <span>The actions stay locked so the same transaction is not sent twice. Check again to see whether it landed.</span>
-                            {state.note && <span data-testid="recheck-note">{state.note}</span>}
-                            <span><Link onClick={onRecheck} testId="action-recheck">Check again</Link></span>
-                        </Flex>
-                    </Notice>
-                </div>
-            );
-        case 'sent':
-            return (
-                <div data-testid="action-sent">
-                    <Notice status="success" title={sentTitle(state.kind, status, state.batches)}>
-                        <Flex direction="column" gap="6px">
-                            {state.txHash && <span>{'Transaction: '}<TxLink hash={state.txHash} /></span>}
-                            {state.reread === 'failed' && (
-                                <>
-                                    <span>It is on chain, but the proposal could not be read again, so the page may be out of date.</span>
-                                    <span><Link onClick={onRecheck} testId="action-recheck">Read it again</Link></span>
-                                </>
-                            )}
-                        </Flex>
-                    </Notice>
-                </div>
-            );
-        case 'rechecked':
-            return (
-                <div data-testid="action-rechecked">
-                    <Notice status="info" title="The proposal was read again">
-                        What you see now is the chain&apos;s answer. If the transaction landed it shows below; if it did not, you can send it again.
-                        {state.txHash && <> {'Transaction: '}<TxLink hash={state.txHash} /></>}
-                    </Notice>
-                </div>
-            );
-    }
-};
-
 function sentTitle(kind: ActionKind, status: DaoProposalStatus, batches: number): string {
     switch (kind) {
         case 'vote': return 'Your vote is recorded.';
@@ -133,6 +67,7 @@ function sentTitle(kind: ActionKind, status: DaoProposalStatus, batches: number)
         case 'settle': return SETTLED_TEXT[status] ?? 'Settled.';
         case 'cancel': return 'The proposal is cancelled.';
         case 'cleanup': return `Cleaned up in ${batches} ${batches === 1 ? 'batch' : 'batches'}.`;
+        default: return 'Sent.';
     }
 }
 
@@ -175,7 +110,7 @@ export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeig
             <Flex direction="column" gap="12px" p={{base: '16px', md: '20px'}}>
                 <chakra.h2 m="0" fontSize="18px" fontWeight="700">What you can do</chakra.h2>
                 {blocked && <Muted testId="actions-blocked">{blocked}</Muted>}
-                <FlowMessage state={flow.state} status={model.status} progress={progressTrack} onRecheck={() => void flow.recheck()} />
+                <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind, batches) => sentTitle(kind, model.status, batches)} />
 
                 {!locked && view.vote && (
                     <Section title="Vote" testId="action-vote">

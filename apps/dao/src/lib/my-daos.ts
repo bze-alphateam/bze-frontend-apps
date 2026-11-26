@@ -3,13 +3,15 @@ import type {DaoCard, MyDaoRow, Reason} from './dao-types';
 export interface MyDaoSources {
     /** DAOs the wallet administers, from the chain (self-owned ones left out here). */
     admin: DaoCard[];
+    /** DAOs that nominated the wallet as their next admin (each confirmed on the chain). */
+    nominated: DaoCard[];
     /** Static-list DAOs that list the wallet, from Scan. */
     member: DaoCard[];
     /** DAOs whose electorate uses a source the wallet stakes in, from Scan. */
     staker: DaoCard[];
 }
 
-const ORDER: Reason[] = ['Admin', 'Member', 'Staker'];
+const ORDER: Reason[] = ['Admin', 'Nominated', 'Member', 'Staker'];
 
 /**
  * The union of the three lists, one row per DAO: a DAO that is both administered and joined
@@ -32,6 +34,7 @@ export function buildMyDaos(sources: MyDaoSources): MyDaoRow[] {
         }
     };
     add(sources.admin, 'Admin');
+    add(sources.nominated, 'Nominated');
     add(sources.member, 'Member');
     add(sources.staker, 'Staker');
 

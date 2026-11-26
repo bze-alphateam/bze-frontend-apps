@@ -2,7 +2,7 @@ import {describe, expect, it} from "vitest";
 import {tryDescribe} from "../propose/describe";
 import {ctxWith, DAO, DAO_ADDRESS, OTHER, PARAMS, SUB_ADDRESS, SUB_DAO, THIRD} from "@/test/composer-fixtures";
 import {findAction} from "./registry";
-import {innerFromField, innerToField, subAdminEntry, subContext, SUB_ADMIN_ID, SUB_EXECUTE_ID} from "./sub-dao";
+import {composeAdminActions, innerFromField, innerToField, subAdminEntry, subContext, SUB_ADMIN_ID, SUB_EXECUTE_ID} from "./sub-dao";
 import type {ActionContext, SubDao} from "./types";
 
 const ctx = (over: Partial<ActionContext> = {}) => ctxWith({subDaos: [SUB_DAO], ...over});
@@ -175,9 +175,9 @@ describe("run actions as a sub-DAO", () => {
 
     it("offers inside only what the sub-DAO can do: no handover, no sub-DAOs of its own", () => {
         const text = inner({type: "nominate-admin", fields: {nominee: OTHER}});
-        expect(execute.validate(fields(text), ctx())).toMatch(/Action 1 is not available for Garden club/);
+        expect(execute.validate(fields(text), ctx())).toMatch(/Action 1: This action is not available for Garden club/);
         const nested = inner({type: SUB_EXECUTE_ID, fields: {daoId: "7", inner: ""}});
-        expect(execute.validate(fields(nested), ctx())).toMatch(/Action 1 is not available/);
+        expect(execute.validate(fields(nested), ctx())).toMatch(/Action 1: This action is not available/);
         expect(execute.validate(fields(inner({type: "no-such", fields: {}})), ctx())).toMatch(/not available/);
     });
 
@@ -198,5 +198,66 @@ describe("run actions as a sub-DAO", () => {
         const text = execute.warnings?.(fields(inner(pay({amount: "9999"}))), ctx()).join(" ") ?? "";
         expect(text).toMatch(/Action 1: The treasury holds less than this today/);
         expect(text).toMatch(/at most 5 levels deep \(error 1134\)/);
+    });
+});
+
+describe("the actions an admin makes a DAO run", () => {
+    const adminCtx = (over: Partial<ActionContext> = {}) => ctxWith({runsNow: true, ...over});
+    const draft = (type: string, fields: Record<string, string>, key = "a1") => ({key, type, fields});
+    const pay = (over: Record<string, string> = {}) => draft("pay", {denom: "ubze", amount: "12.5", to: OTHER, ...over});
+
+    it("composes each action with the registry, every message signed by the DAO", () => {
+        const c = composeAdminActions([pay(), draft("update-metadata", {name: "Renamed", description: ""}, "a2")], adminCtx(), findAction, 0);
+        expect(c.error).toBeUndefined();
+        expect(c.ready).toBe(true);
+        expect(c.msgs.map((m) => m.typeUrl)).toEqual(["/cosmos.bank.v1beta1.MsgSend", "/bze.dao.MsgUpdateMetadata"]);
+        expect(c.size).toBeGreaterThan(0);
+    });
+
+    it("names the first action that is not complete, and keeps the others' warnings out of a failed list", () => {
+        const c = composeAdminActions([pay(), pay({to: "nope"})], adminCtx(), findAction, 0);
+        expect(c.ready).toBe(false);
+        expect(c.msgs).toEqual([]);
+        expect(c.error).toMatch(/^Action 2: The recipient is not a valid BeeZee address/);
+        expect(c.actions[1].error).toMatch(/recipient/);
+    });
+
+    it("needs at least one action and at most max_msgs_per_proposal", () => {
+        expect(composeAdminActions([], adminCtx(), findAction, 0).error).toBe("Add at least one action.");
+        const params = {...PARAMS, max_msgs_per_proposal: "1"};
+        expect(composeAdminActions([pay(), pay()].map((d, i) => ({...d, key: `k${i}`})), adminCtx({params}), findAction, 0).error).toMatch(/At most 1 actions can run at once \(there are 2\)/);
+    });
+
+    it("keeps the packed messages within max_proposal_bytes", () => {
+        const params = {...PARAMS, max_proposal_bytes: "10"};
+        expect(composeAdminActions([pay()], adminCtx({params}), findAction, 0).error).toMatch(/bytes, at most 10 are allowed/);
+    });
+
+    it("refuses what the chain refuses on this path (1133), in a custom message too", () => {
+        const grant = JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgGrant", granter: DAO_ADDRESS, grantee: OTHER, grant: {authorization: {"@type": "/cosmos.authz.v1beta1.GenericAuthorization", msg: "/cosmos.bank.v1beta1.MsgSend"}}});
+        const exec = JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: []});
+        const allowance = JSON.stringify({"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", granter: DAO_ADDRESS, grantee: OTHER});
+        for (const json of [exec, allowance]) {
+            const c = composeAdminActions([draft("custom", {json})], adminCtx(), findAction, 0);
+            expect(c).toMatchObject({ready: false, msgs: []});
+            expect(c.error).toMatch(/^Action 1: The chain refuses .* \(authz grants, fee allowances and authz exec, error 1133\)/);
+        }
+        // a grant's nested authorization cannot even be typed as a custom message; the nested check of the whole list is in execution.test
+        expect(composeAdminActions([draft("custom", {json: grant})], adminCtx(), findAction, 0).ready).toBe(false);
+    });
+
+    it("pays only what the treasury holds: the transaction runs now", () => {
+        expect(composeAdminActions([pay({amount: "9999"})], adminCtx(), findAction, 0).error).toMatch(/holds less than this: the payment would fail/);
+        expect(composeAdminActions([pay({amount: "9999"})], ctxWith(), findAction, 0).ready).toBe(true);
+    });
+
+    it("hides what the DAO cannot do for itself: an admin-run DAO hands over through the console", () => {
+        const c = composeAdminActions([draft("nominate-admin", {nominee: THIRD})], adminCtx({dao: {...DAO, admin: THIRD}}), findAction, 0);
+        expect(c.error).toMatch(/Action 1: This action is not available for Founders/);
+    });
+
+    it("counts the executions it already runs inside: the chain stops at 5 levels (1134)", () => {
+        expect(composeAdminActions([pay()], adminCtx(), findAction, 4).ready).toBe(true);
+        expect(composeAdminActions([pay()], adminCtx(), findAction, 5).error).toMatch(/nest 6 executions deep, and the chain allows at most 5 \(error 1134\)/);
     });
 });

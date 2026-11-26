@@ -4,7 +4,16 @@ import type {TxLanding} from '@bze/bze-ui-kit';
 import type {TxOutcome} from '@/lib/dao-tx';
 import {cleanupProposal} from '@/lib/proposal-cleanup';
 
-export type ActionKind = 'vote' | 'vote-settle' | 'settle' | 'cancel' | 'cleanup';
+export type ActionKind = 'vote' | 'vote-settle' | 'settle' | 'cancel' | 'cleanup'
+    // the admin console (BFE-377): run actions as the DAO, nominate, withdraw, hand over to the voters, accept
+    | 'admin-execute' | 'nominate' | 'withdraw' | 'hand-over' | 'accept';
+
+/**
+ * Whether what the page shows moves when this action lands. A vote only shifts a tally other voters shift too, and
+ * an admin execute (a payment, say) changes nothing the DAO record shows, so those are judged by the
+ * transaction itself.
+ */
+const movesPage = (kind: ActionKind): boolean => kind !== 'vote' && kind !== 'admin-execute';
 
 export type FlowState =
     | {phase: 'idle'}
@@ -51,8 +60,8 @@ const isLocked = (s: FlowState): boolean =>
  * The state of one action at a time. A transaction whose fate is unknown (a confirmation timeout) locks the
  * actions and shows its hash: it may still land, so the user re-reads the proposal before anything else is sent.
  */
-export function useActionFlow(deps: ActionFlowDeps): ActionFlow {
-    const [state, setState] = useState<FlowState>({phase: 'idle'});
+export function useActionFlow(deps: ActionFlowDeps, initial: FlowState = {phase: 'idle'}): ActionFlow {
+    const [state, setState] = useState<FlowState>(initial);
     const busy = useRef(false);
     const baselines = useRef('');
     const latest = useRef(deps);
@@ -128,7 +137,7 @@ export function useActionFlow(deps: ActionFlowDeps): ActionFlow {
 
         // the proposal moved on as this action moves it: the transaction landed. A vote only shifts the tally,
         // which other voters shift too, so a vote is judged by the transaction itself
-        const moves = current.kind !== 'vote';
+        const moves = movesPage(current.kind);
         if (result === 'gone' || (moves && latest.current.fingerprint() !== current.baseline)) {
             setState({phase: 'sent', kind: current.kind, txHash: current.txHash ?? '', reread: 'ok', batches: current.batches});
             return;

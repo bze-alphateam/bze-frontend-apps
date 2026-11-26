@@ -11,7 +11,7 @@ const dao = (over: Partial<Dao> = {}, open = false) => ({
 
 describe("actionsFor", () => {
     it("the admin console and the member shortcuts follow their flags; a wallet that cannot use a shortcut gets none", () => {
-        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: true, adminConsole: false, requestToJoin: false, leave: false, leaveBlocked: null});
+        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: true, adminConsole: true, requestToJoin: false, leave: false, leaveBlocked: null});
     });
 
     it("the member shortcuts are off with their flag", () => {

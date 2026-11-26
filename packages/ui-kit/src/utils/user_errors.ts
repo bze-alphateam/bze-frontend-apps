@@ -67,6 +67,8 @@ const errorsMap: { [key: string]: string } = {
     "the proposal is not finished": "This proposal is still open or can still be retried, so it can't be cleaned up yet.",
     "the expedited proposal cannot settle early yet": "This expedited proposal can't settle early yet: voters get a minimum time to react first. Try again later.",
     "the message is not allowed in this dao execution": "That action isn't allowed here: a DAO's admin can't grant permissions or fee allowances as the DAO, nor run authz executions. Do it through a proposal instead.",
+    "no admin nomination is pending": "There is no pending admin nomination for this DAO (it was withdrawn or already accepted). Refresh the page.",
+    "dao executions are nested too deep": "The actions are nested too deep: the chain runs at most 5 levels of DAO executions inside each other. Flatten them.",
     "the admin nomination is stale": "This handover is no longer valid: control of the nominating DAO changed since it was made. It has to be withdrawn and made again.",
     "broadcast failed with code 7": "Transaction rejected: your selected fee token may not have enough liquidity. Try switching to the native token in Settings.",
 };

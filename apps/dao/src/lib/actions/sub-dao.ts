@@ -1,30 +1,21 @@
 import type {EncodeObject} from '@bze/bzejs/types';
 import {
-    buildAdminExecuteMsg, buildNominateAdminMsg, buildWithdrawAdminNominationMsg, canonicalAddress,
+    buildAdminExecuteMsg, buildNominateAdminMsg, buildWithdrawAdminNominationMsg,
     daoMsgsSize, packDaoMsgs, validateDaoAdminExecute,
 } from '@bze/bze-ui-kit';
-import {electorateVoterStake} from './electorate';
-import {composeAction, type FindAction} from './compose-action';
+import {nomineeProblem} from './admin';
+import {handOverProblem} from './electorate';
+import {composeAction, type ComposedAction, type FindAction} from './compose-action';
+import {ADMIN_REFUSED_TYPES, inspectExecution, MAX_EXECUTION_DEPTH, SETTLE_TYPE} from './execution';
 import type {ActionContext, ActionDraft, ActionEntry, ActionFields, SubDao} from './types';
+
+export {ADMIN_REFUSED_TYPES, SETTLE_TYPE};
 
 export const SUB_ADMIN_ID = 'sub-dao-admin';
 export const SUB_EXECUTE_ID = 'sub-dao-execute';
 
 export type SubAdminMode = 'nominate' | 'withdraw' | 'voters';
 export const SUB_ADMIN_MODES: readonly SubAdminMode[] = ['nominate', 'withdraw', 'voters'];
-
-/**
- * What an admin cannot make its DAO sign through `MsgAdminExecute` (chain error 1133): grants would outlive
- * the admin, and an authz exec dispatches a message signed by its own grantee without any grant.
- */
-export const ADMIN_REFUSED_TYPES: readonly string[] = [
-    '/cosmos.authz.v1beta1.MsgGrant',
-    '/cosmos.feegrant.v1beta1.MsgGrantAllowance',
-    '/cosmos.authz.v1beta1.MsgExec',
-];
-
-/** MsgSettleProposal never runs inside a DAO execution (the chain refuses it, also inside an authz exec). */
-export const SETTLE_TYPE = '/bze.dao.MsgSettleProposal';
 
 /**
  * The context of the actions a DAO runs as one of its sub-DAOs: the sub-DAO signs, its treasury is the
@@ -65,23 +56,14 @@ const subAdminCheck = (fields: ActionFields, ctx: ActionContext): string | undef
 
     if (mode === 'withdraw') return sub.dao.pending_admin === '' ? `${sub.dao.name} has no pending nomination to withdraw.` : undefined;
 
-    if (mode === 'voters') {
-        const none = `${sub.dao.name} has no voters to hand it to: set up its voters first (the chain refuses it, error 1113).`;
-        if (sub.dao.type === 'DAO_TYPE_STATIC_LIST') return sub.dao.members.length > 0 ? undefined : none;
-        // a stake DAO needs voting stake in its sources, without its own (the chain's live-electorate check)
-        if (!sub.dao.electorate || sub.sources === null) return sub.dao.electorate ? `The stake of ${sub.dao.name} could not be read, so it cannot be checked that it has voters. Try again in a moment.` : none;
-        const stake = electorateVoterStake(sub.dao.electorate, sub.sources);
-        if (stake === null) return `The stake of ${sub.dao.name} could not be read, so it cannot be checked that it has voters. Try again in a moment.`;
-        return stake.isGreaterThan(0) ? undefined : none;
-    }
+    if (mode === 'voters') return handOverProblem(sub.dao, sub.sources);
 
-    const nominee = (fields.nominee ?? '').trim();
-    if (nominee === '') return 'Enter the address of the new admin.';
-    const canonical = canonicalAddress(nominee);
-    if (!canonical) return 'The new admin is not a valid BeeZee address (it starts with bze1).';
-    if (canonical === sub.dao.address.toLowerCase()) return `${sub.dao.name} cannot nominate itself: choose "Hand it to its own voters" to make it self-owned.`;
-    if (canonical === ctx.dao.address.toLowerCase()) return 'This DAO is already the admin.';
-    return undefined;
+    return nomineeProblem((fields.nominee ?? '').trim(), {
+        daoAddress: sub.dao.address,
+        adminAddress: ctx.dao.address,
+        isDao: `${sub.dao.name} cannot nominate itself: choose "Hand it to its own voters" to make it self-owned.`,
+        isAdmin: 'This DAO is already the admin.',
+    });
 };
 
 /** The admin of a DAO this DAO administers: nominate another, withdraw a nomination, or hand it to its voters. */
@@ -165,6 +147,68 @@ interface Inner {
     warnings: string[];
 }
 
+/** What an admin's list of actions composes to: each action, and every reason the list cannot be sent. */
+export interface AdminComposition {
+    actions: ComposedAction[];
+    /** The messages of every action; empty unless `ready`. */
+    msgs: EncodeObject[];
+    /** The packed size of the complete actions, in bytes (what the chain compares with `max_proposal_bytes`). */
+    size: number;
+    maxBytes: number;
+    /** The first problem as a sentence: an action's (numbered), or the count, size or nesting of the list. */
+    error?: string;
+    warnings: string[];
+    ready: boolean;
+}
+
+/**
+ * The actions an admin makes a DAO run (`ctx.dao` is that DAO: it signs every message), each composed with the
+ * registry's entries. The chain's rules for this path are applied to every action: its entry must be offered for
+ * the DAO, a settle message and authz grants, fee allowances and authz exec are refused (1133), the whole list
+ * has 1 to `max_msgs_per_proposal` messages within `max_proposal_bytes`, and the executions nested inside each
+ * other stay within the chain's limit (1134). `levelsAbove` counts the executions the list already runs
+ * inside: 0 for the admin's own transaction, 1 for the actions a DAO runs as its sub-DAO's admin.
+ */
+export function composeAdminActions(drafts: readonly ActionDraft[], ctx: ActionContext, find: FindAction, levelsAbove: number): AdminComposition {
+    const maxBytes = Number(ctx.params.max_proposal_bytes);
+    const actions: ComposedAction[] = drafts.map((draft) => {
+        const entry = find(draft.type);
+        if (!entry || !entry.available(ctx.dao, ctx)) return {key: draft.key, error: `This action is not available for ${ctx.dao.name}.`, warnings: []};
+        const composed = composeAction(draft, ctx, find);
+        if (!composed.msg) return composed;
+        if (composed.msg.typeUrl === SETTLE_TYPE) return {key: draft.key, error: 'A settle message never runs inside a DAO execution.', warnings: []};
+        if (ADMIN_REFUSED_TYPES.includes(composed.msg.typeUrl)) {
+            return {key: draft.key, error: `The chain refuses ${composed.msg.typeUrl} when an admin runs it for a DAO (authz grants, fee allowances and authz exec, error 1133).`, warnings: []};
+        }
+        return composed;
+    });
+    const warnings = actions.flatMap((a, i) => a.warnings.map((w) => `Action ${i + 1}: ${w}`));
+    const firstBad = actions.findIndex((a) => a.error || !a.msg);
+    const base = {actions, maxBytes, warnings};
+    if (firstBad >= 0) {
+        const bad = actions[firstBad];
+        return {...base, msgs: [], size: 0, ready: false, error: `Action ${firstBad + 1}: ${bad.error ?? 'it is not complete.'}`};
+    }
+
+    const msgs = actions.flatMap((a) => (a.msg ? [a.msg] : []));
+    let size: number;
+    try {
+        size = daoMsgsSize(packDaoMsgs(msgs));
+    } catch (e) {
+        return {...base, msgs: [], size: 0, ready: false, error: `An action could not be packed: ${(e as Error).message}`};
+    }
+    const content = validateDaoAdminExecute({msgCount: msgs.length, msgsSize: size}, ctx.params);
+    if (content) return {...base, msgs: [], size, ready: false, error: content};
+
+    // the messages as the chain reads them, nested ones included: refused types at any level, and how deep it runs
+    const inspected = inspectExecution(msgs);
+    if (!inspected.ok) return {...base, msgs: [], size, ready: false, error: inspected.error};
+    if (inspected.depth + levelsAbove > MAX_EXECUTION_DEPTH) {
+        return {...base, msgs: [], size, ready: false, error: `The actions nest ${inspected.depth + levelsAbove} executions deep, and the chain allows at most ${MAX_EXECUTION_DEPTH} (error 1134).`};
+    }
+    return {...base, msgs, size, ready: true};
+}
+
 /** The messages of the inner actions, or the first reason they are not one. */
 function composeInner(fields: ActionFields, ctx: ActionContext, find: FindAction): Inner | string {
     const sub = resolveSub(fields, ctx);
@@ -175,29 +219,9 @@ function composeInner(fields: ActionFields, ctx: ActionContext, find: FindAction
     if (typeof drafts === 'string') return drafts;
 
     const subCtx = subContext(ctx, sub);
-    const msgs: EncodeObject[] = [];
-    const warnings: string[] = [];
-    for (const [i, draft] of drafts.entries()) {
-        const entry = find(draft.type);
-        if (!entry || !entry.available(subCtx.dao, subCtx)) return `Action ${i + 1} is not available for ${sub.dao.name}.`;
-        const composed = composeAction(draft, subCtx, find);
-        if (composed.error || !composed.msg) return `Action ${i + 1}: ${composed.error ?? 'it is not complete.'}`;
-        if (composed.msg.typeUrl === SETTLE_TYPE) return `Action ${i + 1}: a settle message never runs inside a DAO execution.`;
-        if (ADMIN_REFUSED_TYPES.includes(composed.msg.typeUrl)) {
-            return `Action ${i + 1}: the chain refuses ${composed.msg.typeUrl} when an admin runs it for a DAO (authz grants, fee allowances and authz exec, error 1133).`;
-        }
-        msgs.push(composed.msg);
-        warnings.push(...composed.warnings.map((w) => `Action ${i + 1}: ${w}`));
-    }
-
-    let size: number;
-    try {
-        size = daoMsgsSize(packDaoMsgs(msgs));
-    } catch (e) {
-        return `An action could not be packed: ${(e as Error).message}`;
-    }
-    const content = validateDaoAdminExecute({msgCount: msgs.length, msgsSize: size}, ctx.params);
-    return content ?? {sub, subCtx, msgs, warnings};
+    // this DAO runs the sub-DAO's actions through its own admin execute, which is one execution deep already
+    const composed = composeAdminActions(drafts, subCtx, find, 1);
+    return composed.ready ? {sub, subCtx, msgs: composed.msgs, warnings: composed.warnings} : composed.error ?? 'The actions are not complete.';
 }
 
 /**

@@ -48,14 +48,18 @@ export const payEntry: ActionEntry = {
         if (!validateBZEBech32Address(to).isValid) return 'The recipient is not a valid BeeZee address (it starts with bze1).';
 
         const parsed = parseTokenAmount(fields.amount ?? '', decimals(ctx, denom));
-        return parsed.ok ? undefined : parsed.error;
+        if (!parsed.ok) return parsed.error;
+        // an action that runs in the signed transaction cannot wait for the treasury to fill up
+        const balance = treasuryAmount(ctx, denom);
+        if (ctx.runsNow && balance !== null && new BigNumber(parsed.base).gt(balance)) return 'The treasury holds less than this: the payment would fail, and with it everything in the batch.';
+        return undefined;
     },
     warnings(fields, ctx) {
         const warnings: string[] = [];
         const denom = fields.denom ?? '';
         const base = baseAmount(fields, ctx);
         const balance = treasuryAmount(ctx, denom);
-        if (base !== null && balance !== null && new BigNumber(base).gt(balance)) {
+        if (!ctx.runsNow && base !== null && balance !== null && new BigNumber(base).gt(balance)) {
             warnings.push(`The treasury holds less than this today. The proposal can still be submitted; if the treasury is short when it is settled, the payment fails and can be retried until the retry deadline.`);
         }
         if ((fields.to ?? '').trim().toLowerCase() === ctx.dao.address.toLowerCase()) {

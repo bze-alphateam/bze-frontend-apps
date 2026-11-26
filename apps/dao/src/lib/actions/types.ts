@@ -46,6 +46,11 @@ export interface ActionContext {
     /** The exponent of a token; null when the app does not know the token. */
     decimalsOf: (denom: string) => number | null;
     ticker: (denom: string) => string;
+    /**
+     * The actions run in the transaction that is signed (an admin's execute), not later: a payment the treasury
+     * cannot cover then fails right away instead of at settle time. Absent or false when they run later.
+     */
+    runsNow?: boolean;
 }
 
 /**
@@ -53,8 +58,8 @@ export interface ActionContext {
  * data and functions; its form is a component registered under the same `id` in
  * `components/propose/action-forms.tsx`. A later story adds an action by adding one entry and one form.
  *
- * Every message an entry builds must be signed by the DAO account only: it runs as the DAO when the
- * proposal passes (the chain refuses a proposal with any other signer, error 1111).
+ * Every message an entry builds must be signed by the DAO account only: it runs as the DAO, when a proposal
+ * passes or when its admin runs it (the chain refuses any other signer, error 1111).
  */
 export interface ActionEntry {
     id: string;

@@ -37,6 +37,8 @@ export interface DaoListRequest {
     /** Name search (min 2 characters, BFE-368). */
     q?: string;
     member?: string;
+    /** The DAOs whose pending admin is this account (BFE-368). */
+    pendingAdmin?: string;
     sources?: string[];
     cursor?: string | null;
     limit?: number;
@@ -89,6 +91,7 @@ export function createDaoScanClient(get: ScanGetter): DaoScanClient {
             if (request.type) query.push(['type', request.type]);
             if (request.q) query.push(['q', request.q]);
             if (request.member) query.push(['member', request.member]);
+            if (request.pendingAdmin) query.push(['pending_admin', request.pendingAdmin]);
             for (const source of request.sources ?? []) query.push(['source', source]);
             if (request.cursor) query.push(['cursor', request.cursor]);
             if (request.limit) query.push(['limit', String(request.limit)]);

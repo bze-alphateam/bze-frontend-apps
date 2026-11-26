@@ -11,6 +11,8 @@ export interface DaoChain {
     isSupported(): Promise<boolean>;
     getDaos(page?: DaoPageRequest): Promise<DaoPage<Dao>>;
     getDaosByAdmin(admin: string, page?: DaoPageRequest): Promise<DaoPage<Dao>>;
+    /** One DAO; null only for the chain's "not found". Every other failure throws. */
+    getDao(id: string): Promise<Dao | null>;
     stakingRewardParticipations(address: string): Promise<StakingRewardParticipation[]>;
     denomRewardParticipations(address: string): Promise<DenomRewardParticipation[]>;
 }
@@ -93,6 +95,8 @@ export interface MyDaosResult {
     adminFailed: boolean;
     /** Scan runs without the member / staker filters (before BFE-368): only the admin DAOs can be listed. */
     onlyAdmin: boolean;
+    /** The DAOs that nominated the wallet could not be read (Scan, or the chain confirming them). */
+    nominatedFailed: boolean;
     /** The DAOs the wallet joined could not be read (Scan unreachable or failing). */
     memberFailed: boolean;
     /** The DAOs the wallet stakes in could not be read (Scan, or the x/rewards queries). */
@@ -109,6 +113,29 @@ async function adminDaos(chain: DaoChain, address: string): Promise<DaoCard[]> {
         key = page.nextKey;
     }
     return cards;
+}
+
+/** Every page of a Scan list; a list that is still going after the page cap is an error, never a short list. */
+async function everyScanPage(read: (cursor: string | null) => Promise<{items: DaoCard[]; next: string | null}>): Promise<DaoCard[]> {
+    const cards: DaoCard[] = [];
+    let cursor: string | null = null;
+    for (let i = 0; i < MAX_ADMIN_PAGES; i++) {
+        const page = await read(cursor);
+        cards.push(...page.items);
+        if (!page.next) return cards;
+        cursor = page.next;
+    }
+    throw new Error('the list is longer than the pages that are read');
+}
+
+/** The DAOs that nominated the wallet: Scan names the candidates, the chain's own `pending_admin` decides. */
+async function nominatedDaos(deps: DaoDeps, address: string): Promise<DaoCard[]> {
+    const candidates = await everyScanPage(async (cursor) => {
+        const list = await deps.scan.listDaos({pendingAdmin: address, cursor, limit: 100});
+        return {items: list.items.map(cardFromScan), next: list.next_cursor};
+    });
+    const read = await Promise.all(candidates.map((card) => deps.chain.getDao(card.id)));
+    return read.flatMap((dao) => (dao && dao.pending_admin.toLowerCase() === address.toLowerCase() ? [cardFromChain(dao)] : []));
 }
 
 async function allScanPages(read: (cursor: string | null) => Promise<{items: DaoCard[]; next: string | null}>): Promise<DaoCard[]> {
@@ -139,15 +166,19 @@ export async function loadMyDaos(deps: DaoDeps, address: string): Promise<MyDaos
             return {items: list.items.map(cardFromScan), next: list.next_cursor};
         }))
         : Promise.resolve({cards: [] as DaoCard[], failed: support === 'unknown'});
+    const nominatedPromise = support === 'yes'
+        ? settle(() => nominatedDaos(deps, address))
+        : Promise.resolve({cards: [] as DaoCard[], failed: support === 'unknown'});
     const stakerPromise = support === 'yes'
         ? settle(() => loadStakerDaos(deps, address))
         : Promise.resolve({cards: [] as DaoCard[], failed: support === 'unknown'});
 
-    const [admin, member, staker] = await Promise.all([adminPromise, memberPromise, stakerPromise]);
+    const [admin, nominated, member, staker] = await Promise.all([adminPromise, nominatedPromise, memberPromise, stakerPromise]);
     return {
-        rows: buildMyDaos({admin: admin.cards, member: member.cards, staker: staker.cards}),
+        rows: buildMyDaos({admin: admin.cards, nominated: nominated.cards, member: member.cards, staker: staker.cards}),
         adminFailed: admin.failed,
         onlyAdmin: support === 'no',
+        nominatedFailed: nominated.failed,
         memberFailed: member.failed,
         stakerFailed: staker.failed,
     };
