@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 
 const { channelsMock, denomsMock } = vi.hoisted(() => ({ channelsMock: vi.fn(), denomsMock: vi.fn() }))
 
@@ -58,5 +58,20 @@ describe('useIbcRouteStatus', () => {
 
         await waitFor(() => expect(result.current.isChannelClosed('channel-9')).toBe(true))
         expect(result.current.isChannelClosed('channel-3')).toBe(false)
+    })
+
+    it('refresh re-reads both lists, updates the hook and returns the fresh checks', async () => {
+        const { result } = renderHook(() => useIbcRouteStatus())
+        await waitFor(() => expect(result.current.loading).toBe(false))
+        channelsMock.mockResolvedValue(['channel-3', 'channel-8'])
+        denomsMock.mockResolvedValue([])
+
+        let fresh!: Awaited<ReturnType<typeof result.current.refresh>>
+        await act(async () => { fresh = await result.current.refresh() })
+
+        expect(fresh.isChannelClosed('channel-8')).toBe(true)
+        expect(fresh.isDenomBlocked('ubze')).toBe(false)
+        expect(result.current.isChannelClosed('channel-8')).toBe(true)
+        expect(result.current.isDenomBlocked('ubze')).toBe(false)
     })
 })

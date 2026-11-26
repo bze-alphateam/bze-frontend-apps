@@ -1,16 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // REST endpoint from settings, cache in an in-memory stand-in for localStorage.
-const { settingsMock, store, setMock } = vi.hoisted(() => ({
+const { settingsMock, store, setMock, clock } = vi.hoisted(() => ({
     settingsMock: vi.fn(),
-    store: new Map<string, string>(),
+    store: new Map<string, { v: string; expiry: number }>(),
     setMock: vi.fn(),
+    clock: { now: 0 },
 }))
 
 vi.mock('../storage/settings', () => ({ getSettings: settingsMock }))
 vi.mock('../storage/storage', () => ({
-    getFromLocalStorage: (k: string) => store.get(k) ?? null,
-    setInLocalStorage: (k: string, v: string, ttl: number) => { setMock(k, v, ttl); store.set(k, v); return true },
+    // Honours the TTL like the real storage: an entry older than its ttl is gone.
+    getFromLocalStorage: (k: string) => {
+        const e = store.get(k)
+        return e && clock.now < e.expiry ? e.v : null
+    },
+    setInLocalStorage: (k: string, v: string, ttl: number) => { setMock(k, v, ttl); store.set(k, { v, expiry: clock.now + ttl * 1000 }); return true },
 }))
 
 import { getAutomationPaused, getBlockedDenoms, getClosedChannels } from './guardian'
@@ -30,13 +35,16 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
     beforeEach(() => {
         store.clear()
         setMock.mockReset()
+        // Each test starts an hour after the previous one, so failures remembered in memory never leak across tests.
+        clock.now += 3_600_000
+        vi.spyOn(Date, 'now').mockImplementation(() => clock.now)
         settingsMock.mockReturnValue({ endpoints: { restEndpoint: 'https://rest.example' } })
         fetchMock = vi.fn()
         vi.stubGlobal('fetch', fetchMock)
         vi.spyOn(console, 'error').mockImplementation(() => {}); vi.mocked(console.error).mockClear()
     })
 
-    afterEach(() => vi.unstubAllGlobals())
+    afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
     it('reads the v8.3.0 body and caches it for 60 seconds', async () => {
         fetchMock.mockResolvedValue(json(body))
@@ -75,6 +83,7 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
         expect(await fn()).toEqual(fallback)
         expect(setMock).not.toHaveBeenCalled()
 
+        clock.now += 61_000
         fetchMock.mockResolvedValue(json(body))
         expect(await fn()).toEqual(value)
     })
@@ -86,5 +95,49 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
 
         expect(results).toEqual([value, value, value])
         expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not refetch or log again inside a minute after a failure', async () => {
+        fetchMock.mockResolvedValue(json(NOT_IMPLEMENTED, 501))
+
+        await fn()
+        clock.now += 59_000
+        expect(await fn()).toEqual(fallback)
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(console.error).toHaveBeenCalledTimes(1)
+    })
+
+    it('fetches again once the failure memory is over a minute old', async () => {
+        fetchMock.mockResolvedValue(json(NOT_IMPLEMENTED, 501))
+        await fn()
+
+        clock.now += 61_000
+        await fn()
+
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('caches a success that follows a failure', async () => {
+        fetchMock.mockResolvedValueOnce(json(NOT_IMPLEMENTED, 501))
+        await fn()
+        clock.now += 61_000
+        fetchMock.mockResolvedValue(json(body))
+        expect(await fn()).toEqual(value)
+        fetchMock.mockClear()
+
+        expect(await fn()).toEqual(value)
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('refetches when the cached entry is older than 60 seconds', async () => {
+        fetchMock.mockResolvedValueOnce(json(body))
+        expect(await fn()).toEqual(value)
+
+        clock.now += 61_000
+        fetchMock.mockResolvedValue(json(empty))
+
+        expect(await fn()).toEqual(fallback)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
     })
 })
