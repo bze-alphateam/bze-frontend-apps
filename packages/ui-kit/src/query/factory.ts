@@ -5,6 +5,11 @@ export interface FactoryDenomAuthority {
     /** '' when the admin was renounced. */
     admin: string;
     mintable: boolean;
+    /**
+     * True when the node's answer carried the `mintable` field (v8.3.0+). False on a v8.2.0 node,
+     * where `mintable` is only derived from the admin and the v8.3.0 messages do not exist.
+     */
+    mintableKnown: boolean;
 }
 
 /**
@@ -23,7 +28,9 @@ export async function getFactoryDenomAuthority(denom: string): Promise<FactoryDe
 
         const flag = body.denomAuthority?.mintable;
 
-        return {admin, mintable: typeof flag === 'boolean' ? flag : admin !== ''};
+        const mintableKnown = typeof flag === 'boolean';
+
+        return {admin, mintable: mintableKnown ? flag : admin !== '', mintableKnown};
     } catch (e) {
         console.error('failed to fetch authority of', denom, e);
 

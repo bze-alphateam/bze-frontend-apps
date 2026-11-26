@@ -26,6 +26,10 @@ describe('prettyError — Denom Rewards (x/rewards)', () => {
         expect(prettyError(raw)).toMatch(expected)
     })
 
+    it('maps the fee settings refusal (tokenfactory code 1113)', () => {
+        expect(prettyError('failed to execute message; message index: 0: community pool is blocked: invalid denom config')).toMatch(/fee settings were refused.*regular wallet address/)
+    })
+
     it('maps the brand kit validation error', () => {
         expect(prettyError('failed to execute message; message index: 0: invalid light primary color: #12: invalid branding')).toMatch(/brand kit was refused/)
     })

@@ -56,6 +56,13 @@ describe("ownerBadge", () => {
         expect(ownerBadge(DENOM, "bze1handed", "bze1handed")).toBe("You are admin");
     });
 
+    it("names a DAO admin of your own token", () => {
+        expect(ownerBadge(DENOM, "bze1dao", OWNER, { name: "Honey Guild" })).toBe("Created by you · admin is DAO Honey Guild");
+        // A DAO never changes the other badges.
+        expect(ownerBadge(DENOM, OWNER, OWNER, { name: "Honey Guild" })).toBe("Created by you · you are admin");
+        expect(ownerBadge("factory/bze1someoneelse/x", "bze1dao", OWNER, { name: "Honey Guild" })).toBeUndefined();
+    });
+
     it("shows none for anyone else, without a wallet, or while the admin is unknown", () => {
         expect(ownerBadge(DENOM, OWNER, "bze1other")).toBeUndefined();
         expect(ownerBadge(DENOM, OWNER, undefined)).toBeUndefined();
