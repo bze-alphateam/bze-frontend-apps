@@ -1,15 +1,25 @@
 import {expect, test} from "./support/mock-network";
-import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
+import {connectWallet as connect, installFakeKeplr} from "./support/fake-keplr";
+import type {Page} from "@playwright/test";
 import {bzeWallets} from "./support/wallets";
 import daoTwo from "./fixtures/lcd/dao.dao.2.json";
 
 // The proposal composer (BFE-375) against hand-written chain and Scan answers (testnet has no DAO yet, see
 // fixtures/README.md). DAO 2 "Founders" is a free, self-owned member list the e2e wallet belongs to, with
-// 5,000 BZE in its treasury; DAO 4 "Stakers club" is a stake DAO that charges 5 BZE and holds 9 BZE as a deposit,
+// 5,000 TBZE in its treasury (the e2e build is a testnet one: the ticker is TBZE); DAO 4 "Stakers club" is a stake DAO that charges 5 TBZE and holds 9 TBZE as a deposit,
 // and the e2e wallet has stake in it.
 const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
 const DAO_2_ADDRESS = "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws";
 const [, , , STRANGER] = bzeWallets(4);
+
+/** Connects the fake wallet and makes sure its sidebar is gone, or its backdrop swallows the clicks that follow. */
+async function connectWallet(page: Page): Promise<void> {
+    await connect(page);
+    await expect(async () => {
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId("sidebar-backdrop")).toHaveCount(0, {timeout: 1000});
+    }).toPass({timeout: 15_000});
+}
 
 test.describe("the entry point", () => {
     test("the DAO page links to the composer for a connected wallet", async ({page}) => {
@@ -56,14 +66,14 @@ test.describe("a member of a free DAO", () => {
         await page.getByTestId("add-action").click();
         await page.getByTestId("add-pay").click();
 
-        await expect(page.getByTestId("pay-held")).toHaveText("The treasury holds 5,000 BZE.");
+        await expect(page.getByTestId("pay-held")).toHaveText("The treasury holds 5,000 TBZE.");
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
         await page.getByTestId("pay-to").fill(STRANGER);
         await page.getByTestId("pay-amount").fill("25.5");
 
         const preview = page.getByTestId("action-preview");
-        await expect(preview).toContainText("Send 25.5 BZE from the DAO");
+        await expect(preview).toContainText("Send 25.5 TBZE from the DAO");
         await expect(page.getByTestId("action-warning")).toHaveCount(0);
         await expect(page.getByTestId("size-text")).toContainText("of 20,000 bytes");
         await expect(page.getByTestId("action").first()).toBeVisible();
@@ -78,7 +88,7 @@ test.describe("a member of a free DAO", () => {
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
         await page.getByTestId("pay-amount").fill("1.123456");
-        await expect(page.getByTestId("action-preview")).toContainText("Send 1.123456 BZE from the DAO");
+        await expect(page.getByTestId("action-preview")).toContainText("Send 1.123456 TBZE from the DAO");
         await page.getByTestId("pay-to").fill("cosmos1notmine");
         await expect(page.getByTestId("action-error")).toContainText("not a valid BeeZee address");
     });
@@ -118,7 +128,7 @@ test.describe("a member of a free DAO", () => {
 
         await page.getByTestId("custom-json").fill(JSON.stringify(message));
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Send 1.5 BZE from the DAO");
+        await expect(page.getByTestId("action-preview")).toContainText("Send 1.5 TBZE from the DAO");
 
         await page.getByTestId("custom-json").fill(JSON.stringify({...message, from_address: WALLET}));
         await expect(page.getByTestId("action-error")).toContainText(`"from_address" is ${WALLET}`);
@@ -192,10 +202,10 @@ test.describe("a stake DAO that charges for proposals", () => {
         await expect(page.getByTestId("proposer-note")).toContainText("You have stake in this DAO");
         await page.getByTestId("proposal-title").fill("Fund the festival");
 
-        await expect(page.getByTestId("cost-cost")).toContainText("5 BZE is paid now and never refunded. It is sent to the DAO's treasury.");
-        await expect(page.getByTestId("cost-deposit")).toContainText("9 BZE is put in escrow");
+        await expect(page.getByTestId("cost-cost")).toContainText("5 TBZE is paid now and never refunded. It is sent to the DAO's treasury.");
+        await expect(page.getByTestId("cost-deposit")).toContainText("9 TBZE is put in escrow");
         await expect(page.getByTestId("cost-deposit")).toContainText("refunded to you only if the proposal passes");
-        await expect(page.getByTestId("cost-balance")).toContainText("You need 14 BZE and have 12 BZE: not enough.");
+        await expect(page.getByTestId("cost-balance")).toContainText("You need 14 TBZE and have 12 TBZE: not enough.");
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
         await expect(page.getByTestId("expedite-box")).toContainText("after 1 day instead of 3 days");
@@ -215,7 +225,7 @@ test.describe("a stake DAO that charges for proposals", () => {
         await page.goto("/dao/4/propose");
         await connectWallet(page);
         await page.getByTestId("proposal-title").fill("Fund the festival");
-        await expect(page.getByTestId("cost-balance")).toContainText("have 14 BZE.");
+        await expect(page.getByTestId("cost-balance")).toContainText("have 14 TBZE.");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 });
