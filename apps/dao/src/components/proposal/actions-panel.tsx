@@ -29,7 +29,7 @@ const ChangeLine = ({change}: {change: ConfigChange}) => (
     </chakra.li>
 );
 
-const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Props, 'actions'>) => {
+export const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Props, 'actions'>) => {
     switch (action.type) {
         case 'send':
             return (

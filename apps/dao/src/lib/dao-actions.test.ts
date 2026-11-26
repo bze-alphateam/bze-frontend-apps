@@ -9,8 +9,8 @@ const dao = (over: Partial<Dao> = {}, open = false) => ({
 });
 
 describe("actionsFor", () => {
-    it("shows nothing while the other stories have not shipped", () => {
-        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: false, adminConsole: false, requestToJoin: false, leave: false});
+    it("shows only the new proposal button while the other stories have not shipped", () => {
+        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: true, adminConsole: false, requestToJoin: false, leave: false});
     });
 
     it("new proposal needs a connected wallet", () => {
