@@ -1,6 +1,8 @@
 'use client';
 
 import BigNumber from 'bignumber.js';
+import { useEffect, useState } from 'react';
+import { getDenomConfig } from '../query/denom_config';
 import { getChainNativeAssetDenom } from '../constants/assets';
 import { FeeCoin } from '../types/fees';
 import { Asset } from '../types/asset';
@@ -8,6 +10,7 @@ import { uAmountToBigNumberAmount } from '../utils/amount';
 import {
     estimateFeeInPreferredDenom,
     maxSpendFeeReserve,
+    preferredTotal,
     resolveFeePayment,
     FeeEstimate,
     FeePaymentMethod,
@@ -53,7 +56,10 @@ export interface UseFeeEstimateResult {
     preferredAsset?: Asset;
     /** The fee in display units of `nativeAsset`. */
     nativeDisplayAmount?: BigNumber;
-    /** The estimated fee in display units of `preferredAsset`; only when the estimate applies. */
+    /**
+     * The full amount the chain takes in `preferredAsset` (display units): the converted fee plus the
+     * token's transfer fee (`estimate.preferredTransferFee`); only when the estimate applies.
+     */
     preferredDisplayAmount?: BigNumber;
     /** The user's native-denom balance in display units. */
     nativeBalanceDisplay: BigNumber;
@@ -80,6 +86,22 @@ export interface UseFeeEstimateResult {
     maxSpendReserve: (denom: string) => FeeCoin | undefined;
     /** Pools, assets or balances still loading. */
     isLoading: boolean;
+}
+
+/** The preferred token's DenomConfig transfer fee; zero (and no request) for a denom without a config. */
+function useTransferFee(denom: string, enabled: boolean): BigNumber {
+    const [loaded, setLoaded] = useState<{ denom: string; fee: BigNumber }>();
+
+    useEffect(() => {
+        if (!enabled || !denom) return;
+        let cancelled = false;
+        getDenomConfig(denom).then(config => {
+            if (!cancelled) setLoaded({ denom, fee: config.transferFee });
+        });
+        return () => { cancelled = true; };
+    }, [denom, enabled]);
+
+    return enabled && loaded?.denom === denom ? loaded.fee : new BigNumber(0);
 }
 
 /**
@@ -110,6 +132,8 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
 
     const isPreferredSelected = Boolean(feeDenom) && feeDenom !== feeNativeDenom;
 
+    const transferFee = useTransferFee(feeDenom, isPreferredSelected && feeDenom.startsWith('factory/'));
+
     const estimate = fee
         ? estimateFeeInPreferredDenom({
             fee,
@@ -117,6 +141,7 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
             preferredDenom: feeDenom,
             pool: isPreferredSelected ? getDenomsPool(feeDenom, nativeDenom) : undefined,
             minNativeLiquidity: minLiquidity,
+            transferFee,
         })
         : undefined;
 
@@ -146,8 +171,10 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
         ? uAmountToBigNumberAmount(estimate.nativeAmount, nativeAsset.decimals)
         : undefined;
 
-    const preferredDisplayAmount = estimate?.preferredAmount && preferredAsset
-        ? uAmountToBigNumberAmount(estimate.preferredAmount, preferredAsset.decimals)
+    // The full amount the chain takes in the preferred token: the converted fee plus its transfer fee.
+    const preferredTotalAmount = estimate ? preferredTotal(estimate) : undefined;
+    const preferredDisplayAmount = preferredTotalAmount && preferredAsset
+        ? uAmountToBigNumberAmount(preferredTotalAmount, preferredAsset.decimals)
         : undefined;
 
     const nativeBalanceDisplay = nativeAsset
@@ -164,8 +191,8 @@ export function useFeeEstimate(fee?: FeeCoin, options: UseFeeEstimateOptions = {
 
     let resolvedFee: FeeCoin | undefined;
     if (estimate && method) {
-        resolvedFee = method === 'preferred' && estimate.preferredAmount
-            ? { denom: estimate.preferredDenom, amount: estimate.preferredAmount.toFixed(0) }
+        resolvedFee = method === 'preferred' && preferredTotalAmount
+            ? { denom: estimate.preferredDenom, amount: preferredTotalAmount.toFixed(0) }
             : { denom: estimate.nativeDenom, amount: estimate.nativeAmount.toFixed(0) };
     }
 
