@@ -37,8 +37,14 @@ export async function installFakeKeplr(page: Page, address: string): Promise<voi
     }, address);
 }
 
-/** Opens the header's wallet picker and connects the fake Keplr. */
+/**
+ * Connects the fake Keplr the way a user does: the header's wallet button opens the wallet
+ * sidebar, its "Connect Wallet" button the wallet picker, and the picker lists Keplr. The
+ * sidebar is closed again so the page is usable.
+ */
 export async function connectWallet(page: Page): Promise<void> {
     await page.getByTestId("app-header").getByRole("button", {name: "Connect"}).first().click();
+    await page.getByRole("button", {name: "Connect Wallet"}).click();
     await page.getByText("Keplr", {exact: true}).first().click();
+    await page.keyboard.press("Escape");
 }

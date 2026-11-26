@@ -1,0 +1,33 @@
+{
+  "source": "https://testnet.getbze.com/bze/tradebin/market_history?market=ibc%2F9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7%2Ffactory%2Fbze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l%2Ftestusd&pagination.count_total=false&pagination.key=&pagination.limit=50&pagination.offset=0&pagination.reverse=true",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/tradebin/market_history",
+  "query": {
+    "market": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.limit": "50",
+    "pagination.offset": "0",
+    "pagination.reverse": "true"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "market_id": "ibc/9DA252F9F9C86132CC282EA431DFB7DE7729501F6DC9A3E0F50EC8C6EE380CC7/factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/testusd",
+        "order_type": "buy",
+        "amount": "1000000",
+        "price": "0.3650096250",
+        "executed_at": "1790896743",
+        "maker": "bze122mzew26nuvdsqdnm3076eclk9wk77xqhnvuwv",
+        "taker": "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l"
+      }
+    ],
+    "pagination": {
+      "next_key": "MDAxNzc0Nzg2NTczLzAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNDAwMDAwLw==",
+      "total": "0"
+    }
+  },
+  "trimmed": "only the latest trade kept: the price fallback reads list[0]"
+}
