@@ -40,6 +40,8 @@ const errorsMap: { [key: string]: string } = {
     "order not found": "This order no longer exists. It was filled, cancelled, or merged into a newer order at the same price.",
     // Bank error (sdk code 5), e.g. a swap with too little balance
     "insufficient funds": "You don't have enough balance for this transaction (including fees).",
+    // Token fee settings (MsgSetDenomConfig, x/tokenfactory code 1113)
+    "invalid denom config": "The fee settings were refused: check the rates (transfer fee up to 5%, gas surcharge up to 200%) and that the community pool is a regular wallet address.",
     // DAOs (x/dao, chain v8.3.0, codespace "dao"). Keys are the chain's registered error messages,
     // which it wraps with the details ("dao 5: dao not found").
     "invalid dao config": "The DAO rules were refused: check the quorum, threshold and voting periods (the expedite values can't be lower than the regular ones, and the periods must be within the chain's limits).",

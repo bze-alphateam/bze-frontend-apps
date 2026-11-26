@@ -37,6 +37,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         ...actual,
         useToast: () => ({ toast: { success: m.toast } }),
         useGasFeeEstimate: () => ({ amount: new BigNumber(20000), displayAmount: new BigNumber("0.02"), ticker: "TBZE", denom: "ubze", isNative: true, isLoading: false }),
+        isDaoModuleSupported: async () => false,
         getExplorerTxURL: (hash: string) => `https://explorer.example/tx/${hash}`,
     };
 });
@@ -233,11 +234,13 @@ describe("Renounce dialog", () => {
             "Editing name, logo and description",
             "Editing the brand kit",
             "Transferring admin",
+            "Changing the fee settings",
         ]);
         expect(within(dialog.getByRole("region", { name: "Stays the same" })).getAllByRole("listitem").map(li => li.textContent)).toEqual([
             "Everyone keeps their HONEY",
             "Pools, markets and rewards keep running",
             "Anyone can still burn HONEY they hold on Burner",
+            "Fee settings stay as they are",
         ]);
         expect(dialog.getByTestId("renounce-supply")).toHaveTextContent("Supply, fixed from now on1,000,000 HONEY");
         expect(dialog.getByTestId("renounce-hint-description")).toHaveTextContent("Your description is empty. Once you renounce it stays empty.");

@@ -100,6 +100,11 @@ export interface FeeEstimateInput {
      * denom as a fee token (tradebin `min_native_liquidity_for_module_swap`).
      */
     minNativeLiquidity: BigNumber | string | number;
+    /**
+     * The preferred token's DenomConfig `transfer_fee` (0-0.05, factory tokens only). The chain
+     * takes `ceil(preferredAmount x transferFee)` on top of the converted fee. Default 0.
+     */
+    transferFee?: BigNumber | string | number;
 }
 
 export interface FeeEstimate {
@@ -116,6 +121,22 @@ export interface FeeEstimate {
      * it from the pool at execution time.
      */
     preferredAmount?: BigNumber;
+    /**
+     * The token's transfer fee on top of `preferredAmount` (micro-units): `ceil(preferredAmount x
+     * transfer_fee)`. Zero for tokens without one. The chain takes `preferredAmount +
+     * preferredTransferFee` from the preferred balance, or falls back to the native fee when that
+     * is not held. Only set together with `preferredAmount`.
+     *
+     * Known limitation: merged fees (BFE-313: compounded rewards, schedules) reach the engine as one
+     * capture, so one `ceil` is applied to the total while the chain applies one per capture; the
+     * estimate can be short by up to 1 unit per extra capture.
+     */
+    preferredTransferFee?: BigNumber;
+}
+
+/** What the chain takes from the preferred balance on the preferred path: the fee plus its transfer fee. */
+export function preferredTotal(estimate: FeeEstimate): BigNumber | undefined {
+    return estimate.preferredAmount?.plus(estimate.preferredTransferFee ?? 0);
 }
 
 /**
@@ -123,7 +144,7 @@ export interface FeeEstimate {
  * following the chain's charging rules (see module doc). Pure and side-effect free.
  */
 export function estimateFeeInPreferredDenom(input: FeeEstimateInput): FeeEstimate {
-    const {fee, nativeDenom, preferredDenom, pool, minNativeLiquidity} = input;
+    const {fee, nativeDenom, preferredDenom, pool, minNativeLiquidity, transferFee} = input;
     const nativeAmount = toBigNumber(fee.amount);
     const base: FeeEstimate = {
         reason: 'native',
@@ -154,7 +175,12 @@ export function estimateFeeInPreferredDenom(input: FeeEstimateInput): FeeEstimat
         return {...base, reason: 'pool-too-small'};
     }
 
-    return {...base, reason: 'estimated', preferredAmount};
+    const rate = toBigNumber(transferFee ?? 0);
+    const preferredTransferFee = rate.isNaN() || !rate.gt(0)
+        ? toBigNumber(0)
+        : preferredAmount.multipliedBy(rate).integerValue(BigNumber.ROUND_CEIL);
+
+    return {...base, reason: 'estimated', preferredAmount, preferredTransferFee};
 }
 
 /**
@@ -221,7 +247,7 @@ export function resolveFeePayment(
     const hasEnoughNative = nativeLeft.gte(estimate.nativeAmount);
 
     if (estimate.reason === 'estimated' && estimate.preferredAmount) {
-        if (preferredLeft.gte(estimate.preferredAmount)) {
+        if (preferredLeft.gte(estimate.preferredAmount.plus(estimate.preferredTransferFee ?? 0))) {
             return 'preferred';
         }
         return hasEnoughNative ? 'fallback' : 'insufficient';
@@ -263,8 +289,9 @@ export function maxSpendFeeReserve(
         return undefined;
     }
 
-    return spendsPreferred && estimate.preferredAmount
-        ? {denom: estimate.preferredDenom, amount: estimate.preferredAmount.toFixed(0)}
+    const total = preferredTotal(estimate);
+    return spendsPreferred && total
+        ? {denom: estimate.preferredDenom, amount: total.toFixed(0)}
         : {denom: estimate.nativeDenom, amount: estimate.nativeAmount.toFixed(0)};
 }
 
