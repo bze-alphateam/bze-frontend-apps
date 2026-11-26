@@ -241,8 +241,8 @@ export {
 export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
 export { getHaltedDenoms } from './query/halted_denoms';
-export { getDenomConfig } from './query/denom_config';
-export type { DenomConfigRatios } from './query/denom_config';
+export { getDenomConfig, getDenomConfigInfo } from './query/denom_config';
+export type { DenomConfigRatios, DenomConfigInfo, DenomConfigInfoOptions } from './query/denom_config';
 export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
 export type { TxFeeCollectorParamsCache, BlockedIbcInbound } from './query/txfeecollector_params';
