@@ -12,12 +12,13 @@ const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
 const DAO_2_ADDRESS = "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws";
 const [, , , STRANGER] = bzeWallets(4);
 
-/** Connects the fake wallet and makes sure its sidebar is gone, or its backdrop swallows the clicks that follow. */
+/** Connects the fake wallet and closes its sidebar (a click on the backdrop), or the backdrop swallows the clicks that follow. */
 async function connectWallet(page: Page): Promise<void> {
     await connect(page);
+    const backdrop = page.getByTestId("sidebar-backdrop");
     await expect(async () => {
-        await page.keyboard.press("Escape");
-        await expect(page.getByTestId("sidebar-backdrop")).toHaveCount(0, {timeout: 1000});
+        if ((await backdrop.count()) > 0) await backdrop.click({position: {x: 5, y: 5}});
+        await expect(backdrop).toHaveCount(0, {timeout: 1000});
     }).toPass({timeout: 15_000});
 }
 
