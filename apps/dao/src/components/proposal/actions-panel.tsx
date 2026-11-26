@@ -105,7 +105,7 @@ const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Prop
 /** What the proposal does if it passes, one collapsed item per message. A proposal without messages says so. */
 export const ActionsPanel = ({actions, formatCoin, nameOf}: Props) => (
     <Panel id="actions" title="Actions if it passes" testId="actions-panel">
-        {actions.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="text-only">This is a text-only proposal: it asks for no action. Passing it only records the DAO's decision.</chakra.p>}
+        {actions.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="text-only">This is a text-only proposal: it asks for no action. Passing it only records the DAO&apos;s decision.</chakra.p>}
         {actions.length > 0 && <chakra.p m="0" fontSize="13px" color="fg.muted">They run as the DAO, all or nothing, once the proposal passes.</chakra.p>}
         <Flex direction="column" gap="8px">
             {actions.map((action, i) => (

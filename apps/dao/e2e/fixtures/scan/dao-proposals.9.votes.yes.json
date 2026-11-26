@@ -1,0 +1,34 @@
+{
+  "source": "hand-written (BFE-354 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/dao-proposals/9/votes",
+  "query": {
+    "option": "yes",
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "voter": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+        "voter_label": {
+          "name": "Hive founder",
+          "kind": "user"
+        },
+        "option": "YES",
+        "weight": "7500000000",
+        "effective_weight": "4000000000",
+        "height": 150,
+        "tx_hash": "EF56",
+        "time": "2026-10-28T10:00:00Z"
+      }
+    ],
+    "next_cursor": null,
+    "weight_denom": {
+      "denom": "ubze",
+      "symbol": "BZE",
+      "exponent": 6
+    }
+  }
+}

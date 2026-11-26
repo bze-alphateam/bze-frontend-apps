@@ -1,0 +1,90 @@
+{
+  "source": "hand-written (BFE-354 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/dao-proposals/11",
+  "query": {},
+  "status": 200,
+  "body": {
+    "id": 11,
+    "dao_id": 4,
+    "title": "Old honey budget",
+    "status": "rejected",
+    "proposer": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+    "proposer_label": {
+      "name": "Hive founder",
+      "kind": "user"
+    },
+    "expedited": false,
+    "submit_time": "2026-10-27T11:20:00Z",
+    "voting_end": "2026-10-30T11:20:00Z",
+    "yes": "1000000000",
+    "no": "4000000000",
+    "abstain": "0",
+    "denominator": "10000000000",
+    "settled_height": 1500,
+    "message_types": [],
+    "dao": {
+      "id": 4,
+      "name": "Stakers club",
+      "type": "stake"
+    },
+    "summary": "Rejected long ago.\nhttps://getbze.com/honey",
+    "msgs": [
+      {
+        "@type": "/cosmos.bank.v1beta1.MsgSend",
+        "from_address": "bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s",
+        "to_address": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+        "amount": [
+          {
+            "denom": "ubze",
+            "amount": "1000000"
+          }
+        ]
+      }
+    ],
+    "submit_height": 100,
+    "submit_tx_hash": "AB12",
+    "pinned_config": {
+      "min_quorum": "0.400000000000000000",
+      "threshold": "0.500000000000000000",
+      "voting_period": "259200s",
+      "allow_expedite": true,
+      "expedited_period": "86400s",
+      "expedite_quorum": "0.600000000000000000",
+      "expedite_threshold": "0.700000000000000000",
+      "open_submission": false,
+      "proposal_cost": {
+        "denom": "ubze",
+        "amount": "5000000"
+      },
+      "proposal_deposit": {
+        "denom": "ubze",
+        "amount": "9000000"
+      },
+      "deposit_refund_policy": "ONLY_PASSED",
+      "cost_destination": "TREASURY",
+      "kept_deposit_destination": "BURN"
+    },
+    "tally_updated_at": null,
+    "voting_ended": false,
+    "expedite_settleable": false,
+    "retry_deadline": null,
+    "settled_tx_hash": "EF56",
+    "expedited_early": null,
+    "executed": null,
+    "execution_error": null,
+    "deposit_refunded": false,
+    "deposit_destination": "bze1burnerxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "deposit_amount": "9000000",
+    "cancelled_height": null,
+    "cleaned_height": 1900,
+    "votes_count": 2,
+    "weight_denom": {
+      "denom": "ubze",
+      "symbol": "BZE",
+      "exponent": 6
+    },
+    "checks": null
+  }
+}
