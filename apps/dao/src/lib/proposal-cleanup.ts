@@ -19,7 +19,9 @@ export type CleanupResult =
     | {state: 'stopped'; batches: number; reason: 'tx'; outcome: Extract<TxOutcome, {ok: false}>}
     /** The batch went through but the chain could not be asked whether the proposal is gone. */
     | {state: 'stopped'; batches: number; reason: 'unreadable'}
-    | {state: 'stopped'; batches: number; reason: 'limit'};
+    | {state: 'stopped'; batches: number; reason: 'limit'}
+    /** A batch said it was not finished yet but deleted nothing: another would be the same, so no more wallet prompts. */
+    | {state: 'stopped'; batches: number; reason: 'no-progress'};
 
 /**
  * Cleans a finished proposal up batch by batch. Each batch's `EventProposalCleaned` (read from the
@@ -48,7 +50,10 @@ export async function cleanupProposal(deps: CleanupDeps): Promise<CleanupResult>
         processed = result?.processed !== null && result?.processed !== undefined && processed !== null ? processed + result.processed : null;
         deps.onProgress?.(batches, processed);
         if (result?.completed === true) return {state: 'completed', batches};
-        if (result?.completed === false) continue;
+        if (result?.completed === false) {
+            if (result.processed === 0) return {state: 'stopped', batches, reason: 'no-progress'};
+            continue;
+        }
         let gone: boolean;
         try {
             gone = await deps.isGone();

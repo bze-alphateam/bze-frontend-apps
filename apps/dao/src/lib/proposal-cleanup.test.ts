@@ -34,6 +34,18 @@ describe("cleanupProposal", () => {
         expect(isGone).not.toHaveBeenCalled();
     });
 
+    it("stops when a batch says it is not finished but deleted nothing, instead of asking for up to 500 signatures", async () => {
+        const sendBatch = vi.fn(async () => cleaned(false, 0));
+        const result = await cleanupProposal({sendBatch, isGone: async () => false});
+        expect(result).toEqual({state: "stopped", batches: 1, reason: "no-progress"});
+        expect(sendBatch).toHaveBeenCalledTimes(1);
+    });
+
+    it("a batch that deleted something and is not finished goes on", async () => {
+        const outcomes = [cleaned(false, 1), cleaned(true, 1)];
+        expect(await cleanupProposal({sendBatch: async () => outcomes.shift()!, isGone: async () => false})).toEqual({state: "completed", batches: 2});
+    });
+
     it("falls back to the chain when the events are not in the answer", async () => {
         const isGone = vi.fn(async () => true);
         const noEvents: TxOutcome = {ok: true, txHash: "AB", response: {height: 1, txhash: "AB", code: 0, events: []}};

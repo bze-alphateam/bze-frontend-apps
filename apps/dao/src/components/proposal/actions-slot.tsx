@@ -10,7 +10,8 @@ import {
 import type {EncodeObject} from '@bze/bzejs/types';
 import {useActionFlow, type ActionKind, type FlowState} from '@/hooks/useActionFlow';
 import type {AsyncValue} from '@/hooks/useAsync';
-import {sendDaoTx} from '@/lib/dao-tx';
+import {liveTxLookup} from '@/lib/dao-chain';
+import {sendDaoTx, type TxLookup} from '@/lib/dao-tx';
 import {
     blockedReason, cancelNotice, gasState, proposalActions, type MyVoteState, type VoteChoice,
 } from '@/lib/proposal-actions';
@@ -28,6 +29,10 @@ interface Props {
     formatCoin: (coin: DaoCoin) => string;
     /** Re-reads the proposal in place after a transaction. */
     refresh: () => Promise<'ok' | 'gone' | 'failed'>;
+    /** What the proposal shows now (status and tally), read fresh after a re-read. */
+    fingerprint: () => string;
+    /** Looks a transaction up on the node; the live one asks the REST endpoint. */
+    lookupTx?: (hash: string) => Promise<TxLookup>;
 }
 
 const myVoteState = (wallet: string | null, mine: AsyncValue<MyVote>): MyVoteState => {
@@ -87,7 +92,8 @@ const FlowMessage = ({state, status, progress, onRecheck}: {state: FlowState; st
                         <Flex direction="column" gap="6px">
                             <span>{state.error}</span>
                             {state.txHash && <span>{'Transaction: '}<TxLink hash={state.txHash} /></span>}
-                            <span>The actions stay locked so the same transaction is not sent twice. Check the proposal again to see whether it landed.</span>
+                            <span>The actions stay locked so the same transaction is not sent twice. Check again to see whether it landed.</span>
+                            {state.note && <span data-testid="recheck-note">{state.note}</span>}
                             <span><Link onClick={onRecheck} testId="action-recheck">Check again</Link></span>
                         </Flex>
                     </Notice>
@@ -136,7 +142,7 @@ function sentTitle(kind: ActionKind, status: DaoProposalStatus, batches: number)
  * expired, cancel (the proposer) and clean up. What is offered comes from `proposalActions`; every
  * transaction uses `daoTxOptions` (direct signing, nothing signed when the simulation fails).
  */
-export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeight, formatCoin, refresh}: Props) => {
+export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeight, formatCoin, refresh, fingerprint, lookupTx = liveTxLookup}: Props) => {
     const {model} = data;
     const {tx, progressTrack} = useSDKTx();
     const {feeDenom} = useSettings();
@@ -145,6 +151,8 @@ export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeig
     const flow = useActionFlow({
         send: (msgs) => sendDaoTx(tx, msgs),
         refresh,
+        fingerprint,
+        lookupTx,
         isGone: async () => (await deps.chain.getProposal(model.id)) === null,
     });
     const [choice, setChoice] = useState<VoteChoice | null>(null);
@@ -200,7 +208,7 @@ export const ProposalActionsSlot = ({deps, data, wallet, nowMs, mine, formatWeig
                         )}
                         {view.voteAndSettle && (
                             <Flex direction="column" gap="6px" data-testid="vote-and-settle">
-                                <Muted>Your yes vote takes this expedited proposal over its bars, so it can be decided in the same transaction. A passed proposal runs its actions.</Muted>
+                                <Muted>One transaction with two messages: your vote (YES) carrying your weight of {formatWeight(view.voteAndSettle.weight)}, then the settle. Your yes takes this expedited proposal over its bars, so it passes in that same transaction and its actions run there.</Muted>
                                 <div>
                                     <Button
                                         variant={hgVariant('primary')}

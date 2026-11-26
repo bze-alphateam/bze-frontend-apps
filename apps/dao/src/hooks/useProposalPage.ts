@@ -18,6 +18,8 @@ export interface ProposalPage {
     refresh: () => Promise<'ok' | 'gone' | 'failed'>;
     /** Changes after every refresh: parts that read the wallet's own state key on it. */
     version: number;
+    /** What is shown right now, including a re-read that has not rendered yet. */
+    peek: () => ProposalPageData | null;
 }
 
 /**
@@ -64,6 +66,7 @@ export function useProposalPage(deps: ProposalDeps, id: string, pollMs = PROPOSA
                 setReloads((n) => n + 1);
                 return 'gone';
             }
+            latest.current = {...latest.current, data: next};
             setPolled({key: currentKey, data: next});
             setVersion((n) => n + 1);
             return 'ok';
@@ -71,5 +74,6 @@ export function useProposalPage(deps: ProposalDeps, id: string, pollMs = PROPOSA
             return 'failed';
         }
     }, []);
-    return {load, data, reload, refresh, version};
+    const peek = useCallback(() => latest.current.data, []);
+    return {load, data, reload, refresh, version, peek};
 }

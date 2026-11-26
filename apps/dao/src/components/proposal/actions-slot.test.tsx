@@ -47,6 +47,8 @@ function renderSlot(data: ProposalPageData, over: {wallet?: string | null; ballo
                 formatWeight={(a) => `${a} votes`}
                 formatCoin={(c) => `${c.amount} ${c.denom}`}
                 refresh={refresh}
+                fingerprint={() => "VOTING"}
+                lookupTx={async () => ({state: "missing"})}
             />
         </ChakraProvider>,
     );
@@ -89,6 +91,19 @@ describe("ProposalActionsSlot", () => {
         renderSlot(voting, {weight: "0"});
         expect(screen.getByTestId("vote-disabled-reason")).toHaveTextContent("not a member");
         expect(screen.getByTestId("vote-option-yes")).toBeDisabled();
+    });
+
+    it("vote and settle names what is signed: the weight of the YES and two messages in one transaction", async () => {
+        txMock.mockResolvedValue(false);
+        const expedited = dataOf({...RESPONSE, proposal: {...PROPOSAL, expedited: true, yes: "690", no: "0", abstain: "0"}});
+        renderSlot(expedited, {weight: "11"});
+        const note = screen.getByTestId("vote-and-settle");
+        expect(note).toHaveTextContent("One transaction with two messages");
+        expect(note).toHaveTextContent("your vote (YES)");
+        expect(note).toHaveTextContent("11 votes");
+        expect(note).toHaveTextContent("actions run there");
+        await userEvent.click(screen.getByTestId("vote-and-settle-button"));
+        expect(txMock.mock.calls[0][0].map((m: {typeUrl: string}) => m.typeUrl)).toEqual(["/bze.dao.MsgVote", "/bze.dao.MsgSettleProposal"]);
     });
 
     it("settles a proposal whose voting ended, saying the outcome first", async () => {

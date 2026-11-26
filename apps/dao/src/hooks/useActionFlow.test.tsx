@@ -2,7 +2,7 @@ import {describe, expect, it, vi} from "vitest";
 import {act, renderHook} from "@testing-library/react";
 import type {EncodeObject} from "@bze/bzejs/types";
 import {useActionFlow, type ActionFlowDeps} from "./useActionFlow";
-import {sendDaoTx, type SignAndSend, type TxOutcome} from "@/lib/dao-tx";
+import {sendDaoTx, type SignAndSend, type TxLookup, type TxOutcome} from "@/lib/dao-tx";
 
 const MSGS: EncodeObject[] = [{typeUrl: "/bze.dao.MsgSettleProposal", value: {}}];
 const OK: TxOutcome = {ok: true, txHash: "H1"};
@@ -12,6 +12,8 @@ const setup = (over: Partial<ActionFlowDeps> = {}) => {
         send: vi.fn(async () => OK),
         refresh: vi.fn(async () => "ok" as const),
         isGone: vi.fn(async () => false),
+        fingerprint: () => "VOTING|1|0|0",
+        lookupTx: vi.fn(async (): Promise<TxLookup> => ({state: "missing"})),
         ...over,
     };
     return {deps, hook: renderHook(() => useActionFlow(deps))};
@@ -68,8 +70,69 @@ describe("useActionFlow", () => {
         expect(send).toHaveBeenCalledTimes(1);
 
         await act(async () => { await hook.result.current.recheck(); });
+        // the proposal reads fine but shows nothing new and the node does not know the hash: open again, at the user's risk
         expect(hook.result.current.state).toEqual({phase: "rechecked", kind: "vote", txHash: "H9"});
         expect(hook.result.current.locked).toBe(false);
+    });
+
+    describe("check again after a confirmation timeout", () => {
+        const timeout = async (): Promise<TxOutcome> => ({ok: false, stage: "timeout", error: "slow", txHash: "H9", unconfirmed: true});
+        const timedOut = async (over: Partial<ActionFlowDeps>, kind: "settle" | "vote" = "settle") => {
+            const made = setup({send: timeout, ...over});
+            await act(async () => { await made.hook.result.current.run(kind, MSGS); });
+            await act(async () => { await made.hook.result.current.recheck(); });
+            return made;
+        };
+
+        it("a proposal read that shows nothing new does not reopen the actions: the transaction is looked up", async () => {
+            const {deps, hook} = await timedOut({});
+            expect(deps.lookupTx).toHaveBeenCalledWith("H9");
+            // not found yet: open again, saying so
+            expect(hook.result.current.state).toEqual({phase: "rechecked", kind: "settle", txHash: "H9"});
+        });
+
+        it("the proposal moved as the action moves it: done, without asking the node", async () => {
+            let status = "VOTING|1|0|0";
+            const {deps, hook} = setup({send: timeout, fingerprint: () => status, refresh: async () => { status = "EXECUTED|1|0|0"; return "ok" as const; }});
+            await act(async () => { await hook.result.current.run("settle", MSGS); });
+            await act(async () => { await hook.result.current.recheck(); });
+            expect(hook.result.current.state).toMatchObject({phase: "sent", kind: "settle", txHash: "H9", reread: "ok"});
+            expect(deps.lookupTx).not.toHaveBeenCalled();
+        });
+
+        it("a vote is judged by the transaction, not by a tally other voters move too", async () => {
+            let tally = "VOTING|1|0|0";
+            const lookupTx = vi.fn(async (): Promise<TxLookup> => ({state: "missing"}));
+            const {hook} = setup({send: timeout, lookupTx, fingerprint: () => tally, refresh: async () => { tally = "VOTING|2|0|0"; return "ok" as const; }});
+            await act(async () => { await hook.result.current.run("vote", MSGS); });
+            await act(async () => { await hook.result.current.recheck(); });
+            expect(lookupTx).toHaveBeenCalled();
+            expect(hook.result.current.state.phase).toBe("rechecked");
+        });
+
+        it("found and succeeded: sent", async () => {
+            const {hook} = await timedOut({lookupTx: async () => ({state: "found", ok: true})});
+            expect(hook.result.current.state).toMatchObject({phase: "sent", txHash: "H9", reread: "ok"});
+            expect(hook.result.current.locked).toBe(false);
+        });
+
+        it("found and failed: the mapped error, actions open", async () => {
+            const {hook} = await timedOut({lookupTx: async () => ({state: "found", ok: false, error: "Voting on this proposal is closed."})});
+            expect(hook.result.current.state).toMatchObject({phase: "failed", error: "Voting on this proposal is closed."});
+            expect(hook.result.current.locked).toBe(false);
+        });
+
+        it("a node that cannot be read keeps the lock and says so", async () => {
+            const {hook} = await timedOut({lookupTx: async () => { throw new Error("down"); }});
+            expect(hook.result.current.state).toMatchObject({phase: "unconfirmed", note: expect.stringMatching(/could not be asked/)});
+            expect(hook.result.current.locked).toBe(true);
+        });
+
+        it("a proposal that cannot be read keeps the lock and never asks the node", async () => {
+            const {deps, hook} = await timedOut({refresh: async () => "failed"});
+            expect(hook.result.current.state).toMatchObject({phase: "unconfirmed", note: expect.stringMatching(/could not be read/)});
+            expect(deps.lookupTx).not.toHaveBeenCalled();
+        });
     });
 
     it("a check that cannot read the chain keeps the lock", async () => {

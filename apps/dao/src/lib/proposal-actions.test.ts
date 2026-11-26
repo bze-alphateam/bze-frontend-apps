@@ -158,6 +158,18 @@ describe("vote and settle at the bar boundary", () => {
         expect(offered({...base}, "11")).toBe(true);
     });
 
+    it("turnout landing exactly on the expedite quorum triggers, because the quorum is inclusive", () => {
+        // a proposal whose bars make the quorum the binding one: quorum 60%, yes must exceed 20% of 1000
+        const bars = {...CONFIG, expedite_quorum: "0.600000000000000000", expedite_threshold: "0.200000000000000000"};
+        const make = (weight: string) => proposalActions(input({
+            model: {...model({expedited: true, yes: "300", no: "100", abstain: "100"}), config: bars},
+            myVote: mine(weight),
+        })).voteAndSettle !== null;
+        // turnout 500 + weight: 599 is one short of 600, 100 lands exactly on it
+        expect(make("99")).toBe(false);
+        expect(make("100")).toBe(true);
+    });
+
     it("the boundary follows the whole weight of the DAO, not the votes cast", () => {
         // 2000 in all: 70% is 1400. yes 1000 + 400 is exactly 70%, one more is above it
         const big = {yes: "1000", no: "0", abstain: "0", denominator: "2000"};
@@ -203,7 +215,7 @@ describe("vote and settle at the bar boundary", () => {
 
     it("is disabled with the vote's reason when the wallet cannot sign", () => {
         const view = proposalActions(input({model: model({expedited: true, yes: "690"}), myVote: mine("11"), gas: {state: "none", reason: "no gas"}}));
-        expect(view.voteAndSettle).toEqual({enabled: false, reason: "no gas"});
+        expect(view.voteAndSettle).toEqual({weight: "11", enabled: false, reason: "no gas"});
     });
 
     it("yesVoteMeetsExpediteBars is false without rules, a tally or a numeric weight", () => {

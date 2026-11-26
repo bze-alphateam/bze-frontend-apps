@@ -49,6 +49,8 @@ export interface VoteView {
 }
 
 export interface VoteAndSettleView {
+    /** The weight the YES of this vote carries. */
+    weight: string;
     enabled: boolean;
     reason: string;
 }
@@ -219,7 +221,7 @@ function voteAndSettleView(input: ActionInput, vote: VoteView | null, blocked: s
     if (vote.options.find((o) => o.option === 'YES')?.reason) return null;
     if (earlyDelayPassed(model, params, nowMs) !== true) return null;
     if (!yesVoteMeetsExpediteBars(model, ballot, vote.weight)) return null;
-    return {enabled: vote.enabled && !blocked, reason: vote.reason || blocked};
+    return {weight: vote.weight, enabled: vote.enabled && !blocked, reason: vote.reason || blocked};
 }
 
 /** What happens to the proposer's deposit and cost if the proposal is cancelled, for the confirmation. */
@@ -247,4 +249,11 @@ export function proposalActions(input: ActionInput): ProposalActionsView {
         cancel: cancelable ? {enabled: !blocked, reason: blocked} : null,
         cleanup: cleanable ? {enabled: !blocked, reason: blocked} : null,
     };
+}
+
+/** What a proposal shows that an action changes (its status and tally), to tell whether a transaction landed. Empty when nothing is shown. */
+export function proposalFingerprint(model: Pick<ProposalModel, 'status' | 'tally'> | null | undefined): string {
+    if (!model) return '';
+    const t = model.tally;
+    return `${model.status}|${t ? `${t.yes}|${t.no}|${t.abstain}` : ''}`;
 }
