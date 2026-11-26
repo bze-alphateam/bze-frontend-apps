@@ -1,7 +1,7 @@
 // Hand-written inputs for the composer's unit tests (the testnet has no DAO yet; written from the protos at
 // v8.3.0-rc1). Not imported by the app.
 import type {Dao, DaoConfig, DaoParams} from '@bze/bze-ui-kit';
-import type {ActionContext} from '@/lib/actions/types';
+import type {ActionContext, SubDao} from '@/lib/actions/types';
 
 // valid bze1… addresses (BIP-173 over a 20-byte payload)
 export const [DAO_ADDRESS, WALLET, OTHER, THIRD] = [
@@ -9,6 +9,14 @@ export const [DAO_ADDRESS, WALLET, OTHER, THIRD] = [
     'bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw',
     'bze1qqppkg3fxqmnu32v2ddxz6r0we7cfzujwm0zsw',
     'bze1qqp3kg3fxqmnu32v2ddxz6r0we7cfzujwgtx3g',
+];
+
+// more valid addresses: a sub-DAO's account, another DAO's account, and two more people
+export const [SUB_ADDRESS, OTHER_DAO_ADDRESS, FOURTH, FIFTH] = [
+    'bze1qyqszqgpqyqszqgpqyqszqgpqyqszqgp0hd4lt',
+    'bze1qgpqyqszqgpqyqszqgpqyqszqgpqyqsz7nts5a',
+    'bze1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrlr237u',
+    'bze1qszqgpqyqszqgpqyqszqgpqyqszqgpqylnd5eq',
 ];
 
 export const CONFIG: DaoConfig = {
@@ -49,6 +57,9 @@ export const DAO: ActionContext['dao'] = {
     id: '4',
     address: DAO_ADDRESS,
     admin: DAO_ADDRESS,
+    pending_admin: '',
+    name: 'Founders',
+    description: 'The founding members.',
     type: 'DAO_TYPE_STATIC_LIST',
     config: CONFIG,
     members: [WALLET, OTHER],
@@ -57,13 +68,38 @@ export const DAO: ActionContext['dao'] = {
 
 export const STAKE_DAO: ActionContext['dao'] = {...DAO, type: 'DAO_TYPE_STAKE', members: [], electorate: {sr_ids: ['000000000017'], dr_denom: ''}};
 
-export const fullDao = (over: Partial<Dao> = {}): Pick<Dao, 'type' | 'members' | 'config' | 'electorate' | 'address'> => ({...DAO, ...over});
+export const fullDao = (over: Partial<Dao> = {}): ActionContext['dao'] => ({...DAO, ...over});
 
 export const ctxWith = (over: Partial<ActionContext> = {}): ActionContext => ({
     dao: DAO,
     params: PARAMS,
+    nativeDenom: 'ubze',
+    subDaos: [],
+    incoming: [],
+    sources: [],
     treasury: [{denom: 'ubze', amount: '250000000'}, {denom: 'factory/bze1x/ulmn', amount: '42'}],
     decimalsOf: (denom) => (denom === 'ubze' ? 6 : null),
     ticker: (denom) => (denom === 'ubze' ? 'BZE' : 'ULMN'),
     ...over,
 });
+
+/** A DAO this DAO (`DAO`) administers: a member list, with its own rules. */
+export const SUB_DAO: SubDao = {
+    dao: {
+        id: '7',
+        address: SUB_ADDRESS,
+        admin: DAO_ADDRESS,
+        pending_admin: '',
+        name: 'Garden club',
+        description: '',
+        type: 'DAO_TYPE_STATIC_LIST',
+        config: {...CONFIG, proposal_cost: null, proposal_deposit: null},
+        members: [WALLET],
+        electorate: null,
+    },
+    treasury: [{denom: 'ubze', amount: '90000000'}],
+    sources: [],
+};
+
+/** A DAO with an external admin (not the DAO itself). */
+export const ADMINISTERED_DAO: ActionContext['dao'] = {...DAO, admin: THIRD};

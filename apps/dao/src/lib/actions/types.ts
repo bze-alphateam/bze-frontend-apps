@@ -1,5 +1,5 @@
 import type {EncodeObject} from '@bze/bzejs/types';
-import type {Dao, DaoCoin, DaoParams} from '@bze/bze-ui-kit';
+import type {Dao, DaoCoin, DaoParams, DaoStakeSource} from '@bze/bze-ui-kit';
 
 /** The form values of one action: every input is text, so a draft can be stored and checked field by field. */
 export type ActionFields = Record<string, string>;
@@ -13,10 +13,34 @@ export interface ActionDraft {
     fields: ActionFields;
 }
 
+/** A DAO this DAO administers, with its treasury (null when that could not be read). */
+export interface SubDao {
+    dao: Pick<Dao, 'id' | 'address' | 'type' | 'config' | 'members' | 'electorate' | 'admin' | 'name' | 'description' | 'pending_admin'>;
+    treasury: DaoCoin[] | null;
+    /** The staking sources with this sub-DAO's own stake in each (what its electorate checks read); `[]` for a member-list DAO, null when unreadable. */
+    sources: ElectorateOption[] | null;
+}
+
+/** A staking source a stake DAO could vote with, and what the DAO's own account has staked in it (that stake never votes). */
+export interface ElectorateOption extends DaoStakeSource {
+    own: string;
+}
+
+/** A DAO that nominated this DAO as its new admin (the chain's `pending_admin` is this DAO's address). */
+export type IncomingNomination = Pick<Dao, 'id' | 'name' | 'address'>;
+
 /** What the entries read about the DAO the proposal is for. Collaborators are injected, so entries are pure. */
 export interface ActionContext {
-    dao: Pick<Dao, 'id' | 'address' | 'type' | 'config' | 'members' | 'electorate' | 'admin'>;
+    dao: Pick<Dao, 'id' | 'address' | 'type' | 'config' | 'members' | 'electorate' | 'admin' | 'name' | 'description' | 'pending_admin'>;
     params: DaoParams;
+    /** The chain's native token, the default of a cost or deposit. */
+    nativeDenom: string;
+    /** The DAOs this DAO administers; null when they could not be read (never "none"). */
+    subDaos: SubDao[] | null;
+    /** The DAOs that nominated this DAO as admin; null when that is unknown (BZE Scan did not answer). */
+    incoming: IncomingNomination[] | null;
+    /** Every staking source with the DAO's own stake in it; null when they could not be read. Read for stake DAOs only. */
+    sources: ElectorateOption[] | null;
     /** The treasury's coins; null when they could not be read. */
     treasury: DaoCoin[] | null;
     /** The exponent of a token; null when the app does not know the token. */
@@ -37,8 +61,12 @@ export interface ActionEntry {
     label: string;
     /** One sentence for the "add an action" picker. */
     description: string;
-    /** Whether the entry is offered for this DAO (a members action is hidden for a stake DAO, say). */
-    available(dao: ActionContext['dao']): boolean;
+    /**
+     * Whether the entry is offered for this DAO (a members action is hidden for a stake DAO, say).
+     * `ctx` is passed where it is known: an entry that needs what the page read (the sub-DAOs) is offered
+     * only when that is there.
+     */
+    available(dao: ActionContext['dao'], ctx?: ActionContext): boolean;
     initialFields(ctx: ActionContext): ActionFields;
     /** The first problem as a plain sentence, undefined when the fields make a valid message. */
     validate(fields: ActionFields, ctx: ActionContext): string | undefined;

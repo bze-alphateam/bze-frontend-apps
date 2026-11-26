@@ -24,9 +24,10 @@ export type MsgAction =
     | {type: 'update_metadata'; name: string; description: string}
     | {type: 'update_members'; add: string[]; remove: string[]}
     | {type: 'update_electorate'; srIds: string[]; drDenom: string}
-    | {type: 'nominate_admin'; nominee: string; toVoters: boolean}
-    | {type: 'withdraw_nomination'}
-    | {type: 'accept_admin'; nominee: string}
+    /** `daoId` is the DAO whose admin changes: the DAO itself for its own proposal, else the sub-DAO or the nominating DAO. */
+    | {type: 'nominate_admin'; daoId: string; nominee: string; toVoters: boolean}
+    | {type: 'withdraw_nomination'; daoId: string}
+    | {type: 'accept_admin'; daoId: string; nominee: string}
     | {type: 'admin_execute'; daoId: string; actions: MsgAction[]}
     | {type: 'other'; typeUrl: string; title: string; json: string};
 
@@ -36,6 +37,8 @@ export interface DescribeContext {
     /** The rules pinned at submission: what a config update changes. Null when unknown. */
     before: PinnedConfig | null;
     formatCoin: (coin: DaoCoin) => string;
+    /** The rules a DAO has now, by id, for a rules change a sub-DAO runs inside an admin execute; null for one that is not known. */
+    beforeOf?: (daoId: string) => PinnedConfig | null;
 }
 
 /** Nested `MsgAdminExecute` stop being read here (the chain caps the depth too); deeper ones are raw JSON. */
@@ -186,19 +189,19 @@ export function describeMessage(msg: DaoProposalMessage, ctx: DescribeContext, d
         }
         case '/bze.dao.MsgNominateAdmin': {
             const nominee = str(field(body, 'nominee'));
-            return {type: 'nominate_admin', nominee, toVoters: nominee === ''};
+            return {type: 'nominate_admin', daoId: str(field(body, 'dao_id')), nominee, toVoters: nominee === ''};
         }
         case '/bze.dao.MsgWithdrawAdminNomination':
-            return {type: 'withdraw_nomination'};
+            return {type: 'withdraw_nomination', daoId: str(field(body, 'dao_id'))};
         case '/bze.dao.MsgAcceptAdminNomination':
-            return {type: 'accept_admin', nominee: str(field(body, 'nominee'))};
+            return {type: 'accept_admin', daoId: str(field(body, 'dao_id')), nominee: str(field(body, 'nominee'))};
         case '/bze.dao.MsgAdminExecute': {
             if (depth + 1 >= MAX_NESTING) return raw();
             const inner = field(body, 'msgs');
             const msgs = Array.isArray(inner) ? inner.filter((m): m is DaoProposalMessage => isObject(m) && typeof m['@type'] === 'string') : [];
             // a sub-DAO runs the inner messages as itself: its account is not this DAO's
             const daoId = str(field(body, 'dao_id'));
-            return {type: 'admin_execute', daoId, actions: msgs.map((m) => describeMessage(m, {...ctx, daoAddress: null, before: null}, depth + 1, daoId))};
+            return {type: 'admin_execute', daoId, actions: msgs.map((m) => describeMessage(m, {...ctx, daoAddress: null, before: ctx.beforeOf?.(daoId) ?? null}, depth + 1, daoId))};
         }
         default:
             return raw();

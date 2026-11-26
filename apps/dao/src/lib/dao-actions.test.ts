@@ -3,14 +3,28 @@ import type {Dao} from "@bze/bze-ui-kit";
 import {actionsFor, DAO_FEATURES, staticJoinText, type DaoFeatures} from "./dao-actions";
 
 const ALL: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: true, proposalActions: true};
+const NONE: DaoFeatures = {...ALL, memberComposer: false};
 const dao = (over: Partial<Dao> = {}, open = false) => ({
     address: "bze1dao", admin: "bze1admin", pending_admin: "", type: "DAO_TYPE_STATIC_LIST", members: ["bze1member"],
     config: {open_submission: open} as Dao["config"], ...over,
 });
 
 describe("actionsFor", () => {
-    it("shows only the new proposal button while the other stories have not shipped", () => {
-        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: true, adminConsole: false, requestToJoin: false, leave: false});
+    it("the admin console and the member shortcuts follow their flags; a wallet that cannot use a shortcut gets none", () => {
+        expect(actionsFor(DAO_FEATURES, dao(), "bze1admin")).toEqual({newProposal: true, adminConsole: false, requestToJoin: false, leave: false, leaveBlocked: null});
+    });
+
+    it("the member shortcuts are off with their flag", () => {
+        expect(actionsFor(NONE, dao({}, true), "bze1x")).toMatchObject({requestToJoin: false, leave: false, leaveBlocked: null});
+        expect(actionsFor(NONE, dao(), "bze1member")).toMatchObject({leave: false, leaveBlocked: null});
+    });
+
+    it("the only member cannot leave, and is told why", () => {
+        const only = actionsFor(ALL, dao(), "bze1member");
+        expect(only).toMatchObject({leave: true});
+        expect(only.leaveBlocked).toMatch(/only member/);
+        expect(actionsFor(ALL, dao({members: ["bze1member", "bze1other"]}), "bze1member").leaveBlocked).toBeNull();
+        expect(actionsFor(ALL, dao(), "bze1x").leaveBlocked).toBeNull();
     });
 
     it("new proposal needs a connected wallet", () => {

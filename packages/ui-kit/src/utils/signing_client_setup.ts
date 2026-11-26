@@ -146,17 +146,32 @@ export const msgValueFromJson = (typeUrl: string, body: unknown): unknown => {
     return codec.fromAmino(body);
 };
 
-/**
- * What the chain would read from a message value: the value is encoded to protobuf, decoded again and
- * written back as JSON (snake_case, defaults left out, no undefined properties). Shows exactly what is signed.
- */
-export const msgValueToJson = (typeUrl: string, value: unknown): Record<string, unknown> => {
+/** The JSON of a codec's own message, with the messages packed in its `msgs` (an admin execute, an authz exec) read through their own codecs. */
+const decodedToJson = (typeUrl: string, bytes: Uint8Array): Record<string, unknown> => {
     const codec = CODECS_BY_TYPE_URL.get(typeUrl);
     if (!codec || !codec.decode || !codec.toAmino) {
         throw new Error(`no decoder registered for ${typeUrl}`);
     }
+    const decoded = codec.decode(bytes);
+    const packed: unknown = decoded?.msgs;
+    const isPacked = Array.isArray(packed) && packed.length > 0 && packed.every((m) => typeof m?.typeUrl === 'string' && m.value instanceof Uint8Array);
+    // the codec's own `toAmino` reads a packed message through a registry that is only filled for the types somebody registered: read them here, with the codecs this file knows
+    const json = codec.toAmino(isPacked ? {...decoded, msgs: []} : decoded);
+    if (isPacked) {
+        json.msgs = (packed as {typeUrl: string; value: Uint8Array}[]).map((m) => ({'@type': m.typeUrl, ...decodedToJson(m.typeUrl, m.value)}));
+    }
+    return json;
+};
+
+/**
+ * What the chain would read from a message value: the value is encoded to protobuf, decoded again and
+ * written back as JSON (snake_case, defaults left out, no undefined properties). Shows exactly what is signed.
+ * The messages packed inside an admin execute are read the same way and carry their `@type`.
+ */
+export const msgValueToJson = (typeUrl: string, value: unknown): Record<string, unknown> => {
+    if (!CODECS_BY_TYPE_URL.has(typeUrl)) throw new Error(`no decoder registered for ${typeUrl}`);
     // the codecs leave a default as an `undefined` property: a JSON round trip drops them, as the chain's JSON does
-    const json = codec.toAmino(codec.decode(encodeMsgValue(typeUrl, value)));
+    const json = decodedToJson(typeUrl, encodeMsgValue(typeUrl, value));
     return JSON.parse(JSON.stringify(json, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));
 };
 

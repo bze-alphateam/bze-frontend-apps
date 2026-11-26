@@ -10,6 +10,10 @@ interface Props {
     actions: MsgAction[];
     formatCoin: (coin: DaoCoin) => string;
     nameOf: (address: string) => string | undefined;
+    /** The account every message is signed by, when the page knows it (the composer does). */
+    signer?: string;
+    /** The account of a DAO an admin execute runs actions as (the composer knows its sub-DAOs). */
+    signerOf?: (daoId: string) => string | undefined;
 }
 
 const Fact = ({children, testId}: {children: React.ReactNode; testId?: string}) => (
@@ -29,7 +33,7 @@ const ChangeLine = ({change}: {change: ConfigChange}) => (
     </chakra.li>
 );
 
-export const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Props, 'actions'>) => {
+export const Described = ({action, formatCoin, nameOf, signerOf}: {action: MsgAction} & Omit<Props, 'actions' | 'signer'>) => {
     switch (action.type) {
         case 'send':
             return (
@@ -76,18 +80,28 @@ export const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Om
             );
         case 'nominate_admin':
             return action.toVoters
-                ? <Fact testId="action-title">Hand the DAO to its own voters: the admin steps down and no outside account controls it.</Fact>
-                : <Flex direction="column" gap="4px"><Fact testId="action-title">Nominate a new admin (they have to accept)</Fact><AddressLine address={action.nominee} name={nameOf(action.nominee)} /></Flex>;
+                ? <Fact testId="action-title">{`Hand the DAO to its own voters${action.daoId ? ` (DAO ${action.daoId})` : ''}: the admin steps down and no outside account controls it.`}</Fact>
+                : <Flex direction="column" gap="4px"><Fact testId="action-title">{`Nominate a new admin${action.daoId ? ` for DAO ${action.daoId}` : ''} (they have to accept)`}</Fact><AddressLine address={action.nominee} name={nameOf(action.nominee)} /></Flex>;
         case 'withdraw_nomination':
-            return <Fact testId="action-title">Withdraw the pending admin nomination</Fact>;
+            return <Fact testId="action-title">{`Withdraw the pending admin nomination${action.daoId ? ` of DAO ${action.daoId}` : ''}`}</Fact>;
         case 'accept_admin':
-            return <Flex direction="column" gap="4px"><Fact testId="action-title">Accept the admin nomination</Fact>{action.nominee && <AddressLine address={action.nominee} name={nameOf(action.nominee)} />}</Flex>;
+            return (
+                <Flex direction="column" gap="4px">
+                    <Fact testId="action-title">{`Accept the admin nomination${action.daoId ? ` of DAO ${action.daoId}` : ''}: the nominee becomes its admin`}</Fact>
+                    {action.nominee && <AddressLine address={action.nominee} name={nameOf(action.nominee)} />}
+                </Flex>
+            );
         case 'admin_execute':
             return (
                 <Flex direction="column" gap="8px">
                     <Fact testId="action-title">{`Run ${action.actions.length === 1 ? 'an action' : `${action.actions.length} actions`} as the DAO it administers (DAO ${action.daoId})`}</Fact>
                     <Flex direction="column" gap="8px" ps="12px" borderStartWidth="2px" borderColor="app.border">
-                        {action.actions.map((inner, i) => <Described key={i} action={inner} formatCoin={formatCoin} nameOf={nameOf} />)}
+                        {signerOf?.(action.daoId) && (
+                            <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="run-as">
+                                <span>Signed by</span><AddressLine address={signerOf(action.daoId) as string} name={nameOf(signerOf(action.daoId) as string)} />
+                            </Flex>
+                        )}
+                        {action.actions.map((inner, i) => <Described key={i} action={inner} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} />)}
                     </Flex>
                 </Flex>
             );
@@ -103,17 +117,22 @@ export const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Om
 };
 
 /** What the proposal does if it passes, one collapsed item per message. A proposal without messages says so. */
-export const ActionsPanel = ({actions, formatCoin, nameOf}: Props) => (
+export const ActionsPanel = ({actions, formatCoin, nameOf, signer, signerOf}: Props) => (
     <Panel id="actions" title="Actions if it passes" testId="actions-panel">
         {actions.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="text-only">This is a text-only proposal: it asks for no action. Passing it only records the DAO&apos;s decision.</chakra.p>}
         {actions.length > 0 && <chakra.p m="0" fontSize="13px" color="fg.muted">They run as the DAO, all or nothing, once the proposal passes.</chakra.p>}
+        {actions.length > 0 && signer && (
+            <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted" data-testid="signed-by">
+                <span>Every message is signed by the DAO account</span><AddressLine address={signer} name={nameOf(signer)} />{signerOf && <span>(the actions an admin runs for a sub-DAO are signed by that DAO)</span>}
+            </Flex>
+        )}
         <Flex direction="column" gap="8px">
             {actions.map((action, i) => (
                 <chakra.details key={i} borderWidth="1px" borderColor="app.border" borderRadius="12px" px="14px" py="10px" data-testid="action">
                     <chakra.summary cursor="pointer" fontWeight="600" fontSize="14px">
                         {`${i + 1}. ${summaryOf(action)}`}
                     </chakra.summary>
-                    <chakra.div mt="10px"><Described action={action} formatCoin={formatCoin} nameOf={nameOf} /></chakra.div>
+                    <chakra.div mt="10px"><Described action={action} formatCoin={formatCoin} nameOf={nameOf} signerOf={signerOf} /></chakra.div>
                 </chakra.details>
             ))}
         </Flex>

@@ -15,9 +15,13 @@ const DESTINATIONS = ['BURN', 'TREASURY'];
  * The JSON of a codec (amino style: ratios as 18-decimal integers, durations in nanoseconds, enums as
  * numbers) in the shape the chain's REST gateway answers with, which is what the describers read:
  * `"400000000000000000"` becomes `"0.400000000000000000"`, `"86400000000000"` `"86400s"`, `2` `"NEVER"`.
- * Only a message's `config` is converted; everything else is left as it is.
+ * Only a message's `config` is converted (also in the messages an admin execute carries); everything else is left as it is.
  */
 function asRest(json: Record<string, unknown>): Record<string, unknown> {
+    // the messages an admin execute carries are read the same way
+    if (Array.isArray(json.msgs)) {
+        return {...json, msgs: json.msgs.map((m) => (typeof m === 'object' && m !== null && !Array.isArray(m) ? asRest(m as Record<string, unknown>) : m))};
+    }
     const config = json.config;
     if (typeof config !== 'object' || config === null || Array.isArray(config)) return json;
     const c: Record<string, unknown> = {...config};
@@ -40,17 +44,18 @@ function asRest(json: Record<string, unknown>): Record<string, unknown> {
  * (BFE-373), so what is reviewed before signing is what is shown afterwards. A message that cannot be
  * read back stays raw JSON of its own bytes, never silently dropped.
  */
-export function describeBuilt(msg: EncodeObject, dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string): MsgAction {
+export function describeBuilt(msg: EncodeObject, dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string, subDaos: ActionContext['subDaos'] = null): MsgAction {
     const json: DaoProposalMessage = {'@type': msg.typeUrl, ...asRest(msgValueToJson(msg.typeUrl, msg.value))};
-    return describeMessage(json, {daoAddress: dao.address, before: dao.config as PinnedConfig, formatCoin});
+    const beforeOf = (daoId: string): PinnedConfig | null => (subDaos?.find((s) => s.dao.id === daoId)?.dao.config as PinnedConfig | undefined) ?? null;
+    return describeMessage(json, {daoAddress: dao.address, before: dao.config as PinnedConfig, formatCoin, beforeOf});
 }
 
 export type Described = {ok: true; action: MsgAction} | {ok: false; error: string};
 
 /** `describeBuilt` that reports a message it cannot read back instead of throwing. */
-export function tryDescribe(msg: EncodeObject, dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string): Described {
+export function tryDescribe(msg: EncodeObject, dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string, subDaos: ActionContext['subDaos'] = null): Described {
     try {
-        return {ok: true, action: describeBuilt(msg, dao, formatCoin)};
+        return {ok: true, action: describeBuilt(msg, dao, formatCoin, subDaos)};
     } catch (e) {
         return {ok: false, error: (e as Error).message};
     }
@@ -77,10 +82,10 @@ export interface DescribedAll {
 }
 
 /** Describes every message that would be signed; none is left out. */
-export function describeAll(msgs: EncodeObject[], dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string): DescribedAll {
+export function describeAll(msgs: EncodeObject[], dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string, subDaos: ActionContext['subDaos'] = null): DescribedAll {
     let unreadable = 0;
     const actions = msgs.map((msg) => {
-        const read = tryDescribe(msg, dao, formatCoin);
+        const read = tryDescribe(msg, dao, formatCoin, subDaos);
         if (read.ok) return read.action;
         unreadable += 1;
         return rawAction(msg);

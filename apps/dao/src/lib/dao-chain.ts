@@ -2,7 +2,7 @@ import {
     DaoModuleNotSupportedError,
     getAddressBalances, getDao, getDaoBallot, getDaoBallots, getDaoProposal, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
     getDaos, getDaosByAdmin, getDenomReward, getDenomRewardParticipations, getRestClient,
-    getStakingRewardParticipantByAddress, isDaoModuleSupported,
+    getDaoStakeSources, getStakingRewardParticipantByAddress, isDaoModuleSupported,
 } from '@bze/bze-ui-kit';
 import {createDaoScanClient, browserScanGetter} from './dao-scan';
 import {createDaoPageScan} from './dao-page-scan';
@@ -11,6 +11,7 @@ import type {ProposalChain, ProposalDeps} from './proposal-loader';
 import type {DaoChain, DaoDeps} from './dao-loader';
 import {DaoModuleUnsupported, type DaoViewChain, type DaoViewDeps} from './dao-view-loader';
 import type {StakeSource} from './dao-voters';
+import {createRelationScan, type RelationChain, type RelationDeps} from './propose/relations';
 
 /** The chain side of the loaders: ui-kit's x/dao and x/rewards queries. */
 export const liveDaoChain: DaoChain = {
@@ -102,4 +103,32 @@ export const liveProposalChain: ProposalChain = {
 export const liveProposalDeps: ProposalDeps = {
     chain: liveProposalChain,
     scan: createDaoProposalScan(browserScanGetter),
+};
+
+/** The chain side of the composer's relations: the DAOs this DAO administers, and the sources it could vote with. */
+export const liveRelationChain: RelationChain = {
+    getDao,
+    async getDaosByAdmin(admin, pageKey) {
+        const {items, nextKey} = await getDaosByAdmin(admin, {limit: 50, ...(pageKey ? {key: pageKey} : {})});
+        return {items, nextKey};
+    },
+    getBalances: liveDaoViewChain.getBalances,
+    async getStakeOptions(address) {
+        const [sources, ownSr, ownDr] = await Promise.all([
+            getDaoStakeSources(),
+            getStakingRewardParticipantByAddress(address),
+            getDenomRewardParticipations(address),
+        ]);
+        return sources.map((source) => ({
+            ...source,
+            own: String((source.kind === 'sr'
+                ? ownSr.list.find((p) => p.reward_id === source.id)?.amount
+                : ownDr.find((p) => p.staking_denom === source.id)?.amount) ?? '0'),
+        }));
+    },
+};
+
+export const liveRelationDeps: RelationDeps = {
+    chain: liveRelationChain,
+    scan: createRelationScan(browserScanGetter),
 };

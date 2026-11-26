@@ -1,0 +1,50 @@
+{
+  "source": "hand-written (chain shape of daos_by_admin; a self-owned DAO is listed under its own address)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/dao/daos_by_admin/bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+  "query": {
+    "pagination.limit": "50"
+  },
+  "status": 200,
+  "body": {
+    "daos": [
+      {
+        "id": "2",
+        "address": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+        "admin": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+        "pending_admin": "",
+        "type": "DAO_TYPE_STATIC_LIST",
+        "name": "Founders",
+        "description": "The founding members of the hive.\nDocs: https://getbze.com/docs\n<script>alert(1)</script>",
+        "config": {
+          "min_quorum": "0.400000000000000000",
+          "threshold": "0.500000000000000000",
+          "voting_period": "259200s",
+          "allow_expedite": false,
+          "expedited_period": "0s",
+          "expedite_quorum": "0.000000000000000000",
+          "expedite_threshold": "0.000000000000000000",
+          "open_submission": false,
+          "proposal_cost": null,
+          "proposal_deposit": null,
+          "deposit_refund_policy": "ALWAYS",
+          "cost_destination": "BURN",
+          "kept_deposit_destination": "BURN"
+        },
+        "members": [
+          "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+          "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g"
+        ],
+        "electorate": null,
+        "created_at": "1793000000",
+        "admin_seq": "0",
+        "pending_admin_seq": "0"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "1"
+    }
+  }
+}

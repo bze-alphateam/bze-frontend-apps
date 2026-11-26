@@ -4,9 +4,10 @@ import {useState} from 'react';
 import {chakra, Flex} from '@chakra-ui/react';
 import {LuArrowDown, LuArrowUp, LuTrash2} from 'react-icons/lu';
 import type {DaoCoin} from '@bze/bze-ui-kit';
+import {composeAction, type ComposedAction} from '@/lib/actions/compose-action';
 import {availableActions, findAction} from '@/lib/actions/registry';
+import {innerKey} from '@/lib/actions/sub-dao';
 import type {ActionContext, ActionDraft} from '@/lib/actions/types';
-import type {ComposedAction} from '@/lib/propose/compose';
 import {tryDescribe} from '@/lib/propose/describe';
 import {Described} from '@/components/proposal/actions-panel';
 import {Panel} from '@/components/dao/page/panel';
@@ -14,11 +15,14 @@ import {ACTION_FORMS} from './action-forms';
 
 interface Props {
     drafts: ActionDraft[];
-    composed: ComposedAction[];
+    /** What each draft composes to; left out for a nested list, which works it out itself. */
+    composed?: ComposedAction[];
     ctx: ActionContext;
     maxActions: number;
     formatCoin: (coin: DaoCoin) => string;
     onChange: (drafts: ActionDraft[]) => void;
+    /** The list inside another action (run as a sub-DAO): no panel of its own. */
+    nested?: boolean;
 }
 
 const iconButton = {
@@ -51,7 +55,7 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
 
     // an untouched form is not an error yet
     const dirty = JSON.stringify(draft.fields) !== JSON.stringify(entry.initialFields(ctx));
-    const read = composed?.msg ? tryDescribe(composed.msg, ctx.dao, formatCoin) : null;
+    const read = composed?.msg ? tryDescribe(composed.msg, ctx.dao, formatCoin, ctx.subDaos) : null;
 
     return (
         <chakra.li listStyleType="none" borderWidth="1px" borderColor="app.border" borderRadius="14px" p="14px" data-testid="action-row">
@@ -64,13 +68,21 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
                         <chakra.button type="button" {...iconButton} onClick={onRemove} aria-label={`Remove action ${index + 1}`} data-testid="action-remove"><LuTrash2 size={16} aria-hidden /></chakra.button>
                     </Flex>
                 </Flex>
-                <Form fields={draft.fields} onChange={(fields) => onChange({...draft, fields})} ctx={ctx} error={dirty ? composed?.error : undefined} />
+                <Form
+                    fields={draft.fields}
+                    onChange={(fields) => onChange({...draft, fields})}
+                    ctx={ctx}
+                    error={dirty ? composed?.error : undefined}
+                    renderActions={(nested) => (
+                        <ActionsList drafts={nested.drafts} ctx={nested.ctx} maxActions={Number(nested.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={nested.onChange} nested />
+                    )}
+                />
                 {composed?.warnings.map((w) => <chakra.p key={w} m="0" fontSize="13px" color="orange.500" data-testid="action-warning">{w}</chakra.p>)}
                 {read && (
                     <Flex direction="column" gap="6px" p="12px" bg="hg.inset" borderRadius="10px" data-testid="action-preview">
                         <chakra.span fontSize="12px" color="hg.text.faint">What the DAO would do</chakra.span>
                         {read.ok
-                            ? <Described action={read.action} formatCoin={formatCoin} nameOf={(a) => (a === ctx.dao.address ? 'The DAO' : undefined)} />
+                            ? <Described action={read.action} formatCoin={formatCoin} nameOf={(a) => (a === ctx.dao.address ? 'The DAO' : undefined)} signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address} />
                             : <chakra.p m="0" fontSize="13px" color="red.500" role="alert">{`This message could not be read back: ${read.error}`}</chakra.p>}
                     </Flex>
                 )}
@@ -80,15 +92,16 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
 };
 
 /** The ordered list of actions: add from the registry, edit, move, remove. */
-export const ActionsList = ({drafts, composed, ctx, maxActions, formatCoin, onChange}: Props) => {
+export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false}: Props) => {
     const [picking, setPicking] = useState(false);
-    const entries = availableActions(ctx.dao);
+    const entries = availableActions(ctx.dao, ctx);
+    const composed = given ?? drafts.map((draft) => composeAction(draft, ctx, findAction));
     const full = drafts.length >= maxActions;
 
     const add = (type: string) => {
         const entry = findAction(type);
         if (!entry) return;
-        onChange([...drafts, {key: newKey(), type, fields: entry.initialFields(ctx)}]);
+        onChange([...drafts, {key: nested ? innerKey(1 + Math.max(-1, ...drafts.map((d) => Number(d.key.replace('inner', '')) || 0))) : newKey(), type, fields: entry.initialFields(ctx)}]);
         setPicking(false);
     };
     const move = (index: number, by: -1 | 1) => {
@@ -97,12 +110,14 @@ export const ActionsList = ({drafts, composed, ctx, maxActions, formatCoin, onCh
         onChange(next);
     };
 
-    return (
-        <Panel id="actions" title="Actions" testId="actions-editor">
+    const body = (
+        <>
             <chakra.p m="0" fontSize="14px" color="fg.muted">
-                What the DAO does if the proposal passes, in this order, all or nothing. Leave the list empty for a text-only proposal that just records the DAO&apos;s decision.
+                {nested
+                    ? `What ${ctx.dao.name} does, in this order, all or nothing.`
+                    : "What the DAO does if the proposal passes, in this order, all or nothing. Leave the list empty for a text-only proposal that just records the DAO's decision."}
             </chakra.p>
-            {drafts.length === 0 && <chakra.p m="0" fontSize="14px" data-testid="no-actions">No actions: this is a text-only proposal.</chakra.p>}
+            {drafts.length === 0 && <chakra.p m="0" fontSize="14px" data-testid={nested ? 'no-inner-actions' : 'no-actions'}>{nested ? 'No actions yet.' : 'No actions: this is a text-only proposal.'}</chakra.p>}
             {drafts.length > 0 && (
                 <chakra.ol m="0" p="0" display="flex" flexDirection="column" gap="12px">
                     {drafts.map((draft, i) => (
@@ -150,6 +165,10 @@ export const ActionsList = ({drafts, composed, ctx, maxActions, formatCoin, onCh
                     <chakra.button type="button" alignSelf="flex-start" color="fg.muted" fontSize="14px" cursor="pointer" onClick={() => setPicking(false)}>Cancel</chakra.button>
                 </Flex>
             )}
-        </Panel>
+        </>
     );
+
+    return nested
+        ? <Flex direction="column" gap="12px" ps="12px" borderStartWidth="2px" borderColor="app.border" data-testid="nested-actions">{body}</Flex>
+        : <Panel id="actions" title="Actions" testId="actions-editor">{body}</Panel>;
 };
