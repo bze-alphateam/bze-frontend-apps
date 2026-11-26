@@ -104,7 +104,7 @@ export {
 export { poolData, poolTickers } from './utils/pool_data';
 export { assetUsdPrice } from './utils/usd_price';
 export {
-    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve
+    calculateOptimalInputForOutput, estimateFeeInPreferredDenom, resolveFeePayment, maxSpendFeeReserve, preferredTotal
 } from './utils/fee_conversion';
 export type { FeeEstimate, FeeEstimateInput, FeeEstimateReason, FeePaymentMethod, FeeReserves } from './utils/fee_conversion';
 export {
@@ -241,8 +241,8 @@ export {
 export { getBZEUSDPrice } from './query/prices';
 export { getTradebinParams } from './query/tradebin_params';
 export { getHaltedDenoms } from './query/halted_denoms';
-export { getDenomConfig } from './query/denom_config';
-export type { DenomConfigRatios } from './query/denom_config';
+export { getDenomConfig, getDenomConfigInfo } from './query/denom_config';
+export type { DenomConfigRatios, DenomConfigInfo, DenomConfigInfoOptions } from './query/denom_config';
 export type { TradebinParamsCache } from './query/tradebin_params';
 export { getTxFeeCollectorParams } from './query/txfeecollector_params';
 export type { TxFeeCollectorParamsCache, BlockedIbcInbound } from './query/txfeecollector_params';

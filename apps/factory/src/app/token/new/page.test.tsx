@@ -276,7 +276,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             const q = step("Permissions");
             expect(within(q).getByRole("radio", { name: /My wallet/ })).toHaveAttribute("aria-checked", "true");
             expect(within(q).getByRole("radio", { name: /Another address/ })).toHaveAttribute("aria-checked", "false");
-            expect(within(q).getByText("Mint and edit details")).toBeInTheDocument();
+            expect(within(q).getByText("Mint, edit details and change fee settings")).toBeInTheDocument();
             expect(within(q).getByText("A team or multisig wallet")).toBeInTheDocument();
             expect(within(q).queryByText("You can transfer or renounce admin later on the token's page, under Permissions.")).not.toBeInTheDocument();
             expect(within(q).queryByText(/renounce now/i)).not.toBeInTheDocument();

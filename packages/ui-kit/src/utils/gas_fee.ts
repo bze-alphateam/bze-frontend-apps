@@ -66,6 +66,7 @@ export type TxKind =
     | 'set-denom-metadata'
     | 'change-admin'
     | 'set-denom-branding'
+    | 'set-denom-config'
     | 'create-staking-reward'
     | 'create-trading-reward'
     | 'update-staking-reward'
@@ -165,6 +166,7 @@ export const GAS_ESTIMATES: Record<TxKind, GasProfile> = {
     'burn-tokens': {base: 200_000},                           // no on-chain sample — estimate with headroom
     'set-denom-metadata': {base: 200_000},                    // no on-chain sample — estimate with headroom
     'change-admin': {base: 150_000},                          // no on-chain sample — estimate with headroom
+    'set-denom-config': {base: 200_000},                      // no on-chain sample (chain v8.3.0) — admin check + one small record write + event; re-measure on bzetestnet-3
     'set-denom-branding': {base: 200_000},                    // no on-chain sample (chain v8.2.0) — admin check + one small record write + event; re-measure on bzetestnet-3
     'create-staking-reward': {base: 300_000, feeSwaps: 1},    // no on-chain sample — estimate with headroom
     'create-trading-reward': {base: 300_000, feeSwaps: 1},    // no on-chain sample — estimate with headroom
