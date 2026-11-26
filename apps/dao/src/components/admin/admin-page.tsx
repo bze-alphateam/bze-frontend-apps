@@ -89,6 +89,7 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
                 )}
                 {view && !relations.loading && address && (
                     <Console
+                        key={`${view.dao.id}:${address}`}
                         view={view}
                         relations={relations.data ?? {subDaos: null, incoming: null, sources: null}}
                         wallet={address}

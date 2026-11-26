@@ -14,7 +14,7 @@ import {composeAdminActions} from '@/lib/actions/sub-dao';
 import {findAction} from '@/lib/actions/registry';
 import type {ActionDraft} from '@/lib/actions/types';
 import {checkNomination, STALE_NOMINATION_TEXT, type NominationChain} from '@/lib/admin/nomination';
-import {HAND_OVER_PHRASE, handOverBlocked, nominateBlocked, withdrawBlocked} from '@/lib/admin/operations';
+import {handOverBlocked, handOverConfirmed, nominateBlocked, withdrawBlocked} from '@/lib/admin/operations';
 import type {DaoView} from '@/lib/dao-view-loader';
 import {describeAll} from '@/lib/propose/describe';
 import type {Relations} from '@/lib/propose/relations';
@@ -124,7 +124,7 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
                     onClick={() => message && onSend('admin-execute', [message])}
                     data-testid="execute-submit"
                 >
-                    {drafts.length === 1 ? 'Run the action as the DAO' : drafts.length === 0 ? 'Run as the DAO' : `Run ${drafts.length} actions as the DAO`}
+                    {drafts.length === 1 ? 'Run the action now' : drafts.length === 0 ? 'Run now' : `Run ${drafts.length} actions now`}
                 </Button>
                 {!ready && problem && <chakra.p {...muted} data-testid="execute-problem">{problem}</chakra.p>}
             </Flex>
@@ -194,10 +194,11 @@ export const WithdrawPanel = ({view, wallet, locked, onSend}: OpProps) => {
 export const HandOverPanel = ({view, relations, wallet, locked, onSend}: OpProps & {relations: Relations}) => {
     const {dao} = view;
     const [typed, setTyped] = useState('');
+    const [understood, setUnderstood] = useState(false);
     const coins = useCoinFormat();
     const blocked = handOverBlocked(dao, relations.sources);
     const msg = buildNominateAdminMsg({authority: wallet, daoId: dao.id, nominee: ''});
-    const confirmed = typed.trim().toLowerCase() === HAND_OVER_PHRASE;
+    const confirmed = handOverConfirmed(dao, typed, understood);
 
     return (
         <Panel id="hand-over" title="Hand the DAO to its voters" testId="handover-panel">
@@ -208,8 +209,13 @@ export const HandOverPanel = ({view, relations, wallet, locked, onSend}: OpProps
             {!blocked && (
                 <>
                     <SignReview msg={msg} view={view} wallet={wallet} title="What you sign" />
+                    {dao.type === 'DAO_TYPE_STATIC_LIST' && <chakra.p {...muted} data-testid="handover-voters">{`Its voters can vote: ${dao.members.length} ${dao.members.length === 1 ? 'member' : 'members'} (the chain refuses a DAO nobody can vote in).`}</chakra.p>}
+                    <chakra.label display="flex" gap="8px" alignItems="flex-start" fontSize="14px" cursor="pointer">
+                        <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} style={{marginTop: '4px'}} data-testid="handover-understood" />
+                        <span>{`I understand I lose every admin power over ${dao.name}`}</span>
+                    </chakra.label>
                     <Field.Root>
-                        <Field.Label fontSize="14px" fontWeight="600">{`Type "${HAND_OVER_PHRASE}" to confirm`}</Field.Label>
+                        <Field.Label fontSize="14px" fontWeight="600">Type the DAO&apos;s name to confirm</Field.Label>
                         <Input {...inputProps} autoCapitalize="none" spellCheck={false} value={typed} onChange={(e) => setTyped(e.target.value)} data-testid="handover-confirm" />
                     </Field.Root>
                     <div>

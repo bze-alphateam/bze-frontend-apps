@@ -179,6 +179,25 @@ describe("run actions as the DAO", () => {
         await waitFor(() => expect(push).toHaveBeenCalledWith("/dao/4"));
         expect(txMock).toHaveBeenCalledTimes(1);
     });
+
+    it("a payment the node has not seen yet stays locked, with a way out only the user can take", async () => {
+        txMock.mockImplementation(async (_msgs, o) => { o.onBroadcast("H9"); o.onFailure("slow", {stage: "timeout", txHash: "H9"}); return false; });
+        renderConsole(administered, {lookupTx: async () => "notfound"});
+        await userEvent.click(screen.getByTestId("add-action"));
+        await userEvent.click(screen.getByTestId("add-pay"));
+        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
+        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await userEvent.click(screen.getByTestId("execute-submit"));
+        await waitFor(() => expect(screen.getByTestId("action-unconfirmed")).toBeInTheDocument());
+
+        await userEvent.click(screen.getByTestId("action-recheck"));
+        await waitFor(() => expect(screen.getByTestId("recheck-note")).toHaveTextContent("may still be included"));
+        expect(screen.getByTestId("execute-submit")).toBeDisabled();
+
+        await userEvent.click(screen.getByTestId("action-release"));
+        await waitFor(() => expect(screen.getByTestId("execute-submit")).toBeEnabled());
+        expect(txMock).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe("nominate, withdraw, hand over", () => {
@@ -218,15 +237,20 @@ describe("nominate, withdraw, hand over", () => {
         expect(msgs[0].value).toMatchObject({authority: WALLET, daoId: 4n});
     });
 
-    it("hands the DAO to its voters only after the phrase is typed, with an empty nominee", async () => {
+    it("hands the DAO to its voters only after the box is ticked and its name typed, with an empty nominee", async () => {
         landed();
         renderConsole(administered);
         expect(screen.getByTestId("handover-panel")).toHaveTextContent("you cannot undo it");
         expect(screen.getByTestId("handover-submit")).toBeDisabled();
 
-        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "hand"}});
+        expect(screen.getByTestId("handover-voters")).toHaveTextContent("Its voters can vote: 2 members");
+        // the name typed but the box not ticked, then the box ticked but a wrong name: neither is enough
+        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "Founders"}});
         expect(screen.getByTestId("handover-submit")).toBeDisabled();
-        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "Hand Over"}});
+        await userEvent.click(screen.getByTestId("handover-understood"));
+        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "Founder"}});
+        expect(screen.getByTestId("handover-submit")).toBeDisabled();
+        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: " Founders "}});
         await userEvent.click(screen.getByTestId("handover-submit"));
 
         const [msgs] = txMock.mock.calls[0];

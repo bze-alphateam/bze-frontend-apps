@@ -35,5 +35,9 @@ export function handOverBlocked(dao: Pick<Dao, 'name' | 'type' | 'members' | 'el
     return handOverProblem(dao, sources);
 }
 
-/** The words that must be typed before the DAO is handed to its voters. */
-export const HAND_OVER_PHRASE = 'hand over';
+/**
+ * What it takes to hand the DAO to its voters: the box ticked and the DAO's name typed (as it is, spaces at the
+ * ends aside), so it cannot be a stray click.
+ */
+export const handOverConfirmed = (dao: Pick<Dao, 'name'>, typedName: string, understood: boolean): boolean =>
+    understood && typedName.trim() !== '' && typedName.trim() === dao.name.trim();

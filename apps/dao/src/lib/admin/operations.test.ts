@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {DAO, DAO_ADDRESS, OTHER, STAKE_DAO, THIRD, WALLET} from "@/test/composer-fixtures";
-import {handOverBlocked, nominateBlocked, withdrawBlocked} from "./operations";
+import {handOverBlocked, handOverConfirmed, nominateBlocked, withdrawBlocked} from "./operations";
 
 const administered = {...DAO, admin: WALLET};
 const option = (over: Partial<{staked: string; own: string}> = {}) => [{kind: "sr" as const, id: "000000000017", stakingDenom: "ulmn", lock: 7, staked: "100", own: "0", ...over}];
@@ -58,5 +58,18 @@ describe("hand the DAO to its voters", () => {
         expect(handOverBlocked(stake, null)).toMatch(/could not be read/);
         // a source of the electorate that the list does not have
         expect(handOverBlocked({...stake, electorate: {sr_ids: ["000000000099"], dr_denom: ""}}, option())).toMatch(/could not be read/);
+    });
+});
+
+describe("the confirmation of a handover", () => {
+    it("needs the box ticked and the DAO's name, as it is", () => {
+        const dao = {name: "Founders"};
+        expect(handOverConfirmed(dao, "Founders", true)).toBe(true);
+        expect(handOverConfirmed(dao, "  Founders ", true)).toBe(true);
+        expect(handOverConfirmed(dao, "Founders", false)).toBe(false);
+        expect(handOverConfirmed(dao, "founders", true)).toBe(false);
+        expect(handOverConfirmed(dao, "", true)).toBe(false);
+        // a DAO whose name is only blanks cannot be confirmed by typing nothing
+        expect(handOverConfirmed({name: "  "}, "", true)).toBe(false);
     });
 });

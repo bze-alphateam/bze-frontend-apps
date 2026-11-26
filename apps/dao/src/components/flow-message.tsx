@@ -23,10 +23,12 @@ interface Props {
     sentTitle: (kind: ActionKind, batches: number) => string;
     /** What the page re-reads after a transaction, in a sentence ("the proposal", "the DAO"). */
     subject?: string;
+    /** Offered after an unconfirmed transaction that must not be sent again on a guess: the user's word that it did not land. */
+    onRelease?: () => void;
 }
 
 /** The message of a flow that is not idle: progress, failure, a transaction that may still land, success. */
-export const FlowMessage = ({state, progress, onRecheck, sentTitle, subject = 'proposal'}: Props) => {
+export const FlowMessage = ({state, progress, onRecheck, sentTitle, subject = 'proposal', onRelease}: Props) => {
     switch (state.phase) {
         case 'idle':
             return null;
@@ -52,6 +54,7 @@ export const FlowMessage = ({state, progress, onRecheck, sentTitle, subject = 'p
                             <span>The actions stay locked so the same transaction is not sent twice. Check again to see whether it landed.</span>
                             {state.note && <span data-testid="recheck-note">{state.note}</span>}
                             <span><Link onClick={onRecheck} testId="action-recheck">Check again</Link></span>
+                            {onRelease && <span><Link onClick={onRelease} testId="action-release">I checked the explorer: it did not land, let me send again</Link></span>}
                         </Flex>
                     </Notice>
                 </div>

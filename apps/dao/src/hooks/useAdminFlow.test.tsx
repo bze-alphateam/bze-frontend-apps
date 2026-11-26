@@ -104,16 +104,41 @@ describe("a confirmation timeout", () => {
         expect(storage.data.size).toBe(0);
     });
 
-    it("an admin execute does not change the DAO record, so an unchanged record proves nothing: only the node reopens it", async () => {
+    it("an admin execute is never reopened on a guess: a node that does not know it yet keeps it locked, and only the user's word reopens it", async () => {
         const lookupTx = vi.fn(async (): Promise<TxLanding> => "notfound");
-        const {hook, storage} = setup(timeout(), {lookupTx});
+        const sign = timeout();
+        const {hook, storage} = setup(sign, {lookupTx});
         await act(async () => { await hook.result.current.run("admin-execute", MSGS); });
         await act(async () => { await hook.result.current.flow.recheck(); });
 
+        // the record is unchanged (a payment changes nothing in it) and the node has not seen the hash: it may still be in the mempool
         expect(lookupTx).toHaveBeenCalledWith(HASH);
+        expect(hook.result.current.flow.state).toMatchObject({phase: "unconfirmed", kind: "admin-execute", txHash: HASH, note: expect.stringMatching(/may still be included/)});
+        expect(hook.result.current.flow.locked).toBe(true);
+        expect(storage.data.size).toBe(1);
+        await act(async () => { await hook.result.current.run("admin-execute", MSGS); });
+        expect(sign).toHaveBeenCalledTimes(1);
+
+        // "I checked the explorer: it did not land"
+        act(() => hook.result.current.flow.release());
         expect(hook.result.current.flow.state).toEqual({phase: "rechecked", kind: "admin-execute", txHash: HASH});
         expect(hook.result.current.flow.locked).toBe(false);
         expect(storage.data.size).toBe(0);
+    });
+
+    it("the handover kinds fail on chain when repeated, so a node that does not know them reopens them", async () => {
+        const {hook, storage} = setup(timeout());
+        await act(async () => { await hook.result.current.run("nominate", MSGS); });
+        await act(async () => { await hook.result.current.flow.recheck(); });
+        expect(hook.result.current.flow.state).toEqual({phase: "rechecked", kind: "nominate", txHash: HASH});
+        expect(hook.result.current.flow.locked).toBe(false);
+        expect(storage.data.size).toBe(0);
+    });
+
+    it("release does nothing when nothing is unconfirmed", async () => {
+        const {hook} = setup(timeout());
+        act(() => hook.result.current.flow.release());
+        expect(hook.result.current.flow.state).toEqual({phase: "idle"});
     });
 
     it("the chain refusing what the node saw reopens the console with that said", async () => {

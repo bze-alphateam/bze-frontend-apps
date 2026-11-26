@@ -63,16 +63,18 @@ test.describe("who gets the console", () => {
         await expect(page.getByTestId("admin-warning")).toContainText("spending the whole treasury");
     });
 
-    test("a stranger has no link and no console, and neither has the voter of a self-owned DAO", async ({page, network}) => {
+    test("a stranger has no link on the DAO page", async ({page, network}) => {
         adminRun(network, {}, STRANGER);
         await installFakeKeplr(page, WALLET);
         await page.goto("/dao/2");
         await connectWallet(page);
         await expect(page.getByTestId("dao-actions")).toBeVisible();
         await expect(page.getByTestId("admin-console-link")).toHaveCount(0);
+    });
 
-        await page.goto("/dao/2/admin");
-        await connectWallet(page);
+    test("a stranger who types the address gets no console", async ({page, network}) => {
+        adminRun(network, {}, STRANGER);
+        await openConsole(page, WALLET);
         await expect(page.getByTestId("no-console")).toBeVisible();
         await expect(page.getByTestId("execute-panel")).toHaveCount(0);
     });
@@ -167,8 +169,12 @@ test.describe("the handover", () => {
         await openConsole(page, WALLET);
 
         await expect(page.getByTestId("handover-panel")).toContainText("you cannot undo it");
+        await expect(page.getByTestId("handover-voters")).toContainText("2 members");
         await expect(page.getByTestId("handover-submit")).toBeDisabled();
-        await page.getByTestId("handover-confirm").fill("hand over");
+        await page.getByTestId("handover-understood").check();
+        await page.getByTestId("handover-confirm").fill("Founder");
+        await expect(page.getByTestId("handover-submit")).toBeDisabled();
+        await page.getByTestId("handover-confirm").fill("Founders");
         await expect(page.getByTestId("handover-submit")).toBeEnabled();
         await page.getByTestId("handover-submit").click();
         await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
@@ -183,15 +189,15 @@ test.describe("the handover", () => {
 });
 
 test.describe("accept a nomination", () => {
-    const nominated = (network: MockNetwork, over: Record<string, unknown> = {}) => {
-        network.use("lcd", {path: "/bze/dao/dao/4", status: 200, body: {dao: {...daoFour.body.dao, pending_admin: NOMINEE, ...over}}});
-        network.use("lcd", {path: `/bze/dao/dao_by_address/${NOMINEE}`, status: 404, body: NOT_A_DAO});
-        asWallet(network, NOMINEE);
+    const nominated = (network: MockNetwork, nominee: string, over: Record<string, unknown> = {}) => {
+        network.use("lcd", {path: "/bze/dao/dao/4", status: 200, body: {dao: {...daoFour.body.dao, pending_admin: nominee, ...over}}});
+        network.use("lcd", {path: `/bze/dao/dao_by_address/${nominee}`, status: 404, body: NOT_A_DAO});
+        if (nominee !== WALLET) asWallet(network, nominee);
     };
 
-    test("the nominee sees what they take over, then the signature is refused here", async ({page, network}) => {
-        nominated(network);
-        await installFakeKeplr(page, NOMINEE);
+    test("the nominee finds the link on the DAO page, sees what they take over, then the signature is refused here", async ({page, network}) => {
+        nominated(network, WALLET);
+        await installFakeKeplr(page, WALLET);
         await page.goto("/dao/4");
         await connectWallet(page);
         await page.getByTestId("admin-console-link").click();
@@ -208,7 +214,7 @@ test.describe("accept a nomination", () => {
     });
 
     test("a nomination that went stale says so instead of offering the button", async ({page, network}) => {
-        nominated(network, {admin_seq: "9", pending_admin_seq: "2"});
+        nominated(network, NOMINEE, {admin_seq: "9", pending_admin_seq: "2"});
         await openConsole(page, NOMINEE, "4");
 
         await expect(page.getByTestId("accept-stale")).toHaveText("This nomination is out of date; the current admin must withdraw it and nominate again.");
@@ -216,7 +222,7 @@ test.describe("accept a nomination", () => {
     });
 
     test("a nomination that cannot be checked is not offered either, and can be checked again", async ({page, network}) => {
-        nominated(network);
+        nominated(network, NOMINEE);
         network.use("lcd", {path: "/bze/dao/dao_controller/4", status: 500, body: {code: 2, message: "internal", details: []}});
         await openConsole(page, NOMINEE, "4");
 
@@ -229,7 +235,7 @@ test.describe("accept a nomination", () => {
     });
 
     test("someone who is not the nominee has no console on a DAO with a nomination", async ({page, network}) => {
-        nominated(network);
+        nominated(network, NOMINEE);
         await openConsole(page, WALLET, "4");
         await expect(page.getByTestId("no-console")).toBeVisible();
     });
@@ -245,6 +251,8 @@ test("nominate, then accept as the nominee: two wallets, each stopping before th
     // the chain after the nomination: the e2e wallet is still the admin, the nominee has been named
     adminRun(network, {pending_admin: NOMINEE, pending_admin_seq: "2", admin_seq: "1"});
     const nomineePage = await context.newPage();
+    // the same browser context shares localStorage: the second wallet must not inherit the first one's session
+    await nomineePage.addInitScript(() => window.localStorage.clear());
     await openConsole(nomineePage, NOMINEE);
     await expect(nomineePage.getByTestId("admin-console")).toHaveAttribute("data-role", "nominee");
     await expect(nomineePage.getByTestId("accept-submit")).toBeVisible();

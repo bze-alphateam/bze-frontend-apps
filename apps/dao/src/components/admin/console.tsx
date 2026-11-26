@@ -64,7 +64,7 @@ export const Console = ({view, relations, wallet, nominationChain, refresh, fing
         <Flex direction="column" gap="16px" data-testid="admin-console" data-role={role}>
             <chakra.a asChild color="hg.link" fontWeight="600" fontSize="14px" alignSelf="flex-start"><NextLink href={back}>{`← ${dao.name}`}</NextLink></chakra.a>
 
-            <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind) => SENT[kind]} subject="DAO" />
+            <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind) => SENT[kind]} subject="DAO" onRelease={flow.state.phase === 'unconfirmed' && flow.state.kind === 'admin-execute' ? flow.release : undefined} />
 
             {role === 'none' && !done && (
                 <div data-testid="no-console">

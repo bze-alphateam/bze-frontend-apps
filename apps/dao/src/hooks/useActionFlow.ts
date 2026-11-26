@@ -15,6 +15,14 @@ export type ActionKind = 'vote' | 'vote-settle' | 'settle' | 'cancel' | 'cleanup
  */
 const movesPage = (kind: ActionKind): boolean => kind !== 'vote' && kind !== 'admin-execute';
 
+/**
+ * A kind that must not be sent again on the node's say-so alone: an admin execute (a payment) pays twice if it was
+ * only slow. "Not found" is not "did not land", so it stays locked until the user says it did not (`release`).
+ * The others fail on chain when repeated (1112, 1115) or are harmless to repeat, so a node that does not know the
+ * hash reopens them.
+ */
+const guardsResend = (kind: ActionKind): boolean => kind === 'admin-execute';
+
 export type FlowState =
     | {phase: 'idle'}
     /** The wallet is signing (or the transaction is on its way); `batches` counts the accepted clean-up batches. */
@@ -51,6 +59,8 @@ export interface ActionFlow {
     runCleanup: (msg: EncodeObject) => Promise<void>;
     /** Re-reads the proposal after an unconfirmed transaction (or a failed re-read) and opens the actions again once it was read. */
     recheck: () => Promise<void>;
+    /** The user checked the explorer and the transaction did not land: the actions open again. Only after an unconfirmed transaction. */
+    release: () => void;
 }
 
 const isLocked = (s: FlowState): boolean =>
@@ -143,6 +153,7 @@ export function useActionFlow(deps: ActionFlowDeps, initial: FlowState = {phase:
             return;
         }
         if (!current.txHash) {
+            if (guardsResend(current.kind)) return stillLocked('The transaction hash was not available, so the node cannot be asked. Look for it in the explorer before sending again.');
             setState({phase: 'rechecked', kind: current.kind});
             return;
         }
@@ -152,10 +163,18 @@ export function useActionFlow(deps: ActionFlowDeps, initial: FlowState = {phase:
         } catch {
             return stillLocked('The node could not be asked about the transaction, so it is not known whether it landed.');
         }
-        if (found === 'notfound') setState({phase: 'rechecked', kind: current.kind, txHash: current.txHash});
+        if (found === 'notfound') {
+            if (guardsResend(current.kind)) return stillLocked('The node does not know the transaction yet. It may still be included: check again in a moment, or look for it in the explorer.');
+            setState({phase: 'rechecked', kind: current.kind, txHash: current.txHash});
+        }
         else if (found === 'landed') setState({phase: 'sent', kind: current.kind, txHash: current.txHash, reread: 'ok', batches: current.batches});
         else setState({phase: 'failed', kind: current.kind, error: 'The chain refused the transaction, so nothing happened. You can try again.', batches: current.batches});
     }, []);
 
-    return {state, locked: isLocked(state), run, runCleanup, recheck};
+    const release = useCallback(() => {
+        const current = stateRef.current;
+        if (current.phase === 'unconfirmed') setState({phase: 'rechecked', kind: current.kind, txHash: current.txHash});
+    }, []);
+
+    return {state, locked: isLocked(state), run, runCleanup, recheck, release};
 }
