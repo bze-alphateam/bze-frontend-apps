@@ -57,7 +57,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
 
     // an unsent draft wins; with none, a shortcut link ("Request to join", "Leave") opens with its one action filled in
     const [opening] = useState(() => {
-        const saved = loadDraft(storage, dao.id, (type) => !!ctx && availableActions(dao, ctx).some((e) => e.id === type) && !!findAction(type), newKey, {
+        const saved = loadDraft(storage, dao.id, (type) => !!findAction(type) && (!ctx || availableActions(dao, ctx).some((e) => e.id === type) || (type === 'accept-nomination' && ctx.incoming === null)), newKey, {
             allowExpedite: dao.config.allow_expedite,
             allowSummary: Number(params?.max_summary_len ?? '0') > 0,
         });
@@ -164,6 +164,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                 nameOf={(a) => (a === dao.address ? dao.name : undefined)}
                 expedited={expedited}
                 signer={dao.address}
+                signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address}
                 balancesKnown={!balancesLoading && !!wallet}
             />
             <SubmitArea
@@ -226,7 +227,7 @@ export const ProposePage = ({id, deps = liveDaoViewDeps, relationDeps = liveRela
                     <Flex direction="column" gap="14px">
                         <chakra.a asChild color="hg.link" fontWeight="600" fontSize="14px" alignSelf="flex-start"><NextLink href={`/dao/${data.view.dao.id}`}>{`← ${data.view.dao.name}`}</NextLink></chakra.a>
                         {waitingForWallet
-                            ? <PageState kind="empty" title="Connect your wallet" description="Connect a wallet to open the proposal this link prepares for you." />
+                            ? <div data-testid="shortcut-needs-wallet"><PageState kind="empty" title="Connect your wallet" description="Connect a wallet to open the proposal this link prepares for you." /></div>
                             : <Composer deps={deps} view={data.view} relations={relations.data ?? {subDaos: null, incoming: null, sources: null}} wallet={address ?? null} sign={tx} />}
                     </Flex>
                 )}

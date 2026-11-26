@@ -5,7 +5,7 @@ export const NOMINATE_ID = 'nominate-admin';
 export const WITHDRAW_ID = 'withdraw-nomination';
 export const ACCEPT_ID = 'accept-nomination';
 
-/** A self-owned DAO is its own admin: the only DAO whose admin handover goes through its own proposals. */
+/** A self-owned DAO is its own admin: the only DAO whose admin handover is signed by the DAO itself. */
 export const isSelfOwned = (dao: Pick<ActionContext['dao'], 'admin' | 'address'>): boolean => dao.admin === dao.address;
 
 const EXTERNAL_ADMIN_POWER = 'An external admin can run any message as the DAO, including spending the whole treasury, and the DAO\'s voters can no longer overrule it.';
@@ -28,11 +28,11 @@ export const nominateEntry: ActionEntry = {
     initialFields: () => ({nominee: ''}),
     validate: (fields, ctx) => (isSelfOwned(ctx.dao)
         ? nomineeCheck((fields.nominee ?? '').trim(), ctx.dao)
-        : 'Only a DAO that owns itself nominates its admin through a proposal. This DAO has an admin: the admin hands it over.'),
+        : 'Only a DAO that owns itself nominates its admin this way. This DAO has an admin: the admin hands it over.'),
     warnings(fields, ctx) {
         const warnings = [`The DAO stays self-owned until the nominee accepts. ${EXTERNAL_ADMIN_POWER}`];
         if (ctx.dao.pending_admin !== '') {
-            warnings.push('A nomination is already pending: the chain accepts one at a time (error 1112). Put a "Withdraw the admin nomination" action before this one in the same proposal, or this one fails.');
+            warnings.push('A nomination is already pending: the chain accepts one at a time (error 1112). Put a "Withdraw the admin nomination" action before this one, or this one fails.');
         }
         return warnings;
     },
@@ -51,7 +51,7 @@ export const withdrawEntry: ActionEntry = {
     available: (dao) => isSelfOwned(dao) && dao.pending_admin !== '',
     initialFields: () => ({}),
     validate: (_fields, ctx) => (!isSelfOwned(ctx.dao)
-        ? 'Only a DAO that owns itself withdraws its nomination through a proposal.'
+        ? 'Only a DAO that owns itself withdraws its nomination this way.'
         : ctx.dao.pending_admin === '' ? 'There is no pending nomination to withdraw.' : undefined),
     build(fields, ctx) {
         const problem = withdrawEntry.validate(fields, ctx);

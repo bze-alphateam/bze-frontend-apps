@@ -131,7 +131,7 @@ export const rulesEntry: ActionEntry = {
     warnings(fields, ctx) {
         const result = rulesConfig(fields, ctx);
         if ('error' in result) return [];
-        return ['Proposals that are open now keep the rules they started with; only proposals submitted after this one passes use the new rules.'];
+        return ['Proposals that are open now keep the rules they started with; only proposals submitted once this has run use the new rules.'];
     },
     build(fields, ctx) {
         const result = rulesConfig(fields, ctx);

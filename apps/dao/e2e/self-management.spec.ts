@@ -56,7 +56,8 @@ test.describe("members", () => {
         await expect(page.getByTestId("action-preview")).toContainText("Change the members");
         await expect(page.getByTestId("action-preview")).toContainText("Add 1");
         await expect(page.getByTestId("action-warning")).toContainText("only on proposals submitted after");
-        await expect(page.getByTestId("signed-by")).toContainText(DAO_2_ADDRESS.slice(0, 10));
+        await expect(page.getByTestId("signed-by")).toContainText("Every message is signed by the DAO account");
+        await expect(page.getByTestId("signed-by").locator("[title]")).toHaveAttribute("title", DAO_2_ADDRESS);
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
 
         await page.getByTestId("members-add").fill(WALLET);
@@ -129,6 +130,7 @@ test.describe("the admin", () => {
 
     test("a DAO with an admin is not offered the handover", async ({page, network}) => {
         network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({admin: STRANGER})});
+        network.use("lcd", {path: `/bze/dao/dao_by_address/${STRANGER}`, status: 404, body: {code: 5, message: "dao not found: key not found", details: []}});
         await openComposer(page);
         await page.getByTestId("add-action").click();
         await expect(page.getByTestId("add-update-members")).toBeVisible();
@@ -158,7 +160,7 @@ test.describe("the DAOs this DAO administers", () => {
         await add(page, "sub-dao-admin");
         await page.getByTestId("sub-admin-mode").selectOption("voters");
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Hand the DAO (DAO 12) to its own voters");
+        await expect(page.getByTestId("action-preview")).toContainText("Hand the DAO to its own voters (DAO 12)");
         await expect(page.getByTestId("action-warning")).toContainText("becomes self-owned");
 
         await add(page, "sub-dao-execute");
@@ -233,7 +235,7 @@ test.describe("the shortcuts on the DAO page", () => {
 
     test("without a wallet the link waits for one", async ({page}) => {
         await page.goto("/dao/2/propose?shortcut=join");
-        await expect(page.getByText("Connect your wallet", {exact: true})).toBeVisible();
+        await expect(page.getByTestId("shortcut-needs-wallet")).toBeVisible();
         await expect(page.getByTestId("proposal-title")).toHaveCount(0);
     });
 });

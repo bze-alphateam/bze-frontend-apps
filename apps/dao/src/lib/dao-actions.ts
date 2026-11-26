@@ -13,7 +13,7 @@ export interface DaoFeatures {
     proposalActions: boolean;
 }
 
-export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: false, proposalActions: false};
+export const DAO_FEATURES: DaoFeatures = {newProposal: true, memberComposer: true, adminConsole: false, proposalActions: true};
 
 export interface DaoActions {
     newProposal: boolean;
