@@ -360,6 +360,8 @@ export { useEpochs, useEpochsManager } from './hooks/useEpochs';
 export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './hooks/useLiquidityPools';
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
+export { useDenomConfigs } from './hooks/useDenomConfigs';
+export { formatRatioPercent, formatSurchargePercent, hasFeeTokenSettings, feeTokenOptionNote, feeTokenExplanation, feeSurchargeNote } from './utils/fee_token_notes';
 export { useHaltedDenoms } from './hooks/useHaltedDenoms';
 export type { UseHaltedDenomsResult } from './hooks/useHaltedDenoms';
 export { useCreationFees } from './hooks/useCreationFees';
