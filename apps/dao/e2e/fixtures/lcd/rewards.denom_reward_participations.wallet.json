@@ -1,0 +1,21 @@
+{
+  "source": "hand-written",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/rewards/denom_reward_participations/bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+  "query": {
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "500",
+    "pagination.count_total": "false",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "source": "hand-written (BFE-368 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos",
+  "query": {
+    "cursor": "c1",
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 1,
+        "name": "Beekeepers",
+        "type": "stake",
+        "address": "bze1qpj3kg3fxqmnu32v2ddxz6r0we7cfzujwuwqqk",
+        "admin": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "admin_label": null,
+        "self_governed": false,
+        "created_time": "2026-11-01T10:00:00Z",
+        "proposals_open": 0
+      }
+    ],
+    "next_cursor": null,
+    "supported": true
+  }
+}

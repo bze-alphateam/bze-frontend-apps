@@ -1,0 +1,39 @@
+{
+  "source": "hand-written (BFE-368 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos",
+  "query": {
+    "member": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+    "limit": "100"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 3,
+        "name": "Treasury council",
+        "type": "static_list",
+        "address": "bze1qpn3kg3fxqmnu32v2ddxz6r0we7cfzujukyk0k",
+        "admin": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "admin_label": null,
+        "self_governed": false,
+        "created_time": "2026-11-03T10:00:00Z",
+        "proposals_open": 0
+      },
+      {
+        "id": 2,
+        "name": "Founders",
+        "type": "static_list",
+        "address": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+        "admin": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+        "admin_label": null,
+        "self_governed": true,
+        "created_time": "2026-11-02T10:00:00Z",
+        "proposals_open": 1
+      }
+    ],
+    "next_cursor": null,
+    "supported": true
+  }
+}

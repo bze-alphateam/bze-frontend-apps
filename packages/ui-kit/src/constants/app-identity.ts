@@ -3,7 +3,7 @@
  * The Website carries the main BZ mark and no app colour (getbze.com has no
  * app glyph on purpose); every other app has its own icon and accent.
  */
-export type AppKey = 'website' | 'dex' | 'staking' | 'burner' | 'factory' | 'communities' | 'explorer';
+export type AppKey = 'website' | 'dex' | 'staking' | 'burner' | 'factory' | 'communities' | 'dao' | 'explorer';
 
 /** The apps with their own glyph and accent: every app but the Website. */
 export type BrandedAppKey = Exclude<AppKey, 'website'>;
@@ -30,6 +30,7 @@ export const appIdentity: Record<BrandedAppKey, AppIdentity> = {
     burner:      { accent: { light: '#C24A00', dark: '#FF8A1F' } },
     factory:     { accent: { light: '#9A6A00', dark: '#FFC933' } },
     communities: { accent: { light: '#1A7A43', dark: '#3DD07A' } },
+    dao:         { accent: { light: '#4F48D0', dark: '#8F8CFF' } },
     explorer:    { accent: { light: '#0B74A8', dark: '#22C4E2' } },
 };
 

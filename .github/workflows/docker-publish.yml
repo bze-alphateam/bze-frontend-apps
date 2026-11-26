@@ -59,6 +59,11 @@ concurrency:
 
 env:
   DEPLOY_REPO: bze-alphateam/bze-deploy
+  # Apps whose deploy targets exist on the server: only these are dispatched to the deploy
+  # repo (the image of any other app is still built and pushed). To start deploying an app,
+  # add its dir here, e.g. '["dex","burner","staking","factory","communities","dao"]'. The `dao`
+  # entry waits for BFE-371 (dao.getbze.com / testnet-dao.getbze.com on the server).
+  DEPLOYABLE_APPS: '["dex","burner","staking","factory","communities"]'
 
 jobs:
   changes:
@@ -97,6 +102,7 @@ jobs:
             staking:bze-staking
             factory:bze-factory
             communities:bze-communities
+            dao:bze-dao
           FLAVOR: ${{ github.ref_name == 'develop' && 'testnet' || 'mainnet' }}
           ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apps || '' }}
           GH_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
@@ -144,25 +150,38 @@ jobs:
           persist-credentials: false
 
       - name: Check build env is present
+        id: buildenv
         env:
           BUILD_ENV: deploy/${{ steps.vars.outputs.deploy_dir }}/build.env
-        # presence and shape only — the file is never printed
+          DEPLOYABLE: ${{ contains(fromJSON(env.DEPLOYABLE_APPS), matrix.app) }}
+        # presence and shape only — the file is never printed. An app that is not deployable yet
+        # (see DEPLOYABLE_APPS) may have no build.env in the deploy repo: its image is skipped
+        # until the target exists; for every other app a missing file is an error.
         run: |
           if [ ! -s "$BUILD_ENV" ]; then
-            echo "::error::$BUILD_ENV is missing or empty in the deploy repo"
-            exit 1
+            if [ "$DEPLOYABLE" = "true" ]; then
+              echo "::error::$BUILD_ENV is missing or empty in the deploy repo"
+              exit 1
+            fi
+            echo "::warning::$BUILD_ENV is not in the deploy repo yet, skipping the image of an app that is not deployable yet"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
           echo "using $BUILD_ENV ($(grep -c '^NEXT_PUBLIC_' "$BUILD_ENV") NEXT_PUBLIC_* values)"
 
       - uses: docker/setup-buildx-action@v3
+        if: steps.buildenv.outputs.present == 'true'
 
       - uses: docker/login-action@v3
+        if: steps.buildenv.outputs.present == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        if: steps.buildenv.outputs.present == 'true'
         with:
           context: .
           file: docker/prod/Dockerfile
@@ -175,6 +194,7 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/bze-dapp-${{ matrix.app }}:${{ steps.vars.outputs.tag }}
 
       - name: Summary
+        if: steps.buildenv.outputs.present == 'true'
         run: echo "Pushed ghcr.io/${{ github.repository_owner }}/bze-dapp-${{ matrix.app }}:${{ steps.vars.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
 
       # `gh workflow run` returns no run id, so the run is found by its title
@@ -182,8 +202,11 @@ jobs:
       # created after this dispatch (minus a minute of clock skew). Waiting on
       # it makes a failed release on the server a red job here.
       - name: Deploy (dispatch the deploy repo's workflow and wait for it)
-        # a manual run deploys only from the two deploy branches
-        if: github.event_name == 'push' || (inputs.deploy && (github.ref_name == 'main' || github.ref_name == 'develop'))
+        # a manual run deploys only from the two deploy branches, and only apps in DEPLOYABLE_APPS
+        if: >-
+          steps.buildenv.outputs.present == 'true'
+          && contains(fromJSON(env.DEPLOYABLE_APPS), matrix.app)
+          && (github.event_name == 'push' || (inputs.deploy && (github.ref_name == 'main' || github.ref_name == 'develop')))
         id: deploy
         env:
           GH_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}

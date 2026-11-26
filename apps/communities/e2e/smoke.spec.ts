@@ -49,7 +49,7 @@ test("the navbar's Apps menu lists the other BZE apps with their icons, Explorer
     await page.getByRole("button", {name: "Apps"}).click();
 
     const menu = page.getByRole("menu");
-    await expect(menu.getByRole("menuitem")).toHaveText(["Website", "DEX", "Staking", "Burner", "Factory", "Explorer"]);
-    await expect(menu.getByTestId("app-icon")).toHaveCount(6);
+    await expect(menu.getByRole("menuitem")).toHaveText(["Website", "DEX", "Staking", "Burner", "Factory", "DAO", "Explorer"]);
+    await expect(menu.getByTestId("app-icon")).toHaveCount(7);
     await expect(menu.getByRole("menuitem", {name: "Explorer"})).toHaveAttribute("href", "https://testnet-explorer.getbze.com");
 });

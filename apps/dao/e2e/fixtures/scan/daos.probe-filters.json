@@ -1,0 +1,17 @@
+{
+  "source": "hand-written (BFE-368 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos",
+  "query": {
+    "member": "not-an-address",
+    "limit": "1"
+  },
+  "status": 400,
+  "body": {
+    "error": {
+      "code": "invalid_argument",
+      "message": "member must be a bze1 address"
+    }
+  }
+}

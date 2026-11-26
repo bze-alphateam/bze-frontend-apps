@@ -1,0 +1,28 @@
+{
+  "source": "hand-written (shape of the recorded creator fixture)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/bze/rewards/staking_reward_participant/bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+  "query": {
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "500",
+    "pagination.count_total": "false",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "address": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+        "reward_id": "000000000017",
+        "amount": "1000000",
+        "joined_at": "0.000000435689117382"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

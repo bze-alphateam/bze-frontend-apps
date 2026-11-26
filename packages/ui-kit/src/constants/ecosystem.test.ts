@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     getBurnerApp,
     getCommunitiesApp,
+    getDaoApp,
     getDexApp,
     getEcosystemApp,
     getExplorerApp,
@@ -28,7 +29,7 @@ describe('getEcosystemApp', () => {
     })
 
     it('returns a valid app for every known key', () => {
-        const keys = ['website', 'staking', 'dex', 'burner', 'factory', 'communities', 'explorer']
+        const keys = ['website', 'staking', 'dex', 'burner', 'factory', 'communities', 'dao', 'explorer']
         for (const key of keys) {
             const app = getEcosystemApp(key)
             expect(app, `expected app for key "${key}"`).toBeDefined()
@@ -82,6 +83,13 @@ describe('named per-app helpers', () => {
         const app = getCommunitiesApp()
         expect(app.key).toBe('communities')
         expect(app.href).toBe('https://communities.getbze.com')
+    })
+
+    it('getDaoApp returns the DAO app', () => {
+        const app = getDaoApp()
+        expect(app.key).toBe('dao')
+        expect(app.name).toBe('DAO')
+        expect(app.href).toBe('https://dao.getbze.com')
     })
 })
 
@@ -137,7 +145,7 @@ describe('getEcosystemApp env var overrides', () => {
 describe('getEcosystemApps exclusions', () => {
     it('returns all apps when no exclusions are set', () => {
         const apps = getEcosystemApps()
-        expect(apps.length).toBe(7)
+        expect(apps.length).toBe(8)
     })
 
     it('drops the keys listed in NEXT_PUBLIC_ECOSYSTEM_EXCLUDED, explorer included', () => {
@@ -146,7 +154,7 @@ describe('getEcosystemApps exclusions', () => {
             const keys = getEcosystemApps().map(a => a.key)
             expect(keys).not.toContain('explorer')
             expect(keys).not.toContain('dex')
-            expect(keys).toHaveLength(5)
+            expect(keys).toHaveLength(6)
         } finally {
             delete process.env.NEXT_PUBLIC_ECOSYSTEM_EXCLUDED
         }
@@ -154,9 +162,9 @@ describe('getEcosystemApps exclusions', () => {
 })
 
 describe('Apps menu order', () => {
-    it('lists Website, DEX, Staking, Burner, Factory, Communities, Explorer', () => {
+    it('lists Website, DEX, Staking, Burner, Factory, Communities, DAO, Explorer', () => {
         expect(getEcosystemApps().map(a => a.name)).toEqual(
-            ['Website', 'DEX', 'Staking', 'Burner', 'Factory', 'Communities', 'Explorer'],
+            ['Website', 'DEX', 'Staking', 'Burner', 'Factory', 'Communities', 'DAO', 'Explorer'],
         )
     })
 })

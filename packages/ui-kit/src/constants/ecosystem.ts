@@ -27,6 +27,7 @@ const DEFAULT_APPS: Array<{ key: AppKey; name: string; href: () => string; disab
     { key: 'burner',      name: 'Burner',      href: () => 'https://burner.getbze.com',     disabled: false },
     { key: 'factory',     name: 'Factory',     href: () => 'https://factory.getbze.com',    disabled: false },
     { key: 'communities', name: 'Communities', href: () => 'https://communities.getbze.com', disabled: false },
+    { key: 'dao',         name: 'DAO',         href: () => 'https://dao.getbze.com',       disabled: false },
     // Follows NEXT_PUBLIC_EXPLORER_URL, so testnet builds point at the testnet explorer.
     { key: 'explorer',    name: 'Explorer',    href: getExplorerBaseURL,                    disabled: false },
 ];
@@ -55,6 +56,7 @@ const LINK_OVERRIDES: Record<string, string | undefined> = {
     burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_BURNER,
     factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_FACTORY,
     communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_COMMUNITIES,
+    dao:         process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_DAO,
     explorer:    process.env.NEXT_PUBLIC_ECOSYSTEM_LINK_EXPLORER,
 };
 
@@ -65,6 +67,7 @@ const LABEL_OVERRIDES: Record<string, string | undefined> = {
     burner:      process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_BURNER,
     factory:     process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_FACTORY,
     communities: process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_COMMUNITIES,
+    dao:         process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_DAO,
     explorer:    process.env.NEXT_PUBLIC_ECOSYSTEM_LABEL_EXPLORER,
 };
 
@@ -113,4 +116,5 @@ export const getDexApp          = (): EcosystemApp => getEcosystemApp('dex')!;
 export const getBurnerApp       = (): EcosystemApp => getEcosystemApp('burner')!;
 export const getFactoryApp      = (): EcosystemApp => getEcosystemApp('factory')!;
 export const getCommunitiesApp  = (): EcosystemApp => getEcosystemApp('communities')!;
+export const getDaoApp          = (): EcosystemApp => getEcosystemApp('dao')!;
 export const getExplorerApp     = (): EcosystemApp => getEcosystemApp('explorer')!;

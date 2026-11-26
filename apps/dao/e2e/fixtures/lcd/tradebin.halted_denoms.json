@@ -1,0 +1,21 @@
+{
+  "source": "https://testnet.getbze.com/bze/tradebin/halted_denoms?pagination.count_total=false&pagination.key=&pagination.offset=0&pagination.limit=500&pagination.reverse=false",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/tradebin/halted_denoms",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.offset": "0",
+    "pagination.limit": "500",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "denoms": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}
