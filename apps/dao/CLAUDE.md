@@ -16,10 +16,13 @@ src/
     dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported
     dao/page/proposals-tab.tsx   # the DAO page's Proposals tab (Active / Finished)
     proposal/       # the proposal page: proposal-page (loading + composition), status-pill, tally-panel, actions-panel, timeline-money, votes-panel, my-vote, actions-slot (BFE-374 extension point)
+    propose/        # the composer: propose-page (loads the DAO view, holds the form state and the draft), basics, actions-list, action-forms (one form per registry entry), review, submit-area
     ui/             # provider, colour mode, navbar, inner hero, plain-text (untrusted text)
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
   hooks/            # useAsync (key-derived loading, no setState in effects), useDaoList (first page + Load more), useDaoContext, navigation, chain listener
   lib/
+    actions/        # the action registry (BFE-375): types, registry, pay, custom (untrusted JSON message), signers (who signs a type), amount
+    propose/        # composer logic: compose (limits, messages, size), eligibility (who may propose), cost (cost + deposit + balance), draft (versioned localStorage), describe (read built messages back through BFE-373's describers), expedite, submit-result (proposal id from the tx events)
     scan-proxy.ts   # server side of /api/scan: only the DAO routes, per-route query allowlist (repeated params kept), finished DAO proposals kept forever
     dao-scan.ts     # client of the proxy: listDaos / openProposals / filtersSupported probe; getter injected
     dao-loader.ts   # the home page's reads with their fallbacks (loadDaoPage, loadMyDaos, loadOpenProposals); Scan and chain injected as interfaces
@@ -58,3 +61,13 @@ Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public A
 - **A config update** is shown against the rules pinned at submission (`before` = the proposal's `pinned_config`), since a diff against the live config is empty once it executed.
 - **Lists**: Scan lists one status per request, so Active = `voting` + `execution_failed` merged newest first (chain fallback: both statuses in one request); Finished = the unfiltered newest-first list with the moving and placeholder rows dropped (Scan down: a retry).
 - **Extension point for BFE-374**: `components/proposal/actions-slot.tsx` renders under the header once `DAO_FEATURES.proposalActions` is true (nothing before); the vote/settle/retry/cancel/clean-up buttons go there, using `canSettleNow` and the status/eligible weight already on the page.
+
+## The proposal composer (BFE-375)
+
+- **Registry** (`lib/actions/registry.ts`): an `ActionEntry` is data + pure functions (`available`, `initialFields`, `validate`, `warnings`, `build`); its form is a component under the same id in `components/propose/action-forms.tsx`. **Extension point for BFE-376 / BFE-377: add an entry and a form, nothing else changes** (list, size meter, review, draft and submit are generic). Entries build with the DAO's address from `ctx.dao.address` as signer, so admin-execute can reuse them with the sub-DAO as `ctx.dao`. "Text only" is the empty list, not an entry. All form values are strings so a draft can be stored and checked field by field.
+- **Pay** builds `MsgSend` from the DAO; the token is one the treasury holds; amounts are exact BigNumber over the token's exponent, extra decimals are refused, an unknown token is entered in base units; above the treasury's balance is a warning, not an error (execution fails at settle and can be retried).
+- **Custom message**: untrusted JSON, parsed with `JSON.parse` only, a type the ui-kit has a codec for (`hasMsgCodec`), read through the codec (`msgValueFromJson`, amino-style JSON: snake_case, enums as numbers), encoded once, written back from the bytes (`msgValueToJson`) for the preview. Every signer must be the DAO (`signers.ts`), a MsgAdminExecute of the same DAO is refused, a top-level field the codec drops is an error (never silently ignored), 100,000 characters at most.
+- **Who may propose** (`eligibility.ts`): certain blocks only: no voters (1119), `max_open_proposals` reached (1120), a wallet that is not on a member list / has no stake in a closed DAO (explained with the join text instead of the button). Stake in a source is only a "maybe" (`VotingPower.current` ignores join records): the simulation of `daoTxOptions` surfaces 1118 before anything is signed.
+- **Submit** (`hooks/useProposalSubmit.ts`): `useBZETx().tx` with `daoTxOptions` and `toasts: false`. A confirmation timeout (or any failure after the broadcast without a chain code) is `unconfirmed`: the hash is shown and submit stays locked until the user says it did not land.
+- **Draft**: `localStorage` `bze-dao:proposal-draft:{daoId}`, version 1, restored field by field (wrong types, unknown actions, oversized fields dropped), cleared after success; storage that throws loses the draft only.
+- The summary preview is plain text (`PlainText`), like the proposal page: no Markdown renderer (deliberate narrowing of the ticket, as in BFE-373).

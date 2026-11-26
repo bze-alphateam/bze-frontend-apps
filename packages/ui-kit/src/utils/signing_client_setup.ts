@@ -54,6 +54,7 @@ type MsgCodec = {
     encode: (message: any, writer?: any) => any;
     fromAmino?: (object: any) => any;
     toAmino?: (message: any) => any;
+    decode?: (input: Uint8Array) => any;
 };
 
 const toEncoder = (g: MsgCodec) => ({
@@ -127,6 +128,34 @@ export const encodeMsgValue = (typeUrl: string, value: unknown): Uint8Array => {
         throw new Error(`no encoder registered for ${typeUrl}`);
     }
     return toEncoder(codec).encode(value);
+};
+
+/** Whether the signing client has an encoder for this message type (the types the apps can sign or pack). */
+export const hasMsgCodec = (typeUrl: string): boolean => CODECS_BY_TYPE_URL.has(typeUrl);
+
+/**
+ * A message value from its JSON body (snake_case field names, int64 as strings, enums as numbers,
+ * the shape of the amino JSON the codecs read). Throws for a type the ui-kit has no codec for and
+ * for a body the codec cannot read. Unknown fields are dropped, as the codec only reads the ones it knows.
+ */
+export const msgValueFromJson = (typeUrl: string, body: unknown): unknown => {
+    const codec = CODECS_BY_TYPE_URL.get(typeUrl);
+    if (!codec || !codec.fromAmino) {
+        throw new Error(`no decoder registered for ${typeUrl}`);
+    }
+    return codec.fromAmino(body);
+};
+
+/**
+ * What the chain would read from a message value: the value is encoded to protobuf, decoded again and
+ * written back as JSON (snake_case, defaults left out). Shows exactly what is signed.
+ */
+export const msgValueToJson = (typeUrl: string, value: unknown): Record<string, unknown> => {
+    const codec = CODECS_BY_TYPE_URL.get(typeUrl);
+    if (!codec || !codec.decode || !codec.toAmino) {
+        throw new Error(`no decoder registered for ${typeUrl}`);
+    }
+    return codec.toAmino(codec.decode(encodeMsgValue(typeUrl, value)));
 };
 
 export const registerBzeEncoders = (client: any): void => {

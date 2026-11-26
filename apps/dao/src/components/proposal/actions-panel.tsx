@@ -29,7 +29,7 @@ const ChangeLine = ({change}: {change: ConfigChange}) => (
     </chakra.li>
 );
 
-const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Props, 'actions'>) => {
+export const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Props, 'actions'>) => {
     switch (action.type) {
         case 'send':
             return (
@@ -133,4 +133,4 @@ const SUMMARY: Record<MsgAction['type'], string> = {
     other: 'Other action',
 };
 
-const summaryOf = (action: MsgAction): string => (action.type === 'other' ? action.title : action.type === 'nominate_admin' && action.toVoters ? 'Hand the DAO to its voters' : SUMMARY[action.type]);
+export const summaryOf = (action: MsgAction): string => (action.type === 'other' ? action.title : action.type === 'nominate_admin' && action.toVoters ? 'Hand the DAO to its voters' : SUMMARY[action.type]);

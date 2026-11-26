@@ -286,6 +286,7 @@ export {
     getDaoJoinRecord, daoStakingRewardSource, daoDenomRewardSource,
     isDaoModuleSupported
 } from './query/dao';
+export { encodeMsgValue, hasMsgCodec, msgValueFromJson, msgValueToJson } from './utils/signing_client_setup';
 export {
     daoTxOptions, ratioFromPercent, percentFromRatio, secondsFromDaysHours, durationString,
     durationSeconds, daysHoursFromDuration, durationFromSeconds, daoConfigFromWire,
