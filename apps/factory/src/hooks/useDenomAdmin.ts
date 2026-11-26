@@ -7,6 +7,7 @@ interface Lookup {
     denom: string;
     admin: string | undefined;
     mintable: boolean | undefined;
+    mintableKnown: boolean;
 }
 
 /**
@@ -23,7 +24,7 @@ export function useDenomAdmin(denom: string) {
         if (!denom) return
         let cancelled = false
         getFactoryDenomAuthority(denom).then(authority => {
-            if (!cancelled) setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable })
+            if (!cancelled) setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable, mintableKnown: authority?.mintableKnown ?? false })
         })
         return () => { cancelled = true }
     }, [denom])
@@ -32,13 +33,15 @@ export function useDenomAdmin(denom: string) {
         if (!denom) return
         setLookup(undefined)
         const authority = await getFactoryDenomAuthority(denom)
-        setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable })
+        setLookup({ denom, admin: authority?.admin, mintable: authority?.mintable, mintableKnown: authority?.mintableKnown ?? false })
     }, [denom])
 
     const isCurrent = lookup?.denom === denom
     return {
         admin: isCurrent ? lookup.admin : undefined,
         mintable: isCurrent ? lookup.mintable : undefined,
+        /** Whether the node's answer carried `mintable` (v8.3.0+); false on v8.2.0 and while unknown. */
+        mintableKnown: isCurrent ? lookup.mintableKnown : false,
         isLoading: Boolean(denom) && !isCurrent,
         refresh,
     }

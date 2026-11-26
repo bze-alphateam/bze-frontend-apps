@@ -46,7 +46,7 @@ function useScrollToSection() {
 /** The page of one Factory token, for any wallet; admin actions only once the chain says so. */
 function TokenPageBody({ asset }: { asset: Asset }) {
     const { address } = useChain(getChainName())
-    const { admin, mintable, isLoading: isAdminLoading, refresh: refreshAdmin } = useDenomAdmin(asset.denom)
+    const { admin, mintable, mintableKnown, isLoading: isAdminLoading, refresh: refreshAdmin } = useDenomAdmin(asset.denom)
     const { supply, isLoading: isSupplyLoading, refresh: refreshSupply } = useTokenSupply(asset.denom)
     const { balance } = useBalance(asset.denom)
     const setup = useTokenSetup(asset.denom, { admin, supply })
@@ -84,7 +84,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                     {access === 'unknown' && <AdminUnknownNotice onRetry={() => void refreshAdmin()} />}
 
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
-                        <SupplyGroup {...groupProps} mintable={mintable} supplyDisplay={supplyDisplay} onMinted={refreshSupply} />
+                        <SupplyGroup {...groupProps} mintable={mintable} mintableKnown={mintableKnown} onMintingDisabled={() => void refreshAdmin()} supplyDisplay={supplyDisplay} onMinted={refreshSupply} />
                         <DetailsGroup {...groupProps} />
                         <TradingGroup {...groupProps} />
                         <RewardsGroup {...groupProps} />

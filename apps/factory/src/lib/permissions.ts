@@ -88,4 +88,24 @@ export function renounceHints(items: ReadonlyArray<{ key: string; title: string;
  * Where the pending-tx store files each admin change: the token page, one key per action, so the
  * header's "in progress" pill leads back to the page and the two dialogs never share an entry.
  */
-export const adminTxHref = (denom: string, action: 'transfer' | 'renounce') => `${workspaceHref(denom)}&admin=${action}`
+export const adminTxHref = (denom: string, action: 'transfer' | 'renounce' | 'disable-minting') => `${workspaceHref(denom)}&admin=${action}`
+
+/** What turning minting off ends for good (BFE-384): governance cannot undo it either. */
+export const mintingGoneForever = (ticker: string) => [
+    `Minting more ${ticker}, by anyone, ever`,
+    'No vote, not even governance, can turn minting back on',
+]
+
+/** What stays when minting is turned off: the admin keeps every other right. */
+export const mintingStaysTheSame = (ticker: string) => [
+    'You stay the admin',
+    'Name, logo and description',
+    'Brand kit',
+    'Fee settings',
+    'Transferring admin',
+    `Everyone keeps their ${ticker}`,
+    'Pools, markets and rewards keep running',
+]
+
+/** The Turn off minting button arms only on the exact ticker, case included. */
+export const disableMintingArmed = renounceArmed
