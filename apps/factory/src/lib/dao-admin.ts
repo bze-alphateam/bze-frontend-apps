@@ -1,6 +1,7 @@
 import {
     getDaoByAddress,
     getDaoController,
+    getChainId,
     getFromLocalStorage,
     isDaoModuleSupported,
     setInLocalStorage,
@@ -37,27 +38,29 @@ export type DaoAdminLookup =
 /** The lookup's cache lifetime, in seconds (the ui-kit storage helper's unit). */
 export const DAO_ADMIN_CACHE_TTL_SECONDS = 5 * 60
 
-const cacheKey = (address: string) => `factory-dao-admin-${address}`
+// Per network, so a testnet answer is never read on mainnet.
+const cacheKey = (address: string) => `factory-dao-admin-${getChainId()}-${address}`
 
 function readCache(address: string): DaoAdminLookup | undefined {
     try {
         const raw = getFromLocalStorage(cacheKey(address))
         if (!raw) return undefined
         const parsed = JSON.parse(raw) as { dao: Dao | null }
-        return parsed.dao ? { status: 'dao', dao: parsed.dao } : { status: 'none' }
+        return parsed.dao ? { status: 'dao', dao: parsed.dao } : undefined
     } catch {
         return undefined
     }
 }
 
-/** Looks one address up: is it a DAO's account? Only a definite answer is cached. */
+/** Looks one address up: is it a DAO's account? Only a DAO answer is cached. */
 export async function lookupDaoAdmin(address: string, services: DaoAdminServices = defaultDaoAdminServices): Promise<DaoAdminLookup> {
     const cached = readCache(address)
     if (cached) return cached
     try {
         if (!(await services.isSupported())) return { status: 'unsupported' }
         const dao = await services.byAddress(address)
-        setInLocalStorage(cacheKey(address), JSON.stringify({ dao }), DAO_ADMIN_CACHE_TTL_SECONDS)
+        // Only a DAO is cached: an address that is no DAO's yet may become one (create a DAO, then hand over).
+        if (dao) setInLocalStorage(cacheKey(address), JSON.stringify({ dao }), DAO_ADMIN_CACHE_TTL_SECONDS)
         return dao ? { status: 'dao', dao } : { status: 'none' }
     } catch {
         return { status: 'failed' }

@@ -1,6 +1,6 @@
 {
-  "source": "https://testnet.getbze.com/bze/dao/params",
-  "recorded": "2026-11-26",
+  "source": "synthetic: the answer of a v8.2.x node (x/dao not implemented); testnet itself now runs v8.3.0, so it was not recorded",
+  "recorded": "synthetic",
   "method": "GET",
   "path": "/bze/dao/params",
   "query": {},

@@ -189,6 +189,39 @@ describe("Transfer admin dialog and DAOs", () => {
         expect(d.queryByTestId("dao-admin-controller")).not.toBeInTheDocument();
     });
 
+    it("Continue and Transfer wait for the lookup, so the DAO note can't be skipped", async () => {
+        let resolve: (d: Dao | null) => void = () => {};
+        m.byAddress.mockReturnValue(new Promise<Dao | null>((r) => { resolve = r; }));
+        renderDialog();
+        const d = await dialog();
+        await enter(d, DAO_ADDRESS);
+
+        expect(await d.findByTestId("dao-checking")).toHaveTextContent("Checking address…");
+        expect(d.getByRole("button", { name: "Continue" })).toBeDisabled();
+
+        resolve(dao());
+        expect(await d.findByTestId("dao-admin-summary")).toBeInTheDocument();
+        await waitFor(() => expect(d.getByRole("button", { name: "Continue" })).toBeEnabled());
+        await userEvent.click(d.getByRole("button", { name: "Continue" }));
+        expect(d.getByTestId("dao-handover-note")).toBeInTheDocument();
+    });
+
+    it("typing another address makes the summary follow it", async () => {
+        let resolveA: (d: Dao | null) => void = () => {};
+        m.byAddress.mockImplementation((a: string) => a === DAO_ADDRESS ? new Promise<Dao | null>((r) => { resolveA = r; }) : Promise.resolve(null));
+        renderDialog();
+        const d = await dialog();
+        const input = d.getByPlaceholderText("bze1…");
+        await userEvent.type(input, DAO_ADDRESS);
+        await userEvent.clear(input);
+        await userEvent.type(input, PLAIN);
+        await waitFor(() => expect(m.byAddress).toHaveBeenCalledWith(PLAIN));
+        resolveA(dao());
+        await new Promise((r) => setTimeout(r, 20));
+        expect(d.queryByTestId("dao-admin-summary")).not.toBeInTheDocument();
+        await waitFor(() => expect(d.getByRole("button", { name: "Continue" })).toBeEnabled());
+    });
+
     it("a prefilled address starts at the lookup", async () => {
         m.byAddress.mockResolvedValue(dao());
         renderDialog(DAO_ADDRESS);
@@ -230,7 +263,7 @@ describe("Transfer admin dialog and DAOs", () => {
         renderDialog();
         const d = await dialog();
         await enter(d, DAO_ADDRESS);
-        await waitFor(() => expect(m.byAddress).toHaveBeenCalled());
+        expect(await d.findByTestId("dao-check-failed")).toHaveTextContent("Couldn't check whether this is a DAO.");
         await userEvent.click(d.getByRole("button", { name: "Continue" }));
         expect(d.queryByTestId("dao-handover-note")).not.toBeInTheDocument();
         await userEvent.click(d.getByRole("button", { name: "Transfer admin" }));

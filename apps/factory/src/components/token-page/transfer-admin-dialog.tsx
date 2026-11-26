@@ -73,7 +73,9 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
     const error = transferAdminError(recipient, address)
     // The lookup only informs: it never blocks the transfer, and a failed one reads as a plain address.
     const daoSupported = useDaoModuleSupported()
-    const { dao } = useDaoAdmin(error === '' ? newAdmin : undefined)
+    const { dao, lookup, isLoading: isCheckingDao } = useDaoAdmin(error === '' ? newAdmin : undefined)
+    // Continue and Transfer wait for the lookup of this exact address, so the DAO warning can't be skipped.
+    const checking = error === '' && isCheckingDao
 
     const buildMsgs = () => {
         if (!address || error) return undefined
@@ -100,7 +102,7 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
 
     const toReview = () => {
         setTouched(true)
-        if (!error) setStep('review')
+        if (!error && !checking) setStep('review')
     }
 
     let body: React.ReactNode
@@ -125,12 +127,16 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
                     <Field.ErrorText>{error}</Field.ErrorText>
                     {dao ? (
                         <Box mt="8px" w="full"><DaoAdminSummary dao={dao} showController /></Box>
+                    ) : checking ? (
+                        <Field.HelperText data-testid="dao-checking">Checking address…</Field.HelperText>
+                    ) : lookup?.status === 'failed' ? (
+                        <Field.HelperText data-testid="dao-check-failed">Couldn&apos;t check whether this is a DAO.</Field.HelperText>
                     ) : daoSupported && (
                         <Field.HelperText data-testid="dao-address-hint">{daoAddressHint(ticker)}</Field.HelperText>
                     )}
                 </Field.Root>
                 <Box>
-                    <Button type="submit" variant={hgVariant('primary')} size="md" disabled={touched && error !== ''}>
+                    <Button type="submit" variant={hgVariant('primary')} size="md" disabled={(touched && error !== '') || checking}>
                         Continue
                     </Button>
                 </Box>
@@ -188,7 +194,7 @@ function TransferAdminContent({ asset, open, onClose, onTransferred, initialAddr
                         bg="transparent"
                         _hover={{ bg: 'hg.warning/8' }}
                         onClick={() => submit()}
-                        disabled={!address || error !== ''}
+                        disabled={!address || error !== '' || checking}
                         flex={{ base: '1 1 100%', md: '0 0 auto' }}
                     >
                         <LuTriangleAlert /> Transfer admin
