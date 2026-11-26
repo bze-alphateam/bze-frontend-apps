@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
 import {daoTxOptions, type TxFailureDetails, type TxOptions} from "@bze/bze-ui-kit";
 import type {EncodeObject} from "@bze/bzejs/types";
-import {sendDaoTx, type SignAndSend} from "./dao-tx";
+import {cleanupBatchResult, sendDaoTx, type SignAndSend} from "./dao-tx";
 
 const MSGS: EncodeObject[] = [{typeUrl: "/bze.dao.MsgVote", value: {}}];
 
@@ -55,5 +55,23 @@ describe("sendDaoTx", () => {
         expect(await sendDaoTx(late, MSGS)).toMatchObject({ok: false, unconfirmed: true, txHash: "H5", error: "boom"});
         const early: SignAndSend = async () => { throw new Error("no client"); };
         expect(await sendDaoTx(early, MSGS)).toMatchObject({ok: false, stage: "prepare", unconfirmed: false});
+    });
+});
+
+describe("cleanupBatchResult", () => {
+    const response = (events: unknown[]) => ({height: 1, txhash: "H", code: 0, events});
+    const cleaned = (attrs: Record<string, string>) => response([{type: "message", attributes: []}, {type: "bze.dao.EventProposalCleaned", attributes: Object.entries(attrs).map(([key, value]) => ({key, value}))}]);
+
+    it("reads completed and processed from the typed event (JSON values)", () => {
+        expect(cleanupBatchResult(cleaned({id: '"7"', processed: '"100"', completed: "false"}))).toEqual({completed: false, processed: 100});
+        expect(cleanupBatchResult(cleaned({id: '"7"', processed: '"3"', completed: "true"}))).toEqual({completed: true, processed: 3});
+    });
+
+    it("is null when the events are missing or not in that shape, never a guess", () => {
+        expect(cleanupBatchResult(undefined)).toBeNull();
+        expect(cleanupBatchResult(response([]))).toBeNull();
+        expect(cleanupBatchResult({height: 1, txhash: "H", code: 0})).toBeNull();
+        expect(cleanupBatchResult(cleaned({processed: '"3"'}))).toBeNull();
+        expect(cleanupBatchResult(cleaned({completed: "maybe"}))).toBeNull();
     });
 });

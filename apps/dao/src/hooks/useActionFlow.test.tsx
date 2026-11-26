@@ -40,10 +40,10 @@ describe("useActionFlow", () => {
         expect(hook.result.current.state).toMatchObject({phase: "sent", reread: "ok"});
     });
 
-    it("a simulation failure (the signing client stops before the wallet) shows the mapped reason, signs nothing and reopens the actions", async () => {
-        const signAndBroadcast = vi.fn();
+    it("a simulation failure (reported at the prepare stage with the DAO sign options) shows the mapped reason and reopens the actions", async () => {
+        // ui-kit's useTx test proves nothing is signed or broadcast on a simulation failure with abortOnSimulationError;
+        // here the mocked `tx` ends the way it does (reports at the prepare stage) and the flow must show the reason
         const tx: SignAndSend = async (_msgs, options) => {
-            // what ui-kit's useTx does for abortOnSimulationError: report, never reach signAndBroadcast
             expect(options).toMatchObject({useDirectSign: true, abortOnSimulationError: true});
             options?.onFailure?.("This proposal is already finished. Refresh the page.", {stage: "prepare"});
             return false;
@@ -51,7 +51,6 @@ describe("useActionFlow", () => {
         const {deps, hook} = setup({send: (msgs) => sendDaoTx(tx, msgs)});
         await act(async () => { await hook.result.current.run("settle", MSGS); });
 
-        expect(signAndBroadcast).not.toHaveBeenCalled();
         expect(hook.result.current.state).toEqual({phase: "failed", kind: "settle", error: "This proposal is already finished. Refresh the page.", batches: 0});
         expect(hook.result.current.locked).toBe(false);
         expect(deps.refresh).not.toHaveBeenCalled();

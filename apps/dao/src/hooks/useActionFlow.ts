@@ -8,7 +8,7 @@ export type ActionKind = 'vote' | 'vote-settle' | 'settle' | 'cancel' | 'cleanup
 export type FlowState =
     | {phase: 'idle'}
     /** The wallet is signing (or the transaction is on its way); `batches` counts the accepted clean-up batches. */
-    | {phase: 'signing'; kind: ActionKind; batches: number}
+    | {phase: 'signing'; kind: ActionKind; batches: number; /** Ballots deleted so far by a clean-up; null when the chain's events did not say. */ processed: number | null}
     /** Refused or not signed: nothing was sent, the actions are open again. */
     | {phase: 'failed'; kind: ActionKind; error: string; batches: number}
     /** Sent but not confirmed (or confirmed but the chain cannot be asked): locked until the proposal is re-read. */
@@ -58,7 +58,7 @@ export function useActionFlow(deps: ActionFlowDeps): ActionFlow {
     const run = useCallback(async (kind: ActionKind, msgs: EncodeObject[]) => {
         if (busy.current || isLocked(stateRef.current)) return;
         busy.current = true;
-        setState({phase: 'signing', kind, batches: 0});
+        setState({phase: 'signing', kind, batches: 0, processed: null});
         try {
             const out = await latest.current.send(msgs);
             if (!out.ok) {
@@ -77,12 +77,12 @@ export function useActionFlow(deps: ActionFlowDeps): ActionFlow {
     const runCleanup = useCallback(async (msg: EncodeObject) => {
         if (busy.current || isLocked(stateRef.current)) return;
         busy.current = true;
-        setState({phase: 'signing', kind: 'cleanup', batches: 0});
+        setState({phase: 'signing', kind: 'cleanup', batches: 0, processed: null});
         try {
             const result = await cleanupProposal({
                 sendBatch: () => latest.current.send([msg]),
                 isGone: () => latest.current.isGone(),
-                onProgress: (batches) => setState({phase: 'signing', kind: 'cleanup', batches}),
+                onProgress: (batches, processed) => setState({phase: 'signing', kind: 'cleanup', batches, processed}),
             });
             if (result.state === 'completed') {
                 const reread = await latest.current.refresh();

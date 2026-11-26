@@ -5,7 +5,7 @@ import type {EncodeObject} from '@bze/bzejs/types';
 export type SignAndSend = (msgs: EncodeObject[], options?: TxOptions) => Promise<boolean>;
 
 export type TxOutcome =
-    | {ok: true; txHash: string}
+    | {ok: true; txHash: string; /** What the chain answered once the transaction was in a block (its events included). */ response?: TxSuccessResponse}
     | {
         ok: false;
         /** Where it stopped: before the wallet opened, in the wallet, on chain, or while waiting for the block. */
@@ -37,7 +37,7 @@ export async function sendDaoTx(signAndSend: SignAndSend, msgs: EncodeObject[]):
             onSuccess: (response) => { success = response; },
             onFailure: (error, details) => { failure = {error, details}; },
         });
-        if (sent) return {ok: true, txHash: success?.txhash ?? broadcastHash ?? ''};
+        if (sent) return {ok: true, txHash: success?.txhash ?? broadcastHash ?? '', response: success};
     } catch (e) {
         failure = {error: e instanceof Error ? e.message : String(e)};
     }
@@ -48,4 +48,32 @@ export async function sendDaoTx(signAndSend: SignAndSend, msgs: EncodeObject[]):
     // a chain verdict carries a code; a "chain" stage without one is an error after the broadcast
     const unconfirmed = stage === 'timeout' || (!!txHash && stage === 'chain' && f?.details?.code === undefined);
     return {ok: false, stage, error: f?.error || 'The transaction was not sent.', txHash, unconfirmed};
+}
+
+interface TxEvent {
+    type?: unknown;
+    attributes?: unknown;
+}
+
+const attribute = (event: TxEvent, key: string): string | null => {
+    if (!Array.isArray(event.attributes)) return null;
+    const found = event.attributes.find((a: unknown) => typeof a === 'object' && a !== null && (a as {key?: unknown}).key === key) as {value?: unknown} | undefined;
+    // typed events carry JSON values: true is "true", a count is "\"3\""
+    return found && typeof found.value === 'string' ? found.value.replace(/^"|"$/g, '') : null;
+};
+
+/**
+ * What the chain said about a clean-up batch in its `EventProposalCleaned` (`completed`, `processed`), read
+ * from the transaction's events; null when the events are not there or not in that shape (the caller then
+ * asks the chain whether the proposal is gone).
+ */
+export function cleanupBatchResult(response: TxSuccessResponse | undefined): {completed: boolean; processed: number | null} | null {
+    const events = response?.events;
+    if (!Array.isArray(events)) return null;
+    const event = (events as TxEvent[]).find((e) => typeof e?.type === 'string' && e.type.endsWith('EventProposalCleaned'));
+    if (!event) return null;
+    const completed = attribute(event, 'completed');
+    if (completed !== 'true' && completed !== 'false') return null;
+    const processed = Number(attribute(event, 'processed'));
+    return {completed: completed === 'true', processed: Number.isFinite(processed) ? processed : null};
 }

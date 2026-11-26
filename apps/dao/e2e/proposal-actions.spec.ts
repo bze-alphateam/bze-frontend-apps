@@ -55,7 +55,7 @@ test.describe("vote and revote", () => {
         await expect(page.getByTestId("vote-confirm")).toHaveText("Change vote to No");
     });
 
-    test("signing is refused by the e2e wallet: the reason is shown, nothing is sent, the vote can be tried again", async ({page, network}) => {
+    test("a vote that cannot be signed here shows a failure, not a success, and sends nothing", async ({page, network}) => {
         fundWallet(network);
         await installFakeKeplr(page, WALLET);
         await page.goto("/proposal/8");
@@ -134,6 +134,7 @@ test.describe("settle, retry and mark expired", () => {
 
         await expect(page.getByTestId("settle-button")).toHaveText("Retry");
         await expect(page.getByTestId("settle-note")).toContainText("empty treasury");
+        await expect(page.getByTestId("execution-error")).toContainText("message failed");
     });
 });
 

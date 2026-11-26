@@ -3,6 +3,11 @@ import {cleanupProposal} from "./proposal-cleanup";
 import type {TxOutcome} from "./dao-tx";
 
 const OK: TxOutcome = {ok: true, txHash: "AB"};
+const cleaned = (completed: boolean, processed: number): TxOutcome => ({
+    ok: true,
+    txHash: "AB",
+    response: {height: 1, txhash: "AB", code: 0, events: [{type: "bze.dao.EventProposalCleaned", attributes: [{key: "id", value: '"7"'}, {key: "processed", value: `"${processed}"`}, {key: "completed", value: String(completed)}]}]},
+});
 const refused: TxOutcome = {ok: false, stage: "chain", error: "refused", txHash: "CD", unconfirmed: false};
 const timeout: TxOutcome = {ok: false, stage: "timeout", error: "slow", txHash: "EF", unconfirmed: true};
 
@@ -16,6 +21,29 @@ describe("cleanupProposal", () => {
         expect(result).toEqual({state: "completed", batches: 3});
         expect(sendBatch).toHaveBeenCalledTimes(3);
         expect(onProgress.mock.calls.map(([n]) => n)).toEqual([1, 2, 3]);
+    });
+
+    it("follows the chain's own `completed` from the batch events, with the ballots deleted so far, without asking the chain", async () => {
+        const outcomes = [cleaned(false, 100), cleaned(false, 100), cleaned(true, 40)];
+        const isGone = vi.fn(async () => false);
+        const onProgress = vi.fn();
+        const result = await cleanupProposal({sendBatch: async () => outcomes.shift()!, isGone, onProgress});
+
+        expect(result).toEqual({state: "completed", batches: 3});
+        expect(onProgress.mock.calls).toEqual([[1, 100], [2, 200], [3, 240]]);
+        expect(isGone).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the chain when the events are not in the answer", async () => {
+        const isGone = vi.fn(async () => true);
+        const noEvents: TxOutcome = {ok: true, txHash: "AB", response: {height: 1, txhash: "AB", code: 0, events: []}};
+        expect(await cleanupProposal({sendBatch: async () => noEvents, isGone})).toEqual({state: "completed", batches: 1});
+        expect(isGone).toHaveBeenCalledTimes(1);
+    });
+
+    it("a refused batch asks the chain once: someone else may have finished the clean-up", async () => {
+        const result = await cleanupProposal({sendBatch: async () => refused, isGone: async () => true});
+        expect(result).toEqual({state: "completed", batches: 0});
     });
 
     it("stops at a refused batch and keeps the count of the ones that went through", async () => {

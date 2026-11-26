@@ -70,7 +70,7 @@ const FlowMessage = ({state, status, progress, onRecheck}: {state: FlowState; st
             return null;
         case 'signing':
             return (
-                <Notice status="info" title={state.kind === 'cleanup' ? `Cleaning up${state.batches ? `: ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'} done` : ''}` : 'Approve in your wallet'}>
+                <Notice status="info" title={state.kind === 'cleanup' ? `Cleaning up${state.batches ? `: ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'} done${state.processed ? `, ${state.processed} ballots deleted` : ''}` : ''}` : 'Approve in your wallet'}>
                     <span data-testid="action-progress">{progress || 'Waiting for the wallet…'}</span>
                 </Notice>
             );
