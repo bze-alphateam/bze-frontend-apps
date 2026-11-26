@@ -59,7 +59,13 @@ describe("the admin of a sub-DAO", () => {
         const stake = withSub({type: "DAO_TYPE_STAKE", members: [], electorate: {sr_ids: [], dr_denom: ""}});
         expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [stake]}))).toMatch(/no voters to hand it to/);
         const live = withSub({type: "DAO_TYPE_STAKE", members: [], electorate: {sr_ids: ["1"], dr_denom: ""}});
-        expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [live]}))).toBeUndefined();
+        const opt = (own: string) => [{kind: "sr" as const, id: "1", stakingDenom: "ulmn", lock: 7, staked: "100", own}];
+        const liveSub = (own: string | null): SubDao => ({...SUB_DAO, dao: live.dao, sources: own === null ? null : opt(own)});
+        expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [liveSub("0")]}))).toBeUndefined();
+        // the sub-DAO's own stake never votes: sources that only it staked in are no electorate (1113)
+        expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [liveSub("100")]}))).toMatch(/no voters to hand it to/);
+        expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [liveSub(null)]}))).toMatch(/could not be read/);
+        expect(subAdminEntry.validate(fields({mode: "voters"}), ctx({subDaos: [{...liveSub("0"), sources: []}]}))).toMatch(/could not be read/);
     });
 
     it("warns when a nomination is already pending, and what handing over means", () => {
@@ -78,6 +84,13 @@ describe("the context of a sub-DAO's actions", () => {
         expect(sub.subDaos).toEqual([]);
         expect(sub.incoming).toEqual([]);
         expect(sub.params).toBe(PARAMS);
+    });
+
+    it("uses the sub-DAO's own sources and its own stake in them, not the parent's", () => {
+        const own = [{kind: "sr" as const, id: "5", stakingDenom: "ulmn", lock: 7, staked: "100", own: "40"}];
+        const parent = [{kind: "sr" as const, id: "9", stakingDenom: "ulmn", lock: 7, staked: "999", own: "0"}];
+        expect(subContext(ctx({sources: parent}), {...SUB_DAO, sources: own}).sources).toEqual(own);
+        expect(subContext(ctx({sources: parent}), {...SUB_DAO, sources: null}).sources).toBeNull();
     });
 });
 

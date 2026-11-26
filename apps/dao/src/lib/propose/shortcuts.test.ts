@@ -3,7 +3,7 @@ import {DAO, DAO_ADDRESS, FOURTH, OTHER, WALLET} from "@/test/composer-fixtures"
 import {shortcutDraft, shortcutHref, shortcutOf} from "./shortcuts";
 
 const key = () => "k1";
-const dao = {type: DAO.type, members: [WALLET, OTHER], address: DAO_ADDRESS};
+const dao = {type: DAO.type, members: [WALLET, OTHER], address: DAO_ADDRESS, config: {...DAO.config, open_submission: true}};
 
 describe("the shortcut link", () => {
     it("names a shortcut only for join and leave", () => {
@@ -33,6 +33,11 @@ describe("the draft a shortcut opens", () => {
 
     it("takes the address from the wallet in lowercase, whatever case it is written in", () => {
         expect(shortcutDraft("join", dao, FOURTH.toUpperCase(), key)?.actions[0].fields.add).toBe(FOURTH);
+    });
+
+    it("join needs a DAO open to submissions, leave needs another member to stay", () => {
+        expect(shortcutDraft("join", {...dao, config: {...dao.config, open_submission: false}}, FOURTH, key)).toBeNull();
+        expect(shortcutDraft("leave", {...dao, members: [WALLET]}, WALLET, key)).toBeNull();
     });
 
     it("does not apply to a member joining, a non-member leaving, a stake DAO, or no wallet", () => {

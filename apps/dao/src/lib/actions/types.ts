@@ -17,6 +17,8 @@ export interface ActionDraft {
 export interface SubDao {
     dao: Pick<Dao, 'id' | 'address' | 'type' | 'config' | 'members' | 'electorate' | 'admin' | 'name' | 'description' | 'pending_admin'>;
     treasury: DaoCoin[] | null;
+    /** The staking sources with this sub-DAO's own stake in each (what its electorate checks read); `[]` for a member-list DAO, null when unreadable. */
+    sources: ElectorateOption[] | null;
 }
 
 /** A staking source a stake DAO could vote with, and what the DAO's own account has staked in it (that stake never votes). */

@@ -15,6 +15,7 @@ export interface RelationChain {
 
 /** BZE Scan's side: which DAOs say they nominated an account. Throws `ScanUnavailableError` when Scan does not answer. */
 export interface RelationScan {
+    /** At most `NOMINATION_LIMIT` ids; a full answer means there may be more. */
     daosNominating(address: string): Promise<{id: string}[]>;
 }
 
@@ -29,6 +30,8 @@ export interface Relations {
     sources: ElectorateOption[] | null;
 }
 
+/** What one Scan read of nominations holds; an answer this full may be cut. */
+export const NOMINATION_LIMIT = 20;
 const MAX_SUB_PAGES = 10;
 /** The sub-DAOs whose treasury is read up front (the treasuries are what a payment from a sub-DAO chooses from). */
 const MAX_TREASURIES = 50;
@@ -46,6 +49,8 @@ async function loadSubDaos(chain: RelationChain, dao: Pick<Dao, 'address'>): Pro
             return Promise.all(subs.map(async (sub, i): Promise<SubDao> => ({
                 dao: sub,
                 treasury: i < MAX_TREASURIES ? await attempt(() => chain.getBalances(sub.address)) : null,
+                // a stake sub-DAO's electorate checks need its own stake, not this DAO's
+                sources: sub.type === 'DAO_TYPE_STAKE' ? await attempt(() => chain.getStakeOptions(sub.address)) : [],
             })));
         }
         key = result.nextKey;
@@ -63,6 +68,8 @@ async function loadIncoming(deps: RelationDeps, dao: Pick<Dao, 'address'>): Prom
         if (e instanceof ScanUnavailableError) return null;
         throw e;
     }
+    // a full answer may be cut: an incomplete list is not offered as the whole one
+    if (candidates.length >= NOMINATION_LIMIT) return null;
     const read = await Promise.all(candidates.map((c) => deps.chain.getDao(c.id)));
     return read.flatMap((d) => (d && d.pending_admin === dao.address ? [{id: d.id, name: d.name, address: d.address}] : []));
 }
@@ -77,9 +84,8 @@ export async function loadRelations(deps: RelationDeps, dao: Pick<Dao, 'address'
         attempt(() => loadSubDaos(deps.chain, dao)),
         attempt(() => loadIncoming(deps, dao)),
     ]);
-    // the sources are for the electorate form: this DAO's, or a sub-DAO that votes with stake
-    const needSources = dao.type === 'DAO_TYPE_STAKE' || (subDaos ?? []).some((s) => s.dao.type === 'DAO_TYPE_STAKE');
-    const sources = needSources ? await attempt(() => deps.chain.getStakeOptions(dao.address)) : [];
+    // the sources are for this DAO's electorate form; a stake sub-DAO carries its own
+    const sources = dao.type === 'DAO_TYPE_STAKE' ? await attempt(() => deps.chain.getStakeOptions(dao.address)) : [];
     return {subDaos, incoming, sources};
 }
 
@@ -91,7 +97,7 @@ export function createRelationScan(get: ScanGetter): RelationScan {
         async daosNominating(address) {
             let answer;
             try {
-                answer = await get('daos', [['pending_admin', address], ['limit', '20']]);
+                answer = await get('daos', [['pending_admin', address], ['limit', String(NOMINATION_LIMIT)]]);
             } catch (e) {
                 throw new ScanUnavailableError(e instanceof Error ? e.message : 'BZE Scan is unreachable');
             }

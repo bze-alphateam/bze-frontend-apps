@@ -2,7 +2,7 @@ import {describe, expect, it, vi} from "vitest";
 import type {Dao} from "@bze/bze-ui-kit";
 import {ScanUnavailableError} from "../dao-scan";
 import {CONFIG, DAO_ADDRESS, OTHER, SUB_ADDRESS, THIRD} from "@/test/composer-fixtures";
-import {createRelationScan, loadRelations, type RelationChain, type RelationDeps, type RelationScan} from "./relations";
+import {createRelationScan, loadRelations, NOMINATION_LIMIT, type RelationChain, type RelationDeps, type RelationScan} from "./relations";
 
 const dao = (over: Partial<Dao> = {}): Dao => ({
     id: "7", address: SUB_ADDRESS, admin: DAO_ADDRESS, pending_admin: "", type: "DAO_TYPE_STATIC_LIST", name: "Garden club", description: "",
@@ -24,7 +24,7 @@ describe("the sub-DAOs", () => {
     it("lists the DAOs the DAO administers with their treasuries, leaving out the DAO itself (a self-owned DAO is listed under its own address)", async () => {
         const self = dao({id: "4", address: DAO_ADDRESS, admin: DAO_ADDRESS});
         const result = await loadRelations(deps({getDaosByAdmin: async () => ({items: [self, dao()], nextKey: null})}), me);
-        expect(result.subDaos).toEqual([{dao: dao(), treasury: [{denom: "ubze", amount: "5"}]}]);
+        expect(result.subDaos).toEqual([{dao: dao(), treasury: [{denom: "ubze", amount: "5"}], sources: []}]);
     });
 
     it("reads every page", async () => {
@@ -49,7 +49,7 @@ describe("the sub-DAOs", () => {
     it("a treasury that cannot be read is null for that sub-DAO only", async () => {
         const getBalances = vi.fn(async (): Promise<{denom: string; amount: string}[]> => { throw new Error("down"); });
         const result = await loadRelations(deps({getDaosByAdmin: async () => ({items: [dao()], nextKey: null}), getBalances}), me);
-        expect(result.subDaos).toEqual([{dao: dao(), treasury: null}]);
+        expect(result.subDaos).toEqual([{dao: dao(), treasury: null, sources: []}]);
     });
 });
 
@@ -60,6 +60,12 @@ describe("the nominations", () => {
         const getDao = vi.fn(async (id: string) => ({"9": mine, "10": stranger})[id] ?? null);
         const result = await loadRelations(deps({getDao}, {daosNominating: async () => [{id: "9"}, {id: "10"}, {id: "11"}]}), me);
         expect(result.incoming).toEqual([{id: "9", name: "Hive", address: OTHER}]);
+    });
+
+    it("is unknown (null) when Scan answers with a full page: more may be cut off", async () => {
+        const full = Array.from({length: NOMINATION_LIMIT}, (_, i) => ({id: String(i + 1)}));
+        const result = await loadRelations(deps({}, {daosNominating: async () => full}), me);
+        expect(result.incoming).toBeNull();
     });
 
     it("is unknown (null) when Scan does not answer, and when the chain cannot confirm a candidate", async () => {
@@ -78,13 +84,22 @@ describe("the staking sources", () => {
         expect(getStakeOptions).toHaveBeenCalledWith(DAO_ADDRESS);
     });
 
-    it("are read for a member-list DAO only when it administers a stake DAO", async () => {
-        const getStakeOptions = vi.fn(async () => []);
+    it("a member-list DAO reads none for itself; a stake sub-DAO's are read for that sub-DAO's own account", async () => {
+        const getStakeOptions = vi.fn(async (address: string) => [{kind: "sr" as const, id: "1", stakingDenom: "ulmn", lock: 7, staked: "5", own: address === SUB_ADDRESS ? "3" : "0"}]);
         await loadRelations(deps({getStakeOptions}), me);
         expect(getStakeOptions).not.toHaveBeenCalled();
         const stakeSub = dao({type: "DAO_TYPE_STAKE", members: []});
-        await loadRelations(deps({getStakeOptions, getDaosByAdmin: async () => ({items: [stakeSub], nextKey: null})}), me);
+        const result = await loadRelations(deps({getStakeOptions, getDaosByAdmin: async () => ({items: [stakeSub], nextKey: null})}), me);
         expect(getStakeOptions).toHaveBeenCalledTimes(1);
+        expect(getStakeOptions).toHaveBeenCalledWith(SUB_ADDRESS);
+        expect(result.subDaos?.[0].sources?.[0].own).toBe("3");
+        expect(result.sources).toEqual([]);
+    });
+
+    it("a stake sub-DAO whose stake cannot be read has null sources, not none", async () => {
+        const stakeSub = dao({type: "DAO_TYPE_STAKE", members: []});
+        const result = await loadRelations(deps({getStakeOptions: async () => { throw new Error("x"); }, getDaosByAdmin: async () => ({items: [stakeSub], nextKey: null})}), me);
+        expect(result.subDaos?.[0].sources).toBeNull();
     });
 
     it("a failed read is unreadable (null)", async () => {
@@ -97,7 +112,7 @@ describe("the Scan reader", () => {
     it("asks for the DAOs nominating an address, through the app's proxy", async () => {
         const get = vi.fn(async () => ({status: 200, body: {items: [{id: 9, name: "Hive"}, {id: "10"}, {nope: true}], next_cursor: null}}));
         await expect(createRelationScan(get).daosNominating(DAO_ADDRESS)).resolves.toEqual([{id: "9"}, {id: "10"}]);
-        expect(get).toHaveBeenCalledWith("daos", [["pending_admin", DAO_ADDRESS], ["limit", "20"]]);
+        expect(get).toHaveBeenCalledWith("daos", [["pending_admin", DAO_ADDRESS], ["limit", String(NOMINATION_LIMIT)]]);
     });
 
     it.each([

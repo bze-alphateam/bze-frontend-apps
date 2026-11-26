@@ -98,6 +98,7 @@ export const SUB_DAO: SubDao = {
         electorate: null,
     },
     treasury: [{denom: 'ubze', amount: '90000000'}],
+    sources: [],
 };
 
 /** A DAO with an external admin (not the DAO itself). */

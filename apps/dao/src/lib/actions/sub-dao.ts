@@ -3,6 +3,7 @@ import {
     buildAdminExecuteMsg, buildNominateAdminMsg, buildWithdrawAdminNominationMsg, canonicalAddress,
     daoMsgsSize, packDaoMsgs, validateDaoAdminExecute,
 } from '@bze/bze-ui-kit';
+import {electorateVoterStake} from './electorate';
 import {composeAction, type FindAction} from './compose-action';
 import type {ActionContext, ActionDraft, ActionEntry, ActionFields, SubDao} from './types';
 
@@ -27,7 +28,7 @@ export const SETTLE_TYPE = '/bze.dao.MsgSettleProposal';
 
 /**
  * The context of the actions a DAO runs as one of its sub-DAOs: the sub-DAO signs, its treasury is the
- * one that pays, and it has no sub-DAOs, nominations or own stake of its own that this page knows. The
+ * one that pays, and it has no sub-DAOs or nominations that this page knows. The
  * sub-DAO is administered by the DAO, so it is never self-owned and its electorate may be empty.
  */
 export const subContext = (ctx: ActionContext, sub: SubDao): ActionContext => ({
@@ -36,7 +37,8 @@ export const subContext = (ctx: ActionContext, sub: SubDao): ActionContext => ({
     treasury: sub.treasury,
     subDaos: [],
     incoming: [],
-    sources: ctx.sources && ctx.sources.map((s) => ({...s, own: '0'})),
+    // the sub-DAO's own sources, with the sub-DAO's own stake in them (it never votes)
+    sources: sub.sources,
 });
 
 const subOf = (fields: ActionFields, ctx: ActionContext): SubDao | undefined => ctx.subDaos?.find((s) => s.dao.id === (fields.daoId ?? ''));
@@ -64,9 +66,13 @@ const subAdminCheck = (fields: ActionFields, ctx: ActionContext): string | undef
     if (mode === 'withdraw') return sub.dao.pending_admin === '' ? `${sub.dao.name} has no pending nomination to withdraw.` : undefined;
 
     if (mode === 'voters') {
-        const electorate = sub.dao.electorate;
-        const hasVoters = sub.dao.type === 'DAO_TYPE_STATIC_LIST' ? sub.dao.members.length > 0 : !!electorate && (electorate.sr_ids.length > 0 || electorate.dr_denom !== '');
-        return hasVoters ? undefined : `${sub.dao.name} has no voters to hand it to: set up its voters first (the chain refuses it, error 1113).`;
+        const none = `${sub.dao.name} has no voters to hand it to: set up its voters first (the chain refuses it, error 1113).`;
+        if (sub.dao.type === 'DAO_TYPE_STATIC_LIST') return sub.dao.members.length > 0 ? undefined : none;
+        // a stake DAO needs voting stake in its sources, without its own (the chain's live-electorate check)
+        if (!sub.dao.electorate || sub.sources === null) return sub.dao.electorate ? `The stake of ${sub.dao.name} could not be read, so it cannot be checked that it has voters. Try again in a moment.` : none;
+        const stake = electorateVoterStake(sub.dao.electorate, sub.sources);
+        if (stake === null) return `The stake of ${sub.dao.name} could not be read, so it cannot be checked that it has voters. Try again in a moment.`;
+        return stake.isGreaterThan(0) ? undefined : none;
     }
 
     const nominee = (fields.nominee ?? '').trim();

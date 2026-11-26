@@ -45,6 +45,13 @@ describe('message value from and to JSON', () => {
         })
     })
 
+    it('throws for a packed message of a type without a codec: what is signed must be readable', () => {
+        const typeUrl = '/bze.dao.MsgAdminExecute'
+        const value = msgValueFromJson(typeUrl, {admin: 'bze1c', dao_id: '7', msgs: []})
+        const unknown = {typeUrl: '/nope.MsgUnknown', value: new Uint8Array([1, 2])}
+        expect(() => msgValueToJson(typeUrl, {...(value as object), msgs: [unknown]})).toThrow(/no encoder|no decoder/)
+    })
+
     it('throws for a type without a codec', () => {
         expect(() => msgValueFromJson('/nope.Msg', {})).toThrow(/no decoder/)
         expect(() => msgValueToJson('/nope.Msg', {})).toThrow(/no decoder/)

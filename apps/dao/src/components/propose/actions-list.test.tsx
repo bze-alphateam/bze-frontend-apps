@@ -95,3 +95,22 @@ describe("the actions list", () => {
         expect(screen.getByText(/could not be read right now/)).toBeTruthy();
     });
 });
+
+describe("the nested list's row ids", () => {
+    it("stay unique when a row is removed and another added", () => {
+        let drafts: ActionDraft[] = [];
+        render(<Harness ctx={ctxWith({subDaos: [SUB_DAO]})} onDrafts={(d) => { drafts = d; }} />);
+        fireEvent.click(screen.getByTestId("add-action"));
+        fireEvent.click(screen.getByTestId("add-sub-dao-execute"));
+        const nested = () => screen.getByTestId("nested-actions");
+        for (let i = 0; i < 3; i++) {
+            fireEvent.click(within(nested()).getByTestId("add-action"));
+            fireEvent.click(within(nested()).getByTestId("add-pay"));
+        }
+        fireEvent.click(within(nested()).getAllByTestId("action-remove")[1]);
+        fireEvent.click(within(nested()).getByTestId("add-action"));
+        fireEvent.click(within(nested()).getByTestId("add-pay"));
+        expect(JSON.parse(drafts[0].fields.inner)).toHaveLength(3);
+        expect(within(nested()).getAllByTestId("action-row")).toHaveLength(3);
+    });
+});

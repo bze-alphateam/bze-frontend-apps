@@ -41,6 +41,12 @@ const picked = (electorate: DaoStakeElectorate, options: ElectorateOption[]): {f
 export const votingStake = (found: ElectorateOption[]): BigNumber =>
     found.reduce((sum, o) => sum.plus(BigNumber.maximum(new BigNumber(o.staked || 0), 0)).minus(new BigNumber(o.own || 0)), new BigNumber(0));
 
+/** The stake that can vote through the electorate's sources (without the account's own); null when a source is not in `options`. */
+export const electorateVoterStake = (electorate: DaoStakeElectorate, options: ElectorateOption[]): BigNumber | null => {
+    const read = picked(electorate, options);
+    return 'found' in read ? votingStake(read.found) : null;
+};
+
 const check = (fields: ActionFields, ctx: ActionContext): string | undefined => {
     if (ctx.dao.type !== 'DAO_TYPE_STAKE') return 'Only a stakers DAO has an electorate: this DAO has a member list.';
     if (ctx.sources === null) return 'The staking rewards could not be read, so the voters cannot be changed right now. Try again in a moment.';

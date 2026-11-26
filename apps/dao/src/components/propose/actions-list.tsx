@@ -101,7 +101,7 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
     const add = (type: string) => {
         const entry = findAction(type);
         if (!entry) return;
-        onChange([...drafts, {key: nested ? innerKey(drafts.length) : newKey(), type, fields: entry.initialFields(ctx)}]);
+        onChange([...drafts, {key: nested ? innerKey(1 + Math.max(-1, ...drafts.map((d) => Number(d.key.replace('inner', '')) || 0))) : newKey(), type, fields: entry.initialFields(ctx)}]);
         setPicking(false);
     };
     const move = (index: number, by: -1 | 1) => {
