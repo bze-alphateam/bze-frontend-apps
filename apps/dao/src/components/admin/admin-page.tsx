@@ -52,6 +52,10 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
     }, [deps, id, key]);
     const fingerprint = useCallback(() => (latest.current ? controlFingerprint(latest.current.dao) : ''), []);
 
+    // the wallet the console's flow belongs to: the last one connected, so a disconnect (a failed signing can cause one) keeps what the flow shows
+    const [flowWallet, setFlowWallet] = useState('');
+    if (address && address !== flowWallet) setFlowWallet(address);
+
     const data = result.data;
     const title = view ? `Admin console: ${view.dao.name}` : 'Admin console';
 
@@ -82,17 +86,18 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
                         action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">Back to the DAOs</NextLink></chakra.a>}
                     />
                 )}
-                {view && !relations.loading && !address && (
+                {view && !relations.loading && flowWallet === '' && (
                     <div data-testid="admin-needs-wallet">
                         <PageState kind="empty" title="Connect your wallet" description="The admin console is for the admin of this DAO and for the account nominated to take it over." />
                     </div>
                 )}
-                {view && !relations.loading && address && (
+                {view && !relations.loading && flowWallet !== '' && (
                     <Console
-                        key={`${view.dao.id}:${address}`}
+                        key={`${view.dao.id}:${flowWallet}`}
                         view={view}
                         relations={relations.data ?? {subDaos: null, incoming: null, sources: null}}
-                        wallet={address}
+                        wallet={address ?? null}
+                        flowWallet={flowWallet}
                         nominationChain={nominationChain}
                         refresh={refresh}
                         fingerprint={fingerprint}

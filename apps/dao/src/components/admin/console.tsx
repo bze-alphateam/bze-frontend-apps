@@ -28,7 +28,10 @@ const SENT: Record<ActionKind, string> = {
 interface Props {
     view: DaoView;
     relations: Relations;
-    wallet: string;
+    /** The connected wallet; null while none is (a failed transaction can disconnect it: the console stays, its message with it). */
+    wallet: string | null;
+    /** The wallet the flow belongs to: the last one that was connected, so what a transaction left behind is not lost with a disconnect. */
+    flowWallet: string;
     nominationChain: NominationChain;
     /** Re-reads the DAO from the chain in place after a transaction. */
     refresh: () => Promise<'ok' | 'failed'>;
@@ -43,13 +46,13 @@ interface Props {
  * flow, so a transaction that may still land locks all of them, and after one that landed the DAO is read
  * again and the wallet is sent back to the DAO page.
  */
-export const Console = ({view, relations, wallet, nominationChain, refresh, fingerprint, lookupTx}: Props) => {
+export const Console = ({view, relations, wallet, flowWallet, nominationChain, refresh, fingerprint, lookupTx}: Props) => {
     const {dao} = view;
     const role = consoleRole(dao, wallet);
     const router = useRouter();
     const {tx, progressTrack} = useSDKTx();
     const storage = useMemo(() => browserStorage(), []);
-    const {flow, run} = useAdminFlow({sign: tx, daoId: dao.id, wallet, storage, refresh, fingerprint, lookupTx});
+    const {flow, run} = useAdminFlow({sign: tx, daoId: dao.id, wallet: flowWallet, storage, refresh, fingerprint, lookupTx});
 
     const back = `/dao/${dao.id}`;
     const done = flow.state.phase === 'sent' && flow.state.reread === 'ok';
@@ -58,7 +61,7 @@ export const Console = ({view, relations, wallet, nominationChain, refresh, fing
     }, [done, router, back]);
 
     const onSend = (kind: ActionKind, msgs: Parameters<typeof run>[1]) => void run(kind, msgs);
-    const panels = {view, wallet, locked: flow.locked, onSend};
+    const panels = wallet ? {view, wallet, locked: flow.locked, onSend} : null;
 
     return (
         <Flex direction="column" gap="16px" data-testid="admin-console" data-role={role}>
@@ -66,7 +69,13 @@ export const Console = ({view, relations, wallet, nominationChain, refresh, fing
 
             <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind) => SENT[kind]} subject="DAO" onRelease={flow.state.phase === 'unconfirmed' && flow.state.kind === 'admin-execute' ? flow.release : undefined} />
 
-            {role === 'none' && !done && (
+            {!wallet && !done && (
+                <div data-testid="admin-needs-wallet">
+                    <PageState kind="empty" title="Connect your wallet" description="The admin console is for the admin of this DAO and for the account nominated to take it over." />
+                </div>
+            )}
+
+            {wallet && role === 'none' && !done && (
                 <div data-testid="no-console">
                     <PageState
                         kind="empty"
@@ -79,7 +88,7 @@ export const Console = ({view, relations, wallet, nominationChain, refresh, fing
                 </div>
             )}
 
-            {role === 'admin' && !done && (
+            {panels && role === 'admin' && !done && (
                 <>
                     <Notice status="warning" title="You are this DAO's admin">
                         <span data-testid="admin-warning">You can run any message as the DAO, including spending the whole treasury, and its voters cannot overrule you. Everything you sign is shown before you sign it.</span>
@@ -91,7 +100,7 @@ export const Console = ({view, relations, wallet, nominationChain, refresh, fing
                 </>
             )}
 
-            {role === 'nominee' && !done && <AcceptPanel {...panels} chain={nominationChain} />}
+            {panels && role === 'nominee' && !done && <AcceptPanel {...panels} chain={nominationChain} />}
 
             {flow.state.phase === 'idle' && (
                 <chakra.p m="0" fontSize="12px" color="hg.text.faint" data-testid="ledger-note">These transactions are signed in direct mode, which a Ledger cannot approve yet. Use a software wallet.</chakra.p>

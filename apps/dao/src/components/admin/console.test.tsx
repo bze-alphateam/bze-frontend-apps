@@ -48,14 +48,15 @@ const chainOf = (over: Partial<NominationChain> = {}): NominationChain => ({
     ...over,
 });
 
-function renderConsole(dao: Dao, over: {wallet?: string; relations?: Relations; chain?: NominationChain; lookupTx?: (hash: string) => Promise<TxLanding>; view?: Partial<DaoView>} = {}) {
+function renderConsole(dao: Dao, over: {wallet?: string | null; relations?: Relations; chain?: NominationChain; lookupTx?: (hash: string) => Promise<TxLanding>; view?: Partial<DaoView>} = {}) {
     const refresh = vi.fn(async () => "ok" as const);
     render(
         <ChakraProvider value={defaultSystem}>
             <Console
                 view={viewOf(dao, over.view)}
                 relations={over.relations ?? noRelations}
-                wallet={over.wallet ?? WALLET}
+                wallet={over.wallet === undefined ? WALLET : over.wallet}
+                flowWallet={WALLET}
                 nominationChain={over.chain ?? chainOf()}
                 refresh={refresh}
                 fingerprint={() => `${dao.admin}|${dao.pending_admin}`}
@@ -95,6 +96,24 @@ describe("who gets the console", () => {
         for (const id of ["execute-panel", "nominate-panel", "handover-panel"]) expect(screen.getByTestId(id)).toBeInTheDocument();
         // no nomination yet: nothing to withdraw
         expect(screen.queryByTestId("withdraw-panel")).toBeNull();
+    });
+});
+
+describe("a wallet that disconnects", () => {
+    it("takes the panels away but keeps what a failed signing said", async () => {
+        txMock.mockImplementation(async (_msgs, o) => { o.onFailure("Can not find suitable signing client.", {stage: "prepare"}); return false; });
+        const view = viewOf(administered);
+        const props = {view, relations: noRelations, flowWallet: WALLET, nominationChain: chainOf(), refresh: async () => "ok" as const, fingerprint: () => "x", lookupTx: async (): Promise<TxLanding> => "notfound"};
+        const {rerender} = render(<ChakraProvider value={defaultSystem}><Console {...props} wallet={WALLET} /></ChakraProvider>);
+        await userEvent.click(screen.getByTestId("handover-understood"));
+        fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "Founders"}});
+        await userEvent.click(screen.getByTestId("handover-submit"));
+        await waitFor(() => expect(screen.getByTestId("action-error")).toBeInTheDocument());
+
+        rerender(<ChakraProvider value={defaultSystem}><Console {...props} wallet={null} /></ChakraProvider>);
+        expect(screen.getByTestId("action-error")).toHaveTextContent("Can not find suitable signing client.");
+        expect(screen.getByTestId("admin-needs-wallet")).toBeInTheDocument();
+        expect(screen.queryByTestId("execute-panel")).toBeNull();
     });
 });
 
