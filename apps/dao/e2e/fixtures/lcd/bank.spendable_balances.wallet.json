@@ -1,0 +1,15 @@
+{
+  "source": "hand-written (empty balances of the e2e wallet)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/cosmos/bank/v1beta1/spendable_balances/bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
+  "query": {},
+  "status": 200,
+  "body": {
+    "balances": [],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

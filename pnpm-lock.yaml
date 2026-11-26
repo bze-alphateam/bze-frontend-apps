@@ -286,6 +286,124 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@20.19.43)(jsdom@25.0.1(bufferutil@4.1.0))(vite@8.1.3(@types/node@20.19.43)(esbuild@0.27.7)(yaml@2.9.0))
 
+  apps/dao:
+    dependencies:
+      '@bze/beepocket-connector':
+        specifier: 0.1.0
+        version: 0.1.0(@interchain-kit/core@0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
+      '@bze/bze-ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      '@bze/bzejs':
+        specifier: 4.0.0
+        version: 4.0.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@chain-registry/utils':
+        specifier: ^2.0.285
+        version: 2.0.285
+      '@chakra-ui/react':
+        specifier: ^3.22.0
+        version: 3.36.0(@emotion/react@11.14.0(@types/react@19.2.17)(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@emotion/react':
+        specifier: ^11.14.0
+        version: 11.14.0(@types/react@19.2.17)(react@19.2.7)
+      '@interchain-kit/core':
+        specifier: 0.11.0
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-kit/cosmostation-extension':
+        specifier: 0.11.0
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-kit/keplr-extension':
+        specifier: 0.11.0
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(starknet@8.9.2)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-kit/leap-extension':
+        specifier: 0.11.0
+        version: 0.11.0(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-kit/react':
+        specifier: 0.11.1
+        version: 0.11.1(@chain-registry/v2-types@0.53.146)(@chain-registry/v2@1.71.237)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(bufferutil@4.1.0)(immer@11.1.8)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
+      '@interchain-ui/react':
+        specifier: 1.26.3
+        version: 1.26.3(@types/react@19.2.17)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-query':
+        specifier: ^5.96.2
+        version: 5.96.2(react@19.2.7)
+      '@wagmi/core':
+        specifier: 3.4.2
+        version: 3.4.2(@tanstack/query-core@5.96.2)(@types/react@19.2.17)(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(zod@4.4.3))
+      '@walletconnect/ethereum-provider':
+        specifier: ^2.23.9
+        version: 2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3)
+      bignumber.js:
+        specifier: ^9.3.1
+        version: 9.3.1
+      chain-registry:
+        specifier: ^2.0.285
+        version: 2.0.285
+      next:
+        specifier: 16.4.5
+        version: 16.4.5(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+      react-icons:
+        specifier: ^5.5.0
+        version: 5.6.0(react@19.2.7)
+      viem:
+        specifier: 2.47.10
+        version: 2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3)
+      wagmi:
+        specifier: 3.6.1
+        version: 3.6.1(@safe-global/safe-apps-provider@0.18.6(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))(@tanstack/query-core@5.96.2)(@tanstack/react-query@5.96.2(react@19.2.7))(@types/react@19.2.17)(@walletconnect/ethereum-provider@2.23.9(@types/react@19.2.17)(bufferutil@4.1.0)(immer@11.1.8)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))(utf-8-validate@6.0.6)(zod@4.4.3))(immer@11.1.8)(ox@0.14.29(typescript@5.9.3)(zod@4.4.3))(react@19.2.7)(typescript@5.9.3)(viem@2.47.10(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.4.3))
+    devDependencies:
+      '@bze/vitest-preset':
+        specifier: workspace:*
+        version: link:../../packages/vitest-preset
+      '@eslint/eslintrc':
+        specifier: ^3
+        version: 3.3.5
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.64.0
+      '@testing-library/jest-dom':
+        specifier: 'catalog:'
+        version: 6.10.0(@testing-library/dom@10.4.1)
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@testing-library/user-event':
+        specifier: 'catalog:'
+        version: 14.6.1(@testing-library/dom@10.4.1)
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      '@types/react':
+        specifier: ^19
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19
+        version: 19.2.3(@types/react@19.2.17)
+      eslint:
+        specifier: ^9
+        version: 9.39.4
+      eslint-config-next:
+        specifier: 16.2.1
+        version: 16.2.1(eslint@9.39.4)(typescript@5.9.3)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@20.19.43)(jsdom@25.0.1(bufferutil@4.1.0))(vite@8.1.3(@types/node@20.19.43)(esbuild@0.27.7)(yaml@2.9.0))
+
   apps/dex:
     dependencies:
       '@bze/beepocket-connector':

@@ -90,6 +90,18 @@ export const HIVE_GLOW_APPS: Record<HiveGlowAppKey, HiveGlowAppColors> = {
         inkDark: '#125C32',
         glow: { x: '50%', c1: 0.2, c2: 0.08 },
     },
+    dao: {
+        gradient: ['#8F8CFF', '#5B55E8'],
+        onDark: '#8F8CFF',
+        button: ['#6562EE', '#4840CC'],
+        buttonText: '#FFFFFF',
+        buttonHover: ['#7471F2', '#5650D6'],
+        accentText: '#B9B7FF',
+        accentTextHover: '#D9D8FF',
+        ink: '#4F48D0',
+        inkDark: '#3B35A8',
+        glow: { x: '30%', c1: 0.26, c2: 0.09 },
+    },
 };
 
 export interface HiveGlowNeutrals {

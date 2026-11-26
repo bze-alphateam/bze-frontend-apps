@@ -1,0 +1,28 @@
+{
+  "source": "hand-written (BFE-368 shape, not recorded)",
+  "recorded": "2026-11-26",
+  "method": "GET",
+  "path": "/api/scan/daos",
+  "query": {
+    "source": "sr/000000000017",
+    "limit": "100"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "id": 4,
+        "name": "Stakers club",
+        "type": "stake",
+        "address": "bze1qp5pkg3fxqmnu32v2ddxz6r0we7cfzuje6lt2s",
+        "admin": "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g",
+        "admin_label": null,
+        "self_governed": false,
+        "created_time": "2026-11-04T10:00:00Z",
+        "proposals_open": 2
+      }
+    ],
+    "next_cursor": null,
+    "supported": true
+  }
+}

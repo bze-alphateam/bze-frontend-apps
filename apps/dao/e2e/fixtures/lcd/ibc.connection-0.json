@@ -1,0 +1,36 @@
+{
+  "source": "https://testnet.getbze.com/ibc/core/connection/v1/connections/connection-0",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/ibc/core/connection/v1/connections/connection-0",
+  "query": {},
+  "status": 200,
+  "body": {
+    "connection": {
+      "client_id": "07-tendermint-0",
+      "versions": [
+        {
+          "identifier": "1",
+          "features": [
+            "ORDER_ORDERED",
+            "ORDER_UNORDERED"
+          ]
+        }
+      ],
+      "state": "STATE_OPEN",
+      "counterparty": {
+        "client_id": "07-tendermint-0",
+        "connection_id": "connection-0",
+        "prefix": {
+          "key_prefix": "aWJj"
+        }
+      },
+      "delay_period": "0"
+    },
+    "proof": null,
+    "proof_height": {
+      "revision_number": "3",
+      "revision_height": "3692964"
+    }
+  }
+}

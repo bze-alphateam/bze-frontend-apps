@@ -1,0 +1,39 @@
+{
+  "source": "https://testnet.getbze.com/bze/epochs/epochs",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/epochs/epochs",
+  "query": {},
+  "status": 200,
+  "body": {
+    "epochs": [
+      {
+        "identifier": "day",
+        "start_time": "2026-02-23T08:50:59.969434761Z",
+        "duration": "86400s",
+        "current_epoch": "231",
+        "current_epoch_start_time": "2026-10-11T08:50:59.969434761Z",
+        "epoch_counting_started": true,
+        "current_epoch_start_height": "3684523"
+      },
+      {
+        "identifier": "hour",
+        "start_time": "2026-02-23T08:50:59.969434761Z",
+        "duration": "3600s",
+        "current_epoch": "5533",
+        "current_epoch_start_time": "2026-10-11T20:50:59.969434761Z",
+        "epoch_counting_started": true,
+        "current_epoch_start_height": "3692663"
+      },
+      {
+        "identifier": "week",
+        "start_time": "2026-02-23T08:50:59.969434761Z",
+        "duration": "604800s",
+        "current_epoch": "33",
+        "current_epoch_start_time": "2026-10-05T08:50:59.969434761Z",
+        "epoch_counting_started": true,
+        "current_epoch_start_height": "3588017"
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "source": "https://testnet.getbze.com/bze/rewards/all_denom_rewards?pagination.count_total=false&pagination.key=&pagination.limit=500&pagination.offset=0&pagination.reverse=false",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/bze/rewards/all_denom_rewards",
+  "query": {
+    "pagination.count_total": "false",
+    "pagination.key": "",
+    "pagination.limit": "500",
+    "pagination.offset": "0",
+    "pagination.reverse": "false"
+  },
+  "status": 200,
+  "body": {
+    "list": [
+      {
+        "staking_denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/noadmin",
+        "lock": 7,
+        "min_stake": "0",
+        "staked_amount": "20000000"
+      }
+    ],
+    "pagination": {
+      "next_key": null,
+      "total": "0"
+    }
+  }
+}

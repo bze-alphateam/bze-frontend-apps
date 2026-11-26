@@ -1,0 +1,28 @@
+{
+  "source": "https://testnet.getbze.com/ibc/core/channel/v1/channels/channel-0/ports/transfer",
+  "recorded": "2026-10-11",
+  "method": "GET",
+  "path": "/ibc/core/channel/v1/channels/channel-0/ports/transfer",
+  "query": {},
+  "status": 200,
+  "body": {
+    "channel": {
+      "state": "STATE_OPEN",
+      "ordering": "ORDER_UNORDERED",
+      "counterparty": {
+        "port_id": "transfer",
+        "channel_id": "channel-0"
+      },
+      "connection_hops": [
+        "connection-0"
+      ],
+      "version": "ics20-1",
+      "upgrade_sequence": "0"
+    },
+    "proof": null,
+    "proof_height": {
+      "revision_number": "3",
+      "revision_height": "3692963"
+    }
+  }
+}

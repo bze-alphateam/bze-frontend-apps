@@ -12,7 +12,8 @@ bze-frontend-apps/
 │   ├── burner/       → bze-burner      (token burner + raffles)
 │   ├── staking/      → bze-staking     (staking UI)
 │   ├── factory/      → bze-factory     (Token Factory — create/manage tokens, pools, markets, rewards)
-│   └── communities/  → bze-communities (per-token pages for `factory/` denoms)
+│   ├── communities/  → bze-communities (per-token pages for `factory/` denoms)
+│   └── dao/          → bze-dao         (DAOs: list, My DAOs; chain v8.3.0 x/dao)
 ├── packages/
 │   └── ui-kit/       → @bze/bze-ui-kit (shared hooks/utils/query/services/UI)
 ├── pnpm-workspace.yaml   ← workspace globs + overrides + patches + build approvals
@@ -62,6 +63,7 @@ differs from the folder name — use the **name** column:
 | Staking     | `apps/staking`     | `bze-staking`     | 3002 |
 | Factory     | `apps/factory`     | `bze-factory`     | 3003 |
 | Communities | `apps/communities` | `bze-communities` | 3004 |
+| DAO         | `apps/dao`         | `bze-dao`         | 3005 |
 
 ```sh
 pnpm --filter bze-dapp-v2     dev   # DEX         → http://localhost:3000
@@ -69,6 +71,7 @@ pnpm --filter bze-burner      dev   # Burner      → http://localhost:3001
 pnpm --filter bze-staking     dev   # Staking     → http://localhost:3002
 pnpm --filter bze-factory     dev   # Factory     → http://localhost:3003
 pnpm --filter bze-communities dev   # Communities → http://localhost:3004
+pnpm --filter bze-dao         dev   # DAO         → http://localhost:3005
 ```
 
 Each app's dev script bakes in its own port (`next dev --webpack -p <port>`), so you can run
@@ -270,7 +273,8 @@ and then deploys them:
 | `develop` | testnet | `testnet-<app>.getbze.com/build.env` | `testnet-<sha8>` | `testnet-<app>.getbze.com` |
 
 Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
-`factory`, `communities`).
+`factory`, `communities`, `dao`). Only the apps in `DEPLOYABLE_APPS` (`docker-publish.yml`) are
+dispatched to the deploy repo; `dao` is built but not deployed until its servers exist.
 
 **Only changed apps are built and deployed.** The first job
 (`.github/scripts/changed-apps.sh`) compares the pushed commit with the commit each
@@ -422,11 +426,13 @@ to that app's `package.json` and reinstall.
 4. `pnpm install`. The workspace picks the app up automatically via the `apps/*` glob, and so does
    Turbo.
 5. **Add the app to the hardcoded lists that the glob doesn't cover** — easy to miss:
-   - `.github/workflows/ci.yml` — two `for app in dex burner staking factory communities` loops
+   - `.github/workflows/ci.yml` — two `for app in dex burner staking factory communities dao` loops
      (env seeding in `build`, and the per-app ESLint in `lint`). Miss the first and the app builds
      with no env; miss the second and its files are never linted.
    - `.github/workflows/docker-publish.yml` — the `APPS` list (`<app dir>:<package name>`) in
      the `changes` job.
+   - `.github/workflows/docker-publish.yml` — `DEPLOYABLE_APPS` too, once the app's deploy targets
+     exist on the server (an app outside it gets its image built, never dispatched).
    - the private ops repo — deploy dir with `build.env`, port pair, vhost, gate allowlist entry
      (see *Deploy* above).
 
