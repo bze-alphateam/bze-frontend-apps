@@ -1,5 +1,6 @@
 "use client"
 
+import { DaoAddressNote } from '@/components/dao-admin/dao-admin-summary'
 import React, { useCallback, useEffect, useState } from 'react'
 import { Button, chakra, Field, Grid, HStack, Input, Text, Textarea, VStack } from '@chakra-ui/react'
 import {
@@ -330,6 +331,7 @@ function TokenNewContent() {
                                 onBlur={() => touch('adminAddress')}
                             />
                             <Field.ErrorText>{errorFor('adminAddress')}</Field.ErrorText>
+                            <DaoAddressNote address={form.adminAddress} />
                         </Field.Root>
                     )}
                 </VStack>

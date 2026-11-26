@@ -29,6 +29,11 @@ test("a Factory token: header and the groups, with no admin action", async ({pag
     const trading = page.getByRole("region", {name: "Trading"});
     await expect(trading.getByText("NOAD/TUSDC pool")).toBeVisible();
     await expect(trading.getByTestId("pair-item")).toContainText("Create DEX market");
+    // Fee settings (BFE-385): read-only without a wallet that is the admin.
+    const feeSettings = trading.getByTestId("fee-settings-item");
+    await expect(feeSettings.getByTestId("fee-setting-transfer")).toContainText("Transfer fee: 1%");
+    await expect(feeSettings.getByTestId("fee-setting-surcharge")).toContainText("Gas surcharge: 50%");
+    await expect(feeSettings.getByRole("button", {name: "Edit"})).toHaveCount(0);
     await expect(trading.getByRole("link", {name: "Create"})).toHaveAttribute("href", new RegExp(`^/create/market\\?base=${NOADMIN}&return=`));
 
     const details = page.getByRole("region", {name: "Details and look"});

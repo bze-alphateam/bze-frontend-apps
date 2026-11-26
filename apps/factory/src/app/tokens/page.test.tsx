@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BigNumber from "bignumber.js";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
@@ -21,6 +21,7 @@ const m = vi.hoisted(() => ({
     query: "",
     replace: vi.fn(),
     navigate: vi.fn(),
+    dao: { supported: vi.fn(), byAddress: vi.fn() },
 }));
 
 vi.mock("@/hooks/useMyTokens", () => ({ useMyTokens: () => m.mine }));
@@ -46,6 +47,8 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssetsContext: () => ({ usdPricesMap: m.prices, updateAssets: m.updateAssets }),
         useToast: () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }),
         getAllDenomRewards: () => m.drs(),
+        isDaoModuleSupported: m.dao.supported,
+        getDaoByAddress: m.dao.byAddress,
     };
 });
 
@@ -100,6 +103,9 @@ beforeEach(() => {
     m.updateAssets.mockReset();
     m.prices = new Map();
     m.mine = { tokens: [], isLoading: false, refreshAdmins: vi.fn() };
+    localStorage.clear();
+    m.dao.supported.mockReset().mockResolvedValue(true);
+    m.dao.byAddress.mockReset().mockResolvedValue(null);
     m.drs.mockReset();
     m.drs.mockResolvedValue([dr(PAGE, "1230000000000"), dr(GUILD, "640000000")]);
     m.address = undefined;
@@ -192,6 +198,28 @@ describe("Created by you", () => {
         const badge = within(await screen.findByTestId("my-token-row")).getByTestId("admin-badge");
         expect(badge).toHaveAttribute("data-kind", kind);
         expect(badge).toHaveTextContent(label);
+    });
+
+    it("names a DAO admin, looking up only the admins of your own tokens", async () => {
+        const DAO_ADDRESS = "bze1sx6ep2vtlzsdj73tseeq3ydahqyt0ey2gs3tg0";
+        m.dao.byAddress.mockImplementation(async (a: string) => (a === DAO_ADDRESS ? { id: "7", name: "Honey Guild" } : null));
+        m.mine.tokens = [mine(HONEY, DAO_ADDRESS), mine(WAX, ME)];
+        renderPage();
+
+        const rows = await screen.findAllByTestId("my-token-row");
+        await waitFor(() => expect(within(rows[0]).getByTestId("admin-badge")).toHaveTextContent("Admin is DAO Honey Guild"));
+        expect(within(rows[1]).getByTestId("admin-badge")).toHaveTextContent("You are admin");
+        // Not the wallet's own address, and not one lookup per row of the directory.
+        expect(m.dao.byAddress.mock.calls).toEqual([[DAO_ADDRESS]]);
+    });
+
+    it("a node without x/dao keeps the address in the badge", async () => {
+        m.dao.supported.mockResolvedValue(false);
+        m.mine.tokens = [mine(HONEY, OTHER)];
+        renderPage();
+
+        expect(await within(await screen.findByTestId("my-token-row")).findByText("Admin is bze1z3…qwg3l")).toBeInTheDocument();
+        expect(m.dao.byAddress).not.toHaveBeenCalled();
     });
 
     it("adds '· fixed' to the supply once the admin is given up", async () => {

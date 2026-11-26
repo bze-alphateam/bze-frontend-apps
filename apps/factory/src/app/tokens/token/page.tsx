@@ -32,6 +32,7 @@ import { SupplyGroup } from '@/components/token-page/supply-group'
 import { StatShimmer, TokenHeader } from '@/components/token-page/token-header'
 import { TradingGroup } from '@/components/token-page/trading-group'
 import { TOKENS_PATH } from '@/lib/tokens-directory'
+import { useDaoAdmin } from '@/hooks/useDaoAdmin'
 import { TOKEN_SECTIONS, adminState, ownerBadge, tokenPageAccess, tokenPageReturn } from '@/lib/workspace'
 
 /** A link from elsewhere to `#rewards` etc.: the sections render after the data, so scroll once they exist. */
@@ -46,9 +47,10 @@ function useScrollToSection() {
 /** The page of one Factory token, for any wallet; admin actions only once the chain says so. */
 function TokenPageBody({ asset }: { asset: Asset }) {
     const { address } = useChain(getChainName())
-    const { admin, mintable, isLoading: isAdminLoading, refresh: refreshAdmin } = useDenomAdmin(asset.denom)
+    const { admin, mintable, mintableKnown, isLoading: isAdminLoading, refresh: refreshAdmin } = useDenomAdmin(asset.denom)
     const { supply, isLoading: isSupplyLoading, refresh: refreshSupply } = useTokenSupply(asset.denom)
     const { balance } = useBalance(asset.denom)
+    const { dao: daoAdmin } = useDaoAdmin(admin)
     const setup = useTokenSetup(asset.denom, { admin, supply })
     useScrollToSection()
 
@@ -67,7 +69,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                 admin={admin}
                 mintable={mintable}
                 isAdminLoading={isAdminLoading}
-                badge={isAdminLoading ? undefined : ownerBadge(asset.denom, admin, address)}
+                badge={isAdminLoading ? undefined : ownerBadge(asset.denom, admin, address, daoAdmin)}
                 stats={{
                     supply: isSupplyLoading ? <StatShimmer /> : `${prettyAmount(supplyDisplay)} ${ticker}`,
                     held: address ? `${prettyAmount(uAmountToBigNumberAmount(balance.amount, asset.decimals))} ${ticker}` : undefined,
@@ -84,7 +86,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                     {access === 'unknown' && <AdminUnknownNotice onRetry={() => void refreshAdmin()} />}
 
                     <Grid templateColumns={{ base: 'minmax(0, 1fr)', lg: 'repeat(2, minmax(0, 1fr))' }} gap="16px" alignItems="start">
-                        <SupplyGroup {...groupProps} mintable={mintable} supplyDisplay={supplyDisplay} onMinted={refreshSupply} />
+                        <SupplyGroup {...groupProps} mintable={mintable} mintableKnown={mintableKnown} onMintingDisabled={() => void refreshAdmin()} supplyDisplay={supplyDisplay} onMinted={refreshSupply} />
                         <DetailsGroup {...groupProps} />
                         <TradingGroup {...groupProps} />
                         <RewardsGroup {...groupProps} />
@@ -94,6 +96,7 @@ function TokenPageBody({ asset }: { asset: Asset }) {
                         isChecking={isAdminLoading}
                         asset={asset}
                         admin={admin}
+                        daoAdmin={daoAdmin}
                         adminState={state}
                         supplyDisplay={supplyDisplay}
                         supply={supply}

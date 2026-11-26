@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
@@ -15,7 +15,8 @@ type TxOpts = {
     onSuccess?: (res: { txhash: string; height: number; code: number }) => void;
     onFailure?: (reason: string, details?: { stage: string }) => void;
 };
-const { wallet, assetDenoms, feeState, payment, setupState, navigateMock, txMock, refreshAssetsAfterTxMock } = vi.hoisted(() => ({
+const { wallet, assetDenoms, feeState, payment, setupState, navigateMock, txMock, refreshAssetsAfterTxMock, daoQueries } = vi.hoisted(() => ({
+    daoQueries: { supported: vi.fn(), byAddress: vi.fn(), controller: vi.fn() },
     wallet: { address: "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l" as string | undefined },
     assetDenoms: { current: [] as string[] },
     feeState: { fee: { denom: "ubze", amount: "25000000000" } as { denom: string; amount: string } | undefined },
@@ -68,6 +69,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useAssetPrice: () => ({ hasPrice: false, uAmountUsdValue: () => new BigNumber(0) }),
         useCreationFees: () => ({ fees: { createDenomFee: feeState.fee }, isLoading: false }),
         getDexApp: () => ({ href: "https://dex.test" }),
+        isDaoModuleSupported: daoQueries.supported,
+        getDaoByAddress: daoQueries.byAddress,
+        getDaoController: daoQueries.controller,
         getExplorerTxURL: (hash: string) => `https://explorer.test/txs/${hash}`,
         useToast: () => ({ toast: { success: vi.fn() } }),
         TokenLogo: ({ symbol }: { symbol: string }) => <span>{symbol}</span>,
@@ -140,6 +144,9 @@ function txSucceeds() {
 
 beforeEach(() => {
     localStorage.clear();
+    daoQueries.supported.mockReset().mockResolvedValue(true);
+    daoQueries.byAddress.mockReset().mockResolvedValue(null);
+    daoQueries.controller.mockReset().mockResolvedValue({ controller: "bze1x", end_reason: "SELF_OWNED", path: [] });
     wallet.address = ME;
     assetDenoms.current = [];
     feeState.fee = { denom: "ubze", amount: "25000000000" };
@@ -269,7 +276,7 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             const q = step("Permissions");
             expect(within(q).getByRole("radio", { name: /My wallet/ })).toHaveAttribute("aria-checked", "true");
             expect(within(q).getByRole("radio", { name: /Another address/ })).toHaveAttribute("aria-checked", "false");
-            expect(within(q).getByText("Mint and edit details")).toBeInTheDocument();
+            expect(within(q).getByText("Mint, edit details and change fee settings")).toBeInTheDocument();
             expect(within(q).getByText("A team or multisig wallet")).toBeInTheDocument();
             expect(within(q).queryByText("You can transfer or renounce admin later on the token's page, under Permissions.")).not.toBeInTheDocument();
             expect(within(q).queryByText(/renounce now/i)).not.toBeInTheDocument();
@@ -289,6 +296,30 @@ describe("Create a token (/token/new)", { timeout: 20_000 }, () => {
             await userEvent.tab();
             expect(within(q).getByText("That's your own wallet. Pick My wallet instead.")).toBeInTheDocument();
             expect(button(q, "Review token")).toBeDisabled();
+        });
+
+        it("shows the DAO line under the address when the other admin is a DAO's account", async () => {
+            daoQueries.byAddress.mockResolvedValue({ id: "7", name: "Honey Guild", type: "DAO_TYPE_STATIC_LIST", address: OTHER });
+            renderPage();
+            await answerDetails();
+            await answerSupply();
+            const q = step("Permissions");
+            await userEvent.click(within(q).getByRole("radio", { name: /Another address/ }));
+            await userEvent.type(within(q).getByPlaceholderText("bze1…"), OTHER);
+            expect(await within(q).findByTestId("dao-admin-summary")).toHaveTextContent("DAO Honey Guild (#7)");
+            expect(await within(q).findByTestId("dao-admin-controller")).toHaveTextContent("Controlled by its voters");
+            expect(button(q, "Review token")).toBeEnabled();
+        });
+
+        it("shows no DAO line for a plain address", async () => {
+            renderPage();
+            await answerDetails();
+            await answerSupply();
+            const q = step("Permissions");
+            await userEvent.click(within(q).getByRole("radio", { name: /Another address/ }));
+            await userEvent.type(within(q).getByPlaceholderText("bze1…"), OTHER);
+            await waitFor(() => expect(daoQueries.byAddress).toHaveBeenCalledWith(OTHER));
+            expect(within(q).queryByTestId("dao-admin-summary")).not.toBeInTheDocument();
         });
 
         it("hands the admin to another address", async () => {

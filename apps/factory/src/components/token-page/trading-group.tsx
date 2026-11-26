@@ -20,6 +20,7 @@ import { type ReturnTo, withReturn } from '@/components/guided/return-to'
 import { CHOOSE_MARKET_PATH, dexMarketHref, dexPoolHref, simpleRewardHref } from '@/lib/create-routes'
 import { poolLine } from '@/lib/token-page'
 import { ActionGroup, ActionItem, ItemLink, type GroupProps } from './action-group'
+import { FeeSettingsItem } from './fee-settings-item'
 
 function CreatedBadge() {
     return (
@@ -98,7 +99,7 @@ function MarketRow({ market, address }: { market: Market; address?: string }) {
  * Trading: every pool and order-book market with the token on either side, whoever created it, and
  * the way to create a DEX market for it. A halted token gets the notice and no create buttons.
  */
-export function TradingGroup({ asset, back }: GroupProps) {
+export function TradingGroup({ asset, access, back }: GroupProps) {
     const { address } = useChain(getChainName())
     const { pools: allPools, isLoading: isPoolsLoading } = useLiquidityPools()
     const { markets: allMarkets, isLoading: isMarketsLoading } = useMarkets()
@@ -139,6 +140,7 @@ export function TradingGroup({ asset, back }: GroupProps) {
                     )}
                 </>
             )}
+            <FeeSettingsItem asset={asset} access={access} />
             {!isHalted && (
                 <ActionItem
                     testId="pair-item"
