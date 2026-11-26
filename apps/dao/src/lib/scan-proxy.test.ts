@@ -69,14 +69,29 @@ describe("DAO scan proxy", () => {
         expect(fetcher).toHaveBeenCalledTimes(2);
     });
 
-    it("keeps a finished proposal for good and marks it immutable", async () => {
-        fetcher.mockImplementation(async () => ok({id: 7, status: "executed"}));
+    it("keeps a finished, cleaned-up proposal for good and marks it immutable", async () => {
+        fetcher.mockImplementation(async () => ok({id: 7, status: "executed", cleaned_height: 900}));
         await call("dao-proposals/7");
         const again = await call("dao-proposals/7");
 
         expect(fetcher).toHaveBeenCalledTimes(1);
         expect(again.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
-        expect(await again.json()).toEqual({id: 7, status: "executed"});
+        expect(await again.json()).toEqual({id: 7, status: "executed", cleaned_height: 900});
+    });
+
+    it("re-reads a finished proposal the chain has not cleaned up yet: the cleanup is still to come", async () => {
+        fetcher.mockImplementation(async () => ok({id: 7, status: "executed", cleaned_height: null}));
+        await call("dao-proposals/7");
+        const again = await call("dao-proposals/7");
+
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(again.headers.get("Cache-Control")).toBe("no-store");
+    });
+
+    it("forwards the option filter and paging of a proposal's votes", async () => {
+        fetcher.mockImplementation(async () => ok({items: []}));
+        await call("dao-proposals/7/votes", "?option=yes&cursor=abc&limit=20&evil=1");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/dao-proposals/7/votes?option=yes&cursor=abc&limit=20`, expect.anything());
     });
 
     it("never keeps a list, even one of finished proposals", async () => {

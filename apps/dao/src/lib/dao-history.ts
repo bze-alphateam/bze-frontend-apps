@@ -32,7 +32,7 @@ const CONFIG_FIELDS: Record<string, string> = {
     kept_deposit_destination: 'where a kept deposit goes',
 };
 
-const fieldName = (field: string): string => CONFIG_FIELDS[field] ?? field.replace(/_/g, ' ');
+export const fieldName = (field: string): string => CONFIG_FIELDS[field] ?? field.replace(/_/g, ' ');
 
 /** The event type without the package prefix: "bze.dao.EventDaoCreated" and "EventDaoCreated" are the same. */
 export const eventKind = (type: string): string => type.slice(type.lastIndexOf('.') + 1);

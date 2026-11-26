@@ -6,20 +6,22 @@ import {chakra, Flex, SimpleGrid} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import {getChainName, PageContainer, PageState, SegmentedTabs, Shimmer} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
-import {liveDaoViewDeps} from '@/lib/dao-chain';
+import {liveDaoViewDeps, liveProposalDeps} from '@/lib/dao-chain';
 import {actionsFor, DAO_FEATURES} from '@/lib/dao-actions';
 import {loadDaoExtras, loadDaoView, type DaoView, type DaoViewDeps} from '@/lib/dao-view-loader';
+import type {ProposalDeps} from '@/lib/proposal-loader';
 import {InnerHero} from '@/components/ui/layout-hero';
 import {Unsupported} from '../unsupported';
 import {DaoHeader} from './header';
 import {HistoryTab} from './history-tab';
 import {MyPower} from './my-power';
+import {ProposalsTab} from './proposals-tab';
 import {ControlPanel, RulesPanel, TreasuryPanel} from './panels';
 import {JoinPanel, VotersPanel} from './voters-panels';
 
-type Tab = 'overview' | 'history';
+type Tab = 'overview' | 'proposals' | 'history';
 
-const Body = ({deps, view, wallet}: {deps: DaoViewDeps; view: DaoView; wallet: string | null}) => {
+const Body = ({deps, proposalDeps, view, wallet}: {deps: DaoViewDeps; proposalDeps: ProposalDeps; view: DaoView; wallet: string | null}) => {
     const {dao} = view;
     const [tab, setTab] = useState<Tab>('overview');
     const [retry, setRetry] = useState(0);
@@ -54,7 +56,7 @@ const Body = ({deps, view, wallet}: {deps: DaoViewDeps; view: DaoView; wallet: s
                 aria-label="DAO sections"
                 value={tab}
                 onChange={setTab}
-                options={[{value: 'overview', label: 'Overview'}, {value: 'history', label: 'History'}]}
+                options={[{value: 'overview', label: 'Overview'}, {value: 'proposals', label: 'Proposals'}, {value: 'history', label: 'History'}]}
             />
             {tab === 'overview' ? (
                 <SimpleGrid columns={{base: 1, lg: 2}} gap="16px" alignItems="start" data-testid="overview-tab">
@@ -65,6 +67,8 @@ const Body = ({deps, view, wallet}: {deps: DaoViewDeps; view: DaoView; wallet: s
                     <JoinPanel dao={dao} sources={view.sources} wallet={wallet} actions={actions} />
                     {wallet && <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />}
                 </SimpleGrid>
+            ) : tab === 'proposals' ? (
+                <ProposalsTab deps={proposalDeps} daoId={dao.id} nameOf={nameOf} />
             ) : (
                 <HistoryTab deps={deps} daoId={dao.id} daoAddress={dao.address} nameOf={nameOf} />
             )}
@@ -73,7 +77,7 @@ const Body = ({deps, view, wallet}: {deps: DaoViewDeps; view: DaoView; wallet: s
 };
 
 /** The page of one DAO: who it is, who controls it, what it owns, its rules, its voters and its history. */
-export const DaoPage = ({id, deps = liveDaoViewDeps}: {id: string; deps?: DaoViewDeps}) => {
+export const DaoPage = ({id, deps = liveDaoViewDeps, proposalDeps = liveProposalDeps}: {id: string; deps?: DaoViewDeps; proposalDeps?: ProposalDeps}) => {
     const {address} = useChain(getChainName());
     const [reload, setReload] = useState(0);
     const result = useAsync(`${id}:${reload}`, () => loadDaoView(deps, id));
@@ -107,7 +111,7 @@ export const DaoPage = ({id, deps = liveDaoViewDeps}: {id: string; deps?: DaoVie
                         action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">Back to the DAOs</NextLink></chakra.a>}
                     />
                 )}
-                {data?.state === 'ok' && <Body deps={deps} view={data.view} wallet={address ?? null} />}
+                {data?.state === 'ok' && <Body deps={deps} proposalDeps={proposalDeps} view={data.view} wallet={address ?? null} />}
             </PageContainer>
         </>
     );

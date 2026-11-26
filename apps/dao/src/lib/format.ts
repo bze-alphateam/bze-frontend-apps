@@ -68,3 +68,21 @@ export function formatRatio(ratio: string): string {
 export function shortAddress(address: string): string {
     return address.length > 20 ? `${address.slice(0, 10)}…${address.slice(-6)}` : address;
 }
+
+/**
+ * A time relative to `nowMs`: "in 2 days", "3 hours ago", "just now". The clock is a parameter so
+ * the text is testable; empty when the time is missing or unreadable.
+ */
+export function formatRelative(iso: string | null | undefined, nowMs: number): string {
+    if (!iso) return '';
+    const at = new Date(iso).getTime();
+    if (Number.isNaN(at)) return '';
+    const diff = Math.round((at - nowMs) / 1000);
+    const abs = Math.abs(diff);
+    if (abs < 45) return 'just now';
+    const units: [number, string][] = [[86400, 'day'], [3600, 'hour'], [60, 'minute']];
+    const [size, unit] = units.find(([s]) => abs >= s) ?? units[2];
+    const count = Math.max(1, Math.floor(abs / size));
+    const span = `${count} ${unit}${count === 1 ? '' : 's'}`;
+    return diff > 0 ? `in ${span}` : `${span} ago`;
+}
