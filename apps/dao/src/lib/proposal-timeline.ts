@@ -63,14 +63,20 @@ export function buildTimeline(
     }
 
     const ended = p.votingEnd !== null && new Date(p.votingEnd).getTime() <= nowMs;
+    // settled or cancelled before the planned end: that date was never reached
+    const closedEarly = p.status !== 'VOTING' && p.votingEnd !== null && !ended;
     items.push({
-        kind: 'voting-end', label: ended || p.status !== 'VOTING' ? 'Voting ended' : 'Voting ends', time: p.votingEnd, height: null, detail: '',
+        kind: 'voting-end',
+        label: closedEarly ? 'Planned voting end (not reached)' : ended || p.status !== 'VOTING' ? 'Voting ended' : 'Voting ends',
+        time: p.votingEnd, height: null,
+        detail: closedEarly ? (p.status === 'CANCELLED' ? 'It was cancelled before then.' : 'It was settled early, once it met the expedite bars.') : '',
         upcoming: p.status === 'VOTING' && !ended,
     });
 
     const scan = p.outcome;
-    if (scan?.cancelledHeight) {
-        items.push({kind: 'cancelled', label: 'Cancelled by the proposer', time: null, height: scan.cancelledHeight, detail: '', upcoming: false});
+    // a cancelled proposal always shows it, with the block when Scan has it
+    if (scan?.cancelledHeight || p.status === 'CANCELLED') {
+        items.push({kind: 'cancelled', label: 'Cancelled', time: null, height: scan?.cancelledHeight ?? null, detail: '', upcoming: false});
     }
     if (scan?.settledHeight) {
         items.push({

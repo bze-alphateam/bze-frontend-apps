@@ -1,7 +1,7 @@
 // Hand-written proposal answers shared by the unit tests (the testnet has no DAO yet; written from the
 // protos at v8.3.0-rc1 and BZE Scan's DTOs). Not imported by the app.
 import type {DaoConfig, DaoProposal, DaoProposalResponse} from '@bze/bze-ui-kit';
-import type {ScanProposalDetail} from './proposal-types';
+import type {ScanProposalDetail} from '@/lib/proposal-types';
 
 export const CONFIG: DaoConfig = {
     min_quorum: '0.400000000000000000',

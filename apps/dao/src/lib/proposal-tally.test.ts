@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {percentDown, percentUp, ratioPercentUp, tallySummary, tallyView} from "./proposal-tally";
-import {CONFIG} from "./proposal-fixtures";
+import {CONFIG} from "@/test/proposal-fixtures";
 
 const tally = (denominator: string, yes: string, no: string, abstain = "0") => ({denominator, yes, no, abstain});
 const bar = (view: ReturnType<typeof tallyView>, id: string) => view!.bars.find((b) => b.id === id)!;

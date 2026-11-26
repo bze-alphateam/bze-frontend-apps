@@ -34,9 +34,9 @@ const Described = ({action, formatCoin, nameOf}: {action: MsgAction} & Omit<Prop
         case 'send':
             return (
                 <Flex direction="column" gap="4px">
-                    <Fact testId="action-title">{`Send ${action.amount.map(formatCoin).join(', ') || 'nothing'}${action.fromDao ? ' from the DAO' : ''}`}</Fact>
+                    <Fact testId="action-title">{`Send ${action.amount.map(formatCoin).join(', ') || 'nothing'}${action.fromDao ? ' from the DAO' : action.subDao ? ` from the sub-DAO (DAO ${action.subDao})` : ''}`}</Fact>
                     <Flex gap="6px" align="center" wrap="wrap" fontSize="13px" color="fg.muted"><span>to</span><AddressLine address={action.to} name={nameOf(action.to)} /></Flex>
-                    {!action.fromDao && action.from && <Fact>{'Paid from an account other than the DAO\'s own: the proposal cannot spend it.'}</Fact>}
+                    {!action.fromDao && !action.subDao && action.from && <Fact>{'Paid from an account other than the DAO\'s own: the proposal cannot spend it.'}</Fact>}
                 </Flex>
             );
         case 'update_config':

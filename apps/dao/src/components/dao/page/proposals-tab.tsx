@@ -10,6 +10,7 @@ import {useNow} from '@/hooks/useNow';
 import {formatDateTime, formatRelative, shortAddress} from '@/lib/format';
 import {loadActiveProposals, loadFinishedProposals, type ProposalDeps} from '@/lib/proposal-loader';
 import type {ProposalRow} from '@/lib/proposal-model';
+import {votingLine} from '@/lib/proposal-status';
 import {tallySummary} from '@/lib/proposal-tally';
 import {Tag} from './panel';
 
@@ -33,7 +34,7 @@ const Row = ({row, nowMs, nameOf}: {row: ProposalRow; nowMs: number; nameOf: (ad
                     <Flex gap="4px 14px" wrap="wrap" fontSize="13px" color="fg.muted">
                         <span>{`#${row.id}`}</span>
                         {row.proposer && <span data-testid="row-proposer">{`by ${nameOf(row.proposer) ?? shortAddress(row.proposer)}`}</span>}
-                        {row.votingEnd && <span data-testid="row-ends">{`${row.status === 'VOTING' ? 'Voting ends' : 'Voting ended'} ${ends || formatDateTime(row.votingEnd)}`}</span>}
+                        {row.votingEnd && <span data-testid="row-ends">{votingLine(row.status, row.votingEnd, nowMs, ends, formatDateTime(row.votingEnd))}</span>}
                         {summary && <span data-testid="row-tally">{summary}</span>}
                     </Flex>
                 </Flex>

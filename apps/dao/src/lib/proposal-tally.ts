@@ -86,7 +86,7 @@ const hundredthsNumber = (part: bigint, whole: bigint, up: boolean): number => {
  * The bars of a proposal from its pinned config and tally; null when the rules or the tally are missing
  * or unreadable (the page then shows the plain numbers and no bars).
  */
-export function tallyView(config: DaoConfig | null, tally: ProposalTally | null, expedited: boolean): TallyView | null {
+export function tallyView(config: Pick<DaoConfig, 'min_quorum' | 'threshold' | 'expedite_quorum' | 'expedite_threshold'> | null, tally: ProposalTally | null, expedited: boolean): TallyView | null {
     if (!config || !tally) return null;
     try {
         const input: DaoTallyInput = tally;

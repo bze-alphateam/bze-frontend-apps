@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import type {DaoCoin, DaoProposalMessage} from "@bze/bze-ui-kit";
 import {configValueText, describeMessage, describeMessages, MAX_NESTING, titleOfType, type DescribeContext} from "./proposal-describe";
-import {CONFIG} from "./proposal-fixtures";
+import {CONFIG} from "@/test/proposal-fixtures";
 
 const fmt = (c: DaoCoin) => `${Number(c.amount) / 1e6} ${c.denom === "ubze" ? "BZE" : c.denom}`;
 const ctx: DescribeContext = {daoAddress: "bze1dao", before: CONFIG, formatCoin: fmt};
@@ -11,7 +11,7 @@ describe("describeMessage", () => {
     it("a bank send from the DAO, and one from someone else", () => {
         const body = {to_address: "bze1to", amount: [{denom: "ubze", amount: "2500000"}]};
         expect(describeMessage(msg("/cosmos.bank.v1beta1.MsgSend", {from_address: "bze1dao", ...body}), ctx))
-            .toEqual({type: "send", from: "bze1dao", to: "bze1to", amount: [{denom: "ubze", amount: "2500000"}], fromDao: true});
+            .toEqual({type: "send", from: "bze1dao", to: "bze1to", amount: [{denom: "ubze", amount: "2500000"}], fromDao: true, subDao: null});
         expect(describeMessage(msg("/cosmos.bank.v1beta1.MsgSend", {from_address: "bze1other", ...body}), ctx)).toMatchObject({fromDao: false});
     });
 
@@ -58,6 +58,25 @@ describe("describeMessage", () => {
         const inner = msg("/cosmos.bank.v1beta1.MsgSend", {from_address: "bze1dao", to_address: "bze1to", amount: []});
         const action = describeMessage(msg("/bze.dao.MsgAdminExecute", {dao_id: "9", msgs: [inner]}), ctx);
         expect(action).toMatchObject({type: "admin_execute", daoId: "9", actions: [{type: "send", fromDao: false}]});
+    });
+
+    it("a send inside an admin execute is the sub-DAO's own: named as such, not flagged as a foreign account", () => {
+        const inner = msg("/cosmos.bank.v1beta1.MsgSend", {from_address: "bze1subdao", to_address: "bze1to", amount: []});
+        const action = describeMessage(msg("/bze.dao.MsgAdminExecute", {dao_id: "9", msgs: [inner]}), ctx);
+        expect(action).toMatchObject({type: "admin_execute", actions: [{type: "send", from: "bze1subdao", fromDao: false, subDao: "9"}]});
+    });
+
+    it("matches the full type URL: a look-alike from another package is raw, not a send or a rename", () => {
+        expect(describeMessage(msg("/evil.pkg.MsgSend", {from_address: "bze1dao", to_address: "bze1x", amount: []}), ctx).type).toBe("other");
+        expect(describeMessage(msg("/other.MsgUpdateMetadata", {name: "x"}), ctx).type).toBe("other");
+    });
+
+    it("a field the config leaves out is its default: no 'Off to Off' lines", () => {
+        const before = {...CONFIG, allow_expedite: false, expedited_period: "0s", expedite_quorum: "0", expedite_threshold: "0", proposal_cost: null, proposal_deposit: null, deposit_refund_policy: "ALWAYS" as const, cost_destination: "BURN" as const, kept_deposit_destination: "BURN" as const};
+        const sparse = {min_quorum: "0.4", threshold: "0.5", voting_period: "259200s", open_submission: false};
+        expect(describeMessage(msg("/bze.dao.MsgUpdateDaoConfig", {config: sparse}), {...ctx, before})).toMatchObject({type: "update_config", unchanged: true, changes: []});
+        const changed = describeMessage(msg("/bze.dao.MsgUpdateDaoConfig", {config: {...sparse, allow_expedite: true}}), {...ctx, before});
+        expect(changed).toMatchObject({changes: [{field: "allow_expedite", before: "Off", after: "On"}]});
     });
 
     it("stops reading nested admin executes at the cap and shows them raw", () => {

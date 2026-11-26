@@ -38,7 +38,7 @@ describe("buildTimeline", () => {
     it("an executed proposal: settled and executed at the settle's block, voting ended", () => {
         const items = buildTimeline({...base, status: "EXECUTED", outcome: outcome({settledHeight: 2000, executed: true})}, params, NOW);
         expect(kinds(items)).toEqual(["submitted", "voting-end", "settled", "executed"]);
-        expect(items[1].label).toBe("Voting ended");
+        expect(items[1].label).toBe("Planned voting end (not reached)");
         expect(items[2]).toMatchObject({label: "Settled", height: 2000});
     });
 
@@ -60,6 +60,19 @@ describe("buildTimeline", () => {
     it("cancelled and cleaned up", () => {
         const items = buildTimeline({...base, status: "CANCELLED", outcome: outcome({cancelledHeight: 300, cleanedHeight: 9000})}, params, NOW);
         expect(kinds(items)).toEqual(["submitted", "voting-end", "cancelled", "cleaned"]);
+    });
+
+    it("a proposal settled or cancelled before its end says the planned end was not reached, and a past end reads as ended", () => {
+        const early = buildTimeline({...base, status: "EXECUTED", outcome: outcome({settledHeight: 1500, expeditedEarly: true})}, params, NOW);
+        expect(early.find((i) => i.kind === "voting-end")).toMatchObject({label: "Planned voting end (not reached)", upcoming: false});
+        const late = buildTimeline({...base, status: "REJECTED", votingEnd: "2026-10-31T10:00:00.000Z"}, params, NOW);
+        expect(late.find((i) => i.kind === "voting-end")!.label).toBe("Voting ended");
+    });
+
+    it("a cancelled proposal shows it from the status alone, with the block when Scan has it", () => {
+        expect(kinds(buildTimeline({...base, status: "CANCELLED"}, params, NOW))).toEqual(["submitted", "voting-end", "cancelled"]);
+        expect(buildTimeline({...base, status: "CANCELLED"}, params, NOW).at(-1)).toMatchObject({label: "Cancelled", height: null});
+        expect(buildTimeline({...base, status: "CANCELLED", outcome: outcome({cancelledHeight: 300})}, params, NOW).at(-1)).toMatchObject({height: 300});
     });
 
     it("without Scan only the chain's steps are shown", () => {

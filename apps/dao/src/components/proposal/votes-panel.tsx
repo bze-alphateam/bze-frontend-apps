@@ -39,7 +39,7 @@ const VotesPageView = ({deps, proposalId, filter, cursor, first, formatWeight}: 
     return (
         <>
             {first && source === 'chain' && <Notice status="info">BZE Scan is not answering, so the votes are read from the chain: in voter order, without names.</Notice>}
-            {first && rows.length === 0 && <chakra.p m="0" color="fg.muted" data-testid="votes-empty">{filter ? `Nobody has voted ${optionLabel(filter)}.` : 'Nobody has voted on this proposal.'}</chakra.p>}
+            {first && rows.length === 0 && !next && <chakra.p m="0" color="fg.muted" data-testid="votes-empty">{filter ? `Nobody has voted ${optionLabel(filter)}.` : 'Nobody has voted on this proposal.'}</chakra.p>}
             {rows.map((vote) => (
                 <Flex key={vote.voter} justify="space-between" align="center" gap="12px" wrap="wrap" py="8px" borderTopWidth="1px" borderColor="app.border" data-testid="vote-row">
                     <AddressLine address={vote.voter} name={vote.name ?? undefined} />

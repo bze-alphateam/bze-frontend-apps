@@ -1,4 +1,4 @@
-import type {DaoCoin, DaoConfig, DaoProposalMessage, DaoProposalResponse, DaoProposalStatus, DaoStakeElectorate} from '@bze/bze-ui-kit';
+import type {DaoCoin, DaoConfig, DaoDepositRefundPolicy, DaoFundsDestination, DaoProposalMessage, DaoProposalResponse, DaoProposalStatus, DaoStakeElectorate} from '@bze/bze-ui-kit';
 import {isoFromUnix} from './format';
 import type {ScanProposalDetail, ScanProposalSummary, ScanWeightDenom} from './proposal-types';
 
@@ -14,6 +14,17 @@ export function statusFromScan(status: string | null | undefined): DaoProposalSt
     const upper = (status ?? '').toUpperCase();
     return PROPOSAL_STATUSES.find((s) => s === upper) ?? null;
 }
+
+/**
+ * The rules pinned at submission as far as they are known. The money rules (refund policy, where a cost
+ * or a kept deposit goes) are null when Scan's JSON does not carry a value this app knows: never guessed.
+ * A chain `DaoConfig` is always a `PinnedConfig`.
+ */
+export type PinnedConfig = Omit<DaoConfig, 'deposit_refund_policy' | 'cost_destination' | 'kept_deposit_destination'> & {
+    deposit_refund_policy: DaoDepositRefundPolicy | null;
+    cost_destination: DaoFundsDestination | null;
+    kept_deposit_destination: DaoFundsDestination | null;
+};
 
 export interface ProposalTally {
     denominator: string;
@@ -61,7 +72,7 @@ export interface ProposalModel {
     votingEnd: string | null;
     msgs: DaoProposalMessage[];
     /** The rules pinned at submission; null when unknown (Scan never saw the proposal on chain). */
-    config: DaoConfig | null;
+    config: PinnedConfig | null;
     electorate: DaoStakeElectorate | null;
     tally: ProposalTally | null;
     /** The deposit escrowed at submission (the pinned deposit). */
@@ -83,8 +94,10 @@ const coinOf = (value: unknown): DaoCoin | null => {
     return amount && /^\d+$/.test(amount) ? {denom: value.denom, amount} : null;
 };
 
+const destinationOf = (v: unknown): DaoFundsDestination | null => (v === 'BURN' || v === 'TREASURY' ? v : null);
+
 /** A pinned config from Scan's raw JSON; null unless it carries the four ratios the bars need. */
-export function configFromScan(raw: unknown): DaoConfig | null {
+export function configFromScan(raw: unknown): PinnedConfig | null {
     if (!isObject(raw)) return null;
     const c = snakeKeys(raw);
     const text = (k: string, fallback: string) => (typeof c[k] === 'string' ? (c[k] as string) : fallback);
@@ -100,9 +113,9 @@ export function configFromScan(raw: unknown): DaoConfig | null {
         open_submission: c.open_submission === true,
         proposal_cost: coinOf(c.proposal_cost),
         proposal_deposit: coinOf(c.proposal_deposit),
-        deposit_refund_policy: (['ALWAYS', 'ONLY_PASSED', 'NEVER'] as const).find((p) => p === c.deposit_refund_policy) ?? 'ALWAYS',
-        cost_destination: c.cost_destination === 'TREASURY' ? 'TREASURY' : 'BURN',
-        kept_deposit_destination: c.kept_deposit_destination === 'TREASURY' ? 'TREASURY' : 'BURN',
+        deposit_refund_policy: (['ALWAYS', 'ONLY_PASSED', 'NEVER'] as const).find((p) => p === c.deposit_refund_policy) ?? null,
+        cost_destination: destinationOf(c.cost_destination),
+        kept_deposit_destination: destinationOf(c.kept_deposit_destination),
     };
 }
 

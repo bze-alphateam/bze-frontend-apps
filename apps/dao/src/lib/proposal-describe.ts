@@ -1,8 +1,8 @@
-import {ratioAtomics, type DaoCoin, type DaoConfig, type DaoProposalMessage} from '@bze/bze-ui-kit';
+import {ratioAtomics, type DaoCoin, type DaoProposalMessage} from '@bze/bze-ui-kit';
 import {formatDuration, formatRatio} from './format';
 import {fieldName} from './dao-history';
 import {secondsOf} from './dao-rules';
-import {snakeKeys} from './proposal-model';
+import {snakeKeys, type PinnedConfig} from './proposal-model';
 
 // What a proposal does if it passes: each message read into an action the page draws in plain words.
 // The messages run as the DAO. The readers know the bank send and the x/dao self-management messages; a
@@ -18,7 +18,8 @@ export interface ConfigChange {
 }
 
 export type MsgAction =
-    | {type: 'send'; from: string; to: string; amount: DaoCoin[]; fromDao: boolean}
+    /** `subDao` is the id of the sub-DAO an admin execute runs the send as; null for a send of this DAO's own proposal. */
+    | {type: 'send'; from: string; to: string; amount: DaoCoin[]; fromDao: boolean; subDao: string | null}
     | {type: 'update_config'; changes: ConfigChange[]; unchanged: boolean}
     | {type: 'update_metadata'; name: string; description: string}
     | {type: 'update_members'; add: string[]; remove: string[]}
@@ -33,7 +34,7 @@ export interface DescribeContext {
     /** The DAO's own account, to tell "from the DAO" from a send of someone else's funds. */
     daoAddress: string | null;
     /** The rules pinned at submission: what a config update changes. Null when unknown. */
-    before: DaoConfig | null;
+    before: PinnedConfig | null;
     formatCoin: (coin: DaoCoin) => string;
 }
 
@@ -103,6 +104,15 @@ export function configValueText(fieldKey: string, value: unknown, formatCoin: (c
     }
 }
 
+/** What the chain reads for a field the JSON leaves out (proto3 defaults). */
+const DEFAULTS: Record<string, unknown> = {
+    min_quorum: '0', threshold: '0', voting_period: '0s', allow_expedite: false, expedited_period: '0s',
+    expedite_quorum: '0', expedite_threshold: '0', open_submission: false, proposal_cost: null, proposal_deposit: null,
+    deposit_refund_policy: 'ALWAYS', cost_destination: 'BURN', kept_deposit_destination: 'BURN',
+};
+
+const UNKNOWN_WHEN_NULL = ['deposit_refund_policy', 'cost_destination', 'kept_deposit_destination'];
+
 const CONFIG_KEYS: string[] = [
     'min_quorum', 'threshold', 'voting_period', 'allow_expedite', 'expedited_period', 'expedite_quorum', 'expedite_threshold',
     'open_submission', 'proposal_cost', 'proposal_deposit', 'deposit_refund_policy', 'cost_destination', 'kept_deposit_destination',
@@ -136,13 +146,16 @@ function describeConfig(body: Record<string, unknown>, ctx: DescribeContext): Ms
 
     for (const key of CONFIG_KEYS) {
         if (!(key in after) && !before) continue;
-        const next = after[key];
+        // an omitted field is its default, as on the chain
+        const next = key in after ? after[key] : DEFAULTS[key];
         // without the rules at submission every given field is listed; with them only the ones that differ
-        if (before && canonical(key, before[key]) === canonical(key, next)) continue;
+        // a money rule the pinned copy does not know is unknown, never its default
+        const unknownBefore = !!before && UNKNOWN_WHEN_NULL.includes(key) && before[key] === null;
+        if (before && !unknownBefore && canonical(key, before[key] ?? DEFAULTS[key]) === canonical(key, next)) continue;
         changes.push({
             field: key,
             label: fieldName(key),
-            before: before ? configValueText(key, before[key], ctx.formatCoin) : null,
+            before: before ? (unknownBefore ? 'unknown' : configValueText(key, before[key] ?? DEFAULTS[key], ctx.formatCoin)) : null,
             after: configValueText(key, next, ctx.formatCoin),
         });
     }
@@ -150,42 +163,42 @@ function describeConfig(body: Record<string, unknown>, ctx: DescribeContext): Ms
 }
 
 /** One message as an action. `depth` counts the `MsgAdminExecute` levels already entered. */
-export function describeMessage(msg: DaoProposalMessage, ctx: DescribeContext, depth = 0): MsgAction {
+export function describeMessage(msg: DaoProposalMessage, ctx: DescribeContext, depth = 0, subDao: string | null = null): MsgAction {
     const typeUrl = str(msg['@type']);
     const body = msg as Record<string, unknown>;
     const raw = (): MsgAction => ({type: 'other', typeUrl, title: titleOfType(typeUrl), json: JSON.stringify(msg, null, 2)});
-    const name = typeUrl.split('.').pop() ?? typeUrl;
 
-    switch (name) {
-        case 'MsgSend': {
+    switch (typeUrl) {
+        case '/cosmos.bank.v1beta1.MsgSend': {
             const from = str(field(body, 'from_address'));
-            return {type: 'send', from, to: str(field(body, 'to_address')), amount: coinsOf(field(body, 'amount')), fromDao: !!ctx.daoAddress && from === ctx.daoAddress};
+            return {type: 'send', from, to: str(field(body, 'to_address')), amount: coinsOf(field(body, 'amount')), fromDao: !!ctx.daoAddress && from === ctx.daoAddress, subDao};
         }
-        case 'MsgUpdateDaoConfig':
+        case '/bze.dao.MsgUpdateDaoConfig':
             return describeConfig(body, ctx);
-        case 'MsgUpdateMetadata':
+        case '/bze.dao.MsgUpdateMetadata':
             return {type: 'update_metadata', name: str(field(body, 'name')), description: str(field(body, 'description'))};
-        case 'MsgUpdateMembers':
+        case '/bze.dao.MsgUpdateMembers':
             return {type: 'update_members', add: strings(field(body, 'add')), remove: strings(field(body, 'remove'))};
-        case 'MsgUpdateElectorate': {
+        case '/bze.dao.MsgUpdateElectorate': {
             const e = field(body, 'electorate');
             const electorate = isObject(e) ? snakeKeys(e) : {};
             return {type: 'update_electorate', srIds: strings(electorate.sr_ids), drDenom: str(electorate.dr_denom)};
         }
-        case 'MsgNominateAdmin': {
+        case '/bze.dao.MsgNominateAdmin': {
             const nominee = str(field(body, 'nominee'));
             return {type: 'nominate_admin', nominee, toVoters: nominee === ''};
         }
-        case 'MsgWithdrawAdminNomination':
+        case '/bze.dao.MsgWithdrawAdminNomination':
             return {type: 'withdraw_nomination'};
-        case 'MsgAcceptAdminNomination':
+        case '/bze.dao.MsgAcceptAdminNomination':
             return {type: 'accept_admin', nominee: str(field(body, 'nominee'))};
-        case 'MsgAdminExecute': {
+        case '/bze.dao.MsgAdminExecute': {
             if (depth + 1 >= MAX_NESTING) return raw();
             const inner = field(body, 'msgs');
             const msgs = Array.isArray(inner) ? inner.filter((m): m is DaoProposalMessage => isObject(m) && typeof m['@type'] === 'string') : [];
             // a sub-DAO runs the inner messages as itself: its account is not this DAO's
-            return {type: 'admin_execute', daoId: str(field(body, 'dao_id')), actions: msgs.map((m) => describeMessage(m, {...ctx, daoAddress: null, before: null}, depth + 1))};
+            const daoId = str(field(body, 'dao_id'));
+            return {type: 'admin_execute', daoId, actions: msgs.map((m) => describeMessage(m, {...ctx, daoAddress: null, before: null}, depth + 1, daoId))};
         }
         default:
             return raw();

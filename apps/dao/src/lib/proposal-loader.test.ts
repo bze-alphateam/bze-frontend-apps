@@ -7,7 +7,7 @@ import {
     loadActiveProposals, loadFinishedProposals, loadMyVote, loadProposal, loadVotes, refreshProposal,
     type ProposalChain, type ProposalDeps,
 } from "./proposal-loader";
-import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "./proposal-fixtures";
+import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
 import type {ScanProposalSummary} from "./proposal-types";
 
 const DAO = {id: "4", name: "Stakers club", type: "DAO_TYPE_STAKE", address: "bze1dao", electorate: {sr_ids: ["000000000017"], dr_denom: ""}} as unknown as Dao;
@@ -97,6 +97,31 @@ describe("refreshProposal", () => {
         expect(next.model.outcome).toMatchObject({settledHeight: 2000});
     });
 
+    it("reads Scan again when the status changed, so the settle and the deposit release appear without a reload", async () => {
+        const detail = vi.fn(async () => (detail.mock.calls.length === 1 ? {...SCAN, status: "voting", settled_height: null, deposit_refunded: null} : SCAN));
+        const first = await loadProposal(deps({}, {detail}), "7");
+        if (first.state !== "ok") throw new Error("not ok");
+        expect(first.data.model.outcome?.settledHeight).toBeNull();
+
+        const d = deps({getProposal: async () => ({...RESPONSE, proposal: {...PROPOSAL, status: "EXECUTED" as const}})}, {detail});
+        const next = await refreshProposal(d, first.data);
+        expect(detail).toHaveBeenCalledTimes(2);
+        expect(next.model.outcome).toMatchObject({settledHeight: 2000, depositRefunded: true});
+        expect(next.scanFailed).toBe(false);
+    });
+
+    it("does not ask Scan again while the status is the same, and keeps the old Scan data when the refresh fails", async () => {
+        const first = await loadProposal(deps(), "7");
+        if (first.state !== "ok") throw new Error("not ok");
+        const detail = vi.fn(DOWN);
+        await refreshProposal(deps({}, {detail}), first.data);
+        expect(detail).not.toHaveBeenCalled();
+        const changed = deps({getProposal: async () => ({...RESPONSE, proposal: {...PROPOSAL, status: "REJECTED" as const}})}, {detail});
+        const next = await refreshProposal(changed, first.data);
+        expect(next.model.status).toBe("REJECTED");
+        expect(next.model.outcome).toMatchObject({settledHeight: 2000});
+    });
+
     it("keeps the data when the read fails or the proposal is gone, and never polls an archived one", async () => {
         const first = await loadProposal(deps(), "7");
         if (first.state !== "ok") throw new Error("not ok");
@@ -130,6 +155,25 @@ describe("loadVotes", () => {
         expect(page).toMatchObject({source: "chain", next: {source: "chain", key: "k2"}, rows: [{voter: "bze1b", option: "NO", weight: "6", effectiveWeight: "6"}]});
     });
 
+    it("with Scan down the chain filter keeps paging past pages it empties, and says there is more when it stops", async () => {
+        const mk = (voter: string, option: "YES" | "NO"): DaoBallot => ({proposal_id: "7", voter, option, weight: "1", shares: []});
+        const pages = [
+            {items: [mk("a", "YES"), mk("b", "YES")], nextKey: "k2"},
+            {items: [mk("c", "YES")], nextKey: "k3"},
+            {items: [mk("d", "NO")], nextKey: "k4"},
+        ];
+        const getBallots = vi.fn(async () => pages.shift()!);
+        const page = await loadVotes(deps({getBallots}, {votes: DOWN}), "7", "NO", null);
+        expect(getBallots).toHaveBeenCalledTimes(3);
+        expect(page.rows.map((r) => r.voter)).toEqual(["d"]);
+        expect(page.next).toEqual({source: "chain", key: "k4"});
+
+        const endless = vi.fn(async () => ({items: [mk("x", "YES")], nextKey: "more"}));
+        const empty = await loadVotes(deps({getBallots: endless}, {votes: DOWN}), "7", "NO", null);
+        expect(empty.rows).toEqual([]);
+        expect(empty.next).not.toBeNull();
+    });
+
     it("a chain cursor stays on the chain; a Scan cursor that fails is an error, not a silent switch", async () => {
         const votes = vi.fn(DOWN);
         const d = deps({}, {votes});
@@ -154,12 +198,19 @@ describe("loadMyVote", () => {
         expect(await loadMyVote(d, model, "bze1me")).toEqual({ballot, eligibleWeight: "0"});
     });
 
-    it("no ballot is null; no weight is read once the proposal is not voting; a failed read leaves them unknown", async () => {
+    it("no ballot is null; no weight is read once the proposal is not voting", async () => {
         const d = deps();
         expect(await loadMyVote(d, {...model, status: "EXECUTED"}, "bze1me")).toEqual({ballot: null, eligibleWeight: null});
         expect(d.chain.getVotingPower).not.toHaveBeenCalled();
-        const failing = deps({getBallot: async () => { throw new Error("x"); }, getVotingPower: async () => { throw new Error("y"); }});
-        expect(await loadMyVote(failing, model, "bze1me")).toEqual({ballot: null, eligibleWeight: null});
+    });
+
+    it("a failed ballot read is an error, never read as 'not voted'", async () => {
+        await expect(loadMyVote(deps({getBallot: async () => { throw new Error("x"); }}), model, "bze1me")).rejects.toThrow("x");
+    });
+
+    it("a failed voting-power read only leaves the weight unknown", async () => {
+        const d = deps({getVotingPower: async () => { throw new Error("y"); }});
+        expect(await loadMyVote(d, model, "bze1me")).toEqual({ballot: null, eligibleWeight: null});
     });
 });
 

@@ -58,10 +58,22 @@ export function describeStatus(p: Pick<ProposalModel, 'status' | 'votingEnded' |
         case 'EXPIRED':
             return {key: 'expired', label: 'Expired', tone: 'neutral', live: false, note: 'It passed but its actions never ran before the retry deadline.'};
         case 'CANCELLED':
-            return {key: 'cancelled', label: 'Cancelled', tone: 'neutral', live: false, note: 'The proposer withdrew it.'};
+            return {key: 'cancelled', label: 'Cancelled', tone: 'neutral', live: false, note: 'It was withdrawn before its voting end, by its proposer (or by the DAO, for a proposal the DAO submitted).'};
     }
 }
 
 /** Anyone can settle it now (the button is BFE-374; the page only says so). */
 export const canSettleNow = (p: Pick<ProposalModel, 'status' | 'votingEnded' | 'expediteSettleable'>): boolean =>
     p.status === 'VOTING' && (p.votingEnded || p.expediteSettleable);
+
+/**
+ * The voting-end line of a list row. A proposal that was settled or cancelled before its planned end
+ * must not say "Voting ended" with a date in the future.
+ */
+export function votingLine(status: DaoProposalStatus, votingEnd: string | null, nowMs: number, relative: string, absolute: string): string {
+    if (!votingEnd) return '';
+    const future = new Date(votingEnd).getTime() > nowMs;
+    if (status === 'VOTING') return `Voting ends ${relative || absolute}`;
+    if (future) return `Closed before its planned end (${absolute})`;
+    return `Voting ended ${relative || absolute}`;
+}

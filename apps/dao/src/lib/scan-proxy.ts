@@ -23,6 +23,8 @@ interface Route {
     pattern: RegExp;
     /** Query parameters forwarded (all their values). */
     params: string[];
+    /** Parameters whose values are limited to a list (anything else is dropped), in Scan's spelling. */
+    allowed?: Record<string, string[]>;
 }
 
 /** The DAO routes of Scan's /api/v1 the app reads. */
@@ -33,7 +35,7 @@ const ROUTES: Route[] = [
     {pattern: /^daos\/\d+\/proposals$/, params: ["status", ...PAGE]},
     {pattern: /^dao-proposals$/, params: ["status", ...PAGE]},
     {pattern: /^dao-proposals\/\d+$/, params: []},
-    {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE]},
+    {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
     {pattern: /^dao-votes$/, params: ["voter", ...PAGE]},
 ];
 
@@ -69,7 +71,7 @@ export function createScanProxyHandler(options: ScanProxyOptions) {
         const query = new URLSearchParams();
         for (const key of route.params) {
             for (const value of incoming.getAll(key)) {
-                if (value) query.append(key, value);
+                if (value && (!route.allowed?.[key] || route.allowed[key].includes(value))) query.append(key, value);
             }
         }
         const target = `${baseUrl}/api/v1/${path}${query.size ? `?${query}` : ""}`;

@@ -1,7 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {act, renderHook, waitFor} from "@testing-library/react";
 import type {ProposalChain, ProposalDeps} from "@/lib/proposal-loader";
-import {PROPOSAL, RESPONSE, SCAN} from "@/lib/proposal-fixtures";
+import {PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
 import {useProposalPage} from "./useProposalPage";
 
 const depsWith = (getProposal: ProposalChain["getProposal"]): ProposalDeps => ({

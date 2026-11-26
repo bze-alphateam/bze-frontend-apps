@@ -130,7 +130,16 @@ export async function refreshProposal(deps: ProposalDeps, data: ProposalPageData
     }
     if (!resp) return data;
     const dao = data.dao.ok ? data.dao.value : null;
-    return {...data, model: modelFromChain(resp, data.scanDetail, dao?.name ?? null, dao?.type ?? data.model.daoType)};
+    // a status change (settled, executed, cancelled…) brings facts only Scan has: read them again
+    let {scanDetail, scanFailed} = data;
+    if (resp.proposal.status !== data.model.status) {
+        const fresh = await settle(() => deps.scan.detail(data.model.id));
+        if (fresh.ok) {
+            scanDetail = fresh.value;
+            scanFailed = false;
+        }
+    }
+    return {...data, scanDetail, scanFailed, model: modelFromChain(resp, scanDetail, dao?.name ?? null, dao?.type ?? data.model.daoType)};
 }
 
 // ---- votes ----
@@ -162,6 +171,7 @@ export interface VotesPage {
 }
 
 export const VOTES_PAGE = 20;
+const MAX_CHAIN_PAGES = 5;
 
 const voteOption = (o: string): VoteFilter | null => {
     const upper = o.toUpperCase().replace(/^VOTE_OPTION_/, '');
@@ -187,13 +197,19 @@ export async function loadVotes(deps: ProposalDeps, proposalId: string, filter: 
         }
     }
 
-    const page = await deps.chain.getBallots(proposalId, {key: cursor?.key, limit: VOTES_PAGE});
+    // the chain cannot filter: keep reading past pages the filter empties (a few requests at most)
     const rows: VoteRow[] = [];
-    for (const b of page.items) {
-        const option = voteOption(b.option);
-        if (option && (!filter || option === filter)) rows.push({voter: b.voter, name: null, option, weight: b.weight, effectiveWeight: b.weight, time: null, txHash: null});
+    let key: string | null = cursor?.key ?? null;
+    for (let i = 0; i < MAX_CHAIN_PAGES; i++) {
+        const page = await deps.chain.getBallots(proposalId, {key: key ?? undefined, limit: VOTES_PAGE});
+        for (const b of page.items) {
+            const option = voteOption(b.option);
+            if (option && (!filter || option === filter)) rows.push({voter: b.voter, name: null, option, weight: b.weight, effectiveWeight: b.weight, time: null, txHash: null});
+        }
+        key = page.nextKey;
+        if (!key || rows.length > 0) break;
     }
-    return {rows, next: page.nextKey ? {source: 'chain', key: page.nextKey} : null, source: 'chain'};
+    return {rows, next: key ? {source: 'chain', key} : null, source: 'chain'};
 }
 
 // ---- the wallet's vote ----
@@ -204,11 +220,14 @@ export interface MyVote {
     eligibleWeight: string | null;
 }
 
-/** The wallet's ballot and, while the proposal is voting, the weight a vote of it counts. */
+/**
+ * The wallet's ballot (null only when the chain says there is none: a failed read throws, so the page
+ * never claims "not voted" on a failure) and, while the proposal is voting, the weight a vote of it counts.
+ */
 export async function loadMyVote(deps: ProposalDeps, model: Pick<ProposalModel, 'id' | 'daoId' | 'status'>, wallet: string): Promise<MyVote> {
     const voting = model.status === 'VOTING' && model.daoId !== null;
     const [ballot, power] = await Promise.all([
-        deps.chain.getBallot(model.id, wallet).catch((): null => null),
+        deps.chain.getBallot(model.id, wallet),
         voting ? settle(() => deps.chain.getVotingPower(model.daoId!, wallet)) : Promise.resolve<Part<DaoVotingPowerResponse | null>>({ok: false}),
     ]);
     const entry = power.ok ? power.value?.proposals.find((p) => p.proposal_id === model.id) : undefined;

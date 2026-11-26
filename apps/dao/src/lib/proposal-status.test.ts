@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DaoProposalStatus} from "@bze/bze-ui-kit";
-import {canSettleNow, describeStatus, isOpenStatus, statusLabel, statusTone} from "./proposal-status";
+import {canSettleNow, describeStatus, isOpenStatus, statusLabel, statusTone, votingLine} from "./proposal-status";
 
 const flags = {votingEnded: false, expediteSettleable: false, retryDeadline: null};
 const read = (status: DaoProposalStatus, over: Partial<typeof flags> = {}) => describeStatus({status, ...flags, ...over});
@@ -47,5 +47,26 @@ describe("isOpenStatus / canSettleNow", () => {
         expect(canSettleNow({status: "VOTING", votingEnded: false, expediteSettleable: true})).toBe(true);
         expect(canSettleNow({status: "VOTING", votingEnded: false, expediteSettleable: false})).toBe(false);
         expect(canSettleNow({status: "EXECUTION_FAILED", votingEnded: true, expediteSettleable: true})).toBe(false);
+    });
+});
+
+describe("cancelled wording", () => {
+    it("covers a proposal the DAO itself submitted and cancelled", () => {
+        expect(describeStatus({status: "CANCELLED", votingEnded: false, expediteSettleable: false, retryDeadline: null}).note).toContain("or by the DAO");
+    });
+});
+
+describe("votingLine", () => {
+    const now = Date.parse("2026-11-01T00:00:00Z");
+    it("a voting proposal says when voting ends; a past end reads as ended", () => {
+        expect(votingLine("VOTING", "2026-11-03T00:00:00Z", now, "in 2 days", "3 Nov")).toBe("Voting ends in 2 days");
+        expect(votingLine("REJECTED", "2026-10-30T00:00:00Z", now, "2 days ago", "30 Oct")).toBe("Voting ended 2 days ago");
+    });
+    it("never says 'Voting ended' for a proposal closed before its planned end", () => {
+        expect(votingLine("EXECUTED", "2026-11-03T00:00:00Z", now, "in 2 days", "3 Nov")).toBe("Closed before its planned end (3 Nov)");
+        expect(votingLine("CANCELLED", "2026-11-03T00:00:00Z", now, "in 2 days", "3 Nov")).toContain("planned end");
+    });
+    it("nothing without an end", () => {
+        expect(votingLine("VOTING", null, now, "", "")).toBe("");
     });
 });

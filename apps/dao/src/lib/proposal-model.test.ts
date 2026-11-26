@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {configFromScan, modelFromChain, modelFromScan, rowFromChain, rowFromScan, statusFromScan} from "./proposal-model";
-import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "./proposal-fixtures";
+import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
 
 describe("statusFromScan", () => {
     it("reads Scan's lower-case names, null for a placeholder or an unknown one", () => {
@@ -61,8 +61,15 @@ describe("modelFromScan (the archived proposal)", () => {
 });
 
 describe("configFromScan", () => {
+    it("an unknown or missing refund policy or destination is unknown (null), not a default", () => {
+        const raw = {min_quorum: "0.4", threshold: "0.5", deposit_refund_policy: "SOMETIMES", cost_destination: "MOON"};
+        expect(configFromScan(raw)).toMatchObject({deposit_refund_policy: null, cost_destination: null, kept_deposit_destination: null});
+        expect(configFromScan({...raw, deposit_refund_policy: "NEVER", cost_destination: "TREASURY", kept_deposit_destination: "BURN"}))
+            .toMatchObject({deposit_refund_policy: "NEVER", cost_destination: "TREASURY", kept_deposit_destination: "BURN"});
+    });
+
     it("reads snake_case and camelCase, and refuses a config without ratios", () => {
-        expect(configFromScan({minQuorum: "0.4", threshold: "0.5", depositRefundPolicy: "x"})).toMatchObject({min_quorum: "0.4", threshold: "0.5", deposit_refund_policy: "ALWAYS"});
+        expect(configFromScan({minQuorum: "0.4", threshold: "0.5", depositRefundPolicy: "x"})).toMatchObject({min_quorum: "0.4", threshold: "0.5", deposit_refund_policy: null});
         expect(configFromScan({threshold: "0.5"})).toBeNull();
         expect(configFromScan(null)).toBeNull();
     });

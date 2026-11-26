@@ -1,11 +1,11 @@
 import {describe, expect, it} from "vitest";
-import type {DaoCoin, DaoConfig, DaoDepositRefundPolicy, DaoProposalStatus} from "@bze/bze-ui-kit";
+import type {DaoCoin, DaoDepositRefundPolicy, DaoProposalStatus} from "@bze/bze-ui-kit";
 import {depositRefunded, describeMoney, outcomeOfStatus} from "./proposal-money";
-import {CONFIG} from "./proposal-fixtures";
-import type {ScanOutcome} from "./proposal-model";
+import {CONFIG} from "@/test/proposal-fixtures";
+import type {PinnedConfig, ScanOutcome} from "./proposal-model";
 
 const fmt = (c: DaoCoin) => `${Number(c.amount) / 1e6} ${c.denom === "ubze" ? "BZE" : c.denom}`;
-const money = (status: DaoProposalStatus, config: Partial<DaoConfig> = {}, outcome: Partial<ScanOutcome> | null = null) =>
+const money = (status: DaoProposalStatus, config: Partial<PinnedConfig> = {}, outcome: Partial<ScanOutcome> | null = null) =>
     describeMoney({
         status,
         config: {...CONFIG, ...config},
@@ -58,6 +58,25 @@ describe("describeMoney", () => {
         expect(money("EXECUTED", {}, {depositRefunded: true}).released).toBe("Released at the settle: refunded to the proposer.");
         expect(money("REJECTED", {}, {depositRefunded: false, depositDestination: "bze1burnerxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}).released).toBe("Released at the settle: kept, sent to bze1burner…xxxxxx.");
         expect(money("VOTING", {}, {depositRefunded: null}).released).toBe("");
+    });
+
+    it("the deposit is 'held in escrow' only while it is voted on", () => {
+        expect(money("VOTING").deposit).toContain("held in escrow");
+        expect(money("EXECUTED").deposit).not.toContain("escrow");
+        expect(money("EXECUTED").deposit).toContain("9 BZE");
+    });
+
+    it("unknown refund rules are said to be unknown, never defaulted", () => {
+        const unknown = money("REJECTED", {deposit_refund_policy: null, kept_deposit_destination: null, cost_destination: null});
+        expect(unknown.rulesUnknown).toBe(true);
+        expect(unknown.depositRule).toBe("");
+        expect(unknown.cost).toBe("5 BZE paid when it was submitted. It is never refunded.");
+        expect(money("REJECTED", {kept_deposit_destination: null}).rulesUnknown).toBe(true);
+        // refunded whatever the result: the kept destination does not matter
+        const always = money("REJECTED", {deposit_refund_policy: "ALWAYS", kept_deposit_destination: null});
+        expect(always.rulesUnknown).toBe(false);
+        expect(always.depositRule).toBe("It was refunded to the proposer.");
+        expect(money("REJECTED").rulesUnknown).toBe(false);
     });
 
     it("no deposit, or no pinned rules: no rule text", () => {

@@ -1,5 +1,5 @@
-import type {DaoCoin, DaoConfig, DaoDepositRefundPolicy, DaoFundsDestination, DaoProposalStatus} from '@bze/bze-ui-kit';
-import type {ProposalModel} from './proposal-model';
+import type {DaoCoin, DaoDepositRefundPolicy, DaoFundsDestination, DaoProposalStatus} from '@bze/bze-ui-kit';
+import type {PinnedConfig, ProposalModel} from './proposal-model';
 import {shortAddress} from './format';
 
 // The money of a proposal: the cost paid at submission and the deposit escrowed until it is settled.
@@ -40,6 +40,8 @@ export interface MoneyView {
     deposit: string | null;
     /** What the policy means for this proposal (before or after the result); empty without a deposit. */
     depositRule: string;
+    /** The refund policy or a destination is not known (Scan's copy of the pinned rules lacks it): nothing is guessed. */
+    rulesUnknown: boolean;
     /** What Scan saw happen to the deposit after the settle; empty when unknown. */
     released: string;
 }
@@ -51,20 +53,24 @@ export function describeMoney(
     p: Pick<ProposalModel, 'status' | 'config' | 'deposit' | 'outcome'>,
     formatCoin: (coin: DaoCoin) => string,
 ): MoneyView {
-    const config: DaoConfig | null = p.config;
+    const config: PinnedConfig | null = p.config;
     const cost = hasAmount(config?.proposal_cost)
-        ? `${formatCoin(config!.proposal_cost!)} paid when it was submitted, ${DESTINATION[config!.cost_destination]}. It is never refunded.`
+        ? `${formatCoin(config!.proposal_cost!)} paid when it was submitted${config!.cost_destination ? `, ${DESTINATION[config!.cost_destination]}` : ''}. It is never refunded.`
         : null;
 
     const deposit = hasAmount(p.deposit) ? p.deposit : null;
-    if (!deposit) return {cost, deposit: null, depositRule: '', released: ''};
+    const costUnknown = hasAmount(config?.proposal_cost) && !config!.cost_destination;
+    if (!deposit) return {cost, deposit: null, depositRule: '', rulesUnknown: costUnknown, released: ''};
     const amount = formatCoin(deposit);
 
     const outcome = outcomeOfStatus(p.status);
     let depositRule = '';
-    if (config) {
-        const kept = DESTINATION[config.kept_deposit_destination];
-        const policy = config.deposit_refund_policy;
+    const policy = config?.deposit_refund_policy ?? null;
+    const keptDestination = config?.kept_deposit_destination ?? null;
+    const needsDestination = policy !== 'ALWAYS';
+    const rulesUnknown = costUnknown || !config || !policy || (needsDestination && !keptDestination);
+    if (config && policy && (keptDestination || !needsDestination)) {
+        const kept = keptDestination ? DESTINATION[keptDestination] : '';
         if (outcome === 'pending') {
             depositRule = {
                 ALWAYS: 'It is refunded to the proposer whatever the result.',
@@ -86,5 +92,9 @@ export function describeMoney(
             : `Released at the settle: kept${scan.depositDestination ? `, sent to ${shortAddress(scan.depositDestination)}` : ''}.`;
     }
 
-    return {cost, deposit: `${amount} held in escrow while the proposal is voted on.`, depositRule, released};
+    return {
+        cost,
+        deposit: outcome === 'pending' ? `${amount} held in escrow while the proposal is voted on.` : `${amount} was put up as the deposit.`,
+        depositRule, rulesUnknown, released,
+    };
 }

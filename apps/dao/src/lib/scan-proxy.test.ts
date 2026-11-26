@@ -88,6 +88,14 @@ describe("DAO scan proxy", () => {
         expect(again.headers.get("Cache-Control")).toBe("no-store");
     });
 
+    it("drops a votes option Scan does not know, keeping the paging", async () => {
+        fetcher.mockImplementation(async () => ok({items: []}));
+        await call("dao-proposals/7/votes", "?option=VOTE_OPTION_YES&limit=20");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/dao-proposals/7/votes?limit=20`, expect.anything());
+        await call("dao-proposals/7/votes", "?option=abstain");
+        expect(fetcher).toHaveBeenLastCalledWith(`${BASE}/api/v1/dao-proposals/7/votes?option=abstain`, expect.anything());
+    });
+
     it("forwards the option filter and paging of a proposal's votes", async () => {
         fetcher.mockImplementation(async () => ok({items: []}));
         await call("dao-proposals/7/votes", "?option=yes&cursor=abc&limit=20&evil=1");

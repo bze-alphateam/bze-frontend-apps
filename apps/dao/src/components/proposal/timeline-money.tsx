@@ -44,6 +44,7 @@ export const MoneyPanel = ({data, formatCoin}: {data: ProposalPageData; formatCo
 
     return (
         <Panel id="money" title="Cost and deposit" testId="money-panel">
+            {money.rulesUnknown && <chakra.p m="0" fontSize="14px" color="fg.muted" data-testid="money-rules-unknown">The refund and destination rules of this proposal are not known, so what happens to its cost and deposit cannot be told.</chakra.p>}
             {nothing && <chakra.p m="0" color="fg.muted" data-testid="money-none">{data.model.config ? 'This proposal had no cost and no deposit.' : 'The cost and deposit of this proposal are not known.'}</chakra.p>}
             <Flex direction="column" gap="10px">
                 {money.cost && <Row label="Proposal cost" testId="money-cost">{money.cost}</Row>}
