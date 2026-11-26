@@ -20,6 +20,7 @@ interface Props {
     problem: string | undefined;
     state: SubmitState;
     onSubmit: () => void;
+    onCheck: () => void;
     onAllowResubmit: () => void;
 }
 
@@ -40,7 +41,7 @@ const HowToVote = ({dao}: {dao: Props['dao']}) => (
 );
 
 /** The send button, or the reason there is none, and where the last attempt stands. */
-export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, onSubmit, onAllowResubmit}: Props) => {
+export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, onSubmit, onCheck, onAllowResubmit}: Props) => {
     const working = state.phase === 'working';
     const locked = state.phase === 'unconfirmed' || state.phase === 'done';
 
@@ -100,7 +101,11 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, o
                         {' '}The proposal may still be created: look for it in the DAO&apos;s proposals or in the explorer before submitting again.
                         {state.hash ? <> Transaction <HashLink hash={state.hash} /></> : ' The transaction hash was not available.'}
                     </Notice>
-                    <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}`}>Check the DAO&apos;s proposals</NextLink></chakra.a>
+                    {state.note && <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="submit-note">{state.note}</chakra.p>}
+                    <Flex gap="16px" wrap="wrap" align="center">
+                        {state.hash && <chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={onCheck} data-testid="submit-check">Ask the node about it</chakra.button>}
+                        <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}`}>Check the DAO&apos;s proposals</NextLink></chakra.a>
+                    </Flex>
                     <chakra.button type="button" alignSelf="flex-start" color="fg.muted" fontSize="13px" textDecoration="underline" cursor="pointer" onClick={onAllowResubmit} data-testid="submit-again">
                         I checked: it did not land, let me submit again
                     </chakra.button>

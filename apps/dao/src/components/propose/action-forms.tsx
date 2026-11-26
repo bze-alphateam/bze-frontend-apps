@@ -5,7 +5,7 @@ import {Field, Input, NativeSelect, Textarea} from '@chakra-ui/react';
 import {chakra, Flex} from '@chakra-ui/react';
 import BigNumber from 'bignumber.js';
 import {uAmountToAmount} from '@bze/bze-ui-kit';
-import {CUSTOM_ID, customExample} from '@/lib/actions/custom';
+import {CUSTOM_ID, customPlaceholder} from '@/lib/actions/custom';
 import {PAY_ID} from '@/lib/actions/pay';
 import type {ActionContext, ActionFields} from '@/lib/actions/types';
 
@@ -67,6 +67,7 @@ const CustomForm = ({fields, onChange, ctx, error}: ActionFormProps) => (
                 value={fields.json ?? ''}
                 onChange={(e) => onChange({...fields, json: e.target.value})}
                 rows={9}
+                placeholder={customPlaceholder(ctx.dao.address)}
                 fontFamily="mono"
                 fontSize="13px"
                 spellCheck={false}
@@ -76,11 +77,6 @@ const CustomForm = ({fields, onChange, ctx, error}: ActionFormProps) => (
                 data-testid="custom-json"
             />
         </Field.Root>
-        {(fields.json ?? '') === '' && (
-            <chakra.button type="button" alignSelf="flex-start" color="hg.link" fontWeight="600" fontSize="14px" cursor="pointer" onClick={() => onChange({...fields, json: customExample(ctx.dao.address)})} data-testid="custom-example">
-                Start from an example
-            </chakra.button>
-        )}
         {error && <chakra.p m="0" fontSize="13px" color="red.500" role="alert" data-testid="action-error">{error}</chakra.p>}
     </Flex>
 );

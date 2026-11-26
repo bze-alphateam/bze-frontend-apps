@@ -82,6 +82,13 @@ describe("the unsent draft", () => {
             expect(loadDraft(put({v: DRAFT_VERSION, title: "x".repeat(200_001), summary: "ok"}), "4", known, newKey)).toMatchObject({title: "", summary: "ok"});
         });
 
+        it("never restores a field whose control is not there: expedited for a DAO that disallows it, a summary when it allows none", () => {
+            const s = put({v: DRAFT_VERSION, title: "T", summary: "S", expedited: true});
+            expect(loadDraft(s, "4", known, newKey, {allowExpedite: false, allowSummary: true})).toMatchObject({summary: "S", expedited: false});
+            expect(loadDraft(s, "4", known, newKey, {allowExpedite: true, allowSummary: false})).toMatchObject({summary: "", expedited: true});
+            expect(loadDraft(put({v: DRAFT_VERSION, summary: "S", expedited: true}), "4", known, newKey, {allowExpedite: false, allowSummary: false})).toBeNull();
+        });
+
         it("a draft with nothing usable left is no draft", () => {
             expect(loadDraft(put({v: DRAFT_VERSION, title: 1, actions: [{type: "gone", fields: {}}]}), "4", known, newKey)).toBeNull();
         });

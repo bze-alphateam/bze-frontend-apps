@@ -1,9 +1,38 @@
+import BigNumber from 'bignumber.js';
 import type {EncodeObject} from '@bze/bzejs/types';
 import type {DaoCoin, DaoProposalMessage} from '@bze/bze-ui-kit';
 import {msgValueToJson} from '@bze/bze-ui-kit';
 import {describeMessage, type MsgAction} from '../proposal-describe';
 import type {PinnedConfig} from '../proposal-model';
 import type {ActionContext} from '../actions/types';
+
+const RATIOS = ['min_quorum', 'threshold', 'expedite_quorum', 'expedite_threshold'];
+const DURATIONS = ['voting_period', 'expedited_period'];
+const POLICIES = ['ALWAYS', 'ONLY_PASSED', 'NEVER'];
+const DESTINATIONS = ['BURN', 'TREASURY'];
+
+/**
+ * The JSON of a codec (amino style: ratios as 18-decimal integers, durations in nanoseconds, enums as
+ * numbers) in the shape the chain's REST gateway answers with, which is what the describers read:
+ * `"400000000000000000"` becomes `"0.400000000000000000"`, `"86400000000000"` `"86400s"`, `2` `"NEVER"`.
+ * Only a message's `config` is converted; everything else is left as it is.
+ */
+function asRest(json: Record<string, unknown>): Record<string, unknown> {
+    const config = json.config;
+    if (typeof config !== 'object' || config === null || Array.isArray(config)) return json;
+    const c: Record<string, unknown> = {...config};
+    for (const key of RATIOS) {
+        if (typeof c[key] === 'string' && /^\d+$/.test(c[key] as string)) c[key] = new BigNumber(c[key] as string).shiftedBy(-18).toFixed(18);
+    }
+    for (const key of DURATIONS) {
+        if (typeof c[key] === 'string' && /^\d+$/.test(c[key] as string)) c[key] = `${new BigNumber(c[key] as string).dividedToIntegerBy(1e9).toFixed(0)}s`;
+    }
+    if (typeof c.deposit_refund_policy === 'number') c.deposit_refund_policy = POLICIES[c.deposit_refund_policy] ?? c.deposit_refund_policy;
+    for (const key of ['cost_destination', 'kept_deposit_destination']) {
+        if (typeof c[key] === 'number') c[key] = DESTINATIONS[c[key] as number] ?? c[key];
+    }
+    return {...json, config: c};
+}
 
 /**
  * A message the composer built, read the way the proposal page will read it once it is on chain: the
@@ -12,7 +41,7 @@ import type {ActionContext} from '../actions/types';
  * read back stays raw JSON of its own bytes, never silently dropped.
  */
 export function describeBuilt(msg: EncodeObject, dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string): MsgAction {
-    const json: DaoProposalMessage = {'@type': msg.typeUrl, ...msgValueToJson(msg.typeUrl, msg.value)};
+    const json: DaoProposalMessage = {'@type': msg.typeUrl, ...asRest(msgValueToJson(msg.typeUrl, msg.value))};
     return describeMessage(json, {daoAddress: dao.address, before: dao.config as PinnedConfig, formatCoin});
 }
 

@@ -7,9 +7,10 @@ import {chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import type {DaoVotingPowerResponse} from '@bze/bze-ui-kit';
 import {
-    buildSubmitProposalMsg, getChainName, Notice, PageContainer, PageState, Shimmer, useAssets, useBalances, useBZETx,
+    buildSubmitProposalMsg, getChainName, getTxEvents, getTxLanding, Notice, PageContainer, PageState, Shimmer, useAssets, useBalances, useBZETx,
 } from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
+import {useProposalRedirect} from '@/hooks/useProposalRedirect';
 import {useProposalSubmit, type SignAndBroadcast} from '@/hooks/useProposalSubmit';
 import {liveDaoViewDeps} from '@/lib/dao-chain';
 import {loadDaoView, loadVotingPower, type DaoView, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
@@ -38,7 +39,10 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
     const {getAsset} = useAssets();
     const {getBalanceByDenom, isLoading: balancesLoading} = useBalances();
     const storage = useMemo(() => browserStorage(), []);
-    const [restored] = useState(() => loadDraft(storage, dao.id, (type) => availableActions(dao).some((e) => e.id === type) && !!findAction(type), newKey));
+    const [restored] = useState(() => loadDraft(storage, dao.id, (type) => availableActions(dao).some((e) => e.id === type) && !!findAction(type), newKey, {
+        allowExpedite: dao.config.allow_expedite,
+        allowSummary: Number(params?.max_summary_len ?? '0') > 0,
+    }));
 
     const [title, setTitle] = useState(restored?.title ?? '');
     const [summary, setSummary] = useState(restored?.summary ?? '');
@@ -46,7 +50,7 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
     const [drafts, setDrafts] = useState<ActionDraft[]>(restored?.actions ?? []);
     const [notice, setNotice] = useState(restored !== null);
     const finished = useRef(false);
-    const {state, submit, allowResubmit} = useProposalSubmit(sign);
+    const {state, submit, check, allowResubmit} = useProposalSubmit({sign, daoId: dao.id, storage, getTxLanding, fetchTxEvents: getTxEvents});
 
     const power = useAsync<Part<DaoVotingPowerResponse | null>>(
         wallet ? `${dao.id}:${wallet}` : null,
@@ -69,9 +73,9 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
     const composition = useMemo(() => (ctx ? composeProposal(input, ctx) : null), [input, ctx]);
     const cost = useMemo(() => summarizeCost(
         dao.config,
-        coins.format,
+        coins.exact,
         (denom) => (balancesLoading ? null : getBalanceByDenom(denom).amount),
-    ), [dao.config, coins.format, balancesLoading, getBalanceByDenom]);
+    ), [dao.config, coins.exact, balancesLoading, getBalanceByDenom]);
 
     const status = wallet && params
         ? proposerStatus({
@@ -82,12 +86,11 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
         })
         : null;
 
-    useEffect(() => {
-        if (state.phase !== 'done') return;
+    const onDone = useCallback(() => {
         finished.current = true;
         clearDraft(storage, dao.id);
-        if (state.proposalId) router.push(`/proposal/${state.proposalId}`);
-    }, [state, storage, dao.id, router]);
+    }, [storage, dao.id]);
+    useProposalRedirect(state, router.push, onDone);
 
     useEffect(() => {
         if (finished.current) return;
@@ -108,7 +111,7 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
     }
 
     const described = composition.actions.flatMap((a) => {
-        const read = a.msg ? tryDescribe(a.msg, dao, coins.format) : null;
+        const read = a.msg ? tryDescribe(a.msg, dao, coins.exact) : null;
         return read?.ok ? [read.action] : [];
     });
     const problem = composition.contentError ?? composition.expeditedError ?? composition.actions.find((a) => a.error)?.error;
@@ -131,13 +134,13 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
                 dao={dao} params={params} title={title} summary={summary} expedited={expedited}
                 onTitle={setTitle} onSummary={setSummary} onExpedited={setExpedited}
             />
-            <ActionsList drafts={drafts} composed={composition.actions} ctx={ctx} maxActions={Number(params.max_msgs_per_proposal)} formatCoin={coins.format} onChange={setDrafts} />
+            <ActionsList drafts={drafts} composed={composition.actions} ctx={ctx} maxActions={Number(params.max_msgs_per_proposal)} formatCoin={coins.exact} onChange={setDrafts} />
             <Review
                 dao={dao}
                 composition={composition}
                 actions={described}
                 cost={cost}
-                formatCoin={coins.format}
+                formatCoin={coins.exact}
                 nameOf={(a) => (a === dao.address ? dao.name : undefined)}
                 expedited={expedited}
                 balancesKnown={!balancesLoading && !!wallet}
@@ -151,6 +154,7 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
                 problem={problem}
                 state={state}
                 onSubmit={send}
+                onCheck={check}
                 onAllowResubmit={allowResubmit}
             />
         </Flex>

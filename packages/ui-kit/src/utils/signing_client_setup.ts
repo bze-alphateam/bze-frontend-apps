@@ -148,14 +148,16 @@ export const msgValueFromJson = (typeUrl: string, body: unknown): unknown => {
 
 /**
  * What the chain would read from a message value: the value is encoded to protobuf, decoded again and
- * written back as JSON (snake_case, defaults left out). Shows exactly what is signed.
+ * written back as JSON (snake_case, defaults left out, no undefined properties). Shows exactly what is signed.
  */
 export const msgValueToJson = (typeUrl: string, value: unknown): Record<string, unknown> => {
     const codec = CODECS_BY_TYPE_URL.get(typeUrl);
     if (!codec || !codec.decode || !codec.toAmino) {
         throw new Error(`no decoder registered for ${typeUrl}`);
     }
-    return codec.toAmino(codec.decode(encodeMsgValue(typeUrl, value)));
+    // the codecs leave a default as an `undefined` property: a JSON round trip drops them, as the chain's JSON does
+    const json = codec.toAmino(codec.decode(encodeMsgValue(typeUrl, value)));
+    return JSON.parse(JSON.stringify(json, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));
 };
 
 export const registerBzeEncoders = (client: any): void => {

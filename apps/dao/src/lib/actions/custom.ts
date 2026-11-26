@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import {encodeMsgValue, hasMsgCodec, msgValueFromJson, msgValueToJson} from '@bze/bze-ui-kit';
 import type {EncodeObject} from '@bze/bzejs/types';
 import {signersOf} from './signers';
@@ -13,9 +14,49 @@ const ADMIN_EXECUTE = '/bze.dao.MsgAdminExecute';
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** A field of the JSON the codec does not read: a typo or a camelCase name would be dropped silently. */
 const isDefault = (v: unknown): boolean =>
     v === '' || v === 0 || v === '0' || v === false || v === null || (Array.isArray(v) && v.length === 0);
+
+const PLAIN_DECIMAL = /^\d+(\.\d{1,18})?$/;
+
+/** A ratio typed as a decimal ("0.4") that the codec writes back as the chain's 18-decimal integer ("400000000000000000"): the same number. */
+const isDecimalOf = (typed: unknown, read: unknown): boolean =>
+    typeof typed === 'string' && typeof read === 'string' && PLAIN_DECIMAL.test(typed) && /^\d+$/.test(read) && new BigNumber(typed).shiftedBy(18).isEqualTo(read);
+
+const show = (v: unknown): string => (typeof v === 'string' ? `"${v}"` : JSON.stringify(v));
+
+/**
+ * The first place where what was typed is not what the chain would read back from the encoded bytes
+ * (a field the type does not have, a camelCase name, an enum written as a name instead of a number, a
+ * number in a wrong place, a nested typo), or null when everything typed is there. A typed value that
+ * is the type's default (empty, zero, false) may be absent from the read-back, as protobuf omits it.
+ */
+export function firstMismatch(typed: unknown, read: unknown, path = ''): string | null {
+    const at = path || 'the message';
+    if (Array.isArray(typed)) {
+        if (!Array.isArray(read) || read.length !== typed.length) return `${at}: ${show(typed)} is not what the chain would read`;
+        for (let i = 0; i < typed.length; i++) {
+            const found = firstMismatch(typed[i], read[i], `${path}[${i}]`);
+            if (found) return found;
+        }
+        return null;
+    }
+    if (typeof typed === 'object' && typed !== null) {
+        const readObject = typeof read === 'object' && read !== null && !Array.isArray(read) ? (read as Record<string, unknown>) : {};
+        for (const [key, value] of Object.entries(typed)) {
+            const here = path ? `${path}.${key}` : key;
+            if (!(key in readObject)) {
+                if (isDefault(value) || (typeof value === 'object' && value !== null && Object.keys(value).length === 0)) continue;
+                return `"${here}" is not a field of this type, or its value is not valid for it`;
+            }
+            const found = firstMismatch(value, readObject[key], here);
+            if (found) return found;
+        }
+        return null;
+    }
+    if (String(typed) === String(read) || isDecimalOf(typed, read) || (isDefault(typed) && (read === undefined || isDefault(read)))) return null;
+    return `"${at}" is ${show(typed)} but the chain would read ${show(read)}`;
+}
 
 export type CustomMessage =
     | {ok: true; typeUrl: string; msg: EncodeObject; /** The message as the chain will read it, with its `@type`. */ json: Record<string, unknown>}
@@ -66,20 +107,20 @@ export function parseCustomMessage(text: string, ctx: Pick<ActionContext, 'dao'>
         encodeMsgValue(typeUrl, value);
         read = msgValueToJson(typeUrl, value);
     } catch (e) {
-        return {ok: false, error: `The fields do not fit ${typeUrl}: ${(e as Error).message}`};
+        return {ok: false, error: `The fields do not fit ${typeUrl}: ${(e as Error).message}. Write enums as numbers and durations as nanoseconds.`};
     }
 
-    const ignored = Object.keys(body).filter((key) => !(key in read) && !isDefault(body[key]));
-    if (ignored.length > 0) {
-        return {ok: false, error: `${typeUrl} has no field ${ignored.map((k) => `"${k}"`).join(', ')} (or its value is not valid for it). Use the protobuf field names in snake_case, enums as numbers.`};
+    const mismatch = firstMismatch(body, read);
+    if (mismatch) {
+        return {ok: false, error: `${mismatch}. Use the protobuf field names in snake_case, enums as numbers and durations as nanoseconds.`};
     }
 
     return {ok: true, typeUrl, msg: {typeUrl, value}, json: {'@type': typeUrl, ...read}};
 }
 
-/** The example the form offers: a bank send from the DAO, with a recipient the user has to fill in. */
-export const customExample = (daoAddress: string): string =>
-    JSON.stringify({'@type': MSG_PLACEHOLDER, from_address: daoAddress, to_address: 'REPLACE_WITH_AN_ADDRESS', amount: [{denom: 'ubze', amount: '1000000'}]}, null, 2);
+/** What the editor shows while it is empty: a bank send from the DAO, with a recipient to fill in. */
+export const customPlaceholder = (daoAddress: string): string =>
+    JSON.stringify({'@type': MSG_PLACEHOLDER, from_address: daoAddress, to_address: 'bze1…', amount: [{denom: 'ubze', amount: '1000000'}]}, null, 2);
 
 /** Advanced: one message of any type the ui-kit can encode, typed as JSON. */
 export const customEntry: ActionEntry = {

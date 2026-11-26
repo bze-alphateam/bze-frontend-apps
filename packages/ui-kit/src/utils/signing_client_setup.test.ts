@@ -21,6 +21,13 @@ describe('message value from and to JSON', () => {
         expect(msgValueToJson(SEND, value)).not.toHaveProperty('bogus')
     })
 
+    it('leaves defaults out altogether, not as undefined properties', () => {
+        const typeUrl = '/bze.dao.MsgUpdateMembers'
+        const json = msgValueToJson(typeUrl, msgValueFromJson(typeUrl, {authority: 'bze1a', dao_id: '4', add: ['bze1b']}))
+        expect(Object.values(json).every((v) => v !== undefined)).toBe(true)
+        expect(json).toMatchObject({authority: 'bze1a', dao_id: '4', add: ['bze1b']})
+    })
+
     it('throws for a type without a codec', () => {
         expect(() => msgValueFromJson('/nope.Msg', {})).toThrow(/no decoder/)
         expect(() => msgValueToJson('/nope.Msg', {})).toThrow(/no decoder/)

@@ -6,6 +6,13 @@ export const DRAFT_VERSION = 1;
 const MAX_ACTIONS = 64;
 const MAX_TEXT = 200_000;
 
+export interface DraftRules {
+    /** The DAO allows expedited proposals. */
+    allowExpedite: boolean;
+    /** `max_summary_len` is above 0. */
+    allowSummary: boolean;
+}
+
 export interface Draft {
     title: string;
     summary: string;
@@ -69,6 +76,8 @@ export function loadDraft(
     daoId: string,
     isKnownAction: (type: string) => boolean,
     newKey: () => string,
+    /** What the DAO offers today: a draft never restores a field whose control is not there. */
+    rules: DraftRules = {allowExpedite: true, allowSummary: true},
 ): Draft | null {
     try {
         const raw = storage?.getItem(draftKey(daoId));
@@ -89,7 +98,12 @@ export function loadDraft(
             }
         }
 
-        const draft: Draft = {title: text(data.title), summary: text(data.summary), expedited: data.expedited === true, actions};
+        const draft: Draft = {
+            title: text(data.title),
+            summary: rules.allowSummary ? text(data.summary) : '',
+            expedited: rules.allowExpedite && data.expedited === true,
+            actions,
+        };
         return isEmptyDraft(draft) ? null : draft;
     } catch {
         return null;

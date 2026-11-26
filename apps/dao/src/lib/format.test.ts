@@ -2,6 +2,11 @@ import {describe, expect, it} from "vitest";
 import {formatCoin, formatDateTime, formatDay, formatDuration, formatRatio, formatRelative, isoFromUnix, shortAddress} from "./format";
 
 describe("formatCoin", () => {
+    it("keeps every digit of an amount (money the user signs is never rounded)", () => {
+        expect(formatCoin({denom: "ubze", amount: "1123456"}, {decimals: 6, ticker: "BZE"})).toBe("1.123456 BZE");
+        expect(formatCoin({denom: "ubze", amount: "9007199254740993"}, {decimals: 6, ticker: "BZE"})).toBe("9,007,199,254.740993 BZE");
+    });
+
     it("shifts by the decimals and shows the ticker", () => {
         expect(formatCoin({denom: "ubze", amount: "1500000000"}, {decimals: 6, ticker: "BZE"})).toBe("1,500 BZE");
         expect(formatCoin({denom: "ubze", amount: "2500000"}, {decimals: 6, ticker: "BZE"})).toBe("2.5 BZE");

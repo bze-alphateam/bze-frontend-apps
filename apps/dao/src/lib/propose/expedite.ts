@@ -13,7 +13,7 @@ export function expeditedExplanation(dao: Pick<Dao, 'type' | 'config'>, minExped
     ];
     if (dao.type === 'DAO_TYPE_STAKE') {
         const delay = secondsOf(minExpediteDelay);
-        lines.push(`In a stakers' DAO an expedited proposal cannot be settled early before ${delay === null ? 'the minimum expedite delay' : formatDuration(delay)} have passed.`);
+        lines.push(`In a stakers' DAO an expedited proposal cannot be settled early during its first ${delay === null ? 'minimum expedite delay' : formatDuration(delay)}.`);
     }
     return lines;
 }

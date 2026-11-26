@@ -133,4 +133,4 @@ const SUMMARY: Record<MsgAction['type'], string> = {
     other: 'Other action',
 };
 
-export const summaryOf = (action: MsgAction): string => (action.type === 'other' ? action.title : action.type === 'nominate_admin' && action.toVoters ? 'Hand the DAO to its voters' : SUMMARY[action.type]);
+const summaryOf = (action: MsgAction): string => (action.type === 'other' ? action.title : action.type === 'nominate_admin' && action.toVoters ? 'Hand the DAO to its voters' : SUMMARY[action.type]);

@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import {packDaoMsgs} from "@bze/bze-ui-kit";
 import {ctxWith, DAO, DAO_ADDRESS, OTHER, WALLET} from "@/test/composer-fixtures";
-import {customEntry, customExample, MAX_CUSTOM_JSON_CHARS, parseCustomMessage} from "./custom";
+import {customEntry, customPlaceholder, firstMismatch, MAX_CUSTOM_JSON_CHARS, parseCustomMessage} from "./custom";
 
 const SEND = "/cosmos.bank.v1beta1.MsgSend";
 const send = (over: Record<string, unknown> = {}) =>
@@ -75,7 +75,7 @@ describe("a custom message", () => {
 
     it("refuses a field the type does not have: camelCase or a typo is never silently dropped", () => {
         const result = parseCustomMessage(send({toAddress: OTHER, memo_text: "hi"}), ctxWith());
-        expect(result).toEqual({ok: false, error: expect.stringMatching(/no field "toAddress", "memo_text"/)});
+        expect(result).toEqual({ok: false, error: expect.stringMatching(/"toAddress" is not a field of this type/)});
         // an explicit default is not an unknown field
         expect(parseCustomMessage(send({}), ctxWith()).ok).toBe(true);
     });
@@ -94,7 +94,59 @@ describe("a custom message", () => {
         expect(customEntry.initialFields(ctxWith())).toEqual({json: ""});
     });
 
-    it("offers an example with the DAO as the signer", () => {
-        expect(JSON.parse(customExample(DAO_ADDRESS))).toMatchObject({"@type": SEND, from_address: DAO_ADDRESS});
+    it("shows a placeholder, not a value: an untouched editor is never a valid message", () => {
+        expect(JSON.parse(customPlaceholder(DAO_ADDRESS))).toMatchObject({"@type": SEND, from_address: DAO_ADDRESS});
+        expect(customEntry.validate({json: ""}, ctxWith())).toMatch(/Paste the message/);
+    });
+
+    describe("what is typed is what the chain would read", () => {
+        const config = (over: Record<string, unknown> = {}) => ({
+            min_quorum: "0.4", threshold: "0.5", voting_period: "259200000000000", allow_expedite: false, expedited_period: "0",
+            expedite_quorum: "0", expedite_threshold: "0", open_submission: false, deposit_refund_policy: 2,
+            cost_destination: 1, kept_deposit_destination: 0, ...over,
+        });
+        const update = (cfg: Record<string, unknown>) => JSON.stringify({"@type": "/bze.dao.MsgUpdateDaoConfig", authority: DAO_ADDRESS, dao_id: "4", config: cfg});
+
+        it("an enum as a number reads back as typed", () => {
+            const result = parseCustomMessage(update(config()), ctxWith());
+            expect(result).toMatchObject({ok: true, json: {config: {deposit_refund_policy: 2}}});
+        });
+
+        it("an enum written as its name (the chain's REST form) is refused, never read as the zero value", () => {
+            const result = parseCustomMessage(update(config({deposit_refund_policy: "NEVER"})), ctxWith());
+            expect(result.ok).toBe(false);
+            if (!result.ok) expect(result.error).toMatch(/enums as numbers/);
+        });
+
+        it("a ratio typed as a decimal is the same number the chain reads", () => {
+            expect(firstMismatch({r: "0.4"}, {r: "400000000000000000"})).toBeNull();
+            expect(firstMismatch({r: "0.4"}, {r: "400000000000000001"})).toMatch(/"r" is "0.4"/);
+            expect(parseCustomMessage(update(config({min_quorum: "400000000000000000"})), ctxWith()).ok).toBe(true);
+        });
+
+        it("a duration written in the REST form is refused with the way to write it", () => {
+            const result = parseCustomMessage(update(config({voting_period: "259200s"})), ctxWith());
+            expect(result).toEqual({ok: false, error: expect.stringContaining("durations as nanoseconds")});
+        });
+
+        it("a typo nested inside the message is refused too", () => {
+            const result = parseCustomMessage(update(config({votng_period: "1s"})), ctxWith());
+            expect(result).toEqual({ok: false, error: expect.stringContaining("config.votng_period")});
+        });
+    });
+
+    describe("firstMismatch", () => {
+        it("accepts what is there and what protobuf leaves out as a default", () => {
+            expect(firstMismatch({a: "1", b: "", c: 0, d: false, e: [], f: null, g: {}}, {a: "1"})).toBeNull();
+            expect(firstMismatch({n: 5}, {n: "5"})).toBeNull();
+            expect(firstMismatch({list: [{x: "1"}]}, {list: [{x: "1"}]})).toBeNull();
+        });
+        it("names the first thing that differs", () => {
+            expect(firstMismatch({a: "1"}, {a: "2"})).toBe('"a" is "1" but the chain would read "2"');
+            expect(firstMismatch({a: "1"}, {})).toMatch(/"a" is not a field/);
+            expect(firstMismatch({a: {b: "1"}}, {a: {}})).toMatch(/"a.b" is not a field/);
+            expect(firstMismatch({l: [1, 2]}, {l: [1]})).toMatch(/l/);
+            expect(firstMismatch({l: [{x: "1"}]}, {l: [{x: "9"}]})).toBe('"l[0].x" is "1" but the chain would read "9"');
+        });
     });
 });

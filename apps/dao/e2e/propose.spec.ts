@@ -1,6 +1,7 @@
 import {expect, test} from "./support/mock-network";
 import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
 import {bzeWallets} from "./support/wallets";
+import daoTwo from "./fixtures/lcd/dao.dao.2.json";
 
 // The proposal composer (BFE-375) against hand-written chain and Scan answers (testnet has no DAO yet, see
 // fixtures/README.md). DAO 2 "Founders" is a free, self-owned member list the e2e wallet belongs to, with
@@ -76,7 +77,8 @@ test.describe("a member of a free DAO", () => {
         await expect(page.getByTestId("action-error")).toContainText("at most 6 decimals");
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
-        await page.getByTestId("pay-amount").fill("1");
+        await page.getByTestId("pay-amount").fill("1.123456");
+        await expect(page.getByTestId("action-preview")).toContainText("Send 1.123456 BZE from the DAO");
         await page.getByTestId("pay-to").fill("cosmos1notmine");
         await expect(page.getByTestId("action-error")).toContainText("not a valid BeeZee address");
     });
@@ -102,8 +104,8 @@ test.describe("a member of a free DAO", () => {
         await page.getByTestId("add-action").click();
         await page.getByTestId("add-custom").click();
 
-        await page.getByTestId("custom-example").click();
-        await expect(page.getByTestId("action-error")).toContainText("must be signed by the DAO only");
+        await expect(page.getByTestId("custom-json")).toHaveValue("");
+        await expect(page.getByTestId("action-row")).toHaveCount(1);
 
         const message = {
             "@type": "/cosmos.bank.v1beta1.MsgSend",
@@ -111,6 +113,9 @@ test.describe("a member of a free DAO", () => {
             to_address: STRANGER,
             amount: [{denom: "ubze", amount: "1500000"}],
         };
+        await page.getByTestId("custom-json").fill(JSON.stringify({...message, from_address: STRANGER}));
+        await expect(page.getByTestId("action-error")).toContainText("must be signed by the DAO only");
+
         await page.getByTestId("custom-json").fill(JSON.stringify(message));
         await expect(page.getByTestId("action-error")).toHaveCount(0);
         await expect(page.getByTestId("action-preview")).toContainText("Send 1.5 BZE from the DAO");
@@ -149,8 +154,14 @@ test.describe("a member of a free DAO", () => {
 });
 
 test.describe("who may propose", () => {
-    test("a wallet that is not a member is told how to become one instead of getting a button", async ({page}) => {
-        await installFakeKeplr(page, STRANGER);
+    test("a wallet that is not a member is told how to become one instead of getting a button", async ({page, network}) => {
+        // the e2e wallet is a member of DAO 2: answer the DAO without it
+        network.use("lcd", {
+            path: "/bze/dao/dao/2",
+            status: 200,
+            body: {dao: {...daoTwo.body.dao, members: [STRANGER]}},
+        });
+        await installFakeKeplr(page, WALLET);
         await page.goto("/dao/2/propose");
         await connectWallet(page);
 
@@ -189,7 +200,7 @@ test.describe("a stake DAO that charges for proposals", () => {
 
         await expect(page.getByTestId("expedite-box")).toContainText("after 1 day instead of 3 days");
         await expect(page.getByTestId("expedite-box")).toContainText("more than 70% must vote Yes");
-        await expect(page.getByTestId("expedite-box")).toContainText("12 hours");
+        await expect(page.getByTestId("expedite-box")).toContainText("during its first 1 day");
         await page.getByTestId("expedited-switch").check();
         await expect(page.getByTestId("review-expedited")).toBeVisible();
     });
