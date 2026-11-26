@@ -114,7 +114,7 @@ test("with Scan down the live parts render and the Scan parts offer a retry", as
     await expect(page.getByTestId("scan-retry")).toContainText("Who created this DAO");
 
     await page.getByRole("tab", {name: "History"}).click();
-    await expect(page.getByTestId("scan-retry")).toContainText("The history");
+    await expect(page.getByTestId("history-tab").getByTestId("scan-retry")).toContainText("The history");
 });
 
 test("a node on v8.2.x shows the not-supported state", async ({page, network}) => {
