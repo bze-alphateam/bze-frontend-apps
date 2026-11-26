@@ -193,6 +193,7 @@ describe("useProposalSubmit", () => {
             const {result} = renderHook(() => useIt(sign, {storage, getTxLanding: async () => "failed"}));
             await act(async () => { await result.current.check(); });
             expect(result.current.state).toMatchObject({phase: "failed", hash: HASH});
+            expect((result.current.state as {message: string}).message).toBe("The chain refused that transaction. No proposal was created. The network fee was paid; the cost and deposit were not. You can submit again.");
             expect(storage.data.size).toBe(0);
             await act(async () => { await result.current.submit(MSG); });
             expect(sign).toHaveBeenCalledTimes(1);

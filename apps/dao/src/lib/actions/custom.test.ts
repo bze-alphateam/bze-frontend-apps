@@ -99,6 +99,42 @@ describe("a custom message", () => {
         expect(customEntry.validate({json: ""}, ctxWith())).toMatch(/Paste the message/);
     });
 
+    describe("a settle message can never run in a proposal", () => {
+        const SETTLE_TYPE = "/bze.dao.MsgSettleProposal";
+
+        it("is refused on its own, even signed by the DAO", () => {
+            const text = JSON.stringify({"@type": SETTLE_TYPE, sender: DAO_ADDRESS, proposal_id: "3"});
+            expect(parseCustomMessage(text, ctxWith())).toEqual({ok: false, error: expect.stringMatching(/cannot run a settle message/)});
+        });
+
+        it("is refused inside an authz exec, at any depth", () => {
+            const inner = {"@type": SETTLE_TYPE, sender: DAO_ADDRESS, proposal_id: "3"};
+            const exec = (msgs: unknown) => JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs});
+            expect(parseCustomMessage(exec([inner]), ctxWith())).toEqual({ok: false, error: expect.stringMatching(/not even inside an authz exec/)});
+            const nested = {"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: [inner]};
+            expect(parseCustomMessage(exec([nested]), ctxWith())).toMatchObject({ok: false, error: expect.stringMatching(/settle/)});
+        });
+    });
+
+    describe("numbers JSON cannot hold exactly", () => {
+        it("refuses an integer above 2^53 - 1 instead of reading it rounded", () => {
+            const result = parseCustomMessage(send({amount: [{denom: "ubze", amount: 9007199254740993}]}), ctxWith());
+            expect(result).toEqual({ok: false, error: expect.stringContaining('"amount[0].amount" is a number JSON cannot hold exactly')});
+            expect(result.ok === false && result.error).toMatch(/write it as a string/);
+        });
+
+        it("refuses 2^53 itself and a number that is not whole", () => {
+            expect(parseCustomMessage(send({extra: 9007199254740992}), ctxWith()).ok).toBe(false);
+            expect(parseCustomMessage(send({amount: [{denom: "ubze", amount: 1.5}]}), ctxWith())).toMatchObject({ok: false, error: expect.stringContaining("write it as a string")});
+        });
+
+        it("accepts the largest safe integer, and the same value as a string", () => {
+            const enumField = JSON.stringify({"@type": "/bze.dao.MsgUpdateMembers", authority: DAO_ADDRESS, dao_id: 9007199254740991, add: [OTHER]});
+            expect(parseCustomMessage(enumField, ctxWith()).ok).toBe(true);
+            expect(parseCustomMessage(send({amount: [{denom: "ubze", amount: "9007199254740993"}]}), ctxWith()).ok).toBe(true);
+        });
+    });
+
     describe("what is typed is what the chain would read", () => {
         const config = (over: Record<string, unknown> = {}) => ({
             min_quorum: "0.4", threshold: "0.5", voting_period: "259200000000000", allow_expedite: false, expedited_period: "0",

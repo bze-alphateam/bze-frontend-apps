@@ -11,6 +11,33 @@ export const MAX_CUSTOM_JSON_CHARS = 100_000;
 
 const MSG_PLACEHOLDER = '/cosmos.bank.v1beta1.MsgSend';
 const ADMIN_EXECUTE = '/bze.dao.MsgAdminExecute';
+const SETTLE = '/bze.dao.MsgSettleProposal';
+const AUTHZ_EXEC = '/cosmos.authz.v1beta1.MsgExec';
+
+/** Whether a settle message type appears anywhere in the typed JSON (an authz exec nests its messages). */
+const mentionsSettle = (value: unknown): boolean => {
+    if (typeof value === 'string') return value === SETTLE || value === SETTLE.slice(1);
+    if (Array.isArray(value)) return value.some(mentionsSettle);
+    if (isObject(value)) return Object.values(value).some(mentionsSettle);
+    return false;
+};
+
+/** The path of the first number JSON.parse could have rounded (or that is not a whole number), or null. */
+const firstUnsafeNumber = (value: unknown, path = 'the message'): string | null => {
+    if (typeof value === 'number') return Number.isSafeInteger(value) ? null : path;
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+            const found = firstUnsafeNumber(value[i], `${path}[${i}]`);
+            if (found) return found;
+        }
+    } else if (isObject(value)) {
+        for (const [key, item] of Object.entries(value)) {
+            const found = firstUnsafeNumber(item, path === 'the message' ? key : `${path}.${key}`);
+            if (found) return found;
+        }
+    }
+    return null;
+};
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -84,6 +111,15 @@ export function parseCustomMessage(text: string, ctx: Pick<ActionContext, 'dao'>
     const typeUrl = parsed['@type'];
     if (typeof typeUrl !== 'string' || !typeUrl.startsWith('/')) return {ok: false, error: 'Add the message type as "@type", like "/cosmos.bank.v1beta1.MsgSend".'};
     if (!hasMsgCodec(typeUrl)) return {ok: false, error: `This app cannot encode ${typeUrl}. Only the message types of the BZE apps are supported.`};
+
+    const unsafe = firstUnsafeNumber(parsed);
+    if (unsafe) {
+        return {ok: false, error: `"${unsafe}" is a number JSON cannot hold exactly (above 9007199254740991, or not a whole number): write it as a string, like "12345678901234567890".`};
+    }
+
+    if (typeUrl === SETTLE || (typeUrl === AUTHZ_EXEC && mentionsSettle(parsed))) {
+        return {ok: false, error: 'A proposal cannot run a settle message (MsgSettleProposal), not even inside an authz exec: the chain refuses it when the proposal runs, and the proposal would end as failed.'};
+    }
 
     const {'@type': _type, ...body} = parsed;
     void _type;

@@ -18,7 +18,7 @@ import {availableActions, findAction} from '@/lib/actions/registry';
 import type {ActionContext, ActionDraft} from '@/lib/actions/types';
 import {composeProposal} from '@/lib/propose/compose';
 import {summarizeCost} from '@/lib/propose/cost';
-import {tryDescribe} from '@/lib/propose/describe';
+import {describeAll} from '@/lib/propose/describe';
 import {browserStorage, clearDraft, loadDraft, saveDraft} from '@/lib/propose/draft';
 import {proposerStatus} from '@/lib/propose/eligibility';
 import {InnerHero} from '@/components/ui/layout-hero';
@@ -110,13 +110,12 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
         return <PageState kind="error" title="The rules of the chain did not load" description="The proposal limits could not be read, so a proposal cannot be checked." />;
     }
 
-    const described = composition.actions.flatMap((a) => {
-        const read = a.msg ? tryDescribe(a.msg, dao, coins.exact) : null;
-        return read?.ok ? [read.action] : [];
-    });
-    const problem = composition.contentError ?? composition.expeditedError ?? composition.actions.find((a) => a.error)?.error;
+    const {actions: described, unreadable} = describeAll(composition.actions.flatMap((a) => (a.msg ? [a.msg] : [])), dao, coins.exact);
+    const problem = composition.contentError ?? composition.expeditedError ?? composition.actions.find((a) => a.error)?.error
+        ?? (unreadable > 0 ? 'Some actions could not be read back, so they are shown below as raw JSON. A proposal is only sent when everything it signs can be shown.' : undefined);
+    const ready = composition.ready && unreadable === 0;
     const send = () => {
-        if (!wallet || !composition.ready) return;
+        if (!wallet || !ready) return;
         void submit(buildSubmitProposalMsg({proposer: wallet, daoId: dao.id, title: input.title, summary: input.summary, msgs: composition.msgs, expedited}));
     };
 
@@ -149,7 +148,7 @@ const Composer = ({deps, view, wallet, sign}: {deps: DaoViewDeps; view: DaoView;
                 dao={dao}
                 wallet={wallet}
                 status={status}
-                ready={composition.ready}
+                ready={ready}
                 short={cost.short}
                 problem={problem}
                 state={state}

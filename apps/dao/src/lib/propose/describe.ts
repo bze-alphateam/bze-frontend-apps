@@ -55,3 +55,35 @@ export function tryDescribe(msg: EncodeObject, dao: ActionContext['dao'], format
         return {ok: false, error: (e as Error).message};
     }
 }
+
+const replaceBigInt = (_key: string, v: unknown): unknown => (typeof v === 'bigint' ? v.toString() : v);
+
+/** A message that could not be read back, as raw JSON of what would be signed (never dropped). */
+function rawAction(msg: EncodeObject): MsgAction {
+    let json: string;
+    try {
+        json = JSON.stringify({typeUrl: msg.typeUrl, value: msg.value}, replaceBigInt, 2);
+    } catch {
+        json = `${msg.typeUrl} (its fields could not be shown)`;
+    }
+    return {type: 'other', typeUrl: msg.typeUrl, title: 'Could not be read back', json};
+}
+
+export interface DescribedAll {
+    /** One action per message, in order: a message that could not be read back is a raw JSON row. */
+    actions: MsgAction[];
+    /** How many could not be read back. The proposal is not sent while any is left: what is signed must be shown. */
+    unreadable: number;
+}
+
+/** Describes every message that would be signed; none is left out. */
+export function describeAll(msgs: EncodeObject[], dao: ActionContext['dao'], formatCoin: (coin: DaoCoin) => string): DescribedAll {
+    let unreadable = 0;
+    const actions = msgs.map((msg) => {
+        const read = tryDescribe(msg, dao, formatCoin);
+        if (read.ok) return read.action;
+        unreadable += 1;
+        return rawAction(msg);
+    });
+    return {actions, unreadable};
+}

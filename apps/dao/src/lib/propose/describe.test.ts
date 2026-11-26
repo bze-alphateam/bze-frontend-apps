@@ -4,7 +4,7 @@ import {buildUpdateDaoConfigMsg, buildUpdateDaoMembersMsg} from "@bze/bze-ui-kit
 import {CONFIG, DAO, DAO_ADDRESS, OTHER} from "@/test/composer-fixtures";
 import {payEntry} from "@/lib/actions/pay";
 import {ctxWith} from "@/test/composer-fixtures";
-import {describeBuilt, tryDescribe} from "./describe";
+import {describeAll, describeBuilt, tryDescribe} from "./describe";
 
 const fmt = (c: {denom: string; amount: string}) => `${c.amount} ${c.denom}`;
 
@@ -38,5 +38,23 @@ describe("describeBuilt", () => {
         const ok = tryDescribe(payEntry.build({denom: "ubze", amount: "1", to: OTHER}, ctxWith()), DAO, fmt);
         expect(ok.ok).toBe(true);
         expect(packDaoMsgs([payEntry.build({denom: "ubze", amount: "1", to: OTHER}, ctxWith())])).toHaveLength(1);
+    });
+
+    describe("describeAll shows every message that would be signed", () => {
+        const good = () => payEntry.build({denom: "ubze", amount: "1", to: OTHER}, ctxWith());
+        const unreadable = {typeUrl: "/nope.Msg", value: {big: 12345678901234567890n}};
+
+        it("describes them all, in order", () => {
+            const {actions, unreadable: count} = describeAll([good(), good()], DAO, fmt);
+            expect(count).toBe(0);
+            expect(actions.map((a) => a.type)).toEqual(["send", "send"]);
+        });
+
+        it("keeps a message it cannot read back as a raw JSON row and counts it, never dropping it", () => {
+            const result = describeAll([good(), unreadable, good()], DAO, fmt);
+            expect(result.actions).toHaveLength(3);
+            expect(result.unreadable).toBe(1);
+            expect(result.actions[1]).toMatchObject({type: "other", typeUrl: "/nope.Msg", json: expect.stringContaining("12345678901234567890")});
+        });
     });
 });

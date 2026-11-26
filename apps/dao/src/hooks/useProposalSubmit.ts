@@ -129,7 +129,7 @@ export function useProposalSubmit({sign, daoId, storage, getTxLanding, fetchTxEv
             settle(await land(hash, {}));
         } else if (landing === 'failed') {
             clearPending(storage, daoId);
-            settle({phase: 'failed', message: 'The chain refused that transaction. No proposal was created and nothing was charged; you can submit again.', hash});
+            settle({phase: 'failed', message: 'The chain refused that transaction. No proposal was created. The network fee was paid; the cost and deposit were not. You can submit again.', hash});
         } else {
             setStateValue({phase: 'unconfirmed', message, hash, note: 'The node does not know the transaction yet. It may still be included: check again in a moment.'});
         }
