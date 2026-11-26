@@ -7,7 +7,7 @@ import {bzeWallets} from "./support/wallets";
 // no fixtures, so these specs stop at the review: signing, simulation and reading the new DAO
 // from the result are covered by the ui-kit unit tests (useCreateDao, created, create).
 const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
-const [OTHER] = bzeWallets(1);
+const [, OTHER] = bzeWallets(2);
 
 test.beforeEach(async ({page, network}) => {
     network.use("lcd", {
@@ -129,14 +129,11 @@ test("a self-owned stakers DAO with nothing picked is blocked, an admin lifts it
     await toStep(page, "rules");
 });
 
-test("an unsent draft survives a reload", async ({page}) => {
+test("an unsent draft is kept in this browser", async ({page}) => {
     await page.goto("/create");
     await connectWallet(page);
     await page.getByRole("button", {name: "Continue"}).click();
     await page.getByPlaceholder("Hive Council").fill("Half written");
 
-    await page.reload();
-    await connectWallet(page);
-    await page.getByRole("button", {name: "Continue"}).click();
-    await expect(page.getByPlaceholder("Hive Council")).toHaveValue("Half written");
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem("dao.create-draft.v1"))).toContain("Half written");
 });

@@ -84,7 +84,7 @@ export interface CreateDaoFlowProps {
 
 const STEP_TITLES: Record<CreateDaoStep, string> = {type: 'Type', name: 'Name', voters: 'Voters', admin: 'Admin', rules: 'Rules', review: 'Review'};
 
-type Loaded<T> = {status: 'loading'} | {status: 'error'; message: string; unsupported?: boolean} | {status: 'ready'; data: T};
+type Loaded<T> = {status: 'idle'} | {status: 'loading'} | {status: 'error'; message: string; unsupported?: boolean} | {status: 'ready'; data: T};
 
 /**
  * The guided Create-DAO flow: type, name, voters, admin, rules, review, then one MsgCreateDao
@@ -109,7 +109,7 @@ export const CreateDaoFlow = (props: CreateDaoFlowProps) => {
         return () => { cancelled = true; };
     }, [services, attempt]);
 
-    if (params.status === 'loading') return <Shimmer h="320px" borderRadius="16px" aria-hidden/>;
+    if (params.status === 'loading' || params.status === 'idle') return <Shimmer h="320px" borderRadius="16px" aria-hidden/>;
     if (params.status === 'error') {
         return params.unsupported
             ? <PageState kind="empty" title="DAOs arrive with the v8.3.0 upgrade" description="This network does not run the DAO module yet."/>
@@ -176,7 +176,7 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
         restoreDraft(savedDraft, initialDraft({creator, preset, ctx: {decimalsOf: denomDecimals, nativeDenom}}), locked));
     const [step, setStep] = useState<CreateDaoStep>(locked?.type ? 'name' : 'type');
     const [attempt, setAttempt] = useState(draft.type === 'DAO_TYPE_STAKE' ? 1 : 0);
-    const [sources, setSources] = useState<Loaded<DaoStakeSource[]>>({status: draft.type === 'DAO_TYPE_STAKE' ? 'loading' : 'ready', data: []} as Loaded<DaoStakeSource[]>);
+    const [sources, setSources] = useState<Loaded<DaoStakeSource[]>>({status: draft.type === 'DAO_TYPE_STAKE' ? 'loading' : 'idle'});
 
     useEffect(() => {
         if (attempt === 0) return;
@@ -220,7 +220,7 @@ const Wizard = ({preset, locked, lockedBy = 'the app', onCreated, draft: savedDr
             type,
             ...(keepPreset ? {} : {presetId, rules: presetRules(presetId, type === 'DAO_TYPE_STAKE' ? lockedStakingDenom : undefined)}),
         });
-        if (type === 'DAO_TYPE_STAKE' && sources.status !== 'ready') {
+        if (type === 'DAO_TYPE_STAKE' && sources.status === 'idle') {
             setSources({status: 'loading'});
             setAttempt(a => a + 1);
         }
