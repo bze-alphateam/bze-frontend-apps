@@ -85,9 +85,10 @@ describe('useFeeEstimate transfer fee', () => {
         expect(result.current.method).toBe('preferred')
     })
 
-    it('reserves the transfer fee when a MAX spends the preferred token', async () => {
+    it('reserves the full amount, transfer fee included, when a MAX spends the preferred token', async () => {
         config('0.05')
-        state.balances = { ubze: '5000000', [TOK]: String(X + TRANSFER) }
+        // No BZE to fall back on: the fee has to come out of what a MAX of TOK leaves behind.
+        state.balances = { ubze: '0', [TOK]: String(X + TRANSFER) }
         const { result } = render()
 
         await waitFor(() => expect(result.current.estimate?.preferredTransferFee?.toFixed(0)).toBe(String(TRANSFER)))
