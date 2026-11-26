@@ -274,7 +274,9 @@ and then deploys them:
 
 Images are named `ghcr.io/bze-alphateam/bze-dapp-<app>` (`dex`, `burner`, `staking`,
 `factory`, `communities`, `dao`). Only the apps in `DEPLOYABLE_APPS` (`docker-publish.yml`) are
-dispatched to the deploy repo; `dao` is built but not deployed until its servers exist.
+dispatched to the deploy repo, and on `main` not those in `TESTNET_ONLY_APPS`: `dao` deploys to
+`testnet-dao.getbze.com` from `develop`, while its mainnet image is built but not deployed until
+mainnet runs chain v8.3.0 (then remove it from that list).
 
 **Only changed apps are built and deployed.** The first job
 (`.github/scripts/changed-apps.sh`) compares the pushed commit with the commit each
