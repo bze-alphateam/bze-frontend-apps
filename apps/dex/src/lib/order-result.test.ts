@@ -95,7 +95,28 @@ describe("summarizeOrderTx", () => {
     });
 });
 
+describe("summarizeOrderTx without a signer", () => {
+    it("counts nothing, even for events that carry no taker or owner", () => {
+        const noTaker = ev("OrderExecutedEvent", {order_type: "sell", amount: "1000000", price: "1"});
+        const noOwner = ev("OrderSavedEvent", {amount: "5", price: "1"});
+
+        const s = summarizeOrderTx([noTaker, noOwner], "");
+
+        expect(s.hasOrderEvents).toBe(false);
+        expect(s.filledAmount.toFixed()).toBe("0");
+        expect(s.placed).toEqual([]);
+    });
+});
+
 describe("describeOrderResult", () => {
+    it("converts the price with the quote and base decimals the right way round", async () => {
+        const wide: OrderResultMarket = {...market, baseDecimals: 8, quoteDecimals: 6};
+        // 1 BZE (1e8 micro) at a micro price of 3 is 3 * 10^(8-6) = 300 USDC
+        const result = await describeOrderResult(summarizeOrderTx([executed("100000000", "3")], ME), wide);
+
+        expect(result).toBe("Bought 1 BZE at an average price of 300 USDC.");
+    });
+
     it("says a fully filled order was bought at the average price", async () => {
         expect(await text([executed("1000000", "1"), executed("1000000", "3")]))
             .toBe("Bought 2 BZE at an average price of 2 USDC.");

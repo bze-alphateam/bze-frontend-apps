@@ -79,6 +79,9 @@ export const summarizeOrderTx = (events: TendermintEvent[] | undefined, signer: 
         returned: [],
     };
 
+    // no signer: an event without a taker or owner must never count as the user's
+    if (signer === '') return {...summary, hasOrderEvents: false};
+
     let notional = new BigNumber(0);
     const returned = new Map<string, BigNumber>();
     for (const event of orderEvents) {

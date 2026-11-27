@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", info: vi.fn(), clickable: vi.fn(), fetchOrders: vi.fn() },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", sell: [] as unknown[], info: vi.fn(), clickable: vi.fn(), fetchOrders: vi.fn() },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -56,7 +56,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             isLoading: false,
         }),
         getMarketBuyOrders: async () => ({ list: [] }),
-        getMarketSellOrders: async () => ({ list: [] }),
+        getMarketSellOrders: async () => ({ list: mocks.sell }),
         getMarketHistory: async () => ({ list: [] }),
         getAddressHistory: async () => [],
         getAddressFullMarketOrders: async () => { mocks.fetchOrders(); return mocks.myOrders; },
@@ -332,6 +332,61 @@ describe("order book after the v8.3.0 in-tx execution", () => {
             return true;
         });
         vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ tx_response: { events: [] } }) })));
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        fill(buy, "Price", "1");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith(
+            "Transaction Successful", expect.any(Function), "View on Explorer", undefined, undefined,
+        ));
+        vi.unstubAllGlobals();
+    });
+
+    it("shows the summary toast on the fill path (several resting orders)", async () => {
+        const q = (v: string) => JSON.stringify(v);
+        const ev = (type: string, attrs: Record<string, string>) => ({ type, attributes: Object.entries(attrs).map(([key, value]) => ({ key, value: q(value), index: true })) });
+        mocks.sell = [
+            { market_id: MARKET_ID, order_type: "sell", amount: "1000000", price: "1" },
+            { market_id: MARKET_ID, order_type: "sell", amount: "1000000", price: "2" },
+        ];
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (msgs: { typeUrl: string }[], options?: { onSuccess?: (r: unknown) => void }) => {
+            expect(msgs).toHaveLength(1);
+            expect(msgs[0].typeUrl).toContain("MsgFillOrders");
+            options?.onSuccess?.({
+                txhash: "H", height: 1, code: 0,
+                events: [
+                    ev("bze.tradebin.OrderExecutedEvent", { order_type: "sell", amount: "1000000", price: "1", taker: "bze1owner" }),
+                    ev("bze.tradebin.OrderExecutedEvent", { order_type: "sell", amount: "1000000", price: "2", taker: "bze1owner" }),
+                ],
+            });
+            return true;
+        });
+        renderPage();
+
+        const buy = await screen.findByRole("group", { name: "Buy HALT" });
+        await waitFor(() => expect(mocks.fetchOrders).toHaveBeenCalled());
+        fill(buy, "Price", "3");
+        fill(buy, "Amount", "2");
+        fireEvent.click(within(buy).getByRole("button", { name: "Buy HALT" }));
+
+        await waitFor(() => expect(mocks.clickable).toHaveBeenCalledWith(
+            "Order result", expect.any(Function), "View on Explorer",
+            "Bought 2 HALT at an average price of 1.5 BZE.", expect.anything(),
+        ));
+        mocks.sell = [];
+    });
+
+    it("falls back to the generic toast when reading the tx events from the node throws", async () => {
+        mocks.balance = "1000000000000";
+        mocks.tx.mockImplementation(async (_msgs: unknown, options?: { onSuccess?: (r: unknown) => void }) => {
+            options?.onSuccess?.({ txhash: "H", height: 1, code: 0, events: [] });
+            return true;
+        });
+        vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("node down"); }));
         renderPage();
 
         const buy = await screen.findByRole("group", { name: "Buy HALT" });
