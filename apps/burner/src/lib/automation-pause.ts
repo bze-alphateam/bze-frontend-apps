@@ -9,5 +9,5 @@ export const AUTOMATION_PAUSE_CHANGED_EVENT = "automation_pause_changed";
  * does; a resume always comes from a passed proposal, so a block event.
  */
 export const isAutomationPauseEvent = (event: TendermintEvent): boolean =>
-    event.type.includes('bze.guardian.v1.AutomationPausedEvent')
-    || event.type.includes('bze.guardian.v1.AutomationResumedEvent');
+    event.type === 'bze.guardian.v1.AutomationPausedEvent'
+    || event.type === 'bze.guardian.v1.AutomationResumedEvent';

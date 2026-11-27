@@ -202,7 +202,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             isOpen={isOpen}
             onClose={onClose}
             busy={isSubmitting}
-            title={preselectedCoin && selectedAsset ? `${verb} ${selectedAsset.ticker}` : 'Burn your tokens'}
+            title={preselectedCoin && selectedAsset ? `${verb} ${selectedAsset.ticker}` : `${verb} your tokens`}
             footer={footer}
         >
             {isLocking ? (
@@ -218,7 +218,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             {/* Coin selection when no coin is preselected */}
             {!preselectedCoin && (
                 <Field.Root>
-                    <Field.Label fontWeight="600">Select Token to Burn</Field.Label>
+                    <Field.Label fontWeight="600">Select Token to {verb}</Field.Label>
                     <Select.Root
                         collection={tokensCollection}
                         size="lg"
@@ -264,7 +264,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
 
             <Field.Root invalid={!!amountError}>
                 <Field.Label fontWeight="600">
-                    {selectedAsset ? `Amount of ${selectedAsset.ticker} to ${verb}` : 'Amount to Burn'}
+                    {selectedAsset ? `Amount of ${selectedAsset.ticker} to ${verb}` : `Amount to ${verb}`}
                 </Field.Label>
                 <Flex gap="8px" w="100%">
                     <Input
