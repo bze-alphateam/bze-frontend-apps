@@ -7,9 +7,10 @@ import { prettyAmount } from "@bze/bze-ui-kit";
 
 // The home page reads the burn history, the next burn and the locked balances from app hooks,
 // and coin data from ui-kit hooks. Mock those to feed state directly; no chain or wallet.
-const { historyMock, nextBurnMock } = vi.hoisted(() => ({
+const { historyMock, nextBurnMock, pausedMock } = vi.hoisted(() => ({
     historyMock: vi.fn(),
     nextBurnMock: vi.fn(),
+    pausedMock: vi.fn(),
 }));
 
 const ASSETS: Record<string, { denom: string; ticker: string; name: string; decimals: number }> = {
@@ -23,6 +24,7 @@ const usd = (items: { amount: BigNumber }[]) => items.reduce((t, i) => t.plus(i.
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/useBurningHistory", () => ({ useBurningHistory: () => historyMock() }));
+vi.mock("@/hooks/useAutomationPaused", () => ({ useAutomationPaused: () => pausedMock() }));
 vi.mock("@/hooks/useNextBurning", () => ({ useNextBurning: () => nextBurnMock() }));
 vi.mock("@/hooks/useBurnerContext", () => ({
     useBurnerContext: () => ({ lockBalance: new Map([["ulocked", { denom: "ulocked", amount: "3000000" }]]) }),
@@ -59,6 +61,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
+    pausedMock.mockReturnValue(false);
     historyMock.mockReturnValue({
         burnHistory: [burn("ubze", 1000), burn("factory/x/uhoney", 70), burn("ubze", 500)],
         isLoading: false,
@@ -122,5 +125,53 @@ describe("Burner home, countdown", () => {
         expect(boxes).toHaveLength(4);
         expect(rulesFor(timer)).toMatch(/flex-wrap:\s*nowrap/);
         expect(rulesFor(boxes[0].firstElementChild as HTMLElement)).toMatch(/width:\s*56px/);
+    });
+});
+
+describe("Burner home, automation pause", () => {
+    it("shows the countdown while the automation runs", () => {
+        renderPage();
+
+        expect(screen.getByRole("timer")).toBeInTheDocument();
+        expect(screen.queryByText("Burning is paused for now")).not.toBeInTheDocument();
+    });
+
+    it("shows the pause notice instead of the countdown while paused", () => {
+        pausedMock.mockReturnValue(true);
+        renderPage();
+
+        expect(screen.getByText("Burning is paused for now")).toBeInTheDocument();
+        expect(screen.getByText(/Coins wait in the burner and are burned right after it resumes\. Raffles keep running\./)).toBeInTheDocument();
+        expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+        // Burning and raffles stay available.
+        expect(screen.getByRole("button", { name: /Burn coins/ })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Join a raffle" })).toBeInTheDocument();
+    });
+});
+
+describe("Burner home, the pot", () => {
+    it("labels IBC coins and LP shares as locked and counts only the burning coins in the pot", () => {
+        ASSETS["ibc/ABC"] = { denom: "ibc/ABC", ticker: "ATOM", name: "Atom", decimals: 6 };
+        nextBurnMock.mockReturnValue({
+            nextBurn: {
+                date: new Date(Date.now() + 3_600_000),
+                coins: [{ denom: "ubze", amount: "1000000" }, { denom: "ibc/ABC", amount: "2000000" }],
+            },
+            isLoading: false,
+        });
+        renderPage();
+
+        const [, , pot] = screen.getAllByTestId("burn-stat");
+        expect(pot).toHaveTextContent("1");
+        expect(screen.getByText("Will Be Locked")).toBeInTheDocument();
+        expect(screen.getAllByText("Will be locked")).toHaveLength(1);
+        expect(screen.getAllByText("Ready to burn")).toHaveLength(1);
+        delete ASSETS["ibc/ABC"];
+    });
+
+    it("has no locked section when only burning coins wait", () => {
+        renderPage();
+
+        expect(screen.queryByText("Will Be Locked")).not.toBeInTheDocument();
     });
 });

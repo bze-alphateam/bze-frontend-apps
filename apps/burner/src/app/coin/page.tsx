@@ -20,12 +20,14 @@ import { RaffleInfoModal } from "@/components/raffle-info-modal";
 import { RaffleResultAnimation } from "@/components/raffle-result-animation";
 import { useBurningHistory } from "@/hooks/useBurningHistory";
 import { useNextBurning } from "@/hooks/useNextBurning";
+import { useAutomationPaused } from "@/hooks/useAutomationPaused";
 import {useRaffle, useRaffleContributions} from "@/hooks/useRaffles";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
 import {AppPill, BodyCell, BurnStat, emberAmount, HeaderCell, SectionHeader, TableCard} from "@/components/ui/burner/parts";
 
 const WINNERS_LIST_MAX_LEN = 20;
+const PAUSED_TOOLTIP = "Burning is paused for now. Coins wait in the burner and are burned right after it resumes. Raffles keep running.";
 
 /** A raffle figure on the inset: label, number, a muted line. */
 const RaffleFigure = ({label, value, foot, tone}: { label: string; value: string; foot: string; tone?: 'ember' | 'success' }) => (
@@ -92,6 +94,7 @@ function CoinDetailContent() {
 
     // Fetch next burning data
     const { nextBurn, isLoading: isLoadingNextBurn } = useNextBurning();
+    const automationPaused = useAutomationPaused();
 
     // Fetch raffle winners if there's a raffle for this coin
     const { winners, raffle: coinRaffle, isLoading: isLoadingRaffles } = useRaffle(denom || '');
@@ -321,15 +324,17 @@ function CoinDetailContent() {
         );
     }
 
-    const actionVerb = isLP ? 'Lock' : 'Burn';
-    const ActionIcon = isLP ? LuLock : LuFlame;
+    // LP shares and IBC coins are locked forever, never burned.
+    const isLockedCoin = isLP || isIBC;
+    const actionVerb = isLockedCoin ? 'Lock' : 'Burn';
+    const ActionIcon = isLockedCoin ? LuLock : LuFlame;
     const nextBurnDate = nextCoinBurn?.date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
     });
-    const showLocked = !isIBC && (isLP || (raffleData && lockedAmount && lockedAmount.amount.gt(0)));
+    const showLocked = isLP || isIBC || (raffleData && lockedAmount && lockedAmount.amount.gt(0));
     const showBurned = !isLP && !isIBC;
     const showNext = !isLoadingNextBurn && !!nextCoinBurn;
 
@@ -372,8 +377,8 @@ function CoinDetailContent() {
             )}
 
             {isIBC && (
-                <Notice status="info" title="About burning IBC coins">
-                    IBC coins cannot be directly burned since their origin is from another blockchain. Instead, the BeeZee blockchain will exchange these coins to BZE and burn the resulting BZE, but only if the IBC coin has enough liquidity paired directly with BZE.
+                <Notice status="info" title="About IBC coins">
+                    IBC coins come from other blockchains, so BeeZee cannot burn them. Coins you send here are locked forever in the burner&apos;s lock address and leave circulation on BeeZee. Anyone can later add small parts of them to the coin&apos;s BZE liquidity pool.
                 </Notice>
             )}
 
@@ -462,10 +467,12 @@ function CoinDetailContent() {
                     )}
                     {showNext && nextCoinBurn && (
                         <BurnStat
-                            label={isLP ? 'Next locking' : 'Next burning'}
+                            label={isLockedCoin ? 'Next locking' : 'Next burning'}
                             value={prettyAmount(nextCoinBurn.amount)}
                             foot={nextCoinBurn.usdValue.gt(0) ? `≈ $${prettyAmount(nextCoinBurn.usdValue)}` : undefined}
-                            tag={<AppPill>{nextBurnDate}</AppPill>}
+                            tag={automationPaused
+                                ? <span title={PAUSED_TOOLTIP}><AppPill>Paused</AppPill></span>
+                                : <AppPill>{nextBurnDate}</AppPill>}
                         />
                     )}
                 </Grid>

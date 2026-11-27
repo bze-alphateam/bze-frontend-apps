@@ -10,8 +10,8 @@ import {
     Select,
 } from "@chakra-ui/react";
 import {useState, useMemo, useCallback} from "react";
-import {LuFlame, LuWallet} from "react-icons/lu";
-import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant } from "@bze/bze-ui-kit";
+import {LuFlame, LuLock, LuWallet} from "react-icons/lu";
+import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant, isIbcDenom } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from '@bze/bzejs'
@@ -154,6 +154,9 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
 
     }, [address, selectedCoin, amount, denomDecimals, selectedBalance, affordability.canAfford, affordability.message, onClose, tx, toast]);
 
+    // IBC coins are locked forever by the chain (v8.3.0), never burned.
+    const isLocking = isIbcDenom(selectedCoin);
+    const verb = isLocking ? 'Lock' : 'Burn';
     const isConnected = !!address;
     const hasBalance = useMemo(() => address && selectedCoin && !selectedBalance.isZero(), [address, selectedCoin, selectedBalance]);
     const isFormValid = useMemo(() => selectedCoin && amount && toBigNumber(amount).gt(0) && !amountError && hasBalance && affordability.canAfford, [selectedCoin, amount, amountError, hasBalance, affordability.canAfford]);
@@ -187,9 +190,9 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
                 onClick={handleBurn}
                 disabled={!isFormValid || isSubmitting}
                 loading={isSubmitting}
-                loadingText="Burning..."
+                loadingText={isLocking ? "Locking..." : "Burning..."}
             >
-                <LuFlame /> Burn it!
+                {isLocking ? <><LuLock /> Lock it!</> : <><LuFlame /> Burn it!</>}
             </Button>
         </>
     );
@@ -199,17 +202,23 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             isOpen={isOpen}
             onClose={onClose}
             busy={isSubmitting}
-            title={preselectedCoin && selectedAsset ? `Burn ${selectedAsset.ticker}` : 'Burn your tokens'}
+            title={preselectedCoin && selectedAsset ? `${verb} ${selectedAsset.ticker}` : `${verb} your tokens`}
             footer={footer}
         >
-            <Notice status="warning" title="Warning: No Take-Backs!">
-                {"Once you burn your tokens, they're gone forever! Like throwing money into a volcano. Make sure you really want to do this!"}
-            </Notice>
+            {isLocking ? (
+                <Notice status="warning" title="Warning: locked forever">
+                    {"IBC coins come from other blockchains, so BeeZee cannot burn them. Coins you send here are locked forever in the burner's lock address and leave circulation on BeeZee."}
+                </Notice>
+            ) : (
+                <Notice status="warning" title="Warning: No Take-Backs!">
+                    {"Once you burn your tokens, they're gone forever! Like throwing money into a volcano. Make sure you really want to do this!"}
+                </Notice>
+            )}
 
             {/* Coin selection when no coin is preselected */}
             {!preselectedCoin && (
                 <Field.Root>
-                    <Field.Label fontWeight="600">Select Token to Burn</Field.Label>
+                    <Field.Label fontWeight="600">Select Token to {verb}</Field.Label>
                     <Select.Root
                         collection={tokensCollection}
                         size="lg"
@@ -255,7 +264,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
 
             <Field.Root invalid={!!amountError}>
                 <Field.Label fontWeight="600">
-                    {selectedAsset ? `Amount of ${selectedAsset.ticker} to Burn` : 'Amount to Burn'}
+                    {selectedAsset ? `Amount of ${selectedAsset.ticker} to ${verb}` : `Amount to ${verb}`}
                 </Field.Label>
                 <Flex gap="8px" w="100%">
                     <Input
@@ -285,11 +294,11 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
 
             {isFormValid && selectedAsset && (
                 <Flex direction="column" align="center" gap="4px" px="16px" py="14px" borderRadius="hg.md" bg="app.subtle" borderWidth="1px" borderColor="app.border" textAlign="center">
-                    <chakra.span fontSize="13px" fontWeight="600" color="hg.text.secondary">{"You're about to burn:"}</chakra.span>
+                    <chakra.span fontSize="13px" fontWeight="600" color="hg.text.secondary">{`You're about to ${verb.toLowerCase()}:`}</chakra.span>
                     <chakra.span fontSize="24px" fontWeight="800" overflowWrap="anywhere">
                         <chakra.span color="hg.link">{amount}</chakra.span> {selectedAsset.ticker}
                     </chakra.span>
-                    <chakra.span fontSize="12px" color="hg.text.faint">Into the fire it goes!</chakra.span>
+                    <chakra.span fontSize="12px" color="hg.text.faint">{isLocking ? "Locked forever." : "Into the fire it goes!"}</chakra.span>
                 </Flex>
             )}
         </BurnerDialog>

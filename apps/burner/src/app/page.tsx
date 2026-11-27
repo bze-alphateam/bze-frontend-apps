@@ -19,12 +19,15 @@ import {
     HomeHero,
     PageContainer,
     PageState,
+    Notice,
     hgVariant,
 } from "@bze/bze-ui-kit";
 import {useBurnerContext} from "@/hooks/useBurnerContext";
 import {BurnModal} from "@/components/burn-modal";
 import {useBurningHistory} from "@/hooks/useBurningHistory";
 import {useNextBurning} from "@/hooks/useNextBurning";
+import {useAutomationPaused} from "@/hooks/useAutomationPaused";
+import {splitPotCoins} from "@/lib/next-burn";
 import BigNumber from "bignumber.js";
 import {AssetLogo} from "@/components/ui/asset_logo";
 import {breakdownDuration} from "@/lib/burn-schedule";
@@ -89,9 +92,10 @@ const CountdownTimer = ({targetDate}: { targetDate: Date }) => {
 };
 
 // A coin in the pot: its logo, name and ticker, and the amount that burns next.
-const PendingBurnBox = ({denom, amount, onClick}: {
+const PendingBurnBox = ({denom, amount, locked, onClick}: {
     denom: string;
     amount: string;
+    locked?: boolean;
     onClick: () => void;
 }) => {
     const {totalUsdValue} = useAssetsValue();
@@ -135,7 +139,7 @@ const PendingBurnBox = ({denom, amount, onClick}: {
                 </Flex>
             </Flex>
             <Flex direction="column" gap="2px">
-                <chakra.span fontSize="11px" letterSpacing="0.1em" textTransform="uppercase" fontWeight="700" color="hg.text.faint">Ready to burn</chakra.span>
+                <chakra.span fontSize="11px" letterSpacing="0.1em" textTransform="uppercase" fontWeight="700" color="hg.text.faint">{locked ? 'Will be locked' : 'Ready to burn'}</chakra.span>
                 <chakra.span fontSize="22px" fontWeight="800" color="hg.link" overflowWrap="anywhere">{prettyAmountValue}</chakra.span>
                 {usdValue.gt(0) && <chakra.span fontSize="13px" color="hg.text.faint">≈ ${prettyAmount(usdValue)}</chakra.span>}
             </Flex>
@@ -165,6 +169,7 @@ export default function BurnerHomePage() {
     const {totalUsdValue} = useAssetsValue();
     const {nextBurn, isLoading: isLoadingNextBurn} = useNextBurning();
     const {lockBalance} = useBurnerContext();
+    const automationPaused = useAutomationPaused();
 
     const lastBurnings = burnHistory.slice(0, MAX_BURN_HISTORY_ITEMS);
     const nativeTicker = nativeAsset?.ticker || 'BZE';
@@ -181,7 +186,11 @@ export default function BurnerHomePage() {
         return totalUsdValue([{denom: nativeAsset.denom, amount: totalBzeBurned}]);
     }, [totalBzeBurned, nativeAsset, totalUsdValue]);
 
-    const pendingBurns = useMemo(() => nextBurn?.coins || [], [nextBurn]);
+    // Native and factory coins burn at the next cycle; IBC coins and LP shares are locked, never burned.
+    const {toBurn: pendingBurns, toLock: pendingLocks} = useMemo(
+        () => splitPotCoins(nextBurn?.coins || [], nativeAsset?.denom ?? 'ubze'),
+        [nextBurn, nativeAsset],
+    );
 
     // The forever locked coins with their USD values, highest value first, then the largest balance.
     const lockedTokens = useMemo(() => {
@@ -264,7 +273,11 @@ export default function BurnerHomePage() {
                                     <chakra.h2 id="next-burn" m="0" textStyle="eyebrow" color="hg.eyebrow">Next burn in</chakra.h2>
                                     <chakra.span fontSize="14px" color="hg.text.secondary">Coins in the pot are about to go</chakra.span>
                                 </Flex>
-                                {isLoadingNextBurn ? (
+                                {automationPaused ? (
+                                    <Notice status="warning" title="Burning is paused for now">
+                                        Coins wait in the burner and are burned right after it resumes. Raffles keep running.
+                                    </Notice>
+                                ) : isLoadingNextBurn ? (
                                     <chakra.span fontSize="15px" color="hg.text.faint">Loading...</chakra.span>
                                 ) : nextBurn?.date ? (
                                     <CountdownTimer targetDate={nextBurn.date}/>
@@ -291,7 +304,7 @@ export default function BurnerHomePage() {
                         <BurnStat
                             label="Coins in the pot"
                             value={isLoadingNextBurn ? 'Loading...' : pendingBurns.length}
-                            foot="Burn together at the next cycle"
+                            foot={pendingLocks.length > 0 ? `Burn together at the next cycle, plus ${coinsLabel(pendingLocks.length)} to lock` : "Burn together at the next cycle"}
                         />
                     </Grid>
 
@@ -308,6 +321,23 @@ export default function BurnerHomePage() {
                                         key={coin.denom}
                                         denom={coin.denom}
                                         amount={coin.amount}
+                                        onClick={() => handleCoinClick(coin.denom)}
+                                    />
+                                ))}
+                            </Grid>
+                        </Flex>
+                    )}
+
+                    {!isLoadingNextBurn && pendingLocks.length > 0 && (
+                        <Flex as="section" direction="column" gap="16px">
+                            <SectionHeader title="Will Be Locked" tag={<AppPill>{coinsLabel(pendingLocks.length)}</AppPill>}/>
+                            <Grid templateColumns={{base: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))'}} gap={{base: '12px', md: '16px'}}>
+                                {pendingLocks.map((coin: { denom: string; amount: string }) => (
+                                    <PendingBurnBox
+                                        key={coin.denom}
+                                        denom={coin.denom}
+                                        amount={coin.amount}
+                                        locked
                                         onClick={() => handleCoinClick(coin.denom)}
                                     />
                                 ))}
