@@ -37,7 +37,7 @@ import {
     TokenLogo, LPTokenLogo,
     getBurnerApp, AppLink,
     HaltedBadge, HaltedNotice, useHaltedDenoms,
-    hgVariant, HgCard, FeaturedCard, HeroGlow, Notice, StatusPill,
+    hgVariant, HgCard, FeaturedCard, HeroGlow, Notice, StatusPill, DaoSourceNotice, daoStakingRewardSource,
 } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -838,6 +838,8 @@ const LockTab = ({ pool, userShares, rewardsMap, addressData, onLockSuccess }: L
                 </Flex>
             )}
 
+            <DaoSourceNotice source={selectedReward ? daoStakingRewardSource(selectedReward.reward_id) : undefined} action="stake"/>
+
             <SubmitButton
                 onClick={handleLock}
                 disabled={!selectedRewardId || !lockAmount || lockAmount === '0' || isSubmitting || userShares.lte(0)}
@@ -1010,8 +1012,8 @@ const UserPosition = ({
                 </Grid>
 
                 {lockedLpShares && lockedLpShares.length > 0 && lockedLpShares.map((item, index) => (
+                    <Flex key={index} direction="column" gap="8px">
                     <Flex
-                        key={index}
                         align="center"
                         gap="12px"
                         px="14px"
@@ -1040,6 +1042,8 @@ const UserPosition = ({
                         >
                             Unlock
                         </RewardsStakingButton>
+                    </Flex>
+                    <DaoSourceNotice source={daoStakingRewardSource(item.rewardId)} action="exit"/>
                     </Flex>
                 ))}
                 {lpSharesPendingUnlock && lpSharesPendingUnlock.length > 0 && (

@@ -41,6 +41,8 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
         const paused = urls.filter((url) => pausedUrls.includes(url));
         return {paused, isPaused: paused.length > 0};
     },
+    // the DAO notice reads BZE Scan; stake-dialog-dao-notice.test.tsx covers it
+    DaoSourceNotice: () => null,
     useAsset: (denom: string) => ({asset: ASSETS[denom] && {denom, ...ASSETS[denom]}, isLoading: false}),
     useAssets: () => ({denomTicker: (denom: string) => ASSETS[denom]?.ticker ?? denom, denomDecimals: () => 6}),
     useAssetsContext: () => ({updateBalances: vi.fn()}),

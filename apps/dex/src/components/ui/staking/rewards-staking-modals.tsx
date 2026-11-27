@@ -11,7 +11,7 @@ import {
 import {LuGift, LuLock, LuLockOpen} from "react-icons/lu";
 import React, {useCallback, useMemo, useState} from "react";
 import {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx, hgVariant, Notice, usePausedMessages, PausedActionNotice} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx, hgVariant, Notice, DaoSourceNotice, daoStakingRewardSource, usePausedMessages, PausedActionNotice} from "@bze/bze-ui-kit";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -433,6 +433,7 @@ export const RewardsStakingActionModal = ({
                             </Group>
                             <Field.ErrorText>{formError}</Field.ErrorText>
                         </Field.Root>
+                        <DaoSourceNotice source={stakingReward ? daoStakingRewardSource(stakingReward.reward_id) : undefined} action="stake"/>
                         {stakeAmount && (
                             <>
                                 <Flex direction="column" gap="3px" px="14px" py="12px" borderRadius="12px" bg="hg.success/8" borderWidth="1px" borderColor="hg.success/30">
@@ -477,6 +478,7 @@ export const RewardsStakingActionModal = ({
                             Your funds will be locked for {stakingReward?.lock || 0} days. You will
                             receive them after the lock period ends.
                         </Notice>
+                        <DaoSourceNotice source={stakingReward ? daoStakingRewardSource(stakingReward.reward_id) : undefined} action="exit"/>
                         <DialogFigure label="Amount to Unstake"><chakra.strong fontSize="18px">{yourStake}</chakra.strong></DialogFigure>
                         {unstakePaused && <PausedActionNotice />}
                         <Button

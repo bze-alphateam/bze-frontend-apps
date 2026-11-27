@@ -109,6 +109,18 @@ describe('useTx success toast', () => {
         expect(toastMock.success).not.toHaveBeenCalled()
     })
 
+    it('skips only the success toast with successToast: false, and still calls onSuccess', async () => {
+        const { result } = renderHook(() => useBZETx())
+        const onSuccess = vi.fn()
+
+        await act(async () => { await result.current.tx([MSG], { fee: FEE, onSuccess, successToast: false }) })
+
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+        expect(toastMock.clickableSuccess).not.toHaveBeenCalled()
+        expect(toastMock.success).not.toHaveBeenCalled()
+        expect(toastMock.loading).toHaveBeenCalled()
+    })
+
     // Regression: BZE Scan only knows BZE transactions, so a tx signed on another chain
     // (an IBC deposit) must never get a BZE Scan link. A develop merge once dropped this guard.
     it('gives a tx signed on another chain a plain toast without an explorer link', async () => {

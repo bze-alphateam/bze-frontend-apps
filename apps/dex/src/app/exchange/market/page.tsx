@@ -14,7 +14,7 @@ import { LuTrendingUp, LuTrendingDown, LuActivity, LuArrowLeft, LuX, LuInfo } fr
 import {useNavigationWithParams} from "@/hooks/useNavigation";
 import {
     useMarket, useAsset,
-    amountToBigNumberUAmount, prettyAmount, getMaxFillsPerOrder, getTxEventsByHash, getTxResponseEvents, hasMaxFillsReachedRefund, type TxSuccessResponse, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
+    amountToBigNumberUAmount, prettyAmount, getMaxFillsPerOrder, getTxEventsByHash, getTxResponseEvents, type TxSuccessResponse, priceToBigNumberUPrice, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, uPriceToPrice, uPriceToMsgPrice,
     getAddressFullMarketOrders, getMarketBuyOrders, getMarketHistory, getMarketSellOrders,
     ActiveOrders, ORDER_TYPE_BUY, ORDER_TYPE_SELL,
     HistoryOrder,
@@ -32,6 +32,7 @@ import {
     HgCard, hgVariant,
     FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
     HaltedBadge, HaltedNotice, useHaltedDenoms, usePausedMessages, PausedActionNotice,
+    TxStatus, getExplorerTxURL, openExternalLink,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
 import {AggregatedOrderSDKType, HistoryOrderSDKType, OrderSDKType} from "@bze/bzejs/bze/tradebin/store";
@@ -41,7 +42,8 @@ import {FillOrderItem} from "@bze/bzejs/bze/tradebin/tx";
 import {LightweightChart} from "@/components/ui/trading/chart";
 import {balanceToFormValue, isPositiveOrderValue, orderPriceSent} from "@/lib/trading-form";
 import {isAboveChainMinPrice} from "@/lib/order-price";
-import {buildFillEntries, hasOrderAtPrice, MERGE_HINT, maxFillsReachedMessage} from "@/lib/order-fills";
+import {buildFillEntries, hasOrderAtPrice, MERGE_HINT} from "@/lib/order-fills";
+import {describeOrderResult, summarizeOrderTx} from "@/lib/order-result";
 import {VenueTag} from "@/components/ui/trading/venue";
 import {ChangePill, SideBadge} from "@/components/ui/trading/badges";
 import {PairLogo} from "@/components/ui/trading/pair-logo";
@@ -530,21 +532,30 @@ const TradingPageContent = () => {
 
         return result;
     }, [activeOrders])
-    // v8.3.0 runs orders inside their tx: an order that would examine more than maxFillsPerOrder
-    // resting orders gets the remainder back in the same tx. Tell the user, so it is not a surprise.
-    const notifyIfMaxFills = useCallback(async (res: TxSuccessResponse) => {
+    // v8.3.0 runs orders inside their tx, so its own events say what happened to the order: tell
+    // the user right away. A v8.2.0 node puts no order events in the tx: the generic success toast.
+    const reportOrderResult = useCallback(async (res: TxSuccessResponse) => {
+        let text: string | undefined;
         try {
             let events = getTxResponseEvents(res);
             if (events.length === 0 && res.txhash) {
                 events = await getTxEventsByHash(res.txhash);
             }
-            if (!hasMaxFillsReachedRefund(events)) return;
-
-            toast.info(maxFillsReachedMessage(await getMaxFillsPerOrder()));
+            text = await describeOrderResult(summarizeOrderTx(events, address ?? ''), {
+                baseTicker: baseAsset?.ticker ?? '',
+                quoteTicker: quoteAsset?.ticker ?? '',
+                baseDecimals: baseAsset?.decimals ?? 0,
+                quoteDecimals: quoteAsset?.decimals ?? 0,
+                maxFills: getMaxFillsPerOrder,
+            });
         } catch (e) {
-            console.error('Failed to check the order tx for a max fills refund', e);
+            console.error('Failed to read the order result from the tx events', e);
         }
-    }, [toast])
+
+        const openTx = () => openExternalLink(getExplorerTxURL(res.txhash));
+        toast.clickableSuccess(text ? 'Order result' : TxStatus.Successful, openTx, 'View on Explorer', text, text ? 12000 : undefined);
+        fetchMyOrders();
+    }, [toast, address, baseAsset, quoteAsset, fetchMyOrders])
     const submitFillOrdersMsg = useCallback(async (toFill: AggregatedOrderSDKType[]) => {
         if (!marketId || marketId === '' || !address || !tx) {
             return;
@@ -561,10 +572,10 @@ const TradingPageContent = () => {
             orders: msgOrders,
         })
 
-        await tx([msg], {onSuccess: notifyIfMaxFills});
+        await tx([msg], {onSuccess: reportOrderResult, successToast: false});
 
         setSubmittingOrder(false);
-    }, [marketId, address, tx, notifyIfMaxFills])
+    }, [marketId, address, tx, reportOrderResult])
     const submitCreateOrderMsg = useCallback(async (orderType: string, uPrice: BigNumber, uAmount: BigNumber) => {
         if (!address || !tx || !activeOrders || !marketId || marketId === '') {
             toast.error('Please connect your wallet');
@@ -593,10 +604,10 @@ const TradingPageContent = () => {
         setSubmittingOrder(true);
         const msgs = getOrderTxMessages(activeOrders, marketId, address, isBuy, uAmount.toFixed(0), uPriceToMsgPrice(uPrice));
 
-        await tx(msgs, {onSuccess: notifyIfMaxFills});
+        await tx(msgs, {onSuccess: reportOrderResult, successToast: false});
 
         setSubmittingOrder(false);
-    }, [address, tx, activeOrders, toast, marketId, notifyIfMaxFills])
+    }, [address, tx, activeOrders, toast, marketId, reportOrderResult])
     const onOrderSubmit = useCallback(async (orderType: string) => {
         if (!address || !tx) {
             toast.error('Please connect your wallet');
