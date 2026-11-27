@@ -12,6 +12,9 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     return { ...actual, getDexApp: () => ({ href: "https://dex.example" }) };
 });
 
+const daoParams = vi.hoisted(() => ({ status: "ready" as "ready" | "unsupported" | "loading" | "error" }));
+vi.mock("@/hooks/useDaoParams", () => ({ useDaoParams: () => ({ status: daoParams.status, retry: () => {} }) }));
+
 import HomePage from "./page";
 
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
@@ -19,7 +22,7 @@ const renderPage = () => render(<HomePage />, { wrapper });
 const tile = (id: string) => screen.getByTestId(`start-${id}`);
 
 describe("Home: What are you building today?", () => {
-    beforeEach(() => { localStorage.clear(); });
+    beforeEach(() => { localStorage.clear(); daoParams.status = "ready"; });
 
     it("shows the hero with one question and no intro line", () => {
         renderPage();
@@ -32,6 +35,7 @@ describe("Home: What are you building today?", () => {
         ["market", "Create a DEX market", "/create/market", ["Liquidity pool", "Order book"]],
         ["rewards", "Create staking rewards", "/create/rewards", ["Simple reward", "Compounded reward"]],
         ["grow", "Grow a community", "/create/grow", ["Airdrop", "Raffle"]],
+        ["dao", "Create a DAO", "/dao/new", []],
     ])("the %s tile is a link to its starting point", (id, title, href, chips) => {
         renderPage();
         const link = tile(id);
@@ -47,7 +51,8 @@ describe("Home: What are you building today?", () => {
         expect(screen.getAllByText("Start here")).toHaveLength(1);
     });
 
-    it.each([["dao", "Create a DAO"], ["contest", "Create a trading contest"]])("the %s tile is Coming soon and not a link", (id, title) => {
+    it.each([["dao", "Create a DAO", "unsupported"], ["dao", "Create a DAO", "loading"], ["dao", "Create a DAO", "error"], ["contest", "Create a trading contest", "ready"]] as const)("the %s tile is Coming soon and not a link (dao params: %s)", (id, title, status) => {
+        daoParams.status = status;
         renderPage();
         const t = tile(id);
         expect(t.tagName).not.toBe("A");
@@ -55,6 +60,12 @@ describe("Home: What are you building today?", () => {
         expect(within(t).queryByRole("link")).not.toBeInTheDocument();
         expect(within(t).getByText("Coming soon")).toBeInTheDocument();
         expect(within(t).getByRole("heading", { level: 2 })).toHaveTextContent(title);
+    });
+
+    it("the dao tile has no Coming soon chip on a node that runs x/dao, and contest keeps it", () => {
+        renderPage();
+        expect(within(tile("dao")).queryByText("Coming soon")).not.toBeInTheDocument();
+        expect(within(tile("contest")).getByText("Coming soon")).toBeInTheDocument();
     });
 
     it("lists the six tiles in grid order", () => {

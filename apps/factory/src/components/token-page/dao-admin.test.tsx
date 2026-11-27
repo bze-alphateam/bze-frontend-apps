@@ -133,8 +133,9 @@ describe("Permissions section with a DAO admin", () => {
 });
 
 describe("Transfer admin dialog and DAOs", () => {
+    const onClose = vi.fn();
     const renderDialog = (initialAddress?: string) => render(
-        <TransferAdminDialog asset={asset} open onClose={vi.fn()} onTransferred={vi.fn()} initialAddress={initialAddress} />,
+        <TransferAdminDialog asset={asset} open onClose={onClose} onTransferred={vi.fn()} initialAddress={initialAddress} />,
         { wrapper: wrap },
     );
     const dialog = async () => within(await screen.findByRole("dialog", { name: "Transfer admin of HONEY" }));
@@ -234,6 +235,14 @@ describe("Transfer admin dialog and DAOs", () => {
         renderDialog();
         const d = await dialog();
         expect(await d.findByTestId("dao-address-hint")).toHaveTextContent("Hand HONEY to a DAO: paste the DAO's address.");
+        const create = d.getByTestId("create-dao-link");
+        expect(create).toHaveTextContent("Create a DAO for HONEY");
+        expect(create.getAttribute("href")).toContain(`/dao/new?denom=${encodeURIComponent(DENOM)}`);
+        // the link navigates away: the dialog must not stay open on top of the next page
+        onClose.mockClear();
+        create.addEventListener("click", (e) => e.preventDefault()); // jsdom cannot navigate
+        await userEvent.click(create);
+        expect(onClose).toHaveBeenCalledTimes(1);
         await enter(d, PLAIN);
         await waitFor(() => expect(m.byAddress).toHaveBeenCalledWith(PLAIN));
         expect(d.queryByTestId("dao-admin-summary")).not.toBeInTheDocument();
