@@ -18,24 +18,26 @@ vi.mock('../storage/storage', () => ({
     setInLocalStorage: (k: string, v: string, ttl: number) => { setMock(k, v, ttl); store.set(k, { v, expiry: clock.now + ttl * 1000 }); return true },
 }))
 
-import { getAutomationPaused, getBlockedDenoms, getClosedChannels } from './guardian'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const NOT_IMPLEMENTED = { code: 12, message: 'Not Implemented' }
 
 const readers = [
-    { name: 'getClosedChannels', fn: getClosedChannels, path: 'closed_channels', body: { channel_ids: ['channel-3', 'channel-7'] }, value: ['channel-3', 'channel-7'], empty: { channel_ids: [] }, fallback: [] as unknown },
-    { name: 'getBlockedDenoms', fn: getBlockedDenoms, path: 'blocked_denoms', body: { denoms: ['ubze', 'ibc/ABC'] }, value: ['ubze', 'ibc/ABC'], empty: { denoms: [] }, fallback: [] as unknown },
-    { name: 'getAutomationPaused', fn: getAutomationPaused, path: 'automation_paused', body: { paused: true }, value: true, empty: { paused: false }, fallback: false as unknown },
+    { name: 'getClosedChannels', path: 'closed_channels', body: { channel_ids: ['channel-3', 'channel-7'] }, value: ['channel-3', 'channel-7'], empty: { channel_ids: [] }, fallback: [] as unknown },
+    { name: 'getBlockedDenoms', path: 'blocked_denoms', body: { denoms: ['ubze', 'ibc/ABC'] }, value: ['ubze', 'ibc/ABC'], empty: { denoms: [] }, fallback: [] as unknown },
+    { name: 'getAutomationPaused', path: 'automation_paused', body: { paused: true }, value: true, empty: { paused: false }, fallback: false as unknown },
 ]
 
-describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => {
+describe.each(readers)('$name', ({ name, path, body, value, empty, fallback }) => {
     let fetchMock: ReturnType<typeof vi.fn>
+    let fn: () => Promise<unknown>
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        // Fresh module per test: the once-per-reader log flag is module state.
+        vi.resetModules()
+        fn = (await import('./guardian') as Record<string, () => Promise<unknown>>)[name]
         store.clear()
         setMock.mockReset()
-        // Each test starts an hour after the previous one, so failures remembered in memory never leak across tests.
         clock.now += 3_600_000
         vi.spyOn(Date, 'now').mockImplementation(() => clock.now)
         settingsMock.mockReturnValue({ endpoints: { restEndpoint: 'https://rest.example' } })
@@ -50,7 +52,7 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
         fetchMock.mockResolvedValue(json(body))
 
         expect(await fn()).toEqual(value)
-        expect(fetchMock).toHaveBeenCalledWith(`https://rest.example/bze/guardian/v1/${path}`)
+        expect(fetchMock).toHaveBeenCalledWith(`https://rest.example/bze/guardian/v1/${path}`, expect.anything())
         expect(setMock).toHaveBeenCalledWith(expect.stringContaining('guardian:'), JSON.stringify(value), 60)
     })
 
@@ -83,7 +85,6 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
         expect(await fn()).toEqual(fallback)
         expect(setMock).not.toHaveBeenCalled()
 
-        clock.now += 61_000
         fetchMock.mockResolvedValue(json(body))
         expect(await fn()).toEqual(value)
     })
@@ -97,31 +98,37 @@ describe.each(readers)('$name', ({ fn, path, body, value, empty, fallback }) => 
         expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
-    it('does not refetch or log again inside a minute after a failure', async () => {
+    it('fetches on every call after a failure but logs it once', async () => {
         fetchMock.mockResolvedValue(json(NOT_IMPLEMENTED, 501))
 
         await fn()
-        clock.now += 59_000
         expect(await fn()).toEqual(fallback)
 
-        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
         expect(console.error).toHaveBeenCalledTimes(1)
     })
 
-    it('fetches again once the failure memory is over a minute old', async () => {
-        fetchMock.mockResolvedValue(json(NOT_IMPLEMENTED, 501))
-        await fn()
+    it('gives up on a hung node after 3 seconds, caches nothing and lets later callers retry', async () => {
+        vi.useFakeTimers()
+        try {
+            fetchMock.mockReturnValueOnce(new Promise(() => {}))
+            const pending = fn()
+            await vi.advanceTimersByTimeAsync(3000)
 
-        clock.now += 61_000
-        await fn()
+            expect(await pending).toEqual(fallback)
+            expect(setMock).not.toHaveBeenCalled()
 
-        expect(fetchMock).toHaveBeenCalledTimes(2)
+            fetchMock.mockResolvedValue(json(body))
+            expect(await fn()).toEqual(value)
+            expect(fetchMock).toHaveBeenCalledTimes(2)
+        } finally {
+            vi.useRealTimers()
+        }
     })
 
     it('caches a success that follows a failure', async () => {
         fetchMock.mockResolvedValueOnce(json(NOT_IMPLEMENTED, 501))
         await fn()
-        clock.now += 61_000
         fetchMock.mockResolvedValue(json(body))
         expect(await fn()).toEqual(value)
         fetchMock.mockClear()
