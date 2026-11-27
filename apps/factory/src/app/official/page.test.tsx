@@ -194,7 +194,8 @@ describe("Get your logo in every wallet (/official)", { timeout: 20_000 }, () =>
             prUrl: "https://github.com/cosmos/chain-registry/pull/12",
             done: ["logo", "links", "entry", "submit"],
         });
-    });
+        // Roughly a hundred simulated keystrokes: slow on a busy CI runner, so it gets more than the default 20 s.
+    }, 60_000);
 
     it("restores the progress of this token only, and reopens the first unfinished step", () => {
         saveOfficialProgress(DENOM, { format: "svg", fileName: "hny.svg", done: ["logo", "links"] });

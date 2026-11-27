@@ -1,5 +1,5 @@
 import {getSettings} from "../storage/settings";
-import {getFromLocalStorage, setInLocalStorage} from "../storage/storage";
+import {getFromLocalStorage, removeFromLocalStorage, setInLocalStorage} from "../storage/storage";
 
 /**
  * x/guardian readers (chain v8.3.0). Raw REST because bzejs 3.2.0 has no guardian client.
@@ -20,6 +20,8 @@ const AUTOMATION_PAUSED_KEY = "guardian:automation_paused";
 const inFlight = new Map<string, Promise<unknown>>();
 // A v8.2.0 node answers 501 on every mount: log the failure once per reader, not on every call.
 const logged = new Set<string>();
+// Bumped by an invalidation: a read that started before it must not write its (older) answer to the cache.
+const generation = new Map<string, number>();
 
 const guardianUrl = (path: string): string => `${getSettings().endpoints.restEndpoint}/bze/guardian/v1/${path}`;
 
@@ -61,6 +63,8 @@ const cachedReader = <T>(
     pick: (body: Record<string, unknown>) => unknown,
 ): () => Promise<T> => {
     const fetchFresh = async (): Promise<T> => {
+        const startedAt = generation.get(key) ?? 0;
+        const isCurrent = () => (generation.get(key) ?? 0) === startedAt;
         try {
             const response = await fetchWithTimeout(guardianUrl(path));
             if (response.status !== 200) {
@@ -70,7 +74,7 @@ const cachedReader = <T>(
             if (!isValid(value)) {
                 throw new Error("unexpected response shape");
             }
-            setInLocalStorage(key, JSON.stringify(value), CACHE_TTL_SECONDS);
+            if (isCurrent()) setInLocalStorage(key, JSON.stringify(value), CACHE_TTL_SECONDS);
 
             return value;
         } catch (e) {
@@ -88,9 +92,10 @@ const cachedReader = <T>(
 
         let pending = inFlight.get(key) as Promise<T> | undefined;
         if (!pending) {
-            pending = fetchFresh().finally(() => {
-                inFlight.delete(key);
+            const started: Promise<T> = fetchFresh().finally(() => {
+                if (inFlight.get(key) === started) inFlight.delete(key);
             });
+            pending = started;
             inFlight.set(key, pending);
         }
 
@@ -112,3 +117,10 @@ export const getBlockedDenoms = cachedReader<string[]>(
 export const getAutomationPaused = cachedReader<boolean>(
     AUTOMATION_PAUSED_KEY, "automation_paused", false, isBoolean, b => b.paused ?? false,
 );
+
+/** Drops the cached pause flag so the next `getAutomationPaused()` asks the chain (after a pause/resume event). */
+export const invalidateAutomationPaused = (): void => {
+    generation.set(AUTOMATION_PAUSED_KEY, (generation.get(AUTOMATION_PAUSED_KEY) ?? 0) + 1);
+    inFlight.delete(AUTOMATION_PAUSED_KEY);
+    removeFromLocalStorage(AUTOMATION_PAUSED_KEY);
+};

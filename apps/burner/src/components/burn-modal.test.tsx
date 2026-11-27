@@ -1,36 +1,35 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 
-// The modal reads the wallet, assets, balances and affordability from hooks; they are fed
-// directly. The paused list is what is under test: the real notice and button stay.
-const { pausedMock } = vi.hoisted(() => ({ pausedMock: { urls: [] as string[] } }));
+const ASSETS: Record<string, { denom: string; ticker: string; name: string; decimals: number }> = {
+    ubze: { denom: "ubze", ticker: "BZE", name: "BeeZee", decimals: 6 },
+    "ibc/ABC": { denom: "ibc/ABC", ticker: "ATOM", name: "Atom", decimals: 6 },
+};
 
-const BZE = { denom: "ubze", ticker: "BZE", name: "BeeZee", decimals: 6, logo: "" };
+// Message type URLs on the x/circuit disable list.
+const pausedMock = vi.hoisted(() => ({ urls: [] as string[] }));
 
-vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1user" }) }));
+vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1me" }) }));
 vi.mock("@/components/ui/asset_logo", () => ({ AssetLogo: () => null }));
-vi.mock("@/components/ui/burner/dialog", async () => {
-    const actual = await vi.importActual<typeof import("@/components/ui/burner/dialog")>("@/components/ui/burner/dialog");
-    return {
-        ...actual,
-        BurnerDialog: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => <div>{children}{footer}</div>,
-    };
-});
+vi.mock("@/components/ui/burner/dialog", () => ({
+    BurnerDialog: ({ title, children, footer }: { title: string; children: ReactNode; footer: ReactNode }) => <div><h2>{title}</h2>{children}{footer}</div>,
+    CoinRow: () => null,
+    InsetRow: () => null,
+}));
 vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const actual = await importActual<typeof import("@bze/bze-ui-kit")>();
     return {
         ...actual,
-        getChainName: () => "beezee",
+        useAssets: () => ({ getAsset: (d: string) => ASSETS[d], denomDecimals: () => 6 }),
+        useBalances: () => ({ assetsBalances: Object.values(ASSETS).map(a => ({ ...a, amount: new BigNumber(5_000_000) })) }),
+        useBalance: () => ({ balance: { amount: new BigNumber(5_000_000) } }),
+        useMaxSpendable: () => ({ inputValue: "5" }),
+        useCanAffordTx: () => ({ canAfford: true }),
         useToast: () => ({ toast: { error: vi.fn() } }),
         useBZETx: () => ({ tx: vi.fn() }),
-        useAssets: () => ({ getAsset: () => BZE, denomDecimals: () => 6 }),
-        useBalances: () => ({ assetsBalances: [] }),
-        useBalance: () => ({ balance: { denom: "ubze", amount: new BigNumber(100_000_000) } }),
-        useMaxSpendable: () => ({ inputValue: "100" }),
-        useCanAffordTx: () => ({ canAfford: true, message: "" }),
         usePausedMessages: (urls: string[]) => {
             const paused = urls.filter(u => pausedMock.urls.includes(u));
             return { paused, isPaused: paused.length > 0 };
@@ -40,40 +39,85 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
 
 import { BurnModal } from "./burn-modal";
 
-const NOTICE = "This action is paused on BeeZee for now.";
-
-function renderAndFill() {
-    render(<BurnModal isOpen onClose={vi.fn()} preselectedCoin="ubze" />, {
+const renderModal = (preselectedCoin?: string) =>
+    render(<BurnModal isOpen onClose={vi.fn()} preselectedCoin={preselectedCoin}/>, {
         wrapper: ({ children }: { children: ReactNode }) => <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>,
     });
-    fireEvent.change(screen.getByPlaceholderText("0.00 BZE"), { target: { value: "5" } });
-}
+
+beforeEach(() => {
+    pausedMock.urls = [];
+    // jsdom lacks what Chakra's Select (zag) touches when it opens.
+    Element.prototype.scrollTo = vi.fn();
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+});
+
+describe("BurnModal wording", () => {
+    it("uses Lock wording for a preselected IBC coin", () => {
+        renderModal("ibc/ABC");
+
+        expect(screen.getByRole("heading", { name: "Lock ATOM" })).toBeInTheDocument();
+        expect(screen.getByText("Amount of ATOM to Lock")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Lock it!/ })).toBeInTheDocument();
+        expect(screen.getByText("Warning: locked forever")).toBeInTheDocument();
+        expect(screen.queryByText(/Burn it!/)).not.toBeInTheDocument();
+    });
+
+    it("keeps Burn wording for a preselected native coin", () => {
+        renderModal("ubze");
+
+        expect(screen.getByRole("heading", { name: "Burn BZE" })).toBeInTheDocument();
+        expect(screen.getByText("Amount of BZE to Burn")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeInTheDocument();
+        expect(screen.getByText("Warning: No Take-Backs!")).toBeInTheDocument();
+    });
+
+    it("starts with Burn wording and switches to Lock wording when an IBC coin is picked", async () => {
+        const { default: userEvent } = await import("@testing-library/user-event");
+        const user = userEvent.setup();
+        renderModal();
+
+        expect(screen.getByRole("heading", { name: "Burn your tokens" })).toBeInTheDocument();
+        expect(screen.getByText("Select Token to Burn")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("combobox"));
+        await user.click(await screen.findByText(/ATOM - /));
+
+        expect(screen.getByRole("heading", { name: "Lock your tokens" })).toBeInTheDocument();
+        expect(screen.getByText("Select Token to Lock")).toBeInTheDocument();
+        expect(screen.getByText("Amount of ATOM to Lock")).toBeInTheDocument();
+    });
+});
 
 describe("BurnModal with the burn message paused", () => {
-    beforeEach(() => {
-        pausedMock.urls = [];
-    });
+    const NOTICE = "This action is paused on BeeZee for now.";
+    const fill = async () => {
+        const { fireEvent } = await import("@testing-library/react");
+        fireEvent.change(screen.getByPlaceholderText("0.00 BZE"), { target: { value: "1" } });
+    };
 
-    it("shows the notice and disables Burn it! when MsgFundBurner is on the disable list", () => {
+    it("shows the notice and disables Burn it! when MsgFundBurner is on the disable list", async () => {
         pausedMock.urls = ["/bze.burner.MsgFundBurner"];
-        renderAndFill();
+        renderModal("ubze");
+        await fill();
 
-        expect(screen.getByText(NOTICE)).toBeTruthy();
-        expect(screen.getByRole("button", { name: /Burn it!/ }).hasAttribute("disabled")).toBe(true);
+        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeDisabled();
     });
 
-    it("is unchanged when another message type is paused", () => {
+    it("is unchanged when another message type is paused", async () => {
         pausedMock.urls = ["/bze.burner.MsgJoinRaffle"];
-        renderAndFill();
+        renderModal("ubze");
+        await fill();
 
         expect(screen.queryByText(NOTICE)).toBeNull();
-        expect(screen.getByRole("button", { name: /Burn it!/ }).hasAttribute("disabled")).toBe(false);
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeEnabled();
     });
 
-    it("is unchanged when nothing is paused", () => {
-        renderAndFill();
+    it("is unchanged when nothing is paused", async () => {
+        renderModal("ubze");
+        await fill();
 
         expect(screen.queryByText(NOTICE)).toBeNull();
-        expect(screen.getByRole("button", { name: /Burn it!/ }).hasAttribute("disabled")).toBe(false);
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeEnabled();
     });
 });

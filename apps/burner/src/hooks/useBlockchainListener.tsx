@@ -11,6 +11,7 @@ import {
     isAddressTransfer, isBurnEvent, isCoinbaseEvent, isEpochStartEvent,
     getMintedAmount, isOrderBookEvent, isOrderExecutedEvent, getEventMarketId,
 } from "@bze/bze-ui-kit";
+import {AUTOMATION_PAUSE_CHANGED_EVENT, isAutomationPauseEvent} from "@/lib/automation-pause";
 import {useChain} from "@interchain-kit/react";
 
 const isRaffleEvent = (event: TendermintEvent) => event.type.includes('Raffle');
@@ -29,6 +30,11 @@ const dispatchBlockEvents = (events: TendermintEvent[]) => {
 
     for (const event of events) {
         dispatchModuleTransfers(event);
+
+        if (isAutomationPauseEvent(event)) {
+            blockchainEventManager.emit(AUTOMATION_PAUSE_CHANGED_EVENT);
+            continue;
+        }
 
         if (isRaffleEvent(event)) {
             blockchainEventManager.emit(RAFFLE_CHANGED_EVENT);

@@ -1,0 +1,15 @@
+{
+  "source": "synthetic: the testnet runs v8.2.0, whose REST gateway has no denom_config route and answers 501",
+  "synthetic": true,
+  "method": "GET",
+  "path": "/bze/tokenfactory/denom_config",
+  "query": {
+    "denom": "factory/bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l/vidulum"
+  },
+  "status": 501,
+  "body": {
+    "code": 12,
+    "message": "Not Implemented",
+    "details": []
+  }
+}
