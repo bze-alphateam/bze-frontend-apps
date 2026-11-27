@@ -31,8 +31,14 @@ let balance: BigNumber;
 let feeMessage = "";
 let status: WalletState = WalletState.Connected;
 
+// Message type URLs on the x/circuit disable list (empty unless a test sets it).
+let pausedUrls: string[] = [];
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    usePausedMessages: (urls: string[]) => {
+        const paused = urls.filter((url) => pausedUrls.includes(url));
+        return {paused, isPaused: paused.length > 0};
+    },
     useTokenDenomReward: () => ({...pool, prizeDenoms: [], reload: reloadPool}),
     getDenomRewardSchedules: (denom: string) => getDenomRewardSchedules(denom),
     useAssetsContext: () => ({usdPricesMap: prices, updateBalances}),
@@ -93,6 +99,7 @@ const rows = () => within(screen.getByTestId("holders-pool-prizes")).getAllByRol
 
 beforeEach(() => {
     vi.clearAllMocks();
+    pausedUrls = [];
     status = WalletState.Connected;
     pool = {item: item(), isLoading: false, hasError: false};
     prices = new Map([[T, new BigNumber("0.5")], ["ubze", new BigNumber("0.002")], ["uusdc", new BigNumber(1)]]);
@@ -311,6 +318,28 @@ describe("StakeDialog", () => {
         await user.type(within(dialog).getByLabelText("Amount"), "500");
         expect(within(dialog).getByRole("alert")).toHaveTextContent("Not enough PAGE left for the network fee");
         expect(within(dialog).getByRole("button", {name: "Stake"})).toBeDisabled();
+    });
+
+    it("shows the paused notice and disables the claim when MsgClaimDenomRewards is paused", async () => {
+        pausedUrls = ["/bze.rewards.MsgClaimDenomRewards"];
+        pool.item = item({position: position("5000000000", [{denom: "ubze", amount: "12500000"}])});
+        const user = renderPool();
+        await user.click(await screen.findByRole("button", {name: "Claim all"}));
+
+        const dialog = screen.getByRole("dialog", {name: "Claim your rewards"});
+        expect(dialog).toHaveTextContent("This action is paused on BeeZee for now.");
+        expect(within(dialog).getByRole("button", {name: "Claim all"})).toBeDisabled();
+    });
+
+    it("keeps the claim enabled, without a notice, when another message type is paused", async () => {
+        pausedUrls = ["/bze.rewards.MsgJoinDenomReward"];
+        pool.item = item({position: position("5000000000", [{denom: "ubze", amount: "12500000"}])});
+        const user = renderPool();
+        await user.click(await screen.findByRole("button", {name: "Claim all"}));
+
+        const dialog = screen.getByRole("dialog", {name: "Claim your rewards"});
+        expect(dialog).not.toHaveTextContent("paused on BeeZee");
+        expect(within(dialog).getByRole("button", {name: "Claim all"})).toBeEnabled();
     });
 
     it("claims the pool's rewards", async () => {

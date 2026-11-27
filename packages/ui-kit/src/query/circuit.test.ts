@@ -12,15 +12,21 @@ vi.mock('../storage/storage', () => ({
     setInLocalStorage: (k: string, v: string, ttl: number) => { setMock(k, v, ttl); store.set(k, v); return true },
 }))
 
-import { getDisabledMessages, pausedAmong } from './circuit'
+import type { getDisabledMessages as GetDisabledMessages } from './circuit'
+import { pausedAmong } from './circuit'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const URL = 'https://rest.example/cosmos/circuit/v1/disable_list'
 
 describe('getDisabledMessages', () => {
     let fetchMock: ReturnType<typeof vi.fn>
+    let getDisabledMessages: typeof GetDisabledMessages
 
-    beforeEach(() => {
+    // A fresh module per test: the reader keeps its in-flight request at module level, and a
+    // test that leaves one pending must not leak into the next.
+    beforeEach(async () => {
+        vi.resetModules()
+        getDisabledMessages = (await import('./circuit')).getDisabledMessages
         store.clear()
         setMock.mockReset()
         settingsMock.mockReturnValue({ endpoints: { restEndpoint: 'https://rest.example' } })
@@ -29,13 +35,16 @@ describe('getDisabledMessages', () => {
         vi.spyOn(console, 'error').mockImplementation(() => {})
     })
 
-    afterEach(() => vi.unstubAllGlobals())
+    afterEach(() => {
+        vi.useRealTimers()
+        vi.unstubAllGlobals()
+    })
 
     it('returns the list and caches it for 60 seconds', async () => {
         fetchMock.mockResolvedValue(json({ disabled_list: ['/bze.tradebin.MsgMultiSwap'] }))
 
         expect(await getDisabledMessages()).toEqual(['/bze.tradebin.MsgMultiSwap'])
-        expect(fetchMock).toHaveBeenCalledWith(URL)
+        expect(fetchMock).toHaveBeenCalledWith(URL, { signal: expect.any(AbortSignal) })
         expect(setMock).toHaveBeenCalledWith('circuit:disabled_messages', JSON.stringify(['/bze.tradebin.MsgMultiSwap']), 60)
     })
 
@@ -85,6 +94,39 @@ describe('getDisabledMessages', () => {
 
         expect(await getDisabledMessages()).toEqual([])
         expect(setMock).not.toHaveBeenCalled()
+    })
+
+    it('gives up after 3 seconds when the node never answers, caches nothing and lets the next call retry', async () => {
+        vi.useFakeTimers()
+        // Never settles and ignores the abort signal, like a transport that hangs.
+        fetchMock.mockReturnValueOnce(new Promise(() => {}))
+
+        const pending = getDisabledMessages()
+        await vi.advanceTimersByTimeAsync(2_999)
+        let settled = false
+        void pending.then(() => { settled = true })
+        await vi.advanceTimersByTimeAsync(0)
+        expect(settled).toBe(false)
+
+        await vi.advanceTimersByTimeAsync(1)
+        expect(await pending).toEqual([])
+        expect(setMock).not.toHaveBeenCalled()
+
+        fetchMock.mockResolvedValue(json({ disabled_list: ['/a.B'] }))
+        expect(await getDisabledMessages()).toEqual(['/a.B'])
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('aborts the request it gave up on', async () => {
+        vi.useFakeTimers()
+        fetchMock.mockReturnValueOnce(new Promise(() => {}))
+
+        const pending = getDisabledMessages()
+        await vi.advanceTimersByTimeAsync(3_000)
+        await pending
+
+        const signal = (fetchMock.mock.calls[0][1] as { signal: AbortSignal }).signal
+        expect(signal.aborted).toBe(true)
     })
 
     it('shares one request between concurrent callers', async () => {

@@ -18,6 +18,8 @@ import {
     useBalance,
     useCreationFees,
     useLiquidityPools,
+    usePausedMessages,
+    PausedActionNotice,
 } from '@bze/bze-ui-kit'
 import { useChain } from '@interchain-kit/react'
 import { AssetPicker } from '@/components/ui/asset-picker'
@@ -113,6 +115,7 @@ function PoolNewContent() {
     const swapFeeError = validateSwapFee(swapFee)
     const feeSummary = swapFeeSummary(swapFee, feeSplit)
 
+    const { isPaused } = usePausedMessages(['/bze.tradebin.MsgCreateLiquidityPool'])
     // Once broadcast, the chain changes under the form: keep the answers until Done.
     const broadcast = useWizardTxBroadcast()
     const steps = useGuidedSteps(STEP_KEYS, {
@@ -163,7 +166,7 @@ function PoolNewContent() {
     if (done) return <PoolDone input={done.input} hash={done.hash} />
 
     const isComplete = FORM_STEPS.every(k => steps.state[k] === 'done')
-    const canCreate = isComplete && connected && Boolean(fee) && !isFeeBalanceLoading && !feePayment.isLoading && canPayFee && !isPoolsLoading
+    const canCreate = !isPaused && isComplete && connected && Boolean(fee) && !isFeeBalanceLoading && !feePayment.isLoading && canPayFee && !isPoolsLoading
 
     const create = () => {
         if (!canCreate) return
@@ -327,6 +330,7 @@ function PoolNewContent() {
                     disabled={!canCreate}
                     onBack={steps.back}
                 >
+                    {isPaused && <PausedActionNotice />}
                     {!address ? (
                         <SubmitNote>Connect your wallet.</SubmitNote>
                     ) : isComplete && !isFeeBalanceLoading && !feePayment.isLoading && !canPayFee && (

@@ -33,8 +33,14 @@ const getStakingRewardParticipantByAddress = vi.fn();
 let status: WalletState = WalletState.Connected;
 const balance = new BigNumber("1000000000"); // 1,000 of the staked token
 
+// Message type URLs on the x/circuit disable list (empty unless a test sets it).
+let pausedUrls: string[] = [];
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    usePausedMessages: (urls: string[]) => {
+        const paused = urls.filter((url) => pausedUrls.includes(url));
+        return {paused, isPaused: paused.length > 0};
+    },
     useAsset: (denom: string) => ({asset: ASSETS[denom] && {denom, ...ASSETS[denom]}, isLoading: false}),
     useAssets: () => ({denomTicker: (denom: string) => ASSETS[denom]?.ticker ?? denom, denomDecimals: () => 6}),
     useAssetsContext: () => ({updateBalances: vi.fn()}),

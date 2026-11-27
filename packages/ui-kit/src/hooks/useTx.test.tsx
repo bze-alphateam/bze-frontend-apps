@@ -638,6 +638,30 @@ describe('useTx paused messages guard', () => {
             expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
         })
 
+        it('still signs once the 3 s wait on a node that never answers is over', async () => {
+            vi.useFakeTimers()
+            try {
+                const actual = await vi.importActual<typeof import('../query/circuit')>('../query/circuit')
+                vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+                vi.spyOn(console, 'error').mockImplementation(() => {})
+                disabledMock.mockImplementation(actual.getDisabledMessages)
+                const { result } = renderHook(() => useBZETx())
+
+                let ok: boolean | undefined
+                const running = act(async () => { ok = await result.current.tx([SWAP], { fee: FEE }) })
+                await act(async () => { await vi.advanceTimersByTimeAsync(2_900) })
+                expect(signAndBroadcastMock).not.toHaveBeenCalled()
+
+                await act(async () => { await vi.advanceTimersByTimeAsync(200) })
+                await running
+
+                expect(ok).toBe(true)
+                expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+            } finally {
+                vi.useRealTimers()
+            }
+        })
+
         it('fails open when the reader itself throws', async () => {
             vi.spyOn(console, 'error').mockImplementation(() => {})
             disabledMock.mockRejectedValue(new Error('boom'))

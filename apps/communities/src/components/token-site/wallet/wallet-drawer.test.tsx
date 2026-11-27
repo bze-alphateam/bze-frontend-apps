@@ -37,8 +37,14 @@ const ASSETS: Record<string, { ticker: string; decimals: number }> = {
 };
 const USD: Record<string, number> = {ubze: 0.001, uusdc: 1, uatom: 5};
 
+// Message type URLs on the x/circuit disable list (empty unless a test sets it).
+let pausedUrls: string[] = [];
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    usePausedMessages: (urls: string[]) => {
+        const paused = urls.filter((url) => pausedUrls.includes(url));
+        return {paused, isPaused: paused.length > 0};
+    },
     useBalance: (denom: string) => ({balance: {denom, amount: balances[denom] ?? new BigNumber(0)}, isLoading: false}),
     useBalances: () => ({
         assetsBalances: Object.entries(balances).map(([denom, amount]) => ({
@@ -142,6 +148,7 @@ const pool = (amount: string, pending: { denom: string; amount: string }[]): Den
 
 beforeEach(() => {
     vi.clearAllMocks();
+    pausedUrls = [];
     walletStatus = WalletState.Connected;
     balances = {[T]: new BigNumber("12480000000")};
     holdersPool = undefined;
@@ -221,6 +228,18 @@ describe("WalletDrawer", () => {
             const {drawer} = await renderDrawer();
 
             expect(within(drawer).queryByRole("button", {name: "Claim all"})).not.toBeInTheDocument();
+        });
+
+        it("shows the paused notice and disables Claim all when a claim message is paused", async () => {
+            pausedUrls = ["/bze.rewards.MsgClaimStakingRewards"];
+            holdersPool = pool("5000000000", [{denom: T, amount: "34200000"}]);
+            programs = [program("1", "uusdc")];
+            programStakes = new Map([["1", {address: ME, reward_id: "1", amount: "80000", joined_at: "0"}]]);
+
+            const {drawer} = await renderDrawer();
+
+            expect(within(drawer).getByText("This action is paused on BeeZee for now.")).toBeInTheDocument();
+            expect(within(drawer).getByRole("button", {name: "Claim all"})).toBeDisabled();
         });
 
         it("groups the pending rewards and claims them all in one transaction", async () => {

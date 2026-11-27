@@ -27,8 +27,14 @@ let prices: Map<string, BigNumber>;
 let balance: BigNumber;
 let status: WalletState = WalletState.Connected;
 
+// Message type URLs on the x/circuit disable list (empty unless a test sets it).
+let pausedUrls: string[] = [];
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    usePausedMessages: (urls: string[]) => {
+        const paused = urls.filter((url) => pausedUrls.includes(url));
+        return {paused, isPaused: paused.length > 0};
+    },
     useAsset: (denom: string) => ({asset: ASSETS[denom] && {denom, ...ASSETS[denom]}, isLoading: false}),
     useAssetPrice: (denom: string) => ({price: prices.get(denom) ?? new BigNumber(0)}),
     useEpochs: () => ({hourEpochInfo: {current_epoch: "1000"}}),
@@ -99,6 +105,7 @@ const buttons = (id: string) => within(card(id)).queryAllByRole("button").map((b
 
 beforeEach(() => {
     vi.clearAllMocks();
+    pausedUrls = [];
     status = WalletState.Connected;
     rewards = [
         program("01", {payouts: 30}), // finished
@@ -204,6 +211,17 @@ describe("FixedTermPrograms dialog", () => {
         await user.type(screen.getByLabelText("Amount"), "20");
 
         expect(screen.getByRole("alert")).toHaveTextContent("The minimum stake is 50 PAGE");
+        expect(within(screen.getByTestId("stake-dialog-stake")).getByRole("button", {name: "Stake"})).toBeDisabled();
+    });
+
+    it("shows the paused notice and disables Stake when MsgJoinStaking is paused", async () => {
+        pausedUrls = ["/bze.rewards.MsgJoinStaking"];
+        const {user} = renderPrograms();
+
+        await user.click(within(card("02")).getByRole("button", {name: "Stake"}));
+        await user.type(screen.getByLabelText("Amount"), "60");
+
+        expect(screen.getByRole("dialog")).toHaveTextContent("This action is paused on BeeZee for now.");
         expect(within(screen.getByTestId("stake-dialog-stake")).getByRole("button", {name: "Stake"})).toBeDisabled();
     });
 

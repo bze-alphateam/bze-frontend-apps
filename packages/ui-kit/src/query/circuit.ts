@@ -10,6 +10,8 @@ import {getFromLocalStorage, setInLocalStorage} from "../storage/storage";
 
 const CACHE_KEY = "circuit:disabled_messages";
 const CACHE_TTL_SECONDS = 60; // setInLocalStorage takes seconds
+// useTx waits for this read before every BZE tx: a node that never answers must not hold it up.
+const REQUEST_TIMEOUT_MS = 3_000;
 
 // Several components mount at once; they share one request instead of racing the cache.
 let inFlight: Promise<string[]> | undefined;
@@ -27,23 +29,43 @@ const readCache = (): string[] | undefined => {
     }
 }
 
+const requestList = async (signal: AbortSignal): Promise<string[]> => {
+    const response = await fetch(`${getSettings().endpoints.restEndpoint}/cosmos/circuit/v1/disable_list`, {signal});
+    if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    const body = await response.json() as {disabled_list?: unknown};
+    const list = body?.disabled_list ?? [];
+    if (!isStringArray(list)) {
+        throw new Error("unexpected response shape");
+    }
+
+    return list;
+}
+
 const fetchFresh = async (): Promise<string[]> => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Raced as well as aborted: a transport that ignores the signal must not hold the caller either.
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error(`no answer within ${REQUEST_TIMEOUT_MS} ms`));
+        }, REQUEST_TIMEOUT_MS);
+    });
+    const request = requestList(controller.signal);
+    request.catch(() => {}); // a late failure after the timeout is already reported
+
     try {
-        const response = await fetch(`${getSettings().endpoints.restEndpoint}/cosmos/circuit/v1/disable_list`);
-        if (response.status !== 200) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const body = await response.json() as {disabled_list?: unknown};
-        const list = body?.disabled_list ?? [];
-        if (!isStringArray(list)) {
-            throw new Error("unexpected response shape");
-        }
+        const list = await Promise.race([request, timeout]);
         setInLocalStorage(CACHE_KEY, JSON.stringify(list), CACHE_TTL_SECONDS);
 
         return list;
     } catch (e) {
         console.error("failed to fetch circuit disable list:", e);
         return [];
+    } finally {
+        clearTimeout(timer);
     }
 }
 
