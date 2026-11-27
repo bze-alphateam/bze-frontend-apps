@@ -67,12 +67,12 @@ export function useDaoList(deps: DaoDeps, filter: DaoFilter, page: number): DaoL
     const total = mode === 'pages' ? shown?.total ?? null : null;
     const pages = total === null ? null : pageCount(total, PAGE_SIZE);
 
-    const goNext = useCallback(() => {
+    const goNext = () => {
         if (ok?.next) setTrail({scope, cursors: [...cursors, ok.next]});
-    }, [ok, scope, cursors]);
-    const goPrev = useCallback(() => {
+    };
+    const goPrev = () => {
         if (cursors.length > 1) setTrail({scope, cursors: cursors.slice(0, -1)});
-    }, [scope, cursors]);
+    };
     const retry = useCallback(() => setRetries((n) => n + 1), []);
 
     return {

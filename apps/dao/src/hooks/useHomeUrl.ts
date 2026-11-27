@@ -20,16 +20,21 @@ export function useHomeUrl(wallet: boolean): HomeUrl {
     const params = useSearchParams();
     const pathname = usePathname();
     const router = useRouter();
-    const query = parseHomeQuery(params?.toString() ?? '', wallet);
+    const search = params?.toString() ?? '';
+    const query = parseHomeQuery(search, wallet);
 
-    const hrefOf = useCallback((next: HomeQuery) => `${pathname}${buildHomeQuery(next, wallet)}`, [pathname, wallet]);
-
-    const pushPage = useCallback((page: number) => router.push(hrefOf({...query, page}), {scroll: false}), [router, hrefOf, query]);
-    const replacePage = useCallback((page: number) => router.replace(hrefOf({...query, page}), {scroll: false}), [router, hrefOf, query]);
-    const setFilters = useCallback(
-        (change: Partial<Pick<HomeQuery, 'kind' | 'q' | 'mine'>>) => router.replace(hrefOf({...query, ...change, page: 1}), {scroll: false}),
-        [router, hrefOf, query],
+    // keyed on the query string, not on the parsed object, so the callbacks only change when the URL does
+    const go = useCallback(
+        (how: 'push' | 'replace', change: Partial<HomeQuery>) => {
+            const next = {...parseHomeQuery(search, wallet), ...change};
+            router[how](`${pathname}${buildHomeQuery(next, wallet)}`, {scroll: false});
+        },
+        [router, pathname, search, wallet],
     );
+
+    const pushPage = useCallback((page: number) => go('push', {page}), [go]);
+    const replacePage = useCallback((page: number) => go('replace', {page}), [go]);
+    const setFilters = useCallback((change: Partial<Pick<HomeQuery, 'kind' | 'q' | 'mine'>>) => go('replace', {...change, page: 1}), [go]);
 
     return {query, pushPage, replacePage, setFilters};
 }

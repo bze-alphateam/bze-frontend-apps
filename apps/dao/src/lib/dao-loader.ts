@@ -2,6 +2,7 @@ import type {Dao, DaoPage, DaoPageRequest} from '@bze/bze-ui-kit';
 import {cardFromChain, cardFromScan, matchesFilter} from './dao-cards';
 import {SOURCES_PER_REQUEST, type DaoScanClient} from './dao-scan';
 import type {DaoCard, DaoKind, MyDaoRow} from './dao-types';
+import {searchTerm} from './home-query';
 import {buildMyDaos} from './my-daos';
 import {stakerSources, type DenomRewardParticipation, type StakingRewardParticipation} from './staker-sources';
 
@@ -57,11 +58,6 @@ export type DaoListResult =
         next: string | null;
     };
 
-const searchTerm = (search: string): string => {
-    const q = search.trim();
-    return q.length >= 2 ? q : '';
-};
-
 // Scan clients that answered a `page` request without a total (a Scan before BFE-423): their lists are
 // read by cursor from then on, without asking again. Kept per client, like the filters probe.
 const withoutTotals = new WeakSet<DaoScanClient>();
@@ -90,7 +86,7 @@ export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, position: Da
         });
         if (!list.supported) return {state: 'unsupported'};
         // A Scan without BFE-368 ignores `q`: the search runs on the page here.
-        const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', filter.search));
+        const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', searchTerm(filter.search)));
         if (numbered && list.total !== null) {
             return {state: 'ok', items, source: 'scan', mode: 'pages', total: list.total, next: null};
         }

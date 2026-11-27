@@ -1,3 +1,4 @@
+import type {Page} from "@playwright/test";
 import {expect, test} from "./support/mock-network";
 import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
 import {fourScanDaos, SCAN_DAOS} from "./support/home-fixtures";
@@ -10,7 +11,7 @@ import {join} from "node:path";
 //   4 Staker   3 Admin + Member   2 Member   1 Admin
 const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
 
-const row = (page: import("@playwright/test").Page, name: string) => page.getByTestId("dao-row").filter({hasText: name});
+const row = (page: Page, name: string) => page.getByTestId("dao-row").filter({hasText: name});
 
 test("a visitor without a wallet sees no My DAOs switch and no You column", async ({page}) => {
     await page.goto("/");

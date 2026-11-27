@@ -3,7 +3,7 @@
 import {Suspense, useCallback, useEffect, useState} from 'react';
 import {Box, Button, chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
-import {Eyebrow, GradientText, getChainName, HeroGlow, HgCard, PageContainer, PageState} from '@bze/bze-ui-kit';
+import {Eyebrow, GradientText, getChainName, HeroGlow, PageContainer, PageState} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {useDaoList} from '@/hooks/useDaoList';
 import {useHomeUrl} from '@/hooks/useHomeUrl';
@@ -81,7 +81,9 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
 
     const mineResult = mineDaos.data;
     const roles = new Map((mineResult?.rows ?? []).map((row) => [row.dao.id, row.reasons]));
-    const reduced = list.source === 'chain' && !mine;
+    // The chain's list is unfiltered: the type control and the search are no use for it, but they still filter the wallet's own list.
+    const reduced = list.source === 'chain';
+    const filtersHidden = reduced && !mine;
 
     // The rows of the table, whichever list they come from.
     const mineRows = (mineResult?.rows ?? []).filter((row) => matchesFilter(row.dao, query.kind, term));
@@ -139,12 +141,23 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
     };
 
     return (
-        <HgCard as="section" aria-labelledby="daos-title" p={{base: '16px', md: '22px 24px'}} data-testid="daos-section">
+        // a card from md up; on a phone the heading, the filters and the DAO cards sit on the page itself
+        <Box
+            as="section"
+            aria-labelledby="daos-title"
+            bg={{base: 'transparent', md: 'hg.card'}}
+            borderWidth={{base: '0', md: '1px'}}
+            borderColor="hg.hairline"
+            borderRadius="hg.lg"
+            boxShadow={{base: 'none', md: 'hg.card'}}
+            p={{base: '0', md: '22px 24px'}}
+            data-testid="daos-section"
+        >
             <Flex direction="column" gap="16px">
                 <Flex wrap="wrap" align="center" gap={{base: '10px', md: '12px 12px'}}>
                     <chakra.h2 id="daos-title" m="0" fontSize="17px" fontWeight="700" flex="1 1 0" minW="max-content">DAOs</chakra.h2>
                     {wallet && <MineSwitch checked={mine} onChange={(checked) => setFilters({mine: checked})} />}
-                    {!reduced && (
+                    {!filtersHidden && (
                         <>
                             <Box flexBasis={{base: '100%', md: 'auto'}}>
                                 <TypeFilter value={query.kind} onChange={(kind) => setFilters({kind})} />
@@ -183,7 +196,7 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
 
                 {footer()}
             </Flex>
-        </HgCard>
+        </Box>
     );
 };
 
@@ -192,7 +205,7 @@ export const Home = ({deps = liveDaoDeps}: {deps?: DaoDeps}) => (
     <>
         <HeroBand />
         <PageContainer pt={{base: '16px', md: '24px'}} pb={{base: '40px', md: '64px'}}>
-            <Suspense fallback={<HgCard h="240px" aria-hidden />}>
+            <Suspense fallback={<Box h="240px" aria-hidden />}>
                 <DaosSection deps={deps} />
             </Suspense>
         </PageContainer>
