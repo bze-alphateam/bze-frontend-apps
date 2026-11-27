@@ -70,7 +70,7 @@ describe('SettingsSidebarContent fee token notes', () => {
         fireEvent.click(screen.getByRole('combobox'))
 
         const notes = await screen.findAllByText(/network fee|app fees/)
-        expect(notes.map(n => n.textContent)).toEqual(['network fee +50%', 'app fees +1%', 'network fee +50% · app fees +1%'])
+        expect(notes.map(n => n.textContent)).toEqual(['network fee +50%', 'app fees +1%', 'network fee +50% · app fees +1%', 'network fee +<0.01% · app fees +<0.01%'])
         expect(screen.getAllByRole('option').map(o => o.textContent?.split('network')[0].split('app')[0])).toEqual(['BZE', 'SURCH', 'XFER', 'BOTH', 'NONE', 'OLD', 'TINY'])
     })
 
@@ -102,8 +102,9 @@ describe('SettingsSidebarContent fee token notes', () => {
         expect(screen.queryByText(/Paying fees in|App fees paid in/)).toBeNull()
     })
 
-    it('shows no "0%" note or explanation for a ratio that rounds to zero', async () => {
+    it('shows "<0.01%" for a ratio below 0.01%, never "0%"', async () => {
         await renderDrawer('factory/a/tiny', ALL)
-        expect(screen.queryByText(/Paying fees in|App fees paid in|\+0%/)).toBeNull()
+        expect(screen.getByText('Paying fees in TINY costs <0.01% more network fee, which is burned. App fees paid in TINY cost <0.01% more.')).toBeTruthy()
+        expect(screen.queryByText(/\+0%|[^.<]0% more/)).toBeNull()
     })
 })

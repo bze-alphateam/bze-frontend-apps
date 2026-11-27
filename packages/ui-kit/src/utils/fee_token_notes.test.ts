@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import { describe, expect, it } from 'vitest'
 import type { DenomConfigInfo } from '../query/denom_config'
 import {
-    feeSurchargeNote, feeTokenExplanation, feeTokenOptionNote, formatRatioPercent, formatSurchargePercent,
+    feeSurchargeNote, feeTokenExplanation, feeTokenOptionNote, formatRatioPercent, formatSurchargePercent, hasSurcharge, hasTransferFee,
 } from './fee_token_notes'
 
 const info = (gas: string, transfer: string, communityPool = '', status: DenomConfigInfo['status'] = 'ok'): DenomConfigInfo => ({
@@ -41,13 +41,23 @@ describe('fee token notes', () => {
         expect(feeSurchargeNote('HONEY', undefined)).toBe('')
     })
 
-    it('treats a ratio that rounds to 0% as no setting', () => {
+    it('shows a non-zero ratio below 0.01% as "<0.01%", never "0%", and nothing for zero', () => {
         const tiny = info('0.00001', '0.00001')
-        expect(feeTokenOptionNote(tiny)).toBe('')
-        expect(feeTokenExplanation('HONEY', tiny)).toBe('')
-        expect(feeSurchargeNote('HONEY', tiny)).toBe('')
-        // only the part that shows is noted
-        expect(feeTokenOptionNote(info('0.00001', '0.01'))).toBe('app fees +1%')
-        expect(feeTokenExplanation('HONEY', info('0.5', '0.00001'))).toBe('Paying fees in HONEY costs 50% more network fee, which is burned.')
+        expect(formatRatioPercent('0.00001')).toBe('<0.01')
+        expect(feeTokenOptionNote(tiny)).toBe('network fee +<0.01% · app fees +<0.01%')
+        expect(feeTokenExplanation('HONEY', tiny))
+            .toBe('Paying fees in HONEY costs <0.01% more network fee, which is burned. App fees paid in HONEY cost <0.01% more.')
+        expect(feeSurchargeNote('HONEY', tiny)).toBe('includes +<0.01% HONEY surcharge')
+        expect(formatRatioPercent(0)).toBe('0')
+        expect(feeTokenOptionNote(info('0', '0'))).toBe('')
+    })
+
+    it('tells a gas surcharge and a transfer fee apart', () => {
+        expect(hasSurcharge(info('0.5', '0'))).toBe(true)
+        expect(hasSurcharge(info('0', '0.01'))).toBe(false)
+        expect(hasSurcharge(info('0.00001', '0'))).toBe(true)
+        expect(hasTransferFee(info('0', '0.01'))).toBe(true)
+        expect(hasTransferFee(info('0.5', '0'))).toBe(false)
+        expect(hasTransferFee(undefined)).toBe(false)
     })
 })

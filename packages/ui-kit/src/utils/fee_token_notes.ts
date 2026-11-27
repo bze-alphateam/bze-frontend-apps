@@ -1,16 +1,23 @@
+import BigNumber from "bignumber.js";
 import {toPercentage} from "./number";
 import type {DenomConfigInfo} from "../query/denom_config";
 
-/** Ratio as a percent: ratio x 100, up to 2 decimals, no trailing zeros (0.5 -> "50", 0.015 -> "1.5"). */
-export const formatRatioPercent = toPercentage;
+/**
+ * Ratio as a percent: ratio x 100, up to 2 decimals, no trailing zeros (0.5 -> "50", 0.015 -> "1.5").
+ * A non-zero ratio below 0.01% reads "<0.01" so a setting never shows as "0".
+ */
+export const formatRatioPercent = (ratio: DenomConfigInfo["gasSurcharge"] | number | string): string => {
+    const text = toPercentage(ratio);
+    return text === "0" && new BigNumber(ratio).gt(0) ? "<0.01" : text;
+}
 
 /** "+50%" for a ratio of 0.5. */
 export const formatSurchargePercent = (ratio: DenomConfigInfo["gasSurcharge"]): string => `+${formatRatioPercent(ratio)}%`;
 
-// A ratio that shows as "0%" (zero, or so small it rounds to 0 at 2 decimals) is not worth a note.
-const isShown = (ratio: DenomConfigInfo["gasSurcharge"]): boolean => ratio.gt(0) && formatRatioPercent(ratio) !== "0";
-const hasSurcharge = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && isShown(info!.gasSurcharge);
-const hasTransferFee = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && isShown(info!.transferFee);
+/** True when paying a tx fee in the token costs a gas surcharge (any non-zero ratio). */
+export const hasSurcharge = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && info!.gasSurcharge.gt(0);
+/** True when protocol fees paid in the token cost a transfer fee (any non-zero ratio). */
+export const hasTransferFee = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && info!.transferFee.gt(0);
 
 /** Short muted note shown next to a fee token option, e.g. "network fee +50% · app fees +1%". '' when none. */
 export const feeTokenOptionNote = (info?: DenomConfigInfo): string => {

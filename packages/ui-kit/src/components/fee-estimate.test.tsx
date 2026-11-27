@@ -61,10 +61,10 @@ describe('FeeEstimateRow surcharge note', () => {
         expect(screen.queryByText(/surcharge/)).toBeNull()
     })
 
-    it('adds no "+0%" note for a surcharge that rounds to zero', () => {
+    it('shows "<0.01%" for a surcharge below 0.01%, never "+0%"', () => {
         estimateMock.mockReturnValue(estimated)
         configsMock.mockReturnValue(cfg('0.00001'))
         renderRow()
-        expect(screen.queryByText(/surcharge/)).toBeNull()
+        expect(screen.getByText('includes +<0.01% HONEY surcharge')).toBeTruthy()
     })
 })
