@@ -5,6 +5,8 @@ import {chakra, Flex, type FlexProps, type HTMLChakraProps} from "@chakra-ui/rea
 import {
     type Asset,
     formatRatioPercent,
+    hasSurcharge,
+    hasTransferFee,
     getAddressDenomBalance,
     getFactoryDenomAuthority,
     prettyAmount,
@@ -83,10 +85,9 @@ function FeeSettings({asset, cell, small}: { asset: Asset; cell: FlexProps; smal
     const poolBalance = usePoolBalance(pool, asset.denom);
 
     if (!config || config.status !== "ok") return null;
-    // a ratio that rounds to "0%" is no setting
-    const hasTransfer = formatRatioPercent(config.transferFee) !== "0";
-    const hasSurcharge = formatRatioPercent(config.gasSurcharge) !== "0";
-    if (!pool && !hasTransfer && !hasSurcharge) return null;
+    const showTransfer = hasTransferFee(config);
+    const showSurcharge = hasSurcharge(config);
+    if (!pool && !showTransfer && !showSurcharge) return null;
 
     const ticker = asset.ticker;
     return (
@@ -111,7 +112,7 @@ function FeeSettings({asset, cell, small}: { asset: Asset; cell: FlexProps; smal
                         <chakra.span {...small} fontSize="14px" data-testid="community-pool">None: fees in {ticker} are burned</chakra.span>
                     )}
                 </Flex>
-                {hasTransfer && (
+                {showTransfer && (
                     <Flex direction="column" gap="6px">
                         <chakra.span {...tsLabel}>Transfer fee</chakra.span>
                         <chakra.span fontSize="14px" data-testid="transfer-fee">
@@ -119,7 +120,7 @@ function FeeSettings({asset, cell, small}: { asset: Asset; cell: FlexProps; smal
                         </chakra.span>
                     </Flex>
                 )}
-                {hasSurcharge && (
+                {showSurcharge && (
                     <Flex direction="column" gap="6px">
                         <chakra.span {...tsLabel}>Network fee surcharge</chakra.span>
                         <chakra.span fontSize="14px" data-testid="gas-surcharge">

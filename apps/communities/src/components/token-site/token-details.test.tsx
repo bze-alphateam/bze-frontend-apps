@@ -97,10 +97,11 @@ describe("TokenDetails fee settings", () => {
         expect(getAddressDenomBalance).not.toHaveBeenCalled();
     });
 
-    it("treats ratios that round to 0% as no setting", () => {
+    it("shows a tiny nonzero ratio as <0.01%", () => {
         useDenomConfig.mockReturnValue(config("", "0.00001", "0.00001"));
         renderDetails();
-        expect(screen.queryByTestId("fee-settings")).toBeNull();
+        expect(screen.getByTestId("transfer-fee").textContent).toContain("<0.01%");
+        expect(screen.getByTestId("gas-surcharge").textContent).toContain("<0.01%");
     });
 
     it("renders as before when every setting is zero", () => {
