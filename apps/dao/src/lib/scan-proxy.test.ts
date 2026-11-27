@@ -28,14 +28,20 @@ describe("DAO scan proxy", () => {
         expect(res.headers.get("Cache-Control")).toBe("no-store");
     });
 
-    it("forwards the repeated status of the proposals feed", async () => {
+    it("forwards the page of the DAO list", async () => {
+        fetcher.mockResolvedValue(ok({items: [], total: 0}));
+        await call("daos", "?page=2&limit=20&type=stake");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/daos?type=stake&page=2&limit=20`, expect.anything());
+    });
+
+    it("forwards the repeated status of a DAO's proposals", async () => {
         fetcher.mockResolvedValue(ok({items: []}));
-        await call("dao-proposals", "?status=voting&status=execution_failed");
-        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/dao-proposals?status=voting&status=execution_failed`, expect.anything());
+        await call("daos/4/proposals", "?status=voting&status=execution_failed");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/daos/4/proposals?status=voting&status=execution_failed`, expect.anything());
     });
 
     it("answers 404 for a route that is not a DAO route, without calling Scan", async () => {
-        for (const path of ["proposals", "daos/abc", "accounts/bze1x", "dao-proposals/1/evil"]) {
+        for (const path of ["proposals", "daos/abc", "accounts/bze1x", "dao-proposals/1/evil", "dao-proposals"]) {
             expect((await call(path)).status).toBe(404);
         }
         expect(fetcher).not.toHaveBeenCalled();
@@ -104,8 +110,8 @@ describe("DAO scan proxy", () => {
 
     it("never keeps a list, even one of finished proposals", async () => {
         fetcher.mockImplementation(async () => ok({items: [{id: 7, status: "executed"}]}));
-        await call("dao-proposals", "?status=executed&cursor=abc");
-        await call("dao-proposals", "?status=executed&cursor=abc");
+        await call("daos/4/proposals", "?status=executed&cursor=abc");
+        await call("daos/4/proposals", "?status=executed&cursor=abc");
         expect(fetcher).toHaveBeenCalledTimes(2);
     });
 

@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { executeTransfer, bridgeable, status } = vi.hoisted(() => ({
+const { executeTransfer, bridgeable, status, limitState } = vi.hoisted(() => ({
+    limitState: { value: { stopped: false } as Record<string, unknown>, calls: [] as unknown[][] },
     executeTransfer: vi.fn(),
     bridgeable: { assets: [] as unknown[] },
     status: { channels: [] as string[], denoms: [] as string[], afterRefresh: undefined as undefined | { channels?: string[]; denoms?: string[] } },
@@ -23,6 +24,10 @@ vi.mock('../../hooks/useIbcRouteStatus', () => ({
             }
         },
     }),
+}))
+
+vi.mock('../../hooks/useRouteLimit', () => ({
+    useRouteLimit: (...args: unknown[]) => { limitState.calls.push(args); return { ...limitState.value, loading: false } },
 }))
 
 vi.mock('../../hooks/useBridgeableAssets', () => ({
@@ -75,6 +80,7 @@ const send = async () => {
 beforeEach(() => {
     status.channels = []
     status.denoms = []
+    limitState.value = { stopped: false }
     status.afterRefresh = undefined
     executeTransfer.mockReset()
     bridgeable.assets = [route('uosmo', 'OSMO', 'osmosis'), route('uatom', 'ATOM', 'cosmoshub')]
@@ -232,5 +238,67 @@ describe('DepositForm guardian stops', () => {
         fireEvent.click(submit())
 
         await waitFor(() => expect(executeTransfer).toHaveBeenCalledTimes(1))
+    })
+})
+
+describe('DepositForm daily limit', () => {
+    const submit = () => screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement
+    const nextReset = new Date(Date.UTC(2026, 10, 27, 0))
+
+    it('keeps the generic note and allows any amount when the route has no limit', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+        typeAmount('1000000')
+
+        expect(screen.getByTestId('deposit-limit-note')).toBeTruthy()
+        expect(screen.queryByTestId('route-limit')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    it('replaces the generic note with the route line and passes an amount at the room', async () => {
+        limitState.value = { room: BigInt(12345670000), stopped: false, nextReset, durationHours: 24 }
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+        typeAmount('12345.67')
+
+        expect(submit().disabled).toBe(false)
+        expect(screen.getByTestId('route-limit').textContent).toBe('Daily limit for deposits on this route: up to 12,345.67 OSMO more until 00:00 UTC')
+        expect(screen.queryByTestId('deposit-limit-note')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    it('looks the limit up by the BZE-side channel and denom of the route, as a receive', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+
+        expect(limitState.calls.some(c => c[0] === 'channel-0' && c[1] === 'uosmo' && c[2] === 'receive')).toBe(true)
+    })
+
+    it('refuses an amount over the room before signing', async () => {
+        limitState.value = { room: BigInt(12345670000), stopped: false, nextReset, durationHours: 24 }
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+        typeAmount('12345.670001')
+
+        expect(screen.getByText("Over today's limit for this route: at most 12,345.67 OSMO until 00:00 UTC.")).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('says a used-up limit resets, and a 0% receive route is stopped', async () => {
+        limitState.value = { room: BigInt(0), stopped: false, nextReset, durationHours: 24 }
+        const { container, rerender } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+        typeAmount('1')
+        expect(screen.getAllByText("Today's limit for this route is used up. It resets at 00:00 UTC.").length).toBeGreaterThan(0)
+        expect(submit().disabled).toBe(true)
+
+        limitState.value = { room: BigInt(0), stopped: true, nextReset, durationHours: 24 }
+        rerender(<DepositForm />)
+        expect(screen.getAllByText('Deposits on this route are stopped for now.').length).toBeGreaterThan(0)
     })
 })

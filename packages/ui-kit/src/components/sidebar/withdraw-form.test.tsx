@@ -3,13 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { withdrawable, status, executeTransfer, paused } = vi.hoisted(() => ({
+const { withdrawable, status, executeTransfer, limitState, paused } = vi.hoisted(() => ({
     paused: { urls: [] as string[] },
+    limitState: { value: { stopped: false } as Record<string, unknown>, calls: [] as unknown[][] },
     executeTransfer: vi.fn(),
     withdrawable: { assets: [] as unknown[] },
     status: { channels: [] as string[], denoms: [] as string[], afterRefresh: undefined as undefined | {channels?: string[]; denoms?: string[]} },
 }))
 
+vi.mock('../../hooks/useRouteLimit', () => ({
+    useRouteLimit: (...args: unknown[]) => { limitState.calls.push(args); return { ...limitState.value, loading: false } },
+}))
 vi.mock('../../hooks/useWithdrawableBalances', () => ({
     useWithdrawableBalances: () => ({ assets: withdrawable.assets, isLoading: false }),
 }))
@@ -80,6 +84,8 @@ beforeEach(() => {
     paused.urls = []
     status.channels = []
     status.denoms = []
+    limitState.value = { stopped: false }
+    limitState.calls = []
     status.afterRefresh = undefined
     executeTransfer.mockReset().mockResolvedValue(true)
     withdrawable.assets = [
@@ -173,6 +179,84 @@ describe('WithdrawForm guardian stops', () => {
         await waitFor(() => expect(executeTransfer).not.toHaveBeenCalled())
         await new Promise(r => setTimeout(r, 20))
         expect(executeTransfer).not.toHaveBeenCalled()
+    })
+})
+
+describe('WithdrawForm daily limit', () => {
+    const nextReset = new Date(Date.UTC(2026, 10, 27, 0))
+    const room = { room: BigInt(12345670000), stopped: false, nextReset, durationHours: 24 }
+    const type = (v: string) => fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: v } })
+
+    it('shows no line and no error without a limit', async () => {
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+
+        expect(screen.queryByTestId('route-limit')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    it('looks the limit up by the BZE-side channel and denom of the destination', async () => {
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+        pick(container, 1, 'cosmoshub')
+
+        await waitFor(() => expect(limitState.calls.some(c => c[0] === 'channel-3' && c[1] === 'ubze' && c[2] === 'send')).toBe(true))
+    })
+
+    it('passes an amount at the room and refuses one just above, for native BZE', async () => {
+        limitState.value = room
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await screen.findByPlaceholderText('0.00')
+        type('12345.67')
+
+        expect(screen.getByTestId('route-limit').textContent).toBe('Daily limit on this route: up to 12,345.67 BZE more until 00:00 UTC')
+        expect(submit().disabled).toBe(false)
+
+        type('12345.670001')
+
+        expect(screen.getByText("Over today's limit for this route: at most 12,345.67 BZE until 00:00 UTC.")).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('applies the same check to an IBC voucher', async () => {
+        limitState.value = { ...room, room: BigInt(1000000) }
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ibc/AAA')
+        await screen.findByPlaceholderText('0.00')
+        type('1')
+        expect(submit().disabled).toBe(false)
+
+        type('1.5')
+
+        expect(screen.getByText("Over today's limit for this route: at most 1 ATOM until 00:00 UTC.")).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('says so when today\'s limit is used up, and when the route is stopped', async () => {
+        limitState.value = { ...room, room: BigInt(0) }
+        const { container, rerender } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await screen.findByPlaceholderText('0.00')
+        type('1')
+        expect(screen.getAllByText("Today's limit for this route is used up. It resets at 00:00 UTC.").length).toBeGreaterThan(0)
+        expect(submit().disabled).toBe(true)
+
+        limitState.value = { ...room, room: BigInt(0), stopped: true }
+        rerender(<WithdrawForm />)
+        expect(screen.getAllByText('Transfers out on this route are stopped for now.').length).toBeGreaterThan(0)
+    })
+
+    it('truncates a room that is not a round number instead of rounding it up', async () => {
+        limitState.value = { ...room, room: BigInt(1999999) }
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await screen.findByPlaceholderText('0.00')
+        type('1')
+
+        expect(screen.getByTestId('route-limit').textContent).toContain('up to 1.999999 BZE')
     })
 })
 

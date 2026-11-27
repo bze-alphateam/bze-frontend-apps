@@ -2,11 +2,13 @@
 
 import {Box, chakra, Dialog, HStack, Portal, Text, VStack} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
-import {type ReactNode, useState} from 'react';
+import {type ReactNode, useMemo, useState} from 'react';
 import {LuCircleAlert, LuCircleCheck, LuInfo, LuTriangleAlert} from 'react-icons/lu';
 import {getChainName} from '../constants/chain';
 import {useFeeEstimate, UseFeeEstimateResult} from '../hooks/useFeeEstimate';
 import {useGasFeeEstimate} from '../hooks/useGasFeeEstimate';
+import {useDenomConfigs} from '../hooks/useDenomConfigs';
+import {feeSurchargeNote} from '../utils/fee_token_notes';
 import {FeeCoin} from '../types/fees';
 import {prettyAmount} from '../utils/amount';
 import {TxSpec} from '../utils/gas_fee';
@@ -103,6 +105,8 @@ interface FeeAmountProps {
 }
 
 const FeeAmount = ({estimate, fee, loading, size}: FeeAmountProps) => {
+    const preferredDenom = estimate.preferredAsset?.denom ?? '';
+    const configs = useDenomConfigs(useMemo(() => [preferredDenom], [preferredDenom]));
     if (loading) {
         return <Shimmer h={size === 'xs' ? '12px' : '14px'} w="64px" borderRadius="6px"/>;
     }
@@ -114,6 +118,8 @@ const FeeAmount = ({estimate, fee, loading, size}: FeeAmountProps) => {
     const nativeTicker = estimate.nativeAsset?.ticker ?? fee.denom;
     const nativeText = `${estimate.nativeDisplayAmount ? prettyAmount(estimate.nativeDisplayAmount) : fee.amount} ${nativeTicker}`;
 
+    const surchargeNote = feeSurchargeNote(estimate.preferredAsset?.ticker ?? '', configs.get(preferredDenom));
+
     if (estimate.estimate.reason === 'estimated' && estimate.preferredDisplayAmount && estimate.preferredAsset) {
         return (
             <VStack align="end" gap={0}>
@@ -121,6 +127,7 @@ const FeeAmount = ({estimate, fee, loading, size}: FeeAmountProps) => {
                     ≈ {prettyAmount(estimate.preferredDisplayAmount)} {estimate.preferredAsset.ticker}
                 </Text>
                 <Text fontSize="xs" color="fg.subtle" fontFamily="mono">({nativeText})</Text>
+                {surchargeNote && <Text fontSize="xs" color="fg.subtle">{surchargeNote}</Text>}
             </VStack>
         );
     }

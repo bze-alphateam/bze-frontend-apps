@@ -1,6 +1,5 @@
 // The DAO list shapes the home page works with: the card every list renders,
-// and BZE Scan's answers it is built from (Scan's /api/v1/daos and
-// /api/v1/dao-proposals, BFE-353 / BFE-354 / BFE-368).
+// and BZE Scan's answers it is built from (Scan's /api/v1/daos, BFE-353 / BFE-368 / BFE-423).
 
 export type DaoKind = 'static_list' | 'stake';
 
@@ -37,22 +36,8 @@ export interface ScanDaoList {
     next_cursor: string | null;
     /** False on a node that has not upgraded to chain v8.3.0. */
     supported: boolean;
-}
-
-/** An item of Scan's GET /api/v1/dao-proposals (BFE-368): a proposal with its DAO. */
-export interface ScanOpenProposal {
-    id: number;
-    dao_id: number | null;
-    title: string | null;
-    status: string | null;
-    voting_end: string | null;
-    dao: {id: number; name: string; type: string} | null;
-}
-
-export interface ScanProposalList {
-    items: ScanOpenProposal[];
-    next_cursor: string | null;
-    supported: boolean;
+    /** The DAOs the filters match across every page; null when the answer has none (a Scan without BFE-423, or a request without `page`). */
+    total: number | null;
 }
 
 export type Reason = 'Admin' | 'Nominated' | 'Member' | 'Staker';

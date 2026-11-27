@@ -2,9 +2,9 @@
 
 import {useState} from 'react';
 import {Box, Button, Grid, HStack, Link, Stack, Text} from '@chakra-ui/react';
-import {LuChevronDown, LuChevronUp, LuCoins, LuFileText, LuRefreshCw, LuSlidersHorizontal, LuCable, LuNewspaper, LuPuzzle} from 'react-icons/lu';
+import {LuChevronDown, LuChevronUp, LuCoins, LuFileText, LuRefreshCw, LuSlidersHorizontal, LuCable, LuNewspaper, LuPuzzle, LuTriangleAlert, LuMessageSquareText} from 'react-icons/lu';
 import {AppLink, getExplorerAccountURL, getExplorerProposalURL, IconTile, truncateAddress, type GovProposal} from '@bze/bze-ui-kit';
-import {describeProposal, humanise, type Action, type Entry} from '@/lib/governance/describe';
+import {describeProposal, humanise, type Action, type Entry, type Part} from '@/lib/governance/describe';
 import {coinsText, isOpen, type DenomResolver} from '@/lib/governance/details';
 import {Panel} from './panel';
 
@@ -19,6 +19,7 @@ const LABELS: Record<Action['type'], string> = {
     publisher: 'CoinTrunk publisher',
     domain: 'CoinTrunk domain',
     ibc_client: 'Cross-chain repair',
+    sentence: 'Chain change',
     text: 'Text proposal',
     other: 'Other',
 };
@@ -31,6 +32,7 @@ const ICONS: Record<Action['type'], React.ComponentType<{size?: number}>> = {
     publisher: LuNewspaper,
     domain: LuNewspaper,
     ibc_client: LuCable,
+    sentence: LuMessageSquareText,
     text: LuFileText,
     other: LuPuzzle,
 };
@@ -41,9 +43,13 @@ const Mono = ({children}: {children: React.ReactNode}) => (
     <Text as="span" fontFamily="mono" color="fg" wordBreak="break-all">{children}</Text>
 );
 
+const BECH32 = /^bze1[02-9ac-hj-np-z]{38,58}$/;
+
+/** An explorer link for a bze1 address; anything else (the body is untrusted) as plain text. */
 function Address({address}: {address: string}) {
+    if (!BECH32.test(address)) return <Mono>{address}</Mono>;
     return (
-        <Link href={getExplorerAccountURL(address)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={address}>
+        <Link href={getExplorerAccountURL(encodeURIComponent(address))} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={address}>
             {truncateAddress(address)}
         </Link>
     );
@@ -72,6 +78,21 @@ function EntryTable({entries}: {entries: Entry[]}) {
                 </Box>
             ))}
         </Grid>
+    );
+}
+
+/** A sentence's parts: tokens by ticker (raw denom when unknown), accounts as explorer links. */
+function Parts({parts, resolve}: {parts: Part[]; resolve?: DenomResolver}) {
+    return (
+        <>
+            {parts.map((part, i) =>
+                typeof part === 'string'
+                    ? <span key={i}>{part}</span>
+                    : 'denom' in part
+                        ? <Strong key={i}>{resolve?.(part.denom)?.ticker ?? part.denom}</Strong>
+                        : <Address key={i} address={part.address} />,
+            )}
+        </>
     );
 }
 
@@ -134,6 +155,15 @@ function ActionText({action, proposal, resolve}: {action: Action; proposal: GovP
                     {'. Transfers over it work again once the proposal passes.'}
                 </Text>
             );
+        case 'sentence':
+            return (
+                <>
+                    <Text fontSize="sm" color="fg.muted"><Parts parts={action.title} resolve={resolve} />{'.'}</Text>
+                    {action.details.map((line, i) => (
+                        <Text key={i} fontSize="sm" color="fg.muted" data-testid="action-detail"><Parts parts={line} resolve={resolve} /></Text>
+                    ))}
+                </>
+            );
         case 'text':
             return (
                 <Text fontSize="sm" color="fg.muted">
@@ -148,7 +178,8 @@ function ActionText({action, proposal, resolve}: {action: Action; proposal: GovP
 }
 
 function ActionBox({action, proposal, resolve}: {action: Action; proposal: GovProposal; resolve?: DenomResolver}) {
-    const Icon = ICONS[action.type];
+    const emergency = action.type === 'sentence' && action.emergency;
+    const Icon = emergency ? LuTriangleAlert : ICONS[action.type];
     return (
         <HStack
             align="flex-start"
@@ -160,10 +191,11 @@ function ActionBox({action, proposal, resolve}: {action: Action; proposal: GovPr
             p="16px"
             data-testid="action"
             data-action={action.type}
+            data-emergency={emergency || undefined}
         >
             <Box hideBelow="md"><IconTile icon={<Icon />} size={36} /></Box>
             <Stack gap="1" minW="0" flex="1">
-                <Text fontSize="15px" fontWeight="bold">{action.type === 'other' ? action.title : LABELS[action.type]}</Text>
+                <Text fontSize="15px" fontWeight="bold">{action.type === 'other' ? action.title : emergency ? 'Emergency action' : LABELS[action.type]}</Text>
                 <ActionText action={action} proposal={proposal} resolve={resolve} />
             </Stack>
         </HStack>

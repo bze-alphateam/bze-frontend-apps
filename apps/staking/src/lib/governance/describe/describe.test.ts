@@ -103,4 +103,94 @@ describe("describeProposal", () => {
             entries: [{ key: "amount", value: "5" }],
         }]);
     });
+    describe("v8.3.0 governance messages", () => {
+        const msg = (type: string, body: Record<string, unknown> = {}) =>
+            describeProposal(withMessages({ "@type": type, authority: "bze1gov", ...body } as GovProposalMessage));
+        const rl = { denom: "factory/bze1x/HONEY", channel_or_client_id: "channel-0", max_percent_send: "2", max_percent_recv: "2", duration_hours: "24" };
+        const honey = { denom: "factory/bze1x/HONEY" };
+        const sentence = (title: unknown[], details: unknown[][] = [], emergency = false) => [{ type: "sentence", emergency, title, details }];
+
+        it("reads the rate limit messages", () => {
+            expect(msg("/ratelimit.v1.MsgAddRateLimit", rl))
+                .toEqual(sentence(["Add an IBC limit for ", honey, " on ", "channel-0", ": 2% out / 2% in per 24 h"]));
+            expect(msg("/ratelimit.v1.MsgUpdateRateLimit", rl))
+                .toEqual(sentence(["Change the IBC limit of ", honey, " on ", "channel-0", " to 2% out / 2% in per 24 h"]));
+            expect(msg("/ratelimit.v1.MsgRemoveRateLimit", rl))
+                .toEqual(sentence(["Remove the IBC limit of ", honey, " on ", "channel-0"]));
+            expect(msg("/ratelimit.v1.MsgResetRateLimit", rl))
+                .toEqual(sentence(["Reset today's counted flow of ", honey, " on ", "channel-0"]));
+        });
+
+        it("reads the guardian's undo messages", () => {
+            expect(msg("/bze.guardian.v1.MsgUnblockDenom", { denom: "uatone" })).toEqual(sentence(["Allow ", { denom: "uatone" }, " to cross chains again"]));
+            expect(msg("/bze.guardian.v1.MsgReopenChannel", { channel_id: "channel-3" })).toEqual(sentence(["Reopen transfers on channel-3"]));
+            expect(msg("/bze.guardian.v1.MsgResumeAutomation")).toEqual(sentence(["Resume fee conversion and burning"]));
+        });
+
+        it("reads the emergency messages, marked as emergencies", () => {
+            expect(msg("/bze.guardian.v1.MsgBlockDenom", { denom: "uatone" })).toEqual(sentence(["Emergency: stop ", { denom: "uatone" }, " from crossing chains"], [], true));
+            expect(msg("/bze.guardian.v1.MsgCloseChannel", { channel_id: "channel-3" })).toEqual(sentence(["Emergency: close transfers on channel-3"], [], true));
+            expect(msg("/bze.guardian.v1.MsgPauseAutomation")).toEqual(sentence(["Emergency: pause fee conversion and burning"], [], true));
+            expect(msg("/bze.guardian.v1.MsgTightenRateLimit", { denom: "uatone", channel_id: "channel-3", max_percent_send: "1", max_percent_recv: "3" }))
+                .toEqual(sentence(["Emergency: lower the IBC limit of ", { denom: "uatone" }, " on channel-3", " to 1% out / 3% in"], [], true));
+            expect(msg("/bze.guardian.v1.MsgDisableMessages", { msg_type_urls: ["/bze.tradebin.MsgCreateOrder", "/bze.tradebin.MsgMultiSwap"] }))
+                .toEqual(sentence(["Emergency: switch off these actions: Create order, Multi swap"], [], true));
+            expect(msg("/bze.guardian.v1.MsgHaltTradingDenoms", { denoms: ["ubze", "uatone", "uusdc"] }))
+                .toEqual(sentence(["Emergency: halt trading of ", { denom: "ubze" }, ", ", { denom: "uatone" }, " and ", { denom: "uusdc" }], [], true));
+            expect(msg("/bze.guardian.v1.MsgHaltChain", { reason: "state corruption" }))
+                .toEqual(sentence(["Emergency: stop the chain at the next block"], [["Reason given: state corruption"]], true));
+        });
+
+        it("reads a circuit breaker reset, an empty list meaning every action", () => {
+            expect(msg("/cosmos.circuit.v1.MsgResetCircuitBreaker", { msg_type_urls: ["/bze.tradebin.MsgCreateOrder", "/bze.tradebin.MsgMultiSwap"] }))
+                .toEqual(sentence(["Switch these actions back on: Create order, Multi swap"]));
+            expect(msg("/cosmos.circuit.v1.MsgResetCircuitBreaker", { msg_type_urls: [] }))
+                .toEqual(sentence(["Switch every paused action back on"]));
+        });
+
+        it("reads a token handed to a new admin", () => {
+            expect(msg("/bze.tokenfactory.MsgSetDenomAdmin", { denom: "factory/bze1x/HONEY", new_admin: "bze1dao" }))
+                .toEqual(sentence(["Give control of ", honey, " to ", { address: "bze1dao" }]));
+        });
+
+        it("reads pool fee changes, one line per pool, as percents with up to 2 decimals", () => {
+            const fee_dest = { treasury: "0.3", burner: "0.2", providers: "0.5" };
+            expect(msg("/bze.tradebin.MsgUpdatePools", {
+                updates: [
+                    { pool_id: "ubze_uusdc", fee: "0.003000000000000000", fee_dest },
+                    { pool_id: "weird", fee: "0.0125", fee_dest: { treasury: "0.25", burner: "0.25", providers: "0.5" } },
+                ],
+            })).toEqual(sentence(["Change the fees of 2 pools"], [
+                [{ denom: "ubze" }, "/", { denom: "uusdc" }, ": fee 0.3%, split LP Rewards 50% / Protocol 30% / Buyback & Burn 20%"],
+                ["weird", ": fee 1.25%, split LP Rewards 50% / Protocol 25% / Buyback & Burn 25%"],
+            ]));
+        });
+
+        it("reads trading halts and resumes", () => {
+            expect(msg("/bze.tradebin.MsgHaltDenoms", { denoms: ["uatone"] })).toEqual(sentence(["Halt trading of ", { denom: "uatone" }]));
+            expect(msg("/bze.tradebin.MsgUnhaltDenoms", { denoms: ["uatone", "ubze"] })).toEqual(sentence(["Resume trading of ", { denom: "uatone" }, " and ", { denom: "ubze" }]));
+        });
+
+        it("survives malformed bodies with fallback words", () => {
+            expect(msg("/ratelimit.v1.MsgAddRateLimit", {})).toEqual(sentence(["Add an IBC limit for ", "a token", " on ", "a channel"]));
+            expect(msg("/bze.guardian.v1.MsgUnblockDenom")).toEqual(sentence(["Allow ", "a token", " to cross chains again"]));
+            expect(msg("/bze.guardian.v1.MsgBlockDenom")).toEqual(sentence(["Emergency: stop ", "a token", " from crossing chains"], [], true));
+            expect(msg("/bze.tokenfactory.MsgSetDenomAdmin")).toEqual(sentence(["Give control of ", "a token", " to ", "an unknown account"]));
+            expect(msg("/bze.tradebin.MsgUpdatePools", { updates: "nope" })).toEqual(sentence(["Change the fees of 0 pools"]));
+            expect(msg("/bze.tradebin.MsgUpdatePools", { updates: [{ pool_id: "ubze_uusdc", fee: "abc" }] })).toEqual(sentence(["Change the fees of 1 pool"], [
+                [{ denom: "ubze" }, "/", { denom: "uusdc" }, ": fee unknown, split LP Rewards unknown / Protocol unknown / Buyback & Burn unknown"],
+            ]));
+        });
+
+        it("still unwraps a legacy message and still falls back to other for an unknown type", () => {
+            expect(describeProposal(withMessages({
+                "@type": "/cosmos.gov.v1.MsgExecLegacyContent",
+                content: { "@type": "/ratelimit.v1.MsgRemoveRateLimit", ...rl } as GovProposalMessage["content"],
+                authority: "bze1gov",
+            }))).toEqual(sentence(["Remove the IBC limit of ", honey, " on ", "channel-0"]));
+            expect(msg("/bze.guardian.v1.MsgSomethingElse", { x: "1" })).toEqual([{
+                type: "other", title: "Something else", typeUrl: "/bze.guardian.v1.MsgSomethingElse", entries: [{ key: "x", value: "1" }],
+            }]);
+        });
+    });
 });
