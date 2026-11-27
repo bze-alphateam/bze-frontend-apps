@@ -1,7 +1,7 @@
 'use client';
 
 import React, {useCallback, useEffect, useState} from "react";
-import {chakra, Flex} from "@chakra-ui/react";
+import {chakra, Flex, type FlexProps, type HTMLChakraProps} from "@chakra-ui/react";
 import {
     type Asset,
     formatRatioPercent,
@@ -77,7 +77,7 @@ function CopyText({text, label}: { text: string; label: string }) {
  * The token's v8.3.0 fee settings (community pool, transfer fee, network fee surcharge). Renders
  * nothing when every setting is zero/empty or the node is a v8.2.0 one.
  */
-function FeeSettings({asset, cell, small}: { asset: Asset; cell: object; small: object }) {
+function FeeSettings({asset, cell, small}: { asset: Asset; cell: FlexProps; small: HTMLChakraProps<"span"> }) {
     const config = useDenomConfig(asset.denom);
     const pool = config?.status === "ok" ? config.communityPool : "";
     const poolBalance = usePoolBalance(pool, asset.denom);

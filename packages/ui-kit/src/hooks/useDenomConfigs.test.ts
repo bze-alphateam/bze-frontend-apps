@@ -36,4 +36,25 @@ describe('useDenomConfigs', () => {
         await waitFor(() => expect(result.current.get('factory/a/x')?.status).toBe('unsupported'))
         expect(result.current.get('factory/a/x')?.gasSurcharge.isZero()).toBe(true)
     })
+
+    it('sets each denom as it resolves, without waiting for a slow one', async () => {
+        getDenomConfigInfoMock.mockImplementation((d: string) =>
+            d === 'factory/a/slow' ? new Promise(() => {}) : Promise.resolve(okInfo('0.5')))
+        const { result } = renderHook(() => useDenomConfigs(['factory/a/fast', 'factory/a/slow']))
+
+        await waitFor(() => expect(result.current.get('factory/a/fast')?.gasSurcharge.toString()).toBe('0.5'))
+        expect(result.current.has('factory/a/slow')).toBe(false)
+    })
+
+    it('loads a denom added by a rerender and keeps the ones already loaded', async () => {
+        getDenomConfigInfoMock.mockImplementation(async (d: string) => okInfo(d.endsWith('b') ? '0.25' : '0.5'))
+        const { result, rerender } = renderHook(({ d }) => useDenomConfigs(d), { initialProps: { d: ['factory/a/a'] } })
+        await waitFor(() => expect(result.current.has('factory/a/a')).toBe(true))
+
+        rerender({ d: ['factory/a/a', 'factory/a/b'] })
+
+        await waitFor(() => expect(result.current.get('factory/a/b')?.gasSurcharge.toString()).toBe('0.25'))
+        expect(result.current.has('factory/a/a')).toBe(true)
+        expect(getDenomConfigInfoMock).toHaveBeenCalledWith('factory/a/b')
+    })
 })

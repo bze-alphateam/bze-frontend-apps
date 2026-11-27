@@ -69,6 +69,34 @@ describe("TokenDetails fee settings", () => {
         expect(getAddressDenomBalance).not.toHaveBeenCalled();
     });
 
+    it("keeps the section without a 'holds' line when the pool balance cannot be read", async () => {
+        useDenomConfig.mockReturnValue(config(POOL, "0.5", "0"));
+        getAddressDenomBalance.mockResolvedValue(undefined);
+        renderDetails();
+
+        await waitFor(() => expect(getAddressDenomBalance).toHaveBeenCalled());
+        expect(screen.getByTestId("fee-settings")).toBeTruthy();
+        expect(screen.queryByTestId("pool-balance")).toBeNull();
+    });
+
+    it("shows only the pool when both ratios are 0", () => {
+        useDenomConfig.mockReturnValue(config(POOL, "0", "0"));
+        getAddressDenomBalance.mockResolvedValue("1000000");
+        renderDetails();
+
+        expect(screen.getByTestId("fee-settings")).toBeTruthy();
+        expect(screen.getByTestId("community-pool")).toBeTruthy();
+        expect(screen.queryByTestId("transfer-fee")).toBeNull();
+        expect(screen.queryByTestId("gas-surcharge")).toBeNull();
+    });
+
+    it("renders nothing extra when the config read failed", () => {
+        useDenomConfig.mockReturnValue(config(POOL, "0.5", "0.01", "error"));
+        renderDetails();
+        expect(screen.queryByTestId("fee-settings")).toBeNull();
+        expect(getAddressDenomBalance).not.toHaveBeenCalled();
+    });
+
     it("treats ratios that round to 0% as no setting", () => {
         useDenomConfig.mockReturnValue(config("", "0.00001", "0.00001"));
         renderDetails();

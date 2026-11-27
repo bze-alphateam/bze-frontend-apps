@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../storage/settings', () => ({ getSettings: () => ({ endpoints: { restEndpoint: 'https://rest.test' } }) }))
-vi.mock('./client', () => ({ getRestClient: vi.fn() }))
 vi.mock('../constants/chain', () => ({ getLockerAddress: () => '' }))
 
 import { getAddressDenomBalance } from './bank'

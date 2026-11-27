@@ -7,11 +7,10 @@ export const formatRatioPercent = toPercentage;
 /** "+50%" for a ratio of 0.5. */
 export const formatSurchargePercent = (ratio: DenomConfigInfo["gasSurcharge"]): string => `+${formatRatioPercent(ratio)}%`;
 
-const hasSurcharge = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && info!.gasSurcharge.gt(0);
-const hasTransferFee = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && info!.transferFee.gt(0);
-
-/** True when paying fees in the token costs more than in BZE (a v8.2.0 node or a zero config: false). */
-export const hasFeeTokenSettings = (info?: DenomConfigInfo): boolean => hasSurcharge(info) || hasTransferFee(info);
+// A ratio that shows as "0%" (zero, or so small it rounds to 0 at 2 decimals) is not worth a note.
+const isShown = (ratio: DenomConfigInfo["gasSurcharge"]): boolean => ratio.gt(0) && formatRatioPercent(ratio) !== "0";
+const hasSurcharge = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && isShown(info!.gasSurcharge);
+const hasTransferFee = (info?: DenomConfigInfo): info is DenomConfigInfo => Boolean(info) && isShown(info!.transferFee);
 
 /** Short muted note shown next to a fee token option, e.g. "network fee +50% · app fees +1%". '' when none. */
 export const feeTokenOptionNote = (info?: DenomConfigInfo): string => {
@@ -29,9 +28,9 @@ export const feeTokenOptionNote = (info?: DenomConfigInfo): string => {
 export const feeTokenExplanation = (ticker: string, info?: DenomConfigInfo): string => {
     const sentences: string[] = [];
     if (hasSurcharge(info)) {
-        const receiver = info.communityPool ? `the ${ticker} community` : "nobody, it is burned";
+        const receiver = info.communityPool ? `which goes to the ${ticker} community` : "which is burned";
         sentences.push(
-            `Paying fees in ${ticker} costs ${formatRatioPercent(info.gasSurcharge)}% more network fee, which goes to ${receiver}.`,
+            `Paying fees in ${ticker} costs ${formatRatioPercent(info.gasSurcharge)}% more network fee, ${receiver}.`,
         );
     }
     if (hasTransferFee(info)) {

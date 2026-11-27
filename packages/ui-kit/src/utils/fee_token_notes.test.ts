@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import { describe, expect, it } from 'vitest'
 import type { DenomConfigInfo } from '../query/denom_config'
 import {
-    feeSurchargeNote, feeTokenExplanation, feeTokenOptionNote, formatRatioPercent, formatSurchargePercent, hasFeeTokenSettings,
+    feeSurchargeNote, feeTokenExplanation, feeTokenOptionNote, formatRatioPercent, formatSurchargePercent,
 } from './fee_token_notes'
 
 const info = (gas: string, transfer: string, communityPool = '', status: DenomConfigInfo['status'] = 'ok'): DenomConfigInfo => ({
@@ -24,16 +24,13 @@ describe('fee token notes', () => {
         expect(feeTokenOptionNote(info('0.5', '0.01'))).toBe('network fee +50% · app fees +1%')
         expect(feeTokenOptionNote(info('0', '0'))).toBe('')
         expect(feeTokenOptionNote(undefined)).toBe('')
-        expect(hasFeeTokenSettings(info('0', '0'))).toBe(false)
-        expect(hasFeeTokenSettings(info('0', '0.01'))).toBe(true)
     })
 
     it('says "community" only when the community pool is set, else "burned"', () => {
         expect(feeTokenExplanation('HONEY', info('0.5', '0.01', 'bze1pool')))
             .toBe('Paying fees in HONEY costs 50% more network fee, which goes to the HONEY community. App fees paid in HONEY cost 1% more.')
-        const burned = feeTokenExplanation('HONEY', info('0.5', '0'))
-        expect(burned).toContain('burned')
-        expect(burned).not.toContain('community')
+        expect(feeTokenExplanation('HONEY', info('0.5', '0')))
+            .toBe('Paying fees in HONEY costs 50% more network fee, which is burned.')
         expect(feeTokenExplanation('HONEY', info('0', '0.02'))).toBe('App fees paid in HONEY cost 2% more.')
         expect(feeTokenExplanation('HONEY', info('0', '0', '', 'unsupported'))).toBe('')
     })
@@ -42,5 +39,15 @@ describe('fee token notes', () => {
         expect(feeSurchargeNote('HONEY', info('0.5', '0'))).toBe('includes +50% HONEY surcharge')
         expect(feeSurchargeNote('HONEY', info('0', '0.01'))).toBe('')
         expect(feeSurchargeNote('HONEY', undefined)).toBe('')
+    })
+
+    it('treats a ratio that rounds to 0% as no setting', () => {
+        const tiny = info('0.00001', '0.00001')
+        expect(feeTokenOptionNote(tiny)).toBe('')
+        expect(feeTokenExplanation('HONEY', tiny)).toBe('')
+        expect(feeSurchargeNote('HONEY', tiny)).toBe('')
+        // only the part that shows is noted
+        expect(feeTokenOptionNote(info('0.00001', '0.01'))).toBe('app fees +1%')
+        expect(feeTokenExplanation('HONEY', info('0.5', '0.00001'))).toBe('Paying fees in HONEY costs 50% more network fee, which is burned.')
     })
 })
