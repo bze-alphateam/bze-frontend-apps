@@ -31,7 +31,7 @@ import {
     HighlightText,
     HgCard, hgVariant,
     FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimator, useFeeEstimate, useBalances, canAffordTx,
-    HaltedBadge, HaltedNotice, useHaltedDenoms,
+    HaltedBadge, HaltedNotice, useHaltedDenoms, usePausedMessages, PausedActionNotice,
     TxStatus, getExplorerTxURL, openExternalLink,
 } from "@bze/bze-ui-kit";
 import {useChain} from "@interchain-kit/react";
@@ -166,6 +166,9 @@ const TradingPageContent = () => {
     const {balance: quoteBalance} = useBalance(market?.quote ?? '')
     const {totalUsdValue, hasPrice} = useAssetPrice(market?.quote ?? '')
     const {tx} = useBZETx()
+    // The one form sends a create or a fill, depending on the book: either paused stops it.
+    const {isPaused: orderPaused} = usePausedMessages(['/bze.tradebin.MsgCreateOrder', '/bze.tradebin.MsgFillOrders'])
+    const {isPaused: cancelPaused} = usePausedMessages(['/bze.tradebin.MsgCancelOrder'])
     const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
     const {toast} = useToast()
     const {connectionType} = useConnectionType()
@@ -947,6 +950,7 @@ const TradingPageContent = () => {
                                 Resting orders on this market will not execute while trading is halted. Cancel them in Your Orders to get your funds back.
                             </HaltedNotice>
                         )}
+                        {!isHalted && orderPaused && <PausedActionNotice />}
                         {!isHalted && (
                         <Grid templateColumns={{ base: 'minmax(0, 1fr)', md: 'repeat(2, minmax(0, 1fr))' }} gap="16px">
                             <OrderForm
@@ -954,7 +958,7 @@ const TradingPageContent = () => {
                                 title={`Buy ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={buyFillMessage}
                                 mergeHint={buyMergeHint}
-                                disabled={submittingOrder}
+                                disabled={submittingOrder || orderPaused}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_BUY)}
                             >
                                 <OrderField
@@ -989,7 +993,7 @@ const TradingPageContent = () => {
                                 title={`Sell ${baseAsset?.ticker ?? ''}`}
                                 fillMessage={sellFillMessage}
                                 mergeHint={sellMergeHint}
-                                disabled={submittingOrder}
+                                disabled={submittingOrder || orderPaused}
                                 onSubmit={() => onOrderSubmit(ORDER_TYPE_SELL)}
                             >
                                 <OrderField
@@ -1096,11 +1100,14 @@ const TradingPageContent = () => {
                                         variant={hgVariant('secondary')}
                                         onClick={() => onOrderCancelClick(myOrders)}
                                         loading={submittingCancel}
+                                        disabled={cancelPaused}
                                     >
                                         Cancel All
                                     </Button>
                                 )}
                             </Flex>
+
+                            {cancelPaused && <PausedActionNotice />}
 
                             {myOrders.length === 0 ? (
                                 <EmptyState>No active orders</EmptyState>
@@ -1123,6 +1130,7 @@ const TradingPageContent = () => {
                                                         _hover={{ color: 'hg.danger.text', bg: 'hg.hoverFill' }}
                                                         onClick={() => onOrderCancelClick([order])}
                                                         loading={submittingCancel}
+                                                        disabled={cancelPaused}
                                                     >
                                                         <LuX size={14} />
                                                     </IconButton>

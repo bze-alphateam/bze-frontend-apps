@@ -21,7 +21,7 @@ import {
 } from 'react-icons/lu';
 import { useState, useMemo, memo, useEffect, useCallback, useId, type ComponentProps, type ReactNode } from 'react';
 import NextLink from "next/link";
-import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms, useMarkets, useAssetPrice, getChainNativeAssetDenom, createMarketId, formatUsdAmount, shortNumberFormat, LPTokenLogo, PageContainer, HeroGlow, Eyebrow, GradientText, HgCard, StatCard, StatStrip, Notice, hgVariant} from "@bze/bze-ui-kit";
+import {useAssets, useBalances, prettyAmount, uAmountToBigNumberAmount, amountToBigNumberUAmount, toBigNumber, uAmountToAmount, createAmmRouter, useToast, useBZETx, getChainName, useAssetsValue, HighlightText, sanitizeNumberInput, getAddressSwapHistory, SwapHistory, addDebounce, useLiquidityPools, TokenLogo, Tooltip, FeeEstimateRow, useTradingFees, useMaxSpendable, useGasFeeEstimate, useFeeEstimate, useCanAffordTx, useHaltedDenoms, useMarkets, useAssetPrice, getChainNativeAssetDenom, createMarketId, formatUsdAmount, shortNumberFormat, LPTokenLogo, PageContainer, HeroGlow, Eyebrow, GradientText, HgCard, StatCard, StatStrip, Notice, hgVariant, usePausedMessages, PausedActionNotice} from "@bze/bze-ui-kit";
 import {parseAmountInput, quoteSwap, swapRates, SwapInput, SwapQuote} from "@/lib/swap-quote";
 import {SLIPPAGE_PRESETS, isSlippagePreset, minimumSwapOutput, parseCustomSlippage} from "@/lib/slippage";
 import {AMM_SLIPPAGE_KEY, createLocalSlippageStore} from "@/lib/slippage-store";
@@ -371,6 +371,7 @@ export default function SwapPage() {
   const { pools, poolsData, liquidAssets, isLoading } = useLiquidityPools();
   const {toast} = useToast()
   const {tx, progressTrack} = useBZETx()
+  const {isPaused} = usePausedMessages(['/bze.tradebin.MsgMultiSwap'])
   const {fees: tradingFees, isLoading: tradingFeesLoading} = useTradingFees()
   const {address} = useChain(getChainName())
   const {denomUsdValue, compareValues} = useAssetsValue()
@@ -1051,6 +1052,8 @@ export default function SwapPage() {
                       {usdLine(fromAmount, fromAsset)}
                     </SwapSide>
 
+                    {isPaused && <PausedActionNotice />}
+
                     {/* Swap Button */}
                     <Flex justify="center" position="relative" my="-18px" zIndex="1">
                       <chakra.button
@@ -1320,7 +1323,7 @@ export default function SwapPage() {
                       borderRadius="14px"
                       fontSize="16px"
                       fontWeight="700"
-                      disabled={!canSubmit}
+                      disabled={!canSubmit || isPaused}
                       loading={isSubmitting}
                       loadingText={progressTrack || 'Submitting...'}
                       onClick={handleSwapSubmit}

@@ -9,6 +9,8 @@ import {
     useMaxSpendable,
     useCanAffordTx,
     useSDKTx,
+    usePausedMessages,
+    PausedActionNotice,
     useToast,
     getChainNativeAssetDenom,
     prettyAmount,
@@ -51,6 +53,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
     const {tx, progressTrack} = useSDKTx();
+    const {isPaused} = usePausedMessages(['/cosmos.staking.v1beta1.MsgDelegate']);
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,6 +167,8 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                 </Notice>
             )}
 
+            {isPaused && <PausedActionNotice />}
+
             <AmountField
                 value={amount}
                 onChange={(value) => setAmount(sanitizeNumberInput(value, decimals))}
@@ -220,7 +225,7 @@ export function DelegateModal({isOpen, onClose, validator, onSuccess, onConnectW
                     size="lg"
                     onClick={handleDelegate}
                     loading={isSubmitting}
-                    disabled={!amountValid || !address || exceedsSpendable || feeCheck.isLoading || !feeCheck.canAfford}
+                    disabled={isPaused || !amountValid || !address || exceedsSpendable || feeCheck.isLoading || !feeCheck.canAfford}
                     w="full"
                 >
                     Stake {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}

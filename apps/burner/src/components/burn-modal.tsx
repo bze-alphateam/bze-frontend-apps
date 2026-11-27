@@ -11,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import {useState, useMemo, useCallback} from "react";
 import {LuFlame, LuLock, LuWallet} from "react-icons/lu";
-import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant, isIbcDenom } from "@bze/bze-ui-kit";
+import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant, isIbcDenom, usePausedMessages, PausedActionNotice } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from '@bze/bzejs'
@@ -45,6 +45,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
     const { address } = useChain(getChainName());
     const { toast } = useToast()
     const { tx } = useBZETx()
+    const { isPaused } = usePausedMessages(["/bze.burner.MsgFundBurner"]);
     // Shared gas engine: MAX keeps the gas fee back when burning the fee coin, and the form
     // refuses amounts that would leave no room for it.
     const maxSpendable = useMaxSpendable(selectedCoin, 'fund-burner');
@@ -188,7 +189,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
                 flex="1"
                 variant={hgVariant('primary')}
                 onClick={handleBurn}
-                disabled={!isFormValid || isSubmitting}
+                disabled={!isFormValid || isSubmitting || isPaused}
                 loading={isSubmitting}
                 loadingText={isLocking ? "Locking..." : "Burning..."}
             >
@@ -205,6 +206,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             title={preselectedCoin && selectedAsset ? `${verb} ${selectedAsset.ticker}` : `${verb} your tokens`}
             footer={footer}
         >
+            {isPaused && <PausedActionNotice />}
             {isLocking ? (
                 <Notice status="warning" title="Warning: locked forever">
                     {"IBC coins come from other blockchains, so BeeZee cannot burn them. Coins you send here are locked forever in the burner's lock address and leave circulation on BeeZee."}

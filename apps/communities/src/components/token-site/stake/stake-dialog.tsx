@@ -23,6 +23,8 @@ import {
     useBZETx,
     useCanAffordTx,
     useMaxSpendable,
+    usePausedMessages,
+    PausedActionNotice,
     validateDenomRewardStake,
 } from "@bze/bze-ui-kit";
 
@@ -170,6 +172,8 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
     const {address} = useChain(getChainName());
     const {updateBalances} = useAssetsContext();
     const {tx, progressTrack} = useBZETx();
+    // The message type this action sends (holders pool or fixed-term program): the chain refuses it while paused.
+    const {isPaused} = usePausedMessages([targetMessage(target, action, "", undefined).typeUrl]);
     const [input, setInput] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -187,7 +191,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
         spend: action === "stake" && ready && uAmount ? {denom, amount: uAmount} : undefined,
     });
     const error = stakeProblem || (ready && !afford.isLoading && !afford.canAfford ? afford.message : "");
-    const canSubmit = Boolean(address) && ready && error === "" && !afford.isLoading && !isSubmitting;
+    const canSubmit = Boolean(address) && ready && error === "" && !afford.isLoading && !isSubmitting && !isPaused;
 
     const submit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -304,6 +308,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
                     </>
                 )}
 
+                {isPaused && <PausedActionNotice />}
                 {error && <chakra.span id="stake-dialog-error" role="alert" fontSize="13px" color={ts.danger}>{error}</chakra.span>}
                 {ready && afford.gasFee.displayAmount.gt(0) && (
                     <Row label="Network fee">≈ {walletAmount(afford.gasFee.displayAmount)} {afford.gasFee.ticker}</Row>

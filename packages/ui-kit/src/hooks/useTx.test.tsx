@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import BigNumber from 'bignumber.js'
 
 // The wallet, signing client and toasts are fed directly. Most tests pass a fixed fee, which
 // skips simulation, so a tx only signs, broadcasts and reports the result; the simulateFee
 // tests leave the fee out and feed the simulate query and the chain params instead.
-const { toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, denomConfigMock, settings, getDenomsPoolMock, connected, queryClient } = vi.hoisted(() => ({
+const { disabledMock, toastMock, signAndBroadcastMock, simulateMock, txFeeParamsMock, denomConfigMock, settings, getDenomsPoolMock, connected, queryClient } = vi.hoisted(() => ({
+    // What the x/circuit disable list reader answers; [] unless a test sets it.
+    disabledMock: vi.fn(),
     toastMock: {
         loading: vi.fn(() => 'toast-id'),
         dismiss: vi.fn(),
@@ -60,6 +62,10 @@ vi.mock('./useLiquidityPools', () => ({ useLiquidityPools: () => ({ getDenomsPoo
 vi.mock('./useSettings', () => ({ useSettings: () => settings }))
 vi.mock('./useFeeTokens', () => ({ useFeeTokens: () => ({ isValidFeeDenom: () => true }) }))
 vi.mock('@bze/bzejs/cosmos/tx/v1beta1/service.rpc.func', () => ({ getSimulate: simulateMock }))
+vi.mock('../query/circuit', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../query/circuit')>()),
+    getDisabledMessages: disabledMock,
+}))
 vi.mock('../query/denom_config', () => ({ getDenomConfig: denomConfigMock }))
 vi.mock('../query/txfeecollector_params', () => ({ getTxFeeCollectorParams: txFeeParamsMock }))
 vi.mock('../constants/chain', async (importOriginal) => ({
@@ -79,6 +85,7 @@ const MSG = { typeUrl: '/cosmos.bank.v1beta1.MsgSend', value: {} }
 // Only the sign mode tests connect a wallet.
 beforeEach(() => {
     connected.wallet = undefined
+    disabledMock.mockReset().mockResolvedValue([])
 })
 
 describe('useTx success toast', () => {
@@ -532,5 +539,170 @@ describe('useTx sign mode', () => {
         const requested = AuthInfo.decode(keplr.signDirect.mock.calls[0][2].authInfoBytes).fee!
         expect(requested.amount).toEqual(FEE.amount)
         expect(requested.gasLimit).toBe(BigInt(FEE.gas))
+    })
+})
+
+// x/circuit (BFE-381): a tx with a paused message type is refused before the fee simulation and
+// the wallet, on the BZE chain only. Every other case must behave exactly as before.
+describe('useTx paused messages guard', () => {
+    const SWAP = { typeUrl: '/bze.tradebin.MsgMultiSwap', value: {} }
+    const TRANSFER = { typeUrl: '/ibc.applications.transfer.v1.MsgTransfer', value: {} }
+    const PAUSED_TEXT = 'This action is paused on BeeZee for now. Please try again later.'
+
+    beforeEach(() => {
+        Object.values(toastMock).forEach(m => m.mockClear())
+        signAndBroadcastMock.mockReset().mockResolvedValue({
+            transactionHash: 'HASH',
+            wait: async () => ({ code: 0, txhash: 'HASH', height: 10, events: [] }),
+        })
+        simulateMock.mockReset().mockResolvedValue({ gasInfo: { gasUsed: BigInt(123_410), gasWanted: BigInt(0) } })
+        txFeeParamsMock.mockReset().mockResolvedValue({ validatorMinGasFee: { denom: 'ubze', amount: '0.01' }, blockedIbcInbound: [] })
+        getDenomsPoolMock.mockReset().mockReturnValue(undefined)
+        denomConfigMock.mockReset().mockResolvedValue({ gasSurcharge: new BigNumber(0), transferFee: new BigNumber(0) })
+        settings.feeDenom = 'ubze'
+    })
+
+    const run = async (hook: () => ReturnType<typeof useBZETx>, msgs: { typeUrl: string; value: object }[], options = {}) => {
+        const { result } = renderHook(hook)
+        let ok = true
+        await act(async () => { ok = await result.current.tx(msgs, options) })
+        return ok
+    }
+
+    it('refuses before simulating, signing or broadcasting when one of two messages is paused', async () => {
+        disabledMock.mockResolvedValue([SWAP.typeUrl])
+
+        const ok = await run(() => useBZETx(), [MSG, SWAP])
+
+        expect(ok).toBe(false)
+        expect(simulateMock).not.toHaveBeenCalled()
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+        expect(toastMock.loading).not.toHaveBeenCalled()
+        expect(toastMock.error).toHaveBeenCalledWith(TxStatus.Failed, PAUSED_TEXT)
+    })
+
+    it('refuses even when the caller passes a fixed fee', async () => {
+        disabledMock.mockResolvedValue([MSG.typeUrl])
+
+        const ok = await run(() => useBZETx(), [MSG], { fee: FEE })
+
+        expect(ok).toBe(false)
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+    })
+
+    it('reports through onFailure at the prepare stage, without a toast, when toasts are off', async () => {
+        disabledMock.mockResolvedValue([SWAP.typeUrl])
+        const onFailure = vi.fn()
+
+        const ok = await run(() => useBZETx(), [SWAP], { toasts: false, onFailure })
+
+        expect(ok).toBe(false)
+        expect(onFailure).toHaveBeenCalledWith(PAUSED_TEXT, { stage: 'prepare' })
+        expect(toastMock.error).not.toHaveBeenCalled()
+        expect(signAndBroadcastMock).not.toHaveBeenCalled()
+    })
+
+    it('lets the tx through unchanged when another message type is paused', async () => {
+        disabledMock.mockResolvedValue(['/bze.tradebin.MsgCreateOrder'])
+
+        const ok = await run(() => useBZETx(), [MSG], { fee: FEE })
+
+        expect(ok).toBe(true)
+        expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        expect(toastMock.error).not.toHaveBeenCalled()
+    })
+
+    it('lets the tx through unchanged, simulating as before, when nothing is paused', async () => {
+        disabledMock.mockResolvedValue([])
+
+        const ok = await run(() => useBZETx(), [MSG])
+
+        expect(ok).toBe(true)
+        expect(simulateMock).toHaveBeenCalledTimes(1)
+        expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        expect(signAndBroadcastMock.mock.calls[0][2].gas).toBe('148092')
+    })
+
+    describe('when the list cannot be read', () => {
+        afterEach(() => vi.unstubAllGlobals())
+
+        it('fails open when the node answers 501 (v8.2.0)', async () => {
+            const actual = await vi.importActual<typeof import('../query/circuit')>('../query/circuit')
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"code":12}', { status: 501 })))
+            vi.spyOn(console, 'error').mockImplementation(() => {})
+            disabledMock.mockImplementation(actual.getDisabledMessages)
+
+            const ok = await run(() => useBZETx(), [SWAP], { fee: FEE })
+
+            expect(ok).toBe(true)
+            expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        })
+
+        it('fails open when the request fails', async () => {
+            const actual = await vi.importActual<typeof import('../query/circuit')>('../query/circuit')
+            vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+            vi.spyOn(console, 'error').mockImplementation(() => {})
+            disabledMock.mockImplementation(actual.getDisabledMessages)
+
+            const ok = await run(() => useBZETx(), [SWAP], { fee: FEE })
+
+            expect(ok).toBe(true)
+            expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        })
+
+        it('still signs once the 3 s wait on a node that never answers is over', async () => {
+            vi.useFakeTimers()
+            try {
+                const actual = await vi.importActual<typeof import('../query/circuit')>('../query/circuit')
+                vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+                vi.spyOn(console, 'error').mockImplementation(() => {})
+                disabledMock.mockImplementation(actual.getDisabledMessages)
+                const { result } = renderHook(() => useBZETx())
+
+                let ok: boolean | undefined
+                const running = act(async () => { ok = await result.current.tx([SWAP], { fee: FEE }) })
+                await act(async () => { await vi.advanceTimersByTimeAsync(2_900) })
+                expect(signAndBroadcastMock).not.toHaveBeenCalled()
+
+                await act(async () => { await vi.advanceTimersByTimeAsync(200) })
+                await running
+
+                expect(ok).toBe(true)
+                expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+            } finally {
+                vi.useRealTimers()
+            }
+        })
+
+        it('fails open when the reader itself throws', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {})
+            disabledMock.mockRejectedValue(new Error('boom'))
+
+            const ok = await run(() => useBZETx(), [SWAP], { fee: FEE })
+
+            expect(ok).toBe(true)
+            expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+        })
+    })
+
+    describe('on a counterparty chain', () => {
+        it('still simulates and signs MsgTransfer while the BZE hook refuses the same tx', async () => {
+            disabledMock.mockResolvedValue([TRANSFER.typeUrl])
+
+            const foreign = await run(() => useIBCTx('osmosis'), [TRANSFER])
+
+            expect(foreign).toBe(true)
+            expect(disabledMock).not.toHaveBeenCalled()
+            expect(simulateMock).toHaveBeenCalledTimes(1)
+            expect(signAndBroadcastMock).toHaveBeenCalledTimes(1)
+
+            signAndBroadcastMock.mockClear()
+            simulateMock.mockClear()
+            const bze = await run(() => useBZETx(), [TRANSFER])
+
+            expect(bze).toBe(false)
+            expect(simulateMock).not.toHaveBeenCalled()
+            expect(signAndBroadcastMock).not.toHaveBeenCalled()
+        })
     })
 })

@@ -48,3 +48,5 @@ Hand-written as well: `lcd/dao.proposal.{8,9,10}` (8 a static-list proposal of D
 ## The self-management actions (BFE-376)
 
 The composer reads a DAO's relations before it opens: `lcd/dao.daos_by_admin.{dao2,dao4}` (the DAOs the DAO account administers; a self-owned DAO lists itself, so DAO 2's answer carries DAO 2 and the composer leaves it out), `scan/daos.pending-admin.{dao2,dao4}` (Scan's `pending_admin` filter: nobody nominated them) and `lcd/rewards.denom_reward_participations.dao4` (the DAO account's own Denom Reward stake, read with the staking rewards for the voters action). Hand-written like the rest; a spec that needs a sub-DAO or a nomination answers these with `network.use`.
+
+| `lcd/circuit.disable_list.json` | x/circuit disable list (the paused-actions guard in `useTx` and the form notices) | synthetic empty list: nothing is paused |

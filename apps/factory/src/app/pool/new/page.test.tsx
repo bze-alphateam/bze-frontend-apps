@@ -18,7 +18,7 @@ type TxOpts = {
 };
 const {
     queryParams, wallet, existingPools, feeState, balances, maxSpendable, payment,
-    navigateMock, txMock, updatePoolsMock, getLiquidityPoolMock,
+    navigateMock, txMock, updatePoolsMock, getLiquidityPoolMock, paused: pausedState,
 } = vi.hoisted(() => ({
     queryParams: { current: new URLSearchParams() },
     wallet: { address: "bze1me" as string | undefined },
@@ -30,6 +30,8 @@ const {
     payment: { altDenom: undefined as string | undefined, altAmount: "0", gasAmount: "0" },
     navigateMock: vi.fn(),
     txMock: vi.fn(),
+    // Message type URLs on the x/circuit disable list.
+    paused: { urls: [] as string[] },
     updatePoolsMock: vi.fn(),
     getLiquidityPoolMock: vi.fn(),
 }));
@@ -81,6 +83,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
     const toBn = (v?: string) => new BN(v ?? "0");
     return {
         ...actual,
+        usePausedMessages: (urls: string[]) => {
+            const paused = urls.filter(u => pausedState.urls.includes(u));
+            return { paused, isPaused: paused.length > 0 };
+        },
         useAsset: (denom: string) => ({ asset: assets[denom], isLoading: false }),
         useBalance: (denom: string) => ({ balance: { denom, amount: toBn(balances.current[denom]) }, isLoading: false }),
         useMaxSpendable: (denom: string) => ({ amount: toBn(maxSpendable.current[denom]), isLoading: false }),
@@ -198,6 +204,7 @@ beforeEach(() => {
     payment.altDenom = undefined;
     payment.altAmount = "0";
     payment.gasAmount = "0";
+    pausedState.urls = [];
     navigateMock.mockReset();
     updatePoolsMock.mockReset();
     getLiquidityPoolMock.mockReset().mockResolvedValue({ lp_denom: "ulp/abc" });
@@ -477,6 +484,28 @@ describe("Create a liquidity pool (/pool/new)", { timeout: 20_000 }, () => {
             await answerFees();
             expect(createButton()).toBeDisabled();
             expect(screen.getByText("Connect your wallet.")).toBeInTheDocument();
+        });
+
+        it("shows the paused notice and disables Create pool when MsgCreateLiquidityPool is paused", async () => {
+            pausedState.urls = ["/bze.tradebin.MsgCreateLiquidityPool"];
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("10", "10");
+            await answerFees();
+
+            expect(screen.getByText("This action is paused on BeeZee for now.")).toBeInTheDocument();
+            expect(createButton()).toBeDisabled();
+        });
+
+        it("keeps Create pool enabled, without a notice, when another message type is paused", async () => {
+            pausedState.urls = ["/bze.tradebin.MsgCreateMarket"];
+            queryParams.current = new URLSearchParams({ base: "utok", quote: "ubze" });
+            renderPage();
+            await answerAmounts("10", "10");
+            await answerFees();
+
+            expect(screen.queryByText("This action is paused on BeeZee for now.")).toBeNull();
+            expect(createButton()).toBeEnabled();
         });
 
         it("keeps the answers when the wallet declines", async () => {

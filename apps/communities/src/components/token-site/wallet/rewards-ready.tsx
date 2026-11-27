@@ -2,7 +2,7 @@
 
 import React, {useState} from "react";
 import {chakra, Flex} from "@chakra-ui/react";
-import {type Asset, uAmountToBigNumberAmount, useAssets, useAssetsContext, useBZETx} from "@bze/bze-ui-kit";
+import {type Asset, uAmountToBigNumberAmount, useAssets, useAssetsContext, useBZETx, usePausedMessages, PausedActionNotice} from "@bze/bze-ui-kit";
 
 import {claimAllMessages, type TokenWalletPositions, walletAmount} from "@/lib/token-site/wallet";
 
@@ -37,6 +37,7 @@ export function RewardsReady({asset, address, positions, onClaimed}: RewardsRead
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const msgs = claimAllMessages(address, asset.denom, positions);
+    const {isPaused} = usePausedMessages([...new Set(msgs.map((msg) => msg.typeUrl))]);
     if (msgs.length === 0) return null;
 
     const claim = async () => {
@@ -64,10 +65,11 @@ export function RewardsReady({asset, address, positions, onClaimed}: RewardsRead
                         {coins}
                     </chakra.span>
                 </Flex>
-                <TsButton variant="primary" onClick={claim} disabled={isSubmitting}>
+                <TsButton variant="primary" onClick={claim} disabled={isSubmitting || isPaused}>
                     {isSubmitting ? (progressTrack || "Waiting for signature…") : "Claim all"}
                 </TsButton>
             </Flex>
+            {isPaused && <PausedActionNotice />}
         </TsCard>
     );
 }

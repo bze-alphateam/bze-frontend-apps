@@ -5,6 +5,8 @@ import {Box, Button, chakra, Flex, Grid} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
+    usePausedMessages,
+    PausedActionNotice,
     useCanAffordTx,
     useToast,
     prettyAmount,
@@ -44,6 +46,7 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
     const {tx, progressTrack} = useSDKTx();
+    const {isPaused} = usePausedMessages(['/cosmos.distribution.v1beta1.MsgWithdrawDelegatorReward']);
     const {toast} = useToast();
     const {price: bzePrice} = useAssetPrice(nativeAsset?.denom ?? '');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,7 +105,7 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
     };
 
     const handleClaim = async () => {
-        if (!address || selectedValidators.size === 0) {
+        if (isPaused || !address || selectedValidators.size === 0) {
             toast.error('No validators selected', 'Please select at least one validator to claim from');
             return;
         }
@@ -186,6 +189,8 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
                 })}
             </Flex>
 
+            {isPaused && <PausedActionNotice />}
+
             {feeCheck.message && (
                 <chakra.span fontSize="12px" color="hg.danger.text" textAlign="center">{feeCheck.message}</chakra.span>
             )}
@@ -216,7 +221,7 @@ export function ClaimRewardsModal({isOpen, onClose, rewardEntries, onSuccess}: C
                         size="lg"
                         onClick={handleClaim}
                         loading={isSubmitting}
-                        disabled={!address || selectedValidators.size === 0 || !feeCheck.canAfford}
+                        disabled={isPaused || !address || selectedValidators.size === 0 || !feeCheck.canAfford}
                     >
                         Claim{selectedValidators.size > 0 ? ` (${selectedValidators.size})` : ''}
                     </Button>

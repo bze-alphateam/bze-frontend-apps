@@ -33,6 +33,8 @@ import {getChainName} from '../../constants/chain';
 import {MaxInputGroup} from '../max-input-group';
 import {useIbcRouteStatus} from '../../hooks/useIbcRouteStatus';
 import {RouteStoppedNotice} from './route-stopped-notice';
+import {usePausedMessages} from '../../hooks/usePausedMessages';
+import {PausedActionNotice} from '../paused-action-notice';
 import {useRouteLimit} from '../../hooks/useRouteLimit';
 import {RouteLimitLine, routeLimitError} from './route-limit';
 import {clearRateLimitCache} from '../../query/rate_limit';
@@ -178,12 +180,15 @@ export const WithdrawForm = () => {
     // Guardian stops (v8.3.0). The balance stays visible; only the transfer is refused.
     const denomBlocked = !!selectedAsset && isDenomBlocked(selectedAsset.balance.denom);
     const channelClosed = !!selectedDestination && isChannelClosed(selectedDestination.bzeSideChannelId);
+    // x/circuit: the withdrawal is a MsgTransfer signed on BZE (a deposit is signed on the other chain).
+    const {isPaused: transferPaused} = usePausedMessages(['/ibc.applications.transfer.v1.MsgTransfer']);
 
     const canExecute = useMemo(() => {
         return selectedAsset
             && selectedDestination
             && !denomBlocked
             && !channelClosed
+            && !transferPaused
             && amount !== ''
             && amountError === ''
             && limitError === ''
@@ -192,7 +197,7 @@ export const WithdrawForm = () => {
             && destWalletStatus === WalletState.Connected
             && sourceBalance
             && sourceBalance.display.isGreaterThan(0);
-    }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, amount, amountError, limitError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
+    }, [selectedAsset, selectedDestination, denomBlocked, channelClosed, transferPaused, amount, amountError, limitError, affordability.canAfford, isExecuting, destWalletStatus, sourceBalance]);
 
     const handleExecute = useCallback(async () => {
         // Last look before signing: the guardian may have stopped the route while the form was open.
@@ -350,6 +355,7 @@ export const WithdrawForm = () => {
             )}
 
             <RouteStoppedNotice denomBlocked={denomBlocked} channelClosed={channelClosed}/>
+            {transferPaused && <PausedActionNotice/>}
 
             {/* Transfer direction label */}
             {selectedAsset && selectedDestination && (

@@ -6,7 +6,8 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 // The modal reads the wallet, balance, asset and affordability from hooks. Mock them to feed
 // state directly; no chain or wallet. Affordability always passes, as it does when the fee coin
 // differs: the modal's own balance check against the ticket cost is what is under test.
-const { balanceMock, assetMock, affordMock } = vi.hoisted(() => ({
+const { balanceMock, assetMock, affordMock, pausedMock } = vi.hoisted(() => ({
+    pausedMock: { urls: [] as string[] },
     balanceMock: vi.fn(),
     assetMock: vi.fn(),
     affordMock: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useBalance: () => balanceMock(),
         useAsset: () => assetMock(),
         useCanAffordTx: (input: unknown) => affordMock(input),
+        usePausedMessages: (urls: string[]) => {
+            const paused = urls.filter(u => pausedMock.urls.includes(u));
+            return { paused, isPaused: paused.length > 0 };
+        },
     };
 });
 
@@ -55,6 +60,7 @@ function renderModal(ticketPrice: string) {
 
 describe("RaffleModal", () => {
     beforeEach(() => {
+        pausedMock.urls = [];
         assetMock.mockReturnValue({ asset: { denom: "factory/x/uhoney", ticker: "HONEY", decimals: 6 } });
         affordMock.mockReturnValue({ canAfford: true, shortOnFees: false, message: "" });
     });
@@ -77,5 +83,14 @@ describe("RaffleModal", () => {
         renderModal("1500000000");
 
         expect(screen.getByRole("button", { name: /Join raffle/ }).hasAttribute("disabled")).toBe(false);
+    });
+
+    it("shows the paused notice and disables Join when MsgJoinRaffle is on the disable list", () => {
+        pausedMock.urls = ["/bze.burner.MsgJoinRaffle"];
+        balanceMock.mockReturnValue({ balance: { denom: "factory/x/uhoney", amount: "2000000000" } });
+        renderModal("1500000000");
+
+        expect(screen.getByText("This action is paused on BeeZee for now.")).toBeTruthy();
+        expect(screen.getByRole("button", { name: /Join raffle/ }).hasAttribute("disabled")).toBe(true);
     });
 });

@@ -10,7 +10,7 @@ import type { Asset } from "@bze/bze-ui-kit";
 const { mocks, HALTED, MARKET, MARKET_ID } = vi.hoisted(() => {
     const HALTED = "factory/bze1creator/uhalt";
     return {
-        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", sell: [] as unknown[], info: vi.fn(), clickable: vi.fn(), fetchOrders: vi.fn() },
+        mocks: { halted: new Set<string>(), tx: vi.fn(), myOrders: [] as unknown[], balance: "0", paused: [] as string[], sell: [] as unknown[], info: vi.fn(), clickable: vi.fn(), fetchOrders: vi.fn() },
         HALTED,
         MARKET: { base: HALTED, quote: "ubze" },
         MARKET_ID: `${HALTED}/ubze`,
@@ -48,6 +48,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useMaxSpendable: () => ({ inputValue: "0", displayAmount: new BigNumber(0), amount: new BigNumber(0), gasFee, isLoading: false }),
         useGasFeeEstimator: () => ({ estimate: () => gasFee }),
         useFeeEstimate: () => ({ isPreferredSelected: false, isLoading: false }),
+        usePausedMessages: (urls: string[]) => {
+            const paused = urls.filter(u => mocks.paused.includes(u));
+            return { paused, isPaused: paused.length > 0 };
+        },
         useHaltedDenoms: () => ({
             haltedDenoms: mocks.halted,
             isDenomHalted: (denom: string) => mocks.halted.has(denom),
@@ -82,6 +86,7 @@ function renderPage() {
 
 beforeEach(() => {
     mocks.halted = new Set();
+    mocks.paused = [];
     mocks.tx.mockReset();
     mocks.myOrders = [ORDER];
     mocks.balance = "0";
@@ -410,5 +415,35 @@ describe("order book after the v8.3.0 in-tx execution", () => {
         fireEvent.click(cancelAll);
 
         await waitFor(() => expect(mocks.fetchOrders.mock.calls.length).toBeGreaterThan(before));
+    });
+});
+
+describe("trading page with paused message types", () => {
+    const NOTICE = "This action is paused on BeeZee for now.";
+
+    it("disables the buy and sell buttons and shows the notice when MsgCreateOrder is paused", async () => {
+        mocks.paused = ["/bze.tradebin.MsgCreateOrder"];
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Buy HALT" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Sell HALT" })).toBeDisabled();
+        expect(screen.getAllByText(NOTICE).length).toBe(1);
+    });
+
+    it("disables cancelling when MsgCancelOrder is paused, and leaves the order forms alone", async () => {
+        mocks.paused = ["/bze.tradebin.MsgCancelOrder"];
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Cancel All" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Buy HALT" })).toBeEnabled();
+        expect(screen.getAllByText(NOTICE).length).toBe(1);
+    });
+
+    it("shows nothing and keeps every button enabled when nothing is paused", async () => {
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Buy HALT" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Cancel All" })).toBeEnabled();
+        expect(screen.queryByText(NOTICE)).toBeNull();
     });
 });

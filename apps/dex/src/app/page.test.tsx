@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
     pools: [] as unknown[],
     markets: [] as unknown[],
     halted: new Set<string>(),
+    // Message type URLs on the x/circuit disable list.
+    paused: [] as string[],
     balances: new Map<string, BigNumber>(),
     usdPrices: new Map<string, BigNumber>(),
     // A plain number: BigNumber is not imported yet when vi.hoisted runs.
@@ -71,6 +73,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
             isMarketHalted: () => false,
             isLoading: false,
         }),
+        usePausedMessages: (urls: string[]) => {
+            const paused = urls.filter(u => mocks.paused.includes(u));
+            return { paused, isPaused: paused.length > 0 };
+        },
         useToast: () => ({ toast: { error: vi.fn(), success: vi.fn() } }),
         useBZETx: () => ({ tx: mocks.tx, progressTrack: "" }),
         // Same contract as the real hook: USD price per whole token, amount in base (micro) units.
@@ -195,6 +201,7 @@ beforeEach(() => {
     mocks.pools = [];
     mocks.markets = [];
     mocks.halted = new Set();
+    mocks.paused = [];
     mocks.bzePrice = 0;
     localStorage.clear();
 });
@@ -765,3 +772,26 @@ describe("Swap page top layouts", () => {
     });
 });
 
+
+describe("Swap page with the swap message paused", () => {
+    it("shows the paused notice and disables Swap when MsgMultiSwap is on the disable list", () => {
+        setupBzeUsdc();
+        mocks.paused = ["/bze.tradebin.MsgMultiSwap"];
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+
+        expect(toInput().value).not.toBe("");
+        expect(screen.getByText("This action is paused on BeeZee for now.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Swap" })).toBeDisabled();
+    });
+
+    it("ignores other paused message types", () => {
+        setupBzeUsdc();
+        mocks.paused = ["/bze.tradebin.MsgCreateOrder"];
+        renderSwap();
+        fireEvent.change(fromInput(), { target: { value: "1" } });
+
+        expect(screen.queryByText("This action is paused on BeeZee for now.")).toBeNull();
+        expect(screen.getByRole("button", { name: "Swap" })).toBeEnabled();
+    });
+});

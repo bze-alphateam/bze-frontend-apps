@@ -233,6 +233,10 @@ export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsS
 export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
 export { getClosedChannels, getBlockedDenoms, getAutomationPaused, invalidateAutomationPaused } from './query/guardian';
+export { getDisabledMessages, pausedAmong } from './query/circuit';
+export { usePausedMessages } from './hooks/usePausedMessages';
+export type { UsePausedMessagesResult } from './hooks/usePausedMessages';
+export { PausedActionNotice } from './components/paused-action-notice';
 export { getRateLimit, clearRateLimitCache, nextRateLimitReset } from './query/rate_limit';
 export type { RateLimit } from './query/rate_limit';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';

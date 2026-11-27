@@ -9,6 +9,9 @@ const ASSETS: Record<string, { denom: string; ticker: string; name: string; deci
     "ibc/ABC": { denom: "ibc/ABC", ticker: "ATOM", name: "Atom", decimals: 6 },
 };
 
+// Message type URLs on the x/circuit disable list.
+const pausedMock = vi.hoisted(() => ({ urls: [] as string[] }));
+
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1me" }) }));
 vi.mock("@/components/ui/asset_logo", () => ({ AssetLogo: () => null }));
 vi.mock("@/components/ui/burner/dialog", () => ({
@@ -27,6 +30,10 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => {
         useCanAffordTx: () => ({ canAfford: true }),
         useToast: () => ({ toast: { error: vi.fn() } }),
         useBZETx: () => ({ tx: vi.fn() }),
+        usePausedMessages: (urls: string[]) => {
+            const paused = urls.filter(u => pausedMock.urls.includes(u));
+            return { paused, isPaused: paused.length > 0 };
+        },
     };
 });
 
@@ -38,6 +45,7 @@ const renderModal = (preselectedCoin?: string) =>
     });
 
 beforeEach(() => {
+    pausedMock.urls = [];
     // jsdom lacks what Chakra's Select (zag) touches when it opens.
     Element.prototype.scrollTo = vi.fn();
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
@@ -77,5 +85,39 @@ describe("BurnModal wording", () => {
         expect(screen.getByRole("heading", { name: "Lock your tokens" })).toBeInTheDocument();
         expect(screen.getByText("Select Token to Lock")).toBeInTheDocument();
         expect(screen.getByText("Amount of ATOM to Lock")).toBeInTheDocument();
+    });
+});
+
+describe("BurnModal with the burn message paused", () => {
+    const NOTICE = "This action is paused on BeeZee for now.";
+    const fill = async () => {
+        const { fireEvent } = await import("@testing-library/react");
+        fireEvent.change(screen.getByPlaceholderText("0.00 BZE"), { target: { value: "1" } });
+    };
+
+    it("shows the notice and disables Burn it! when MsgFundBurner is on the disable list", async () => {
+        pausedMock.urls = ["/bze.burner.MsgFundBurner"];
+        renderModal("ubze");
+        await fill();
+
+        expect(screen.getByText(NOTICE)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeDisabled();
+    });
+
+    it("is unchanged when another message type is paused", async () => {
+        pausedMock.urls = ["/bze.burner.MsgJoinRaffle"];
+        renderModal("ubze");
+        await fill();
+
+        expect(screen.queryByText(NOTICE)).toBeNull();
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeEnabled();
+    });
+
+    it("is unchanged when nothing is paused", async () => {
+        renderModal("ubze");
+        await fill();
+
+        expect(screen.queryByText(NOTICE)).toBeNull();
+        expect(screen.getByRole("button", { name: /Burn it!/ })).toBeEnabled();
     });
 });

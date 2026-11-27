@@ -34,6 +34,7 @@ Unless a row says otherwise, every file was recorded on 2026-10-11 with `node e2
 | `lcd/bank.denoms_metadata.json` | denom metadata, limit 500 (one page) | token names and tickers |
 | `lcd/bank.spendable_balances.burner.json` | burner module balances | "next burn" |
 | `lcd/burner.params.json` | burner params | burn period |
+| `lcd/circuit.disable_list.json` | x/circuit disable list (the paused-actions guard in `useTx` and the form notices) | synthetic empty list: nothing is paused |
 | `lcd/burner.all_burned_coins.json` | burn history | **trimmed**: `burnedCoins` emptied, so no burn needs a block-time lookup on the RPC |
 | `lcd/burner.raffles.json` | burn raffles | recorded 2026-10-12; testnet runs none (empty list), the raffle spec answers a made-up one with `network.use` |
 | `lcd/epochs.epochs.json` | epochs | |

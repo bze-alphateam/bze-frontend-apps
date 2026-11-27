@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { withdrawable, status, executeTransfer, limitState } = vi.hoisted(() => ({
+const { withdrawable, status, executeTransfer, limitState, paused } = vi.hoisted(() => ({
+    paused: { urls: [] as string[] },
     limitState: { value: { stopped: false } as Record<string, unknown>, calls: [] as unknown[][] },
     executeTransfer: vi.fn(),
     withdrawable: { assets: [] as unknown[] },
@@ -30,6 +31,12 @@ vi.mock('../../hooks/useIbcRouteStatus', () => ({
             }
         },
     }),
+}))
+vi.mock('../../hooks/usePausedMessages', () => ({
+    usePausedMessages: (urls: string[]) => {
+        const p = urls.filter(u => paused.urls.includes(u))
+        return { paused: p, isPaused: p.length > 0 }
+    },
 }))
 vi.mock('../../hooks/useBridgeTransfer', () => ({
     useBridgeTransfer: () => ({ executeTransfer, isExecuting: false, progressMessage: '' }),
@@ -74,6 +81,7 @@ const fill = async () => fireEvent.change(await screen.findByPlaceholderText('0.
 const submit = () => screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement
 
 beforeEach(() => {
+    paused.urls = []
     status.channels = []
     status.denoms = []
     limitState.value = { stopped: false }
@@ -249,5 +257,27 @@ describe('WithdrawForm daily limit', () => {
         type('1')
 
         expect(screen.getByTestId('route-limit').textContent).toContain('up to 1.999999 BZE')
+    })
+})
+
+describe('WithdrawForm paused MsgTransfer', () => {
+    it('shows the paused notice and disables Transfer when MsgTransfer is on the disable list', async () => {
+        paused.urls = ['/ibc.applications.transfer.v1.MsgTransfer']
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+
+        expect(screen.getByText('This action is paused on BeeZee for now.')).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('ignores other paused message types', async () => {
+        paused.urls = ['/bze.tradebin.MsgMultiSwap']
+        const { container } = render(<WithdrawForm />, { wrapper })
+        pick(container, 0, 'ubze')
+        await fill()
+
+        expect(screen.queryByText('This action is paused on BeeZee for now.')).toBeNull()
+        expect(submit().disabled).toBe(false)
     })
 })
