@@ -5,10 +5,13 @@ import {getFromLocalStorage, removeFromLocalStorage, setInLocalStorage} from "..
  * x/guardian readers (chain v8.3.0). Raw REST because bzejs 3.2.0 has no guardian client.
  * v8.2.0 nodes answer these routes with HTTP 501: that, any other non-200 and any network error
  * mean "nothing closed / blocked / paused" (fail open — the chain enforces the switches anyway,
- * the UI only spares the user a refused tx). Failures are never cached.
+ * the UI only spares the user a refused tx). Failures are never written to localStorage (only remembered in memory for a minute).
  */
 
 const CACHE_TTL_SECONDS = 60; // setInLocalStorage takes seconds
+// A failed read (a v8.2.0 node answers 501 on every mount) is remembered in memory only, so the
+// route is not refetched and the error not logged again inside this window.
+const FAILURE_TTL_MS = 60 * 1000;
 
 const CLOSED_CHANNELS_KEY = "guardian:closed_channels";
 const BLOCKED_DENOMS_KEY = "guardian:blocked_denoms";
@@ -16,6 +19,7 @@ const AUTOMATION_PAUSED_KEY = "guardian:automation_paused";
 
 // Several components mount at once; they share one request per reader instead of racing the cache.
 const inFlight = new Map<string, Promise<unknown>>();
+const failedAt = new Map<string, number>();
 
 const guardianUrl = (path: string): string => `${getSettings().endpoints.restEndpoint}/bze/guardian/v1/${path}`;
 
@@ -51,10 +55,12 @@ const cachedReader = <T>(
                 throw new Error("unexpected response shape");
             }
             setInLocalStorage(key, JSON.stringify(value), CACHE_TTL_SECONDS);
+            failedAt.delete(key);
 
             return value;
         } catch (e) {
             console.error(`failed to fetch guardian ${path}:`, e);
+            failedAt.set(key, Date.now());
             return fallback;
         }
     }
@@ -62,6 +68,9 @@ const cachedReader = <T>(
     return async () => {
         const cached = readCache(key, isValid);
         if (cached !== undefined) return cached;
+
+        const failed = failedAt.get(key);
+        if (failed !== undefined && Date.now() - failed < FAILURE_TTL_MS) return fallback;
 
         let pending = inFlight.get(key) as Promise<T> | undefined;
         if (!pending) {
