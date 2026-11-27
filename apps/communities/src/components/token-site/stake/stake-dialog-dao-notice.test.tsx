@@ -13,6 +13,8 @@ const ME = "bze1z3mkcr2jz424w6m49frgjmy9uhlrx69phqwg3l";
 // for BZE Scan behind the app's /api/scan proxy.
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    // nothing paused: the x/circuit list is not under test here
+    usePausedMessages: () => ({paused: [], isPaused: false}),
     useAssetsContext: () => ({updateBalances: vi.fn()}),
     useAssets: () => ({denomTicker: () => "PAGE", denomDecimals: () => 6}),
     useBZETx: () => ({tx: vi.fn(), progressTrack: ""}),

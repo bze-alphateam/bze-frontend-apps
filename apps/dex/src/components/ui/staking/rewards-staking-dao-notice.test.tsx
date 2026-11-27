@@ -13,6 +13,8 @@ const ASSETS: Record<string, { ticker: string; decimals: number }> = { ubze: { t
 vi.mock("@interchain-kit/react", () => ({ useChain: () => ({ address: "bze1test" }) }));
 vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     ...(await importActual<typeof import("@bze/bze-ui-kit")>()),
+    // nothing paused: the x/circuit list is not under test here
+    usePausedMessages: () => ({paused: [], isPaused: false}),
     useAsset: (denom: string) => ({ asset: ASSETS[denom] && { denom, ...ASSETS[denom] }, isLoading: false }),
     useAssets: () => ({ denomTicker: (d: string) => ASSETS[d]?.ticker ?? d, isLoading: false }),
     useAssetPrice: () => ({ price: new BigNumber(0) }),
