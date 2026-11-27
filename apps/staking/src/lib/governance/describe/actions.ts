@@ -22,8 +22,33 @@ export type Action =
     | {type: "publisher"; add: boolean; name: string | null; address: string | null}
     | {type: "domain"; add: boolean; domain: string | null}
     | {type: "ibc_client"; subject: string | null; substitute: string | null}
+    /**
+     * A message put in one sentence plus detail lines. One generic shape for
+     * the v8.3.0 governance messages rather than a variant each: they differ
+     * only in words. `emergency` messages change how the chain behaves at once.
+     */
+    | {type: "sentence"; emergency: boolean; title: Part[]; details: Part[][]}
     | {type: "text"}
     | {type: "other"; title: string; typeUrl: string; entries: Entry[]};
+
+/** A piece of a sentence: plain text, a token the page names by its ticker, or an account. */
+export type Part = string | {denom: string} | {address: string};
+
+/** A token as a part, `a token` when the field is missing. */
+export function token(denom: string | null): Part[] {
+    return denom ? [{denom}] : ["a token"];
+}
+
+/** Denoms as parts, `A, B and C`. */
+export function denomList(denoms: string[]): Part[] {
+    if (denoms.length === 0) return ["no tokens"];
+    return denoms.flatMap<Part>((denom, i) => [i === 0 ? "" : i === denoms.length - 1 ? " and " : ", ", {denom}]).filter((p) => p !== "");
+}
+
+/** A string list field; non-strings skipped. */
+export function strings(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v !== "") : [];
+}
 
 /** A message body as proto JSON. */
 export type Body = Record<string, unknown>;

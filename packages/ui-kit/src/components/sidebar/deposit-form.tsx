@@ -23,7 +23,7 @@ import {useBridgeTransfer} from '../../hooks/useBridgeTransfer';
 import {useCounterpartyBalance} from '../../hooks/useCounterpartyBalance';
 import {sanitizeNumberInput} from '../../utils/number';
 import {formatDuration} from '../../utils/cross_chain';
-import {prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
+import {amountToUAmount, prettyAmount, uAmountToBigNumberAmount} from '../../utils/amount';
 import {getChainName} from '../../constants/chain';
 import type {LegacyAssetNotice} from '../../constants/assets';
 import {assetNotice} from '../../utils/ibc_inbound';
@@ -32,6 +32,14 @@ import {DepositLimitNote} from './deposit-limit-note';
 import {MaxInputGroup} from '../max-input-group';
 import {useIbcRouteStatus} from '../../hooks/useIbcRouteStatus';
 import {RouteStoppedNotice} from './route-stopped-notice';
+import {useRouteLimit} from '../../hooks/useRouteLimit';
+import {RouteLimitLine, routeLimitError} from './route-limit';
+import {clearRateLimitCache} from '../../query/rate_limit';
+
+const toUAmountBigInt = (amount: string, decimals: number): bigint => {
+    const u = amountToUAmount(amount, decimals);
+    return /^\d+$/.test(u) ? BigInt(u) : BigInt(0);
+}
 
 /**
  * Deposit flow: move an asset from a foreign chain onto BeeZee.
@@ -184,17 +192,26 @@ export const DepositForm = () => {
     const denomBlocked = !!selectedAsset && isDenomBlocked(selectedAsset.bzeAsset.denom);
     const channelClosed = !!selectedAsset && isChannelClosed(selectedAsset.ibcData.chain.channelId);
 
+    // Daily IBC limit on this route (v8.3.0): a deposit over it is refused on BeeZee and refunded.
+    const [limitRefresh, setLimitRefresh] = useState(0);
+    const routeLimit = useRouteLimit(selectedAsset?.ibcData.chain.channelId, selectedAsset?.bzeAsset.denom, 'receive', limitRefresh);
+    const limitError = selectedAsset
+        ? routeLimitError(routeLimit, toUAmountBigInt(amount, selectedAsset.bzeAsset.decimals), selectedAsset.bzeAsset.decimals, selectedAsset.bzeAsset.ticker, 'receive')
+        : '';
+    const amountErrorText = amountError !== '' ? amountError : limitError;
+
     const canExecute = useMemo(() => {
         return selectedAsset
             && !denomBlocked
             && !channelClosed
             && amount !== ''
             && amountError === ''
+            && limitError === ''
             && routePreview !== undefined
             && !isExecuting
             && sourceWalletStatus === WalletState.Connected
             && balanceAllowsTransfer;
-    }, [selectedAsset, denomBlocked, channelClosed, amount, amountError, routePreview, isExecuting, sourceWalletStatus, balanceAllowsTransfer]);
+    }, [selectedAsset, denomBlocked, channelClosed, amount, amountError, limitError, routePreview, isExecuting, sourceWalletStatus, balanceAllowsTransfer]);
 
     const handleExecute = useCallback(async () => {
         // Last look before signing: the guardian may have stopped the route while the form was open.
@@ -204,6 +221,8 @@ export const DepositForm = () => {
 
         const success = await executeTransfer();
         if (success) {
+            clearRateLimitCache();
+            setLimitRefresh(n => n + 1);
             setSent(true);
             setAmount('');
             setSelectedAsset(undefined);
@@ -385,7 +404,7 @@ export const DepositForm = () => {
             {/* Amount input */}
             {selectedAsset && (
                 <Box>
-                    <Field.Root invalid={amountError !== ''}>
+                    <Field.Root invalid={amountErrorText !== ''}>
                         <Field.Label>Amount to deposit</Field.Label>
                         <MaxInputGroup w="full" onMax={setMaxAmount} maxDisabled={!sourceBalance || sourceBalance.status !== 'ready'}>
                             <Input
@@ -397,7 +416,7 @@ export const DepositForm = () => {
                                 onBlur={validateAmount}
                             />
                         </MaxInputGroup>
-                        <Field.ErrorText>{amountError}</Field.ErrorText>
+                        <Field.ErrorText>{amountErrorText}</Field.ErrorText>
                     </Field.Root>
 
                     {/* Balance on source chain */}
@@ -439,7 +458,9 @@ export const DepositForm = () => {
             )}
 
             {/* Daily limit per route; after a send it also says where a refused deposit is refunded */}
-            {selectedAsset || sent ? <DepositLimitNote sent={sent}/> : null}
+            {selectedAsset && !denomBlocked && !channelClosed && routeLimit.room !== undefined
+                ? <RouteLimitLine limit={routeLimit} decimals={selectedAsset.bzeAsset.decimals} ticker={selectedAsset.bzeAsset.ticker} direction="receive"/>
+                : (selectedAsset || sent ? <DepositLimitNote sent={sent}/> : null)}
 
             {/* Route preview */}
             {routePreview && amount && (
