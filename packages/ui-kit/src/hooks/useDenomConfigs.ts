@@ -17,13 +17,13 @@ export function useDenomConfigs(denoms: string[]): Map<string, DenomConfigInfo> 
         }
 
         let cancelled = false;
-        const load = async () => {
-            const entries = await Promise.all(wanted.map(async d => [d, await getDenomConfigInfo(d)] as const));
+        // Each denom lands as soon as it resolves: one slow node must not hold every note back.
+        wanted.forEach(async d => {
+            const info = await getDenomConfigInfo(d);
             if (!cancelled) {
-                setConfigs(new Map(entries));
+                setConfigs(prev => new Map(prev).set(d, info));
             }
-        };
-        load();
+        });
 
         return () => {
             cancelled = true;

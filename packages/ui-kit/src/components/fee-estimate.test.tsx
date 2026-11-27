@@ -52,4 +52,19 @@ describe('FeeEstimateRow surcharge note', () => {
         renderRow()
         expect(screen.queryByText(/surcharge/)).toBeNull()
     })
+
+    it('adds no note for a v8.2.0 node (unsupported, zeroed config)', () => {
+        estimateMock.mockReturnValue(estimated)
+        configsMock.mockReturnValue(new Map([['factory/a/honey',
+            { status: 'unsupported', communityPool: '', gasSurcharge: new BigNumber(0), transferFee: new BigNumber(0) }]]))
+        renderRow()
+        expect(screen.queryByText(/surcharge/)).toBeNull()
+    })
+
+    it('adds no "+0%" note for a surcharge that rounds to zero', () => {
+        estimateMock.mockReturnValue(estimated)
+        configsMock.mockReturnValue(cfg('0.00001'))
+        renderRow()
+        expect(screen.queryByText(/surcharge/)).toBeNull()
+    })
 })
