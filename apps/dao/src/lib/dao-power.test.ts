@@ -13,7 +13,7 @@ describe("describeVotingPower", () => {
         expect(view.headline).toBe("You have 100 BZE voting power");
         expect(view.lines[0]).toMatchObject({counts: true, text: "#5 Pay the designer: your vote counts for 100 BZE"});
         expect(view.lines[1]).toMatchObject({counts: false});
-        expect(view.lines[1].text).toMatch(/your stake joined after this proposal started, so it does not count on it/);
+        expect(view.lines[1].text).toMatch(/your stake does not count on it, because you joined or added to it after this proposal started/);
     });
 
     it("no power now but weight on an older proposal still shows that proposal", () => {

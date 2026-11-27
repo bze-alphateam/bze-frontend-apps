@@ -1,14 +1,11 @@
 'use client';
 
 import {useState} from 'react';
-import NextLink from 'next/link';
 import {chakra, Flex} from '@chakra-ui/react';
 import type {Dao} from '@bze/bze-ui-kit';
 import {getDexApp, Notice, Shimmer} from '@bze/bze-ui-kit';
-import {staticJoinText, type DaoActions} from '@/lib/dao-actions';
 import {dexSourceHref, memberPreview, sourceName, totalVotingPower, type StakeSource} from '@/lib/dao-voters';
 import type {Part} from '@/lib/dao-view-loader';
-import {shortcutHref} from '@/lib/propose/shortcuts';
 import {AddressLine, Panel, Row} from './panel';
 import {useCoinFormat} from './use-coin-format';
 
@@ -39,6 +36,7 @@ export const VotersPanel = ({dao, sources, nameOf}: {dao: Dao; sources: Part<Sta
         );
     }
 
+    const dexHref = getDexApp().href;
     return (
         <Panel id="voters" title="Who votes" testId="voters-panel">
             {!sources.ok && <Notice status="warning">The voting sources could not be read from the chain right now.</Notice>}
@@ -50,7 +48,8 @@ export const VotersPanel = ({dao, sources, nameOf}: {dao: Dao; sources: Part<Sta
                     <Flex direction="column" gap="10px">
                         {sources.value.map((source) => (
                             <Row key={source.kind === 'sr' ? `sr/${source.id}` : `dr/${source.stakingDenom}`} label={sourceName(source, coins.ticker(source.stakingDenom))} testId="source-row">
-                                {`${coins.format({denom: source.stakingDenom, amount: source.staked})} staked · unstaking locks ${source.lockDays} ${source.lockDays === 1 ? 'day' : 'days'}`}
+                                {`${coins.format({denom: source.stakingDenom, amount: source.staked})} staked · unstaking locks ${source.lockDays} ${source.lockDays === 1 ? 'day' : 'days'} · `}
+                                <chakra.a href={dexSourceHref(dexHref, source)} target="_blank" rel="noopener noreferrer" color="hg.link" fontWeight="600" data-testid="source-link">Stake on DEX</chakra.a>
                             </Row>
                         ))}
                     </Flex>
@@ -64,53 +63,3 @@ export const VotersPanel = ({dao, sources, nameOf}: {dao: Dao; sources: Part<Sta
 };
 
 export const VotersLoading = () => <Shimmer h="140px" borderRadius="16px" aria-hidden />;
-
-/** How to get a vote: x/dao has no join message, so this explains the way in. */
-export const JoinPanel = ({dao, sources, wallet, actions}: {dao: Dao; sources: Part<StakeSource[]>; wallet: string | null; actions: DaoActions}) => {
-    const coins = useCoinFormat();
-
-    if (dao.type === 'DAO_TYPE_STATIC_LIST') {
-        const member = !!wallet && dao.members.includes(wallet);
-        return (
-            <Panel id="join" title="How to join" testId="join-panel">
-                {staticJoinText(dao, member).map((line) => <chakra.p key={line} m="0" fontSize="14px">{line}</chakra.p>)}
-                {(actions.requestToJoin || actions.leave) && (
-                    <Flex gap="10px" wrap="wrap" align="center" data-testid="join-actions">
-                        {actions.requestToJoin && <chakra.a asChild fontWeight="600" color="hg.link"><NextLink href={shortcutHref(dao.id, 'join')} data-testid="request-to-join">Request to join</NextLink></chakra.a>}
-                        {actions.leave && !actions.leaveBlocked && <chakra.a asChild fontWeight="600" color="hg.link"><NextLink href={shortcutHref(dao.id, 'leave')} data-testid="leave-dao">Leave</NextLink></chakra.a>}
-                        {actions.leave && actions.leaveBlocked && <chakra.span fontSize="14px" color="fg.muted" data-testid="leave-blocked">{actions.leaveBlocked}</chakra.span>}
-                    </Flex>
-                )}
-            </Panel>
-        );
-    }
-
-    const dexHref = getDexApp().href;
-    return (
-        <Panel id="join" title="How to join" testId="join-panel">
-            <chakra.p m="0" fontSize="14px" fontWeight="600">Stake in one of these rewards to vote</chakra.p>
-            {sources.ok && sources.value.length > 0 && (
-                <Flex direction="column" gap="6px">
-                    {sources.value.map((source) => (
-                        <chakra.a
-                            key={source.kind === 'sr' ? `sr/${source.id}` : `dr/${source.stakingDenom}`}
-                            href={dexSourceHref(dexHref, source)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            color="hg.link"
-                            fontWeight="600"
-                            data-testid="source-link"
-                        >
-                            {`${sourceName(source, coins.ticker(source.stakingDenom))} on the DEX`}
-                        </chakra.a>
-                    ))}
-                </Flex>
-            )}
-            <chakra.ul m="0" pl="18px" fontSize="14px" color="fg.muted" display="flex" flexDirection="column" gap="6px" data-testid="join-rules">
-                <li>Your stake counts only on proposals submitted after the block it joined.</li>
-                <li>Topping up a source the DAO uses starts that over: your whole stake in it stops counting on proposals that are already open. Vote before you top up.</li>
-                <li>Exiting takes your share out of your votes on proposals still in voting.</li>
-            </chakra.ul>
-        </Panel>
-    );
-};

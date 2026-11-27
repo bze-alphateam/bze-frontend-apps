@@ -1,32 +1,38 @@
 'use client';
 
-import {useCallback, useState} from 'react';
+import {Suspense, useState} from 'react';
 import NextLink from 'next/link';
-import {chakra, Flex, SimpleGrid} from '@chakra-ui/react';
+import {useSearchParams} from 'next/navigation';
+import {chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
-import {getChainName, PageContainer, PageState, SegmentedTabs, Shimmer} from '@bze/bze-ui-kit';
+import {getChainName, PageContainer, PageState, Shimmer} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
-import {liveDaoViewDeps, liveProposalDeps} from '@/lib/dao-chain';
+import {useDaoExtras} from '@/hooks/useDaoExtras';
+import {liveDaoViewDeps, liveProposalDeps, liveSubDaoDeps} from '@/lib/dao-chain';
 import {actionsFor, DAO_FEATURES} from '@/lib/dao-actions';
-import {loadDaoExtras, loadDaoView, type DaoView, type DaoViewDeps} from '@/lib/dao-view-loader';
+import type {SubDaoDeps} from '@/lib/dao-subdaos';
+import {parseDaoTab} from '@/lib/dao-tabs';
+import {loadDaoView, type DaoView, type DaoViewDeps} from '@/lib/dao-view-loader';
 import type {ProposalDeps} from '@/lib/proposal-loader';
-import {InnerHero} from '@/components/ui/layout-hero';
 import {Unsupported} from '../unsupported';
-import {DaoHeader} from './header';
+import {ControlBox} from './control-box';
+import {DaoShell} from './dao-shell';
 import {HistoryTab} from './history-tab';
 import {MyPower} from './my-power';
 import {ProposalsTab} from './proposals-tab';
-import {ControlPanel, RulesPanel, TreasuryPanel} from './panels';
-import {JoinPanel, VotersPanel} from './voters-panels';
+import {TreasuryPanel} from './panels';
+import {VotersPanel} from './voters-panels';
 
-type Tab = 'overview' | 'proposals' | 'history';
+interface Deps {
+    deps: DaoViewDeps;
+    proposalDeps: ProposalDeps;
+    subDaoDeps: SubDaoDeps;
+}
 
-const Body = ({deps, proposalDeps, view, wallet}: {deps: DaoViewDeps; proposalDeps: ProposalDeps; view: DaoView; wallet: string | null}) => {
+const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoView; wallet: string | null}) => {
     const {dao} = view;
-    const [tab, setTab] = useState<Tab>('overview');
-    const [retry, setRetry] = useState(0);
-    const extras = useAsync(`${dao.id}:${retry}`, () => loadDaoExtras(deps, dao.id));
-    const onRetryExtras = useCallback(() => setRetry((n) => n + 1), []);
+    const tab = parseDaoTab(useSearchParams()?.get('tab'));
+    const extras = useDaoExtras(deps, dao.id);
 
     // Names Scan knows (creator, admin, controller, the DAO) and the DAOs of the admin chain.
     const labels = new Map<string, string>();
@@ -43,76 +49,77 @@ const Body = ({deps, proposalDeps, view, wallet}: {deps: DaoViewDeps; proposalDe
     const actions = actionsFor(DAO_FEATURES, dao, wallet);
 
     return (
-        <Flex direction="column" gap="18px">
-            <DaoHeader
-                dao={dao}
-                openProposals={view.openProposals}
-                extras={{data: extras.data, failed: !extras.loading && !!extras.error}}
-                nameOf={nameOf}
-                onRetryExtras={onRetryExtras}
-                actions={actions}
-            />
-            <SegmentedTabs
-                aria-label="DAO sections"
-                value={tab}
-                onChange={setTab}
-                options={[{value: 'overview', label: 'Overview'}, {value: 'proposals', label: 'Proposals'}, {value: 'history', label: 'History'}]}
-            />
-            {tab === 'overview' ? (
-                <SimpleGrid columns={{base: 1, lg: 2}} gap="16px" alignItems="start" data-testid="overview-tab">
-                    <ControlPanel view={view} nameOf={nameOf} />
-                    <TreasuryPanel treasury={view.treasury} />
-                    <RulesPanel dao={dao} params={view.params} />
-                    <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} />
-                    <JoinPanel dao={dao} sources={view.sources} wallet={wallet} actions={actions} />
-                    {wallet && <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />}
-                </SimpleGrid>
-            ) : tab === 'proposals' ? (
-                <ProposalsTab deps={proposalDeps} daoId={dao.id} nameOf={nameOf} />
-            ) : (
-                <HistoryTab deps={deps} daoId={dao.id} daoAddress={dao.address} nameOf={nameOf} />
+        <DaoShell dao={dao} active={tab} wallet={wallet} extras={extras} openProposals={view.openProposals}>
+            {tab === 'overview' && (
+                <chakra.div
+                    display="grid"
+                    gridTemplateColumns={{base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 380px'}}
+                    gap="16px"
+                    alignItems="start"
+                    data-testid="overview-tab"
+                >
+                    <Flex direction="column" gap="16px" minW="0">
+                        <ControlBox view={view} wallet={wallet} detail={detail} nameOf={nameOf} subDaoDeps={subDaoDeps} />
+                        <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} />
+                    </Flex>
+                    <Flex direction="column" gap="16px" minW="0">
+                        {wallet && <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />}
+                        <TreasuryPanel treasury={view.treasury} />
+                    </Flex>
+                </chakra.div>
             )}
-        </Flex>
+            {tab === 'proposals' && <ProposalsTab deps={proposalDeps} daoId={dao.id} nameOf={nameOf} newProposal={actions.newProposal} />}
+            {tab === 'history' && <HistoryTab deps={deps} daoId={dao.id} daoAddress={dao.address} nameOf={nameOf} />}
+        </DaoShell>
     );
 };
 
-/** The page of one DAO: who it is, who controls it, what it owns, its rules, its voters and its history. */
-export const DaoPage = ({id, deps = liveDaoViewDeps, proposalDeps = liveProposalDeps}: {id: string; deps?: DaoViewDeps; proposalDeps?: ProposalDeps}) => {
+const Loading = () => (
+    <Flex direction="column" gap="16px" aria-hidden data-testid="dao-loading">
+        <Shimmer h="140px" borderRadius="16px" />
+        <Shimmer h="260px" borderRadius="16px" />
+    </Flex>
+);
+
+const Page = ({id, deps, proposalDeps, subDaoDeps}: Deps & {id: string}) => {
     const {address} = useChain(getChainName());
     const [reload, setReload] = useState(0);
     const result = useAsync(`${id}:${reload}`, () => loadDaoView(deps, id));
     const data = result.data;
-    const title = data?.state === 'ok' ? data.view.dao.name : `DAO ${id}`;
 
     return (
-        <>
-            <InnerHero title={title} />
-            <PageContainer py={{base: '24px', md: '36px'}}>
-                {result.loading && (
-                    <Flex direction="column" gap="16px" aria-hidden data-testid="dao-loading">
-                        <Shimmer h="140px" borderRadius="16px" />
-                        <Shimmer h="260px" borderRadius="16px" />
-                    </Flex>
-                )}
-                {!result.loading && !!result.error && (
-                    <PageState
-                        kind="error"
-                        title="This DAO did not load"
-                        description="The chain did not answer."
-                        action={<chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={() => setReload((n) => n + 1)}>Try again</chakra.button>}
-                    />
-                )}
-                {data?.state === 'unsupported' && <Unsupported />}
-                {data?.state === 'not-found' && (
-                    <PageState
-                        kind="empty"
-                        title="DAO not found"
-                        description={`There is no DAO with the number ${id}.`}
-                        action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">Back to the DAOs</NextLink></chakra.a>}
-                    />
-                )}
-                {data?.state === 'ok' && <Body deps={deps} proposalDeps={proposalDeps} view={data.view} wallet={address ?? null} />}
-            </PageContainer>
-        </>
+        <PageContainer py={{base: '20px', md: '32px'}}>
+            {result.loading && <Loading />}
+            {!result.loading && !!result.error && (
+                <PageState
+                    kind="error"
+                    title="This DAO did not load"
+                    description="The chain did not answer."
+                    action={<chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={() => setReload((n) => n + 1)}>Try again</chakra.button>}
+                />
+            )}
+            {data?.state === 'unsupported' && <Unsupported />}
+            {data?.state === 'not-found' && (
+                <PageState
+                    kind="empty"
+                    title="DAO not found"
+                    description="There is no such DAO on this network."
+                    action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">All DAOs</NextLink></chakra.a>}
+                />
+            )}
+            {data?.state === 'ok' && (
+                <Body deps={deps} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} view={data.view} wallet={address ?? null} />
+            )}
+        </PageContainer>
     );
 };
+
+/**
+ * The page of one DAO: the shared header and tabs (`DaoShell`), then the tab in `?tab=` (`daoTabHref`):
+ * Overview (who controls it, who votes, the wallet's power, the treasury), Proposals or History.
+ */
+export const DaoPage = ({id, deps = liveDaoViewDeps, proposalDeps = liveProposalDeps, subDaoDeps = liveSubDaoDeps}: {id: string; deps?: DaoViewDeps; proposalDeps?: ProposalDeps; subDaoDeps?: SubDaoDeps}) => (
+    <Suspense fallback={<PageContainer py={{base: '20px', md: '32px'}}><Loading /></PageContainer>}>
+        <Page id={id} deps={deps} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} />
+    </Suspense>
+);

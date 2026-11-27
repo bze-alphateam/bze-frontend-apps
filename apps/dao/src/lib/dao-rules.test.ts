@@ -54,7 +54,6 @@ describe("describeRules", () => {
     ] as const)("a proposal cost that goes to %s", (destination, word) => {
         const rules = describeRules("DAO_TYPE_STAKE", config({proposal_cost: {denom: "ubze", amount: "5"}, cost_destination: destination}), null, fmt);
         expect(value(rules, "cost")).toMatch(new RegExp(`^5 ubze, .*${word}`));
-        expect(rules.freeProposalsWarning).toBeNull();
     });
 
     it.each([
@@ -68,19 +67,18 @@ describe("describeRules", () => {
         }), null, fmt);
         expect(value(rules, "deposit")).toMatch(pattern);
         expect(/kept/.test(value(rules, "deposit") ?? "")).toBe(kept);
-        expect(rules.freeProposalsWarning === null).toBe(policy !== "ALWAYS");
     });
 
-    it("warns that proposals are free when there is neither a cost nor a deposit", () => {
+    it("free proposals: cost and deposit say None, and there is no warning about it any more", () => {
         const rules = describeRules("DAO_TYPE_STAKE", config(), PARAMS, fmt);
         expect(value(rules, "cost")).toBe("None");
         expect(value(rules, "deposit")).toBe("None");
-        expect(rules.freeProposalsWarning).toMatch(/free.*all 10 open-proposal slots/);
+        expect(Object.keys(rules)).toEqual(["rows"]);
+        expect(JSON.stringify(rules)).not.toMatch(/free/i);
     });
 
     it("a zero amount is no cost", () => {
         const rules = describeRules("DAO_TYPE_STAKE", config({proposal_cost: {denom: "ubze", amount: "0"}}), null, fmt);
         expect(value(rules, "cost")).toBe("None");
-        expect(rules.freeProposalsWarning).not.toBeNull();
     });
 });

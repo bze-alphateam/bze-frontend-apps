@@ -13,6 +13,7 @@ import {DaoModuleUnsupported, type DaoViewChain, type DaoViewDeps} from './dao-v
 import type {StakeSource} from './dao-voters';
 import type {NominationChain} from './admin/nomination';
 import {createRelationScan, type RelationChain, type RelationDeps} from './propose/relations';
+import type {SubDaoDeps} from './dao-subdaos';
 
 /** The chain side of the loaders: ui-kit's x/dao and x/rewards queries. */
 export const liveDaoChain: DaoChain = {
@@ -128,6 +129,12 @@ export const liveRelationChain: RelationChain = {
                 : ownDr.find((p) => p.staking_denom === source.id)?.amount) ?? '0'),
         }));
     },
+};
+
+/** The DAO page's SubDAOs list: the chain's DAOs by admin, and Scan's detail for their open counts. */
+export const liveSubDaoDeps: SubDaoDeps = {
+    chain: {getDaosByAdmin: (admin, pageKey) => liveRelationChain.getDaosByAdmin(admin, pageKey)},
+    scan: liveDaoViewDeps.scan,
 };
 
 export const liveRelationDeps: RelationDeps = {

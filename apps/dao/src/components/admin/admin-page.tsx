@@ -11,7 +11,8 @@ import type {NominationChain} from '@/lib/admin/nomination';
 import {liveDaoViewDeps, liveNominationChain, liveRelationDeps} from '@/lib/dao-chain';
 import {loadDaoView, type DaoView, type DaoViewDeps} from '@/lib/dao-view-loader';
 import {loadRelations, type RelationDeps} from '@/lib/propose/relations';
-import {InnerHero} from '@/components/ui/layout-hero';
+import {DaoShell} from '@/components/dao/page/dao-shell';
+import {useDaoExtras} from '@/hooks/useDaoExtras';
 import {Unsupported} from '@/components/dao/unsupported';
 import {Console} from './console';
 
@@ -57,12 +58,11 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
     if (address && address !== flowWallet) setFlowWallet(address);
 
     const data = result.data;
-    const title = view ? `Admin console: ${view.dao.name}` : 'Admin console';
+    const extras = useDaoExtras(deps, loaded ? loaded.dao.id : null);
 
     return (
         <>
-            <InnerHero title={title} />
-            <PageContainer py={{base: '24px', md: '36px'}}>
+            <PageContainer py={{base: '20px', md: '32px'}}>
                 {(result.loading || (loaded !== null && relations.loading)) && (
                     <Flex direction="column" gap="16px" aria-hidden data-testid="admin-loading">
                         <Shimmer h="140px" borderRadius="16px" />
@@ -86,23 +86,27 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
                         action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">Back to the DAOs</NextLink></chakra.a>}
                     />
                 )}
-                {view && !relations.loading && flowWallet === '' && (
-                    <div data-testid="admin-needs-wallet">
-                        <PageState kind="empty" title="Connect your wallet" description="The admin console is for the admin of this DAO and for the account nominated to take it over." />
-                    </div>
-                )}
-                {view && !relations.loading && flowWallet !== '' && (
-                    <Console
-                        key={`${view.dao.id}:${flowWallet}`}
-                        view={view}
-                        relations={relations.data ?? {subDaos: null, incoming: null, sources: null}}
-                        wallet={address ?? null}
-                        flowWallet={flowWallet}
-                        nominationChain={nominationChain}
-                        refresh={refresh}
-                        fingerprint={fingerprint}
-                        lookupTx={getTxLanding}
-                    />
+                {view && !relations.loading && (
+                    <DaoShell dao={view.dao} active="admin" wallet={address ?? null} extras={extras} openProposals={view.openProposals}>
+                        {flowWallet === '' && (
+                            <div data-testid="admin-needs-wallet">
+                                <PageState kind="empty" title="Connect your wallet" description="The admin console is for the admin of this DAO and for the account nominated to take it over." />
+                            </div>
+                        )}
+                        {flowWallet !== '' && (
+                            <Console
+                                key={`${view.dao.id}:${flowWallet}`}
+                                view={view}
+                                relations={relations.data ?? {subDaos: null, incoming: null, sources: null}}
+                                wallet={address ?? null}
+                                flowWallet={flowWallet}
+                                nominationChain={nominationChain}
+                                refresh={refresh}
+                                fingerprint={fingerprint}
+                                lookupTx={getTxLanding}
+                            />
+                        )}
+                    </DaoShell>
                 )}
             </PageContainer>
         </>
