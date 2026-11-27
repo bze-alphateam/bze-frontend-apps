@@ -58,6 +58,8 @@ export interface StakedTokenPickerProps {
     excludeHalted?: boolean;
     /** List LP shares too (a "Pool shares" chip). Default true. */
     includeLP?: boolean;
+    /** Only tokens made with the token factory. */
+    factoryOnly?: boolean;
     /** The picked denom ('' for none). */
     value: string;
     onChange: (asset: Asset) => void;
@@ -133,7 +135,7 @@ function TokenOption({ row, line, state, selected, onPick }: {
  * their admin line, then every token: compounded rewards by staked USD value, then the rest A–Z.
  * Which tokens have a compounded reward, and what they stake, comes from the chain's list.
  */
-export function StakedTokenPicker({ mode, stakable, only, excludeHalted = false, includeLP = true, value, onChange, stateOf }: StakedTokenPickerProps) {
+export function StakedTokenPicker({ mode, stakable, only, excludeHalted = false, includeLP = true, factoryOnly = false, value, onChange, stateOf }: StakedTokenPickerProps) {
     const { assets, isLoading: isAssetsLoading, nativeAsset } = useAssets()
     const { usdPricesMap } = useAssetsContext()
     const { address } = useChain(getChainName())
@@ -146,7 +148,7 @@ export function StakedTokenPicker({ mode, stakable, only, excludeHalted = false,
     const drs = new Map((denomRewards.list ?? []).map(dr => [dr.staking_denom, dr]))
     const rowOf = (asset: Asset) => toPickerRow(asset, drs.get(asset.denom), usdPricesMap.get(asset.denom))
     const admins = new Map(myTokens.map(t => [t.asset.denom, t.admin]))
-    const filter = { mode, q, includeLP, excludeHalted, stakable, only }
+    const filter = { mode, q, includeLP, excludeHalted, stakable, only, factoryOnly }
     const groups = pickerGroups(
         address ? myTokens.map(t => rowOf(t.asset)) : [],
         assets.filter(a => a.supply > BigInt(0)).map(rowOf),

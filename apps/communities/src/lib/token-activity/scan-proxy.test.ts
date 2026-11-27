@@ -21,6 +21,8 @@ describe("createScanProxyHandler", () => {
         [`accounts/${ADDRESS}/activity`, "?denom=ubze&page=2&limit=25", `/api/v1/accounts/${ADDRESS}/activity?denom=ubze&page=2&limit=25`],
         [`txs/${HASH}`, "", `/api/v1/txs/${HASH}`],
         ["modules", "", "/api/v1/modules"],
+        ["daos", "?source=sr%2F1&source=dr%2Fubze&member=x&evil=1&limit=50", "/api/v1/daos?source=sr%2F1&source=dr%2Fubze&member=x&limit=50"],
+        ["dao-proposals", "?status=voting&cursor=abc&evil=1", "/api/v1/dao-proposals?status=voting&cursor=abc"],
     ])("forwards %s with its own parameters only", async (path, query, target) => {
         const fetcher = scan({});
         await call(createScanProxyHandler({baseUrl: "https://scan.test/", fetcher}), path, query);
@@ -28,7 +30,7 @@ describe("createScanProxyHandler", () => {
         expect(fetcher.mock.calls[0][0]).toBe(`https://scan.test${target}`);
     });
 
-    it.each(["blocks", "txs/xyz", "accounts/cosmos1abc", "token/transfers/extra", "registry/assets"])("refuses %s", async (path) => {
+    it.each(["blocks", "txs/xyz", "accounts/cosmos1abc", "token/transfers/extra", "registry/assets", "daos/1", "dao-proposals/1"])("refuses %s", async (path) => {
         const fetcher = scan({});
         const response = await call(createScanProxyHandler({baseUrl: "https://scan.test", fetcher}), path);
 

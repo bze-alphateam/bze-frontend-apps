@@ -25,6 +25,7 @@ const navSubitems: { [key: string]: string } = {
     '/denom-reward/new': '/',
     '/airdrop': '/',
     '/raffle/new': '/',
+    '/dao/new': '/',
     '/tokens/token': '/tokens',
     '/official': '/tokens',
     '/brand-kit': '/tokens',

@@ -232,6 +232,9 @@ export { BRANDING_TEMPLATES, BRANDING_TEMPLATE_MOODS, brandingFromTemplate } fro
 export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsStylesheetUrl, validateDenomBranding, contrastRatio, contrastText } from './utils/branding';
 export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
+export { getClosedChannels, getBlockedDenoms, getAutomationPaused } from './query/guardian';
+export { getRateLimit, clearRateLimitCache, nextRateLimitReset } from './query/rate_limit';
+export type { RateLimit } from './query/rate_limit';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';
 export {
@@ -365,6 +368,12 @@ export { useDenomConfig } from './hooks/useDenomConfig';
 export { formatRatioPercent, formatSurchargePercent, hasSurcharge, hasTransferFee, feeTokenOptionNote, feeTokenExplanation, feeSurchargeNote } from './utils/fee_token_notes';
 export { useHaltedDenoms } from './hooks/useHaltedDenoms';
 export type { UseHaltedDenomsResult } from './hooks/useHaltedDenoms';
+export { useDaoSourceUsage } from './hooks/useDaoSourceUsage';
+export type { UseDaoSourceUsageResult } from './hooks/useDaoSourceUsage';
+export { createDaoSourceUsageReader } from './query/dao_source_usage';
+export type { DaoSourceUsage, DaoSourceUsageReader } from './query/dao_source_usage';
+export { DaoSourceNotice, buildDaoSourceNotice } from './components/dao-source-notice';
+export type { DaoSourceNoticeAction, DaoSourceNoticeContent, DaoSourceNoticeProps } from './components/dao-source-notice';
 export { useCreationFees } from './hooks/useCreationFees';
 export { useDenomRewardsData, loadDenomRewardsData } from './hooks/useDenomRewardsData';
 export type { UseDenomRewardsDataResult, DenomRewardsQueries } from './hooks/useDenomRewardsData';
@@ -403,6 +412,10 @@ export type { UseBuyBzeOptions, UseBuyBzeResult, SkipAssetWithBalance } from './
 export type { UseBuyRouteResult } from './hooks/useBuyRoute';
 export { useBridgeableAssets } from './hooks/useBridgeableAssets';
 export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';
+export { useIbcRouteStatus } from './hooks/useIbcRouteStatus';
+export type { UseIbcRouteStatusResult } from './hooks/useIbcRouteStatus';
+export { useRouteLimit } from './hooks/useRouteLimit';
+export type { UseRouteLimitResult, RouteLimitDirection } from './hooks/useRouteLimit';
 export type { BridgeableAsset, BridgeableAssetKind, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
 export { useWithdrawableBalances } from './hooks/useWithdrawableBalances';
 export { useBridgeAvailability } from './hooks/useBridgeAvailability';
