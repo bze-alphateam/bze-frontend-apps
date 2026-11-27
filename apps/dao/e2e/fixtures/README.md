@@ -6,11 +6,11 @@ One JSON file per request the e2e build makes to a mocked host, in the envelope 
 
 - The shell fixtures (bank supply and metadata, epochs, IBC, tradebin, txfeecollector, staking and denom rewards, aggregator tickers and prices) are copies of the communities suite's recordings: the app's assets provider asks for the same.
 - `lcd/dao.params.json` is recorded from testnet (chain v8.3.0).
-- **Hand-written, not recorded** (testnet has no DAOs yet, and the BFE-368 Scan routes are not deployed): every file in `scan/`, and `lcd/dao.daos*.json`, `lcd/rewards.*.wallet.json`. They follow the Scan DTOs of BFE-353 / BFE-354 / BFE-368 and the chain's REST shape. When BFE-368 is on testnet, re-record them with `e2e/support/record-fixture.mjs` and diff.
+- **Hand-written, not recorded** (testnet has no DAOs yet, and the BFE-368 Scan routes are not deployed): every file in `scan/`, and `lcd/dao.daos*.json`, `lcd/rewards.*.wallet.json`. They follow the Scan DTOs of BFE-353 / BFE-354 / BFE-368 / BFE-423 and the chain's REST shape. When BFE-368 is on testnet, re-record them with `e2e/support/record-fixture.mjs` and diff.
 
 ## The data the specs rely on
 
-Four DAOs, ids 4 to 1, newest first (Scan's page size in the app is 20; the first page is cut at three with a cursor so the specs can page):
+Four DAOs, ids 4 to 1, newest first (Scan's page size in the app is 20, so the four are one page; the specs that need more pages override the first answer with `network.use` and a larger `total`):
 
 | id | name | type | owner | open proposals |
 |---|---|---|---|---|
@@ -24,18 +24,18 @@ The e2e wallet `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw` administers DAOs 3 a
 | File | Request |
 |---|---|
 | `scan/daos.probe-filters.json` | the probe: an invalid `member` address answers 400 on a Scan that has the BFE-368 filters |
-| `scan/daos.page-1.json`, `daos.page-2.json` | the unfiltered list, 20 per page, cursor `c1` |
-| `scan/daos.type-stake.json`, `daos.search-club.json` | `type=stake`, `q=club` |
+| `scan/daos.page-1.json` | the unfiltered list as a numbered page (`page=1&limit=20`, BFE-423): the four DAOs, `total: 4` |
+| `scan/daos.cursor-2.json` | the second cursor page (`cursor=c1&limit=20`), what a Scan without BFE-423 answers after a first page with `next_cursor: c1` (the spec overrides the first page to say so) |
+| `scan/daos.type-stake.json`, `daos.search-club.json` | `type=stake`, `q=club`, each as page 1 with its `total` |
 | `scan/daos.member.wallet.json`, `daos.source.wallet.json` | `member=<wallet>`, `source=sr/000000000017` |
 | `scan/daos.pending-admin.wallet.json` | `pending_admin=<wallet>` (My DAOs, "Nominated"): empty; the admin console spec overrides it |
-| `scan/dao-proposals.voting.json` | the open proposals feed (`status=voting`, 10) |
 | `lcd/tradebin.market_history.ulmn_testusd.json` | trade history of the one order-book market (copied from the communities suite; the price calculation asks for it depending on timing) |
 | `lcd/bank.spendable_balances.wallet.json` | the e2e wallet's balances (none) |
-| `lcd/dao.params.json` | x/dao params (creation fee 50000 BZE) |
+| `lcd/dao.params.json` | x/dao params |
 | `lcd/dao.daos_by_admin.wallet.json` | DAOs administered by the wallet |
 | `lcd/dao.daos.fallback.json` | the chain's DAO list, newest first (the Scan-down fallback) |
 | `lcd/rewards.staking_reward_participant.wallet.json`, `rewards.denom_reward_participations.wallet.json` | the wallet's x/rewards positions |
-| `lcd/rewards.all_staking_rewards.dao_sources.json` | hand-written: the staking rewards the create flow's source picker lists (one short lock, one other token) |
+| `lcd/rewards.all_staking_rewards.dao_sources.json` | hand-written: every staking reward, read with `pagination.limit=500` by the composer's stake sources (one short lock, one other token) |
 
 ## The DAO page (BFE-372)
 

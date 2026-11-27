@@ -1,5 +1,5 @@
 {
-  "source": "hand-written (BFE-368 shape, not recorded)",
+  "source": "hand-written (BFE-368 + BFE-423 shape, not recorded)",
   "recorded": "2026-11-26",
   "method": "GET",
   "path": "/api/scan/daos",
@@ -17,6 +17,7 @@
         "address": "bze1qpj3kg3fxqmnu32v2ddxz6r0we7cfzujwuwqqk",
         "admin": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw",
         "admin_label": null,
+        "pending_admin": null,
         "self_governed": false,
         "created_time": "2026-11-01T10:00:00Z",
         "proposals_open": 0

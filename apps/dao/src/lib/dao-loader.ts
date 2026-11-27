@@ -1,7 +1,8 @@
 import type {Dao, DaoPage, DaoPageRequest} from '@bze/bze-ui-kit';
 import {cardFromChain, cardFromScan, matchesFilter} from './dao-cards';
 import {SOURCES_PER_REQUEST, type DaoScanClient} from './dao-scan';
-import type {DaoCard, DaoKind, MyDaoRow, ScanOpenProposal} from './dao-types';
+import type {DaoCard, DaoKind, MyDaoRow} from './dao-types';
+import {searchTerm} from './home-query';
 import {buildMyDaos} from './my-daos';
 import {stakerSources, type DenomRewardParticipation, type StakingRewardParticipation} from './staker-sources';
 
@@ -32,61 +33,78 @@ export interface DaoFilter {
     search: string;
 }
 
+/** Where a page is read from: a numbered page (Scan with BFE-423), or the cursor / key after the page before it. */
+export interface DaoPagePosition {
+    /** 1-based; used while Scan answers numbered pages. */
+    page: number;
+    /** The cursor (Scan) or key (chain) of the page after the one before; null for the first. */
+    cursor?: string | null;
+    /** Where the list started, once it has: a later page never switches source. */
+    source?: 'scan' | 'chain';
+}
+
 export type DaoListResult =
     | {state: 'unsupported'}
     | {
         state: 'ok';
         items: DaoCard[];
-        /** Pass back to read the next page; null on the last. */
-        next: string | null;
+        /** How many rows the source returned, before the search ran on the page (an older Scan): 0 on a page past the end. */
+        returned: number;
         /** Where the page came from: the chain fallback has no filters on its side and no open counts. */
         source: 'scan' | 'chain';
+        /** `pages`: numbered, `total` known. `cursor`: only the page after this one (an older Scan, the chain). */
+        mode: 'pages' | 'cursor';
+        /** The DAOs the filters match across every page; set in `pages` mode only. */
+        total: number | null;
+        /** Pass back as the cursor to read the page after this one; null on the last (`cursor` mode). */
+        next: string | null;
     };
 
-const searchTerm = (search: string): string => {
-    const q = search.trim();
-    return q.length >= 2 ? q : '';
-};
+// Scan clients that answered a `page` request without a total (a Scan before BFE-423): their lists are
+// read by cursor from then on, without asking again. Kept per client, like the filters probe.
+const withoutTotals = new WeakSet<DaoScanClient>();
 
 /**
- * One page of the All DAOs list. Scan first; with Scan down the chain's own list (paginated, no
- * filters, so the filter runs here). A v8.2.x node, told by Scan's `supported: false` or by the
- * chain itself, is the "unsupported" state; when neither answers, the error is thrown.
+ * One page of the All DAOs list. Scan first, by page number, with its total. A Scan that answers a
+ * `page` request without a total ignores `page` and answers the first cursor page: the list is then
+ * read by cursor (remembered), and the page in the URL does not count. With Scan down the chain's
+ * own list is read (paged by key, no filters, no total). A v8.2.x node, told by Scan's
+ * `supported: false` or by the chain itself, is the "unsupported" state; when neither answers, the
+ * error is thrown.
  */
-export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, cursor: string | null, source?: 'scan' | 'chain'): Promise<DaoListResult> {
-    if (source !== 'chain') {
-        try {
-            const withFilters = (await deps.scan.filtersSupported()) === 'yes';
-            const q = withFilters ? searchTerm(filter.search) : '';
-            const list = await deps.scan.listDaos({type: filter.kind || undefined, q: q || undefined, cursor, limit: PAGE_SIZE});
-            if (!list.supported) return {state: 'unsupported'};
-            // A Scan without BFE-368 ignores `q`: the search runs on the page here.
-            const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', filter.search));
-            return {state: 'ok', items, next: list.next_cursor, source: 'scan'};
-        } catch (scanError) {
-            if (cursor) throw scanError; // a later page never switches source mid-list
-            return loadChainPage(deps, filter, null);
+export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, position: DaoPagePosition): Promise<DaoListResult> {
+    const cursor = position.cursor ?? null;
+    if (position.source === 'chain') return loadChainPage(deps, cursor);
+
+    try {
+        const withFilters = (await deps.scan.filtersSupported()) === 'yes';
+        const q = withFilters ? searchTerm(filter.search) : '';
+        const numbered = !withoutTotals.has(deps.scan);
+        const list = await deps.scan.listDaos({
+            type: filter.kind || undefined,
+            q: q || undefined,
+            ...(numbered ? {page: position.page} : {cursor}),
+            limit: PAGE_SIZE,
+        });
+        if (!list.supported) return {state: 'unsupported'};
+        // A Scan without BFE-368 ignores `q`: the search runs on the page here.
+        const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', searchTerm(filter.search)));
+        if (numbered && list.total !== null) {
+            return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'pages', total: list.total, next: null};
         }
+        if (numbered) withoutTotals.add(deps.scan);
+        return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'cursor', total: null, next: list.next_cursor};
+    } catch (scanError) {
+        if (cursor) throw scanError; // a later page never switches source mid-list
+        return loadChainPage(deps, null);
     }
-    return loadChainPage(deps, filter, cursor);
 }
 
-async function loadChainPage(deps: DaoDeps, filter: DaoFilter, key: string | null): Promise<DaoListResult> {
+async function loadChainPage(deps: DaoDeps, key: string | null): Promise<DaoListResult> {
     if (!(await deps.chain.isSupported())) return {state: 'unsupported'};
     const page = await deps.chain.getDaos({key: key ?? undefined, limit: CHAIN_PAGE_LIMIT, reverse: true});
-    const items = page.items.map(cardFromChain).filter((c) => matchesFilter(c, filter.kind, filter.search));
-    return {state: 'ok', items, next: page.nextKey, source: 'chain'};
-}
-
-/** The open proposals of all DAOs, soonest end first. Empty when Scan lacks the route (before BFE-368) or is down. */
-export async function loadOpenProposals(deps: DaoDeps): Promise<ScanOpenProposal[]> {
-    try {
-        if ((await deps.scan.filtersSupported()) !== 'yes') return [];
-        const list = await deps.scan.openProposals(null, 10);
-        return list.supported ? list.items : [];
-    } catch {
-        return [];
-    }
+    // The chain cannot filter and filtering 50-row pages here would give uneven pages: the list is unfiltered.
+    return {state: 'ok', items: page.items.map(cardFromChain), returned: page.items.length, source: 'chain', mode: 'cursor', total: null, next: page.nextKey};
 }
 
 export interface MyDaosResult {

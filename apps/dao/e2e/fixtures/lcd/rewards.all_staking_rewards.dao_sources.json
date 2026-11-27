@@ -1,5 +1,5 @@
 {
-  "source": "hand-written for the create flow (BFE-378): every staking reward, read by the source picker with pagination.limit=500",
+  "source": "hand-written: every staking reward, read with pagination.limit=500 (the composer's stake sources)",
   "recorded": "2026-11-26",
   "method": "GET",
   "path": "/bze/rewards/all_staking_rewards",

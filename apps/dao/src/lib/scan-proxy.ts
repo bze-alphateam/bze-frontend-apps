@@ -29,11 +29,10 @@ interface Route {
 
 /** The DAO routes of Scan's /api/v1 the app reads. */
 const ROUTES: Route[] = [
-    {pattern: /^daos$/, params: ["type", "q", "member", "source", "pending_admin", "admin", ...PAGE]},
+    {pattern: /^daos$/, params: ["type", "q", "member", "source", "pending_admin", "admin", "page", ...PAGE]},
     {pattern: /^daos\/\d+$/, params: []},
     {pattern: /^daos\/\d+\/history$/, params: PAGE},
     {pattern: /^daos\/\d+\/proposals$/, params: ["status", ...PAGE]},
-    {pattern: /^dao-proposals$/, params: ["status", ...PAGE]},
     {pattern: /^dao-proposals\/\d+$/, params: []},
     {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
     {pattern: /^dao-votes$/, params: ["voter", ...PAGE]},
