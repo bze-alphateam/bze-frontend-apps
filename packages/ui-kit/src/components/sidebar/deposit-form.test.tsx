@@ -3,9 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
 
-const { executeTransfer, bridgeable } = vi.hoisted(() => ({
+const { executeTransfer, bridgeable, status } = vi.hoisted(() => ({
     executeTransfer: vi.fn(),
     bridgeable: { assets: [] as unknown[] },
+    status: { channels: [] as string[], denoms: [] as string[], afterRefresh: undefined as undefined | { channels?: string[]; denoms?: string[] } },
+}))
+
+vi.mock('../../hooks/useIbcRouteStatus', () => ({
+    useIbcRouteStatus: () => ({
+        isChannelClosed: (c?: string) => !!c && status.channels.includes(c),
+        isDenomBlocked: (d?: string) => !!d && status.denoms.includes(d),
+        loading: false,
+        // The last look before signing re-reads the lists: tests set `afterRefresh` to change them mid-flight.
+        refresh: async () => {
+            Object.assign(status, status.afterRefresh ?? {})
+            return {
+                isChannelClosed: (c?: string) => !!c && status.channels.includes(c),
+                isDenomBlocked: (d?: string) => !!d && status.denoms.includes(d),
+            }
+        },
+    }),
 }))
 
 vi.mock('../../hooks/useBridgeableAssets', () => ({
@@ -29,10 +46,10 @@ vi.mock('../../constants/chain', async (importOriginal) => ({
 import { createHiveGlowSystem } from '../../theme'
 import { DepositForm } from './deposit-form'
 
-const route = (denom: string, ticker: string, chainName: string) => ({
+const route = (denom: string, ticker: string, chainName: string, channelId = 'channel-0') => ({
     bzeAsset: { denom, ticker, name: ticker, decimals: 6, logo: '', type: 'ibc', stable: false, verified: true, supply: BigInt(0) },
     kind: 'ibc',
-    ibcData: { chain: { channelId: 'channel-0' }, counterparty: { chainName, chainPrettyName: chainName, channelId: 'channel-9', baseDenom: denom } },
+    ibcData: { chain: { channelId }, counterparty: { chainName, chainPrettyName: chainName, channelId: 'channel-9', baseDenom: denom } },
     sourceDenom: denom,
     counterparty: { chainName, chainId: `${chainName}-1`, displayName: chainName, logo: '', addressPrefix: 'osmo' },
 })
@@ -56,6 +73,9 @@ const send = async () => {
 }
 
 beforeEach(() => {
+    status.channels = []
+    status.denoms = []
+    status.afterRefresh = undefined
     executeTransfer.mockReset()
     bridgeable.assets = [route('uosmo', 'OSMO', 'osmosis'), route('uatom', 'ATOM', 'cosmoshub')]
 })
@@ -110,5 +130,107 @@ describe('DepositForm daily limit note', () => {
         pickAsset(container, 'uatom')
 
         await waitFor(() => expect(screen.getByTestId('deposit-limit-note').textContent).not.toContain(SENT))
+    })
+})
+
+describe('DepositForm guardian stops', () => {
+    const STOPPED = 'Transfers on this route are stopped for now.'
+    const BLOCKED = 'Transfers of this token to and from other chains are stopped for now.'
+    const submit = () => screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement
+
+    it('allows the transfer when nothing is stopped', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.queryByTestId('notice')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    it('shows the notice, disables submit and tags the asset when its route channel is closed', async () => {
+        status.channels = ['channel-0']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.getByText(STOPPED)).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+        expect(screen.getAllByText('stopped').length).toBeGreaterThan(0)
+    })
+
+    it('stops a blocked BZE denom, including native ubze coming back', async () => {
+        bridgeable.assets = [route('ubze', 'BZE', 'osmosis')]
+        status.denoms = ['ubze']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'ubze')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.getByText(BLOCKED)).toBeTruthy()
+        expect(submit().disabled).toBe(true)
+    })
+
+    it('matches the denom case-sensitively', async () => {
+        status.denoms = ['UOSMO']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        expect(screen.queryByTestId('notice')).toBeNull()
+        expect(submit().disabled).toBe(false)
+    })
+
+    const item = (name: string) => screen.getAllByText(name).map(e => e.closest('[data-part="item"]')).find(Boolean)!
+
+    it('tags only the route whose channel is closed when a denom has two routes', async () => {
+        bridgeable.assets = [route('ubze', 'BZE', 'osmosis', 'channel-0'), route('ubze', 'BZE', 'cosmoshub', 'channel-1')]
+        status.channels = ['channel-1']
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'ubze')
+        await screen.findByPlaceholderText('0.00')
+
+        expect(item('cosmoshub').textContent).toContain('stopped')
+        expect(item('osmosis').textContent).not.toContain('stopped')
+        // One route is still open, so the asset itself is not tagged.
+        expect(item('BZE').textContent).not.toContain('stopped')
+    })
+
+    it('tags the asset when every one of its routes is closed', () => {
+        bridgeable.assets = [route('ubze', 'BZE', 'osmosis', 'channel-0'), route('ubze', 'BZE', 'cosmoshub', 'channel-1'), route('uatom', 'ATOM', 'cosmoshub', 'channel-5')]
+        status.channels = ['channel-0', 'channel-1']
+        render(<DepositForm />, { wrapper })
+
+        expect(item('BZE').textContent).toContain('stopped')
+        expect(item('ATOM').textContent).not.toContain('stopped')
+    })
+
+    it('tags an asset whose denom is blocked even though its route is open', () => {
+        status.denoms = ['uatom']
+        render(<DepositForm />, { wrapper })
+
+        expect(item('ATOM').textContent).toContain('stopped')
+        expect(item('OSMO').textContent).not.toContain('stopped')
+    })
+
+    it('does not sign when the route was stopped while the form was open', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+        status.afterRefresh = { channels: ['channel-0'] }
+
+        fireEvent.click(submit())
+        await new Promise(r => setTimeout(r, 20))
+
+        expect(executeTransfer).not.toHaveBeenCalled()
+    })
+
+    it('signs when the last look finds the route open', async () => {
+        executeTransfer.mockResolvedValue(true)
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        fireEvent.change(await screen.findByPlaceholderText('0.00'), { target: { value: '1' } })
+
+        fireEvent.click(submit())
+
+        await waitFor(() => expect(executeTransfer).toHaveBeenCalledTimes(1))
     })
 })

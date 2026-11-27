@@ -232,6 +232,7 @@ export { BRANDING_TEMPLATES, BRANDING_TEMPLATE_MOODS, brandingFromTemplate } fro
 export { isValidBrandingFont, isValidBrandingColor, brandingFont, brandingFontsStylesheetUrl, validateDenomBranding, contrastRatio, contrastText } from './utils/branding';
 export type { BrandingField } from './utils/branding';
 export { getIBCTraces, getHashIBCTrace, counterpartyChainForChannel } from './query/ibc';
+export { getClosedChannels, getBlockedDenoms, getAutomationPaused } from './query/guardian';
 export { skipGetChains, skipGetAssets, skipGetRoute, skipGetMsgs, skipGetTxStatus } from './query/skip';
 export { getLiquidityPools, getLiquidityPool } from './query/liquidity_pools';
 export {
@@ -406,6 +407,8 @@ export type { UseBuyBzeOptions, UseBuyBzeResult, SkipAssetWithBalance } from './
 export type { UseBuyRouteResult } from './hooks/useBuyRoute';
 export { useBridgeableAssets } from './hooks/useBridgeableAssets';
 export { useBlockedIbcInbound } from './hooks/useBlockedIbcInbound';
+export { useIbcRouteStatus } from './hooks/useIbcRouteStatus';
+export type { UseIbcRouteStatusResult } from './hooks/useIbcRouteStatus';
 export type { BridgeableAsset, BridgeableAssetKind, BridgeableChain, UseBridgeableAssetsResult } from './hooks/useBridgeableAssets';
 export { useWithdrawableBalances } from './hooks/useWithdrawableBalances';
 export { useBridgeAvailability } from './hooks/useBridgeAvailability';
