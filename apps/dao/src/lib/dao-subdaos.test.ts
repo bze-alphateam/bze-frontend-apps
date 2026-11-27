@@ -10,12 +10,12 @@ const dao = (id: number, over: Partial<Dao> = {}): Dao => ({
 });
 const detail = (open?: number): ScanDaoDetail => ({proposals_open: open} as ScanDaoDetail);
 
-function deps(pages: Dao[][], daoDetail: SubDaoDeps["scan"]["daoDetail"] = async (id) => detail(Number(id))): SubDaoDeps & {getDaosByAdmin: ReturnType<typeof vi.fn>} {
+function deps(pages: Dao[][], daoDetail: SubDaoDeps["scan"]["daoDetail"] = async (id) => detail(Number(id))) {
     const getDaosByAdmin = vi.fn(async (_admin: string, key: string | null) => {
         const i = key === null ? 0 : Number(key);
         return {items: pages[i] ?? [], nextKey: i + 1 < pages.length ? String(i + 1) : null};
     });
-    return {chain: {getDaosByAdmin}, scan: {daoDetail}, getDaosByAdmin};
+    return {chain: {getDaosByAdmin}, scan: {daoDetail}, getDaosByAdmin} satisfies SubDaoDeps & {getDaosByAdmin: unknown};
 }
 
 describe("loadSubDaos", () => {

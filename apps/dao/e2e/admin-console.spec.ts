@@ -57,10 +57,25 @@ test.describe("who gets the console", () => {
         await page.goto("/dao/2");
         await connectWallet(page);
 
+        await expect(page.getByTestId("admin-console-link")).toHaveText("Admin console");
         await page.getByTestId("admin-console-link").click();
         await expect(page).toHaveURL(/\/dao\/2\/admin$/);
         await expect(page.getByTestId("admin-console")).toHaveAttribute("data-role", "admin");
         await expect(page.getByTestId("admin-warning")).toContainText("spending the whole treasury");
+    });
+
+    test("the console sits in the DAO page's shell, with the Admin console tab active", async ({page, network}) => {
+        adminRun(network);
+        await openConsole(page, WALLET);
+
+        await expect(page.getByTestId("dao-name")).toHaveText("Founders");
+        await expect(page.getByTestId("dao-type")).toHaveText("Governed by a member list");
+        await expect(page.getByTestId("admin-console-link")).toHaveAttribute("aria-current", "page");
+        await expect(page.getByTestId("admin-console")).toBeVisible();
+
+        await page.getByTestId("dao-tab-history").click();
+        await expect(page).toHaveURL(/\/dao\/2\?tab=history$/);
+        await expect(page.getByTestId("history-tab")).toBeVisible();
     });
 
     test("a stranger has no link on the DAO page", async ({page, network}) => {
@@ -68,7 +83,8 @@ test.describe("who gets the console", () => {
         await installFakeKeplr(page, WALLET);
         await page.goto("/dao/2");
         await connectWallet(page);
-        await expect(page.getByTestId("dao-actions")).toBeVisible();
+        await expect(page.getByTestId("dao-tabs")).toBeVisible();
+        await expect(page.getByTestId("dao-tab-history")).toBeVisible();
         await expect(page.getByTestId("admin-console-link")).toHaveCount(0);
     });
 

@@ -183,13 +183,22 @@ test.describe("the DAOs this DAO administers", () => {
     });
 });
 
-test.describe("the shortcuts on the DAO page", () => {
-    test("Leave opens the composer with the wallet's removal, and the draft survives a reload", async ({page}) => {
+// The DAO page no longer links them (leaving and joining are proposal actions), but the composer still takes the shortcut links.
+test.describe("the join / leave shortcuts", () => {
+    test("the DAO page offers neither shortcut", async ({page}) => {
         await installFakeKeplr(page, WALLET);
         await page.goto("/dao/2");
         await connectWallet(page);
-        await expect(page.getByTestId("leave-dao")).toHaveAttribute("href", "/dao/2/propose?shortcut=leave");
-        await page.getByTestId("leave-dao").click();
+        await expect(page.getByTestId("control-panel")).toBeVisible();
+        await expect(page.getByTestId("leave-dao")).toHaveCount(0);
+        await expect(page.getByTestId("request-to-join")).toHaveCount(0);
+        await expect(page.getByTestId("leave-blocked")).toHaveCount(0);
+    });
+
+    test("Leave opens the composer with the wallet's removal, and the draft survives a reload", async ({page}) => {
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2/propose?shortcut=leave");
+        await connectWallet(page);
 
         await expect(page.getByTestId("proposal-title")).toHaveValue(/^Remove bze1.* as a member$/);
         await expect(page.getByTestId("members-remove")).toHaveValue(WALLET);
@@ -205,23 +214,12 @@ test.describe("the shortcuts on the DAO page", () => {
     test("Request to join is for a wallet that is not a member of an open DAO", async ({page, network}) => {
         network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [STRANGER], config: {...config, open_submission: true}})});
         await installFakeKeplr(page, WALLET);
-        await page.goto("/dao/2");
+        await page.goto("/dao/2/propose?shortcut=join");
         await connectWallet(page);
-        await expect(page.getByTestId("leave-dao")).toHaveCount(0);
-        await page.getByTestId("request-to-join").click();
 
         await expect(page.getByTestId("proposal-title")).toHaveValue(/^Add bze1.* as a member$/);
         await expect(page.getByTestId("members-add")).toHaveValue(WALLET);
         await expect(page.getByTestId("action-preview")).toContainText("Add 1");
-    });
-
-    test("the only member cannot leave, and is told why", async ({page, network}) => {
-        network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [WALLET]})});
-        await installFakeKeplr(page, WALLET);
-        await page.goto("/dao/2");
-        await connectWallet(page);
-        await expect(page.getByTestId("leave-blocked")).toContainText("only member");
-        await expect(page.getByTestId("leave-dao")).toHaveCount(0);
     });
 
     test("an unsent draft wins over the shortcut, and says so", async ({page}) => {

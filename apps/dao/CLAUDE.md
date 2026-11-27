@@ -12,7 +12,7 @@ All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builder
 src/
   app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (the proposal page, BFE-373), `/dao/[id]/admin` (the admin console, BFE-377) + app/api/scan (proxy)
   components/
-    dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
+    dao/page/       # the DAO page: dao-page (loading, the tab from ?tab), dao-shell (DaoShell = header + DaoTabs, shared with /dao/[id]/admin), header (DaoHeader: pill, name, Created on, clamped description + View all dialog, DAO address + Explorer), control-box (Who controls it: Admin / Voters cells, SubDAOs, governance rules on demand), panels (treasury, rules rows + card), voters-panels (who votes), my-power, history-tab, panel (shared bits)
     dao/            # home page parts (BFE-424): home (hero + the DAOs card: filters, notices, list, footer; holds the URL state and the list/My DAOs choice), dao-list (DaoTable on md and up, DaoCards below it), home-filters (My DAOs switch, type control, search box), home-notices (Reduced list, My DAOs notices), unsupported
     ui/pagination   # Pagination (numbered: 36 px buttons on desktop, "Page n of N" with 44 px buttons on a phone) and PrevNext, with the count line; the DAO page's proposals table reuses them
     dao/page/proposals-tab.tsx   # the DAO page's Proposals tab (Active / Finished)
@@ -21,7 +21,7 @@ src/
     propose/        # the composer: propose-page (loads the DAO view, holds the form state and the draft), basics, actions-list, action-forms (one form per registry entry), review, submit-area
     ui/             # provider, colour mode, navbar, inner hero, plain-text (untrusted text)
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
-  hooks/            # useAsync (key-derived loading, no setState in effects), useDaoList (a page of the All DAOs list: numbered, or by cursor with a trail), useHomeUrl (?page ?type ?q ?mine, needs a Suspense boundary), useDaoContext, navigation, chain listener
+  hooks/            # useAsync (key-derived loading, no setState in effects), useDaoExtras (Scan's DAO detail with a retry, for the shell), useDaoList (a page of the All DAOs list: numbered, or by cursor with a trail), useHomeUrl (?page ?type ?q ?mine, needs a Suspense boundary), useDaoContext, navigation, chain listener
   lib/
     actions/        # the action registry (BFE-375): types, registry, pay, custom (untrusted JSON message), signers (who signs a type), amount
     propose/        # composer logic: compose (limits, messages, size), eligibility (who may propose), cost (cost + deposit + balance), draft (versioned localStorage), describe (read built messages back through BFE-373's describers), expedite, submit-result (proposal id from the tx events)
@@ -32,6 +32,9 @@ src/
     dao-chain.ts    # composition root: ui-kit's chain queries + the browser Scan client
     dao-view-loader.ts  # the DAO page's reads (loadDaoView: chain; loadDaoExtras / loadHistoryPage / loadMyVotes: Scan); chain and Scan injected, secondary reads settle as Part<T>
     dao-page-scan.ts    # Scan client of the page: daos/{id}, daos/{id}/history, dao-votes?voter=
+    dao-tabs.ts     # DaoTab, parseDaoTab, daoTabHref(id, tab): `/dao/<id>`, `?tab=proposals`, `?tab=history`, `/dao/<id>/admin`
+    dao-shell.ts    # pure: proposalCounter (the "1/9" pill), createdOnLine, descriptionOverflows
+    dao-subdaos.ts  # loadSubDaos: chain daos_by_admin + Scan detail open counts, injected
     dao-control.ts, dao-rules.ts, dao-power.ts, dao-history.ts, dao-voters.ts, dao-actions.ts, dao-text.ts   # pure text/state helpers of the page (control chain, rules in words, voting-power messages, history renderer, sources, action flags, plain-text linkify)
     proposal-model.ts, proposal-loader.ts, dao-proposal-scan.ts, proposal-types.ts   # one proposal model for both sides (chain / Scan), the page's reads (chain and Scan injected), Scan client + DTOs
     proposal-status.ts, proposal-tally.ts, proposal-describe.ts, proposal-timeline.ts, proposal-money.ts, proposal-votes.ts   # pure: status words, the bars (ui-kit tally rules), message describers, timeline, cost/deposit text
@@ -62,7 +65,9 @@ Vitest next to the code (`src/**/*.test.ts`, pure helpers through their public A
 
 - **Live state is always the chain** (`dao/{id}`, `params`, `dao_controller`, `dao_by_address` to name admin-chain DAOs, bank balances for the treasury, open proposals, the staking reward / Denom Reward of each source, `voting_power`). Scan adds only the creator, labels, the history and the wallet's votes (`dao-votes?voter=`, no DAO filter on Scan's side: pages are read up to a cap and filtered here). A chain miss on the DAO is "not found" (a non-numeric id too, without any request); a Scan miss never is.
 - **Failures stay local**: each secondary chain read settles as a `Part` (the panel says it could not be read), each Scan part has a Retry.
-- **Action buttons** (new proposal, request to join / leave, admin console) sit behind `DAO_FEATURES` in `lib/dao-actions.ts`; turn a flag on in the story that ships the target page. Until then nothing is rendered.
+- **The shell** (`DaoShell`, DAO UI review 1): every DAO page (`/dao/<id>` and `/dao/<id>/admin`) is the header + the tabs Overview · Proposals `<open>/<total>` · History · Admin console, then the tab's content. The tab lives in the URL (`daoTabHref`, `?tab=` read by `parseDaoTab`, unknown = Overview); on the DAO page a plain click `router.replace`s (no history entry), to or from the admin route it pushes. The Admin console tab (`admin-console-link`) shows only for `consoleRole(dao, wallet) !== 'none'` (admin or pending admin). The counter is Scan's `proposals_open` / `proposals_total` on `GET /daos/{id}` (optional fields: an older Scan has neither), else the chain's open count alone, else no pill.
+- **Overview**: Who controls it (Admin cell: No admin / an account / you / a parent DAO, from `describeControl`, Scan's `admin_label` when the chain cannot tell; Voters cell; SubDAOs from `daos_by_admin` with Scan's open counts, 5 then "Show all"; the governance rules on demand), Who votes, Your voting power, Treasury. No Rules card, no How to join, no Leave, no Free-proposals warning (the Factory shows that at creation). New proposal sits at the top of the Proposals tab.
+- **Action buttons** (new proposal, admin console) sit behind `DAO_FEATURES` in `lib/dao-actions.ts`. "Request to join" / "Leave" are only composer shortcut links now (`shortcutHref`); the DAO page shows neither.
 - DAO name and description are untrusted: plain text, line breaks kept, links only through `safeHttpUrl` (http/https) in `lib/dao-text.ts`; never HTML.
 
 ## The proposal pages (BFE-373)

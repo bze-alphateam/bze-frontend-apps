@@ -16,6 +16,7 @@
     "created_time": "2026-11-04T10:00:00Z",
     "pending_admin": null,
     "proposals_open": 1,
+    "proposals_total": 3,
     "address_label": null,
     "created_height": 10,
     "created_tx_hash": "AB12",

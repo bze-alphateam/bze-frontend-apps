@@ -23,11 +23,11 @@ async function connectWallet(page: Page): Promise<void> {
 }
 
 test.describe("the entry point", () => {
-    test("the DAO page links to the composer for a connected wallet", async ({page}) => {
+    test("the DAO page's Proposals tab links to the composer for a connected wallet", async ({page}) => {
         await installFakeKeplr(page, WALLET);
-        await page.goto("/dao/2");
+        await page.goto("/dao/4?tab=proposals");
         await connectWallet(page);
-        await expect(page.getByRole("link", {name: "New proposal"})).toHaveAttribute("href", "/dao/2/propose");
+        await expect(page.getByRole("link", {name: "New proposal"})).toHaveAttribute("href", "/dao/4/propose");
     });
 });
 
