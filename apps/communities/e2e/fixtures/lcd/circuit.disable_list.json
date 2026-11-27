@@ -1,0 +1,12 @@
+{
+  "source": "https://testnet.getbze.com/cosmos/circuit/v1/disable_list",
+  "recorded": "2026-11-27",
+  "method": "GET",
+  "path": "/cosmos/circuit/v1/disable_list",
+  "query": {},
+  "status": 200,
+  "body": {
+    "disabled_list": []
+  },
+  "trimmed": "Synthetic: nothing paused, as mainnet answers today. Specs that need a paused message type override it with network.use."
+}
