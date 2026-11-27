@@ -29,7 +29,7 @@ const renderNav = () => render(
     <ChakraProvider value={system}><PendingTxProvider store={store}><TopNavBar /></PendingTxProvider></ChakraProvider>,
 );
 
-const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/reward/new", "/denom-reward/new", "/airdrop", "/raffle/new"];
+const CREATE = ["/", "/create/market", "/create/rewards", "/create/grow", "/token/new", "/market/new", "/pool/new", "/reward/new", "/denom-reward/new", "/airdrop", "/raffle/new", "/dao/new"];
 const TOKENS = ["/tokens", "/tokens/token", "/official", "/brand-kit"];
 const REWARDS = ["/rewards", "/reward/extend", "/denom-reward/schedule"];
 
