@@ -5,6 +5,8 @@ import {Box, Button, chakra, Flex, Input, InputGroup} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
+    usePausedMessages,
+    PausedActionNotice,
     useCanAffordTx,
     useToast,
     getChainNativeAssetDenom,
@@ -41,6 +43,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
     const {tx, progressTrack} = useSDKTx();
+    const {isPaused} = usePausedMessages(['/cosmos.staking.v1beta1.MsgBeginRedelegate']);
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -193,6 +196,8 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                 )}
             </Flex>
 
+            {isPaused && <PausedActionNotice />}
+
             <AmountField
                 value={amount}
                 onChange={(value) => setAmount(sanitizeNumberInput(value, decimals))}
@@ -224,7 +229,7 @@ export function RedelegateModal({isOpen, onClose, sourceValidator, allValidators
                     size="lg"
                     onClick={handleRedelegate}
                     loading={isSubmitting}
-                    disabled={!amountValid || !address || !destValidator || !feeCheck.canAfford}
+                    disabled={isPaused || !amountValid || !address || !destValidator || !feeCheck.canAfford}
                     w="full"
                 >
                     Move {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}

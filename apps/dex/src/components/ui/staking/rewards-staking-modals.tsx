@@ -11,7 +11,7 @@ import {
 import {LuGift, LuLock, LuLockOpen} from "react-icons/lu";
 import React, {useCallback, useMemo, useState} from "react";
 import {StakingRewardParticipantSDKType, StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
-import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx, hgVariant, Notice} from "@bze/bze-ui-kit";
+import {useAsset, useAssets, useAssetPrice, shortNumberFormat, amountToBigNumberUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, calculateRewardsStakingPendingRewards, removeLeadingZeros, useBalance, sanitizeNumberInput, useBZETx, getChainName, useToast, useMaxSpendable, useCanAffordTx, hgVariant, Notice, usePausedMessages, PausedActionNotice} from "@bze/bze-ui-kit";
 import {ExtendedPendingUnlockParticipantSDKType} from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {bze} from "@bze/bzejs";
@@ -67,6 +67,10 @@ export const RewardsStakingActionModal = ({
     const {balance: stakingAssetBalance} = useBalance(stakingReward?.staking_denom ?? '')
     const {address} = useChain(getChainName())
     const {tx, progressTrack} = useBZETx()
+    const {paused} = usePausedMessages(['/bze.rewards.MsgJoinStaking', '/bze.rewards.MsgExitStaking', '/bze.rewards.MsgClaimStakingRewards'])
+    const stakePaused = paused.includes('/bze.rewards.MsgJoinStaking')
+    const unstakePaused = paused.includes('/bze.rewards.MsgExitStaking')
+    const claimPaused = paused.includes('/bze.rewards.MsgClaimStakingRewards')
     const {toast} = useToast()
     // Shared gas engine: Max keeps the gas back when the staked coin is the fee coin; every
     // action (stake / unstake / claim) needs the fee in the wallet.
@@ -450,12 +454,13 @@ export const RewardsStakingActionModal = ({
                             </>
                         )}
 
+                        {stakePaused && <PausedActionNotice />}
                         <Button
                             size="lg"
                             w="full"
                             variant={hgVariant('primary')}
                             gap="8px"
-                            disabled={!stakeAmount || stakingAssetBalance.amount.isZero()}
+                            disabled={stakePaused || !stakeAmount || stakingAssetBalance.amount.isZero()}
                             loading={isSubmitting}
                             loadingText={progressTrack}
                             onClick={handleConfirmStake}
@@ -473,11 +478,12 @@ export const RewardsStakingActionModal = ({
                             receive them after the lock period ends.
                         </Notice>
                         <DialogFigure label="Amount to Unstake"><chakra.strong fontSize="18px">{yourStake}</chakra.strong></DialogFigure>
+                        {unstakePaused && <PausedActionNotice />}
                         <Button
                             size="lg"
                             w="full"
                             variant={hgVariant('primary')}
-                            disabled={!userStake}
+                            disabled={unstakePaused || !userStake}
                             loading={isSubmitting}
                             loadingText={progressTrack || 'Unstaking...'}
                             onClick={handleUnstake}
@@ -490,12 +496,13 @@ export const RewardsStakingActionModal = ({
                 {modalType === MODAL_TYPE_CLAIM && userStake && (
                     <Flex direction="column" gap="10px">
                         <DialogFigure label="Rewards"><chakra.strong fontSize="18px">{pendingRewards}</chakra.strong></DialogFigure>
+                        {claimPaused && <PausedActionNotice />}
                         <Button
                             size="lg"
                             w="full"
                             variant={hgVariant('primary')}
                             gap="8px"
-                            disabled={!userStake || !hasPendingRewards}
+                            disabled={claimPaused || !userStake || !hasPendingRewards}
                             loading={isSubmitting}
                             loadingText={progressTrack || 'Claiming rewards...'}
                             onClick={handleRewardsClaim}
@@ -536,6 +543,7 @@ export const RewardsStakingPendingRewardsModal = ({
     const {denomTicker} = useAssets()
     const {toast} = useToast()
     const {tx, progressTrack} = useBZETx()
+    const {isPaused: claimPaused} = usePausedMessages(['/bze.rewards.MsgClaimStakingRewards'])
     const {address} = useChain(getChainName())
     // One MsgClaimStakingRewards per reward id; the wallet must hold the gas for all of them.
     const feeCheck = useCanAffordTx({
@@ -594,12 +602,13 @@ export const RewardsStakingPendingRewardsModal = ({
                         <chakra.strong fontSize="16px" color="fg.muted">No rewards to claim</chakra.strong>
                     </Flex>
                 )}
+                {claimPaused && <PausedActionNotice />}
                 <Button
                     size="lg"
                     w="full"
                     variant={hgVariant('primary')}
                     gap="8px"
-                    disabled={!canClaim}
+                    disabled={claimPaused || !canClaim}
                     loading={isClaiming}
                     loadingText={progressTrack || 'Claiming rewards...'}
                     onClick={claimRewards}

@@ -28,7 +28,7 @@ import {
     useAsset, useAssets, useAssetPrice,
     amountToBigNumberUAmount, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount,
     shortNumberFormat, toPercentage, removeLeadingZeros,
-    useBalance, useBZETx, useToast, getChainName, useMaxSpendable, useCanAffordTx,
+    useBalance, useBZETx, useToast, usePausedMessages, PausedActionNotice, getChainName, useMaxSpendable, useCanAffordTx,
     AddressRewardsStaking, ExtendedPendingUnlockParticipantSDKType,
     calculateRewardsStakingPendingRewards,
     PrettyBalance, useAssetsValue, HighlightText,
@@ -96,6 +96,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
 
     const {address} = useChain(getChainName())
     const {tx} = useBZETx()
+    const {isPaused} = usePausedMessages(['/bze.tradebin.MsgAddLiquidity'])
     const {toast} = useToast()
     const {balance: baseBalance} = useBalance(pool?.base || '')
     const {balance: quoteBalance} = useBalance(pool?.quote || '')
@@ -229,6 +230,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
     return (
         <FormColumn>
             <FormTitle>Add Liquidity</FormTitle>
+            {isPaused && <PausedActionNotice />}
 
             <AmountField
                 label={`${baseAsset?.ticker ?? ''} Amount`}
@@ -270,7 +272,7 @@ const AddLiquidityTab = ({baseAsset, quoteAsset, pool, calculateSharesFromAmount
                 </SummaryBox>
             )}
 
-            <SubmitButton onClick={onAddLiquidity} disabled={isSubmitting}>
+            <SubmitButton onClick={onAddLiquidity} disabled={isSubmitting || isPaused}>
                 Add Liquidity
             </SubmitButton>
         </FormColumn>
@@ -295,6 +297,7 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
 
     const {address} = useChain(getChainName())
     const {tx} = useBZETx()
+    const {isPaused} = usePausedMessages(['/bze.tradebin.MsgRemoveLiquidity'])
     const {toast} = useToast()
 
     const userSharesAmount = useMemo(() => {
@@ -493,9 +496,11 @@ const RemoveLiquidityTab = ({pool, userShares, userReserveBase, userReserveQuote
                 </SummaryBox>
             )}
 
+            {isPaused && <PausedActionNotice />}
+
             <SubmitButton
                 onClick={handleRemove}
-                disabled={!removeAmount || removeAmount === '0' || isSubmitting || !canRemove}
+                disabled={!removeAmount || removeAmount === '0' || isSubmitting || !canRemove || isPaused}
                 loading={isSubmitting}
             >
                 Remove Liquidity

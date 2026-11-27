@@ -10,7 +10,7 @@ import {
 import {LuTicket} from "react-icons/lu";
 import { useState, useMemo, useCallback } from "react";
 import { useChain } from "@interchain-kit/react";
-import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, sanitizeIntegerInput, useAsset, FeaturedCard, Notice, hgVariant } from "@bze/bze-ui-kit";
+import { getChainName, useToast, useBZETx, useBalance, useCanAffordTx, toBigNumber, uAmountToBigNumberAmount, sanitizeIntegerInput, useAsset, FeaturedCard, Notice, hgVariant, usePausedMessages, PausedActionNotice } from "@bze/bze-ui-kit";
 import { bze } from '@bze/bzejs';
 import BigNumber from "bignumber.js";
 import {useRaffleContributions} from "@/hooks/useRaffles";
@@ -46,6 +46,7 @@ export const RaffleModal = ({
     const { address } = useChain(getChainName());
     const { toast } = useToast();
     const { tx } = useBZETx();
+    const { isPaused } = usePausedMessages(["/bze.burner.MsgJoinRaffle"]);
     const { balance } = useBalance(denom);
     const { asset } = useAsset(denom);
     const {addPendingRaffleContribution} = useRaffleContributions()
@@ -155,7 +156,7 @@ export const RaffleModal = ({
                         flex="1"
                         variant={hgVariant('primary')}
                         onClick={handleJoinRaffle}
-                        disabled={!isFormValid || isSubmitting}
+                        disabled={!isFormValid || isSubmitting || isPaused}
                         loading={isSubmitting}
                         loadingText="Joining..."
                     >
@@ -164,6 +165,7 @@ export const RaffleModal = ({
                 </>
             }
         >
+            {isPaused && <PausedActionNotice />}
             <FeaturedCard textAlign="center" py="20px">
                 <Flex direction="column" align="center" gap="4px">
                     <chakra.span textStyle="eyebrow" color="hg.eyebrow">Current prize</chakra.span>

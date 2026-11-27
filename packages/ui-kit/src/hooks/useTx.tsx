@@ -23,6 +23,7 @@ import {registerBzeEncoders} from "../utils/signing_client_setup";
 import {getDenomConfig} from "../query/denom_config";
 import {computeForeignGasFee, computeNativeGasFee, resolveGasPrice} from "../utils/gas_fee";
 import {buildSimulationTxBytes, simulationFeeCoins} from "../utils/simulation";
+import {getDisabledMessages, pausedAmong} from "../query/circuit";
 import {signModeFor, walletNameOf} from "../utils/wallet_sign_mode";
 
 import {toTxSuccessResponse, type TxSuccessResponse} from "../utils/tx_response";
@@ -316,6 +317,22 @@ const useTx = (chainName: string) => {
         if (!address) {
             refuse('Please connect the wallet')
             return false;
+        }
+
+        // x/circuit lives on BZE only: a tx signed on another chain (an IBC deposit) is not subject to it.
+        // The chain refuses the whole tx when any one message is paused. Fails open (empty list).
+        if (chainName === defaultChainName) {
+            let paused: string[] = [];
+            try {
+                paused = pausedAmong(await getDisabledMessages(), msgs.map(m => m.typeUrl));
+            } catch (e) {
+                // Never let a failed read stop a transaction the chain would accept.
+                console.error("could not read the paused messages:", e);
+            }
+            if (paused.length > 0) {
+                refuse(prettyError(`circuit breaker disables execution of this message: ${paused[0]}`) ?? "This action is paused on BeeZee for now.")
+                return false;
+            }
         }
 
         if (!(await canUseClient())) {

@@ -11,7 +11,7 @@ import {
 } from "@chakra-ui/react";
 import {useState, useMemo, useCallback} from "react";
 import {LuFlame, LuWallet} from "react-icons/lu";
-import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant } from "@bze/bze-ui-kit";
+import { useAssets, useBalances, useBalance, useMaxSpendable, useCanAffordTx, amountToUAmount, prettyAmount, toBigNumber, uAmountToAmount, uAmountToBigNumberAmount, Asset, getChainName, useToast, useBZETx, sanitizeNumberInput, Notice, hgVariant, usePausedMessages, PausedActionNotice } from "@bze/bze-ui-kit";
 import BigNumber from "bignumber.js";
 import {useChain} from "@interchain-kit/react";
 import {bze} from '@bze/bzejs'
@@ -45,6 +45,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
     const { address } = useChain(getChainName());
     const { toast } = useToast()
     const { tx } = useBZETx()
+    const { isPaused } = usePausedMessages(["/bze.burner.MsgFundBurner"]);
     // Shared gas engine: MAX keeps the gas fee back when burning the fee coin, and the form
     // refuses amounts that would leave no room for it.
     const maxSpendable = useMaxSpendable(selectedCoin, 'fund-burner');
@@ -185,7 +186,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
                 flex="1"
                 variant={hgVariant('primary')}
                 onClick={handleBurn}
-                disabled={!isFormValid || isSubmitting}
+                disabled={!isFormValid || isSubmitting || isPaused}
                 loading={isSubmitting}
                 loadingText="Burning..."
             >
@@ -202,6 +203,7 @@ export const BurnModal = ({ isOpen, onClose, preselectedCoin }: BurnModalProps) 
             title={preselectedCoin && selectedAsset ? `Burn ${selectedAsset.ticker}` : 'Burn your tokens'}
             footer={footer}
         >
+            {isPaused && <PausedActionNotice />}
             <Notice status="warning" title="Warning: No Take-Backs!">
                 {"Once you burn your tokens, they're gone forever! Like throwing money into a volcano. Make sure you really want to do this!"}
             </Notice>

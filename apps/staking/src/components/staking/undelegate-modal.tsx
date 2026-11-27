@@ -5,6 +5,8 @@ import {Button, chakra} from '@chakra-ui/react';
 import {
     useAssets,
     useSDKTx,
+    usePausedMessages,
+    PausedActionNotice,
     useCanAffordTx,
     useToast,
     getChainNativeAssetDenom,
@@ -40,6 +42,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
     const {address, status, connect} = useChain(getChainName());
     const isConnected = status === WalletState.Connected;
     const {tx, progressTrack} = useSDKTx();
+    const {isPaused} = usePausedMessages(['/cosmos.staking.v1beta1.MsgUndelegate']);
     const {toast} = useToast();
     const [amount, setAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,6 +117,8 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                 )}
             </Notice>
 
+            {isPaused && <PausedActionNotice />}
+
             <AmountField
                 value={amount}
                 onChange={(value) => setAmount(sanitizeNumberInput(value, decimals))}
@@ -145,7 +150,7 @@ export function UndelegateModal({isOpen, onClose, validator, delegatedAmount, on
                     size="lg"
                     onClick={handleUndelegate}
                     loading={isSubmitting}
-                    disabled={!amountValid || !address || !feeCheck.canAfford}
+                    disabled={isPaused || !amountValid || !address || !feeCheck.canAfford}
                     w="full"
                 >
                     Unstake {amountValid ? `${amount} ${nativeAsset?.ticker}` : ''}
