@@ -26,6 +26,8 @@ import {
     validateDenomRewardStake,
 } from '../utils/denom_rewards';
 import {MaxInputGroup} from './max-input-group';
+import {DaoSourceNotice} from './dao-source-notice';
+import {daoDenomRewardSource} from '../query/dao';
 
 /**
  * The bodies of the holder actions on a denom reward — stake / add, claim, claim all, exit. Each
@@ -189,6 +191,7 @@ export const DenomRewardStakePanel = ({item, initialAmount, onDone}: DenomReward
                 </Panel>
             )}
 
+            <DaoSourceNotice source={daoDenomRewardSource(denom)} action="stake"/>
             {isTopUp && (
                 <Note>
                     Adding pays out your pending prizes first, in the same transaction
@@ -349,6 +352,7 @@ export const DenomRewardExitPanel = ({item, onDone}: DenomRewardPanelProps) => {
                     </Notice>
                 </Box>
             )}
+            <DaoSourceNotice source={daoDenomRewardSource(denom)} action="exit"/>
             <Note>Exiting is all or nothing: your whole stake leaves this compounded reward.</Note>
             {!afford.isLoading && !afford.canAfford && afford.message && <FeeError>{afford.message}</FeeError>}
             <NetworkFee fee={afford.gasFee}/>

@@ -147,3 +147,20 @@ describe("showMoreLabel", () => {
         expect(showMoreLabel(1480)).toBe("Show 20 more · 1,480 tokens");
     });
 });
+
+describe("anyToken mode with factoryOnly (the create-a-DAO token step)", () => {
+    const filter: PickerFilter = { mode: "anyToken", q: "", includeLP: false, excludeHalted: false, factoryOnly: true };
+    const honey = toPickerRow(asset("HONEY"), undefined, undefined);
+    const native = toPickerRow(asset("BZE", { denom: "ubze", type: "Native" }), undefined, undefined);
+    const lp = toPickerRow(asset("LP", { denom: "ulp_1" }), undefined, undefined);
+
+    it("lists factory tokens without a reward and leaves out native, IBC and LP shares", () => {
+        expect(keepPickerRow(honey, filter)).toBe(true);
+        expect(keepPickerRow(native, filter)).toBe(false);
+        expect(keepPickerRow(lp, filter)).toBe(false);
+    });
+
+    it("keeps native tokens when factoryOnly is off", () => {
+        expect(keepPickerRow(native, { ...filter, factoryOnly: false })).toBe(true);
+    });
+});
