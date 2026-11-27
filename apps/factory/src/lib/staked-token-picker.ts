@@ -7,9 +7,10 @@ import { isFactoryToken, matchesSearch } from '@/lib/tokens-directory'
 
 /**
  * `makeStakable`: every token; `hasCompounded`: tokens with a compounded reward; `hasRewards`:
- * tokens with a compounded reward or one of the `stakable` simple-reward tokens.
+ * tokens with a compounded reward or one of the `stakable` simple-reward tokens; `anyToken`: every
+ * token, each row's state comes from the host (the create-a-DAO page, BFE-388).
  */
-export type StakedTokenPickerMode = 'makeStakable' | 'hasCompounded' | 'hasRewards'
+export type StakedTokenPickerMode = 'makeStakable' | 'hasCompounded' | 'hasRewards' | 'anyToken'
 
 /** Pool shares only, or everything but them. */
 export type PickerOnly = 'lp' | 'tokens'
@@ -81,14 +82,17 @@ export interface PickerFilter {
     /** hasRewards: the staked tokens of the simple rewards. */
     stakable?: ReadonlySet<string>;
     only?: PickerOnly;
+    /** Only tokens made with the token factory. */
+    factoryOnly?: boolean;
 }
 
 /** Whether a row belongs in the picker at all, before the chips. */
-export function keepPickerRow(row: PickerRow, { mode, q, includeLP, excludeHalted, stakable, only }: PickerFilter): boolean {
+export function keepPickerRow(row: PickerRow, { mode, q, includeLP, excludeHalted, stakable, only, factoryOnly }: PickerFilter): boolean {
     const lp = isLpDenom(row.asset.denom)
     if ((!includeLP || only === 'tokens') && lp) return false
     if (only === 'lp' && !lp) return false
     if (excludeHalted && row.asset.halted) return false
+    if (factoryOnly && !isFactoryToken(row.asset)) return false
     if (mode === 'hasCompounded' && !row.dr) return false
     if (mode === 'hasRewards' && !row.dr && !stakable?.has(row.asset.denom)) return false
     return matchesSearch(row.asset, q)

@@ -96,6 +96,11 @@ export interface TxOptions {
      * toasted before the wallet opened (no wallet connected, no signing client).
      */
     toasts?: boolean;
+    /**
+     * Show the "Transaction Successful" toast (default `true`). A caller that tells the user the
+     * outcome in its own words in `onSuccess` sets `false`; progress and failure toasts stay.
+     */
+    successToast?: boolean;
 }
 
 export enum TxStatus {
@@ -364,7 +369,7 @@ const useTx = (chainName: string) => {
                 if (resp?.code === 0) {
                     success = true;
                     setProgressTrack("Transaction sent")
-                    if (showToasts) {
+                    if (showToasts && options?.successToast !== false) {
                         // BZE Scan only knows BZE transactions: a tx signed on another
                         // chain (an IBC deposit) gets a plain toast, never a BZE Scan link.
                         if (chainName === defaultChainName) {

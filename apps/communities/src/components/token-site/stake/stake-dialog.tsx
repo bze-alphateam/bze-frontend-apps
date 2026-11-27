@@ -9,6 +9,9 @@ import {
     amountToBigNumberUAmount,
     type Asset,
     claimableCoins,
+    DaoSourceNotice,
+    daoDenomRewardSource,
+    daoStakingRewardSource,
     type DenomRewardHolderItem,
     denomRewardUnlockDate,
     getChainName,
@@ -204,6 +207,16 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
 
     const stake = `${walletAmount(uAmountToBigNumberAmount(terms.stake ?? 0, asset.decimals))} ${asset.ticker}`;
     const unlockDate = denomRewardUnlockDate(lock);
+    const daoSource = target.kind === "dr" ? daoDenomRewardSource(target.stakingDenom) : daoStakingRewardSource(target.rewardId);
+    const daoNotice = (action === "stake" || action === "unstake") && (
+        <DaoSourceNotice
+            source={daoSource}
+            action={action === "stake" ? "stake" : "exit"}
+            render={({tone, body}) => tone === "warning"
+                ? <TsNotice data-testid="dao-source-notice">{body}</TsNotice>
+                : <chakra.p m="0" color={ts.muted} fontSize="13px" data-testid="dao-source-notice">{body}</chakra.p>}
+        />
+    );
 
     return (
         <TsDialog open onClose={onClose} title={TITLES[action](asset.ticker, staked)}>
@@ -247,6 +260,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
                                 Max
                             </chakra.button>
                         </Flex>
+                        {daoNotice}
                         {staked && pending.length > 0 && (
                             <TsNotice>
                                 Staking more pays out your pending rewards first, in the same transaction.
@@ -281,6 +295,7 @@ export function StakeDialog({asset, target, action, onClose, onDone}: StakeDialo
                                 </>
                             )}
                         </Flex>
+                        {daoNotice}
                         <TsNotice tone="danger" data-testid="stake-dialog-unlock">
                             {unlockDate
                                 ? `Your whole stake leaves ${terms.place} and comes back to your wallet in ${formatDays(lock)}. It earns nothing meanwhile.`
