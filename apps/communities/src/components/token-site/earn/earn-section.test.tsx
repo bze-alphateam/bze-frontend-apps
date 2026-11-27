@@ -35,6 +35,8 @@ const balance = new BigNumber("1000000000"); // 1,000 of the staked token
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    // the DAO notice reads BZE Scan; stake-dialog-dao-notice.test.tsx covers it
+    DaoSourceNotice: () => null,
     useAsset: (denom: string) => ({asset: ASSETS[denom] && {denom, ...ASSETS[denom]}, isLoading: false}),
     useAssets: () => ({denomTicker: (denom: string) => ASSETS[denom]?.ticker ?? denom, denomDecimals: () => 6}),
     useAssetsContext: () => ({updateBalances: vi.fn()}),

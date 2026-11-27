@@ -33,6 +33,8 @@ let status: WalletState = WalletState.Connected;
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
+    // the DAO notice reads BZE Scan; stake-dialog-dao-notice.test.tsx covers it
+    DaoSourceNotice: () => null,
     useTokenDenomReward: () => ({...pool, prizeDenoms: [], reload: reloadPool}),
     getDenomRewardSchedules: (denom: string) => getDenomRewardSchedules(denom),
     useAssetsContext: () => ({usdPricesMap: prices, updateBalances}),

@@ -23,6 +23,10 @@ const ROUTES: [RegExp, string[]][] = [
     [new RegExp(`^accounts/${ADDRESS}/activity$`), ["denom", "category", "page", ...PAGE]],
     [/^txs\/[0-9A-Fa-f]{64}$/, []],
     [/^modules$/, []],
+    // The staking dialogs ask which DAOs vote with a program's stake (`source` repeats; `member` is the
+    // probe for a Scan that has the filter) and which DAO proposals are open.
+    [/^daos$/, ["source", "member", ...PAGE]],
+    [/^dao-proposals$/, ["status", ...PAGE]],
 ];
 
 const NO_STORE = "no-store";
@@ -45,8 +49,9 @@ export function createScanProxyHandler(options: ScanProxyOptions) {
         const incoming = new URL(req.url).searchParams;
         const query = new URLSearchParams();
         for (const key of allowed) {
-            const value = incoming.get(key);
-            if (value) query.set(key, value);
+            for (const value of incoming.getAll(key)) {
+                if (value) query.append(key, value);
+            }
         }
         const target = `${baseUrl}/api/v1/${path}${query.size ? `?${query}` : ""}`;
 
