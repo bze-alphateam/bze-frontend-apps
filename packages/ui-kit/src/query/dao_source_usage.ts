@@ -105,7 +105,10 @@ export function createDaoSourceUsageReader(options: DaoSourceUsageReaderOptions 
 
     // Throws on anything but a clean answer.
     const load = async (source: string): Promise<DaoSourceUsage> => {
-        if (!(await filtersSupported())) return EMPTY_DAO_SOURCE_USAGE;
+        const supported = await filtersSupported();
+        // the probe itself failed: not a verdict, so this read fails and is not kept
+        if (supported === undefined) throw new Error('BZE Scan could not be probed for the DAO filters');
+        if (!supported) return EMPTY_DAO_SOURCE_USAGE;
 
         const daosAnswer = await get('daos', [['source', source], ['limit', PAGE_LIMIT]]);
         const daoList = daosAnswer.status === 200 ? asList(daosAnswer.body) : null;

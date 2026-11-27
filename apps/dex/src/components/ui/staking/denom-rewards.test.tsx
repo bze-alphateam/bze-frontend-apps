@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { WalletState } from "@interchain-kit/core";
 import BigNumber from "bignumber.js";
@@ -275,6 +275,8 @@ describe("Denom Reward DAO notice", () => {
         renderWith(<DenomRewardStakePanel item={freshItem().item} />);
 
         await waitFor(() => expect(sourcesAsked).toHaveLength(1));
+        // let the answer land and render before asserting there is nothing to show
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
         expect(screen.queryByTestId("dao-source-notice")).toBeNull();
     });
 });

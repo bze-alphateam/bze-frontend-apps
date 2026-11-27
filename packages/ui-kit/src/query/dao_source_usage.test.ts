@@ -96,6 +96,18 @@ describe("DAO source usage reader", () => {
         expect((await reader.read("sr/1")).daos).toHaveLength(1);
     });
 
+    it("does not keep an answer when the probe itself fails, and asks again next time", async () => {
+        routes["daos?source"] = {body: {items: [dao(3, "Club")], next_cursor: null}};
+        routes["dao-proposals?status"] = {body: {items: [], next_cursor: null}};
+        routes["daos?member"] = {status: 503, body: {}};
+        const reader = createDaoSourceUsageReader();
+        expect(await reader.read("sr/1")).toEqual(EMPTY_DAO_SOURCE_USAGE);
+
+        // Scan recovers: the very next read asks again instead of replaying the empty answer
+        routes["daos?member"] = {status: 400, body: {}};
+        expect((await reader.read("sr/1")).daos).toEqual([{id: "3", name: "Club"}]);
+    });
+
     it("keeps an answer for a minute per source", async () => {
         routes["daos?source"] = {body: {items: [dao(3, "Club")], next_cursor: null}};
         routes["dao-proposals?status"] = {body: {items: [], next_cursor: null}};

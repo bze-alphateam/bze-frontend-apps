@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import type {ReactNode} from "react";
-import {cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, render, screen, waitFor} from "@testing-library/react";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type {StakingRewardSDKType} from "@bze/bzejs/bze/rewards/store";
@@ -37,21 +37,29 @@ let counter = 0;
 let scanDaos: unknown;
 let scanProposals: unknown;
 let sources: string[];
+let proposalCalls: number;
+let fetchMock: ReturnType<typeof vi.fn>;
+
+// Lets every pending Scan answer land and render, so an absent notice means it was really decided.
+const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 const realFetch = globalThis.fetch;
 
 beforeEach(() => {
     scanDaos = {items: [], next_cursor: null};
     scanProposals = {items: [], next_cursor: null};
     sources = [];
-    globalThis.fetch = (vi.fn(async (url: string) => {
+    proposalCalls = 0;
+    fetchMock = vi.fn(async (url: string) => {
         const u = new URL(url, "http://communities.test");
         if (u.searchParams.has("member")) return new Response("{}", {status: 400});
         if (u.pathname.endsWith("/daos")) {
             sources.push(u.searchParams.get("source") ?? "");
             return new Response(JSON.stringify(scanDaos), {status: 200});
         }
+        proposalCalls++;
         return new Response(JSON.stringify(scanProposals), {status: 200});
-    })) as unknown as typeof fetch;
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 afterEach(() => {
     cleanup();
@@ -126,7 +134,9 @@ describe("StakeDialog DAO notice", () => {
 
         cleanup();
         open(pool(true), "unstake");
-        await screen.findByRole("button", {name: "Unstake"});
+        await waitFor(() => expect(proposalCalls).toBe(1));
+        await settle();
+        expect(screen.getByRole("button", {name: "Unstake"})).toBeInTheDocument();
         expect(screen.queryByTestId("dao-source-notice")).toBeNull();
     });
 
@@ -134,7 +144,10 @@ describe("StakeDialog DAO notice", () => {
         withOpenProposals(2);
         open(fixedTerm(true), "claim");
 
-        await screen.findByRole("button", {name: "Claim"});
+        await settle();
+        expect(screen.getByRole("button", {name: "Claim"})).toBeInTheDocument();
         expect(screen.queryByTestId("dao-source-notice")).toBeNull();
+        // a claim never reads Scan at all
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { ChakraProvider } from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type { StakingRewardParticipantSDKType, StakingRewardSDKType } from "@bze/bzejs/bze/rewards/store";
@@ -34,14 +34,17 @@ const STAKE = { address: "bze1test", reward_id: "7", amount: "20000000", joined_
 const wrapper = ({ children }: { children: ReactNode }) => <ChakraProvider value={createHiveGlowSystem("dex")}>{children}</ChakraProvider>;
 
 const NOTICE = "dao-source-notice";
-let scan: { daos: unknown; proposals: unknown; probe: number; sources: string[] };
+let scan: { daos: unknown; proposals: unknown; probe: number; sources: string[]; proposalCalls: number };
+
+// Lets every pending Scan answer land and render, so an absent notice means it was really decided.
+const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 
 let reward: StakingRewardSDKType;
 const realFetch = globalThis.fetch;
 
 beforeEach(() => {
     reward = rewardOf(String(++rewardId));
-    scan = { daos: { items: [], next_cursor: null }, proposals: { items: [], next_cursor: null }, probe: 400, sources: [] };
+    scan = { daos: { items: [], next_cursor: null }, proposals: { items: [], next_cursor: null }, probe: 400, sources: [], proposalCalls: 0 };
     globalThis.fetch = (vi.fn(async (url: string) => {
         const u = new URL(url, "http://dex.test");
         if (u.searchParams.has("member")) return new Response("{}", { status: scan.probe });
@@ -49,6 +52,7 @@ beforeEach(() => {
             scan.sources.push(u.searchParams.get("source") ?? "");
             return new Response(JSON.stringify(scan.daos), { status: 200 });
         }
+        scan.proposalCalls++;
         return new Response(JSON.stringify(scan.proposals), { status: 200 });
     })) as unknown as typeof fetch;
 });
@@ -107,14 +111,20 @@ describe("RewardsStakingActionModal DAO notice", () => {
         scan.daos = { items: [{ id: 3, name: "Club", type: "stake" }], next_cursor: null };
         open("unstake", STAKE);
 
-        expect(await screen.findByText("Confirm Unstake")).toBeInTheDocument();
+        // the DAO is known and its open proposals were asked for: only then is "none open" a real answer
+        await waitFor(() => expect(scan.proposalCalls).toBe(1));
+        await settle();
+        expect(screen.getByText("Confirm Unstake")).toBeInTheDocument();
         expect(screen.queryByTestId(NOTICE)).toBeNull();
     });
 
     it("says nothing when no DAO uses the program", async () => {
         open("stake");
 
-        expect(await screen.findByRole("button", { name: /Confirm Stake/ })).toBeInTheDocument();
+        await waitFor(() => expect(scan.sources).toEqual([`sr/${reward.reward_id}`]));
+        await settle();
+        expect(screen.getByRole("button", { name: /Confirm Stake/ })).toBeInTheDocument();
         expect(screen.queryByTestId(NOTICE)).toBeNull();
+        expect(scan.proposalCalls).toBe(0);
     });
 });

@@ -57,4 +57,9 @@ describe("buildDaoSourceNotice", () => {
         wrap(<div>{buildDaoSourceNotice({daos, openProposals: []}, "stake")?.body}</div>);
         expect(screen.getByRole("link", {name: "Club"}).getAttribute("href")).toMatch(/\/dao\/3$/);
     });
+
+    it("encodes the DAO id in the link", () => {
+        wrap(<div>{buildDaoSourceNotice({daos: [{id: "a/b?c", name: "Odd"}], openProposals: []}, "stake")?.body}</div>);
+        expect(screen.getByRole("link", {name: "Odd"}).getAttribute("href")).toMatch(/\/dao\/a%2Fb%3Fc$/);
+    });
 });

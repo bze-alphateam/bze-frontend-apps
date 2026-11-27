@@ -34,7 +34,7 @@ const DaoNames = ({usage}: {usage: DaoSourceUsage}) => {
                 <span key={dao.id}>
                     {i > 0 && ', '}
                     {base
-                        ? <a href={`${base}/dao/${dao.id}`} target="_blank" rel="noopener noreferrer" style={{fontWeight: 600, textDecoration: 'underline'}}>{dao.name}</a>
+                        ? <a href={`${base}/dao/${encodeURIComponent(dao.id)}`} target="_blank" rel="noopener noreferrer" style={{fontWeight: 600, textDecoration: 'underline'}}>{dao.name}</a>
                         : <strong>{dao.name}</strong>}
                 </span>
             ))}
