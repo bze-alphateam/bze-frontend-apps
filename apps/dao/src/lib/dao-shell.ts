@@ -36,13 +36,13 @@ export function createdOnLine(dao: Pick<Dao, 'created_at'>, detail: Pick<ScanDao
     return day ? `Created on ${day}` : null;
 }
 
-/** A description longer than this many characters is taken as overflowing 3 lines even before it is measured. */
-export const DESCRIPTION_CLAMP_CHARS = 240;
-export const DESCRIPTION_CLAMP_LINES = 3;
+/** A description longer than this many characters is taken as overflowing 3 lines. */
+const DESCRIPTION_CLAMP_CHARS = 240;
+const DESCRIPTION_CLAMP_LINES = 3;
 
 /**
- * Whether a description surely does not fit in 3 lines: more than 3 lines of text, or a long text.
- * The page also measures the rendered text; either one shows "View all".
+ * Whether a description likely does not fit in 3 lines: more than 3 lines of text, or more than 240 characters.
+ * The fallback of "View all" where the browser cannot measure the rendered text.
  */
 export function descriptionOverflows(text: string): boolean {
     return text.split('\n').length > DESCRIPTION_CLAMP_LINES || text.length > DESCRIPTION_CLAMP_CHARS;

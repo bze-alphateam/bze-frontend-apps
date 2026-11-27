@@ -38,10 +38,12 @@ export const DescriptionText = ({text, clamp, testId = 'dao-description', ref}: 
 const Description = ({name, text}: {name: string; text: string}) => {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLParagraphElement>(null);
-    const [measured, setMeasured] = useState(false);
+    // null until the browser has measured the clamped text
+    const [measured, setMeasured] = useState<boolean | null>(null);
 
     // the clamped text is measured whenever its box changes (in a ResizeObserver callback, never in the effect's
-    // own turn); where there is no ResizeObserver the length rule decides alone
+    // own turn) and the measurement decides; only where there is no ResizeObserver (and before the first
+    // measurement, so the server and the first client render agree) the length rule stands in
     useEffect(() => {
         const el = ref.current;
         if (!el || typeof ResizeObserver === 'undefined') return;
@@ -50,7 +52,7 @@ const Description = ({name, text}: {name: string; text: string}) => {
         return () => observer.disconnect();
     }, [text]);
 
-    const overflows = measured || descriptionOverflows(text);
+    const overflows = measured ?? descriptionOverflows(text);
 
     return (
         <Flex direction="column" gap="4px" align="flex-start" minW="0" maxW="100%">

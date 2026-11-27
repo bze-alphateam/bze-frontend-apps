@@ -36,7 +36,6 @@ const HowToVote = ({dao}: {dao: Props['dao']}) => (
         {dao.type === 'DAO_TYPE_STATIC_LIST'
             ? staticJoinText(dao, false).map((line) => <chakra.p key={line} m="0">{line}</chakra.p>)
             : <chakra.p m="0">Stake in one of the sources this DAO votes with, then come back in a block or two: stake counts once it has joined.</chakra.p>}
-        <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}#join`}>How to join this DAO</NextLink></chakra.a>
     </Flex>
 );
 

@@ -46,6 +46,12 @@ describe("listDaos", () => {
         ]);
     });
 
+    it("sends the admin filter (the DAOs an account administers)", async () => {
+        const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], next_cursor: null, supported: true}}));
+        await client(get).listDaos({admin: "bze1dao", limit: 50});
+        expect(get).toHaveBeenCalledWith("daos", [["admin", "bze1dao"], ["limit", "50"]]);
+    });
+
     it("reads an answer without the supported flag as supported", async () => {
         const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], next_cursor: ""}}));
         expect(await client(get).listDaos({})).toEqual({items: [], next_cursor: null, supported: true, total: null});

@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DaoProposal} from "@bze/bze-ui-kit";
-import {createdOnLine, descriptionOverflows, DESCRIPTION_CLAMP_CHARS, proposalCounter} from "./dao-shell";
+import {createdOnLine, descriptionOverflows, proposalCounter} from "./dao-shell";
 
 const chain = (n: number) => ({ok: true as const, value: Array.from({length: n}, () => ({}) as DaoProposal)});
 const down = {ok: false as const};
@@ -58,6 +58,7 @@ describe("descriptionOverflows", () => {
 
     it("more than 3 lines or a long text does not", () => {
         expect(descriptionOverflows("a\nb\nc\nd")).toBe(true);
-        expect(descriptionOverflows("x".repeat(DESCRIPTION_CLAMP_CHARS + 1))).toBe(true);
+        expect(descriptionOverflows("x".repeat(241))).toBe(true);
+        expect(descriptionOverflows("x".repeat(240))).toBe(false);
     });
 });

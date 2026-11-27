@@ -68,7 +68,7 @@ export interface ScanDaoDetail {
     pending_admin: string | null;
     address_label: ScanLabel | null;
     controller: {address: string; label: ScanLabel | null; end_reason: string; path: string[]} | null;
-    /** Proposals in voting or with failed actions; missing on an older Scan. */
+    /** Proposals in voting (the same count as the list items' `proposals_open`); missing on an older Scan. */
     proposals_open?: number;
     /** Every proposal Scan has indexed for the DAO, cleaned-up ones included; missing on an older Scan. */
     proposals_total?: number;

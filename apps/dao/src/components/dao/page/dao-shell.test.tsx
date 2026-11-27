@@ -91,6 +91,7 @@ describe("the DAO header", () => {
 describe("the description", () => {
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.restoreAllMocks();
     });
 
     it("a short one has no View all", () => {
@@ -108,7 +109,8 @@ describe("the description", () => {
         expect(screen.getByTestId("dao-description-full").textContent).toBe(text);
     });
 
-    it("a short text that the browser measures as overflowing also gets View all", async () => {
+    /** A browser that measures the clamped text as `scroll` high in a `client` high box. */
+    const measuring = (scroll: number, client: number) => {
         class Observer {
             cb: () => void;
             constructor(cb: () => void) {
@@ -121,12 +123,23 @@ describe("the description", () => {
             disconnect() {}
         }
         vi.stubGlobal("ResizeObserver", Observer);
-        const scroll = vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(120);
-        const client = vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(72);
+        vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(scroll);
+        vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(client);
+    };
+
+    it("where the browser measures, a short text that overflows gets View all", async () => {
+        measuring(120, 72);
         renderShell();
         await waitFor(() => expect(screen.getByTestId("dao-description-all")).toBeInTheDocument());
-        scroll.mockRestore();
-        client.mockRestore();
+    });
+
+    it("where the browser measures, a long text that fits gets no View all (the length rule is only the fallback)", async () => {
+        measuring(72, 72);
+        const text = "A wide screen fits this. ".repeat(12);
+        expect(text.length).toBeGreaterThan(240);
+        renderShell({dao: pageDao({description: text})});
+        await waitFor(() => expect(screen.queryByTestId("dao-description-all")).toBeNull());
+        expect(screen.getByTestId("dao-description")).toHaveTextContent("A wide screen fits this.");
     });
 });
 

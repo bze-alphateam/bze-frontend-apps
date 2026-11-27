@@ -178,7 +178,7 @@ test.describe("who may propose", () => {
 
         await expect(page.getByTestId("gate-not-a-voter")).toContainText("Only the members of this DAO can submit a proposal");
         await expect(page.getByTestId("how-to-vote")).toContainText("Ask a member to propose adding you.");
-        await expect(page.getByTestId("how-to-vote").getByRole("link")).toHaveAttribute("href", "/dao/2#join");
+        await expect(page.getByTestId("how-to-vote").getByRole("link")).toHaveCount(0);
         await expect(page.getByTestId("submit-proposal")).toHaveCount(0);
     });
 

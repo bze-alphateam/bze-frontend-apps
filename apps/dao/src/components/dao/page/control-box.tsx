@@ -7,7 +7,7 @@ import {LuChevronDown} from 'react-icons/lu';
 import {HgCard} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {describeControl, type ControlStep} from '@/lib/dao-control';
-import {loadSubDaos, SUBDAO_PREVIEW, subDaoOpenText, type SubDaoDeps} from '@/lib/dao-subdaos';
+import {loadSubDaoCounts, loadSubDaos, SUBDAO_PREVIEW, subDaoOpenText, type SubDaoDeps} from '@/lib/dao-subdaos';
 import {daoTabHref} from '@/lib/dao-tabs';
 import type {ScanDaoDetail} from '@/lib/dao-types';
 import type {DaoView} from '@/lib/dao-view-loader';
@@ -47,7 +47,7 @@ const NoVote = ({here}: {here?: boolean}) => <chakra.strong color="fg">{here ? '
 const Step = ({step, nameOf}: {step: ControlStep; nameOf: NameOf}) => {
     if (step.kind === 'dao') {
         return step.dao
-            ? <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={daoTabHref(step.dao.id)}>{step.dao.name}</NextLink></chakra.a>
+            ? <chakra.a asChild color="hg.link" fontWeight="600" overflowWrap="anywhere"><NextLink href={daoTabHref(step.dao.id)}>{step.dao.name}</NextLink></chakra.a>
             : <AddressLine address={step.address} />;
     }
     if (step.kind === 'account') return <AddressLine address={step.address} name={nameOf(step.address)} />;
@@ -101,7 +101,7 @@ const AdminCell = ({view, wallet, detail, nameOf}: {view: DaoView; wallet: strin
             {kind === 'dao' && (
                 <>
                     {parent
-                        ? <chakra.a asChild fontSize="16px" fontWeight="700" color="hg.warning.text" alignSelf="flex-start"><NextLink href={daoTabHref(parent.id)} data-testid="control-headline">{parent.name}</NextLink></chakra.a>
+                        ? <chakra.a asChild fontSize="16px" fontWeight="700" color="hg.warning.text" alignSelf="flex-start" overflowWrap="anywhere"><NextLink href={daoTabHref(parent.id)} data-testid="control-headline">{parent.name}</NextLink></chakra.a>
                         : <chakra.strong fontSize="16px" color="hg.warning.text" overflowWrap="anywhere" data-testid="control-headline">{scanDao ?? nameOf(dao.admin) ?? dao.admin}</chakra.strong>}
                     <Line>Its parent DAO. Its proposals can act for this DAO and change its rules <NoVote here />.</Line>
                     {(state.steps.length > 3 || (state.steps.length > 2 && state.steps[state.steps.length - 1].kind !== 'voters')) && (
@@ -161,12 +161,20 @@ const VotersCell = ({view}: {view: DaoView}) => {
     );
 };
 
+const SubDaoOpen = ({open}: {open: number | null}) => (open === null ? null : (
+    <chakra.span flex="none" fontSize="13px" color={open > 0 ? 'fg' : 'hg.text.faint'} data-testid="subdao-open">{subDaoOpenText(open)}</chakra.span>
+));
+
 /** The DAOs this DAO administers, up to 5 rows and then "Show all"; nothing when there are none. */
 const SubDaos = ({deps, view}: {deps: SubDaoDeps; view: DaoView}) => {
     const {dao} = view;
     const [all, setAll] = useState(false);
     const [retry, setRetry] = useState(0);
     const list = useAsync(`${dao.id}:subdaos:${retry}`, () => loadSubDaos(deps, dao));
+    // the counts come from Scan once there are rows to count for; the rows never wait for them, and a failure leaves them out
+    const hasRows = !!list.data && list.data.length > 0;
+    const counts = useAsync(hasRows ? `${dao.id}:subdao-counts:${retry}` : null, () => loadSubDaoCounts(deps, dao));
+    const openOf = (id: string): number | null => counts.data?.get(id) ?? null;
 
     if (list.loading) return null;
     if (list.error || !list.data) {
@@ -192,9 +200,7 @@ const SubDaos = ({deps, view}: {deps: SubDaoDeps; view: DaoView}) => {
                                 <chakra.strong color="hg.link" overflowWrap="anywhere">{row.name}</chakra.strong>
                                 <chakra.span fontSize="13px" color="fg.muted">{governancePill(row.type)}</chakra.span>
                             </Flex>
-                            {row.open !== null && (
-                                <chakra.span flex="none" fontSize="13px" color={row.open > 0 ? 'fg' : 'hg.text.faint'} data-testid="subdao-open">{subDaoOpenText(row.open)}</chakra.span>
-                            )}
+                            <SubDaoOpen open={openOf(row.id)} />
                         </Flex>
                     </NextLink>
                 </chakra.a>

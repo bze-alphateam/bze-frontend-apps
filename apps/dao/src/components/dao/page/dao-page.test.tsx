@@ -56,7 +56,7 @@ const proposalDeps = {
     scan: {listForDao: vi.fn(async () => ({items: [], next_cursor: null}))},
 } as unknown as ProposalDeps;
 
-const subDaoDeps: SubDaoDeps = {chain: {getDaosByAdmin: async () => ({items: [], nextKey: null})}, scan: {daoDetail: async () => null}};
+const subDaoDeps: SubDaoDeps = {chain: {getDaosByAdmin: async () => ({items: [], nextKey: null})}, scan: {listDaos: async () => ({items: [], next_cursor: null, supported: true, total: null})}};
 
 function renderPage(dao: Dao, {search = "", address}: {search?: string; address?: string} = {}) {
     nav.search = search;

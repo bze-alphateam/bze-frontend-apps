@@ -17,16 +17,21 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
 import {DAO_ADDRESS, OTHER, OTHER_DAO_ADDRESS, THIRD, WALLET} from "@/test/composer-fixtures";
 import {pageDao, pageView} from "@/test/dao-page-fixtures";
 import type {SubDaoDeps} from "@/lib/dao-subdaos";
-import type {ScanDaoDetail} from "@/lib/dao-types";
+import type {ScanDao, ScanDaoDetail, ScanDaoList} from "@/lib/dao-types";
 import type {DaoView} from "@/lib/dao-view-loader";
 import {ControlBox} from "./control-box";
 
 const subDao = (id: number, over: Partial<Dao> = {}): Dao => pageDao({id: String(id), address: `bze1sub${id}`, admin: DAO_ADDRESS, name: `Sub ${id}`, ...over});
 
-function subDeps(subs: Dao[], open: (id: string) => number | undefined = (id) => Number(id) % 3): SubDaoDeps {
+const scanItem = (d: Dao, open: number | undefined): ScanDao => ({
+    id: Number(d.id), name: d.name, type: "static_list", address: d.address, admin: d.admin, self_governed: false, created_time: null, proposals_open: open as number,
+});
+
+/** The chain lists `subs`; Scan's `admin=` list answers each one's open count (`open`), or `scan` decides. */
+function subDeps(subs: Dao[], open: (id: string) => number | undefined = (id) => Number(id) % 3, scan?: SubDaoDeps["scan"]["listDaos"]): SubDaoDeps {
     return {
         chain: {getDaosByAdmin: vi.fn(async () => ({items: subs, nextKey: null}))},
-        scan: {daoDetail: vi.fn(async (id: string) => ({proposals_open: open(id)}) as ScanDaoDetail)},
+        scan: {listDaos: vi.fn(scan ?? (async () => ({items: subs.map((d) => scanItem(d, open(d.id))), next_cursor: null, supported: true, total: null})))},
     };
 }
 
@@ -137,10 +142,14 @@ describe("the SubDAOs", () => {
         expect(screen.queryByTestId("subdaos")).toBeNull();
     });
 
-    it("three: each with its name as a link, who governs it and its open count", async () => {
-        renderBox({subs: [subDao(1, {type: "DAO_TYPE_STAKE"}), subDao(3), subDao(5)]});
+    it("three: each with its name as a link, who governs it and its open count from one Scan list", async () => {
+        const deps = subDeps([subDao(1, {type: "DAO_TYPE_STAKE"}), subDao(3), subDao(5)]);
+        renderBox({deps});
         const section = await screen.findByTestId("subdaos");
         expect(section).toHaveTextContent("SubDAOs · 3");
+        await within(section).findAllByTestId("subdao-open");
+        expect(deps.scan.listDaos).toHaveBeenCalledTimes(1);
+        expect(deps.scan.listDaos).toHaveBeenCalledWith({admin: DAO_ADDRESS, cursor: null, limit: 50});
         const rows = within(section).getAllByTestId("subdao-row");
         expect(rows).toHaveLength(3);
         expect(rows[0]).toHaveAttribute("href", "/dao/1");
@@ -161,11 +170,53 @@ describe("the SubDAOs", () => {
         expect(screen.queryByTestId("subdaos-all")).toBeNull();
     });
 
-    it("Scan without counts: the rows stay, the counts are left out", async () => {
-        renderBox({deps: subDeps([subDao(1), subDao(2)], () => undefined)});
+    it("none: Scan is not asked", async () => {
+        const deps = subDeps([]);
+        renderBox({deps});
+        await vi.waitFor(() => expect(deps.chain.getDaosByAdmin).toHaveBeenCalled());
+        expect(deps.scan.listDaos).not.toHaveBeenCalled();
+    });
+
+    it("the rows show without waiting for Scan, and the counts fill in when it answers", async () => {
+        let answer: (list: ScanDaoList) => void = () => undefined;
+        const subs = [subDao(1), subDao(2)];
+        renderBox({deps: subDeps(subs, () => 2, () => new Promise<ScanDaoList>((resolve) => { answer = resolve; }))});
         const section = await screen.findByTestId("subdaos");
         expect(within(section).getAllByTestId("subdao-row")).toHaveLength(2);
         expect(within(section).queryByTestId("subdao-open")).toBeNull();
+        answer({items: subs.map((d) => scanItem(d, 2)), next_cursor: null, supported: true, total: null});
+        expect(await within(section).findAllByTestId("subdao-open")).toHaveLength(2);
+    });
+
+    it("Scan down: the rows stay, without counts", async () => {
+        const deps = subDeps([subDao(1), subDao(2)], () => 1, async () => { throw new Error("down"); });
+        renderBox({deps});
+        const section = await screen.findByTestId("subdaos");
+        await vi.waitFor(() => expect(deps.scan.listDaos).toHaveBeenCalled());
+        expect(within(section).getAllByTestId("subdao-row")).toHaveLength(2);
+        expect(within(section).queryByTestId("subdao-open")).toBeNull();
+        expect(screen.queryByTestId("subdaos-error")).toBeNull();
+    });
+
+    it("Scan without counts (or missing a DAO): the count of that row is left out", async () => {
+        renderBox({deps: subDeps([subDao(1), subDao(2)], (id) => (id === "1" ? 3 : undefined))});
+        const section = await screen.findByTestId("subdaos");
+        expect(await within(section).findByTestId("subdao-open")).toHaveTextContent("3 voting");
+        expect(within(section).getAllByTestId("subdao-open")).toHaveLength(1);
+    });
+
+    it("the chain failing: an error line, and Retry reads it again", async () => {
+        const getDaosByAdmin = vi.fn()
+            .mockRejectedValueOnce(new Error("rest"))
+            .mockResolvedValueOnce({items: [subDao(1)], nextKey: null});
+        const deps: SubDaoDeps = {chain: {getDaosByAdmin}, scan: {listDaos: vi.fn(async () => ({items: [], next_cursor: null, supported: true, total: null}))}};
+        renderBox({deps});
+        const error = await screen.findByTestId("subdaos-error");
+        expect(error).toHaveTextContent("could not be read");
+        fireEvent.click(within(error).getByRole("button", {name: "Retry"}));
+        expect(await screen.findByTestId("subdaos")).toHaveTextContent("Sub 1");
+        expect(getDaosByAdmin).toHaveBeenCalledTimes(2);
+        expect(screen.queryByTestId("subdaos-error")).toBeNull();
     });
 });
 

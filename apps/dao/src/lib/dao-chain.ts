@@ -134,7 +134,7 @@ export const liveRelationChain: RelationChain = {
 /** The DAO page's SubDAOs list: the chain's DAOs by admin, and Scan's detail for their open counts. */
 export const liveSubDaoDeps: SubDaoDeps = {
     chain: {getDaosByAdmin: (admin, pageKey) => liveRelationChain.getDaosByAdmin(admin, pageKey)},
-    scan: liveDaoViewDeps.scan,
+    scan: liveDaoDeps.scan,
 };
 
 export const liveRelationDeps: RelationDeps = {

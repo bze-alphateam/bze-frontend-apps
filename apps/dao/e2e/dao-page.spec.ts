@@ -179,6 +179,17 @@ test("a DAO that administers another lists it as a SubDAO, with its open count",
         status: 200,
         body: {...daosByAdminTwo.body, daos: [...daosByAdminTwo.body.daos, sub], pagination: {next_key: null, total: "2"}},
     });
+    // one Scan list filtered by admin gives the open counts
+    network.use("scan", {
+        path: "/api/scan/daos",
+        query: {admin: DAO_TWO, limit: "50"},
+        status: 200,
+        body: {
+            items: [{id: 4, name: "Stakers club", type: "stake", address: sub.address, admin: DAO_TWO, self_governed: false, created_time: "2026-11-04T10:00:00Z", proposals_open: 2}],
+            next_cursor: null,
+            supported: true,
+        },
+    });
     await page.goto("/dao/2");
 
     const subs = page.getByTestId("subdaos");
@@ -188,7 +199,23 @@ test("a DAO that administers another lists it as a SubDAO, with its open count",
     await expect(row).toHaveAttribute("href", "/dao/4");
     await expect(row).toContainText("Stakers club");
     await expect(row).toContainText("Governed by stakers");
-    await expect(row.getByTestId("subdao-open")).toHaveText("1 voting");
+    await expect(row.getByTestId("subdao-open")).toHaveText("2 voting");
+});
+
+test("with Scan down the SubDAOs still list, without counts", async ({page, network}) => {
+    const sub = {...daoFour.body.dao, admin: DAO_TWO, pending_admin: ""};
+    network.use("lcd", {
+        path: daosByAdminTwo.path,
+        query: daosByAdminTwo.query,
+        status: 200,
+        body: {...daosByAdminTwo.body, daos: [...daosByAdminTwo.body.daos, sub], pagination: {next_key: null, total: "2"}},
+    });
+    network.use("scan", {path: "/api/scan/daos", query: {admin: DAO_TWO, limit: "50"}, status: 502, body: {error: "BZE Scan unavailable"}});
+    await page.goto("/dao/2");
+
+    const row = page.getByTestId("subdaos").getByTestId("subdao-row");
+    await expect(row).toContainText("Stakers club");
+    await expect(row.getByTestId("subdao-open")).toHaveCount(0);
 });
 
 test("an unknown DAO is not found, and so is an id that is no number", async ({page}) => {
@@ -221,10 +248,18 @@ test("a node on v8.2.x shows the not-supported state", async ({page, network}) =
     await expect(page.getByText("DAOs arrive with the v8.3.0 network upgrade")).toBeVisible();
 });
 
-test("on a phone the page does not scroll sideways", async ({page}) => {
-    await page.setViewportSize({width: 375, height: 812});
+test("on a phone: voting power first, then who controls it, and no sideways scroll", async ({page}) => {
+    await installFakeKeplr(page, WALLET);
     await page.goto("/dao/4");
+    await connectWallet(page);
+    // connected at the desktop width (where the header has the Connect button), then shrunk to a phone
+    await page.setViewportSize({width: 375, height: 812});
+    await expect(page.getByTestId("power-headline")).toBeVisible();
     await expect(page.getByTestId("control-panel")).toBeVisible();
+    const top = async (testId: string) => (await page.getByTestId(testId).boundingBox())?.y ?? Number.NaN;
+    expect(await top("power-panel")).toBeLessThan(await top("control-panel"));
+    expect(await top("control-panel")).toBeLessThan(await top("treasury-panel"));
+    expect(await top("treasury-panel")).toBeLessThan(await top("voters-panel"));
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 });

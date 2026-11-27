@@ -3,7 +3,7 @@
 import {Suspense, useState} from 'react';
 import NextLink from 'next/link';
 import {useSearchParams} from 'next/navigation';
-import {chakra, Flex} from '@chakra-ui/react';
+import {Box, chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
 import {getChainName, PageContainer, PageState, Shimmer} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
@@ -58,13 +58,25 @@ const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoV
                     alignItems="start"
                     data-testid="overview-tab"
                 >
-                    <Flex direction="column" gap="16px" minW="0">
-                        <ControlBox view={view} wallet={wallet} detail={detail} nameOf={nameOf} subDaoDeps={subDaoDeps} />
-                        <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} />
+                    {/* desktop: two columns; on a phone the columns dissolve (display: contents) and the
+                        cards follow the phone board's order: voting power, who controls it, treasury, who votes */}
+                    <Flex direction="column" gap="16px" minW="0" display={{base: 'contents', lg: 'flex'}}>
+                        <Box minW="0" order={{base: 2, lg: 0}}>
+                            <ControlBox view={view} wallet={wallet} detail={detail} nameOf={nameOf} subDaoDeps={subDaoDeps} />
+                        </Box>
+                        <Box minW="0" order={{base: 4, lg: 0}}>
+                            <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} />
+                        </Box>
                     </Flex>
-                    <Flex direction="column" gap="16px" minW="0">
-                        {wallet && <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />}
-                        <TreasuryPanel treasury={view.treasury} />
+                    <Flex direction="column" gap="16px" minW="0" display={{base: 'contents', lg: 'flex'}}>
+                        {wallet && (
+                            <Box minW="0" order={{base: 1, lg: 0}}>
+                                <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />
+                            </Box>
+                        )}
+                        <Box minW="0" order={{base: 3, lg: 0}}>
+                            <TreasuryPanel treasury={view.treasury} />
+                        </Box>
                     </Flex>
                 </chakra.div>
             )}

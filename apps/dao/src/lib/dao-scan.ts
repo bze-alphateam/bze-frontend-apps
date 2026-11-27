@@ -40,6 +40,8 @@ export interface DaoListRequest {
     /** The DAOs whose pending admin is this account (BFE-368). */
     pendingAdmin?: string;
     sources?: string[];
+    /** The DAOs this account administers (the DAO page's SubDAOs). */
+    admin?: string;
     cursor?: string | null;
     /** A numbered page (1-based, BFE-423): the answer carries `total`. Never together with `cursor`. */
     page?: number;
@@ -95,6 +97,7 @@ export function createDaoScanClient(get: ScanGetter): DaoScanClient {
             if (request.member) query.push(['member', request.member]);
             if (request.pendingAdmin) query.push(['pending_admin', request.pendingAdmin]);
             for (const source of request.sources ?? []) query.push(['source', source]);
+            if (request.admin) query.push(['admin', request.admin]);
             if (request.cursor) query.push(['cursor', request.cursor]);
             if (request.page) query.push(['page', String(request.page)]);
             if (request.limit) query.push(['limit', String(request.limit)]);
