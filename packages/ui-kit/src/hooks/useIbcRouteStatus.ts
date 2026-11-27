@@ -9,7 +9,23 @@ export interface UseIbcRouteStatusResult {
     /** `denom` is the BZE-side denom; exact, case-sensitive match. */
     isDenomBlocked: (denom: string | undefined) => boolean;
     loading: boolean;
+    /**
+     * Re-reads both lists (the readers' 60 s cache keeps it cheap) and returns the fresh checks,
+     * for a last look right before signing. Also updates the hook's own state.
+     */
+    refresh: () => Promise<Pick<UseIbcRouteStatusResult, 'isChannelClosed' | 'isDenomBlocked'>>;
 }
+
+type Lists = {channels: string[]; denoms: string[]};
+
+const checksFor = (lists: Lists | undefined) => {
+    const channels = new Set(lists?.channels ?? []);
+    const denoms = new Set(lists?.denoms ?? []);
+    return {
+        isChannelClosed: (id: string | undefined) => !!id && channels.has(id),
+        isDenomBlocked: (d: string | undefined) => !!d && denoms.has(d),
+    };
+};
 
 /**
  * Guardian stops on IBC routes (chain v8.3.0): closed transfer channels and blocked denoms.
@@ -18,7 +34,7 @@ export interface UseIbcRouteStatusResult {
  * that cheap.
  */
 export function useIbcRouteStatus(refreshKey?: unknown): UseIbcRouteStatusResult {
-    const [state, setState] = useState<{channels: string[]; denoms: string[]} | undefined>(undefined);
+    const [state, setState] = useState<Lists | undefined>(undefined);
 
     useEffect(() => {
         let cancelled = false;
@@ -28,11 +44,13 @@ export function useIbcRouteStatus(refreshKey?: unknown): UseIbcRouteStatusResult
         return () => { cancelled = true; };
     }, [refreshKey]);
 
-    const channels = useMemo(() => new Set(state?.channels ?? []), [state]);
-    const denoms = useMemo(() => new Set(state?.denoms ?? []), [state]);
+    const checks = useMemo(() => checksFor(state), [state]);
 
-    const isChannelClosed = useCallback((id: string | undefined) => !!id && channels.has(id), [channels]);
-    const isDenomBlocked = useCallback((d: string | undefined) => !!d && denoms.has(d), [denoms]);
+    const refresh = useCallback(async () => {
+        const [channels, denoms] = await Promise.all([getClosedChannels(), getBlockedDenoms()]);
+        setState({channels, denoms});
+        return checksFor({channels, denoms});
+    }, []);
 
-    return {isChannelClosed, isDenomBlocked, loading: state === undefined};
+    return {...checks, loading: state === undefined, refresh};
 }
