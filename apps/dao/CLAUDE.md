@@ -6,27 +6,29 @@ Next.js frontend for the BeeZee chain's x/dao module (chain v8.3.0). React 19, C
 
 ## Architecture
 
-All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builders, validation and tally rules live in `query/dao.ts` and `utils/dao/`). Same shell as staking: an app-specific `AssetsProvider` extends the lib's base `AssetsContextType`, Hive Glow system with the DAO accent (`createHiveGlowSystem('dao')`), shared `AppHeader` with the nav items "DAOs" (`/`) and "Create" (`/create`, reserved for the create flow).
+All shared code comes from `@bze/bze-ui-kit` (the x/dao queries, message builders, validation and tally rules live in `query/dao.ts` and `utils/dao/`). Same shell as staking: an app-specific `AssetsProvider` extends the lib's base `AssetsContextType`, Hive Glow system with the DAO accent (`createHiveGlowSystem('dao')`), shared `AppHeader` with the one nav item "DAOs" (`/`). **There is no DAO creation in this app** (BFE-424): it happens in the Factory (`/dao/new`, ui-kit `CreateDaoFlow`, which stays in ui-kit); `/create` is a plain 404.
 
 ```
 src/
-  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (the proposal page, BFE-373), `/dao/[id]/admin` (the admin console, BFE-377), `/create` (the ui-kit `CreateDaoFlow`, BFE-378; its unsent draft lives in localStorage via `lib/create-draft.ts`) + app/api/scan (proxy)
+  app/              # pages: `/` (home), `/dao/[id]` (the DAO page, BFE-372) and `/proposal/[id]` (the proposal page, BFE-373), `/dao/[id]/admin` (the admin console, BFE-377) + app/api/scan (proxy)
   components/
     dao/page/       # the DAO page: dao-page (loading + tabs), header, panels (control, treasury, rules), voters-panels (who votes, how to join), my-power, history-tab, panel (shared bits)
-    dao/            # home page parts: home (composition), all-daos (type filter, search, Load more), my-daos, open-proposals, explainer, dao-card, unsupported
+    dao/            # home page parts (BFE-424): home (hero + the DAOs card: filters, notices, list, footer; holds the URL state and the list/My DAOs choice), dao-list (DaoTable on md and up, DaoCards below it), home-filters (My DAOs switch, type control, search box), home-notices (Reduced list, My DAOs notices), unsupported
+    ui/pagination   # Pagination (numbered: 36 px buttons on desktop, "Page n of N" with 44 px buttons on a phone) and PrevNext, with the count line; the DAO page's proposals table reuses them
     dao/page/proposals-tab.tsx   # the DAO page's Proposals tab (Active / Finished)
     proposal/       # the proposal page: proposal-page (loading + composition), status-pill, tally-panel, actions-panel, timeline-money, votes-panel, my-vote, actions-slot (the transaction buttons, BFE-374)
     admin/          # the admin console (BFE-377): admin-page (loading, the DAO re-read after a transaction), console (the role gate, the one flow, back to the DAO page), panels (run actions as the DAO, nominate, withdraw, hand over, accept)
     propose/        # the composer: propose-page (loads the DAO view, holds the form state and the draft), basics, actions-list, action-forms (one form per registry entry), review, submit-area
     ui/             # provider, colour mode, navbar, inner hero, plain-text (untrusted text)
   contexts/assets_context.tsx   # DAO AssetsProvider — extends lib's base AssetsContextType
-  hooks/            # useAsync (key-derived loading, no setState in effects), useDaoList (first page + Load more), useDaoContext, navigation, chain listener
+  hooks/            # useAsync (key-derived loading, no setState in effects), useDaoList (a page of the All DAOs list: numbered, or by cursor with a trail), useHomeUrl (?page ?type ?q ?mine, needs a Suspense boundary), useDaoContext, navigation, chain listener
   lib/
     actions/        # the action registry (BFE-375): types, registry, pay, custom (untrusted JSON message), signers (who signs a type), amount
     propose/        # composer logic: compose (limits, messages, size), eligibility (who may propose), cost (cost + deposit + balance), draft (versioned localStorage), describe (read built messages back through BFE-373's describers), expedite, submit-result (proposal id from the tx events)
-    scan-proxy.ts   # server side of /api/scan: only the DAO routes, per-route query allowlist (repeated params kept), finished DAO proposals kept forever
-    dao-scan.ts     # client of the proxy: listDaos / openProposals / filtersSupported probe; getter injected
-    dao-loader.ts   # the home page's reads with their fallbacks (loadDaoPage, loadMyDaos, loadOpenProposals); Scan and chain injected as interfaces
+    scan-proxy.ts   # server side of /api/scan: only the DAO routes (`daos` takes `page`; there is no cross-DAO `dao-proposals` list), per-route query allowlist (repeated params kept), finished DAO proposals kept forever
+    dao-scan.ts     # client of the proxy: listDaos (type, q, member, pendingAdmin, sources, cursor | page, limit; `total` null when the answer has none) / filtersSupported probe; getter injected
+    dao-loader.ts   # the home page's reads with their fallbacks (loadDaoPage, loadMyDaos); Scan and chain injected as interfaces
+    home-query.ts, pagination.ts, home-list.ts   # pure: the home URL (parse / build, `searchTerm`), the pager's page list and slicing, the count and role wording
     dao-chain.ts    # composition root: ui-kit's chain queries + the browser Scan client
     dao-view-loader.ts  # the DAO page's reads (loadDaoView: chain; loadDaoExtras / loadHistoryPage / loadMyVotes: Scan); chain and Scan injected, secondary reads settle as Part<T>
     dao-page-scan.ts    # Scan client of the page: daos/{id}, daos/{id}/history, dao-votes?voter=
@@ -39,10 +41,18 @@ src/
 
 ## Data
 
-- **Lists come from BZE Scan** (`/api/v1/daos`, `/api/v1/dao-proposals`) through the app's own `/api/scan` route (Scan sends no CORS headers for this app). Scan's `type` values are `static_list` / `stake`; proposal statuses are lower-case chain names.
-- **Fallbacks**: Scan down → the All DAOs list reads the chain's `/bze/dao/daos` (no filters, no open counts, the filter runs on the page) with a notice; "My DAOs" always keeps the administered DAOs from the chain (`daos_by_admin`). Scan's `supported: false`, or the chain's `isDaoModuleSupported()` false while Scan is down, is the one friendly "arrive with v8.3.0" state. A chain network failure is an error, never "not supported".
-- **Scan filters of BFE-368** (`member`, `source`, `q`, the cross-DAO `dao-proposals` list): a Scan without them *ignores* the unknown parameters and answers the whole list, so `filtersSupported()` probes once with an invalid `member` address (a newer Scan answers 400, an older one 200). Without them My DAOs lists only the administered DAOs (with a notice), the name search runs on the loaded page and the open-proposals feed is hidden.
+- **Lists come from BZE Scan** (`/api/v1/daos`, `/api/v1/daos/{id}/proposals`, `/api/v1/dao-proposals/{id}`) through the app's own `/api/scan` route (Scan sends no CORS headers for this app). Scan's `type` values are `static_list` / `stake`; proposal statuses are lower-case chain names.
+- **Fallbacks**: Scan down → the home list reads the chain's `/bze/dao/daos` (50 per key page, **unfiltered**: no type filter or search, which are hidden, and no open counts) under the amber "Reduced list" notice with a Retry that asks Scan again; "My DAOs" always keeps the administered DAOs from the chain (`daos_by_admin`). Scan's `supported: false`, or the chain's `isDaoModuleSupported()` false while Scan is down, is the one friendly "arrive with v8.3.0" state. A chain network failure is an error, never "not supported".
+- **Scan filters of BFE-368** (`member`, `source`, `q`, `pending_admin`): a Scan without them *ignores* the unknown parameters and answers the whole list, so `filtersSupported()` probes once with an invalid `member` address (a newer Scan answers 400, an older one 200). Without them My DAOs lists only the administered DAOs (with a notice) and the name search runs on the loaded page.
 - **My DAOs** = administered (chain) ∪ `member` (Scan) ∪ `source` (Scan, the wallet's x/rewards positions as `sr/{reward_id}` / `dr/{staking_denom}`, 20 per request). One row per DAO with every reason ("Admin", "Member", "Staker"); self-owned DAOs are never "Admin".
+
+## The home page (BFE-424)
+
+- **One card, one list**: hero, then a "DAOs" card with the filters (My DAOs switch with a wallet, type All / Member list / Stakers, name search), the notices, the list and the footer. A table from md up, cards below it (both are in the page, a breakpoint shows one; tests and specs use distinct test ids for each). The type's words are "A member list" / "Stakers" (no admin info). No explainer, no open-proposals feed, no logo.
+- **URL state** (`lib/home-query.ts`): `?page` (omitted for 1), `?type=static_list|stake`, `?q` (after the 300 ms debounce, never written at mount), `?mine=1` (counts only with a wallet). A page change pushes, a filter change replaces and drops `page`; invalid values are ignored.
+- **Paging modes** (`loadDaoPage` returns `mode`): **pages**: Scan with BFE-423 answers `page` + `total` (numbered pager, count line from the rows returned; a page past the end replaces the URL with the last page). **cursor**: a Scan that answers a `page` request without a numeric total (remembered per Scan client, like `filtersSupported()`) and the chain fallback: only Prev / Next over a trail of the visited cursors, "Page n", `?page` ignored. Never `page` together with `cursor` (Scan answers 400). **My DAOs on**: every row of `loadMyDaos` is filtered here (`matchesFilter`) and paged in the browser, 20 per page, count "n of your DAOs"; the all-DAOs list then only runs for page 1 so the node and Scan states still show.
+- **Roles** (the You column, the pills on a card) come from `loadMyDaos`, read once per address and matched by DAO id; empty while loading or if it failed.
+- **Proxy routes**: `daos` (with `page`), `daos/{id}`, `daos/{id}/history`, `daos/{id}/proposals`, `dao-proposals/{id}` (+ `/votes`), `dao-votes`. The cross-DAO `dao-proposals` list is gone.
 
 ## Tests
 

@@ -1,4 +1,4 @@
-import type {ScanDao, ScanDaoList, ScanProposalList} from './dao-types';
+import type {ScanDao, ScanDaoList} from './dao-types';
 
 export type Query = [string, string][];
 
@@ -41,15 +41,15 @@ export interface DaoListRequest {
     pendingAdmin?: string;
     sources?: string[];
     cursor?: string | null;
+    /** A numbered page (1-based, BFE-423): the answer carries `total`. Never together with `cursor`. */
+    page?: number;
     limit?: number;
 }
 
 export interface DaoScanClient {
     listDaos(request: DaoListRequest): Promise<ScanDaoList>;
-    /** Open proposals across all DAOs, soonest end first. */
-    openProposals(cursor?: string | null, limit?: number): Promise<ScanProposalList>;
     /**
-     * Whether Scan runs the filters of BFE-368 (`member`, `source`, `q`, the cross-DAO proposals).
+     * Whether Scan runs the filters of BFE-368 (`member`, `source`, `q`, `pending_admin`).
      * A Scan without them ignores the unknown parameters and answers the whole list, so it is
      * probed once: with an invalid `member` address a newer Scan answers 400 where an older one
      * answers 200. Only that definite answer is remembered; a probe that fails (thrown, 5xx) is "unknown" and asked again on the next call.
@@ -59,7 +59,7 @@ export interface DaoScanClient {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
-const asList = <T,>(body: unknown): {items: T[]; next_cursor: string | null; supported: boolean} => {
+const asList = <T,>(body: unknown): {items: T[]; next_cursor: string | null; supported: boolean; total: number | null} => {
     if (!isObject(body) || !Array.isArray(body.items)) {
         throw new ScanUnavailableError('BZE Scan answered with an unexpected body');
     }
@@ -68,6 +68,8 @@ const asList = <T,>(body: unknown): {items: T[]; next_cursor: string | null; sup
         next_cursor: typeof body.next_cursor === 'string' && body.next_cursor ? body.next_cursor : null,
         // an answer without the flag comes from a Scan that predates it: x/dao is there
         supported: body.supported !== false,
+        // only a Scan with BFE-423 answers a `page` request with the total
+        total: typeof body.total === 'number' && Number.isInteger(body.total) && body.total >= 0 ? body.total : null,
     };
 };
 
@@ -94,15 +96,9 @@ export function createDaoScanClient(get: ScanGetter): DaoScanClient {
             if (request.pendingAdmin) query.push(['pending_admin', request.pendingAdmin]);
             for (const source of request.sources ?? []) query.push(['source', source]);
             if (request.cursor) query.push(['cursor', request.cursor]);
+            if (request.page) query.push(['page', String(request.page)]);
             if (request.limit) query.push(['limit', String(request.limit)]);
             return asList<ScanDao>(await read('daos', query)) as ScanDaoList;
-        },
-
-        async openProposals(cursor, limit) {
-            const query: Query = [['status', 'voting']];
-            if (cursor) query.push(['cursor', cursor]);
-            if (limit) query.push(['limit', String(limit)]);
-            return asList(await read('dao-proposals', query)) as ScanProposalList;
         },
 
         filtersSupported() {

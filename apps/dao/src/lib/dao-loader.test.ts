@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from "vitest";
 import type {Dao} from "@bze/bze-ui-kit";
-import {loadDaoPage, loadMyDaos, loadOpenProposals, type DaoChain, type DaoDeps} from "./dao-loader";
+import {loadDaoPage, loadMyDaos, type DaoChain, type DaoDeps} from "./dao-loader";
 import type {DaoScanClient} from "./dao-scan";
 import type {ScanDao, ScanDaoList} from "./dao-types";
 
@@ -16,13 +16,12 @@ const chainDao = (id: number, over: Partial<Dao> = {}): Dao => ({
     description: "", config: {} as Dao["config"], members: [], created_at: "1790000000", admin_seq: "0", pending_admin_seq: "0", ...over,
 });
 
-const list = (items: ScanDao[], over: Partial<ScanDaoList> = {}): ScanDaoList => ({items, next_cursor: null, supported: true, ...over});
+const list = (items: ScanDao[], over: Partial<ScanDaoList> = {}): ScanDaoList => ({items, next_cursor: null, supported: true, total: null, ...over});
 
 function deps(scan: Partial<DaoScanClient> = {}, chain: Partial<DaoChain> = {}): DaoDeps & {scan: DaoScanClient; chain: DaoChain} {
     return {
         scan: {
             listDaos: vi.fn(async () => list([])),
-            openProposals: vi.fn(async () => ({items: [], next_cursor: null, supported: true})),
             filtersSupported: vi.fn(async () => 'yes' as const),
             ...scan,
         },
@@ -39,94 +38,123 @@ function deps(scan: Partial<DaoScanClient> = {}, chain: Partial<DaoChain> = {}):
 }
 
 const FILTER = {kind: "" as const, search: ""};
+const FIRST = {page: 1};
 
 describe("loadDaoPage", () => {
-    it("reads Scan's page and sends the type filter and the search", async () => {
-        const d = deps({listDaos: vi.fn(async () => list([scanDao(2, {proposals_open: 3})], {next_cursor: "c2"}))});
-        const result = await loadDaoPage(d, {kind: "stake", search: "club"}, null);
+    it("reads Scan's numbered page with the type filter and the search, and returns the total", async () => {
+        const d = deps({listDaos: vi.fn(async () => list([scanDao(2, {proposals_open: 3})], {total: 24, next_cursor: "c2"}))});
+        const result = await loadDaoPage(d, {kind: "stake", search: "club"}, {page: 2});
 
-        expect(d.scan.listDaos).toHaveBeenCalledWith({type: "stake", q: "club", cursor: null, limit: 20});
-        expect(result).toMatchObject({state: "ok", source: "scan", next: "c2"});
+        expect(d.scan.listDaos).toHaveBeenCalledWith({type: "stake", q: "club", page: 2, limit: 20});
+        expect(result).toMatchObject({state: "ok", source: "scan", mode: "pages", total: 24});
         expect(result.state === "ok" && result.items[0]).toMatchObject({id: "2", proposalsOpen: 3});
     });
 
     it("does not send a search shorter than two characters", async () => {
         const d = deps();
-        await loadDaoPage(d, {kind: "", search: " a "}, null);
+        await loadDaoPage(d, {kind: "", search: " a "}, FIRST);
         expect(d.scan.listDaos).toHaveBeenCalledWith(expect.objectContaining({q: undefined}));
     });
 
     it("filters the name on the page itself when Scan ignores the search (before BFE-368)", async () => {
         const d = deps({
             filtersSupported: vi.fn(async () => 'no' as const),
-            listDaos: vi.fn(async () => list([scanDao(1, {name: "Founders"}), scanDao(2, {name: "Stakers club"})])),
+            listDaos: vi.fn(async () => list([scanDao(1, {name: "Founders"}), scanDao(2, {name: "Stakers club"})], {total: 2})),
         });
-        const result = await loadDaoPage(d, {kind: "", search: "club"}, null);
+        const result = await loadDaoPage(d, {kind: "", search: "club"}, FIRST);
 
         expect(d.scan.listDaos).toHaveBeenCalledWith(expect.objectContaining({q: undefined}));
         expect(result.state === "ok" && result.items.map((c) => c.name)).toEqual(["Stakers club"]);
     });
 
+    it("keeps a total of zero as a numbered, empty list", async () => {
+        const d = deps({listDaos: vi.fn(async () => list([], {total: 0}))});
+        expect(await loadDaoPage(d, FILTER, FIRST)).toMatchObject({state: "ok", mode: "pages", total: 0, items: []});
+    });
+
     it("is the unsupported state when Scan says the node has no x/dao", async () => {
         const d = deps({listDaos: vi.fn(async () => list([], {supported: false}))});
-        expect(await loadDaoPage(d, FILTER, null)).toEqual({state: "unsupported"});
+        expect(await loadDaoPage(d, FILTER, FIRST)).toEqual({state: "unsupported"});
         expect(d.chain.getDaos).not.toHaveBeenCalled();
+    });
+
+    describe("a Scan without totals (before BFE-423)", () => {
+        // such a Scan ignores `page` and answers the first cursor page
+        const older = () => deps({
+            listDaos: vi.fn(async (req) => (req.cursor === "c1" ? list([scanDao(1)]) : list([scanDao(3), scanDao(2)], {next_cursor: "c1"}))),
+        });
+
+        it("answers by cursor from the first answer on, whatever page the URL asked for", async () => {
+            const d = older();
+            const first = await loadDaoPage(d, FILTER, {page: 3});
+
+            expect(first).toMatchObject({state: "ok", mode: "cursor", total: null, next: "c1"});
+            expect(d.scan.listDaos).toHaveBeenCalledWith({page: 3, limit: 20});
+        });
+
+        it("then reads the later pages by cursor and never sends a page again", async () => {
+            const d = older();
+            await loadDaoPage(d, FILTER, FIRST);
+            const second = await loadDaoPage(d, FILTER, {page: 1, cursor: "c1"});
+
+            expect(d.scan.listDaos).toHaveBeenLastCalledWith({cursor: "c1", limit: 20});
+            expect(second).toMatchObject({mode: "cursor", next: null});
+            expect(second.state === "ok" && second.items.map((c) => c.id)).toEqual(["1"]);
+        });
+
+        it("remembers the verdict for the next list, too", async () => {
+            const d = older();
+            await loadDaoPage(d, FILTER, FIRST);
+            await loadDaoPage(d, {kind: "stake", search: ""}, FIRST);
+            expect(d.scan.listDaos).toHaveBeenLastCalledWith({type: "stake", cursor: null, limit: 20});
+        });
+
+        it("is decided per Scan client", async () => {
+            await loadDaoPage(older(), FILTER, FIRST);
+            const fresh = deps({listDaos: vi.fn(async () => list([], {total: 0}))});
+            await loadDaoPage(fresh, FILTER, FIRST);
+            expect(fresh.scan.listDaos).toHaveBeenCalledWith({page: 1, limit: 20});
+        });
     });
 
     describe("Scan down", () => {
         const down = () => ({listDaos: vi.fn(async () => { throw new Error("down"); })});
 
-        it("falls back to the chain's list, filtered here, without open counts", async () => {
+        it("falls back to the chain's first page: unfiltered, by key, without open counts or a total", async () => {
             const d = deps(down(), {
                 getDaos: vi.fn(async () => ({
                     items: [chainDao(1, {name: "Founders"}), chainDao(2, {name: "Stakers club", type: "DAO_TYPE_STAKE"})],
                     nextKey: "k2",
                 })),
             });
-            const result = await loadDaoPage(d, {kind: "stake", search: ""}, null);
+            const result = await loadDaoPage(d, {kind: "stake", search: "club"}, {page: 2});
 
-            expect(result).toMatchObject({state: "ok", source: "chain", next: "k2"});
-            expect(result.state === "ok" && result.items).toEqual([expect.objectContaining({id: "2", kind: "stake", proposalsOpen: null})]);
+            expect(result).toMatchObject({state: "ok", source: "chain", mode: "cursor", total: null, next: "k2"});
+            expect(result.state === "ok" && result.items.map((c) => [c.id, c.proposalsOpen])).toEqual([["1", null], ["2", null]]);
         });
 
         it("is the unsupported state on a v8.2.x node", async () => {
             const d = deps(down(), {isSupported: vi.fn(async () => false)});
-            expect(await loadDaoPage(d, FILTER, null)).toEqual({state: "unsupported"});
+            expect(await loadDaoPage(d, FILTER, FIRST)).toEqual({state: "unsupported"});
         });
 
         it("throws when the chain cannot be reached either: an error, not 'unsupported'", async () => {
             const d = deps(down(), {isSupported: vi.fn(async () => { throw new Error("network"); })});
-            await expect(loadDaoPage(d, FILTER, null)).rejects.toThrow("network");
+            await expect(loadDaoPage(d, FILTER, FIRST)).rejects.toThrow("network");
         });
 
         it("keeps reading the chain's pages once the list is on the chain", async () => {
             const d = deps(down());
-            await loadDaoPage(d, FILTER, "k2", "chain");
+            await loadDaoPage(d, FILTER, {page: 1, cursor: "k2", source: "chain"});
             expect(d.scan.listDaos).not.toHaveBeenCalled();
             expect(d.chain.getDaos).toHaveBeenCalledWith(expect.objectContaining({key: "k2"}));
         });
 
         it("does not swap sources in the middle of a Scan list", async () => {
             const d = deps(down());
-            await expect(loadDaoPage(d, FILTER, "c2", "scan")).rejects.toThrow("down");
+            await expect(loadDaoPage(d, FILTER, {page: 1, cursor: "c2", source: "scan"})).rejects.toThrow("down");
             expect(d.chain.getDaos).not.toHaveBeenCalled();
         });
-    });
-});
-
-describe("loadOpenProposals", () => {
-    const proposal = {id: 4, dao_id: 1, title: "Fund", status: "voting", voting_end: "2026-12-01T00:00:00Z", dao: {id: 1, name: "Dao 1", type: "stake"}};
-
-    it("lists the open proposals", async () => {
-        const d = deps({openProposals: vi.fn(async () => ({items: [proposal], next_cursor: null, supported: true}))});
-        expect(await loadOpenProposals(d)).toEqual([proposal]);
-        expect(d.scan.openProposals).toHaveBeenCalledWith(null, 10);
-    });
-
-    it("is empty without the BFE-368 route, when the node is not supported, and when Scan is down", async () => {
-        expect(await loadOpenProposals(deps({filtersSupported: vi.fn(async () => 'no' as const)}))).toEqual([]);
-        expect(await loadOpenProposals(deps({openProposals: vi.fn(async () => ({items: [proposal], next_cursor: null, supported: false}))}))).toEqual([]);
-        expect(await loadOpenProposals(deps({openProposals: vi.fn(async () => { throw new Error("down"); })}))).toEqual([]);
     });
 });
 

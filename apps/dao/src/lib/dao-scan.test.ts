@@ -48,20 +48,30 @@ describe("listDaos", () => {
 
     it("reads an answer without the supported flag as supported", async () => {
         const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], next_cursor: ""}}));
-        expect(await client(get).listDaos({})).toEqual({items: [], next_cursor: null, supported: true});
+        expect(await client(get).listDaos({})).toEqual({items: [], next_cursor: null, supported: true, total: null});
+    });
+
+    it("sends the page before the limit and reads the total", async () => {
+        const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], next_cursor: "c1", supported: true, total: 24}}));
+        const answer = await client(get).listDaos({type: "stake", page: 2, limit: 20});
+
+        expect(get).toHaveBeenCalledWith("daos", [["type", "stake"], ["page", "2"], ["limit", "20"]]);
+        expect(answer.total).toBe(24);
+    });
+
+    it("reads a zero total as zero, and a missing or unreadable total as null", async () => {
+        const answer = (total: unknown) => client(async () => ({status: 200, body: {items: [], supported: true, ...(total === undefined ? {} : {total})}})).listDaos({page: 1});
+
+        expect((await answer(0)).total).toBe(0);
+        expect((await answer(undefined)).total).toBeNull();
+        expect((await answer("24")).total).toBeNull();
+        expect((await answer(-1)).total).toBeNull();
+        expect((await answer(2.5)).total).toBeNull();
     });
 
     it("throws ScanUnavailableError on an error status, a thrown fetch and a body without items", async () => {
         await expect(client(async () => ({status: 502, body: null})).listDaos({})).rejects.toBeInstanceOf(ScanUnavailableError);
         await expect(client(async () => { throw new Error("net"); }).listDaos({})).rejects.toBeInstanceOf(ScanUnavailableError);
         await expect(client(async () => ({status: 200, body: {nope: 1}})).listDaos({})).rejects.toBeInstanceOf(ScanUnavailableError);
-    });
-});
-
-describe("openProposals", () => {
-    it("asks for the voting proposals", async () => {
-        const get = vi.fn<ScanGetter>(async () => ({status: 200, body: {items: [], next_cursor: null}}));
-        await client(get).openProposals(null, 10);
-        expect(get).toHaveBeenCalledWith("dao-proposals", [["status", "voting"], ["limit", "10"]]);
     });
 });
