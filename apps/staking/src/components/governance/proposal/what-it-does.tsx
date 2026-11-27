@@ -43,9 +43,13 @@ const Mono = ({children}: {children: React.ReactNode}) => (
     <Text as="span" fontFamily="mono" color="fg" wordBreak="break-all">{children}</Text>
 );
 
+const BECH32 = /^bze1[02-9ac-hj-np-z]{38,58}$/;
+
+/** An explorer link for a bze1 address; anything else (the body is untrusted) as plain text. */
 function Address({address}: {address: string}) {
+    if (!BECH32.test(address)) return <Mono>{address}</Mono>;
     return (
-        <Link href={getExplorerAccountURL(address)} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={address}>
+        <Link href={getExplorerAccountURL(encodeURIComponent(address))} target="_blank" rel="noopener noreferrer" fontFamily="mono" color="hg.link" title={address}>
             {truncateAddress(address)}
         </Link>
     );
@@ -182,7 +186,7 @@ function ActionBox({action, proposal, resolve}: {action: Action; proposal: GovPr
             gap="3.5"
             bg="hg.inset"
             borderWidth="1px"
-            borderColor={emergency ? 'orange.solid' : 'app.subtle'}
+            borderColor="app.subtle"
             borderRadius="14px"
             p="16px"
             data-testid="action"

@@ -161,14 +161,25 @@ describe("describeProposal", () => {
                     { pool_id: "weird", fee: "0.0125", fee_dest: { treasury: "0.25", burner: "0.25", providers: "0.5" } },
                 ],
             })).toEqual(sentence(["Change the fees of 2 pools"], [
-                [{ denom: "ubze" }, "/", { denom: "uusdc" }, ": fee 0.3%, split 50% liquidity providers / 30% protocol / 20% buyback & burn"],
-                ["weird", ": fee 1.25%, split 50% liquidity providers / 25% protocol / 25% buyback & burn"],
+                [{ denom: "ubze" }, "/", { denom: "uusdc" }, ": fee 0.3%, split LP Rewards 50% / Protocol 30% / Buyback & Burn 20%"],
+                ["weird", ": fee 1.25%, split LP Rewards 50% / Protocol 25% / Buyback & Burn 25%"],
             ]));
         });
 
         it("reads trading halts and resumes", () => {
             expect(msg("/bze.tradebin.MsgHaltDenoms", { denoms: ["uatone"] })).toEqual(sentence(["Halt trading of ", { denom: "uatone" }]));
             expect(msg("/bze.tradebin.MsgUnhaltDenoms", { denoms: ["uatone", "ubze"] })).toEqual(sentence(["Resume trading of ", { denom: "uatone" }, " and ", { denom: "ubze" }]));
+        });
+
+        it("survives malformed bodies with fallback words", () => {
+            expect(msg("/ratelimit.v1.MsgAddRateLimit", {})).toEqual(sentence(["Add an IBC limit for ", "a token", " on ", "a channel"]));
+            expect(msg("/bze.guardian.v1.MsgUnblockDenom")).toEqual(sentence(["Allow ", "a token", " to cross chains again"]));
+            expect(msg("/bze.guardian.v1.MsgBlockDenom")).toEqual(sentence(["Emergency: stop ", "a token", " from crossing chains"], [], true));
+            expect(msg("/bze.tokenfactory.MsgSetDenomAdmin")).toEqual(sentence(["Give control of ", "a token", " to ", "an unknown account"]));
+            expect(msg("/bze.tradebin.MsgUpdatePools", { updates: "nope" })).toEqual(sentence(["Change the fees of 0 pools"]));
+            expect(msg("/bze.tradebin.MsgUpdatePools", { updates: [{ pool_id: "ubze_uusdc", fee: "abc" }] })).toEqual(sentence(["Change the fees of 1 pool"], [
+                [{ denom: "ubze" }, "/", { denom: "uusdc" }, ": fee unknown, split LP Rewards unknown / Protocol unknown / Buyback & Burn unknown"],
+            ]));
         });
 
         it("still unwraps a legacy message and still falls back to other for an unknown type", () => {

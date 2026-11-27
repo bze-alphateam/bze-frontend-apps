@@ -1,4 +1,4 @@
-import {denomList, humanise, strings, text, type Action, type Part, type Reader} from "./actions";
+import {denomList, token, humanise, strings, text, type Action, type Part, type Reader} from "./actions";
 
 const channelOf = (body: Parameters<Reader>[1]) => text(body, "channel_id") ?? "a channel";
 
@@ -7,18 +7,18 @@ const channelOf = (body: Parameters<Reader>[1]) => text(body, "channel_id") ?? "
  * emergency ones governance can sign too) and the circuit breaker's reset.
  */
 export const readGuardian: Reader = (type, body) => {
-    const denom = text(body, "denom") ?? "";
+    const denom = text(body, "denom");
     const plain = (title: Part[], details: Part[][] = []): Action => ({type: "sentence", emergency: false, title, details});
     const emergency = (title: Part[], details: Part[][] = []): Action => ({type: "sentence", emergency: true, title, details});
     switch (type) {
         case "/bze.guardian.v1.MsgUnblockDenom":
-            return plain(["Allow ", {denom}, " to cross chains again"]);
+            return plain(["Allow ", ...token(denom), " to cross chains again"]);
         case "/bze.guardian.v1.MsgReopenChannel":
             return plain([`Reopen transfers on ${channelOf(body)}`]);
         case "/bze.guardian.v1.MsgResumeAutomation":
             return plain(["Resume fee conversion and burning"]);
         case "/bze.guardian.v1.MsgBlockDenom":
-            return emergency(["Emergency: stop ", {denom}, " from crossing chains"]);
+            return emergency(["Emergency: stop ", ...token(denom), " from crossing chains"]);
         case "/bze.guardian.v1.MsgCloseChannel":
             return emergency([`Emergency: close transfers on ${channelOf(body)}`]);
         case "/bze.guardian.v1.MsgPauseAutomation":
@@ -27,7 +27,7 @@ export const readGuardian: Reader = (type, body) => {
             const send = text(body, "max_percent_send");
             const recv = text(body, "max_percent_recv");
             return emergency([
-                "Emergency: lower the IBC limit of ", {denom}, ` on ${channelOf(body)}`,
+                "Emergency: lower the IBC limit of ", ...token(denom), ` on ${channelOf(body)}`,
                 ...(send && recv ? [` to ${send}% out / ${recv}% in`] : []),
             ]);
         }

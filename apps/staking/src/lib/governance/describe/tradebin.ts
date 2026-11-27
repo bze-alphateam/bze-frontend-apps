@@ -4,7 +4,7 @@ import {denomList, obj, strings, text, type Action, type Part, type Reader} from
 /** A decimal fraction as a percent with up to 2 decimals: `0.003` → `0.3%`. */
 function pct(value: unknown): string {
     const n = new BigNumber(typeof value === "string" || typeof value === "number" ? value : NaN).times(100);
-    return n.isFinite() ? `${n.decimalPlaces(2).toFixed()}%` : "?";
+    return n.isFinite() ? `${n.decimalPlaces(2).toFixed()}%` : "unknown";
 }
 
 /** A pool id `base_quote` as `BASE/QUOTE` parts; the raw id when it does not split in two. */
@@ -23,7 +23,7 @@ export const readTradebin: Reader = (type, body) => {
                 const dest = obj(u.fee_dest) ?? {};
                 return [
                     ...poolName(text(u, "pool_id") ?? ""),
-                    `: fee ${pct(u.fee)}, split ${pct(dest.providers)} liquidity providers / ${pct(dest.treasury)} protocol / ${pct(dest.burner)} buyback & burn`,
+                    `: fee ${pct(u.fee)}, split LP Rewards ${pct(dest.providers)} / Protocol ${pct(dest.treasury)} / Buyback & Burn ${pct(dest.burner)}`,
                 ];
             });
             return sentence([`Change the fees of ${updates.length} ${updates.length === 1 ? "pool" : "pools"}`], details);

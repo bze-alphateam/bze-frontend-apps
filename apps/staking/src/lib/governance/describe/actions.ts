@@ -34,6 +34,11 @@ export type Action =
 /** A piece of a sentence: plain text, a token the page names by its ticker, or an account. */
 export type Part = string | {denom: string} | {address: string};
 
+/** A token as a part, `a token` when the field is missing. */
+export function token(denom: string | null): Part[] {
+    return denom ? [{denom}] : ["a token"];
+}
+
 /** Denoms as parts, `A, B and C`. */
 export function denomList(denoms: string[]): Part[] {
     if (denoms.length === 0) return ["no tokens"];

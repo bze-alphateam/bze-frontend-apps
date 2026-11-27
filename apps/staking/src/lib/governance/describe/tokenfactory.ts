@@ -1,4 +1,4 @@
-import {text, type Reader} from "./actions";
+import {text, token, type Reader} from "./actions";
 
 /** `MsgSetDenomAdmin`: control of a token handed to another account. */
 export const readTokenFactory: Reader = (type, body) => {
@@ -7,7 +7,7 @@ export const readTokenFactory: Reader = (type, body) => {
     return {
         type: "sentence",
         emergency: false,
-        title: ["Give control of ", {denom: text(body, "denom") ?? ""}, " to ", address ? {address} : "an unknown account"],
+        title: ["Give control of ", ...token(text(body, "denom")), " to ", address ? {address} : "an unknown account"],
         details: [],
     };
 };
