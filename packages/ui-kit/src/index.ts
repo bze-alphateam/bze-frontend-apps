@@ -211,7 +211,7 @@ export type { ComingSoonWallet } from './utils/wallet_availability';
 
 // === Query ===
 export { getRestClient, createRestClient, getPageRequestWithLimit } from './query/client';
-export { getAddressBalances, getLockedBalances } from './query/bank';
+export { getAddressBalances, getLockedBalances, getAddressDenomBalance } from './query/bank';
 export { getBurnerParams, getBurnerParamsWithClient, getAllBurnedCoins, getNextBurning } from './query/burner';
 export { getBlockDetailsByHeight, getBlockTimeByHeight, getBlockResults } from './query/block';
 export { getHardcodedLockAddress, getBurnerModuleAddress, getRaffleModuleAddress, getModuleAddress } from './query/module';
@@ -364,6 +364,7 @@ export { useLiquidityPools, useAssetLiquidityPools, useLiquidityPool } from './h
 export { useAssetsValue } from './hooks/useAssetsValue';
 export { useFeeTokens } from './hooks/useFeeTokens';
 export { useDenomConfigs } from './hooks/useDenomConfigs';
+export { useDenomConfig } from './hooks/useDenomConfig';
 export { formatRatioPercent, formatSurchargePercent, hasSurcharge, hasTransferFee, feeTokenOptionNote, feeTokenExplanation, feeSurchargeNote } from './utils/fee_token_notes';
 export { useHaltedDenoms } from './hooks/useHaltedDenoms';
 export type { UseHaltedDenomsResult } from './hooks/useHaltedDenoms';

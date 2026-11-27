@@ -12,6 +12,7 @@ import {forbidNetwork} from "@bze/vitest-preset/no-network";
 const useAsset = vi.fn();
 const getDenomBranding = vi.fn();
 const getFactoryDenomAuthority = vi.fn();
+const useDenomConfig = vi.fn();
 let pools: { base: string; quote: string }[] = [];
 const preferredFeeDenom = "ubze";
 const updatePreferredFeeDenom = vi.fn();
@@ -20,6 +21,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     useAsset: (denom: string) => useAsset(denom),
     getDenomBranding: (denom: string) => getDenomBranding(denom),
     getFactoryDenomAuthority: (denom: string) => getFactoryDenomAuthority(denom),
+    useDenomConfig: (denom: string) => useDenomConfig(denom),
     useAssetPrice: () => ({price: new BigNumber("0.0412"), change: -1.5, hasPrice: true}),
     useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(0)}}),
     useFeeTokens: () => ({isLoading: false, nativeDenom: "ubze", isValidFeeDenom: () => true}),
@@ -94,6 +96,7 @@ beforeEach(() => {
     opportunities = [];
     useAsset.mockReset();
     getDenomBranding.mockReset();
+    useDenomConfig.mockReset().mockReturnValue(undefined);
     getFactoryDenomAuthority.mockReset().mockResolvedValue({admin: "", mintable: false});
     useDenomParam.mockReset();
     updatePreferredFeeDenom.mockReset();
