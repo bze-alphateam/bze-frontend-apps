@@ -1,6 +1,6 @@
 import type {Page} from "@playwright/test";
 import {expect, test} from "./support/mock-network";
-import {connectWallet, installFakeKeplr} from "./support/fake-keplr";
+import {connectWallet as connect, installFakeKeplr} from "./support/fake-keplr";
 import {fourScanDaos, SCAN_DAOS} from "./support/home-fixtures";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
@@ -10,6 +10,16 @@ import {join} from "node:path";
 // staking reward that DAO 4's electorate uses (x/rewards, then Scan `source`):
 //   4 Staker   3 Admin + Member   2 Member   1 Admin
 const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
+
+// the wallet sidebar stays open after connecting and its backdrop would swallow the clicks
+async function connectWallet(page: Page): Promise<void> {
+    await connect(page);
+    const backdrop = page.getByTestId("sidebar-backdrop");
+    await expect(async () => {
+        if ((await backdrop.count()) > 0) await backdrop.click({position: {x: 5, y: 5}});
+        await expect(backdrop).toHaveCount(0, {timeout: 1000});
+    }).toPass({timeout: 15_000});
+}
 
 const row = (page: Page, name: string) => page.getByTestId("dao-row").filter({hasText: name});
 

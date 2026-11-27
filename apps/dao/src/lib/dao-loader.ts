@@ -48,6 +48,8 @@ export type DaoListResult =
     | {
         state: 'ok';
         items: DaoCard[];
+        /** How many rows the source returned, before the search ran on the page (an older Scan): 0 on a page past the end. */
+        returned: number;
         /** Where the page came from: the chain fallback has no filters on its side and no open counts. */
         source: 'scan' | 'chain';
         /** `pages`: numbered, `total` known. `cursor`: only the page after this one (an older Scan, the chain). */
@@ -88,10 +90,10 @@ export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, position: Da
         // A Scan without BFE-368 ignores `q`: the search runs on the page here.
         const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', searchTerm(filter.search)));
         if (numbered && list.total !== null) {
-            return {state: 'ok', items, source: 'scan', mode: 'pages', total: list.total, next: null};
+            return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'pages', total: list.total, next: null};
         }
         if (numbered) withoutTotals.add(deps.scan);
-        return {state: 'ok', items, source: 'scan', mode: 'cursor', total: null, next: list.next_cursor};
+        return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'cursor', total: null, next: list.next_cursor};
     } catch (scanError) {
         if (cursor) throw scanError; // a later page never switches source mid-list
         return loadChainPage(deps, null);
@@ -102,7 +104,7 @@ async function loadChainPage(deps: DaoDeps, key: string | null): Promise<DaoList
     if (!(await deps.chain.isSupported())) return {state: 'unsupported'};
     const page = await deps.chain.getDaos({key: key ?? undefined, limit: CHAIN_PAGE_LIMIT, reverse: true});
     // The chain cannot filter and filtering 50-row pages here would give uneven pages: the list is unfiltered.
-    return {state: 'ok', items: page.items.map(cardFromChain), source: 'chain', mode: 'cursor', total: null, next: page.nextKey};
+    return {state: 'ok', items: page.items.map(cardFromChain), returned: page.items.length, source: 'chain', mode: 'cursor', total: null, next: page.nextKey};
 }
 
 export interface MyDaosResult {

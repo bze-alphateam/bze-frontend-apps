@@ -1,4 +1,4 @@
-import {useCallback, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {loadDaoPage, PAGE_SIZE, type DaoDeps, type DaoFilter, type DaoListResult} from '@/lib/dao-loader';
 import type {DaoCard} from '@/lib/dao-types';
 import {searchTerm} from '@/lib/home-query';
@@ -55,9 +55,17 @@ export function useDaoList(deps: DaoDeps, filter: DaoFilter, page: number): DaoL
     const [kept, setKept] = useState<{scope: string; result: Ok} | null>(null);
     const last = kept?.scope === scope ? kept.result : null;
 
-    const current = useAsync<DaoListResult>(`${scope}|${page}|${cursor ?? ''}`, async () => {
-        const result = await loadDaoPage(deps, filter, {page, cursor, source: cursor ? last?.source : undefined});
-        if (result.state === 'ok') setKept({scope, result});
+    const key = `${scope}|${page}|${cursor ?? ''}`;
+    // An answer for a key that is no longer the current one is dropped by useAsync, and must not become what the pager remembers either.
+    const currentKey = useRef(key);
+    useEffect(() => {
+        currentKey.current = key;
+    });
+
+    const current = useAsync<DaoListResult>(key, async () => {
+        // Once the list has answered in this scope it stays on its source (the chain's pages never go back to Scan, even on page 1); Retry starts a new scope.
+        const result = await loadDaoPage(deps, filter, {page, cursor, source: last?.source});
+        if (result.state === 'ok' && currentKey.current === key) setKept({scope, result});
         return result;
     });
 
@@ -87,7 +95,7 @@ export function useDaoList(deps: DaoDeps, filter: DaoFilter, page: number): DaoL
         page: mode === 'cursor' ? cursors.length : page,
         hasPrev: cursors.length > 1,
         hasNext: ok?.next != null,
-        pastEnd: ok && ok.mode === 'pages' && ok.items.length === 0 && ok.total !== null && ok.total > 0 && page > 1 ? pageCount(ok.total, PAGE_SIZE) : null,
+        pastEnd: ok && ok.mode === 'pages' && ok.returned === 0 && ok.total !== null && ok.total > 0 && page > 1 ? pageCount(ok.total, PAGE_SIZE) : null,
         goPrev,
         goNext,
         retry,

@@ -324,6 +324,17 @@ describe("when Scan is down", () => {
         expect(screen.getByTestId("list-count")).toHaveTextContent("Page 1");
     });
 
+    it("keeps the type control and the search for the wallet's own list while My DAOs is on", async () => {
+        const answer = vi.fn<(request: DaoListRequest) => ScanDaoList>(() => { throw new Error("down"); });
+        const d = deps(answer, {getDaos: vi.fn(async () => ({items: [chainDao(2)], nextKey: null})), getDaosByAdmin: vi.fn(async () => ({items: [chainDao(2)], nextKey: null}))});
+        renderHome(d, {address: ME, search: "mine=1"});
+
+        await waitFor(() => expect(rows()).toHaveLength(1));
+        expect(await screen.findByText("Reduced list")).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "DAO type"})).toBeInTheDocument();
+        expect(screen.getByLabelText("Search DAOs by name")).toBeInTheDocument();
+    });
+
     it("Retry reads the list from Scan again", async () => {
         const {d, answer} = down();
         renderHome(d);
