@@ -26,6 +26,8 @@ import type { EndpointValidationResults } from '../../types/settings'
 import {useToast} from "../../hooks/useToast"
 import {useConnectionType} from "../../hooks/useConnectionType"
 import {useFeeTokens} from "../../hooks/useFeeTokens"
+import {useDenomConfigs} from "../../hooks/useDenomConfigs"
+import {feeTokenExplanation, feeTokenOptionNote} from "../../utils/fee_token_notes"
 import {getChainNativeAssetDenom} from "../../constants/assets"
 import {Notice, StatusPill, type NoticeStatus} from "../hive-glow/status"
 import {hgVariant} from "../../theme/variants"
@@ -133,14 +135,24 @@ export const SettingsSidebarContent = () => {
         }
     }, [connectionType])
 
+    // v8.3.0 factory token settings (gas surcharge, transfer fee) shown before the user picks the token
+    const feeTokenConfigs = useDenomConfigs(useMemo(() => feeTokens.map(token => token.denom), [feeTokens]))
+
     // Create fee tokens collection for select
     const feeTokensCollection = useMemo(() => createListCollection({
         items: feeTokens.map(token => ({
             label: token.ticker || token.name,
             value: token.denom,
             name: token.ticker || token.name,
+            note: feeTokenOptionNote(feeTokenConfigs.get(token.denom)),
         }))
-    }), [feeTokens])
+    }), [feeTokens, feeTokenConfigs])
+
+    const selectedFeeToken = feeTokens.find(token => token.denom === preferredFeeDenom)
+    const feeTokenExplanationText = selectedFeeToken
+        ? feeTokenExplanation(selectedFeeToken.ticker || selectedFeeToken.name, feeTokenConfigs.get(selectedFeeToken.denom))
+        : ''
+
 
     const handleFeeTokenChange = useCallback((denom: string) => {
         setPreferredFeeDenom(denom || undefined)
@@ -213,6 +225,7 @@ export const SettingsSidebarContent = () => {
                                 {feeTokensCollection.items.map((item) => (
                                     <Select.Item key={item.value} item={item}>
                                         <Text>{item.label}</Text>
+                                        {item.note && <Text fontSize="12px" color="fg.muted">{item.note}</Text>}
                                         <Select.ItemIndicator />
                                     </Select.Item>
                                 ))}
@@ -220,6 +233,7 @@ export const SettingsSidebarContent = () => {
                         </Select.Positioner>
                     </Portal>
                 </Select.Root>
+                {feeTokenExplanationText && <DrawerHelper>{feeTokenExplanationText}</DrawerHelper>}
                 <DrawerHelper>
                     Select your preferred token for paying transaction fees. Only tokens with liquidity pools paired with the native token are available.
                 </DrawerHelper>
