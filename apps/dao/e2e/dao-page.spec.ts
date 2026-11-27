@@ -173,7 +173,12 @@ test.describe("a stake DAO", () => {
 
 test("a DAO that administers another lists it as a SubDAO, with its open count", async ({page, network}) => {
     const sub = {...daoFour.body.dao, admin: DAO_TWO, pending_admin: ""};
-    network.use("lcd", {...daosByAdminTwo, body: {daos: [...daosByAdminTwo.body.daos, sub], pagination: {next_key: null, total: "2"}}});
+    network.use("lcd", {
+        path: daosByAdminTwo.path,
+        query: daosByAdminTwo.query,
+        status: 200,
+        body: {...daosByAdminTwo.body, daos: [...daosByAdminTwo.body.daos, sub], pagination: {next_key: null, total: "2"}},
+    });
     await page.goto("/dao/2");
 
     const subs = page.getByTestId("subdaos");

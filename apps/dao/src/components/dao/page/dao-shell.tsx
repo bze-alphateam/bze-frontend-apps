@@ -62,8 +62,9 @@ export const DaoTabs = ({dao, active, wallet, counter}: DaoTabsProps) => {
     if (showsAdminTab(dao, wallet)) tabs.push({tab: 'admin', label: 'Admin console', testId: 'admin-console-link'});
 
     const go = (e: MouseEvent<HTMLAnchorElement>, tab: DaoTab) => {
-        if (!plainClick(e) || tab === active) return;
+        if (!plainClick(e)) return;
         e.preventDefault();
+        if (tab === active) return;
         const href = daoTabHref(dao.id, tab);
         if (active === 'admin' || tab === 'admin') router.push(href);
         else router.replace(href, {scroll: false});

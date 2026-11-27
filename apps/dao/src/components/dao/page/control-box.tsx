@@ -104,7 +104,7 @@ const AdminCell = ({view, wallet, detail, nameOf}: {view: DaoView; wallet: strin
                         ? <chakra.a asChild fontSize="16px" fontWeight="700" color="hg.warning.text" alignSelf="flex-start"><NextLink href={daoTabHref(parent.id)} data-testid="control-headline">{parent.name}</NextLink></chakra.a>
                         : <chakra.strong fontSize="16px" color="hg.warning.text" overflowWrap="anywhere" data-testid="control-headline">{scanDao ?? nameOf(dao.admin) ?? dao.admin}</chakra.strong>}
                     <Line>Its parent DAO. Its proposals can act for this DAO and change its rules <NoVote here />.</Line>
-                    {state.steps.length > 2 && (
+                    {(state.steps.length > 3 || (state.steps.length > 2 && state.steps[state.steps.length - 1].kind !== 'voters')) && (
                         <Flex gap="6px 8px" align="center" wrap="wrap" fontSize="13px" data-testid="control-chain">
                             {state.steps.map((step, i) => (
                                 <Flex key={i} align="center" gap="8px" minW="0">

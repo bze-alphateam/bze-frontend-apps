@@ -65,7 +65,8 @@ describe("the DAO header", () => {
         renderShell({wallet: WALLET, data: {creator: OTHER, creator_label: {name: "Hive founder", kind: "user"}}});
         const header = screen.getByTestId("dao-header");
         expect(header).not.toHaveTextContent(/DAO #|#4/);
-        expect(header).not.toHaveTextContent(/Hive founder|by /);
+        expect(header).not.toHaveTextContent("Hive founder");
+        expect(screen.queryByTestId("dao-creator")).toBeNull();
         expect(header).not.toHaveTextContent(/Governed by its voters|Has an admin|Self-owned|Admin-run|Run by/);
         expect(header.querySelector("img")).toBeNull();
         expect(screen.queryByRole("link", {name: "New proposal"})).toBeNull();

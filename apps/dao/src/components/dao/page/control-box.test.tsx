@@ -71,9 +71,22 @@ describe("the Admin cell", () => {
         const knownDaos = new Map([[DAO_ADDRESS, {id: "4", name: "Founders"}], [OTHER_DAO_ADDRESS, {id: "9", name: "Hive Council"}]]);
         renderBox({view: pageView(dao, {knownDaos, controller: walk(OTHER_DAO_ADDRESS, "SELF_OWNED", [DAO_ADDRESS, OTHER_DAO_ADDRESS])})});
         expect(admin()).toHaveAttribute("data-kind", "dao");
-        expect(within(admin()).getByRole("link", {name: "Hive Council"})).toHaveAttribute("href", "/dao/9");
+        expect(within(admin()).getByTestId("control-headline")).toHaveAttribute("href", "/dao/9");
+        expect(within(admin()).getByTestId("control-headline")).toHaveTextContent("Hive Council");
         expect(admin()).toHaveTextContent("Its parent DAO. Its proposals can act for this DAO and change its rules without a vote here.");
         expect(admin()).not.toHaveTextContent(/#9|DAO #/);
+        expect(screen.queryByTestId("control-chain")).toBeNull();
+    });
+
+    it("a parent DAO run by an account: the whole chain is shown, ending at that account, with the warning", () => {
+        const dao = pageDao({admin: OTHER_DAO_ADDRESS});
+        const knownDaos = new Map([[DAO_ADDRESS, {id: "4", name: "Founders"}], [OTHER_DAO_ADDRESS, {id: "9", name: "Hive Council"}]]);
+        renderBox({view: pageView(dao, {knownDaos, controller: walk(THIRD, "ACCOUNT", [DAO_ADDRESS, OTHER_DAO_ADDRESS])})});
+        const chain = screen.getByTestId("control-chain");
+        expect(chain).toHaveTextContent("Founders");
+        expect(chain).toHaveTextContent("Hive Council");
+        expect(chain).toHaveTextContent(THIRD.slice(0, 10));
+        expect(admin()).toHaveTextContent("external admin");
     });
 
     it("the chain cannot tell what the admin is, but Scan's label says it is a DAO: shown by Scan's name", () => {

@@ -60,7 +60,7 @@ const Description = ({name, text}: {name: string; text: string}) => {
                     View all
                 </chakra.button>
             )}
-            <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)} placement="center" scrollBehavior="inside">
+            <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)} placement="center" scrollBehavior="inside" lazyMount unmountOnExit>
                 <Portal>
                     <Dialog.Backdrop />
                     <Dialog.Positioner>
