@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import BigNumber from 'bignumber.js'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ChakraProvider } from '@chakra-ui/react'
@@ -54,7 +54,15 @@ const ALL = {
     'factory/a/tiny': cfg('0.00001', '0.00001'),
 }
 
-afterEach(cleanup)
+// jsdom has no ResizeObserver; the open select's popper needs one.
+beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+})
+
+afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+})
 
 describe('SettingsSidebarContent fee token notes', () => {
     it('notes each option with a setting, in the same order, and none for BZE or a zero config', async () => {
