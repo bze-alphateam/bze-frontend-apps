@@ -2,14 +2,19 @@ import type {GovProposal} from "@bze/bze-ui-kit";
 import {entriesOf, humanise, obj, type Action, type Body, type Reader} from "./actions";
 import {readCointrunk} from "./cointrunk";
 import {readIbc} from "./ibc";
+import {readGuardian} from "./guardian";
 import {readParams} from "./params";
+import {readRateLimit} from "./ratelimit";
 import {readSpend} from "./spend";
+import {readTokenFactory} from "./tokenfactory";
+import {readTradebin} from "./tradebin";
 import {readUpgrade} from "./upgrade";
 
 export type {Action, Entry} from "./actions";
 export {humanise} from "./actions";
+export type {Part} from "./actions";
 
-const READERS: Reader[] = [readUpgrade, readSpend, readParams, readCointrunk, readIbc];
+const READERS: Reader[] = [readUpgrade, readSpend, readParams, readCointrunk, readIbc, readRateLimit, readGuardian, readTokenFactory, readTradebin];
 
 const LEGACY = "/cosmos.gov.v1.MsgExecLegacyContent";
 
