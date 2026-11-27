@@ -1,8 +1,9 @@
 'use client'
 
 import {useEffect, useMemo, useState} from "react";
-import {getRateLimit} from "../query/rate_limit";
-import {nextRateLimitReset} from "../query/rate_limit";
+import {clearRateLimitCache, getRateLimit, nextRateLimitReset} from "../query/rate_limit";
+
+const RESET_GRACE_MS = 6000;
 
 export type RouteLimitDirection = 'send' | 'receive';
 
@@ -30,6 +31,7 @@ export function useRouteLimit(
 ): UseRouteLimitResult {
     const [state, setState] = useState<{key: string; limit: Awaited<ReturnType<typeof getRateLimit>>} | undefined>(undefined);
     const key = channelId && denom ? `${channelId}|${denom}` : undefined;
+    const [tick, setTick] = useState(0);
 
     useEffect(() => {
         if (!channelId || !denom) return;
@@ -38,7 +40,22 @@ export function useRouteLimit(
             if (!cancelled) setState({key: `${channelId}|${denom}`, limit});
         });
         return () => { cancelled = true; };
-    }, [channelId, denom, refreshKey]);
+    }, [channelId, denom, refreshKey, tick]);
+
+    // The window resets while the form stays open: what we hold is then stale, so treat it as
+    // unknown and read again (a little after the reset, the chain applies it in the next block).
+    const limitHeld = state?.limit;
+    useEffect(() => {
+        if (!limitHeld) return;
+        const reset = nextRateLimitReset(new Date(), limitHeld.durationHours);
+        if (!reset) return;
+        const timer = setTimeout(() => {
+            clearRateLimitCache();
+            setState(undefined);
+            setTick(t => t + 1);
+        }, Math.max(0, reset.getTime() - Date.now()) + RESET_GRACE_MS);
+        return () => clearTimeout(timer);
+    }, [limitHeld]);
 
     return useMemo(() => {
         // a result for another route is stale

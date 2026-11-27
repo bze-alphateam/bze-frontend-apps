@@ -30,7 +30,7 @@ describe('getRateLimit', () => {
         fetchMock.mockResolvedValue(json(limit()))
         await getRateLimit('channel-3', 'ibc/ABC')
 
-        expect(fetchMock).toHaveBeenCalledWith('https://rest.example/Stride-Labs/ibc-rate-limiting/ratelimit/ratelimit/channel-3/by_denom?denom=ibc%2FABC')
+        expect(fetchMock).toHaveBeenCalledWith('https://rest.example/Stride-Labs/ibc-rate-limiting/ratelimit/ratelimit/channel-3/by_denom?denom=ibc%2FABC', expect.anything())
     })
 
     it('truncates the threshold (floor of value * percent / 100)', async () => {
@@ -139,5 +139,56 @@ describe('nextRateLimitReset', () => {
 
     it('a duration that does not divide 24 has no derivable reset', () => {
         expect(nextRateLimitReset(at('2026-11-26T07:30:00Z'), 5)).toBeUndefined()
+    })
+})
+
+describe('getRateLimit robustness', () => {
+    let fetchMock: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        clearRateLimitCache()
+        settingsMock.mockReturnValue({ endpoints: { restEndpoint: 'https://rest.example' } })
+        fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+    afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
+
+    it('a zero threshold leaves no room even when net flow would make it positive', async () => {
+        // receive net = inflow - outflow = -50 would give room 50 with a 0 threshold
+        fetchMock.mockResolvedValue(json(limit({ recv: '0', outflow: '50' })))
+        const r = await getRateLimit('channel-0', 'ubze')
+
+        expect(r?.recvRoom).toBe(BigInt(0))
+    })
+
+    it('never rejects when settings throw', async () => {
+        settingsMock.mockImplementation(() => { throw new Error('no settings') })
+
+        await expect(getRateLimit('channel-0', 'ubze')).resolves.toBeNull()
+    })
+
+    it('does not cache a response that started before clearRateLimitCache', async () => {
+        let release: (r: Response) => void = () => {}
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(res => { release = res }))
+        const stale = getRateLimit('channel-0', 'ubze')
+        clearRateLimitCache()
+        release(json(limit({ send: '2' })))
+        await stale
+
+        fetchMock.mockResolvedValueOnce(json(limit({ send: '5' })))
+        expect((await getRateLimit('channel-0', 'ubze'))?.sendThreshold).toBe(BigInt(50))
+    })
+
+    it('gives up on a never-resolving fetch after about 3 s, caching nothing', async () => {
+        vi.useFakeTimers()
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}))
+        const pending = getRateLimit('channel-0', 'ubze')
+        await vi.advanceTimersByTimeAsync(3001)
+
+        expect(await pending).toBeNull()
+
+        fetchMock.mockResolvedValueOnce(json(limit()))
+        expect((await getRateLimit('channel-0', 'ubze'))?.sendThreshold).toBe(BigInt(20))
     })
 })

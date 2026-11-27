@@ -37,7 +37,8 @@ const toBig = (v: unknown): bigint => {
 // threshold = floor(channel_value * percent / 100); a transfer is refused when net + amount > threshold.
 const direction = (channelValue: bigint, percent: bigint, net: bigint) => {
     const threshold = (channelValue * percent) / BigInt(100);
-    const room = threshold - net;
+    // a zero threshold allows nothing, whatever the net flow
+    const room = threshold === BigInt(0) ? BigInt(0) : threshold - net;
     return {threshold, room: room < BigInt(0) ? BigInt(0) : room};
 }
 
@@ -66,26 +67,45 @@ const parse = (body: any): RateLimit | null => {
     };
 }
 
-const fetchFresh = async (channelId: string, denom: string): Promise<RateLimit | null> => {
-    const url = `${getSettings().endpoints.restEndpoint}/Stride-Labs/ibc-rate-limiting/ratelimit/ratelimit/${encodeURIComponent(channelId)}/by_denom?denom=${encodeURIComponent(denom)}`;
+const FETCH_TIMEOUT_MS = 3000;
+
+// Bumped by clearRateLimitCache: a response that started before the clear must not be cached.
+let generation = 0;
+
+const withTimeout = <T>(work: Promise<T>, ms: number): Promise<T> => new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timed out after ${ms} ms`)), ms);
+    work.then(
+        v => { clearTimeout(timer); resolve(v); },
+        e => { clearTimeout(timer); reject(e); },
+    );
+});
+
+const fetchFresh = async (channelId: string, denom: string, startedIn: number): Promise<RateLimit | null> => {
+    const controller = new AbortController();
     try {
-        const response = await fetch(url);
-        if (response.status !== 200) {
-            // not cached: a node upgraded later should be picked up on the next read
-            return null;
+        const url = `${getSettings().endpoints.restEndpoint}/Stride-Labs/ibc-rate-limiting/ratelimit/ratelimit/${encodeURIComponent(channelId)}/by_denom?denom=${encodeURIComponent(denom)}`;
+        const answer = await withTimeout((async () => {
+            const response = await fetch(url, {signal: controller.signal});
+            // non-200 is not cached: a node upgraded later should be picked up on the next read
+            if (response.status !== 200) return undefined;
+            return {value: parse(await response.json())};
+        })(), FETCH_TIMEOUT_MS);
+        if (!answer) return null;
+        if (startedIn === generation) {
+            cache.set(cacheKey(channelId, denom), {at: Date.now(), value: answer.value});
         }
-        const value = parse(await response.json());
-        cache.set(cacheKey(channelId, denom), {at: Date.now(), value});
-        return value;
+        return answer.value;
     } catch (e) {
         console.error("failed to fetch IBC rate limit:", e);
         return null;
+    } finally {
+        controller.abort();
     }
 }
 
 /**
  * The daily limit on (BZE-side channel, BZE-side denom), or `null` when there is none (or it could
- * not be read). Cached for 30 s per route.
+ * not be read). Never rejects. Cached for 30 s per route.
  */
 export const getRateLimit = async (channelId: string, denom: string): Promise<RateLimit | null> => {
     const key = cacheKey(channelId, denom);
@@ -94,9 +114,11 @@ export const getRateLimit = async (channelId: string, denom: string): Promise<Ra
 
     let pending = inFlight.get(key);
     if (!pending) {
-        pending = fetchFresh(channelId, denom).finally(() => {
-            inFlight.delete(key);
+        const request: Promise<RateLimit | null> = fetchFresh(channelId, denom, generation).finally(() => {
+            // a request started before a clear must not remove its successor's entry
+            if (inFlight.get(key) === request) inFlight.delete(key);
         });
+        pending = request;
         inFlight.set(key, pending);
     }
 
@@ -105,7 +127,9 @@ export const getRateLimit = async (channelId: string, denom: string): Promise<Ra
 
 /** Drops cached limits, e.g. after a transfer moved the flow. */
 export const clearRateLimitCache = (): void => {
+    generation++;
     cache.clear();
+    inFlight.clear();
 }
 
 /**

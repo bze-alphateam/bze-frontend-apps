@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { ChakraProvider } from '@chakra-ui/react'
 
 const { executeTransfer, bridgeable, status, limitState } = vi.hoisted(() => ({
-    limitState: { value: { stopped: false } as Record<string, unknown> },
+    limitState: { value: { stopped: false } as Record<string, unknown>, calls: [] as unknown[][] },
     executeTransfer: vi.fn(),
     bridgeable: { assets: [] as unknown[] },
     status: { channels: [] as string[], denoms: [] as string[], afterRefresh: undefined as undefined | { channels?: string[]; denoms?: string[] } },
@@ -27,7 +27,7 @@ vi.mock('../../hooks/useIbcRouteStatus', () => ({
 }))
 
 vi.mock('../../hooks/useRouteLimit', () => ({
-    useRouteLimit: () => ({ ...limitState.value, loading: false }),
+    useRouteLimit: (...args: unknown[]) => { limitState.calls.push(args); return { ...limitState.value, loading: false } },
 }))
 
 vi.mock('../../hooks/useBridgeableAssets', () => ({
@@ -263,9 +263,18 @@ describe('DepositForm daily limit', () => {
         await screen.findByPlaceholderText('0.00')
         typeAmount('12345.67')
 
+        expect(submit().disabled).toBe(false)
         expect(screen.getByTestId('route-limit').textContent).toBe('Daily limit for deposits on this route: up to 12,345.67 OSMO more until 00:00 UTC')
         expect(screen.queryByTestId('deposit-limit-note')).toBeNull()
         expect(submit().disabled).toBe(false)
+    })
+
+    it('looks the limit up by the BZE-side channel and denom of the route, as a receive', async () => {
+        const { container } = render(<DepositForm />, { wrapper })
+        pickAsset(container, 'uosmo')
+        await screen.findByPlaceholderText('0.00')
+
+        expect(limitState.calls.some(c => c[0] === 'channel-0' && c[1] === 'uosmo' && c[2] === 'receive')).toBe(true)
     })
 
     it('refuses an amount over the room before signing', async () => {
