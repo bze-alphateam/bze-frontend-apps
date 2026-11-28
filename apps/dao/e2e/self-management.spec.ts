@@ -123,7 +123,7 @@ test.describe("the admin", () => {
 
         await page.getByTestId("nominee").fill(STRANGER);
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Nominate a new admin for DAO 2 (they have to accept)");
+        await expect(page.getByTestId("action-preview")).toContainText("Nominate a new admin for Founders (they have to accept)");
         await expect(page.getByTestId("action-warning")).toContainText("spending the whole treasury");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
@@ -160,7 +160,7 @@ test.describe("the DAOs this DAO administers", () => {
         await add(page, "sub-dao-admin");
         await page.getByTestId("sub-admin-mode").selectOption("voters");
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Hand the DAO to its own voters (DAO 12)");
+        await expect(page.getByTestId("action-preview")).toContainText("Hand Garden club to its own voters");
         await expect(page.getByTestId("action-warning")).toContainText("becomes self-owned");
 
         await add(page, "sub-dao-execute");
@@ -170,7 +170,7 @@ test.describe("the DAOs this DAO administers", () => {
         await expect(nested.getByTestId("pay-held")).toHaveText("The treasury holds 90 TBZE.");
         await nested.getByTestId("pay-amount").fill("12.5");
         await nested.getByTestId("pay-to").fill(STRANGER);
-        await expect(page.getByTestId("action-preview").last()).toContainText("Send 12.5 TBZE from the sub-DAO (DAO 12)");
+        await expect(page.getByTestId("action-preview").last()).toContainText("Send 12.5 TBZE from the SubDAO Garden club");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 

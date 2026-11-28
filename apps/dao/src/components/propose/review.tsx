@@ -37,12 +37,14 @@ interface Props {
     /** The account every message is signed by. */
     signer?: string;
     signerOf?: (daoId: string) => string | undefined;
+    /** The name of a DAO a message names by id. */
+    daoOf?: (daoId: string) => string | undefined;
 }
 
 /** What is signed and paid: the actions, their size, the cost and the deposit with the wallet's balance. */
-export const Review = ({dao, composition, actions, cost, formatCoin, nameOf, expedited, balancesKnown, signer, signerOf}: Props) => (
+export const Review = ({dao, composition, actions, cost, formatCoin, nameOf, expedited, balancesKnown, signer, signerOf, daoOf}: Props) => (
     <Flex direction="column" gap="16px" data-testid="review">
-        <ActionsPanel actions={actions} formatCoin={formatCoin} nameOf={nameOf} signer={signer} signerOf={signerOf} />
+        <ActionsPanel actions={actions} formatCoin={formatCoin} nameOf={nameOf} signer={signer} signerOf={signerOf} daoOf={daoOf} />
         {composition.actions.length > 0 && <SizeMeter size={composition.size} max={composition.maxBytes} />}
         <Panel id="cost" title="What you pay" testId="cost-panel">
             {cost.lines.length === 0 && <chakra.p m="0" fontSize="14px" data-testid="cost-free">{`${dao.name} charges nothing to submit a proposal: no cost and no deposit.`}</chakra.p>}

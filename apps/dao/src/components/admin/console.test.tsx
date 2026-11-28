@@ -241,7 +241,7 @@ describe("nominate, withdraw, hand over", () => {
         expect(screen.getByTestId("nominate-problem")).toHaveTextContent("cannot be its own nominee");
 
         fireEvent.change(screen.getByTestId("nominee"), {target: {value: OTHER.toUpperCase()}});
-        expect(screen.getByTestId("nominate-panel")).toHaveTextContent("Nominate a new admin for DAO 4 (they have to accept)");
+        expect(screen.getByTestId("nominate-panel")).toHaveTextContent("Nominate a new admin for Founders (they have to accept)");
         await userEvent.click(screen.getByTestId("nominate-submit"));
 
         const [msgs] = txMock.mock.calls[0];

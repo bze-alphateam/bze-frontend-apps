@@ -212,3 +212,17 @@ export function describeMessage(msg: DaoProposalMessage, ctx: DescribeContext, d
 /** What a proposal does, one action per message; an empty list is a text-only proposal. */
 export const describeMessages = (msgs: readonly DaoProposalMessage[], ctx: DescribeContext): MsgAction[] =>
     msgs.map((m) => describeMessage(m, ctx));
+
+/** Every DAO the actions name by number (nominations, admin executes and what they run), once each, in order. */
+export function daoIdsOf(actions: readonly MsgAction[]): string[] {
+    const ids: string[] = [];
+    const visit = (action: MsgAction) => {
+        const id = action.type === 'send' ? action.subDao
+            : action.type === 'nominate_admin' || action.type === 'withdraw_nomination' || action.type === 'accept_admin' || action.type === 'admin_execute' ? action.daoId
+                : null;
+        if (id && !ids.includes(id)) ids.push(id);
+        if (action.type === 'admin_execute') action.actions.forEach(visit);
+    };
+    actions.forEach(visit);
+    return ids;
+}

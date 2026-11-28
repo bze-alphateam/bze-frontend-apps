@@ -70,7 +70,7 @@ describe("the actions list", () => {
         expect(JSON.parse(drafts[0].fields.inner)).toEqual([{type: "pay", fields: {denom: "ubze", amount: "1.5", to: OTHER}}]);
         expect(drafts[0].fields.daoId).toBe("7");
         // the outer row (read last in the document, after its nested form) says whose treasury pays
-        expect(screen.getAllByTestId("action-preview")[1].textContent).toContain("from the sub-DAO (DAO 7)");
+        expect(screen.getAllByTestId("action-preview")[1].textContent).toContain("from the SubDAO Garden club");
     });
 
     it("starts the inner list again when another sub-DAO is picked", () => {
