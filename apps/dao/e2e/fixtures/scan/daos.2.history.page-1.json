@@ -1,0 +1,49 @@
+{
+  "source": "hand-written (BZE Scan numbered pages shape, DAO UI review 1, not recorded)",
+  "recorded": "2026-11-28",
+  "method": "GET",
+  "path": "/api/scan/daos/2/history",
+  "query": {
+    "page": "1",
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 300,
+        "tx_index": 0,
+        "msg_index": 0,
+        "seq": 0,
+        "type": "EventDaoMembersUpdated",
+        "attrs": {
+          "id": "2",
+          "added": [
+            "bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g"
+          ],
+          "removed": []
+        },
+        "tx_hash": "CD34",
+        "time": "2026-11-10T09:00:00Z"
+      },
+      {
+        "height": 200,
+        "tx_index": 0,
+        "msg_index": 0,
+        "seq": 0,
+        "type": "EventDaoConfigUpdated",
+        "attrs": {
+          "id": "2",
+          "fields": [
+            "min_quorum",
+            "voting_period"
+          ]
+        },
+        "tx_hash": null,
+        "time": "2026-11-08T09:00:00Z"
+      }
+    ],
+    "next_cursor": null,
+    "total": 21
+  }
+}
