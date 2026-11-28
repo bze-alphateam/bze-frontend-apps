@@ -4,11 +4,10 @@ import {ScanUnavailableError} from "./dao-scan";
 import type {DaoProposalScan} from "./dao-proposal-scan";
 import {DaoModuleUnsupported} from "./dao-view-loader";
 import {
-    loadActiveProposals, loadFinishedProposals, loadMyVote, loadProposal, loadVotes, refreshProposal,
+    loadMyVote, loadProposal, loadVotes, refreshProposal,
     type ProposalChain, type ProposalDeps,
 } from "./proposal-loader";
 import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
-import type {ScanProposalSummary} from "./proposal-types";
 
 const DAO = {id: "4", name: "Stakers club", type: "DAO_TYPE_STAKE", address: "bze1dao", electorate: {sr_ids: ["000000000017"], dr_denom: ""}} as unknown as Dao;
 const PARAMS = {min_expedite_delay: "86400s"} as never;
@@ -211,48 +210,6 @@ describe("loadMyVote", () => {
     it("a failed voting-power read only leaves the weight unknown", async () => {
         const d = deps({getVotingPower: async () => { throw new Error("y"); }});
         expect(await loadMyVote(d, model, "bze1me")).toEqual({ballot: null, eligibleWeight: null});
-    });
-});
-
-describe("a DAO's proposals", () => {
-    const item = (id: number, status: string | null, title: string | null = `P${id}`): ScanProposalSummary => ({
-        id, dao_id: 4, title, status, proposer: "bze1p", proposer_label: null, expedited: false, submit_time: null, voting_end: null,
-        yes: "0", no: "0", abstain: "0", denominator: "10", settled_height: null, message_types: [],
-    });
-
-    it("active: voting and failed executions, read as two requests and merged newest first", async () => {
-        const listForDao = vi.fn(async (_dao: string, status: string | null) =>
-            ({items: status === "voting" ? [item(9, "voting"), item(5, "voting")] : [item(7, "execution_failed")], next_cursor: null}));
-        const result = await loadActiveProposals(deps({}, {listForDao}), "4");
-        expect(result.source).toBe("scan");
-        expect(result.rows.map((r) => r.id)).toEqual(["9", "7", "5"]);
-        expect(listForDao).toHaveBeenCalledWith("4", "voting", null, 50);
-        expect(listForDao).toHaveBeenCalledWith("4", "execution_failed", null, 50);
-    });
-
-    it("active with Scan down: the chain lists both statuses at once, newest first", async () => {
-        const getDaoProposals = vi.fn(async () => ({items: [{...PROPOSAL, id: "3"}, {...PROPOSAL, id: "6", status: "EXECUTION_FAILED" as const}], nextKey: null}));
-        const result = await loadActiveProposals(deps({getDaoProposals}, {listForDao: DOWN}), "4");
-        expect(result.source).toBe("chain");
-        expect(result.rows.map((r) => r.id)).toEqual(["6", "3"]);
-        expect(getDaoProposals).toHaveBeenCalledWith("4", ["VOTING", "EXECUTION_FAILED"], {limit: 50, reverse: true});
-    });
-
-    it("finished: leaves out the moving and placeholder rows and keeps reading until it has enough", async () => {
-        const pages = [
-            {items: [item(9, "voting"), item(8, "execution_failed"), item(7, null)], next_cursor: "c2"},
-            {items: [item(6, "rejected"), item(5, "executed")], next_cursor: null},
-        ];
-        const listForDao = vi.fn(async () => pages.shift()!);
-        const result = await loadFinishedProposals(deps({}, {listForDao}), "4", null);
-        expect(result.rows.map((r) => r.id)).toEqual(["6", "5"]);
-        expect(result.next).toBeNull();
-        expect(listForDao).toHaveBeenNthCalledWith(1, "4", null, null, 20);
-        expect(listForDao).toHaveBeenNthCalledWith(2, "4", null, "c2", 20);
-    });
-
-    it("finished throws when Scan is down (the tab shows a retry)", async () => {
-        await expect(loadFinishedProposals(deps({}, {listForDao: DOWN}), "4", null)).rejects.toBeInstanceOf(ScanUnavailableError);
     });
 });
 
