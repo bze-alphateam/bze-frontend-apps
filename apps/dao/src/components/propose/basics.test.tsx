@@ -37,12 +37,16 @@ describe("the composer's basics", () => {
         expect(screen.getByTestId("summary-write")).toHaveAttribute("aria-pressed", "true");
         expect(screen.getByTestId("summary-preview-toggle")).toHaveAttribute("aria-pressed", "false");
         expect(screen.getByTestId("proposal-summary-input")).toBeTruthy();
+        expect(screen.getByTestId("summary-write-box")).toHaveAttribute("data-view", "write");
         fireEvent.click(screen.getByTestId("summary-preview-toggle"));
         expect(screen.getByTestId("summary-preview-toggle")).toHaveAttribute("aria-pressed", "true");
-        expect(screen.queryByTestId("proposal-summary-input")).toBeNull();
+        // the textarea stays in the page for a phone (no Preview there); a wider screen hides it while previewing
+        expect(screen.getByTestId("summary-write-box")).toHaveAttribute("data-view", "preview");
+        expect(screen.getByTestId("proposal-summary-input")).toBeTruthy();
         expect(screen.getByTestId("summary-preview").querySelector("a")).toHaveAttribute("href", "https://example.com/plan");
         fireEvent.click(screen.getByTestId("summary-write"));
-        expect(screen.getByTestId("proposal-summary-input")).toBeTruthy();
+        expect(screen.queryByTestId("summary-preview")).toBeNull();
+        expect(screen.getByTestId("summary-write-box")).toHaveAttribute("data-view", "write");
     });
 
     it("says the summary is plain text, with its byte count", () => {

@@ -156,7 +156,8 @@ const ActionCard = ({index, draft, composed, ctx, nested, formatCoin, text, lock
                     {composed?.warnings.map((w) => <chakra.span key={w} fontSize="13px" color="hg.warning.text" data-testid="action-warning">{w}</chakra.span>)}
                 </Flex>
             </Flex>
-            <Flex gap="4px" flex="none" alignSelf={{base: 'flex-end', md: 'center'}}>
+            {/* board I5: a phone's cards have no buttons */}
+            <Flex gap="4px" flex="none" alignSelf="center" display={{base: 'none', md: 'flex'}} data-testid="action-buttons">
                 <chakra.button {...squareButton} disabled={locked || index === 0} onClick={onMoveUp} aria-label={`Move action ${number} up`} data-testid="action-move-up"><LuArrowUp aria-hidden /></chakra.button>
                 <chakra.button {...squareButton} disabled={locked} onClick={onEdit} aria-label={`Edit action ${number}`} data-testid="action-edit"><LuPencil aria-hidden /></chakra.button>
                 <chakra.button {...squareButton} disabled={locked} onClick={onRemove} aria-label={`Remove action ${number}`} data-testid="action-remove"><LuTrash2 aria-hidden /></chakra.button>
@@ -180,6 +181,8 @@ const subWayOf = (draft: ActionDraft): SubWay => (draft.type === SUB_EXECUTE_ID 
 interface EditorProps {
     /** The label of the button that adds a new action at the top level. */
     commitLabel: string;
+    /** The list's wording, handed on to a SubDAO's inner list. */
+    wording: ActionsListProps['wording'];
     draft: ActionDraft;
     ctx: ActionContext;
     nested: boolean;
@@ -193,7 +196,7 @@ interface EditorProps {
 }
 
 /** The form card of one action (board F2/F3): its header, its form, the problems, then Cancel / Add to proposal. */
-const ActionEditor = ({commitLabel, draft, ctx, nested, editing, formatCoin, wallet, entries, onChange, onCancel, onCommit}: EditorProps) => {
+const ActionEditor = ({commitLabel, wording, draft, ctx, nested, editing, formatCoin, wallet, entries, onChange, onCancel, onCommit}: EditorProps) => {
     const [tried, setTried] = useState(false);
     // a SubDAO's inner list with its own form card open: this card waits for it
     const [innerOpen, setInnerOpen] = useState(false);
@@ -253,7 +256,7 @@ const ActionEditor = ({commitLabel, draft, ctx, nested, editing, formatCoin, wal
                 error={dirty ? composed.error : undefined}
                 staged
                 renderActions={(inner) => (
-                    <StagedList drafts={inner.drafts} ctx={inner.ctx} maxActions={Number(inner.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={inner.onChange} nested staged wallet={wallet} onEditing={setInnerOpen} />
+                    <StagedList drafts={inner.drafts} ctx={inner.ctx} maxActions={Number(inner.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={inner.onChange} nested staged wallet={wallet} onEditing={setInnerOpen} wording={wording} />
                 )}
             />
             {changes && (changes.length === 0
@@ -271,7 +274,7 @@ const ActionEditor = ({commitLabel, draft, ctx, nested, editing, formatCoin, wal
                 {innerOpen && <chakra.span fontSize="12px" color="hg.text.faint" me="auto" data-testid="action-commit-blocked">Add or cancel the open action above first.</chakra.span>}
                 <Button variant="ghost" size="md" color="hg.link" onClick={onCancel} data-testid="action-cancel">Cancel</Button>
                 <Button variant={hgVariant('primary')} size="md" disabled={innerOpen} onClick={commit} data-testid="action-commit">
-                    {editing ? 'Save changes' : nested ? 'Add to the list' : commitLabel}
+                    {editing ? 'Save changes' : commitLabel}
                 </Button>
             </Flex>
         </chakra.section>
@@ -444,7 +447,8 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
             draft={editor.draft}
             ctx={ctx}
             nested={nested}
-            commitLabel={wording?.commit ?? 'Add to proposal'}
+            commitLabel={nested ? wording?.nestedCommit ?? 'Add to the list' : wording?.commit ?? 'Add to proposal'}
+            wording={wording}
             editing={editor.index !== null}
             formatCoin={formatCoin}
             wallet={wallet}
@@ -463,7 +467,7 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
                     <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint">{`Run as ${ctx.dao.name}, in this order`}</chakra.span>
                 </Flex>
             )}
-            {nested && drafts.length === 0 && !editor && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="no-inner-actions">{`No actions yet: add what ${ctx.dao.name} does, in order.`}</chakra.span>}
+            {nested && drafts.length === 0 && !editor && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="no-inner-actions">{wording?.nestedEmpty?.(ctx.dao.name) ?? `No actions yet: add what ${ctx.dao.name} does, in order.`}</chakra.span>}
             {drafts.length > 0 && (
                 <chakra.ol m="0" p="0" display="flex" flexDirection="column" gap="12px">
                     {drafts.map((draft, i) => (editor?.index === i

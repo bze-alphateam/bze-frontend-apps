@@ -305,6 +305,29 @@ test.describe("on a phone (board I5)", () => {
         expect(box && box.height).toBeLessThan(130);
     });
 
+    test("a summary left in Preview on a wide screen is editable again on a phone", async ({page}) => {
+        await page.setViewportSize({width: 1280, height: 900});
+        await page.goto("/dao/2/propose");
+        await page.getByTestId("proposal-summary-input").fill("Flowers.");
+        await page.getByTestId("summary-preview-toggle").click();
+        await expect(page.getByTestId("proposal-summary-input")).toBeHidden();
+        await page.setViewportSize({width: 390, height: 1400});
+        await expect(page.getByTestId("proposal-summary-input")).toBeVisible();
+        await expect(page.getByTestId("summary-preview")).toBeHidden();
+        await page.getByTestId("proposal-summary-input").fill("Flowers for all.");
+        await expect(page.getByTestId("summary-count-phone")).toHaveText("Plain text · 16 of 5,000 bytes");
+    });
+
+    test("an action card has no buttons on a phone", async ({page}) => {
+        await page.goto("/dao/2/propose");
+        await pick(page, "pay");
+        await page.getByTestId("pay-amount").fill("1");
+        await page.getByTestId("pay-to").fill(STRANGER);
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-row")).toHaveCount(1);
+        await expect(page.getByTestId("action-buttons")).toBeHidden();
+    });
+
     test("the short expedited line, the short cost values, and no footnotes or draft card", async ({page}) => {
         // no wallet: a phone's header connects through its menu, and none of this needs one
         await page.goto("/dao/4/propose");

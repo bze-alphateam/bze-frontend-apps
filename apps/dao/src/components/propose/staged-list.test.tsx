@@ -190,9 +190,35 @@ describe("the staged list's wording", () => {
     const wording: ListWording = {header: false, hint: "Runs the moment you sign.", full: (max) => `At most ${max} at once.`, commit: "Add to the batch", textOnly: false};
 
     it("the composer's words by default", async () => {
-        render(<Harness ctx={ctxWith()} maxActions={1} start={[{key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}}]} />);
+        const empty = render(<Harness ctx={ctxWith()} />);
         expect(screen.getByTestId("actions-header")).toHaveTextContent("What it does if it passes");
+        expect(screen.getByTestId("text-only-hint")).toHaveTextContent(/^No action = a text-only \(signalling\) proposal\.$/);
+        const picker = await openPicker();
+        expect(within(picker).getByTestId("add-text-only")).toHaveTextContent("Text only");
+        fireEvent.click(within(picker).getByTestId("add-pay"));
+        expect(screen.getByTestId("action-commit")).toHaveTextContent(/^Add to proposal$/);
+        empty.unmount();
+
+        render(<Harness ctx={ctxWith()} maxActions={1} start={[{key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}}]} />);
         expect(screen.getByTestId("actions-full")).toHaveTextContent("A proposal can run at most 1 actions.");
+    });
+
+    it("a SubDAO's inner list: its empty line and its commit label, by default and from wording", async () => {
+        const plain = render(<Harness ctx={ctxWith({subDaos: [SUB_DAO]})} />);
+        await choose("manage-sub-dao-7");
+        expect(screen.getByTestId("no-inner-actions")).toHaveTextContent("No actions yet: add what Garden club does, in order.");
+        fireEvent.click(within(screen.getByTestId("nested-actions")).getByTestId("add-action"));
+        fireEvent.click(within(await screen.findByTestId("action-picker")).getByTestId("add-pay"));
+        expect(within(screen.getByTestId("nested-actions")).getByTestId("action-commit")).toHaveTextContent(/^Add to the list$/);
+        plain.unmount();
+        await pickerGone();
+
+        render(<Harness ctx={ctxWith({subDaos: [SUB_DAO]})} wording={{nestedEmpty: (name) => `${name} does nothing yet.`, nestedCommit: "Add for it"}} />);
+        await choose("manage-sub-dao-7");
+        expect(screen.getByTestId("no-inner-actions")).toHaveTextContent(/^Garden club does nothing yet\.$/);
+        fireEvent.click(within(screen.getByTestId("nested-actions")).getByTestId("add-action"));
+        fireEvent.click(within(await screen.findByTestId("action-picker")).getByTestId("add-pay"));
+        expect(within(screen.getByTestId("nested-actions")).getByTestId("action-commit")).toHaveTextContent(/^Add for it$/);
     });
 
     it("a custom wording replaces the header, hint, full note and commit label, and drops Text only", async () => {

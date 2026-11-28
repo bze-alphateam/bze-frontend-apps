@@ -102,8 +102,9 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, r
             data-testid="submit-panel"
         >
             <chakra.h2 id="submit-title" m="0" fontSize="17px" fontWeight="700">Before you submit</chakra.h2>
-            {status?.kind === 'allowed' && <Notice status="success"><span data-testid="proposer-note">{status.reason}</span></Notice>}
-            {status?.kind === 'maybe' && <NeutralNote testId="proposer-note">{status.reason}</NeutralNote>}
+            {/* board I5: a phone shows no eligibility note (the chain still checks before signing) */}
+            {status?.kind === 'allowed' && <chakra.div display={{base: 'none', md: 'block'}} data-testid="proposer-note-wrap"><Notice status="success"><span data-testid="proposer-note">{status.reason}</span></Notice></chakra.div>}
+            {status?.kind === 'maybe' && <chakra.div display={{base: 'none', md: 'block'}} data-testid="proposer-note-wrap"><NeutralNote testId="proposer-note">{status.reason}</NeutralNote></chakra.div>}
             {gate}
             <chakra.dl m="0" display="flex" flexDirection="column" data-testid="cost-list">
                 {rows.map((row, i) => (

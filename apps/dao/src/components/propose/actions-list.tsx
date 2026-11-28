@@ -63,6 +63,10 @@ export interface ListWording {
     commit?: string;
     /** Staged: false leaves "Text only" out of the picker. */
     textOnly?: boolean;
+    /** Staged, nested (a SubDAO's actions): the line of an empty list, given the SubDAO's name. */
+    nestedEmpty?: (daoName: string) => string;
+    /** Staged, nested: the button that adds a new inner action ("Add to the list"). */
+    nestedCommit?: string;
 }
 
 

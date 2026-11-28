@@ -66,36 +66,36 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                         {/* a phone has no Preview (board I5): the counter line says how it is shown */}
                         <chakra.div display={{base: 'none', md: 'block'}} data-testid="summary-view-wrap">
                             <Segmented
-                                label="Summary"
-                                value={view}
-                                onChange={setView}
-                                options={[{value: 'write', label: 'Write', testId: 'summary-write'}, {value: 'preview', label: 'Preview', testId: 'summary-preview-toggle'}]}
-                                testId="summary-view"
+                            label="Summary"
+                            value={view}
+                            onChange={setView}
+                            options={[{value: 'write', label: 'Write', testId: 'summary-write'}, {value: 'preview', label: 'Preview', testId: 'summary-preview-toggle'}]}
+                            testId="summary-view"
                             />
                         </chakra.div>
                     </Flex>
-                    {view === 'preview' ? (
-                        <chakra.div {...field(summaryCount.over)} display="block" minH="168px" py="12px" fontSize="15px" lineHeight="1.5" overflowWrap="anywhere" data-testid="summary-preview">
+                    {view === 'preview' && (
+                        <chakra.div {...field(summaryCount.over)} display={{base: 'none', md: 'block'}} minH="168px" py="12px" fontSize="15px" lineHeight="1.5" overflowWrap="anywhere" data-testid="summary-preview">
                             {summary.trim() === '' ? <chakra.span color="fg.muted">Nothing to preview yet.</chakra.span> : <PlainText text={summary} />}
                         </chakra.div>
-                    ) : (
-                        <chakra.span {...field(summaryCount.over)} alignItems="flex-start">
-                            <chakra.textarea
-                                {...control}
-                                rows={6}
-                                h={{base: '114px', md: 'auto'}}
-                                resize="vertical"
-                                lineHeight="1.5"
-                                py="12px"
-                                value={summary}
-                                onChange={(e) => onSummary(e.target.value)}
-                                placeholder="Why, and what happens next."
-                                aria-labelledby="summary-label"
-                                aria-invalid={summaryCount.over || undefined}
-                                data-testid="proposal-summary-input"
-                            />
-                        </chakra.span>
                     )}
+                    {/* a phone has no Preview: its textarea stays, even when Preview was picked on a wider screen */}
+                    <chakra.span {...field(summaryCount.over)} alignItems="flex-start" display={view === 'preview' ? {base: 'flex', md: 'none'} : 'flex'} data-testid="summary-write-box" data-view={view}>
+                        <chakra.textarea
+                            {...control}
+                            rows={6}
+                            h={{base: '114px', md: 'auto'}}
+                            resize="vertical"
+                            lineHeight="1.5"
+                            py="12px"
+                            value={summary}
+                            onChange={(e) => onSummary(e.target.value)}
+                            placeholder="Why, and what happens next."
+                            aria-labelledby="summary-label"
+                            aria-invalid={summaryCount.over || undefined}
+                            data-testid="proposal-summary-input"
+                        />
+                    </chakra.span>
                     <chakra.span display={{base: 'none', md: 'inline'}}><Count line={summaryCount} testId="summary-count" /></chakra.span>
                     <chakra.span display={{base: 'inline', md: 'none'}}><Count line={{text: summaryCount.short, over: summaryCount.over}} testId="summary-count-phone" /></chakra.span>
                 </Flex>
@@ -106,17 +106,17 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                     <chakra.label display="flex" alignItems="flex-start" gap="12px" cursor="pointer">
                         <chakra.span position="relative" flex="none" w="44px" h="25px" borderRadius="999px" mt="1px" bg={expedited ? 'app.solid' : 'hg.switchOff'} transition="background 120ms">
                             <chakra.input
-                                type="checkbox"
-                                role="switch"
-                                aria-label="Expedited"
-                                checked={expedited}
-                                onChange={(e) => onExpedited(e.target.checked)}
-                                position="absolute"
-                                inset="0"
-                                opacity={0}
-                                m="0"
-                                cursor="pointer"
-                                data-testid="expedited-switch"
+                            type="checkbox"
+                            role="switch"
+                            aria-label="Expedited"
+                            checked={expedited}
+                            onChange={(e) => onExpedited(e.target.checked)}
+                            position="absolute"
+                            inset="0"
+                            opacity={0}
+                            m="0"
+                            cursor="pointer"
+                            data-testid="expedited-switch"
                             />
                             <chakra.span position="absolute" top="3px" left={expedited ? '22px' : '3px'} boxSize="19px" borderRadius="999px" bg="white" transition="left 120ms" pointerEvents="none" />
                         </chakra.span>
