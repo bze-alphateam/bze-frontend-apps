@@ -89,7 +89,7 @@ const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoV
                 </chakra.div>
             )}
             {tab === 'proposals' && <ProposalsTab deps={proposalDeps} daoId={dao.id} nameOf={nameOf} newProposal={actions.newProposal} />}
-            {tab === 'history' && <HistoryTab deps={deps} daoId={dao.id} daoAddress={dao.address} nameOf={nameOf} />}
+            {tab === 'history' && <HistoryTab deps={deps} daoId={dao.id} daoAddress={dao.address} nameOf={nameOf} creator={detail?.creator} />}
         </DaoShell>
     );
 };

@@ -1,11 +1,15 @@
 import type {ScanDaoEvent} from './dao-types';
 import {shortAddress} from './format';
 
+/** The icon of a history row (the board's 36 px tile). */
+export type EventIcon = 'execute' | 'rules' | 'voters' | 'admin' | 'nominate' | 'withdraw' | 'metadata' | 'created' | 'members' | 'other';
+
 export interface DescribedEvent {
     /** The event in one sentence. */
     title: string;
-    /** Extra lines: the members added, the fields changed. */
+    /** Extra lines: the members added, the fields changed. The tab joins them with " · ". */
     details: string[];
+    icon: EventIcon;
 }
 
 export interface HistoryContext {
@@ -13,6 +17,8 @@ export interface HistoryContext {
     daoAddress: string;
     /** A name for an address (a Scan label), when there is one. */
     nameOf?: (address: string) => string | undefined;
+    /** Who created the DAO (Scan's detail): the created event names it. */
+    creator?: string | null;
 }
 
 /** The proto names of a config's fields, as people say them. */
@@ -86,6 +92,9 @@ export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, co
     return {...described, title: described.title.charAt(0).toUpperCase() + described.title.slice(1)};
 }
 
+const sourcesLine = (rewards: string[], denom: string): string =>
+    [...rewards.map((id) => `Simple reward #${Number(id) || id}`), ...(denom ? [`Compounded reward (${denom})`] : [])].join(' + ');
+
 function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const a = attrsOf(event.attrs);
     const name = (address: string): string => context.nameOf?.(address) ?? shortAddress(address);
@@ -99,54 +108,72 @@ function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryC
             if (type === 'DAO_TYPE_STAKE') details.push('Governed by stakers');
             else if (type === 'DAO_TYPE_STATIC_LIST') details.push('Governed by a member list');
             if (admin) details.push(adminLine(admin, admin === context.daoAddress || admin === text(a.address), context));
-            return {title: 'The DAO was created', details};
+            const creator = context.creator ?? text(a.creator);
+            return {title: creator ? `DAO created by ${name(creator)}` : 'DAO created', details, icon: 'created'};
         }
         case 'EventAdminNominated':
-            return {title: `${who(text(a.admin))} nominated ${name(text(a.nominee))} as the new admin`, details};
+            return {title: `${who(text(a.admin))} nominated ${name(text(a.nominee))} as admin`, details, icon: 'nominate'};
         case 'EventAdminChanged': {
             const next = text(a.new_admin);
             const before = text(a.old_admin);
-            if (next === context.daoAddress) return {title: 'The admin handed the DAO to its own voters', details: ['No admin']};
-            return {title: `New admin: ${who(next)}`, details: before ? [`Before: ${who(before)}`] : []};
+            if (next === context.daoAddress) return {title: 'No admin: the DAO is run by its own voters', details: before ? [`${who(before)} handed the DAO to its own voters`] : [], icon: 'admin'};
+            return {title: `New admin: ${who(next)}`, details: before ? [`${who(before)} handed the DAO to ${who(next)}, which accepted`] : [], icon: 'admin'};
         }
-        case 'EventAdminNominationWithdrawn':
-            return {title: `The nomination of ${who(text(a.nominee))} as admin was withdrawn`, details};
-        case 'EventDaoConfigUpdated': {
-            const fields = list(a.fields);
+        case 'EventAdminNominationWithdrawn': {
+            const admin = text(a.admin);
             return {
-                title: 'The voting rules were updated',
-                details: fields.length > 0 ? [`Changed: ${fields.map(fieldName).join(', ')}`] : [],
+                title: admin ? `${who(admin)} withdrew the nomination of ${who(text(a.nominee))}` : `The nomination of ${who(text(a.nominee))} as admin was withdrawn`,
+                details,
+                icon: 'withdraw',
             };
         }
+        case 'EventDaoConfigUpdated': {
+            const fields = list(a.fields);
+            return {title: 'Rules changed', details: fields.length > 0 ? [`Changed: ${fields.map(fieldName).join(', ')}`] : [], icon: 'rules'};
+        }
         case 'EventDaoMetadataUpdated':
-            return {title: 'The name or description was updated', details};
+            return {title: 'Name and description changed', details, icon: 'metadata'};
         case 'EventDaoElectorateUpdated': {
-            const rewards = list(a.sr_ids);
-            const denom = text(a.dr_denom);
-            if (rewards.length > 0) details.push(`Staking rewards: ${rewards.map((id) => Number(id) || id).join(', ')}`);
-            if (denom) details.push(`Denom Reward of ${denom}`);
+            const sources = sourcesLine(list(a.sr_ids), text(a.dr_denom));
             return {
-                title: details.length > 0 ? 'The voting sources were replaced' : 'The voting sources were cleared: no one can vote until new ones are set',
-                details,
+                title: 'Voters changed',
+                details: [sources ? `Sources: ${sources}` : 'No sources left: nobody can vote until new ones are set'],
+                icon: 'voters',
             };
         }
         case 'EventDaoMembersUpdated': {
             const added = list(a.added);
             const removed = list(a.removed);
-            if (added.length > 0) details.push(`Added: ${people(added, name)}`);
-            if (removed.length > 0) details.push(`Removed: ${people(removed, name)}`);
-            return {title: 'The member list was updated', details};
+            if (added.length > 0) details.push(`Added ${people(added, name)}`);
+            if (removed.length > 0) details.push(`Removed ${people(removed, name)}`);
+            return {title: 'Members changed', details, icon: 'members'};
         }
         case 'EventAdminExecuted': {
             const count = Number(text(a.msg_count));
-            return {
-                title: `${who(text(a.admin))} ran ${count === 1 ? 'a message' : Number.isFinite(count) && count > 0 ? `${count} messages` : 'messages'} as the DAO`,
-                details,
-            };
+            const actions = count === 1 ? 'an action' : Number.isFinite(count) && count > 0 ? `${count} actions` : 'actions';
+            return {title: `${who(text(a.admin))} ran ${actions} as this DAO`, details, icon: 'execute'};
         }
         default: {
             const kind = eventKind(event.type).replace(/^Event/, '').replace(/([a-z])([A-Z])/g, '$1 $2');
-            return {title: kind ? `Change: ${kind}` : 'The DAO changed', details};
+            return {title: kind ? `Change: ${kind}` : 'The DAO changed', details, icon: 'other'};
         }
     }
+}
+
+const utcDay = (date: Date): string => date.toISOString().slice(0, 10);
+
+/**
+ * The time column of a history row, in UTC like the rest of the app: "Today 09:12", "18 Nov 14:40", and the
+ * year too when it is not this year ("18 Nov 2025 14:40"); empty when the time is missing or unreadable.
+ */
+export function historyTime(iso: string | null | undefined, nowMs: number): string {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '';
+    const now = new Date(nowMs);
+    const time = date.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit', timeZone: 'UTC'});
+    if (utcDay(date) === utcDay(now)) return `Today ${time}`;
+    const sameYear = date.getUTCFullYear() === now.getUTCFullYear();
+    const day = date.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', ...(sameYear ? {} : {year: 'numeric'}), timeZone: 'UTC'});
+    return `${day} ${time}`;
 }
