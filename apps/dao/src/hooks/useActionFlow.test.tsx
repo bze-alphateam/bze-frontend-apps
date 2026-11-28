@@ -54,7 +54,7 @@ describe("useActionFlow", () => {
         const {deps, hook} = setup({send: (msgs) => sendDaoTx(tx, msgs)});
         await act(async () => { await hook.result.current.run("settle", MSGS); });
 
-        expect(hook.result.current.state).toEqual({phase: "failed", kind: "settle", error: "This proposal is already finished. Refresh the page.", batches: 0});
+        expect(hook.result.current.state).toEqual({phase: "failed", kind: "settle", error: "This proposal is already finished. Refresh the page.", batches: 0, stage: "prepare"});
         expect(hook.result.current.locked).toBe(false);
         expect(deps.refresh).not.toHaveBeenCalled();
     });

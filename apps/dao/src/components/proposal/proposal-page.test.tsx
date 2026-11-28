@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import {render, screen, waitFor} from "@testing-library/react";
+import {render, screen, waitFor, within} from "@testing-library/react";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
 import type {Dao, DaoProposalMessage} from "@bze/bze-ui-kit";
@@ -15,10 +15,11 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
         denomTicker: (denom: string) => (denom === "ubze" ? "BZE" : denom),
     }),
     useAssetsValue: () => ({denomUsdValue: () => new BigNumber(0)}),
+    useSDKTx: () => ({tx: vi.fn(), progressTrack: ""}),
+    useSettings: () => ({feeDenom: "ubze"}),
+    useBalance: (denom: string) => ({balance: {denom, amount: new BigNumber(1000)}, isLoading: false, hasAmount: () => true}),
 }));
 vi.mock("@/lib/dao-chain", () => ({liveProposalDeps: {}}));
-// the transaction buttons have their own tests
-vi.mock("./actions-slot", () => ({ProposalActionsSlot: () => null}));
 
 import type {DaoProposalScan} from "@/lib/dao-proposal-scan";
 import type {ProposalChain, ProposalDeps} from "@/lib/proposal-loader";
@@ -69,12 +70,35 @@ beforeEach(() => {
 });
 
 describe("ProposalPage", () => {
-    it("goes back to the DAO's Proposals tab, named, instead of an 'In <DAO>' link", async () => {
+    it("the board's header: back link, number and status, the title, then In <DAO> · by · the clock · Explorer; no hero", async () => {
         renderPage(deps());
         const back = await screen.findByTestId("proposal-back");
         expect(back).toHaveTextContent("Stakers club · proposals");
         expect(back).toHaveAttribute("href", "/dao/4?tab=proposals");
-        expect(screen.queryByTestId("proposal-dao")).toBeNull();
+        expect(screen.getByTestId("proposal-number")).toHaveTextContent("Proposal #7");
+        expect(screen.getByTestId("proposal-status")).toHaveTextContent("Voting");
+        expect(screen.getByRole("heading", {level: 1})).toHaveTextContent("Fund the festival");
+        expect(screen.getByTestId("proposal-dao")).toHaveTextContent("In Stakers club");
+        // the desktop meta line is hidden below md, which is jsdom's width
+        expect(within(screen.getByTestId("proposal-dao")).getByRole("link", {hidden: true})).toHaveAttribute("href", "/dao/4?tab=proposals");
+        expect(screen.getByTestId("proposal-proposer")).toHaveTextContent("by");
+        expect(screen.getByTestId("proposal-ends")).toHaveTextContent(/^Voting ends/);
+        expect(within(screen.getByTestId("proposal-explorer")).getByRole("link", {hidden: true})).toHaveAttribute("href", expect.stringMatching(/\/daos\/4\/proposals\/7$/));
+        expect(screen.queryByTestId("page-hero")).toBeNull();
+        // the phone line: the clock and the proposer only
+        expect(screen.getByTestId("proposal-meta-phone")).toHaveTextContent(/^Voting ends .* · by /);
+    });
+
+    it("two columns: summary, actions, tally and votes in the main one; Your vote, timeline and money in the aside; no 'What you can do' card", async () => {
+        renderPage(deps());
+        const main = await screen.findByTestId("proposal-main");
+        const aside = screen.getByTestId("proposal-aside");
+        for (const id of ["summary-panel", "actions-panel", "tally-panel", "votes-panel"]) expect(within(main).getByTestId(id)).toBeInTheDocument();
+        for (const id of ["your-vote", "timeline-panel", "money-panel"]) expect(within(aside).getByTestId(id)).toBeInTheDocument();
+        expect(aside.tagName).toBe("ASIDE");
+        expect(screen.queryByText("What you can do")).toBeNull();
+        expect(within(main).getAllByRole("heading", {level: 2}).map((h) => h.textContent)).toEqual(["Summary", "What it does if it passes", "Tally", "Votes"]);
+        expect(within(aside).getAllByRole("heading", {level: 2}).map((h) => h.textContent)).toEqual(["Your vote", "Timeline", "Deposit and cost"]);
     });
 
     it("the raw JSON lists every message in order, and the actions name the DAOs they act on", async () => {
@@ -94,13 +118,13 @@ describe("ProposalPage", () => {
     it("tells a staker which stake does not count, because they joined or added to it after the proposal started", async () => {
         wallet.address = ME;
         renderPage(deps());
-        expect(await screen.findByTestId("not-counted")).toHaveTextContent(/^12(\.0+)? BZE in Staking reward 17 doesn't count: you joined or added to it after this proposal started\.$/);
+        expect(await screen.findByTestId("not-counted")).toHaveTextContent(/^Your 12(\.0+)? BZE in Staking reward 17 doesn't count here: you joined or added to it after this proposal started\.$/);
     });
 
     it("says nothing about it when the stake joined before the proposal", async () => {
         wallet.address = ME;
         renderPage(deps({getJoinHeight: vi.fn(async () => "99"), getVotingPower: vi.fn(async () => ({current: "12000000", proposals: [{proposal_id: "7", eligible_weight: "12000000", shares: [{source: "sr/000000000017", amount: "12000000"}]}]}))}));
-        await screen.findByTestId("eligible");
+        expect(await screen.findByTestId("vote-weight-note")).toHaveTextContent(/Your vote counts for\s*12/);
         expect(screen.queryByTestId("not-counted")).toBeNull();
     });
 });

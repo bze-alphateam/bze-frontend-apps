@@ -20,7 +20,7 @@ describe("retry until", () => {
 
     it("while voting: voting_end + the execution window, as the last upcoming step", () => {
         const items = buildTimeline(voting, withWindow, NOW);
-        expect(kinds(items)).toEqual(["submitted", "voting-end", "retry-until"]);
+        expect(kinds(items)).toEqual(["submitted", "voting-end", "settle-next", "retry-until"]);
         expect(items.at(-1)).toMatchObject({label: "If the actions fail, anyone can retry until then", time: "2026-11-16T10:00:00.000Z", upcoming: true});
         expect(retryUntil(voting, withWindow)).toBe("2026-11-16T10:00:00.000Z");
     });
@@ -41,10 +41,15 @@ describe("retry until", () => {
 });
 
 describe("buildTimeline", () => {
-    it("a voting proposal: submitted with its block, voting ends in the future", () => {
+    it("a voting proposal: submitted with its block, voting ends in the future, then the settle anyone can send", () => {
         const items = buildTimeline(base, params, NOW);
         expect(items[0]).toMatchObject({kind: "submitted", height: 100});
-        expect(items.at(-1)).toMatchObject({kind: "voting-end", label: "Voting ends", upcoming: true});
+        expect(items[1]).toMatchObject({kind: "voting-end", label: "Voting ends", upcoming: true});
+        expect(items.at(-1)).toMatchObject({kind: "settle-next", label: "Settled: counted, and if it passed its actions run", time: base.votingEnd, upcoming: true});
+    });
+
+    it("a finished proposal has no settle still to come", () => {
+        expect(kinds(buildTimeline({...base, status: "REJECTED"}, params, NOW))).not.toContain("settle-next");
     });
 
     it("an expedited stake proposal shows the earliest early settle (submission + the module's delay)", () => {
@@ -53,8 +58,10 @@ describe("buildTimeline", () => {
         expect(items[1]).toMatchObject({time: "2026-10-31T10:00:00.000Z", upcoming: false});
     });
 
-    it("a static list has no early-settle step: its members are fixed", () => {
-        expect(kinds(buildTimeline({...base, expedited: true, daoType: "DAO_TYPE_STATIC_LIST"}, params, NOW))).toEqual(["submitted", "voting-end"]);
+    it("a static list can settle early any time: its members are fixed, so there is no waiting time", () => {
+        const items = buildTimeline({...base, expedited: true, daoType: "DAO_TYPE_STATIC_LIST"}, params, NOW);
+        expect(kinds(items)).toEqual(["submitted", "early", "voting-end"]);
+        expect(items[1]).toMatchObject({label: "Can settle early: member lists have no waiting time", time: null, detail: "Any time, once the expedite bars are met"});
     });
 
     it("without the module params the early step is left out", () => {

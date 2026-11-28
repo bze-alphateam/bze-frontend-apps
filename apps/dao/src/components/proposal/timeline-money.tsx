@@ -2,62 +2,78 @@
 
 import {chakra, Flex} from '@chakra-ui/react';
 import {getExplorerBlockURL, getExplorerTxURL, type DaoCoin} from '@bze/bze-ui-kit';
-import {Panel, Row} from '@/components/dao/page/panel';
-import {formatDateTime, formatRelative} from '@/lib/format';
-import {describeMoney} from '@/lib/proposal-money';
-import {buildTimeline} from '@/lib/proposal-timeline';
+import {shortAddress} from '@/lib/format';
+import {moneyRows} from '@/lib/proposal-money';
+import {buildTimeline, type TimelineItem} from '@/lib/proposal-timeline';
+import {countdown, shortStampOf, stampOf} from '@/lib/proposal-view';
 import type {ProposalPageData} from '@/lib/proposal-loader';
+import {Card, Rows} from './ui';
 
-/** The life of the proposal in order; times from the chain, the settle and cleanup from Scan (heights). */
-export const TimelinePanel = ({data, nowMs}: {data: ProposalPageData; nowMs: number}) => {
+type Dot = 'done' | 'next' | 'later';
+
+const DOT: Record<Dot, {bg: string; border: string}> = {
+    done: {bg: 'hg.accent', border: 'hg.accent'},
+    next: {bg: 'hg.warning', border: 'hg.warning'},
+    later: {bg: 'hg.card', border: 'hg.lineStrong'},
+};
+
+/** The line under a step: its time, how long until it, its block; the settle still to come says from when and by whom. */
+function lineOf(item: TimelineItem, ended: boolean, nowMs: number): string {
+    if (item.kind === 'settle-next') return ended ? 'Now, by anyone' : item.time ? `From ${shortStampOf(item.time).replace(',', '')}, by anyone` : 'After voting ends, by anyone';
+    if (item.kind === 'retry-until') return item.time ? `Until ${stampOf(item.time)}` : '';
+    if (item.kind === 'early' && !item.time) return item.detail;
+    const parts = [stampOf(item.time)];
+    if (item.upcoming) parts.push(countdown(item.time, nowMs, true));
+    return parts.filter(Boolean).join(' · ');
+}
+
+/** E2 Timeline: the life of the proposal, a dot per step (done, the next one, later ones) joined by a line. */
+export const TimelinePanel = ({data, nowMs, proposerName}: {data: ProposalPageData; nowMs: number; proposerName?: string}) => {
     const {model} = data;
     const items = buildTimeline(model, data.params.ok ? data.params.value : null, nowMs);
+    const firstUpcoming = items.findIndex((i) => i.upcoming);
+    const proposer = proposerName ?? shortAddress(model.proposer);
 
     return (
-        <Panel id="timeline" title="Timeline" testId="timeline-panel">
-            <Flex as="ol" direction="column" gap="12px" m="0" p="0" listStyleType="none">
-                {items.map((item) => {
+        <Card id="timeline" title="Timeline" testId="timeline-panel">
+            <chakra.ol m="0" p="0" listStyleType="none">
+                {items.map((item, i) => {
                     const href = item.height ? (item.kind === 'submitted' && model.outcome?.submitTxHash ? getExplorerTxURL(model.outcome.submitTxHash) : getExplorerBlockURL(item.height)) : null;
-                    const relative = formatRelative(item.time, nowMs);
+                    const dot: Dot = !item.upcoming ? 'done' : i === firstUpcoming ? 'next' : 'later';
+                    const label = item.kind === 'submitted' ? `Submitted${model.expedited ? ' (expedited)' : ''} by ${proposer}` : item.label;
+                    const line = lineOf(item, model.votingEnded, nowMs);
+                    const last = i === items.length - 1;
                     return (
-                        <chakra.li key={item.kind} display="flex" flexDirection="column" gap="2px" opacity={item.upcoming ? 0.7 : 1} data-testid="timeline-item" data-kind={item.kind}>
-                            <chakra.span fontWeight="600" fontSize="14px">{item.label}</chakra.span>
-                            <Flex gap="4px 12px" wrap="wrap" fontSize="13px" color="fg.muted">
-                                {item.time && <span data-testid="timeline-time">{formatDateTime(item.time)}</span>}
-                                {relative && <span>{relative}</span>}
-                                {href && <chakra.a href={href} target="_blank" rel="noopener noreferrer" color="hg.link" data-testid="timeline-block">{`Block ${item.height}`}</chakra.a>}
+                        <chakra.li key={item.kind} position="relative" display="flex" gap="14px" pb={last ? '0' : '14px'} data-testid="timeline-item" data-kind={item.kind} data-dot={dot}>
+                            {!last && <chakra.span aria-hidden position="absolute" left="6px" top="18px" bottom="-2px" w="2px" bg="hg.divider" />}
+                            <chakra.span aria-hidden position="relative" boxSize="14px" flex="none" mt="3px" borderRadius="999px" bg={DOT[dot].bg} borderWidth="2px" borderColor={DOT[dot].border} />
+                            <Flex direction="column" gap="2px" minW="0">
+                                <chakra.strong fontSize="14px">{label}</chakra.strong>
+                                {(line || href) && (
+                                    <chakra.span fontSize="13px" color="hg.text.faint">
+                                        {line && <span data-testid="timeline-time">{line}</span>}
+                                        {href && <>{line ? ' · ' : ''}<chakra.a href={href} target="_blank" rel="noopener noreferrer" color="hg.link" data-testid="timeline-block">{`block ${item.height?.toLocaleString('en-US')}`}</chakra.a></>}
+                                    </chakra.span>
+                                )}
+                                {item.detail && item.kind !== 'early' && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="timeline-detail">{item.detail}</chakra.span>}
+                                {item.detail && item.kind === 'early' && item.time && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="timeline-detail">{item.detail}</chakra.span>}
                             </Flex>
-                            {item.detail && <chakra.span fontSize="13px" color="fg.muted" data-testid="timeline-detail">{item.detail}</chakra.span>}
                         </chakra.li>
                     );
                 })}
-            </Flex>
+            </chakra.ol>
             {model.outcome === null && <chakra.p m="0" fontSize="12px" color="hg.text.faint" data-testid="timeline-no-scan">How it was settled, and when it was cleaned up, come from BZE Scan, which is not answering.</chakra.p>}
-        </Panel>
+        </Card>
     );
 };
 
-/** What the proposal cost and what happens to its deposit. */
+/** E2 Deposit and cost: the deposit, what happens to it (or what did), and the cost. */
 export const MoneyPanel = ({data, formatCoin}: {data: ProposalPageData; formatCoin: (coin: DaoCoin) => string}) => {
-    const money = describeMoney(data.model, formatCoin);
-    const nothing = !money.cost && !money.deposit;
-
+    const money = moneyRows(data.model, formatCoin);
     return (
-        <Panel id="money" title="Cost and deposit" testId="money-panel">
-            {money.rulesUnknown && <chakra.p m="0" fontSize="14px" color="fg.muted" data-testid="money-rules-unknown">The refund and destination rules of this proposal are not known, so what happens to its cost and deposit cannot be told.</chakra.p>}
-            {nothing && <chakra.p m="0" color="fg.muted" data-testid="money-none">{data.model.config ? 'This proposal had no cost and no deposit.' : 'The cost and deposit of this proposal are not known.'}</chakra.p>}
-            <Flex direction="column" gap="10px">
-                {money.cost && <Row label="Proposal cost" testId="money-cost">{money.cost}</Row>}
-                {money.deposit && (
-                    <Row label="Deposit" testId="money-deposit">
-                        <Flex direction="column" gap="2px">
-                            <span>{money.deposit}</span>
-                            {money.depositRule && <chakra.span color="fg.muted" data-testid="deposit-rule">{money.depositRule}</chakra.span>}
-                            {money.released && <chakra.span color="fg.muted" data-testid="deposit-released">{money.released}</chakra.span>}
-                        </Flex>
-                    </Row>
-                )}
-            </Flex>
-        </Panel>
+        <Card id="money" title="Deposit and cost" testId="money-panel">
+            {money.note && <chakra.p m="0" fontSize="14px" lineHeight="1.55" color="hg.text.secondary" data-testid={money.note.testId}>{money.note.text}</chakra.p>}
+            {money.rows.length > 0 && <Rows rows={money.rows.map((r) => ({label: r.label, value: r.value, testId: r.testId}))} labelWidth="140px" />}
+        </Card>
     );
 };

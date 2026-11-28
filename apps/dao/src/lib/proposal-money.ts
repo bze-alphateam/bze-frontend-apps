@@ -1,5 +1,5 @@
 import type {DaoCoin, DaoDepositRefundPolicy, DaoFundsDestination, DaoProposalStatus} from '@bze/bze-ui-kit';
-import type {PinnedConfig, ProposalModel} from './proposal-model';
+import type {ProposalModel} from './proposal-model';
 import {shortAddress} from './format';
 
 // The money of a proposal: the cost paid at submission and the deposit escrowed until it is settled.
@@ -33,68 +33,106 @@ const DESTINATION: Record<DaoFundsDestination, string> = {
     TREASURY: "sent to the DAO's treasury",
 };
 
-export interface MoneyView {
-    /** The proposal cost, one line; null when the DAO charges none. */
-    cost: string | null;
-    /** The deposit, one line; null when there was none. */
-    deposit: string | null;
-    /** What the policy means for this proposal (before or after the result); empty without a deposit. */
-    depositRule: string;
-    /** The refund policy or a destination is not known (Scan's copy of the pinned rules lacks it): nothing is guessed. */
-    rulesUnknown: boolean;
-    /** What Scan saw happen to the deposit after the settle; empty when unknown. */
-    released: string;
-}
-
 const hasAmount = (coin: DaoCoin | null | undefined): coin is DaoCoin => !!coin && /[1-9]/.test(coin.amount);
 
-/** The cost and deposit text of a proposal; `formatCoin` is the app's coin formatter. */
-export function describeMoney(
-    p: Pick<ProposalModel, 'status' | 'config' | 'deposit' | 'outcome'>,
-    formatCoin: (coin: DaoCoin) => string,
-): MoneyView {
-    const config: PinnedConfig | null = p.config;
-    const cost = hasAmount(config?.proposal_cost)
-        ? `${formatCoin(config!.proposal_cost!)} paid when it was submitted${config!.cost_destination ? `, ${DESTINATION[config!.cost_destination]}` : ''}. It is never refunded.`
-        : null;
+export interface MoneyRow {
+    label: string;
+    value: string;
+    testId: string;
+}
+
+export interface MoneyRows {
+    rows: MoneyRow[];
+    /** A sentence instead of (or above) the rows: nothing to pay, or rules that are not known. */
+    note: {text: string; testId: string} | null;
+}
+
+const WHERE: Record<DaoFundsDestination, string> = {BURN: 'Burned', TREASURY: "Goes to the DAO's treasury"};
+const WENT: Record<DaoFundsDestination, string> = {BURN: 'Burned', TREASURY: "Went to the DAO's treasury"};
+
+/**
+ * The "Deposit and cost" card as label / value rows. While it votes: the deposit, what happens to it if it passes
+ * and if it doesn't, and the cost; once decided: the deposit and where it went (Scan's record first, else the
+ * pinned policy). Nothing is guessed: an unknown policy or destination says so.
+ */
+export function moneyRows(p: Pick<ProposalModel, 'status' | 'config' | 'deposit' | 'outcome'>, formatCoin: (coin: DaoCoin) => string): MoneyRows {
+    const config = p.config;
+    const policy = config?.deposit_refund_policy ?? null;
+    const kept = config?.kept_deposit_destination ?? null;
+    const outcome = outcomeOfStatus(p.status);
+    const rows: MoneyRow[] = [];
+    let unknown = false;
+
+    const fate = (result: Exclude<ProposalOutcome, 'pending'>, words: Record<DaoFundsDestination, string>, back: string): string | null => {
+        if (!policy) return null;
+        if (depositRefunded(policy, result)) return back;
+        return kept ? words[kept] : null;
+    };
 
     const deposit = hasAmount(p.deposit) ? p.deposit : null;
-    const costUnknown = hasAmount(config?.proposal_cost) && !config!.cost_destination;
-    if (!deposit) return {cost, deposit: null, depositRule: '', rulesUnknown: costUnknown, released: ''};
-    const amount = formatCoin(deposit);
-
-    const outcome = outcomeOfStatus(p.status);
-    let depositRule = '';
-    const policy = config?.deposit_refund_policy ?? null;
-    const keptDestination = config?.kept_deposit_destination ?? null;
-    const needsDestination = policy !== 'ALWAYS';
-    const rulesUnknown = costUnknown || !config || !policy || (needsDestination && !keptDestination);
-    if (config && policy && (keptDestination || !needsDestination)) {
-        const kept = keptDestination ? DESTINATION[keptDestination] : '';
+    if (deposit) {
+        const amount = formatCoin(deposit);
         if (outcome === 'pending') {
-            depositRule = {
-                ALWAYS: 'It is refunded to the proposer whatever the result.',
-                ONLY_PASSED: `It is refunded only if the proposal passes; if it is rejected or cancelled it is kept and ${kept}.`,
-                NEVER: `It is never refunded: it is kept and ${kept}.`,
-            }[policy];
+            rows.push({label: 'Deposit', value: `${amount}, held by the module`, testId: 'money-deposit'});
+            const passes = fate('passed', WHERE, 'Back to the proposer');
+            const fails = fate('rejected', WHERE, 'Back to the proposer');
+            if (passes && fails) {
+                rows.push({label: 'If it passes', value: passes, testId: 'deposit-if-passes'});
+                rows.push({label: "If it doesn't", value: fails, testId: 'deposit-rule'});
+            } else unknown = true;
         } else {
-            depositRule = depositRefunded(policy, outcome)
-                ? 'It was refunded to the proposer.'
-                : `It was kept (${policy === 'NEVER' ? 'this DAO never refunds' : 'refunded only when a proposal passes'}) and ${kept}.`;
+            rows.push({label: 'Deposit', value: amount, testId: 'money-deposit'});
+            const scan = p.outcome;
+            let went: string | null = null;
+            if (scan && scan.depositRefunded !== null) {
+                went = scan.depositRefunded ? 'Back to the proposer' : scan.depositDestination ? `Kept, sent to ${shortAddress(scan.depositDestination)}` : 'Kept';
+                rows.push({label: 'Where it went', value: went, testId: 'deposit-released'});
+            } else {
+                went = fate(outcome, WENT, 'Back to the proposer');
+                if (went) rows.push({label: 'Where it went', value: went, testId: 'deposit-rule'});
+                else unknown = true;
+            }
         }
     }
 
-    let released = '';
-    const scan = p.outcome;
-    if (scan && scan.depositRefunded !== null && outcome !== 'pending') {
-        released = scan.depositRefunded
-            ? 'Released at the settle: refunded to the proposer.'
-            : `Released at the settle: kept${scan.depositDestination ? `, sent to ${shortAddress(scan.depositDestination)}` : ''}.`;
+    const costCoin = hasAmount(config?.proposal_cost) ? config!.proposal_cost! : null;
+    if (costCoin) {
+        const where = config!.cost_destination ? `, ${DESTINATION[config!.cost_destination]}` : '';
+        if (!config!.cost_destination) unknown = true;
+        rows.push({label: 'Proposal cost', value: `${formatCoin(costCoin)}${where}. Never refunded.`, testId: 'money-cost'});
+    } else if (config && deposit) {
+        rows.push({label: 'Proposal cost', value: 'None', testId: 'money-cost'});
     }
 
-    return {
-        cost,
-        deposit: outcome === 'pending' ? `${amount} held in escrow while the proposal is voted on.` : `${amount} was put up as the deposit.`,
-        depositRule, rulesUnknown, released,
-    };
+    if (!deposit && !costCoin) {
+        return {rows, note: config ? {text: 'None: proposals in this DAO are free.', testId: 'money-none'} : {text: 'The cost and deposit of this proposal are not known.', testId: 'money-none'}};
+    }
+    if (unknown || (deposit && !config)) {
+        return {rows, note: {text: 'The refund and destination rules of this proposal are not known, so what happens to its cost and deposit cannot be told.', testId: 'money-rules-unknown'}};
+    }
+    return {rows, note: null};
+}
+
+const KEPT_SENTENCE: Record<DaoFundsDestination, string> = {TREASURY: 'went to the treasury', BURN: 'was burned'};
+
+/**
+ * Where the deposit of a decided proposal went, as one sentence for its summary ("The 1,000 HONEY deposit went
+ * to the treasury (only refunded if it passes)."): Scan's record first, else the pinned policy. A cancelled
+ * proposal adds that the cost is never refunded. Empty while it votes, without a deposit, or when it is not known.
+ */
+export function depositSentence(p: Pick<ProposalModel, 'status' | 'config' | 'deposit' | 'outcome'>, formatCoin: (coin: DaoCoin) => string): string {
+    const outcome = outcomeOfStatus(p.status);
+    if (outcome === 'pending') return '';
+    const config = p.config;
+    const cost = p.status === 'CANCELLED' && hasAmount(config?.proposal_cost) ? ' The cost is never refunded.' : '';
+    if (!hasAmount(p.deposit)) return cost.trim();
+    const the = `The ${formatCoin(p.deposit)} deposit`;
+    const policy = config?.deposit_refund_policy ?? null;
+    const kept = config?.kept_deposit_destination ?? null;
+    const why = policy === 'ONLY_PASSED' ? ' (only refunded if it passes)' : policy === 'NEVER' ? ' (this DAO never refunds deposits)' : '';
+
+    const refunded = p.outcome && p.outcome.depositRefunded !== null ? p.outcome.depositRefunded : policy ? depositRefunded(policy, outcome) : null;
+    if (refunded === null) return cost.trim();
+    if (refunded) return `${the} went back to the proposer.${cost}`;
+    return `${the} ${kept ? KEPT_SENTENCE[kept] : 'was kept'}${why}.${cost}`;
 }
