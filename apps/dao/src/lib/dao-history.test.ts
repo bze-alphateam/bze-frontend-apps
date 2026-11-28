@@ -6,23 +6,33 @@ const ctx = {daoAddress: DAO, nameOf: (a: string) => (a === "bze1named" ? "Alice
 const describe1 = (type: string, attrs: unknown) => describeDaoEvent({type, attrs}, ctx);
 
 describe("describeDaoEvent", () => {
-    it("EventDaoCreated: governed by its voters, or with an admin", () => {
-        expect(describe1("EventDaoCreated", {id: "1", address: DAO, admin: DAO, type: "DAO_TYPE_STAKE"})).toEqual({title: "The DAO was created", details: ["Governed by its voters"]});
-        expect(describe1("EventDaoCreated", {admin: "bze1named"}).details).toEqual(["Admin: Alice"]);
+    it("EventDaoCreated: who governs it and who runs it, in the decided words", () => {
+        expect(describe1("EventDaoCreated", {id: "1", address: DAO, admin: DAO, type: "DAO_TYPE_STAKE"})).toEqual({title: "The DAO was created", details: ["Governed by stakers", "No admin"]});
+        expect(describe1("EventDaoCreated", {admin: "bze1named", type: "DAO_TYPE_STATIC_LIST"}).details).toEqual(["Governed by a member list", "Admin: Alice"]);
+        expect(describe1("EventDaoCreated", {admin: "bze1unnamed000000000000000"}).details).toEqual(["Admin is an account (bze1unname…000000)"]);
+    });
+
+    it("never says \"Governed by its voters\", \"Has an admin\" or \"DAO #n\"", () => {
+        const texts = [
+            describe1("EventDaoCreated", {id: "3", address: DAO, admin: DAO, type: "DAO_TYPE_STAKE"}),
+            describe1("EventDaoCreated", {id: "3", admin: "bze1named"}),
+            describe1("EventAdminChanged", {id: "3", old_admin: DAO, new_admin: "bze1named"}),
+        ].flatMap((d) => [d.title, ...d.details]).join(" | ");
+        expect(texts).not.toMatch(/Governed by its voters|Has an admin|DAO #/);
     });
 
     it("EventAdminNominated", () => {
         expect(describe1("EventAdminNominated", {admin: "bze1named", nominee: "bze1nominee0000000000000"}).title).toBe("Alice nominated bze1nomine…000000 as the new admin");
     });
 
-    it("EventAdminChanged: to another account, and to the DAO's own voters", () => {
-        expect(describe1("EventAdminChanged", {old_admin: "bze1named", new_admin: "bze1new"}).title).toBe("The admin changed from Alice to bze1new");
-        expect(describe1("EventAdminChanged", {old_admin: "bze1named", new_admin: DAO}).title).toBe("The admin handed the DAO to its own voters");
+    it("EventAdminChanged: \"New admin: <name>\", and the handover to the DAO's own voters", () => {
+        expect(describe1("EventAdminChanged", {old_admin: "bze1new", new_admin: "bze1named"})).toEqual({title: "New admin: Alice", details: ["Before: bze1new"]});
+        expect(describe1("EventAdminChanged", {old_admin: "bze1named", new_admin: DAO})).toEqual({title: "The admin handed the DAO to its own voters", details: ["No admin"]});
     });
 
     it("a self-owned DAO acting is named as its voters, not by its raw address", () => {
         expect(describe1("EventAdminNominated", {admin: DAO, nominee: "bze1named"}).title).toBe("The DAO's own voters nominated Alice as the new admin");
-        expect(describe1("EventAdminChanged", {old_admin: DAO, new_admin: "bze1named"}).title).toBe("The admin changed from the DAO's own voters to Alice");
+        expect(describe1("EventAdminChanged", {old_admin: DAO, new_admin: "bze1named"}).details).toEqual(["Before: the DAO's own voters"]);
         expect(describe1("EventAdminExecuted", {admin: DAO, msg_count: "2"}).title).toBe("The DAO's own voters ran 2 messages as the DAO");
     });
 

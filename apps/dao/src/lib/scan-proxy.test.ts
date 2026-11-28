@@ -40,6 +40,14 @@ describe("DAO scan proxy", () => {
         expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/daos/4/proposals?status=voting&status=execution_failed`, expect.anything());
     });
 
+    it("forwards the `active` alias and the page of a DAO's proposals, and the page of its history", async () => {
+        fetcher.mockResolvedValue(ok({items: []}));
+        await call("daos/4/proposals", "?status=active&page=2&limit=20");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/daos/4/proposals?status=active&page=2&limit=20`, expect.anything());
+        await call("daos/4/history", "?page=3&limit=20");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/daos/4/history?page=3&limit=20`, expect.anything());
+    });
+
     it("answers 404 for a route that is not a DAO route, without calling Scan", async () => {
         for (const path of ["proposals", "daos/abc", "accounts/bze1x", "dao-proposals/1/evil", "dao-proposals"]) {
             expect((await call(path)).status).toBe(404);

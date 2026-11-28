@@ -89,6 +89,8 @@ export interface ScanDaoEvent {
 export interface ScanDaoEventList {
     items: ScanDaoEvent[];
     next_cursor: string | null;
+    /** Every event of the DAO; only a Scan with numbered pages answers it, and only with `page`. */
+    total?: number | null;
 }
 
 /** An item of GET /api/v1/dao-votes?voter=. */

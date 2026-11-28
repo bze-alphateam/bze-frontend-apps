@@ -88,11 +88,14 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("admin-console-link")).toHaveCount(0);
     });
 
-    test("the history tab lists the changes in words, newest first, and pages", async ({page}) => {
+    test("the history tab lists the changes in words, newest first, with numbered pages in the URL", async ({page}) => {
         await page.goto("/dao/2");
         await page.getByTestId("dao-tab-history").click();
         await expect(page).toHaveURL(/\/dao\/2\?tab=history$/);
 
+        const tab = page.getByTestId("history-tab");
+        await expect(tab).not.toContainText("What happened to this DAO");
+        await expect(tab).not.toContainText("From BZE Scan");
         const items = page.getByTestId("history-item");
         await expect(items).toHaveCount(2);
         await expect(items.first()).toContainText("The member list was updated");
@@ -100,10 +103,28 @@ test.describe("a static-list DAO", () => {
         await expect(items.first().getByTestId("history-link")).toHaveAttribute("href", /\/txs\/CD34$/);
         await expect(items.nth(1)).toContainText("Changed: quorum, voting period");
         await expect(items.nth(1).getByTestId("history-link")).toHaveText("View block");
+        await expect(page.getByTestId("history-more")).toHaveCount(0);
 
-        await page.getByTestId("history-more").click();
-        await expect(items).toHaveCount(3);
-        await expect(items.nth(2)).toContainText("The DAO was created");
+        await page.getByTestId("pager-desktop").getByRole("button", {name: "Page 2"}).click();
+        await expect(page).toHaveURL(/\/dao\/2\?tab=history&page=2$/);
+        await expect(items).toHaveCount(1);
+        await expect(items.first()).toContainText("The DAO was created");
+        await expect(items.first()).toContainText("Governed by a member list");
+        await expect(items.first()).toContainText("No admin");
+        await expect(tab).not.toContainText("DAO #");
+    });
+
+    test("with an older Scan (no total) the history pages by Prev / Next", async ({page, network}) => {
+        network.use("scan", {path: "/api/scan/daos/2/history", query: {page: "1", limit: "20"}, status: 200, body: {
+            items: [{height: 300, tx_index: 0, msg_index: 0, seq: 0, type: "EventDaoMetadataUpdated", attrs: {id: "2"}, tx_hash: "CD34", time: "2026-11-10T09:00:00Z"}],
+            next_cursor: "c1",
+        }});
+        await page.goto("/dao/2?tab=history");
+        await expect(page.getByTestId("history-item")).toHaveCount(1);
+        await expect(page.getByTestId("prev-next")).toContainText("Page 1");
+        await page.getByTestId("pager-desktop").getByRole("button", {name: "Next page"}).click();
+        await expect(page.getByTestId("history-item").first()).toContainText("The DAO was created");
+        await expect(page.getByTestId("prev-next")).toContainText("Page 2");
     });
 });
 
@@ -112,7 +133,7 @@ test.describe("the tabs live in the URL", () => {
         await page.goto("/dao/4?tab=proposals");
         await expect(page.getByTestId("proposals-tab")).toBeVisible();
         await expect(page.getByTestId("dao-tab-proposals")).toHaveAttribute("aria-current", "page");
-        await expect(page.getByTestId("proposal-row")).toHaveCount(2);
+        await expect(page.getByTestId("proposal-row")).toHaveCount(4);
 
         await page.getByTestId("dao-tab-overview").click();
         await expect(page).toHaveURL(/\/dao\/4$/);
@@ -228,7 +249,7 @@ test("an unknown DAO is not found, and so is an id that is no number", async ({p
 
 test("with Scan down the live parts render and the Scan parts offer a retry", async ({page, network}) => {
     network.use("scan", {path: "/api/scan/daos/2", status: 502, body: {error: "BZE Scan unavailable"}});
-    network.use("scan", {path: "/api/scan/daos/2/history", query: {limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
+    network.use("scan", {path: "/api/scan/daos/2/history", query: {page: "1", limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
     await page.goto("/dao/2");
 
     await expect(page.getByTestId("control-headline")).toHaveText("No admin");
