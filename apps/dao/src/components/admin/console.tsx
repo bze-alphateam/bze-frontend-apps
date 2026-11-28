@@ -14,7 +14,7 @@ import type {DaoView} from '@/lib/dao-view-loader';
 import {browserStorage} from '@/lib/propose/draft';
 import type {Relations} from '@/lib/propose/relations';
 import {FlowMessage, TxLink} from '@/components/flow-message';
-import {AcceptPanel, ExecutePanel, HandOverPanel, NominatePanel, WithdrawPanel} from './panels';
+import {AcceptPanel, AdminHero, ExecutePanel, HandOverCard, HandOverPanel} from './panels';
 
 const SENT: Record<ActionKind, string> = {
     'admin-execute': 'The DAO ran your actions.',
@@ -64,9 +64,7 @@ export const Console = ({view, relations, wallet, flowWallet, nominationChain, r
     const panels = wallet ? {view, wallet, locked: flow.locked || foreignLock !== null, onSend} : null;
 
     return (
-        <Flex direction="column" gap="16px" data-testid="admin-console" data-role={role}>
-            {role !== 'nominee' && <chakra.a asChild color="hg.link" fontWeight="600" fontSize="14px" alignSelf="flex-start"><NextLink href={back}>{`← ${dao.name}`}</NextLink></chakra.a>}
-
+        <Flex direction="column" gap="24px" minW="0" data-testid="admin-console" data-role={role}>
             <FlowMessage state={flow.state} progress={progressTrack} onRecheck={() => void flow.recheck()} sentTitle={(kind) => SENT[kind]} subject="DAO" onRelease={flow.state.phase === 'unconfirmed' && flow.state.kind === 'admin-execute' ? flow.release : undefined} />
 
             {foreignLock && (
@@ -98,13 +96,12 @@ export const Console = ({view, relations, wallet, flowWallet, nominationChain, r
 
             {panels && role === 'admin' && !done && (
                 <>
-                    <Notice status="warning" title="You are this DAO's admin">
-                        <span data-testid="admin-warning">You can run any message as the DAO, including spending the whole treasury, and its voters cannot overrule you. Everything you sign is shown before you sign it.</span>
-                    </Notice>
-                    <ExecutePanel {...panels} relations={relations} />
-                    <NominatePanel {...panels} />
-                    <WithdrawPanel {...panels} />
-                    <HandOverPanel {...panels} relations={relations} />
+                    <AdminHero dao={dao} />
+                    <Flex direction="column" gap="20px" minW="0">
+                        <ExecutePanel {...panels} relations={relations} />
+                        <HandOverCard {...panels} />
+                        <HandOverPanel {...panels} relations={relations} />
+                    </Flex>
                 </>
             )}
 

@@ -92,10 +92,21 @@ describe("who gets the console", () => {
 
     it("the admin sees every operation", () => {
         renderConsole(administered);
-        expect(screen.getByTestId("admin-warning")).toHaveTextContent("spending the whole treasury");
-        for (const id of ["execute-panel", "nominate-panel", "handover-panel"]) expect(screen.getByTestId(id)).toBeInTheDocument();
+        expect(screen.getByTestId("admin-hero-title")).toHaveTextContent("You are the admin of Founders");
+        expect(screen.getByTestId("admin-warning")).toHaveTextContent("You can run any action as the DAO without a vote, and hand it over. Its 2 members vote on proposals as usual.");
+        for (const id of ["execute-panel", "hand-over-card", "nominate-panel", "handover-panel"]) expect(screen.getByTestId(id)).toBeInTheDocument();
         // no nomination yet: nothing to withdraw
         expect(screen.queryByTestId("withdraw-panel")).toBeNull();
+        // the board's order: run actions, hand over, hand to voters; no back link above them
+        const ids = [...document.querySelectorAll("[data-testid=execute-panel], [data-testid=hand-over-card], [data-testid=handover-panel]")].map((e) => e.getAttribute("data-testid"));
+        expect(ids).toEqual(["execute-panel", "hand-over-card", "handover-panel"]);
+        expect(screen.queryByText("← Founders")).toBeNull();
+    });
+
+    it("the hero of a stake DAO names its stakers", () => {
+        renderConsole(full({...STAKE_DAO, admin: WALLET} as Partial<Dao>));
+        expect(screen.getByTestId("admin-warning")).toHaveTextContent("Its stakers vote on proposals as usual.");
+        expect(screen.getByTestId("handover-text")).toHaveTextContent("only proposals its stakers vote on");
     });
 
     it("the admin's cards take the whole width: there is no This DAO side panel", () => {
@@ -125,22 +136,45 @@ describe("a wallet that disconnects", () => {
     });
 });
 
+/** Opens the picker and picks an action, which opens its form card. */
+async function pick(id: string) {
+    fireEvent.click(screen.getByTestId("add-action"));
+    fireEvent.click(await screen.findByTestId(`add-${id}`));
+    await waitFor(() => expect(screen.queryByTestId("action-picker")).toBeNull());
+}
+
+/** A payment: picked, filled in its form card and added to the list. */
+async function addPay(amount: string) {
+    await pick("pay");
+    fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
+    fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: amount}});
+    fireEvent.click(screen.getByTestId("action-commit"));
+    await waitFor(() => expect(screen.queryByTestId("action-editor")).toBeNull());
+}
+
 describe("run actions as the DAO", () => {
-    it("pays from the treasury: reviewed in full, then one MsgAdminExecute signed by the wallet, and back to the DAO page", async () => {
+    it("pays from the treasury: a numbered card, the review read back, then one MsgAdminExecute signed by the wallet, and back to the DAO page", async () => {
         landed();
         const {refresh} = renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        expect(screen.getByTestId("execute-submit")).toBeDisabled();
-
+        // the staged list without the composer's words: no proposal header, no Text only, the board's hint
+        expect(screen.queryByText("What it does if it passes")).toBeNull();
+        expect(screen.getByTestId("text-only-hint")).toHaveTextContent("Same list as proposals. Grants (authz / feegrant) and second signers are refused here.");
+        fireEvent.click(screen.getByTestId("add-action"));
+        await screen.findByTestId("action-picker");
+        expect(screen.queryByTestId("add-text-only")).toBeNull();
+        fireEvent.click(screen.getByTestId("add-pay"));
+        await waitFor(() => expect(screen.queryByTestId("action-picker")).toBeNull());
+        expect(screen.getByTestId("action-commit")).toHaveTextContent(/^Add to the list$/);
         fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
         fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "12.5"}});
+        fireEvent.click(screen.getByTestId("action-commit"));
 
-        const review = screen.getByTestId("execute-review");
-        expect(review).toHaveTextContent("Send 12.5 TBZE from the DAO");
-        expect(review).toHaveTextContent("Every message is signed by the DAO account");
-        expect(screen.getByTestId("execute-outer")).toHaveTextContent("MsgAdminExecute");
-        expect(screen.getByTestId("execute-sign")).toHaveTextContent("Signed by your wallet");
+        expect(await screen.findByTestId("action-card-title")).toHaveTextContent("Pay from the treasury");
+        // the review is read back from the message that would be signed
+        expect(screen.getByTestId("execute-review")).toHaveTextContent(/^Founders will: 1\. pay 12\.5 TBZE to bze1.{3}….{4}\. If it fails, nothing happens\.$/);
+        expect(screen.getByTestId("size-text")).toHaveTextContent(/of 20,000 bytes · 1 of 16 actions$/);
+        expect(screen.getByTestId("execute-panel")).toHaveTextContent("MsgAdminExecute · all or nothing");
+        expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run the action now");
 
         await userEvent.click(screen.getByTestId("execute-submit"));
         const [msgs, options] = txMock.mock.calls[0];
@@ -154,33 +188,60 @@ describe("run actions as the DAO", () => {
         expect(refresh).toHaveBeenCalledTimes(1);
     });
 
-    it("a payment above the treasury is refused before anything is signed", async () => {
+    it("two actions: both numbered in the review, and the button counts them", async () => {
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
+        // no actions: no Review block yet
+        expect(screen.queryByText("Review")).toBeNull();
+        expect(screen.queryByTestId("execute-review")).toBeNull();
+        expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run now");
+        await addPay("1");
+        await addPay("2");
+        expect(screen.getAllByTestId("action-row")).toHaveLength(2);
+        expect(screen.getByTestId("execute-review")).toHaveTextContent(/^Founders will: 1\. pay 1 TBZE to .+, 2\. pay 2 TBZE to .+\. If one fails, nothing happens\.$/);
+        expect(screen.getByTestId("size-text")).toHaveTextContent("2 of 16 actions");
+        expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run 2 actions now");
+        expect(screen.getByTestId("execute-submit")).toBeEnabled();
+    });
+
+    it("while a form card is open nothing runs: its action is not in the list yet", async () => {
+        renderConsole(administered);
+        await addPay("1");
+        expect(screen.getByTestId("execute-submit")).toBeEnabled();
+        await pick("pay");
+        expect(screen.getByTestId("execute-submit")).toBeDisabled();
+        expect(screen.getByTestId("execute-editing")).toHaveTextContent("Add or cancel the open action first");
+        fireEvent.click(screen.getByTestId("action-cancel"));
+        await waitFor(() => expect(screen.getByTestId("execute-submit")).toBeEnabled());
+        expect(screen.queryByTestId("execute-editing")).toBeNull();
+    });
+
+    it("a payment above the treasury is refused in its form card: it never joins the list", async () => {
+        renderConsole(administered);
+        await pick("pay");
         fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
         fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "251"}});
+        fireEvent.click(screen.getByTestId("action-commit"));
+        expect(screen.getByTestId("action-error")).toHaveTextContent("holds less than this");
+        expect(screen.getByTestId("action-editor")).toBeInTheDocument();
+        expect(screen.queryByTestId("action-row")).toBeNull();
         expect(screen.getByTestId("execute-submit")).toBeDisabled();
-        expect(screen.getByTestId("execute-problem")).toHaveTextContent("holds less than this");
         expect(txMock).not.toHaveBeenCalled();
     });
 
-    it("a custom message that only a proposal may carry is refused, and the grant types are not typable at all", async () => {
+    it("a custom message that only a proposal may carry is refused (1133), and nothing can run", async () => {
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-custom"));
-        fireEvent.change(screen.getByRole("textbox", {name: /json|message/i}), {target: {value: JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: []})}});
-        expect(screen.getByTestId("execute-problem")).toHaveTextContent("error 1133");
+        await pick("custom");
+        fireEvent.change(screen.getByTestId("custom-json"), {target: {value: JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: []})}});
+        fireEvent.click(screen.getByTestId("action-commit"));
+        await waitFor(() => expect(screen.getAllByTestId("action-error").some((e) => /1133/.test(e.textContent ?? ""))).toBe(true));
         expect(screen.getByTestId("execute-submit")).toBeDisabled();
+        expect(screen.queryByTestId("execute-review")).toBeNull();
     });
 
     it("a simulation the chain refuses shows the reason and signs nothing; the console stays open", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onFailure("Only this DAO's admin can do that. Connect the admin's wallet.", {stage: "prepare"}); return false; });
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
 
         await waitFor(() => expect(screen.getByTestId("action-error")).toHaveTextContent("Only this DAO's admin"));
@@ -191,10 +252,7 @@ describe("run actions as the DAO", () => {
     it("a confirmation timeout locks every operation until the node has been asked", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onBroadcast("H9"); o.onFailure("slow", {stage: "timeout", txHash: "H9"}); return false; });
         renderConsole(administered, {lookupTx: async () => "landed"});
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
 
         await waitFor(() => expect(screen.getByTestId("action-unconfirmed")).toBeInTheDocument());
@@ -210,10 +268,7 @@ describe("run actions as the DAO", () => {
     it("a payment the node has not seen yet stays locked, with a way out only the user can take", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onBroadcast("H9"); o.onFailure("slow", {stage: "timeout", txHash: "H9"}); return false; });
         renderConsole(administered, {lookupTx: async () => "notfound"});
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
         await waitFor(() => expect(screen.getByTestId("action-unconfirmed")).toBeInTheDocument());
 
@@ -241,7 +296,9 @@ describe("nominate, withdraw, hand over", () => {
         expect(screen.getByTestId("nominate-problem")).toHaveTextContent("cannot be its own nominee");
 
         fireEvent.change(screen.getByTestId("nominee"), {target: {value: OTHER.toUpperCase()}});
-        expect(screen.getByTestId("nominate-panel")).toHaveTextContent("Nominate a new admin for Founders (they have to accept)");
+        expect(screen.queryByTestId("nominate-problem")).toBeNull();
+        expect(screen.getByTestId("nominate-panel")).toHaveTextContent("A person or a DAO. You stay admin until they accept.");
+        expect(screen.getByTestId("nominate-submit")).toBeEnabled();
         await userEvent.click(screen.getByTestId("nominate-submit"));
 
         const [msgs] = txMock.mock.calls[0];
@@ -254,6 +311,9 @@ describe("nominate, withdraw, hand over", () => {
         landed();
         renderConsole(full({admin: WALLET, pending_admin: OTHER, pending_admin_seq: "2"}));
         expect(screen.getByTestId("nominate-pending")).toHaveTextContent("1112");
+        expect(screen.getByTestId("withdraw-panel")).toHaveTextContent("Pending");
+        expect(screen.getByTestId("withdraw-nominee")).toHaveTextContent(`${OTHER.slice(0, 7)}…${OTHER.slice(-4)} was nominated. They haven't accepted yet.`);
+        expect(screen.getByTestId("withdraw-submit")).toHaveTextContent("Withdraw nomination");
         expect(screen.queryByTestId("nominee")).toBeNull();
         expect(screen.getByTestId("handover-blocked")).toHaveTextContent("1112");
         expect(screen.queryByTestId("handover-submit")).toBeNull();
@@ -267,10 +327,12 @@ describe("nominate, withdraw, hand over", () => {
     it("hands the DAO to its voters only after the box is ticked and its name typed, with an empty nominee", async () => {
         landed();
         renderConsole(administered);
-        expect(screen.getByTestId("handover-panel")).toHaveTextContent("you cannot undo it");
+        expect(screen.getByTestId("handover-pill")).toHaveTextContent("Can't be undone");
+        expect(screen.getByTestId("handover-text")).toHaveTextContent("You stop being admin at once. From then on only proposals its 2 members vote on can change the DAO. There's no accept step.");
         expect(screen.getByTestId("handover-submit")).toBeDisabled();
+        expect(screen.getByTestId("handover-submit")).toHaveTextContent("Hand to its voters");
 
-        expect(screen.getByTestId("handover-voters")).toHaveTextContent("Its voters can vote: 2 members");
+        expect(screen.getByTestId("handover-voters")).toHaveTextContent("Its voters can vote: 2 members ✓ (the chain refuses a DAO nobody can vote in).");
         // the name typed but the box not ticked, then the box ticked but a wrong name: neither is enough
         fireEvent.change(screen.getByTestId("handover-confirm"), {target: {value: "Founders"}});
         expect(screen.getByTestId("handover-submit")).toBeDisabled();
@@ -345,7 +407,14 @@ describe("accept a nomination", () => {
         await userEvent.click(submit);
         expect(txMock).not.toHaveBeenCalled();
 
-        await userEvent.click(screen.getByTestId("accept-understood"));
+        const tick = screen.getByTestId("accept-understood");
+        expect(tick).toHaveAttribute("role", "checkbox");
+        expect(tick).toHaveAttribute("aria-checked", "false");
+        expect(tick).not.toHaveAttribute("data-checked");
+        await userEvent.click(tick);
+        expect(tick).toHaveAttribute("aria-checked", "true");
+        // ticked, the row's edge takes the accent at 45 % (board G2)
+        expect(tick).toHaveAttribute("data-checked");
         expect(submit).toBeEnabled();
         await userEvent.click(screen.getByTestId("accept-understood"));
         expect(submit).toBeDisabled();
