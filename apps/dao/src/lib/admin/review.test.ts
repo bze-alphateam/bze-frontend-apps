@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {actionPhrase, consoleAddress, reviewLine, runLabel, sizeLine, votersPhrase, type ReviewContext} from "./review";
+import {actionPhrase, consoleAddress, handOverLine, heroLine, reviewLine, runLabel, sizeLine, votersPhrase, type ReviewContext} from "./review";
 import type {MsgAction} from "../proposal-describe";
 
 const ADDRESS = "bze1gr0000000000000000000000000000000a77k";
@@ -68,6 +68,16 @@ describe("the console's small words", () => {
         expect(votersPhrase({type: "DAO_TYPE_STATIC_LIST", members: [{address: "a"}, {address: "b"}]} as never)).toBe("its 2 members");
         expect(votersPhrase({type: "DAO_TYPE_STATIC_LIST", members: [{address: "a"}]} as never)).toBe("its 1 member");
         expect(votersPhrase({type: "DAO_TYPE_STAKE", members: []} as never)).toBe("its stakers");
+    });
+
+    it("heroLine and handOverLine: the verb agrees, an empty member list names no voters", () => {
+        const list = (n: number) => ({type: "DAO_TYPE_STATIC_LIST", members: Array.from({length: n}, (_, i) => `bze1m${i}`)}) as never;
+        expect(heroLine(list(7))).toBe("You can run any action as the DAO without a vote, and hand it over. Its 7 members vote on proposals as usual.");
+        expect(heroLine(list(1))).toMatch(/Its 1 member votes on proposals as usual\.$/);
+        expect(heroLine(list(0))).toMatch(/It has no members to vote on proposals\.$/);
+        expect(heroLine({type: "DAO_TYPE_STAKE", members: []} as never)).toMatch(/Its stakers vote on proposals as usual\.$/);
+        expect(handOverLine(list(7))).toBe("You stop being admin at once. From then on only proposals its 7 members vote on can change the DAO. There's no accept step.");
+        expect(handOverLine(list(1))).toContain("only proposals its 1 member votes on can change");
     });
 
     it("consoleAddress: 7 … 4 as on the boards", () => {

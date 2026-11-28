@@ -17,7 +17,7 @@ import {findAction} from '@/lib/actions/registry';
 import type {ActionDraft} from '@/lib/actions/types';
 import {isNominationStale, type NominationChain} from '@/lib/admin/nomination';
 import {handOverBlocked, handOverConfirmed, nominateBlocked, withdrawBlocked} from '@/lib/admin/operations';
-import {consoleAddress, reviewLine, runLabel, sizeLine, votersPhrase, type Segment} from '@/lib/admin/review';
+import {consoleAddress, handOverLine, heroLine, reviewLine, runLabel, sizeLine, type Segment} from '@/lib/admin/review';
 import type {DaoView} from '@/lib/dao-view-loader';
 import {daoTabHref} from '@/lib/dao-tabs';
 import {describeAll} from '@/lib/propose/describe';
@@ -117,7 +117,7 @@ export const AdminHero = ({dao}: {dao: Dao}) => (
             </chakra.span>
             <Flex direction="column" gap="4px" minW="0">
                 <chakra.strong fontSize="20px" overflowWrap="anywhere" data-testid="admin-hero-title">{`You are the admin of ${dao.name}`}</chakra.strong>
-                <Body testId="admin-warning">{`You can run any action as the DAO without a vote, and hand it over. ${votersPhrase(dao).replace(/^its/, 'Its')} vote on proposals as usual.`}</Body>
+                <Body testId="admin-warning">{heroLine(dao)}</Body>
             </Flex>
         </Flex>
     </chakra.section>
@@ -180,12 +180,15 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
                 </Flex>
             )}
             {composition.warnings.map((w) => <chakra.p key={w} m="0" fontSize="13px" color="hg.warning.text" data-testid="execute-warning">{w}</chakra.p>)}
-            <chakra.div h="1px" bg="hg.divider" />
-            <Eyebrow>Review</Eyebrow>
-            {review.length > 0
-                ? <Body testId="execute-review"><Segments segments={review} /></Body>
-                : <Body testId="execute-review-empty">Nothing to run yet.</Body>}
-            {!ready && problem && drafts.length > 0 && <chakra.p m="0" fontSize="13px" color="hg.danger.text" role="alert" data-testid="execute-problem">{problem}</chakra.p>}
+            {drafts.length > 0 && (
+                <>
+                    <chakra.div h="1px" bg="hg.divider" />
+                    <Eyebrow>Review</Eyebrow>
+                    {/* the sentence only when every action reads back, so it never skips or renumbers one */}
+                    {ready && review.length > 0 && <Body testId="execute-review"><Segments segments={review} /></Body>}
+                    {!ready && problem && <chakra.p m="0" fontSize="13px" color="hg.danger.text" role="alert" data-testid="execute-problem">{problem}</chakra.p>}
+                </>
+            )}
             <Flex gap="8px" align="center" justify="flex-end" wrap="wrap">
                 <Button
                     variant={hgVariant('primary')}
@@ -284,7 +287,6 @@ export const HandOverPanel = ({view, relations, wallet, locked, onSend}: OpProps
     const msg = buildNominateAdminMsg({authority: wallet, daoId: dao.id, nominee: ''});
     const confirmed = handOverConfirmed(dao, typed, understood);
     const unreadable = unreadableOf(msg, view, coins.exact);
-    const members = dao.members.length;
 
     return (
         <Card testId="handover-panel" danger label="Hand the DAO to its voters">
@@ -292,13 +294,13 @@ export const HandOverPanel = ({view, relations, wallet, locked, onSend}: OpProps
                 <Title>Hand the DAO to its voters</Title>
                 <Pill tone="danger" testId="handover-pill">Can&apos;t be undone</Pill>
             </Flex>
-            <Body testId="handover-text">{`You stop being admin at once. From then on only proposals ${votersPhrase(dao)} vote on can change the DAO. There's no accept step.`}</Body>
+            <Body testId="handover-text">{handOverLine(dao)}</Body>
             {blocked && <Notice status="warning"><span data-testid="handover-blocked">{blocked}</span></Notice>}
             {!blocked && (
                 <>
                     {dao.type === 'DAO_TYPE_STATIC_LIST' && (
                         <Notice status="success" icon={<LuCheck />}>
-                            <span data-testid="handover-voters">{`Its voters can vote: ${members} ${members === 1 ? 'member' : 'members'} ✓ (the chain refuses a DAO nobody can vote in).`}</span>
+                            <span data-testid="handover-voters">{`Its voters can vote: ${dao.members.length} ${dao.members.length === 1 ? 'member' : 'members'} ✓ (the chain refuses a DAO nobody can vote in).`}</span>
                         </Notice>
                     )}
                     <chakra.label display="flex" gap="10px" alignItems="center" fontSize="14px" cursor="pointer">

@@ -167,7 +167,9 @@ describe("run actions as the DAO", () => {
 
     it("two actions: both numbered in the review, and the button counts them", async () => {
         renderConsole(administered);
-        expect(screen.getByTestId("execute-review-empty")).toHaveTextContent("Nothing to run yet.");
+        // no actions: no Review block yet
+        expect(screen.queryByText("Review")).toBeNull();
+        expect(screen.queryByTestId("execute-review")).toBeNull();
         expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run now");
         for (const amount of ["1", "2"]) {
             await userEvent.click(screen.getByTestId("add-action"));
@@ -181,6 +183,20 @@ describe("run actions as the DAO", () => {
         expect(screen.getByTestId("size-text")).toHaveTextContent("2 of 16 actions");
         expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run 2 actions now");
         expect(screen.getByTestId("execute-submit")).toBeEnabled();
+    });
+
+    it("one finished and one unfinished action: no review sentence that would skip one, only the problem", async () => {
+        renderConsole(administered);
+        await userEvent.click(screen.getByTestId("add-action"));
+        await userEvent.click(screen.getByTestId("add-pay"));
+        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
+        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        expect(screen.getByTestId("execute-review")).toBeInTheDocument();
+        await userEvent.click(screen.getByTestId("add-action"));
+        await userEvent.click(screen.getByTestId("add-pay"));
+        expect(screen.queryByTestId("execute-review")).toBeNull();
+        expect(screen.getByTestId("execute-problem")).toBeInTheDocument();
+        expect(screen.getByTestId("execute-submit")).toBeDisabled();
     });
 
     it("a payment above the treasury is refused before anything is signed", async () => {

@@ -104,6 +104,22 @@ export function sizeLine(size: number, maxBytes: number, count: number, maxActio
 export const runLabel = (count: number): string =>
     (count === 0 ? 'Run now' : count === 1 ? 'Run the action now' : `Run ${count} actions now`);
 
-/** Who votes in the DAO, for the console's sentences: "its 7 members", "its stakers". */
+/** Who votes in the DAO, for the console's sentences: "its 7 members", "its 1 member", "its stakers". */
 export const votersPhrase = (dao: Pick<Dao, 'type' | 'members'>): string =>
     (dao.type === 'DAO_TYPE_STAKE' ? 'its stakers' : `its ${plural(dao.members.length, 'member')}`);
+
+/** The verb after `votersPhrase`: one member votes, members and stakers vote. */
+const votes = (dao: Pick<Dao, 'type' | 'members'>): string => (dao.type !== 'DAO_TYPE_STAKE' && dao.members.length === 1 ? 'votes' : 'vote');
+
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** The admin hero's line (board G1). A member list with nobody on it has no voters to name. */
+export function heroLine(dao: Pick<Dao, 'type' | 'members'>): string {
+    const lead = 'You can run any action as the DAO without a vote, and hand it over.';
+    if (dao.type !== 'DAO_TYPE_STAKE' && dao.members.length === 0) return `${lead} It has no members to vote on proposals.`;
+    return `${lead} ${capital(votersPhrase(dao))} ${votes(dao)} on proposals as usual.`;
+}
+
+/** The handover card's line (board G1). */
+export const handOverLine = (dao: Pick<Dao, 'type' | 'members'>): string =>
+    `You stop being admin at once. From then on only proposals ${votersPhrase(dao)} ${votes(dao)} on can change the DAO. There's no accept step.`;
