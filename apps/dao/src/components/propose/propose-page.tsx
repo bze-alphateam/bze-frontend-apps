@@ -18,7 +18,6 @@ import type {NominationChain} from '@/lib/admin/nomination';
 import {daoTabHref} from '@/lib/dao-tabs';
 import {loadDaoView, loadVotingPower, type DaoView, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
 import {availableActions, findAction} from '@/lib/actions/registry';
-import {MEMBERS_ID} from '@/lib/actions/members';
 import type {ActionDraft} from '@/lib/actions/types';
 import {composeProposal} from '@/lib/propose/compose';
 import {summarizeCost} from '@/lib/propose/cost';
@@ -26,7 +25,7 @@ import {describeAll} from '@/lib/propose/describe';
 import {browserStorage, clearDraft, loadDraft, saveDraft} from '@/lib/propose/draft';
 import {proposerStatus} from '@/lib/propose/eligibility';
 import {loadRelations, splitStaleNominations, type RelationDeps, type Relations} from '@/lib/propose/relations';
-import {shortcutDraft, shortcutOf, type Shortcut} from '@/lib/propose/shortcuts';
+import {shortcutDraft, shortcutInDraft, shortcutOf, type Shortcut} from '@/lib/propose/shortcuts';
 import {useCoinFormat} from '@/components/dao/page/use-coin-format';
 import {Unsupported} from '@/components/dao/unsupported';
 import {ActionsList} from './actions-list';
@@ -58,9 +57,13 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
             allowSummary: Number(params?.max_summary_len ?? '0') > 0,
         });
         const shortcut = typeof window === 'undefined' ? null : shortcutOf(window.location.search);
-        if (saved) return {draft: saved, restored: true, shortcut, applied: null};
-        const prefilled = shortcut ? shortcutDraft(shortcut, dao, wallet, newKey) : null;
-        return {draft: prefilled, restored: false, shortcut, applied: prefilled ? shortcut : null};
+        if (saved) return {draft: saved, restored: true, shortcut};
+        // the same rule as the buttons: a DAO that cannot take a proposal now (no voters, full) gets no shortcut
+        const blocked = wallet && params
+            ? proposerStatus({dao, params, wallet, power: {ok: false}, openCount: openProposals.ok ? openProposals.value.length : null, sources})
+            : null;
+        const prefilled = shortcut ? shortcutDraft(shortcut, dao, wallet, newKey, blocked) : null;
+        return {draft: prefilled, restored: false, shortcut};
     });
     const restored = opening.restored ? opening.draft : null;
 
@@ -69,7 +72,6 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
     const [expedited, setExpedited] = useState(opening.draft?.expedited ?? false);
     const [drafts, setDrafts] = useState<ActionDraft[]>(opening.draft?.actions ?? []);
     const [notice, setNotice] = useState(restored !== null);
-    const [applied, setApplied] = useState<Shortcut | null>(opening.applied);
     const finished = useRef(false);
     const {state, submit, check, allowResubmit} = useProposalSubmit({sign, daoId: dao.id, storage, getTxLanding, fetchTxEvents: getTxEvents});
 
@@ -122,21 +124,21 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
         setExpedited(false);
         setDrafts([]);
         setNotice(false);
-        setApplied(null);
     }, [storage, dao.id]);
 
-    // a restored draft that already holds the wallet's own members change gets no shortcut button (it would add a second one)
-    const ownMembersChange = !!wallet && drafts.some((d) => d.type === MEMBERS_ID
-        && [d.fields.add, d.fields.remove].some((v) => (v ?? '').toLowerCase().split(/[\s,]+/).includes(wallet.toLowerCase())));
+    // "Prefilled" while the wallet's own members change is in the list (from a link, a button or a restored draft): removing it offers the button again
+    const applied = shortcutInDraft(drafts, wallet);
+    const maxActions = Number(params?.max_msgs_per_proposal ?? '0');
+    const full = drafts.length >= maxActions;
 
     // a shortcut button: the wallet's own members change is added, and the title filled in when there is none yet
     const applyShortcut = useCallback((shortcut: Shortcut) => {
-        const prefilled = shortcutDraft(shortcut, dao, wallet, newKey);
-        if (!prefilled) return;
+        const prefilled = shortcutDraft(shortcut, dao, wallet, newKey, status);
+        // never past the most actions a proposal may run
+        if (!prefilled || drafts.length + prefilled.actions.length > maxActions) return;
+        setDrafts([...drafts, ...prefilled.actions]);
         setTitle((t) => (t.trim() === '' ? prefilled.title : t));
-        setDrafts((d) => [...d, ...prefilled.actions]);
-        setApplied(shortcut);
-    }, [dao, wallet]);
+    }, [dao, wallet, status, maxActions, drafts]);
 
     if (!params || !ctx || !composition) {
         return <PageState kind="error" title="The rules of the chain did not load" description="The proposal limits could not be read, so a proposal cannot be checked." />;
@@ -161,7 +163,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                     </Flex>
                 </Notice>
             )}
-            <ShortcutsBar dao={dao} wallet={wallet} applied={applied} onApply={applyShortcut} drafted={ownMembersChange} />
+            <ShortcutsBar dao={dao} wallet={wallet} status={status} applied={applied} full={full} onApply={applyShortcut} />
             <Basics
                 dao={dao} params={params} title={title} summary={summary} expedited={expedited}
                 onTitle={setTitle} onSummary={setSummary} onExpedited={setExpedited}

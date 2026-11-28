@@ -189,7 +189,8 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
         const subs = perSub ? inGroup.filter((e) => SUB_IDS.includes(e.id)) : [];
         const plain = inGroup.filter((e) => !subs.includes(e));
         const stale = group.ids.includes(ACCEPT_ID) ? staleNominations : [];
-        return {title: group.title, plain, subs, stale};
+        const nominations = stale.length > 0 || plain.some((e) => e.id === ACCEPT_ID);
+        return {title: group.title, plain, subs, stale, nominations};
     }).filter((g) => g.plain.length + g.subs.length + g.stale.length > 0);
     const move = (index: number, by: -1 | 1) => {
         const next = [...drafts];
@@ -234,6 +235,11 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
                     {groups.map((group) => (
                         <Flex key={group.title} direction="column" gap="8px" data-testid={`picker-group-${group.title.toLowerCase().replace(/ /g, '-')}`}>
                             <chakra.span fontSize="12px" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em" color="hg.text.faint">{group.title}</chakra.span>
+                            {group.nominations && (
+                                <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="picker-stale-note">
+                                    A nomination goes out of date when the DAO that runs the nominating DAO changes its admin: it can no longer be accepted, and that DAO has to nominate again.
+                                </chakra.p>
+                            )}
                             {group.plain.map((entry) => <EntryItems key={entry.id} entry={entry} ctx={ctx} onAdd={add} />)}
                             {group.stale.map((stale) => <StaleItem key={stale.dao.id} stale={stale} nominee={ctx.dao.name} />)}
                             {group.subs.length > 0 && <SubDaoItems entries={group.subs} ctx={ctx} onAdd={add} />}

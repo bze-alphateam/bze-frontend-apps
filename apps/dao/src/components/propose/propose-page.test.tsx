@@ -2,7 +2,7 @@ import {beforeEach, describe, expect, it, vi} from "vitest";
 import {fireEvent, render, screen, within} from "@testing-library/react";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import BigNumber from "bignumber.js";
-import type {Dao, DaoControllerResponse} from "@bze/bze-ui-kit";
+import type {Dao, DaoControllerResponse, DaoParams} from "@bze/bze-ui-kit";
 
 const nav = vi.hoisted(() => ({push: vi.fn(), replace: vi.fn(), address: undefined as string | undefined}));
 
@@ -31,15 +31,15 @@ import type {DaoViewDeps} from "@/lib/dao-view-loader";
 import type {RelationDeps} from "@/lib/propose/relations";
 import {ProposePage} from "./propose-page";
 
-function deps(dao: Dao): DaoViewDeps {
+function deps(dao: Dao, params: DaoParams = PARAMS, open: unknown[] = []): DaoViewDeps {
     return {
         chain: {
             getDao: vi.fn(async (id: string) => (id === dao.id ? dao : null)),
-            getParams: vi.fn(async () => PARAMS),
+            getParams: vi.fn(async () => params),
             getController: vi.fn(async () => null),
             getDaoByAddress: vi.fn(async () => null),
             getBalances: vi.fn(async () => [{denom: "ubze", amount: "5000000"}]),
-            getOpenProposals: vi.fn(async () => []),
+            getOpenProposals: vi.fn(async () => open),
             getStakeSources: vi.fn(async () => []),
             getVotingPower: vi.fn(async () => ({current: "1", proposals: []})),
         },
@@ -74,9 +74,9 @@ const nominationChain = (meadowSeq: string | null): NominationChain => ({
     getDaoByAddress: async (address: string) => (address === MEADOW ? pageDao({id: "12", address: MEADOW, name: "Meadow DAO", admin_seq: meadowSeq ?? "0"}) : null),
 });
 
-const renderPage = (dao: Dao, over: {nominating?: Dao[]; meadowSeq?: string | null} = {}) => render(
+const renderPage = (dao: Dao, over: {nominating?: Dao[]; meadowSeq?: string | null; params?: DaoParams; open?: unknown[]} = {}) => render(
     <ChakraProvider value={defaultSystem}>
-        <ProposePage id={dao.id} deps={deps(dao)} relationDeps={relationDeps(over.nominating)} nominationChain={nominationChain(over.meadowSeq === undefined ? "0" : over.meadowSeq)} />
+        <ProposePage id={dao.id} deps={deps(dao, over.params, over.open)} relationDeps={relationDeps(over.nominating)} nominationChain={nominationChain(over.meadowSeq === undefined ? "0" : over.meadowSeq)} />
     </ChakraProvider>,
 );
 
@@ -126,6 +126,36 @@ describe("the join / leave shortcuts", () => {
         renderPage(pageDao());
         expect(await screen.findByTestId("draft-restored")).toBeTruthy();
         expect(screen.queryByTestId("shortcut-leave")).toBeNull();
+    });
+
+    it("Prefilled lasts only while the wallet's change is in the list: removing it offers Leave again", async () => {
+        renderPage(pageDao());
+        fireEvent.click(await screen.findByTestId("shortcut-leave"));
+        expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Prefilled");
+        fireEvent.click(screen.getByTestId("action-remove"));
+        expect(screen.queryByTestId("shortcut-applied")).toBeNull();
+        expect(screen.getByTestId("shortcut-leave")).toBeTruthy();
+    });
+
+    it("never adds an action past the limit: with the list full there is no shortcut button", async () => {
+        window.localStorage.setItem("bze-dao:proposal-draft:4", JSON.stringify({v: 1, title: "Pay", summary: "", expedited: false, actions: [{type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}}]}));
+        renderPage(pageDao(), {params: {...PARAMS, max_msgs_per_proposal: "1"}});
+        expect(await screen.findByTestId("draft-restored")).toBeTruthy();
+        expect(screen.getAllByTestId("action-row")).toHaveLength(1);
+        expect(screen.queryByTestId("shortcut-leave")).toBeNull();
+    });
+
+    it("a DAO at its open-proposal limit offers neither shortcut, and the leave link fills nothing in", async () => {
+        const full = Array.from({length: Number(PARAMS.max_open_proposals)}, (_, i) => ({id: String(i + 1)}));
+        window.history.replaceState(null, "", "/dao/4/propose?shortcut=leave");
+        try {
+            renderPage(pageDao(), {open: full});
+            expect(await screen.findByTestId("gate-blocked")).toBeTruthy();
+            expect(screen.queryByTestId("shortcuts")).toBeNull();
+            expect(screen.queryAllByTestId("action-row")).toHaveLength(0);
+        } finally {
+            window.history.replaceState(null, "", "/");
+        }
     });
 
     it("Leave is not shown to the last member", async () => {
@@ -191,6 +221,15 @@ describe("accepting a nomination", () => {
         expect(within(picker).queryByTestId("stale-nomination-9")).toBeNull();
         fireEvent.click(accept);
         expect(screen.getByTestId("accept-dao")).toHaveValue("9");
+    });
+
+    it("a restored draft whose accept went stale loses that action, and the DAO cannot be picked", async () => {
+        window.localStorage.setItem("bze-dao:proposal-draft:4", JSON.stringify({v: 1, title: "Take Pollen Fund", summary: "", expedited: false, actions: [{type: "accept-nomination", fields: {daoId: "9"}}]}));
+        renderPage(pageDao(), {nominating: [pollen], meadowSeq: "6"});
+        expect(await screen.findByTestId("draft-restored")).toBeTruthy();
+        expect(screen.getByTestId("proposal-title")).toHaveValue("Take Pollen Fund");
+        expect(screen.queryAllByTestId("action-row")).toHaveLength(0);
+        expect(screen.queryByTestId("accept-dao")).toBeNull();
     });
 
     it("stays offered when the stale check cannot be done", async () => {

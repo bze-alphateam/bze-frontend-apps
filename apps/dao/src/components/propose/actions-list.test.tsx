@@ -155,6 +155,19 @@ describe("the picker", () => {
         expect(screen.getByTestId("add-accept-nomination-9")).not.toBeDisabled();
     });
 
+    it("explains the stale rule in the Other DAOs group when there is a nomination, and not without one", () => {
+        pick(ctxWith({incoming: [{id: "9", name: "Bee Art Collective", address: OTHER}]}));
+        const note = within(screen.getByTestId("picker-group-other-daos")).getByTestId("picker-stale-note");
+        expect(note).toHaveTextContent("goes out of date when the DAO that runs the nominating DAO changes its admin");
+        expect(note).toHaveTextContent("has to nominate again");
+    });
+
+    it("has no stale note when nothing nominated this DAO", () => {
+        pick(ctxWith({subDaos: [SUB_DAO]}));
+        expect(screen.getByTestId("picker-group-other-daos")).toBeTruthy();
+        expect(screen.queryByTestId("picker-stale-note")).toBeNull();
+    });
+
     it("still lists a stale nomination when it is the only one (the accept entry itself is then not offered)", () => {
         pick(ctxWith({incoming: []}), [POLLEN]);
         expect(screen.getByTestId("stale-nomination-11")).toBeDisabled();

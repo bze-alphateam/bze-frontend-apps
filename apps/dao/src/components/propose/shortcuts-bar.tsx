@@ -2,16 +2,19 @@
 
 import {chakra, Flex} from '@chakra-ui/react';
 import type {Dao} from '@bze/bze-ui-kit';
+import type {ProposerStatus} from '@/lib/propose/eligibility';
 import {shortcutApplies, shortcutLabel, type Shortcut} from '@/lib/propose/shortcuts';
 
 interface Props {
     dao: Pick<Dao, 'name' | 'type' | 'members' | 'address' | 'config'>;
     wallet: string | null;
-    /** The shortcut that filled the proposal (from a link or a button here), if any. */
+    /** Who may propose here: a DAO that cannot take a proposal (blocked) gets no shortcut. */
+    status: Pick<ProposerStatus, 'kind'> | null;
+    /** The shortcut the draft holds (the wallet's own members change is in the list), if any: it reads "Prefilled". */
     applied: Shortcut | null;
+    /** The list has as many actions as a proposal may run: no button that would add one more. */
+    full: boolean;
     onApply: (shortcut: Shortcut) => void;
-    /** The list already holds the wallet's own members change (a restored draft): no button that would add another. */
-    drafted?: boolean;
 }
 
 const SHORTCUTS: readonly Shortcut[] = ['join', 'leave'];
@@ -21,8 +24,8 @@ const SHORTCUTS: readonly Shortcut[] = ['join', 'leave'];
  * shown only when that proposal could be submitted (`shortcutApplies`), so the last member is never offered
  * Leave. Once one is applied it reads "Prefilled" instead of a button.
  */
-export const ShortcutsBar = ({dao, wallet, applied, onApply, drafted = false}: Props) => {
-    const offered = drafted ? [] : SHORTCUTS.filter((s) => shortcutApplies(s, dao, wallet));
+export const ShortcutsBar = ({dao, wallet, status, applied, full, onApply}: Props) => {
+    const offered = full ? [] : SHORTCUTS.filter((s) => shortcutApplies(s, dao, wallet, status));
     if (applied === null && offered.length === 0) return null;
 
     return (

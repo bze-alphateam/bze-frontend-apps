@@ -225,14 +225,33 @@ test.describe("accepting a nomination as this DAO", () => {
 
 // The DAO page no longer links them (leaving and joining are proposal actions), but the composer still takes the shortcut links.
 test.describe("the join / leave shortcuts", () => {
-    test("the DAO page offers neither shortcut", async ({page}) => {
+    test("the DAO page shows a member neither Leave nor Request to join", async ({page}) => {
         await installFakeKeplr(page, WALLET);
         await page.goto("/dao/2");
         await connectWallet(page);
-        await expect(page.getByTestId("control-panel")).toBeVisible();
-        await expect(page.getByTestId("leave-dao")).toHaveCount(0);
+        await expect(page.getByTestId("voters-panel")).toBeVisible();
+        await expect(page.getByTestId("member").first()).toBeVisible();
+        await expect(page.getByRole("link", {name: /^Leave/})).toHaveCount(0);
+        await expect(page.getByRole("button", {name: /^Leave/})).toHaveCount(0);
         await expect(page.getByTestId("request-to-join")).toHaveCount(0);
-        await expect(page.getByTestId("leave-blocked")).toHaveCount(0);
+    });
+
+    test("the DAO page offers Request to join to a wallet that is not a member of an open DAO, opening the composer with it", async ({page, network}) => {
+        network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [STRANGER], config: {...config, open_submission: true}})});
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2");
+        await connectWallet(page);
+        await expect(page.getByTestId("join-note")).toContainText("You're not a member. Proposals here are open to anyone");
+        await expect(page.getByTestId("request-to-join")).toHaveAttribute("href", "/dao/2/propose?shortcut=join");
+    });
+
+    test("the DAO page offers no Request to join when only members can submit", async ({page, network}) => {
+        network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [STRANGER]})});
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2");
+        await connectWallet(page);
+        await expect(page.getByTestId("member").first()).toBeVisible();
+        await expect(page.getByTestId("request-to-join")).toHaveCount(0);
     });
 
     test("the composer offers Leave to a member, and filling it in shows it prefilled", async ({page}) => {
