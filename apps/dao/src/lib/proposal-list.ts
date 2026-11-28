@@ -120,6 +120,69 @@ export function turnoutShare(tally: ProposalTally | null): string {
     return percentDown((big(tally.yes) + big(tally.no) + big(tally.abstain)).toString(), tally.denominator);
 }
 
+// ---- the row's words (the board's pills, the "Yes · turnout" column and the When line) ----
+
+/** A row's status pill: the board's label and tone; `live` adds the dot of the states still moving. */
+export interface RowStatus {
+    key: 'settle' | 'voting' | 'failed' | 'executed' | 'rejected' | 'expired' | 'cancelled';
+    label: string;
+    tone: 'indigo' | 'amber' | 'green' | 'red' | 'neutral';
+    live: boolean;
+}
+
+/** Whether a voting row is past its end (waiting for anyone to settle it). */
+const ended = (row: Pick<ProposalRow, 'status' | 'votingEnd'>, nowMs: number): boolean => {
+    const at = row.votingEnd ? new Date(row.votingEnd).getTime() : NaN;
+    return row.status === 'VOTING' && !Number.isNaN(at) && at <= nowMs;
+};
+
+/**
+ * The status of a list row in the board's words: "Ready to settle" (voting, past its end), "Voting",
+ * "Passed · execution failed", "Passed · executed", "Rejected", "Expired", "Cancelled".
+ */
+export function rowStatus(row: Pick<ProposalRow, 'status' | 'votingEnd'>, nowMs: number): RowStatus {
+    switch (row.status) {
+        case 'VOTING':
+            return ended(row, nowMs)
+                ? {key: 'settle', label: 'Ready to settle', tone: 'amber', live: true}
+                : {key: 'voting', label: 'Voting', tone: 'indigo', live: true};
+        case 'EXECUTION_FAILED':
+            return {key: 'failed', label: 'Passed · execution failed', tone: 'red', live: true};
+        case 'EXECUTED':
+            return {key: 'executed', label: 'Passed · executed', tone: 'green', live: false};
+        case 'REJECTED':
+            return {key: 'rejected', label: 'Rejected', tone: 'neutral', live: false};
+        case 'EXPIRED':
+            return {key: 'expired', label: 'Expired', tone: 'neutral', live: false};
+        case 'CANCELLED':
+            return {key: 'cancelled', label: 'Cancelled', tone: 'neutral', live: false};
+    }
+}
+
+const spaced = (percent: string): string => percent.replace(/%$/, ' %');
+
+/** The "Yes · turnout" cell: "87.9 % · 37.7 %" (both rounded down); "—" without a tally. */
+export function resultLine(tally: ProposalTally | null): string {
+    if (!tally) return '—';
+    return `${spaced(yesShare(tally))} · ${spaced(turnoutShare(tally))}`;
+}
+
+/**
+ * The When cell. Voting: "Ends in 3 days", or "Voting ended 2 hours ago" once past its end; a finished row:
+ * "Voting ended 12 Nov 2026", or "Closed before its planned end" when it was settled or cancelled early.
+ * `relative` and `day` write the row's voting end ("in 3 days" / "2 hours ago", "12 Nov 2026").
+ */
+export function whenLine(row: Pick<ProposalRow, 'status' | 'votingEnd'>, nowMs: number, relative: string, day: string): string {
+    if (!row.votingEnd) return '';
+    const future = new Date(row.votingEnd).getTime() > nowMs;
+    if (row.status === 'VOTING') {
+        if (!future) return `Voting ended ${relative || day}`;
+        return relative.startsWith('in ') ? `Ends ${relative}` : `Ends ${day}`;
+    }
+    if (future) return 'Closed before its planned end';
+    return `Voting ended ${day}`;
+}
+
 // ---- the loader ----
 
 /** One page of the tab, with the counts of each status when Scan gave them. */
