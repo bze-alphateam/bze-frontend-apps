@@ -2,7 +2,7 @@ import type {DaoParams} from '@bze/bze-ui-kit';
 import type {ProposalModel} from './proposal-model';
 import {secondsOf} from './dao-rules';
 
-export type TimelineKind = 'submitted' | 'early' | 'voting-end' | 'settled' | 'executed' | 'failed' | 'retry' | 'cancelled' | 'cleaned';
+export type TimelineKind = 'submitted' | 'early' | 'voting-end' | 'retry-until' | 'settled' | 'executed' | 'failed' | 'retry' | 'cancelled' | 'cleaned';
 
 export interface TimelineItem {
     kind: TimelineKind;
@@ -35,13 +35,30 @@ export function describeExecutionError(error: string | null | undefined): string
 }
 
 /**
+ * While a proposal with actions is voting, the time a failed execution could be retried until:
+ * `voting_end` + the module's `execution_window` (the chain's `retry_deadline` stays 0 until the
+ * execution fails). Null without actions, without the params, or once voting is over.
+ */
+export function retryUntil(
+    p: Pick<ProposalModel, 'status' | 'votingEnd'> & {msgs?: readonly unknown[]},
+    params: Partial<Pick<DaoParams, 'execution_window'>> | null,
+): string | null {
+    if (p.status !== 'VOTING' || !p.votingEnd || !p.msgs?.length || !params?.execution_window) return null;
+    const window = secondsOf(params.execution_window);
+    const end = new Date(p.votingEnd).getTime();
+    if (window === null || window <= 0 || Number.isNaN(end)) return null;
+    return new Date(end + window * 1000).toISOString();
+}
+
+/**
  * The life of a proposal in order. Times come from the chain's proposal; the settle, the execution result
  * and the cleanup come from Scan (heights only, Scan keeps no block times for them), so a proposal read
- * without Scan shows the first three kinds only.
+ * without Scan shows the first kinds only. While it votes, a proposal with actions also says until when
+ * a failed execution could be retried; once it has failed, the chain's `retry_deadline` says it.
  */
 export function buildTimeline(
-    p: Pick<ProposalModel, 'status' | 'expedited' | 'daoType' | 'submitTime' | 'submitHeight' | 'votingEnd' | 'retryDeadline' | 'outcome'>,
-    params: Pick<DaoParams, 'min_expedite_delay'> | null,
+    p: Pick<ProposalModel, 'status' | 'expedited' | 'daoType' | 'submitTime' | 'submitHeight' | 'votingEnd' | 'retryDeadline' | 'outcome'> & {msgs?: readonly unknown[]},
+    params: (Pick<DaoParams, 'min_expedite_delay'> & Partial<Pick<DaoParams, 'execution_window'>>) | null,
     nowMs: number,
 ): TimelineItem[] {
     const items: TimelineItem[] = [];
@@ -72,6 +89,14 @@ export function buildTimeline(
         detail: closedEarly ? (p.status === 'CANCELLED' ? 'It was cancelled before then.' : 'It was settled early, once it met the expedite bars.') : '',
         upcoming: p.status === 'VOTING' && !ended,
     });
+
+    const until = retryUntil(p, params);
+    if (until) {
+        items.push({
+            kind: 'retry-until', label: 'If the actions fail, anyone can retry until then', time: until, height: null,
+            detail: '', upcoming: true,
+        });
+    }
 
     const scan = p.outcome;
     // a cancelled proposal always shows it, with the block when Scan has it
