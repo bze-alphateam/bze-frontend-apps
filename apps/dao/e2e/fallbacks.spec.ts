@@ -12,6 +12,8 @@ test("a node on v8.2.x shows one friendly state instead of the list", async ({pa
     await page.goto("/");
 
     await expect(page.getByText("DAOs arrive with the v8.3.0 network upgrade")).toBeVisible();
+    await expect(page.getByText("This network still runs v8.2. Once the upgrade lands, you'll find every DAO here.")).toBeVisible();
+    await expect(page.getByRole("link", {name: /Open Explorer/})).toHaveAttribute("target", "_blank");
     await expect(page.getByTestId("dao-row")).toHaveCount(0);
     await expect(page.getByRole("heading", {name: "DAOs", exact: true})).toHaveCount(0);
 });
@@ -22,6 +24,7 @@ test("with Scan down the list falls back to the chain: a Reduced list notice, no
 
     await expect(page.getByText("Reduced list")).toBeVisible();
     await expect(page.getByText("BZE Scan isn't answering")).toBeVisible();
+    await expect(page.getByTestId("reduced-list")).toContainText("pages go ‹ Prev / Next › only");
     const rows = page.getByTestId("dao-row");
     await expect(rows).toHaveCount(4);
     // the chain lists the newest first and knows nothing of open proposals

@@ -4,6 +4,7 @@ import { Box, chakra, Flex } from '@chakra-ui/react';
 import type { ReactNode } from 'react';
 
 import type { AppKey } from '../../constants/app-identity';
+import { HIVE_GLOW_TYPE } from '../../theme/hive-glow-tokens';
 import { AppIcon } from '../app-identity/app-icon';
 
 export interface EyebrowProps {
@@ -12,13 +13,36 @@ export interface EyebrowProps {
     children: ReactNode;
     /** Icon size in px: 32 on home pages, 24 on inner pages. */
     iconSize?: number;
+    /** Below md: a smaller icon (px) and label (px), e.g. the DAO home's 18 / 11. Leave out to keep one size. */
+    phone?: { iconSize: number; fontSize: number };
 }
 
 /** The app icon and its name, in capitals in the eyebrow colour. */
-export const Eyebrow = ({ app, children, iconSize = 32 }: EyebrowProps) => (
-    <Flex align="center" gap={iconSize > 24 ? '10px' : '8px'} data-testid="eyebrow">
-        <AppIcon app={app} size={iconSize} />
-        <chakra.span textStyle="eyebrow" color="hg.eyebrow" textAlign="start">{children}</chakra.span>
+export const Eyebrow = ({ app, children, iconSize = 32, phone }: EyebrowProps) => (
+    <Flex align="center" gap={phone ? { base: phone.iconSize > 24 ? '10px' : '8px', md: iconSize > 24 ? '10px' : '8px' } : iconSize > 24 ? '10px' : '8px'} data-testid="eyebrow">
+        {phone ? (
+            // the icon draws at its desktop size and scales down inside a smaller box below md
+            <Box
+                as="span"
+                display="inline-flex"
+                flexShrink={0}
+                boxSize={{ base: `${phone.iconSize}px`, md: `${iconSize}px` }}
+                css={{ '& > span, & svg': { width: '100%', height: '100%' } }}
+                data-testid="eyebrow-icon"
+            >
+                <AppIcon app={app} size={iconSize} />
+            </Box>
+        ) : (
+            <AppIcon app={app} size={iconSize} />
+        )}
+        <chakra.span
+            textStyle="eyebrow"
+            color="hg.eyebrow"
+            textAlign="start"
+            fontSize={phone ? { base: `${phone.fontSize}px`, md: `${HIVE_GLOW_TYPE.eyebrow.size}px` } : undefined}
+        >
+            {children}
+        </chakra.span>
     </Flex>
 );
 

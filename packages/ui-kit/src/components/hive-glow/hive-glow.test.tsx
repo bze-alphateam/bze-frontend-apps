@@ -76,6 +76,18 @@ describe('heroes', () => {
         expect(screen.getByTestId('app-icon').getAttribute('data-cut')).toBe('small');
     });
 
+    it('Eyebrow takes a smaller icon and label below md when given phone sizes, as one element', () => {
+        ui(<Eyebrow app="dao" iconSize={22} phone={{ iconSize: 18, fontSize: 11 }}>BeeZee DAO</Eyebrow>);
+        expect(screen.getAllByTestId('eyebrow')).toHaveLength(1);
+        expect(rulesFor(screen.getByTestId('eyebrow-icon'))).toMatch(/18px/);
+        expect(rulesFor(screen.getByText('BeeZee DAO'))).toMatch(/font-size:\s*11px/);
+    });
+
+    it('Eyebrow keeps one size and no extra wrapper without phone sizes', () => {
+        ui(<Eyebrow app="dex">BeeZee DEX</Eyebrow>);
+        expect(screen.queryByTestId('eyebrow-icon')).toBeNull();
+    });
+
     it('HomeHero renders every slot, left-aligned by default', () => {
         ui(
             <HomeHero

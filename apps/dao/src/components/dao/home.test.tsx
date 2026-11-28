@@ -2,7 +2,7 @@ import {beforeEach, describe, expect, it, vi} from "vitest";
 import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
-import type {Dao} from "@bze/bze-ui-kit";
+import {getExplorerBaseURL, type Dao} from "@bze/bze-ui-kit";
 
 const nav = vi.hoisted(() => ({search: "", push: vi.fn(), replace: vi.fn(), address: undefined as string | undefined}));
 
@@ -178,13 +178,15 @@ describe("with a wallet", () => {
         expect(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 2", hidden: true})).toHaveAttribute("aria-current", "page");
     });
 
-    it("says so when the wallet is in no DAO, and Show all DAOs turns the switch off", async () => {
+    it("says so when the wallet is in no DAO, and Turn off My DAOs turns the switch off", async () => {
         const d = deps((request) => (isFilter(request) ? list([]) : list([scanDao(1)])));
         renderHome(d, {address: ME, search: "mine=1"});
 
         expect(await screen.findByText("You're not in any DAO yet")).toBeInTheDocument();
+        expect(screen.getByText("My DAOs is on and you're in none of them. Join one by staking in its rewards or by asking its members.")).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: /create/i})).toBeNull();
-        await userEvent.click(screen.getByRole("button", {name: "Show all DAOs"}));
+        expect(screen.queryByRole("button", {name: "Show all DAOs"})).toBeNull();
+        await userEvent.click(screen.getByRole("button", {name: "Turn off My DAOs"}));
         expect(nav.replace).toHaveBeenCalledWith("/", {scroll: false});
     });
 
@@ -194,6 +196,14 @@ describe("with a wallet", () => {
 
         expect(await screen.findByText("No DAO matches")).toBeInTheDocument();
         expect(screen.getByText("Try another type, or turn off My DAOs.")).toBeInTheDocument();
+    });
+
+    it("points at the switch in the No results note when a search leaves none of the wallet's DAOs", async () => {
+        const d = deps((request) => (request.member ? list([scanDao(3)]) : isFilter(request) ? list([]) : list([scanDao(1)])));
+        renderHome(d, {address: ME, search: "mine=1&q=wasp"});
+
+        const note = await screen.findByTestId("no-results");
+        expect(note).toHaveTextContent('No DAO matches "wasp". Search looks at names only, or turn off My DAOs.');
     });
 
     it("keeps the My DAOs notices for the switch being on", async () => {
@@ -276,10 +286,28 @@ describe("filters and pages", () => {
         expect(screen.getByText("DAOs created on BeeZee are listed here.")).toBeInTheDocument();
     });
 
-    it("says nothing matches when a filter finds none", async () => {
+    it("says nothing matches when the type filter finds none", async () => {
         renderHome(deps(() => list([], {total: 0})), {search: "type=stake"});
         expect(await screen.findByText("No DAO matches")).toBeInTheDocument();
-        expect(screen.getByText("Try another name or type.")).toBeInTheDocument();
+        expect(screen.getByText("Try another type.")).toBeInTheDocument();
+        expect(screen.queryByTestId("no-results")).toBeNull();
+    });
+
+    it("names the term in a No results note when the search finds none", async () => {
+        renderHome(deps(() => list([], {total: 0})), {search: "q=wasp"});
+        const note = await screen.findByTestId("no-results");
+        expect(note).toHaveAttribute("role", "note");
+        expect(note).toHaveTextContent("No results");
+        expect(note).toHaveTextContent('No DAO matches "wasp". Search looks at names only.');
+        expect(screen.queryByTestId("no-match")).toBeNull();
+    });
+
+    it("keeps the table header and draws four loading rows while the page loads", async () => {
+        renderHome(deps(() => new Promise<ScanDaoList>(() => {})));
+        await waitFor(() => expect(screen.getAllByTestId("dao-row-skeleton")).toHaveLength(4));
+        expect(screen.getAllByTestId("dao-card-skeleton")).toHaveLength(4);
+        expect(screen.getByRole("columnheader", {name: "DAO"})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "DAO type"})).toBeInTheDocument();
     });
 });
 
@@ -319,6 +347,7 @@ describe("when Scan is down", () => {
 
         await waitFor(() => expect(rows()).toHaveLength(2));
         expect(screen.getByText("Reduced list")).toBeInTheDocument();
+        expect(screen.getByTestId("reduced-list")).toHaveTextContent("no open-proposal counts, and pages go ‹ Prev / Next › only. My DAOs shows only DAOs you run.");
         expect(screen.queryByRole("group", {name: "DAO type"})).toBeNull();
         expect(screen.queryByLabelText("Search DAOs by name")).toBeNull();
         expect(screen.getByTestId("list-count")).toHaveTextContent("Page 1");
@@ -362,6 +391,10 @@ describe("a node on v8.2.x", () => {
         renderHome(deps(() => list([], {supported: false, total: null})));
 
         expect(await screen.findByText("DAOs arrive with the v8.3.0 network upgrade")).toBeInTheDocument();
+        expect(screen.getByText("This network still runs v8.2. Once the upgrade lands, you'll find every DAO here.")).toBeInTheDocument();
+        const explorer = screen.getByRole("link", {name: /Open Explorer/});
+        expect(explorer).toHaveAttribute("href", getExplorerBaseURL());
+        expect(explorer).toHaveAttribute("target", "_blank");
         expect(screen.queryByTestId("daos-section")).toBeNull();
     });
 });

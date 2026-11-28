@@ -3,7 +3,7 @@
 import {Suspense, useCallback, useEffect, useState} from 'react';
 import {Box, Button, chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
-import {Eyebrow, GradientText, getChainName, HeroGlow, PageContainer, PageState} from '@bze/bze-ui-kit';
+import {Eyebrow, GradientText, getChainName, HeroGlow, hgVariant, PageContainer, PageState} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {useDaoList} from '@/hooks/useDaoList';
 import {useHomeUrl} from '@/hooks/useHomeUrl';
@@ -16,8 +16,8 @@ import {clampPage, cursorCount, pageCount, slicePage} from '@/lib/pagination';
 import {Pagination, PrevNext} from '@/components/ui/pagination';
 import {DaoCards, DaoTable, type DaoRow} from './dao-list';
 import {MineSwitch, SearchBox, TypeFilter} from './home-filters';
-import {MineNotices, ReducedListNotice} from './home-notices';
-import {Unsupported} from './unsupported';
+import {MineNotices, NoResultsNotice, ReducedListNotice} from './home-notices';
+import {NotInAnyDao, Unsupported} from './unsupported';
 
 const SEARCH_DELAY_MS = 300;
 const NO_FILTER = {kind: '', search: ''} as const;
@@ -42,13 +42,13 @@ function useDebouncedSearch(committed: string, commit: (q: string) => void) {
 const HeroBand = () => (
     <Box position="relative" overflow="hidden">
         <HeroGlow strength="home" />
-        <PageContainer position="relative" zIndex="1" pt={{base: '24px', md: '52px'}} pb={{base: '8px', md: '12px'}}>
+        <PageContainer position="relative" zIndex="1" pt={{base: '20px', md: '52px'}} pb={{base: '0', md: '8px'}}>
             <Flex direction="column" gap={{base: '16px', md: '18px'}} data-testid="page-hero">
-                <Eyebrow app="dao" iconSize={22}>BeeZee DAO</Eyebrow>
+                <Eyebrow app="dao" iconSize={22} phone={{iconSize: 18, fontSize: 11}}>BeeZee DAO</Eyebrow>
                 <chakra.h1 m="0" textStyle="hero" fontSize={{base: '28px', md: '52px'}}>
                     Decide together, <GradientText>on chain</GradientText>.
                 </chakra.h1>
-                <chakra.p m="0" display={{base: 'none', md: 'block'}} fontSize="18px" lineHeight="1.55" color="fg.muted" maxW="560px">
+                <chakra.p m="0" display={{base: 'none', md: 'block'}} fontSize="18px" lineHeight="1.55" color="hg.text.secondary" maxW="560px">
                     Run a group on BeeZee: vote, hold a treasury, and let the chain carry out what you decide.
                 </chakra.p>
             </Flex>
@@ -98,18 +98,16 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
 
     const emptyState = () => {
         if (mine && mineResult && mineResult.rows.length === 0 && !filterActive) {
-            return (
-                <PageState
-                    kind="empty"
-                    title="You're not in any DAO yet"
-                    description="Join one by staking in its rewards or by asking its members."
-                    action={<Button variant="outline" onClick={() => setFilters({mine: false})}>Show all DAOs</Button>}
-                />
-            );
+            return <NotInAnyDao action={<Button variant={hgVariant('secondary')} onClick={() => setFilters({mine: false})}>Turn off My DAOs</Button>} />;
         }
+        // a search that found nothing: the neutral note names the term (C3 "No results")
+        if (term) return <NoResultsNotice term={term} mine={mine} />;
         if (mine || filterActive) {
             return (
-                <PageState kind="empty" title="No DAO matches" description={mine ? 'Try another type, or turn off My DAOs.' : 'Try another name or type.'} />
+                <Flex direction="column" align="center" textAlign="center" gap="6px" py={{base: '28px', md: '36px'}} data-testid="no-match">
+                    <chakra.strong fontSize="15px" color="fg">No DAO matches</chakra.strong>
+                    <chakra.span fontSize="14px" color="fg.muted">{mine ? 'Try another type, or turn off My DAOs.' : 'Try another type.'}</chakra.span>
+                </Flex>
             );
         }
         return <PageState kind="empty" title="No DAOs yet" description="DAOs created on BeeZee are listed here." />;
@@ -153,8 +151,8 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
             p={{base: '0', md: '22px 24px'}}
             data-testid="daos-section"
         >
-            <Flex direction="column" gap="16px">
-                <Flex wrap="wrap" align="center" gap={{base: '10px', md: '12px 12px'}}>
+            <Flex direction="column" gap={{base: '10px', md: '16px'}}>
+                <Flex wrap="wrap" align="center" justify="space-between" gap={{base: '10px', md: '12px'}}>
                     <chakra.h2 id="daos-title" m="0" fontSize="17px" fontWeight="700" flex="1 1 0" minW="max-content">DAOs</chakra.h2>
                     {wallet && <MineSwitch checked={mine} onChange={(checked) => setFilters({mine: checked})} />}
                     {!filtersHidden && (
@@ -204,7 +202,7 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
 export const Home = ({deps = liveDaoDeps}: {deps?: DaoDeps}) => (
     <>
         <HeroBand />
-        <PageContainer pt={{base: '16px', md: '24px'}} pb={{base: '40px', md: '64px'}}>
+        <PageContainer pt={{base: '16px', md: '24px'}} pb={{base: '48px', md: '64px'}}>
             <Suspense fallback={<Box h="240px" aria-hidden />}>
                 <DaosSection deps={deps} />
             </Suspense>

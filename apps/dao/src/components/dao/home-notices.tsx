@@ -1,8 +1,8 @@
 'use client';
 
 import {Button, chakra, Flex} from '@chakra-ui/react';
-import {LuTriangleAlert} from 'react-icons/lu';
-import {Notice} from '@bze/bze-ui-kit';
+import {LuInfo, LuTriangleAlert} from 'react-icons/lu';
+import {hgVariant, Notice} from '@bze/bze-ui-kit';
 import type {MyDaosResult} from '@/lib/dao-loader';
 
 /** Scan is down and the list is the chain's own. */
@@ -19,14 +19,36 @@ export const ReducedListNotice = ({onRetry}: {onRetry: () => void}) => (
         borderColor="hg.warning/30"
         data-testid="reduced-list"
     >
-        <chakra.span aria-hidden flex="none" mt="2px" color="hg.warning"><LuTriangleAlert size={16} /></chakra.span>
+        <chakra.span aria-hidden flex="none" mt="2px" color="hg.warning.text"><LuTriangleAlert size={16} /></chakra.span>
         <Flex direction="column" gap="2px" fontSize="14px" lineHeight="1.5" minW="0" flex="1">
             <chakra.strong color="fg">Reduced list</chakra.strong>
-            <chakra.span color="fg.muted">
-                BZE Scan isn&apos;t answering, so this list comes straight from the chain: no search, no type filter, no open-proposal counts. My DAOs shows only DAOs you run.
+            <chakra.span color="hg.text.secondary">
+                BZE Scan isn&apos;t answering, so this list comes straight from the chain: no search, no type filter, no open-proposal counts, and pages go ‹ Prev / Next › only. My DAOs shows only DAOs you run.
             </chakra.span>
         </Flex>
-        <Button variant="outline" size="sm" flex="none" onClick={onRetry}>Retry</Button>
+        <Button variant={hgVariant('secondary')} h="32px" px="12px" borderRadius="12px" fontSize="13px" flex="none" ms="auto" onClick={onRetry}>Retry</Button>
+    </Flex>
+);
+
+/** A search that found nothing (C3 "No results"): a neutral note naming the term; with My DAOs on it also points at the switch. */
+export const NoResultsNotice = ({term, mine}: {term: string; mine?: boolean}) => (
+    <Flex
+        role="note"
+        gap="12px"
+        align="flex-start"
+        px="14px"
+        py="12px"
+        borderRadius="12px"
+        bg="hg.inset"
+        borderWidth="1px"
+        borderColor="hg.hairline"
+        data-testid="no-results"
+    >
+        <chakra.span aria-hidden flex="none" mt="2px" color="fg.muted"><LuInfo size={16} /></chakra.span>
+        <Flex direction="column" gap="2px" fontSize="14px" lineHeight="1.5" minW="0">
+            <chakra.strong color="fg">No results</chakra.strong>
+            <chakra.span color="hg.text.secondary">{`No DAO matches "${term}". Search looks at names only${mine ? ', or turn off My DAOs.' : '.'}`}</chakra.span>
+        </Flex>
     </Flex>
 );
 

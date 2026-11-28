@@ -115,13 +115,23 @@ test("the name search asks Scan for the name once typing stops, and the URL keep
     await expect(page.getByTestId("dao-row")).toHaveCount(1);
 });
 
-test("a filter with no match says so", async ({page, network}) => {
+test("a search with no match says so in a No results note naming the term", async ({page, network}) => {
     network.use("scan", {path: SCAN_DAOS, query: {q: "wasp", page: "1", limit: "20"}, status: 200, body: {items: [], next_cursor: null, supported: true, total: 0}});
     await page.goto("/?q=wasp");
 
-    await expect(page.getByText("No DAO matches")).toBeVisible();
-    await expect(page.getByText("Try another name or type.")).toBeVisible();
+    const note = page.getByRole("note").filter({hasText: "No results"});
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('No DAO matches "wasp". Search looks at names only.');
     await expect(page.getByTestId("dao-row")).toHaveCount(0);
+});
+
+test("a type with no match says so", async ({page, network}) => {
+    network.use("scan", {path: SCAN_DAOS, query: {type: "stake", page: "1", limit: "20"}, status: 200, body: {items: [], next_cursor: null, supported: true, total: 0}});
+    await page.goto("/?type=stake");
+
+    await expect(page.getByText("No DAO matches")).toBeVisible();
+    await expect(page.getByText("Try another type.")).toBeVisible();
+    await expect(page.getByTestId("no-results")).toHaveCount(0);
 });
 
 test("an empty network says there are no DAOs yet", async ({page, network}) => {
