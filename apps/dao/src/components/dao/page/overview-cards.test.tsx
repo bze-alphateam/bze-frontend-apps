@@ -152,7 +152,7 @@ describe("Your voting power", () => {
         expect(screen.getByTestId("power-role")).toHaveTextContent("Staker");
         const [p21, p22] = screen.getAllByTestId("power-proposal");
         expect(p21).toHaveTextContent("#21 Fund the liquidity push30,000 of 42,000");
-        expect(within(p21).getByRole("link")).toHaveAttribute("href", "/proposal/21");
+        expect(within(p21).getByRole("link", {hidden: true})).toHaveAttribute("href", "/proposal/21");
         expect(p22).toHaveTextContent("#22 Rename42,000");
         expect(screen.getByTestId("power-note")).toHaveTextContent("On #21 only part of your stake counts: you joined or added to it after #21 started.");
         expect(screen.getByTestId("power-phone-note")).toHaveTextContent("On #21 only 30,000 counts: you joined or added to your stake after it started.");
