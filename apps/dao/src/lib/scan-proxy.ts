@@ -31,8 +31,8 @@ interface Route {
 const ROUTES: Route[] = [
     {pattern: /^daos$/, params: ["type", "q", "member", "source", "pending_admin", "admin", "page", ...PAGE]},
     {pattern: /^daos\/\d+$/, params: []},
-    {pattern: /^daos\/\d+\/history$/, params: PAGE},
-    {pattern: /^daos\/\d+\/proposals$/, params: ["status", ...PAGE]},
+    {pattern: /^daos\/\d+\/history$/, params: ["page", ...PAGE]},
+    {pattern: /^daos\/\d+\/proposals$/, params: ["status", "page", ...PAGE]},
     {pattern: /^dao-proposals\/\d+$/, params: []},
     {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
     {pattern: /^dao-votes$/, params: ["voter", ...PAGE]},
