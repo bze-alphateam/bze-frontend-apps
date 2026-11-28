@@ -1,9 +1,9 @@
 import {describe, expect, it, vi} from "vitest";
 import type {Dao, DaoControllerResponse} from "@bze/bze-ui-kit";
-import {checkNomination, type NominationChain} from "./nomination";
+import {isNominationStale, type NominatedDao, type NominationChain} from "./nomination";
 
-type Link = Pick<Dao, "id" | "address" | "name" | "admin_seq" | "pending_admin_seq">;
-const dao = (over: Partial<Link> = {}): Link => ({id: "4", address: "bze1dao4", name: "Four", admin_seq: "3", pending_admin_seq: "5", ...over});
+// DAO 4 is run by DAO 9, which is run by DAO 12, which is run by an account.
+const dao = (over: Partial<NominatedDao> = {}): NominatedDao => ({id: "4", address: "bze1dao4", admin: "bze1dao9", pending_admin: "bze1nominee", pending_admin_seq: "5", ...over});
 const link = (id: string, adminSeq: string) => ({id, address: `bze1dao${id}`, name: `Dao ${id}`, admin_seq: adminSeq}) as Dao;
 
 const chain = (path: string[], links: Record<string, Dao | null> = {}, over: Partial<NominationChain> = {}): NominationChain => ({
@@ -12,49 +12,68 @@ const chain = (path: string[], links: Record<string, Dao | null> = {}, over: Par
     ...over,
 });
 
-describe("checkNomination", () => {
-    it("is fresh while no DAO on the admin chain changed its admin after the nomination", async () => {
-        const c = chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", "5")});
+const NOT_STALE = {stale: false, checked: true};
+const UNCHECKED = {stale: false, checked: false};
+
+describe("isNominationStale", () => {
+    it("is not stale while no DAO above changed its admin after the nomination", async () => {
+        const c = chain(["bze1dao4", "bze1dao9", "bze1dao12"], {bze1dao9: link("9", "5"), bze1dao12: link("12", "1")});
         // 5 is not above the nomination's 5: only a change made after it counts
-        expect(await checkNomination(c, dao())).toEqual({state: "fresh"});
+        expect(await isNominationStale(c, dao())).toEqual(NOT_STALE);
         expect(c.getController).toHaveBeenCalledWith("4");
     });
 
-    it("is stale when a controlling DAO changed hands after the nomination", async () => {
+    it("is stale one level up: the DAO that runs it changed its admin, and it is the one to nominate again", async () => {
+        const c = chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", "6")});
+        expect(await isNominationStale(c, dao())).toEqual({stale: true, parent: {id: "9", name: "Dao 9"}, changed: {id: "9", name: "Dao 9"}});
+    });
+
+    it("is stale two levels up: the change is above the parent, the parent still has to nominate again", async () => {
         const c = chain(["bze1dao4", "bze1dao9", "bze1dao12"], {bze1dao9: link("9", "2"), bze1dao12: link("12", "6")});
-        expect(await checkNomination(c, dao())).toEqual({state: "stale", by: {id: "12", name: "Dao 12"}});
+        expect(await isNominationStale(c, dao())).toEqual({stale: true, parent: {id: "9", name: "Dao 9"}, changed: {id: "12", name: "Dao 12"}});
     });
 
-    it("counts the DAO itself, and compares the numbers as numbers, not as text", async () => {
-        expect(await checkNomination(chain(["bze1dao4"]), dao({admin_seq: "6"}))).toMatchObject({state: "stale", by: {id: "4"}});
-        // "10" is above "9" as a number, though it sorts below it as text
-        expect(await checkNomination(chain(["bze1dao4"]), dao({admin_seq: "10", pending_admin_seq: "9"}))).toMatchObject({state: "stale"});
-        expect(await checkNomination(chain(["bze1dao4"]), dao({admin_seq: "9", pending_admin_seq: "10"}))).toEqual({state: "fresh"});
-        // beyond what a double holds
-        expect(await checkNomination(chain(["bze1dao4"]), dao({admin_seq: "18446744073709551615", pending_admin_seq: "18446744073709551614"}))).toMatchObject({state: "stale"});
+    it("compares the sequences as numbers, not as text, beyond what a double holds", async () => {
+        const one = (adminSeq: string, pendingSeq: string) => isNominationStale(chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", adminSeq)}), dao({pending_admin_seq: pendingSeq}));
+        expect(await one("10", "9")).toMatchObject({stale: true});
+        expect(await one("9", "10")).toEqual(NOT_STALE);
+        expect(await one("18446744073709551615", "18446744073709551614")).toMatchObject({stale: true});
     });
 
-    it("takes the DAO itself from the record it was given, and asks the chain for the others", async () => {
-        const c = chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", "0")});
-        await checkNomination(c, dao());
+    it("never counts the DAO itself: its own admin change clears the nomination, so it cannot go stale that way", async () => {
+        const c = chain(["bze1dao4", "bze1dao9"], {bze1dao4: link("4", "99"), bze1dao9: link("9", "0")});
+        expect(await isNominationStale(c, dao())).toEqual(NOT_STALE);
         expect(c.getDaoByAddress).toHaveBeenCalledTimes(1);
         expect(c.getDaoByAddress).toHaveBeenCalledWith("bze1dao9");
+    });
+
+    it("a DAO whose admin is an account is never stale: the admin chain ends at the DAO", async () => {
+        const c = chain(["bze1dao4"]);
+        expect(await isNominationStale(c, dao({admin: "bze1person"}))).toEqual(NOT_STALE);
+        expect(c.getDaoByAddress).not.toHaveBeenCalled();
+    });
+
+    it("a self-owned DAO, or one with no nomination, is never stale, and nothing is read", async () => {
+        const c = chain(["bze1dao4"]);
+        expect(await isNominationStale(c, dao({admin: "bze1dao4"}))).toEqual(NOT_STALE);
+        expect(await isNominationStale(c, dao({pending_admin: ""}))).toEqual(NOT_STALE);
+        expect(c.getController).not.toHaveBeenCalled();
     });
 
     it.each([
         ["the controller read throws", chain([], {}, {getController: vi.fn(async () => { throw new Error("rest"); })})],
         ["the chain has no controller answer (404)", chain([], {}, {getController: vi.fn(async () => null)})],
         ["the path is empty", chain([])],
-        ["a DAO on the path throws", chain(["bze1dao4", "bze1dao9"], {}, {getDaoByAddress: vi.fn(async () => { throw new Error("rest"); })})],
-        ["a DAO on the path is not found", chain(["bze1dao4", "bze1dao9"], {bze1dao9: null})],
-        ["a DAO on the path has no readable sequence", chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", "x")})],
-    ])("%s: it cannot be checked, which is never read as fresh", async (_name, c) => {
-        expect(await checkNomination(c, dao())).toMatchObject({state: "unreadable"});
+        ["a DAO above throws", chain(["bze1dao4", "bze1dao9"], {}, {getDaoByAddress: vi.fn(async () => { throw new Error("rest"); })})],
+        ["a DAO above is not found", chain(["bze1dao4", "bze1dao9"], {bze1dao9: null})],
+        ["a DAO above has no readable sequence", chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", "x")})],
+    ])("%s: the chain read failed, so it is not stale and not checked (never throws)", async (_name, c) => {
+        expect(await isNominationStale(c, dao())).toEqual(UNCHECKED);
     });
 
-    it("a nomination whose own sequence is not a number cannot be checked", async () => {
-        const c = chain(["bze1dao4"]);
-        expect(await checkNomination(c, dao({pending_admin_seq: ""}))).toMatchObject({state: "unreadable"});
+    it("a nomination whose own sequence is not a number cannot be checked, and nothing is read", async () => {
+        const c = chain(["bze1dao4", "bze1dao9"]);
+        expect(await isNominationStale(c, dao({pending_admin_seq: ""}))).toEqual(UNCHECKED);
         expect(c.getController).not.toHaveBeenCalled();
     });
 });
