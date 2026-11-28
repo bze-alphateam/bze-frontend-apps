@@ -44,7 +44,7 @@ export const Unsupported = () => (
             title="DAOs arrive with the v8.3.0 network upgrade"
             description="This network still runs v8.2. Once the upgrade lands, you'll find every DAO here."
         >
-            <AppLink app="explorer" href={getExplorerBaseURL()}>Upgrade status on Explorer</AppLink>
+            <AppLink app="explorer" href={getExplorerBaseURL()}>Open Explorer</AppLink>
         </StatePanel>
     </Box>
 );

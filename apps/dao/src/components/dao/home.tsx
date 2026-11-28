@@ -44,8 +44,7 @@ const HeroBand = () => (
         <HeroGlow strength="home" />
         <PageContainer position="relative" zIndex="1" pt={{base: '20px', md: '52px'}} pb={{base: '0', md: '8px'}}>
             <Flex direction="column" gap={{base: '16px', md: '18px'}} data-testid="page-hero">
-                <Box hideBelow="md"><Eyebrow app="dao" iconSize={22}>BeeZee DAO</Eyebrow></Box>
-                <Box hideFrom="md" css={{'& [data-testid=eyebrow] span': {fontSize: '11px'}}}><Eyebrow app="dao" iconSize={18}>BeeZee DAO</Eyebrow></Box>
+                <Eyebrow app="dao" iconSize={22} phone={{iconSize: 18, fontSize: 11}}>BeeZee DAO</Eyebrow>
                 <chakra.h1 m="0" textStyle="hero" fontSize={{base: '28px', md: '52px'}}>
                     Decide together, <GradientText>on chain</GradientText>.
                 </chakra.h1>
@@ -102,7 +101,7 @@ const DaosSection = ({deps}: {deps: DaoDeps}) => {
             return <NotInAnyDao action={<Button variant={hgVariant('secondary')} onClick={() => setFilters({mine: false})}>Turn off My DAOs</Button>} />;
         }
         // a search that found nothing: the neutral note names the term (C3 "No results")
-        if (term) return <NoResultsNotice term={term} />;
+        if (term) return <NoResultsNotice term={term} mine={mine} />;
         if (mine || filterActive) {
             return (
                 <Flex direction="column" align="center" textAlign="center" gap="6px" py={{base: '28px', md: '36px'}} data-testid="no-match">

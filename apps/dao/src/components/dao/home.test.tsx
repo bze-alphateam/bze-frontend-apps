@@ -198,6 +198,14 @@ describe("with a wallet", () => {
         expect(screen.getByText("Try another type, or turn off My DAOs.")).toBeInTheDocument();
     });
 
+    it("points at the switch in the No results note when a search leaves none of the wallet's DAOs", async () => {
+        const d = deps((request) => (request.member ? list([scanDao(3)]) : isFilter(request) ? list([]) : list([scanDao(1)])));
+        renderHome(d, {address: ME, search: "mine=1&q=wasp"});
+
+        const note = await screen.findByTestId("no-results");
+        expect(note).toHaveTextContent('No DAO matches "wasp". Search looks at names only, or turn off My DAOs.');
+    });
+
     it("keeps the My DAOs notices for the switch being on", async () => {
         const failing = deps(
             (request) => (isFilter(request) ? list([]) : list([scanDao(1)])),
@@ -384,7 +392,7 @@ describe("a node on v8.2.x", () => {
 
         expect(await screen.findByText("DAOs arrive with the v8.3.0 network upgrade")).toBeInTheDocument();
         expect(screen.getByText("This network still runs v8.2. Once the upgrade lands, you'll find every DAO here.")).toBeInTheDocument();
-        const explorer = screen.getByRole("link", {name: /Upgrade status on Explorer/});
+        const explorer = screen.getByRole("link", {name: /Open Explorer/});
         expect(explorer).toHaveAttribute("href", getExplorerBaseURL());
         expect(explorer).toHaveAttribute("target", "_blank");
         expect(screen.queryByTestId("daos-section")).toBeNull();

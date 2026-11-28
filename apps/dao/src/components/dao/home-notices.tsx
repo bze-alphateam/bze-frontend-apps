@@ -30,8 +30,8 @@ export const ReducedListNotice = ({onRetry}: {onRetry: () => void}) => (
     </Flex>
 );
 
-/** A search that found nothing (C3 "No results"): a neutral note naming the term. */
-export const NoResultsNotice = ({term}: {term: string}) => (
+/** A search that found nothing (C3 "No results"): a neutral note naming the term; with My DAOs on it also points at the switch. */
+export const NoResultsNotice = ({term, mine}: {term: string; mine?: boolean}) => (
     <Flex
         role="note"
         gap="12px"
@@ -47,7 +47,7 @@ export const NoResultsNotice = ({term}: {term: string}) => (
         <chakra.span aria-hidden flex="none" mt="2px" color="fg.muted"><LuInfo size={16} /></chakra.span>
         <Flex direction="column" gap="2px" fontSize="14px" lineHeight="1.5" minW="0">
             <chakra.strong color="fg">No results</chakra.strong>
-            <chakra.span color="hg.text.secondary">{`No DAO matches "${term}". Search looks at names only.`}</chakra.span>
+            <chakra.span color="hg.text.secondary">{`No DAO matches "${term}". Search looks at names only${mine ? ', or turn off My DAOs.' : '.'}`}</chakra.span>
         </Flex>
     </Flex>
 );
