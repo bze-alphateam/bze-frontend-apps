@@ -29,8 +29,13 @@ export interface PowerView {
     current: string;
     stake: boolean;
     lines: PowerLine[];
-    /** The small lines under the list: why some power does not count on a proposal. */
+    /** The small lines under the list: on which proposal only part of the stake counts. */
     notes: string[];
+    /**
+     * The open proposals on which a staker's eligible weight is 0 because they joined or added to their
+     * stake after it started: each gets D3's blue "Eligible weight 0" note.
+     */
+    zeroWeight: PowerLine[];
 }
 
 const positive = (amount: string | undefined): boolean => !!amount && /[1-9]/.test(amount);
@@ -61,6 +66,7 @@ export function describeVotingPower(
         ? {label: hasPower ? 'Staker' : 'No stake', active: hasPower}
         : {label: hasPower ? 'Member' : 'Not a member', active: hasPower};
     const notes: string[] = [];
+    const zeroWeight: PowerLine[] = [];
 
     const lines = power.proposals.map((p): PowerLine => {
         const name = titleOf(p.proposal_id);
@@ -69,8 +75,9 @@ export function describeVotingPower(
         const counts = positive(p.eligible_weight);
         if (stake) {
             if (!counts) {
-                if (hasPower) notes.push(`On ${ref} your stake doesn't count: you joined or added to it after ${ref} started.`);
-                return {proposalId: p.proposal_id, label, value: {kind: 'none'}};
+                const line: PowerLine = {proposalId: p.proposal_id, label, value: {kind: 'none'}};
+                if (hasPower) zeroWeight.push(line);
+                return line;
             }
             const partial = hasPower && less(p.eligible_weight, power.current);
             if (partial) notes.push(`On ${ref} only part of your stake counts: you joined or added to it after ${ref} started.`);
@@ -83,5 +90,5 @@ export function describeVotingPower(
         return {proposalId: p.proposal_id, label, value: {kind: 'member', voted: votedOn(p.proposal_id)}};
     });
 
-    return {role, current: power.current, stake, lines, notes};
+    return {role, current: power.current, stake, lines, notes, zeroWeight};
 }

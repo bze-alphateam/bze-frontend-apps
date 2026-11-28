@@ -53,7 +53,7 @@ describe("the DAO header", () => {
         expect(screen.getByTestId("dao-meta")).toHaveTextContent(/DAO address/i);
         const address = pageDao().address;
         // shortened on the page, the whole address in its title and on the copy button
-        expect(screen.getByTestId("dao-address")).toHaveTextContent(`${address.slice(0, 10)}…${address.slice(-6)}`);
+        expect(screen.getByTestId("dao-address")).toHaveTextContent(`${address.slice(0, 7)}…${address.slice(-4)}`);
         expect(screen.getByTestId("dao-address")).toHaveAttribute("data-address", address);
         expect(screen.getByTitle(address)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Copy the DAO address"})).toBeInTheDocument();

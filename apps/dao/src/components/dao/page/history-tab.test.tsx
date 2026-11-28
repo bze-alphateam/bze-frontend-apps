@@ -71,8 +71,9 @@ describe("the History tab", () => {
         expect(within(members).getByTestId("history-link")).toHaveAttribute("href", expect.stringContaining("TX7"));
         expect(rules).toHaveAttribute("data-icon", "rules");
         expect(within(rules).getByTestId("history-link")).toHaveTextContent("Block");
-        // the event's proto name is for review only, never shown
-        expect(screen.getByTestId("history-tab")).not.toHaveTextContent("EventDao");
+        // the faint third line: the event's name and its raw fields
+        expect(within(members).getByTestId("history-meta")).toHaveTextContent(/^EventDaoMembersUpdated$/);
+        expect(within(rules).getByTestId("history-meta")).toHaveTextContent(/^EventDaoConfigUpdated · min_quorum$/);
     });
 
     it("the created event names the creator Scan knows", async () => {
@@ -109,7 +110,7 @@ describe("the History tab", () => {
         expect(screen.getByTestId("prev-next")).toHaveTextContent("Page 1");
         fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Next page", hidden: true}));
         expect(await screen.findByText("DAO created")).toBeInTheDocument();
-        expect(screen.getByTestId("history-details")).toHaveTextContent("Governed by a member list · No admin");
+        expect(screen.getByTestId("history-details")).toHaveTextContent(/^No admin$/);
         expect(screen.getByTestId("prev-next")).toHaveTextContent("Page 2");
     });
 

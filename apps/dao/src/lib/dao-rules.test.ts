@@ -33,8 +33,18 @@ describe("describeRules", () => {
         expect(value(describeRules("DAO_TYPE_STAKE", c, PARAMS, fmt), "expedited")).toBe(
             "Allowed: 2-day vote that settles early when 50 % vote and more than 66.7 % of all voting power says yes, at the earliest 1 day after submission",
         );
+        // quorum ≤ threshold: the yes bar is the whole rule (D2)
         expect(value(describeRules("DAO_TYPE_STATIC_LIST", c, PARAMS, fmt), "expedited")).toBe(
-            "Allowed: 2-day vote that settles early when 50 % of members vote and more than 66.7 % of all members vote yes",
+            "Allowed: 2-day vote that settles as soon as more than 66.7 % of all members vote yes",
+        );
+        const half = config({allow_expedite: true, expedited_period: "86400s", expedite_quorum: "0.5", expedite_threshold: "0.5"});
+        expect(value(describeRules("DAO_TYPE_STATIC_LIST", half, PARAMS, fmt), "expedited")).toBe(
+            "Allowed: 1-day vote that settles as soon as more than half of all members vote yes",
+        );
+        // a quorum above the yes bar keeps both bars
+        const both = config({allow_expedite: true, expedited_period: "86400s", expedite_quorum: "0.8", expedite_threshold: "0.5"});
+        expect(value(describeRules("DAO_TYPE_STATIC_LIST", both, PARAMS, fmt), "expedited")).toBe(
+            "Allowed: 1-day vote that settles early when 80 % of members vote and more than 50 % of all members vote yes",
         );
     });
 

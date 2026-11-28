@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DaoProposal} from "@bze/bze-ui-kit";
-import {createdOnLine, descriptionOverflows, proposalCounter} from "./dao-shell";
+import {boardAddress, createdOnLine, descriptionOverflows, proposalCounter} from "./dao-shell";
 
 const chain = (n: number) => ({ok: true as const, value: Array.from({length: n}, () => ({}) as DaoProposal)});
 const down = {ok: false as const};
@@ -60,5 +60,12 @@ describe("descriptionOverflows", () => {
         expect(descriptionOverflows("a\nb\nc\nd")).toBe(true);
         expect(descriptionOverflows("x".repeat(241))).toBe(true);
         expect(descriptionOverflows("x".repeat(240))).toBe(false);
+    });
+});
+
+describe("boardAddress", () => {
+    it("7 + 4 as the boards write it; a short value stays whole", () => {
+        expect(boardAddress("bze1h0nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxey7q")).toBe("bze1h0n…ey7q");
+        expect(boardAddress("bze1old")).toBe("bze1old");
     });
 });

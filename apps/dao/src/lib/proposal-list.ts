@@ -177,7 +177,9 @@ export function whenLine(row: Pick<ProposalRow, 'status' | 'votingEnd'>, nowMs: 
     const future = new Date(row.votingEnd).getTime() > nowMs;
     if (row.status === 'VOTING') {
         if (!future) return `Voting ended ${relative || day}`;
-        return relative.startsWith('in ') ? `Ends ${relative}` : `Ends ${day}`;
+        if (relative.startsWith('in ')) return `Ends ${relative}`;
+        // within the last 45 s the relative time reads "just now": it is still ending, not some day
+        return relative === 'just now' ? 'Ends in under a minute' : `Ends ${day}`;
     }
     if (future) return 'Closed before its planned end';
     return `Voting ended ${day}`;

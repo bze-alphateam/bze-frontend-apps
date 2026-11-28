@@ -5,7 +5,7 @@ import NextLink from 'next/link';
 import {Button, chakra, Flex} from '@chakra-ui/react';
 import type {Dao} from '@bze/bze-ui-kit';
 import {getDexApp, hgVariant, Notice, Shimmer} from '@bze/bze-ui-kit';
-import {shortAddress} from '@/lib/format';
+import {boardAddress} from '@/lib/dao-shell';
 import {dexSourceHref, memberPreview, sourceDetail, sourceName, totalVotingPower, type StakeSource} from '@/lib/dao-voters';
 import type {Part} from '@/lib/dao-view-loader';
 import {Card, CardTitle, CopyAddress, Note, OutLink, Pill} from './bits';
@@ -33,6 +33,7 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
 }) => {
     const coins = useCoinFormat();
     const [showAll, setShowAll] = useState(false);
+    const hasAdmin = dao.admin !== '' && dao.admin !== dao.address;
 
     if (dao.type === 'DAO_TYPE_STATIC_LIST') {
         const n = dao.members.length;
@@ -46,7 +47,9 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
                 </Head>
                 {n === 0 && (
                     <Note tone="neutral" title="Empty electorate" testId="no-voters">
-                        No voters yet. This member list is empty. Its admin adds the first members; nobody can vote until then.
+                        {hasAdmin
+                            ? 'No voters yet. This DAO has an admin and no members. Its admin sets it up; nobody can vote until it adds members.'
+                            : 'No voters yet. This member list is empty, so nobody can vote.'}
                     </Note>
                 )}
                 {joinHref && (
@@ -69,7 +72,7 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
                             return (
                                 <chakra.div key={member} display="grid" gridTemplateColumns="minmax(0, 1fr) auto" gap="12px" alignItems="center" py="12px" borderTopWidth="1px" borderColor="hg.divider" data-testid="member">
                                     <Flex align="center" gap="10px" minW="0" wrap="wrap">
-                                        <chakra.span fontFamily="mono" fontSize="13px" color="fg" title={member} data-testid="member-address">{shortAddress(member)}</chakra.span>
+                                        <chakra.span fontFamily="mono" fontSize="13px" color="fg" title={member} data-testid="member-address">{boardAddress(member)}</chakra.span>
                                         {same(member, wallet) && <Pill tone="indigo" testId="member-you">You</Pill>}
                                         {label && <chakra.span fontSize="13px" lineHeight="1.5" color="fg.muted" overflowWrap="anywhere">{label}</chakra.span>}
                                     </Flex>
@@ -95,17 +98,34 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
         <Card testId="voters-panel">
             <Head pill="Stakers" />
             {!list && <Notice status="warning">The voting sources could not be read from the chain right now.</Notice>}
-            {list?.length === 0 && (
+            {list && (list.length === 0 || totalVotingPower(list) === '0') && (
+                // D3: no staking rewards with stake in them; the admin clause only when the DAO has an admin
                 <Note tone="neutral" title="Empty electorate" testId="no-voters">
-                    No voters yet. This DAO has no staking rewards to count stake in. Its admin sets it up; nobody can vote until someone stakes.
+                    {hasAdmin
+                        ? 'No voters yet. This DAO has an admin and no staking rewards with stake in them. Its admin sets it up; nobody can vote until someone stakes.'
+                        : 'No voters yet. This DAO has no staking rewards with stake in them; nobody can vote until someone stakes.'}
                 </Note>
             )}
             {list && list.length > 0 && (
                 <>
-                    <chakra.p m="0" fontSize="14px" lineHeight="1.55" color="hg.text.secondary">
+                    {/* I2: on a phone, name → stake and one link to stake on the DEX */}
+                    <Flex direction="column" gap="8px" display={{base: 'flex', md: 'none'}} data-testid="sources-phone">
+                        <chakra.dl m="0" display="flex" flexDirection="column">
+                            {list.map((source, i) => (
+                                <chakra.div key={source.kind === 'sr' ? `sr/${source.id}` : `dr/${source.stakingDenom}`} display="grid" gridTemplateColumns="minmax(0, 1fr) auto" gap="16px" py="7px" borderTopWidth={i === 0 ? '0' : '1px'} borderColor="hg.divider">
+                                    <chakra.dt fontSize="13px" color="fg.muted">{sourceName(source)}</chakra.dt>
+                                    <chakra.dd m="0" fontSize="13px" color="fg" fontVariantNumeric="tabular-nums">{coins.amountOf(source.stakingDenom, source.staked)}</chakra.dd>
+                                </chakra.div>
+                            ))}
+                        </chakra.dl>
+                        <chakra.span alignSelf="flex-start">
+                            <OutLink href={dexSourceHref(dexHref, list[0])} tone="dex" testId="source-phone-link">{`Stake ${tickers.join(' or ')} on DEX`}</OutLink>
+                        </chakra.span>
+                    </Flex>
+                    <chakra.p display={{base: 'none', md: 'block'}} m="0" fontSize="14px" lineHeight="1.55" color="hg.text.secondary">
                         {`Anyone staking ${tickers.join(' or ')} in ${list.length === 1 ? 'this reward' : 'these rewards'}. Voting power = stake.`}
                     </chakra.p>
-                    <div>
+                    <chakra.div display={{base: 'none', md: 'block'}}>
                         {list.map((source) => (
                             <chakra.div
                                 key={source.kind === 'sr' ? `sr/${source.id}` : `dr/${source.stakingDenom}`}
@@ -128,8 +148,8 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
                                 </chakra.span>
                             </chakra.div>
                         ))}
-                    </div>
-                    <Flex gap="10px" align="center" wrap="wrap" data-testid="total-power">
+                    </chakra.div>
+                    <Flex gap="10px" align="center" wrap="wrap" display={{base: 'none', md: 'flex'}} data-testid="total-power">
                         <chakra.span fontSize="13px" lineHeight="1.5" color="hg.text.faint">Total voting power</chakra.span>
                         <chakra.strong fontSize="15px">{coins.format({denom: list[0].stakingDenom, amount: totalVotingPower(list)})}</chakra.strong>
                         <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint">(the DAO&apos;s own stake never counts)</chakra.span>

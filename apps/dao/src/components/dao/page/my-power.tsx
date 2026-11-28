@@ -9,7 +9,7 @@ import {describeVotingPower, type PowerOnProposal} from '@/lib/dao-power';
 import {loadMyVotes, loadVotingPower, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
 import {stakingDenomFor, type StakeSource} from '@/lib/dao-voters';
 import {useAsync} from '@/hooks/useAsync';
-import {Dl, Eyebrow, Pill, Rule, type PillTone} from './bits';
+import {Dl, Eyebrow, Note, Pill, Rule, type PillTone} from './bits';
 import {ScanRetry} from './panel';
 import {useCoinFormat} from './use-coin-format';
 
@@ -70,6 +70,15 @@ export const MyPower = ({deps, dao, wallet, sources, openProposals}: {
     const view = power.data ? describeVotingPower(dao.type, power.data, (id) => titles.get(id), votedOn) : null;
     const amount = (base: string) => (stakingDenom ? coins.amountOf(stakingDenom, base) : base);
 
+    // I2's one line under the amount on a phone: the first proposal where not all of the stake counts
+    const partialLine = view?.lines.find((l) => l.value.kind === 'weight' && l.value.of !== null);
+    const phoneNote = !view ? null
+        : partialLine && partialLine.value.kind === 'weight'
+            ? `On #${partialLine.proposalId} only ${amount(partialLine.value.amount)} counts: you joined or added to your stake after it started.`
+            : view.zeroWeight[0]
+                ? `On #${view.zeroWeight[0].proposalId} your stake doesn't count: you joined or added to it after it started.`
+                : view.notes[0] ?? null;
+
     const valueOf = (value: PowerOnProposal): ReactNode => {
         if (value.kind === 'weight') {
             return value.of
@@ -100,6 +109,11 @@ export const MyPower = ({deps, dao, wallet, sources, openProposals}: {
                         : view.role.active ? '1 vote' : 'No vote'}
                 </chakra.strong>
             )}
+            {phoneNote && (
+                <chakra.span display={{base: 'block', md: 'none'}} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="power-phone-note">{phoneNote}</chakra.span>
+            )}
+            {/* I2: on a phone the card is the amount and one note; the lists are for wider screens */}
+            <Flex direction="column" gap="12px" display={{base: 'none', md: 'flex'}} data-testid="power-details">
             {view && view.lines.length > 0 && (
                 <>
                     <Rule />
@@ -112,6 +126,11 @@ export const MyPower = ({deps, dao, wallet, sources, openProposals}: {
                     }))} />
                     {view.notes.map((note) => (
                         <chakra.span key={note} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="power-note">{note}</chakra.span>
+                    ))}
+                    {view.zeroWeight.map((line) => (
+                        <Note key={line.proposalId} tone="blue" title={`Eligible weight 0 on #${line.proposalId}`} testId="power-zero-weight">
+                            You joined or added to your stake after this proposal started, so it doesn&apos;t count on it. It counts on every proposal submitted from now on.
+                        </Note>
                     ))}
                 </>
             )}
@@ -136,6 +155,7 @@ export const MyPower = ({deps, dao, wallet, sources, openProposals}: {
                 })} />
             )}
             {votes.data?.truncated && <chakra.span fontSize="12px" color="hg.text.faint">Only your latest votes were searched.</chakra.span>}
+            </Flex>
         </FeaturedCard>
     );
 };

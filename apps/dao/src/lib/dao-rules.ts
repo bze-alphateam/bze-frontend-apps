@@ -1,4 +1,5 @@
 import type {DaoConfig, DaoCoin, DaoParams, DaoType} from '@bze/bze-ui-kit';
+import BigNumber from 'bignumber.js';
 import {formatDuration, formatRatio} from './format';
 
 export interface RuleRow {
@@ -32,6 +33,20 @@ const asAdjective = (duration: string): string => {
     const simple = /^(\d+) (day|hour|minute|second)s?$/.exec(duration);
     return simple ? `${simple[1]}-${simple[2]}` : duration;
 };
+
+/**
+ * A member list's expedited rule. When the yes bar alone already meets the quorum (quorum ≤ threshold, both
+ * over all members), D2's sentence: "settles as soon as more than half of all members vote yes".
+ */
+function memberExpedite(length: string, config: DaoConfig): string {
+    const quorum = new BigNumber(config.expedite_quorum);
+    const threshold = new BigNumber(config.expedite_threshold);
+    if (quorum.isFinite() && threshold.isFinite() && quorum.lte(threshold)) {
+        const bar = threshold.eq(0.5) ? 'half' : pct(config.expedite_threshold);
+        return `Allowed: ${length} vote that settles as soon as more than ${bar} of all members vote yes`;
+    }
+    return `Allowed: ${length} vote that settles early when ${pct(config.expedite_quorum)} of members vote and more than ${pct(config.expedite_threshold)} of all members vote yes`;
+}
 
 /** The deposit sentence of D3: what happens to it, by refund policy and where a kept one goes. */
 function depositText(amount: string, config: DaoConfig): string {
@@ -73,7 +88,7 @@ export function describeRules(
         const value = stake
             ? `Allowed: ${length} vote that settles early when ${pct(config.expedite_quorum)} vote and more than ${pct(config.expedite_threshold)} of all voting power says yes`
                 + (delay !== null && delay > 0 ? `, at the earliest ${formatDuration(delay)} after submission` : '')
-            : `Allowed: ${length} vote that settles early when ${pct(config.expedite_quorum)} of members vote and more than ${pct(config.expedite_threshold)} of all members vote yes`;
+            : memberExpedite(length, config);
         rows.push({id: 'expedited', label: 'Expedited', value});
     }
 

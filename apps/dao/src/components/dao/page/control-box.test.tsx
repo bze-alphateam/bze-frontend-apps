@@ -60,14 +60,14 @@ describe("the Admin cell", () => {
         renderBox({view: pageView(dao, {controller: walk(THIRD, "ACCOUNT", [DAO_ADDRESS])}), wallet: OTHER});
         expect(admin()).toHaveAttribute("data-kind", "account");
         expect(admin()).toHaveTextContent("One account. It can run any action as the DAO and change its rules without a vote.");
-        expect(within(admin()).getByTestId("control-headline")).toHaveTextContent(THIRD.slice(0, 8));
+        expect(within(admin()).getByTestId("control-headline")).toHaveTextContent(THIRD.slice(0, 7));
     });
 
     it("an account: its short address with the whole one in the title, a copy button and the Explorer link", () => {
         const dao = pageDao({admin: THIRD});
         renderBox({view: pageView(dao, {controller: walk(THIRD, "ACCOUNT", [DAO_ADDRESS])}), wallet: OTHER});
         const headline = within(admin()).getByTestId("control-headline");
-        expect(headline).toHaveTextContent(`${THIRD.slice(0, 10)}…${THIRD.slice(-6)}`);
+        expect(headline).toHaveTextContent(`${THIRD.slice(0, 7)}…${THIRD.slice(-4)}`);
         expect(headline).toHaveAttribute("title", THIRD);
         expect(within(admin()).getByRole("button", {name: `Copy address ${THIRD}`})).toBeInTheDocument();
         expect(within(admin()).getByRole("link", {name: "Explorer"})).toHaveAttribute("href", expect.stringContaining(`/accounts/${THIRD}`));

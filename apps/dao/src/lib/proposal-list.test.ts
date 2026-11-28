@@ -139,6 +139,8 @@ describe("whenLine", () => {
         expect(whenLine({status: "EXECUTED", votingEnd: "2026-11-12T10:00:00Z"}, NOW, "16 days ago", "12 Nov 2026")).toBe("Voting ended 12 Nov 2026");
         expect(whenLine({status: "CANCELLED", votingEnd: "2026-12-01T12:00:00Z"}, NOW, "in 3 days", "1 Dec 2026")).toBe("Closed before its planned end");
         expect(whenLine({status: "VOTING", votingEnd: null}, NOW, "", "")).toBe("");
+        // ending within 45 s still reads as ending
+        expect(whenLine({status: "VOTING", votingEnd: "2026-11-28T12:00:30Z"}, NOW, "just now", "28 Nov 2026")).toBe("Ends in under a minute");
     });
 });
 

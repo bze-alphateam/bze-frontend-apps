@@ -9,7 +9,8 @@ import {Pagination, PrevNext} from '@/components/ui/pagination';
 import {useProposalsUrl} from '@/hooks/useDaoTabUrl';
 import {useNow} from '@/hooks/useNow';
 import {usePagedList} from '@/hooks/usePagedList';
-import {formatDay, formatRelative, shortAddress} from '@/lib/format';
+import {boardAddress} from '@/lib/dao-shell';
+import {formatDay, formatRelative} from '@/lib/format';
 import {clampPage, cursorCount, rangeCount} from '@/lib/pagination';
 import {
     activeRuleAfter, isActiveRow, loadProposalPage, PROPOSAL_FILTERS, PROPOSALS_PAGE, resultLine, rowStatus, segmentCounts, whenLine,
@@ -90,7 +91,7 @@ interface RowsProps {
 }
 
 const whenOf = (row: ProposalRow, nowMs: number) => whenLine(row, nowMs, formatRelative(row.votingEnd, nowMs), formatDay(row.votingEnd));
-const byOf = (row: ProposalRow, nameOf: NameOf) => (row.proposer ? `by ${nameOf(row.proposer) ?? shortAddress(row.proposer)}` : '');
+const byOf = (row: ProposalRow, nameOf: NameOf) => (row.proposer ? `by ${nameOf(row.proposer) ?? boardAddress(row.proposer)}` : '');
 
 const HEAD = {
     fontSize: '12px',

@@ -16,15 +16,12 @@ export const TreasuryPanel = ({treasury}: {treasury: Part<DaoCoin[]>}) => {
     const view = treasury.ok ? treasuryView(treasury.value, {ticker: coins.ticker, amount: coins.amountOf, usdValue: coins.usdValue}) : null;
     const total = view?.total
         ? (
-            <chakra.strong
-                fontSize="15px"
-                color="fg"
-                title={view.partial ? 'Tokens without a price are left out' : undefined}
-                data-testid="treasury-total"
-                data-partial={view.partial ? 'true' : undefined}
-            >
-                {view.total}
-            </chakra.strong>
+            <Flex direction="column" align="flex-end" display={{base: 'none', md: 'flex'}}>
+                <chakra.strong fontSize="15px" color="fg" data-testid="treasury-total" data-partial={view.partial ? 'true' : undefined}>
+                    {view.total}
+                </chakra.strong>
+                {view.partial && <chakra.span fontSize="12px" color="hg.text.faint" data-testid="treasury-partial">priced tokens only</chakra.span>}
+            </Flex>
         )
         : undefined;
 
@@ -33,7 +30,18 @@ export const TreasuryPanel = ({treasury}: {treasury: Part<DaoCoin[]>}) => {
             {!treasury.ok && <Notice status="warning">The treasury balances could not be read from the chain right now.</Notice>}
             {view && view.rows.length === 0 && <chakra.p m="0" fontSize="14px" color="fg.muted" data-testid="treasury-empty">The treasury is empty.</chakra.p>}
             {view && view.rows.length > 0 && (
-                <div>
+                // I2: on a phone the treasury is a plain ticker → amount list
+                <chakra.dl m="0" display={{base: 'flex', md: 'none'}} flexDirection="column" data-testid="treasury-phone">
+                    {view.rows.map((row, i) => (
+                        <chakra.div key={row.denom} display="grid" gridTemplateColumns="minmax(0, 1fr) auto" gap="16px" py="7px" borderTopWidth={i === 0 ? '0' : '1px'} borderColor="hg.divider">
+                            <chakra.dt fontSize="14px" color="fg.muted" overflowWrap="anywhere">{row.ticker}</chakra.dt>
+                            <chakra.dd m="0" fontSize="14px" color="fg" fontVariantNumeric="tabular-nums">{row.amount}</chakra.dd>
+                        </chakra.div>
+                    ))}
+                </chakra.dl>
+            )}
+            {view && view.rows.length > 0 && (
+                <chakra.div display={{base: 'none', md: 'block'}}>
                     {view.rows.map((row) => (
                         <Flex key={row.denom} justify="space-between" align="center" gap="12px" py="10px" borderTopWidth="1px" borderColor="hg.divider" data-testid="treasury-row">
                             <Flex align="center" gap="10px" minW="0">
@@ -61,7 +69,7 @@ export const TreasuryPanel = ({treasury}: {treasury: Part<DaoCoin[]>}) => {
                             </Flex>
                         </Flex>
                     ))}
-                </div>
+                </chakra.div>
             )}
         </Card>
     );

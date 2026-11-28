@@ -13,10 +13,9 @@ describe("describeVotingPower", () => {
         expect(view.lines[0]).toEqual({proposalId: "5", label: "#5 Pay the designer", value: {kind: "weight", amount: "100", of: null}});
         expect(view.lines[1]).toEqual({proposalId: "6", label: "Proposal #6", value: {kind: "weight", amount: "40", of: "100"}});
         expect(view.lines[2].value).toEqual({kind: "none"});
-        expect(view.notes).toEqual([
-            "On #6 only part of your stake counts: you joined or added to it after #6 started.",
-            "On #7 your stake doesn't count: you joined or added to it after #7 started.",
-        ]);
+        expect(view.notes).toEqual(["On #6 only part of your stake counts: you joined or added to it after #6 started."]);
+        // eligible weight 0 while staking now: D3's blue note, one per proposal
+        expect(view.zeroWeight.map((l) => l.proposalId)).toEqual(["7"]);
     });
 
     it("no stake now but weight on an older proposal: that weight counts, and no 'joined after' claim", () => {
@@ -25,6 +24,7 @@ describe("describeVotingPower", () => {
         expect(view.lines[0].value).toEqual({kind: "weight", amount: "40", of: null});
         expect(view.lines[1].value).toEqual({kind: "none"});
         expect(view.notes).toEqual([]);
+        expect(view.zeroWeight).toEqual([]);
     });
 
     it("a member: the Member role, its vote on each open proposal (null: not voted, undefined: unknown)", () => {

@@ -19,7 +19,7 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("dao-name")).toHaveText("Founders");
         await expect(page.getByTestId("dao-created")).toHaveText(/^Created on .*2026$/);
         await expect(page.getByTestId("dao-address")).toHaveAttribute("data-address", DAO_TWO);
-        await expect(page.getByTestId("dao-address")).toContainText(`${DAO_TWO.slice(0, 10)}…${DAO_TWO.slice(-6)}`);
+        await expect(page.getByTestId("dao-address")).toContainText(`${DAO_TWO.slice(0, 7)}…${DAO_TWO.slice(-4)}`);
         await expect(page.getByTestId("dao-explorer")).toHaveAttribute("href", new RegExp(`/accounts/${DAO_TWO}$`));
         await expect(page.getByTestId("dao-header")).not.toContainText("DAO #");
         await expect(page.getByTestId("dao-creator")).toHaveCount(0);
@@ -113,15 +113,16 @@ test.describe("a static-list DAO", () => {
         await expect(items.nth(1).getByTestId("history-title")).toHaveText("Rules changed");
         await expect(items.nth(1)).toContainText("Changed: quorum, voting period");
         await expect(items.nth(1).getByTestId("history-link")).toHaveText("Block");
-        await expect(tab).not.toContainText("EventDao");
+        await expect(items.first().getByTestId("history-meta")).toHaveText("EventDaoMembersUpdated");
+        await expect(items.nth(1).getByTestId("history-meta")).toHaveText("EventDaoConfigUpdated · min_quorum, voting_period");
         await expect(page.getByTestId("history-more")).toHaveCount(0);
 
         await page.getByTestId("pager-desktop").getByRole("button", {name: "Page 2"}).click();
         await expect(page).toHaveURL(/\/dao\/2\?tab=history&page=2$/);
         await expect(items).toHaveCount(1);
         await expect(items.first().getByTestId("history-title")).toContainText("DAO created");
-        await expect(items.first()).toContainText("Governed by a member list");
-        await expect(items.first()).toContainText("No admin");
+        await expect(items.first().getByTestId("history-details")).toHaveText("Member list · no admin");
+        await expect(items.first().getByTestId("history-meta")).toHaveText("EventDaoCreated");
         await expect(tab).not.toContainText("DAO #");
     });
 
@@ -215,7 +216,9 @@ test.describe("a stake DAO", () => {
 
         await expect(page.getByTestId("power-role")).toHaveText("Staker");
         await expect(page.getByTestId("power-headline")).toContainText("BZE");
-        await expect(page.getByTestId("power-note").first()).toContainText(/you joined or added to it after #\d+ started/);
+        // D3's blue note: eligible weight 0 on a proposal that started before the wallet joined or added stake
+        await expect(page.getByTestId("power-zero-weight").first()).toContainText("Eligible weight 0");
+        await expect(page.getByTestId("power-zero-weight").first()).toContainText("You joined or added to your stake after this proposal started, so it doesn't count on it.");
     });
 });
 

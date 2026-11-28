@@ -7,10 +7,9 @@ import {LuArrowLeft} from 'react-icons/lu';
 import type {Dao} from '@bze/bze-ui-kit';
 import {getExplorerAccountURL} from '@bze/bze-ui-kit';
 import {linkify} from '@/lib/dao-text';
-import {createdOnLine, descriptionOverflows} from '@/lib/dao-shell';
+import {boardAddress, createdOnLine, descriptionOverflows} from '@/lib/dao-shell';
 import type {ScanDaoDetail} from '@/lib/dao-types';
 import {governedByLine} from '@/lib/home-list';
-import {shortAddress} from '@/lib/format';
 import {CopyAddress, Eyebrow, Note, OutLink, Pill} from './bits';
 
 /** The pill of the header: who decides in the DAO. */
@@ -109,7 +108,7 @@ export const DaoHeader = ({dao, extras}: DaoHeaderProps) => {
                 <Flex gap={{base: '8px', md: '10px'}} align="center" wrap="wrap" minW="0" fontSize="13px" data-testid="dao-meta">
                     <Eyebrow>DAO address</Eyebrow>
                     <Flex as="span" align="center" gap="4px" minW="0" maxW="100%" data-testid="dao-address" data-address={dao.address}>
-                        <chakra.span fontFamily="mono" fontSize="13px" color="hg.text.secondary" title={dao.address} minW="0">{shortAddress(dao.address)}</chakra.span>
+                        <chakra.span fontFamily="mono" fontSize="13px" color="hg.text.secondary" title={dao.address} minW="0">{boardAddress(dao.address)}</chakra.span>
                         <CopyAddress address={dao.address} label="Copy the DAO address" />
                     </Flex>
                     <OutLink href={getExplorerAccountURL(dao.address)} testId="dao-explorer">Explorer</OutLink>

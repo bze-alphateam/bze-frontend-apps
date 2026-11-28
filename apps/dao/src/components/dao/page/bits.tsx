@@ -125,10 +125,15 @@ export const Dl = ({rows, wide, size = '13px', pad = '6px', testId}: {
 export const Rule = () => <chakra.div h="1px" bg="hg.divider" aria-hidden />;
 
 /** A tinted note (the board's role="note"): an icon, a bold title, a line, and an action on the right. */
-export const Note = ({tone, title, children, action, testId}: {tone: 'indigo' | 'amber' | 'neutral'; title?: ReactNode; children: ReactNode; action?: ReactNode; testId?: string}) => {
-    const icon = tone === 'amber' ? 'hg.warning.text' : tone === 'indigo' ? 'hg.link' : 'fg.muted';
-    const fill = tone === 'amber' ? mix('hg-warning', 8) : tone === 'indigo' ? mix('hg-accent', 8) : undefined;
-    const edge = tone === 'amber' ? mix('hg-warning', 30) : tone === 'indigo' ? mix('hg-accent', 35) : undefined;
+const NOTE_TONES = {
+    amber: {icon: 'hg.warning.text', fill: mix('hg-warning', 8), edge: mix('hg-warning', 30)},
+    indigo: {icon: 'hg.link', fill: mix('hg-accent', 8), edge: mix('hg-accent', 35)},
+    blue: {icon: 'hg.info.text', fill: mix('hg-info', 8), edge: mix('hg-info', 30)},
+    neutral: {icon: 'fg.muted', fill: undefined, edge: undefined},
+} as const;
+
+export const Note = ({tone, title, children, action, testId}: {tone: keyof typeof NOTE_TONES; title?: ReactNode; children: ReactNode; action?: ReactNode; testId?: string}) => {
+    const {icon, fill, edge} = NOTE_TONES[tone];
     return (
         <Flex
             role="note"

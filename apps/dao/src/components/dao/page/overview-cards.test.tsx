@@ -38,6 +38,11 @@ describe("Treasury", () => {
         expect(row).toHaveTextContent("BZE");
         expect(within(row).getByTestId("treasury-amount")).toHaveTextContent("250,000");
         expect(within(row).getByTestId("treasury-usd")).toHaveTextContent("≈ $10,000");
+        expect(screen.queryByTestId("treasury-partial")).toBeNull();
+        // I2's phone list: ticker and amount only
+        const phone = screen.getByTestId("treasury-phone");
+        expect(phone).toHaveTextContent("BZE250,000");
+        expect(phone).not.toHaveTextContent("$");
     });
 
     it("a token without a price has no value line and stays out of the total, which says so", () => {
@@ -45,7 +50,8 @@ describe("Treasury", () => {
         const total = screen.getByTestId("treasury-total");
         expect(total).toHaveTextContent("≈ $40.00");
         expect(total).toHaveAttribute("data-partial", "true");
-        expect(total).toHaveAttribute("title", "Tokens without a price are left out");
+        // said on the card, not only in a tooltip
+        expect(screen.getByTestId("treasury-partial")).toHaveTextContent("priced tokens only");
         const [, honey] = screen.getAllByTestId("treasury-row");
         expect(within(honey).getByTestId("treasury-badge")).toHaveTextContent("H");
         expect(within(honey).queryByTestId("treasury-usd")).toBeNull();
@@ -54,6 +60,7 @@ describe("Treasury", () => {
     it("no prices at all: no total; empty and unreadable treasuries say so", () => {
         const {unmount} = wrap(<TreasuryPanel treasury={{ok: true, value: [{denom: "uhoney", amount: "1"}]}} />);
         expect(screen.queryByTestId("treasury-total")).toBeNull();
+        expect(screen.queryByTestId("treasury-partial")).toBeNull();
         unmount();
         const empty = wrap(<TreasuryPanel treasury={{ok: true, value: []}} />);
         expect(screen.getByTestId("treasury-empty")).toBeInTheDocument();
@@ -75,11 +82,30 @@ describe("Who votes", () => {
         expect(other).toHaveTextContent("Ana · builder");
     });
 
-    it("an empty member list is the 'Empty electorate' note", () => {
-        wrap(<VotersPanel dao={pageDao({members: []})} sources={{ok: true, value: []}} nameOf={() => undefined} />);
+    it("an empty member list is the 'Empty electorate' note, with the admin clause only when there is an admin", () => {
+        const {unmount} = wrap(<VotersPanel dao={pageDao({members: []})} sources={{ok: true, value: []}} nameOf={() => undefined} />);
         expect(screen.getByTestId("no-voters")).toHaveAttribute("role", "note");
         expect(screen.getByTestId("no-voters")).toHaveTextContent("Empty electorate");
-        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet.");
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet. This member list is empty, so nobody can vote.");
+        unmount();
+        wrap(<VotersPanel dao={pageDao({members: [], admin: OTHER})} sources={{ok: true, value: []}} nameOf={() => undefined} />);
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet. This DAO has an admin and no members. Its admin sets it up; nobody can vote until it adds members.");
+    });
+
+    it("stakers with no stake in any reward: D3's note, with the admin clause only when there is an admin", () => {
+        const stake = (over = {}) => pageDao({type: "DAO_TYPE_STAKE", members: [], ...over});
+        const {unmount} = wrap(<VotersPanel dao={stake({admin: OTHER})} sources={{ok: true, value: []}} nameOf={() => undefined} />);
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet. This DAO has an admin and no staking rewards with stake in them. Its admin sets it up; nobody can vote until someone stakes.");
+        unmount();
+        // a source with nothing staked counts as empty too; a self-owned DAO gets no admin clause
+        const empty: StakeSource[] = [{kind: "dr", stakingDenom: "uhoney", lockDays: 7, staked: "0", own: "0"}];
+        const again = wrap(<VotersPanel dao={stake()} sources={{ok: true, value: empty}} nameOf={() => undefined} />);
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet. This DAO has no staking rewards with stake in them; nobody can vote until someone stakes.");
+        expect(screen.getByTestId("no-voters")).not.toHaveTextContent("admin");
+        again.unmount();
+        const staked: StakeSource[] = [{kind: "dr", stakingDenom: "uhoney", lockDays: 7, staked: "5", own: "0"}];
+        wrap(<VotersPanel dao={stake()} sources={{ok: true, value: staked}} nameOf={() => undefined} />);
+        expect(screen.queryByTestId("no-voters")).toBeNull();
     });
 
     it("stakers: one row per source with its lock, its stake and Stake on DEX, then the total voting power", () => {
@@ -97,6 +123,9 @@ describe("Who votes", () => {
         expect(sr).toHaveTextContent("Simple reward #12");
         expect(within(sr).getByTestId("source-link")).toHaveAttribute("href", "https://dex.example/staking/details?id=simple%3A000000000012");
         expect(screen.getByTestId("total-power")).toHaveTextContent("Total voting power3,318,500 HONEY(the DAO's own stake never counts)");
+        // I2's phone list: name → stake, one DEX link
+        expect(screen.getByTestId("sources-phone")).toHaveTextContent("Compounded reward1,906,000Simple reward #121,412,500");
+        expect(screen.getByTestId("source-phone-link")).toHaveTextContent("Stake HONEY on DEX");
     });
 });
 
@@ -126,9 +155,33 @@ describe("Your voting power", () => {
         expect(within(p21).getByRole("link")).toHaveAttribute("href", "/proposal/21");
         expect(p22).toHaveTextContent("#22 Rename42,000");
         expect(screen.getByTestId("power-note")).toHaveTextContent("On #21 only part of your stake counts: you joined or added to it after #21 started.");
+        expect(screen.getByTestId("power-phone-note")).toHaveTextContent("On #21 only 30,000 counts: you joined or added to your stake after it started.");
         const votes = await screen.findAllByTestId("my-vote");
         expect(votes[0]).toHaveTextContent("#19 Buy back HONEYYes");
         expect(votes[1]).toHaveTextContent("#17 Raise the depositNo");
+    });
+
+    it("a staker whose stake does not count on an open proposal gets D3's blue 'Eligible weight 0' note, and the phone line", async () => {
+        const dao = pageDao({type: "DAO_TYPE_STAKE", members: []});
+        const sources = {ok: true as const, value: [{kind: "dr" as const, stakingDenom: "uhoney", lockDays: 7, staked: "1", own: "0"}]};
+        const open = {ok: true as const, value: [{id: "21", title: "Fund the liquidity push"}] as never};
+        wrap(<MyPower deps={powerDeps({current: "42000000000", proposals: [{proposal_id: "21", eligible_weight: "0", shares: []}]})} dao={dao} wallet={WALLET} sources={sources} openProposals={open} />);
+        const note = await screen.findByTestId("power-zero-weight");
+        expect(note).toHaveAttribute("role", "note");
+        expect(note).toHaveTextContent("Eligible weight 0 on #21");
+        expect(note).toHaveTextContent("You joined or added to your stake after this proposal started, so it doesn't count on it. It counts on every proposal submitted from now on.");
+        expect(screen.queryByTestId("power-note")).toBeNull();
+        expect(screen.getByTestId("power-phone-note")).toHaveTextContent("On #21 your stake doesn't count: you joined or added to it after it started.");
+    });
+
+    it("no note when the stake counts in full", async () => {
+        const dao = pageDao({type: "DAO_TYPE_STAKE", members: []});
+        const sources = {ok: true as const, value: [{kind: "dr" as const, stakingDenom: "uhoney", lockDays: 7, staked: "1", own: "0"}]};
+        const open = {ok: true as const, value: [{id: "21", title: "Fund"}] as never};
+        wrap(<MyPower deps={powerDeps({current: "5", proposals: [{proposal_id: "21", eligible_weight: "5", shares: []}]})} dao={dao} wallet={WALLET} sources={sources} openProposals={open} />);
+        await screen.findByTestId("power-headline");
+        expect(screen.queryByTestId("power-zero-weight")).toBeNull();
+        expect(screen.queryByTestId("power-phone-note")).toBeNull();
     });
 
     it("a member: '1 vote', the Member pill, 'Not voted' on an open proposal it has not voted on, its option where it has", async () => {

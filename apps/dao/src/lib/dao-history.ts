@@ -1,5 +1,5 @@
 import type {ScanDaoEvent} from './dao-types';
-import {shortAddress} from './format';
+import {boardAddress} from './dao-shell';
 
 /** The icon of a history row (the board's 36 px tile). */
 export type EventIcon = 'execute' | 'rules' | 'voters' | 'admin' | 'nominate' | 'withdraw' | 'metadata' | 'created' | 'members' | 'other';
@@ -10,6 +10,8 @@ export interface DescribedEvent {
     /** Extra lines: the members added, the fields changed. The tab joins them with " · ". */
     details: string[];
     icon: EventIcon;
+    /** The faint third line: the event's name and its raw fields ("EventAdminExecuted · 1 message"). */
+    meta: string;
 }
 
 export interface HistoryContext {
@@ -76,40 +78,56 @@ const people = (addresses: string[], name: (a: string) => string): string => {
     return addresses.length > SHOWN_ADDRESSES ? `${shown} and ${addresses.length - SHOWN_ADDRESSES} more` : shown;
 };
 
-/**
- * Who runs a DAO in the decided words: "No admin" (it is its own admin), the admin's name when there is one
- * (another DAO, or a labelled account), else "Admin is an account" with its short address. Never "DAO #n".
- */
-function adminLine(admin: string, self: boolean, context: HistoryContext): string {
-    if (self) return 'No admin';
-    const named = context.nameOf?.(admin);
-    return named ? `Admin: ${named}` : `Admin is an account (${shortAddress(admin)})`;
-}
-
 /** One history item in plain words. An event type this app does not know still gets a readable line. */
 export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const described = describe(event, context);
     const capital = (line: string) => line.charAt(0).toUpperCase() + line.slice(1);
-    return {...described, title: capital(described.title), details: described.details.map(capital)};
+    return {...described, title: capital(described.title), details: described.details.map(capital), meta: metaLine(event)};
 }
 
 const sourcesLine = (rewards: string[], denom: string): string =>
-    [...rewards.map((id) => `Simple reward #${Number(id) || id}`), ...(denom ? [`Compounded reward (${denom})`] : [])].join(' + ');
+    [...(denom ? ['Compounded reward'] : []), ...rewards.map((id) => `Simple reward #${Number(id) || id}`)].join(' + ');
 
-function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
+/** The event's name and its raw fields, as the board's faint third line writes them. */
+function metaLine(event: Pick<ScanDaoEvent, 'type' | 'attrs'>): string {
     const a = attrsOf(event.attrs);
-    const name = (address: string): string => context.nameOf?.(address) ?? shortAddress(address);
+    const kind = eventKind(event.type);
+    const extra: string[] = [];
+    if (kind === 'EventAdminExecuted') {
+        const count = Number(text(a.msg_count));
+        if (Number.isFinite(count) && count > 0) extra.push(`${count} ${count === 1 ? 'message' : 'messages'}`);
+    }
+    if (kind === 'EventDaoConfigUpdated') {
+        const fields = list(a.fields);
+        if (fields.length > 0) extra.push(fields.join(', '));
+    }
+    return [kind, ...extra].join(' · ');
+}
+
+function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): Omit<DescribedEvent, 'meta'> {
+    const a = attrsOf(event.attrs);
+    const name = (address: string): string => context.nameOf?.(address) ?? boardAddress(address);
     const who = (address: string): string => (address === context.daoAddress ? "the DAO's own voters" : name(address));
     const details: string[] = [];
 
     switch (eventKind(event.type)) {
         case 'EventDaoCreated': {
+            // D4: "Stakers · admin bze1…k9f2 (the creator) · Compounded reward", from what the event and Scan give
             const admin = text(a.admin);
             const type = text(a.type);
-            if (type === 'DAO_TYPE_STAKE') details.push('Governed by stakers');
-            else if (type === 'DAO_TYPE_STATIC_LIST') details.push('Governed by a member list');
-            if (admin) details.push(adminLine(admin, admin === context.daoAddress || admin === text(a.address), context));
-            const creator = context.creator ?? text(a.creator);
+            const creator = context.creator || text(a.creator);
+            const parts: string[] = [];
+            if (type === 'DAO_TYPE_STAKE') parts.push('Stakers');
+            else if (type === 'DAO_TYPE_STATIC_LIST') parts.push('Member list');
+            if (admin) {
+                const self = admin === context.daoAddress || admin === text(a.address);
+                parts.push(self ? 'no admin' : `admin ${name(admin)}${creator && admin === creator ? ' (the creator)' : ''}`);
+            }
+            const members = list(a.members);
+            if (members.length > 0) parts.push(`${members.length} ${members.length === 1 ? 'member' : 'members'}`);
+            const sources = sourcesLine(list(a.sr_ids), text(a.dr_denom));
+            if (sources) parts.push(sources);
+            if (parts.length > 0) details.push(parts.join(' · '));
             return {title: creator ? `DAO created by ${name(creator)}` : 'DAO created', details, icon: 'created'};
         }
         case 'EventAdminNominated':

@@ -39,7 +39,7 @@ const ICONS: Record<EventIcon, IconType> = {
 };
 
 /**
- * What happened to the DAO, newest first, in one card: time, icon, what happened, and the transaction. The
+ * What happened to the DAO, newest first, in one card: time, icon, what happened, the event's name, and the transaction. The
  * list starts right under the tabs (no heading, no source line). Numbered pages while Scan answers totals (`?tab=history&page=2`),
  * Prev / Next with an older Scan; Scan is the only source, so a failure offers a retry.
  */
@@ -115,6 +115,7 @@ export const HistoryTab = ({deps, daoId, daoAddress, nameOf, creator}: HistoryTa
                                     {described.details.length > 0 && (
                                         <chakra.span fontSize="14px" color="hg.text.secondary" overflowWrap="anywhere" data-testid="history-details">{described.details.join(' · ')}</chakra.span>
                                     )}
+                                    <chakra.span fontSize="12px" color="hg.text.faint" overflowWrap="anywhere" data-testid="history-meta">{described.meta}</chakra.span>
                                 </Flex>
                                 <chakra.span pt={{base: '0', md: '5px'}} gridColumn={{base: '2', md: 'auto'}}>
                                     <OutLink href={href} testId="history-link">{event.tx_hash ? 'Tx' : 'Block'}</OutLink>

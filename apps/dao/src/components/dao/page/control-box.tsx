@@ -10,7 +10,7 @@ import {loadSubDaoCounts, loadSubDaos, SUBDAO_PREVIEW, subDaoOpenText, type SubD
 import {daoTabHref} from '@/lib/dao-tabs';
 import type {ScanDaoDetail} from '@/lib/dao-types';
 import type {DaoView} from '@/lib/dao-view-loader';
-import {shortAddress} from '@/lib/format';
+import {boardAddress} from '@/lib/dao-shell';
 import {Card, CopyAddress, Eyebrow, OutLink} from './bits';
 import {AddressLine} from './panel';
 import {getExplorerAccountURL} from '@bze/bze-ui-kit';
@@ -71,7 +71,7 @@ const AdminAccount = ({address, name}: {address: string; name: string | undefine
             overflowWrap="anywhere"
             data-testid="control-headline"
         >
-            {name ?? shortAddress(address)}
+            {name ?? boardAddress(address)}
         </chakra.strong>
         <Flex align="center" gap="2px">
             <CopyAddress address={address} label={`Copy address ${address}`} />
@@ -105,7 +105,7 @@ const AdminCell = ({view, wallet, detail, nameOf}: {view: DaoView; wallet: strin
                 <>
                     <chakra.strong fontSize="16px" color="hg.warning.text" data-testid="control-headline">
                         {'You '}
-                        <chakra.span fontFamily="mono" fontWeight="500" fontSize="14px" title={dao.admin}>{shortAddress(dao.admin)}</chakra.span>
+                        <chakra.span fontFamily="mono" fontWeight="500" fontSize="14px" title={dao.admin}>{boardAddress(dao.admin)}</chakra.span>
                     </chakra.strong>
                     <Line>You can run any action as the DAO and change its rules <NoVote />, from the Admin console tab.</Line>
                 </>
