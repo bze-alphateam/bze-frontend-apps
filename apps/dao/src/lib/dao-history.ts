@@ -81,7 +81,8 @@ const people = (addresses: string[], name: (a: string) => string): string => {
 /** One history item in plain words. An event type this app does not know still gets a readable line. */
 export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const described = describe(event, context);
-    const capital = (line: string) => line.charAt(0).toUpperCase() + line.slice(1);
+    // a sentence starts with a capital, unless it starts with an address ("bze1…"), which stays as it is
+    const capital = (line: string) => (/^bze1/i.test(line) ? line : line.charAt(0).toUpperCase() + line.slice(1));
     return {...described, title: capital(described.title), details: described.details.map(capital), meta: metaLine(event)};
 }
 

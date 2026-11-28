@@ -159,7 +159,7 @@ test.describe("the tabs live in the URL", () => {
     });
 
     test("the tab bar never shows a scrollbar, on any tab (no vertical overflow)", async ({page}) => {
-        for (const url of ["/dao/2", "/dao/2?tab=proposals", "/dao/2?tab=history"]) {
+        for (const url of ["/dao/2", "/dao/4?tab=proposals", "/dao/2?tab=history"]) {
             await page.goto(url);
             const tabs = page.getByTestId("dao-tabs");
             await expect(tabs.getByTestId("dao-tab-bar")).toHaveCount(1);

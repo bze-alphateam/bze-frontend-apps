@@ -10,6 +10,8 @@ describe("describeDaoEvent", () => {
         expect(describe1("EventDaoCreated", {id: "1", address: DAO, admin: DAO, type: "DAO_TYPE_STAKE"})).toEqual({title: "DAO created", details: ["Stakers · no admin"], icon: "created", meta: "EventDaoCreated"});
         expect(describe1("EventDaoCreated", {admin: "bze1named", type: "DAO_TYPE_STATIC_LIST", members: ["bze1a", "bze1b"]}).details).toEqual(["Member list · admin Alice · 2 members"]);
         expect(describe1("EventDaoCreated", {admin: "bze1unnamed000000000000000"}).details).toEqual(["Admin bze1unn…0000"]);
+        // a line that starts with an address keeps it as it is (never "Bze1…")
+        expect(describe1("EventAdminNominated", {admin: "bze1unnamed000000000000000", nominee: "bze1named"}).title).toBe("bze1unn…0000 nominated Alice as admin");
     });
 
     it("EventDaoCreated in D4's words: the admin marked as the creator, and the voting sources", () => {
