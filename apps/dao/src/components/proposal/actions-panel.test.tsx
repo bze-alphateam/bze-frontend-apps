@@ -47,7 +47,8 @@ describe("ActionsPanel", () => {
             {type: "nominate_admin", daoId: "12", nominee: "", toVoters: true},
             {type: "admin_execute", daoId: "12", actions: [{type: "send", from: SUB, to: DESK, amount: [{denom: "ubze", amount: "1"}], fromDao: false, subDao: "12"}]},
         ];
-        renderPanel(actions, {daoOf: (id) => ({"4": "HONEY Holders", "12": "Garden club"})[id], expanded: true});
+        const names: Record<string, string> = {"4": "HONEY Holders", "12": "Garden club"};
+        renderPanel(actions, {daoOf: (id) => names[id], expanded: true});
         const titles = screen.getAllByTestId("action-title").map((t) => t.textContent);
         expect(titles).toEqual([
             "Nominate a new admin for HONEY Holders (they have to accept)",
