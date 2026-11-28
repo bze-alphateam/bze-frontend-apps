@@ -12,12 +12,12 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 }));
 
 const ROWS: CostRow[] = [
-    {label: "Deposit", text: "9 BZE, held while voting"},
-    {label: "Back to you", text: "Only if it passes; otherwise it is burned"},
-    {label: "Cost", text: "None"},
+    {label: "Deposit", text: "9 BZE, held while voting", short: "9 BZE"},
+    {label: "Back to you", text: "Only if it passes; otherwise it is burned", short: "Only if it passes"},
+    {label: "Cost", text: "None", short: "None"},
 ];
 
-const area = (over: {status?: ProposerStatus | null; wallet?: string | null; requirements?: Requirement[]; slots?: string | null; stakeHref?: string | null; rows?: CostRow[]} = {}) => render(
+const area = (over: {status?: ProposerStatus | null; wallet?: string | null; requirements?: Requirement[]; slots?: string | null; stakeHref?: string | null; stakeTicker?: string | null; rows?: CostRow[]} = {}) => render(
     <ChakraProvider value={defaultSystem}>
         <SubmitArea
             dao={DAO}
@@ -33,6 +33,7 @@ const area = (over: {status?: ProposerStatus | null; wallet?: string | null; req
             formatCoin={(c) => `${c.amount} BZE`}
             slots={over.slots === undefined ? "2 of 10 proposal slots are in use." : over.slots}
             stakeHref={over.stakeHref ?? null}
+            stakeTicker={over.stakeTicker ?? null}
             onSubmit={() => {}}
             onCheck={() => {}}
             onAllowResubmit={() => {}}
@@ -46,9 +47,12 @@ describe("Before you submit", () => {
         const panel = screen.getByTestId("submit-panel");
         expect(panel).toHaveTextContent("Before you submit");
         expect(screen.getByTestId("proposer-note")).toHaveTextContent("You can propose: you're a member of this DAO.");
-        expect(screen.getByTestId("cost-deposit")).toHaveTextContent("Deposit9 BZE, held while voting");
-        expect(screen.getByTestId("cost-back")).toHaveTextContent("Only if it passes; otherwise it is burned");
-        expect(screen.getByTestId("cost-cost")).toHaveTextContent("CostNone");
+        expect(within(screen.getByTestId("cost-deposit")).getByTestId("cost-full")).toHaveTextContent(/^9 BZE, held while voting$/);
+        expect(within(screen.getByTestId("cost-back")).getByTestId("cost-full")).toHaveTextContent("Only if it passes; otherwise it is burned");
+        expect(within(screen.getByTestId("cost-cost")).getByTestId("cost-full")).toHaveTextContent(/^None$/);
+        // the phone's short values (board I5)
+        expect(within(screen.getByTestId("cost-deposit")).getByTestId("cost-short")).toHaveTextContent(/^9 BZE$/);
+        expect(within(screen.getByTestId("cost-back")).getByTestId("cost-short")).toHaveTextContent(/^Only if it passes$/);
         expect(screen.getByTestId("cost-balance")).toHaveTextContent("You hold12 BZE ✓");
         expect(screen.getByTestId("proposal-slots")).toHaveTextContent("2 of 10 proposal slots are in use.");
         expect(screen.getByTestId("submit-proposal")).not.toBeDisabled();
@@ -74,9 +78,10 @@ describe("Before you submit", () => {
     });
 
     it("No stake: the note with a link to stake on the DEX", () => {
-        area({status: {kind: "not-a-voter", cause: "no-stake", message: "Proposals here are for stakers."}, stakeHref: "https://dex.test/staking/details?id=simple%3A17"});
+        area({status: {kind: "not-a-voter", cause: "no-stake", message: "Proposals here are for stakers."}, stakeHref: "https://dex.test/staking/details?id=simple%3A17", stakeTicker: "HONEY"});
         const gate = screen.getByTestId("gate-not-a-voter");
         expect(gate).toHaveTextContent("No stake");
+        expect(gate).toHaveTextContent("Proposals here are for stakers. Stake HONEY in one of its rewards on the DEX; you can propose from the next block on.");
         expect(within(gate).getByTestId("stake-on-dex")).toHaveAttribute("href", "https://dex.test/staking/details?id=simple%3A17");
     });
 

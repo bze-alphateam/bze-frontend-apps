@@ -149,6 +149,23 @@ describe("the staged list: a form card first, the list only on Add to proposal",
         expect(screen.getAllByTestId("action-edit")[0]).not.toBeDisabled();
     });
 
+    it("removing the middle card keeps the other two in order", () => {
+        let drafts: ActionDraft[] = [];
+        const start: ActionDraft[] = [
+            {key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}},
+            {key: "a2", type: "pay", fields: {denom: "ubze", amount: "2", to: THIRD}},
+            {key: "a3", type: "pay", fields: {denom: "ubze", amount: "3", to: THIRD}},
+        ];
+        render(<Harness ctx={ctxWith()} start={start} onDrafts={(d) => { drafts = d; }} />);
+        fireEvent.click(screen.getAllByTestId("action-remove")[1]);
+        expect(drafts.map((d) => d.key)).toEqual(["a1", "a3"]);
+        const previews = screen.getAllByTestId("action-preview");
+        expect(previews).toHaveLength(2);
+        expect(previews[0]).toHaveTextContent("1000000 ubze");
+        expect(previews[1]).toHaveTextContent("3000000 ubze");
+        expect(screen.getAllByTestId("action-row").map((r) => r.textContent?.charAt(0))).toEqual(["1", "2"]);
+    });
+
     it("a card whose action went invalid says why", () => {
         const start: ActionDraft[] = [{key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: "nobody"}}];
         render(<Harness ctx={ctxWith()} start={start} />);
@@ -238,6 +255,19 @@ describe("the picker dialog", () => {
         fireEvent.click(screen.getByTestId("action-commit"));
         expect(drafts[0]).toMatchObject({type: "sub-dao-admin", fields: {daoId: "7", mode: "voters"}});
         expect(screen.getByTestId("action-card-title")).toHaveTextContent("Manage Garden club (SubDAO)");
+    });
+
+    it("offers Withdraw its nomination only while the SubDAO has a pending nomination", async () => {
+        const pending = {...SUB_DAO, dao: {...SUB_DAO.dao, pending_admin: THIRD}};
+        let drafts: ActionDraft[] = [];
+        render(<Harness ctx={ctxWith({subDaos: [pending]})} onDrafts={(d) => { drafts = d; }} />);
+        await choose("manage-sub-dao-7");
+        const withdraw = screen.getByTestId("sub-way-withdraw");
+        expect(withdraw).toHaveTextContent("Withdraw its nomination");
+        fireEvent.click(withdraw);
+        expect(withdraw).toHaveAttribute("aria-pressed", "true");
+        fireEvent.click(screen.getByTestId("action-commit"));
+        expect(drafts[0]).toMatchObject({type: "sub-dao-admin", fields: {daoId: "7", mode: "withdraw"}});
     });
 
     it("runs actions as a SubDAO: the inner list is staged too and pays from the SubDAO's treasury", async () => {

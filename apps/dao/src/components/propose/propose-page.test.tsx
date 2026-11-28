@@ -160,11 +160,18 @@ describe("the join / leave shortcuts", () => {
         }
     });
 
-    it("Leave is not shown to the last member", async () => {
+    it("Leave is not shown to the last member, who is told why", async () => {
         renderPage(pageDao({members: [WALLET]}));
         await screen.findByTestId("add-action");
         expect(screen.queryByTestId("shortcut-leave")).toBeNull();
         expect(screen.queryByTestId("shortcuts")).toBeNull();
+        expect(screen.getByTestId("shortcut-last-member")).toHaveTextContent("You're the last member. A DAO needs at least one, so Leave is offered again once someone else is added.");
+    });
+
+    it("a member who is not the last one gets no last-member note", async () => {
+        renderPage(pageDao());
+        await screen.findByTestId("shortcut-leave");
+        expect(screen.queryByTestId("shortcut-last-member")).toBeNull();
     });
 
     it("Request to join: a wallet that is not a member of a DAO anyone can submit to", async () => {

@@ -477,7 +477,7 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
                                 locked={editor !== null}
                                 onMoveUp={() => moveUp(i)}
                                 onEdit={() => setEditor({draft, index: i})}
-                                onRemove={() => { if (editor && editor.index !== null && editor.index > i) setEditor({...editor, index: editor.index - 1}); onChange(drafts.filter((x) => x.key !== draft.key)); }}
+                                onRemove={() => onChange(drafts.filter((x) => x.key !== draft.key))}
                             />
                         )))}
                 </chakra.ol>

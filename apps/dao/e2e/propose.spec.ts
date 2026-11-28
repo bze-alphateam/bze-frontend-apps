@@ -72,8 +72,8 @@ test.describe("a member of a free DAO", () => {
         await expect(preview.locator("b")).toHaveCount(0);
         await expect(preview.getByRole("link")).toHaveAttribute("href", "https://getbze.com/garden");
 
-        await expect(page.getByTestId("cost-deposit")).toHaveText("DepositNone");
-        await expect(page.getByTestId("cost-cost")).toHaveText("CostNone");
+        await expect(page.getByTestId("cost-deposit").getByTestId("cost-full")).toHaveText("None");
+        await expect(page.getByTestId("cost-cost").getByTestId("cost-full")).toHaveText("None");
         await expect(page.getByTestId("cost-back")).toHaveCount(0);
         await expect(page.getByTestId("draft-note")).toHaveText("Draft saved on this device. It's cleared once the proposal is submitted.");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
@@ -287,6 +287,42 @@ test.describe("a stake DAO that charges for proposals", () => {
         await page.getByTestId("proposal-title").fill("Fund the festival");
         await expect(page.getByTestId("cost-balance")).toHaveText("You hold14 TBZE ✓");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
+    });
+});
+
+test.describe("on a phone (board I5)", () => {
+    test.beforeEach(async ({page}) => {
+        await page.setViewportSize({width: 390, height: 1400});
+    });
+
+    test("no Write / Preview switch, a 4-row summary and its one counter line", async ({page}) => {
+        await page.goto("/dao/2/propose");
+        await page.getByTestId("proposal-summary-input").fill("Flowers.");
+        await expect(page.getByTestId("summary-view")).toBeHidden();
+        await expect(page.getByTestId("summary-count")).toBeHidden();
+        await expect(page.getByTestId("summary-count-phone")).toHaveText("Plain text · 8 of 5,000 bytes");
+        const box = await page.getByTestId("proposal-summary-input").boundingBox();
+        expect(box && box.height).toBeLessThan(130);
+    });
+
+    test("the short expedited line, the short cost values, and no footnotes or draft card", async ({page}) => {
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/4/propose");
+        await connectWallet(page);
+        await expect(page.getByTestId("expedite-explanation-phone")).toHaveText("1-day vote that can settle early.");
+        await expect(page.getByTestId("expedite-explanation")).toBeHidden();
+
+        const deposit = page.getByTestId("cost-deposit");
+        await expect(deposit.getByTestId("cost-short")).toHaveText("9 TBZE");
+        await expect(deposit.getByTestId("cost-full")).toBeHidden();
+        await expect(page.getByTestId("cost-back").getByTestId("cost-short")).toHaveText("Only if it passes");
+        await expect(page.getByTestId("cost-cost").getByTestId("cost-short")).toHaveText("5 TBZE");
+        expect(await deposit.evaluate((el) => getComputedStyle(el).paddingTop)).toBe("6px");
+
+        await expect(page.getByTestId("cost-note")).toBeHidden();
+        await expect(page.getByTestId("proposal-slots")).toBeHidden();
+        await expect(page.getByTestId("draft-card")).toBeHidden();
+        await expect(page.getByTestId("submit-proposal")).toBeVisible();
     });
 });
 

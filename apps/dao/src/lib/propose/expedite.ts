@@ -17,6 +17,8 @@ export function expeditedExplanation(dao: Pick<Dao, 'type' | 'config'>, minExped
     const voted = stake ? 'has voted' : 'have voted';
     return {
         full: `Shorter vote (${period}) that can settle early${earliest} once ${formatRatio(c.expedite_quorum)} of ${power} ${voted} and yes is more than ${formatRatio(c.expedite_threshold)} of ALL ${stake ? 'voting power' : 'members'} (not just of the votes cast). Use it for urgent things.`,
-        short: `Shorter vote (${period}) that can settle early.`,
+        short: seconds !== null && seconds > 0 && seconds % 86400 === 0 ? `${seconds / 86400}-day vote that can settle early.`
+            : seconds !== null && seconds > 0 && seconds % 3600 === 0 ? `${seconds / 3600}-hour vote that can settle early.`
+                : `Shorter vote (${period}) that can settle early.`,
     };
 }

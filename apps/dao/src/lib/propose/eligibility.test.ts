@@ -3,7 +3,7 @@ import type {DaoVotingPowerResponse} from "@bze/bze-ui-kit";
 import type {Part} from "@/lib/dao-view-loader";
 import type {StakeSource} from "@/lib/dao-voters";
 import {CONFIG, DAO, OTHER, PARAMS, STAKE_DAO, THIRD, WALLET} from "@/test/composer-fixtures";
-import {proposerStatus, type EligibilityInput} from "./eligibility";
+import {noStakeText, proposerStatus, type EligibilityInput} from "./eligibility";
 
 const power = (current: string): Part<DaoVotingPowerResponse | null> => ({ok: true, value: {current, proposals: []}});
 const source = (staked: string, own = "0"): StakeSource => ({kind: "sr", id: "17", stakingDenom: "ubze", lockDays: 7, staked, own});
@@ -67,6 +67,11 @@ describe("proposerStatus", () => {
             expect(proposerStatus(base({openCount: 9}))).toMatchObject({kind: "allowed"});
             expect(proposerStatus(base({openCount: null}))).toMatchObject({kind: "allowed"});
         });
+    });
+
+    it("No stake names the token to stake when it is known", () => {
+        expect(noStakeText("HONEY")).toBe("Proposals here are for stakers. Stake HONEY in one of its rewards on the DEX; you can propose from the next block on.");
+        expect(noStakeText(null)).toBe("Proposals here are for stakers. Stake in one of its rewards on the DEX; you can propose from the next block on.");
     });
 
     it("another wallet that is a member passes", () => {

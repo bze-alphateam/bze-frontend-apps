@@ -23,7 +23,9 @@ describe("bytesLine", () => {
 describe("summaryLine", () => {
     it("says the summary is plain text, never Markdown", () => {
         expect(summaryLine(312, 5000).text).toBe("Plain text. 312 of 5,000 bytes. Line breaks are kept and web links become links; no images or HTML.");
-        expect(summaryLine(5001, 5000)).toEqual({text: "5,001 of 5,000 bytes: shorten it. Emoji and accents count as 2–4 bytes.", over: true});
+        expect(summaryLine(312, 5000).short).toBe("Plain text · 312 of 5,000 bytes");
+        const over = "5,001 of 5,000 bytes: shorten it. Emoji and accents count as 2–4 bytes.";
+        expect(summaryLine(5001, 5000)).toEqual({text: over, short: over, over: true});
     });
 });
 

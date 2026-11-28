@@ -4,7 +4,8 @@ import {Button, chakra, Flex} from '@chakra-ui/react';
 import {hgVariant} from '@bze/bze-ui-kit';
 import type {Dao} from '@bze/bze-ui-kit';
 import type {ProposerStatus} from '@/lib/propose/eligibility';
-import {shortcutApplies, shortcutLabel, type Shortcut} from '@/lib/propose/shortcuts';
+import {isLastMember, LAST_MEMBER_TEXT, shortcutApplies, shortcutLabel, type Shortcut} from '@/lib/propose/shortcuts';
+import {NeutralNote} from './neutral-note';
 
 interface Props {
     dao: Pick<Dao, 'name' | 'type' | 'members' | 'address' | 'config'>;
@@ -46,7 +47,9 @@ export const ShortcutsBar = ({dao, wallet, status, applied, full, onApply}: Prop
             </Flex>
         );
     }
-    if (offered.length === 0) return null;
+    // board F4: the last member is told why there is no Leave
+    const last = isLastMember(dao, wallet, status) ? <NeutralNote testId="shortcut-last-member">{LAST_MEMBER_TEXT}</NeutralNote> : null;
+    if (offered.length === 0) return last;
 
     return (
         <Flex direction="column" gap="8px" data-testid="shortcuts">
@@ -58,6 +61,7 @@ export const ShortcutsBar = ({dao, wallet, status, applied, full, onApply}: Prop
                 ))}
             </Flex>
             <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint">Fills in the proposal with your own membership change. The members still vote on it.</chakra.span>
+            {last}
         </Flex>
     );
 };

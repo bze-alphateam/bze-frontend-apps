@@ -73,6 +73,8 @@ export function summarizeCost(
 export interface CostRow {
     label: 'Deposit' | 'Back to you' | 'Cost';
     text: string;
+    /** The phone's shorter value (board I5). */
+    short: string;
 }
 
 const KEPT: Record<DaoFundsDestination, string> = {BURN: 'it is burned', TREASURY: 'it goes to the treasury'};
@@ -89,7 +91,7 @@ export function costRows(
     const {proposal_cost: cost, proposal_deposit: deposit} = config;
     const rows: CostRow[] = [];
     if (positive(deposit)) {
-        rows.push({label: 'Deposit', text: `${formatCoin(deposit)}, held while voting`});
+        rows.push({label: 'Deposit', text: `${formatCoin(deposit)}, held while voting`, short: formatCoin(deposit)});
         const kept = KEPT[config.kept_deposit_destination];
         rows.push({
             label: 'Back to you',
@@ -98,13 +100,13 @@ export function costRows(
                 ONLY_PASSED: `Only if it passes; otherwise ${kept}`,
                 NEVER: `Never; ${kept}`,
             }[config.deposit_refund_policy],
+            short: {ALWAYS: 'Always', ONLY_PASSED: 'Only if it passes', NEVER: 'Never'}[config.deposit_refund_policy],
         });
     } else {
-        rows.push({label: 'Deposit', text: 'None'});
+        rows.push({label: 'Deposit', text: 'None', short: 'None'});
     }
-    rows.push({
-        label: 'Cost',
-        text: positive(cost) ? `${formatCoin(cost)}, paid now and never refunded (${config.cost_destination === 'BURN' ? 'burned' : 'to the treasury'})` : 'None',
-    });
+    rows.push(positive(cost)
+        ? {label: 'Cost', text: `${formatCoin(cost)}, paid now and never refunded (${config.cost_destination === 'BURN' ? 'burned' : 'to the treasury'})`, short: formatCoin(cost)}
+        : {label: 'Cost', text: 'None', short: 'None'});
     return rows;
 }

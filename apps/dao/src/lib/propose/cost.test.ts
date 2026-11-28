@@ -74,8 +74,8 @@ describe("summarizeCost", () => {
 describe("costRows", () => {
     it("a free DAO: no deposit and no cost, and no Back to you row", () => {
         expect(costRows(config({proposal_cost: null, proposal_deposit: null}), fmt)).toEqual([
-            {label: "Deposit", text: "None"},
-            {label: "Cost", text: "None"},
+            {label: "Deposit", text: "None", short: "None"},
+            {label: "Cost", text: "None", short: "None"},
         ]);
     });
 
@@ -83,12 +83,12 @@ describe("costRows", () => {
         const rows = (policy: DaoConfig["deposit_refund_policy"], kept: DaoConfig["kept_deposit_destination"]) =>
             costRows(config({deposit_refund_policy: policy, kept_deposit_destination: kept, cost_destination: "BURN"}), fmt);
         expect(rows("ONLY_PASSED", "TREASURY")).toEqual([
-            {label: "Deposit", text: "9 BZE, held while voting"},
-            {label: "Back to you", text: "Only if it passes; otherwise it goes to the treasury"},
-            {label: "Cost", text: "5 BZE, paid now and never refunded (burned)"},
+            {label: "Deposit", text: "9 BZE, held while voting", short: "9 BZE"},
+            {label: "Back to you", text: "Only if it passes; otherwise it goes to the treasury", short: "Only if it passes"},
+            {label: "Cost", text: "5 BZE, paid now and never refunded (burned)", short: "5 BZE"},
         ]);
-        expect(rows("ALWAYS", "BURN")[1].text).toBe("Always, whatever the result");
-        expect(rows("NEVER", "BURN")[1].text).toBe("Never; it is burned");
+        expect(rows("ALWAYS", "BURN")[1]).toMatchObject({text: "Always, whatever the result", short: "Always"});
+        expect(rows("NEVER", "BURN")[1]).toMatchObject({text: "Never; it is burned", short: "Never"});
         expect(costRows(config({cost_destination: "TREASURY"}), fmt)[2].text).toBe("5 BZE, paid now and never refunded (to the treasury)");
     });
 });

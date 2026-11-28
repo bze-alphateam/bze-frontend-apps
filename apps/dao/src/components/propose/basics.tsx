@@ -63,13 +63,16 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                 <Flex direction="column" gap="8px" minW="0">
                     <Flex gap="16px" align="center" justify="space-between" wrap="wrap">
                         <chakra.span id="summary-label" fontSize="14px" fontWeight="600">Summary</chakra.span>
-                        <Segmented
-                            label="Summary"
-                            value={view}
-                            onChange={setView}
-                            options={[{value: 'write', label: 'Write', testId: 'summary-write'}, {value: 'preview', label: 'Preview', testId: 'summary-preview-toggle'}]}
-                            testId="summary-view"
-                        />
+                        {/* a phone has no Preview (board I5): the counter line says how it is shown */}
+                        <chakra.div display={{base: 'none', md: 'block'}} data-testid="summary-view-wrap">
+                            <Segmented
+                                label="Summary"
+                                value={view}
+                                onChange={setView}
+                                options={[{value: 'write', label: 'Write', testId: 'summary-write'}, {value: 'preview', label: 'Preview', testId: 'summary-preview-toggle'}]}
+                                testId="summary-view"
+                            />
+                        </chakra.div>
                     </Flex>
                     {view === 'preview' ? (
                         <chakra.div {...field(summaryCount.over)} display="block" minH="168px" py="12px" fontSize="15px" lineHeight="1.5" overflowWrap="anywhere" data-testid="summary-preview">
@@ -80,6 +83,7 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                             <chakra.textarea
                                 {...control}
                                 rows={6}
+                                h={{base: '114px', md: 'auto'}}
                                 resize="vertical"
                                 lineHeight="1.5"
                                 py="12px"
@@ -92,7 +96,8 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                             />
                         </chakra.span>
                     )}
-                    <Count line={summaryCount} testId="summary-count" />
+                    <chakra.span display={{base: 'none', md: 'inline'}}><Count line={summaryCount} testId="summary-count" /></chakra.span>
+                    <chakra.span display={{base: 'inline', md: 'none'}}><Count line={{text: summaryCount.short, over: summaryCount.over}} testId="summary-count-phone" /></chakra.span>
                 </Flex>
             )}
 
@@ -118,7 +123,7 @@ export const Basics = ({dao, params, title, summary, expedited, onTitle, onSumma
                         <Flex as="span" direction="column" gap="2px" fontSize="14px" fontWeight="600">
                             Expedited
                             <chakra.span fontSize="13px" fontWeight="400" color="hg.text.faint" display={{base: 'none', md: 'inline'}} data-testid="expedite-explanation">{explanation.full}</chakra.span>
-                            <chakra.span fontSize="13px" fontWeight="400" color="hg.text.faint" display={{base: 'inline', md: 'none'}}>{explanation.short}</chakra.span>
+                            <chakra.span fontSize="13px" fontWeight="400" color="hg.text.faint" display={{base: 'inline', md: 'none'}} data-testid="expedite-explanation-phone">{explanation.short}</chakra.span>
                         </Flex>
                     </chakra.label>
                 </chakra.section>

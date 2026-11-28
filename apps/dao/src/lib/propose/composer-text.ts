@@ -15,9 +15,11 @@ export function bytesLine(used: number, max: number): {text: string; over: boole
  * The summary's counter. The summary is plain text everywhere it is shown (line breaks kept, http(s)
  * links made links, nothing else), so the line says so instead of promising Markdown.
  */
-export function summaryLine(used: number, max: number): {text: string; over: boolean} {
+export function summaryLine(used: number, max: number): {text: string; short: string; over: boolean} {
     const bytes = bytesLine(used, max);
-    return bytes.over ? bytes : {text: `Plain text. ${bytes.text}. Line breaks are kept and web links become links; no images or HTML.`, over: false};
+    return bytes.over
+        ? {...bytes, short: bytes.text}
+        : {text: `Plain text. ${bytes.text}. Line breaks are kept and web links become links; no images or HTML.`, short: `Plain text · ${bytes.text}`, over: false};
 }
 
 /**

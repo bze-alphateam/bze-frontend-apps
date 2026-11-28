@@ -8,7 +8,7 @@ import {getExplorerTxURL, hgVariant, Notice} from '@bze/bze-ui-kit';
 import type {Dao, DaoCoin} from '@bze/bze-ui-kit';
 import {daoTabHref} from '@/lib/dao-tabs';
 import type {CostRow, Requirement} from '@/lib/propose/cost';
-import type {ProposerStatus} from '@/lib/propose/eligibility';
+import {noStakeText, type ProposerStatus} from '@/lib/propose/eligibility';
 import type {SubmitState} from '@/hooks/useProposalSubmit';
 import {NeutralNote} from './neutral-note';
 
@@ -32,6 +32,8 @@ interface Props {
     slots: string | null;
     /** Where a wallet without stake goes to stake (a stakers' DAO), when known. */
     stakeHref: string | null;
+    /** The ticker of the first staking source, named in "No stake", when known. */
+    stakeTicker: string | null;
     onSubmit: () => void;
     onCheck: () => void;
     onAllowResubmit: () => void;
@@ -47,7 +49,7 @@ const NOT_A_VOTER_TITLE = {'not-member': 'Not a member', 'no-stake': 'No stake'}
 const BLOCKED_TITLE = {'no-voters': 'No voters', full: 'Full'} as const;
 
 const Row = ({label, first, testId, children}: {label: string; first: boolean; testId?: string; children: ReactNode}) => (
-    <chakra.div display="grid" gridTemplateColumns={{base: '1fr auto', md: '110px 1fr'}} gap="16px" py="7px" borderTopWidth={first ? '0' : '1px'} borderColor="hg.divider" data-testid={testId}>
+    <chakra.div display="grid" gridTemplateColumns={{base: '1fr auto', md: '110px 1fr'}} gap="16px" py={{base: '6px', md: '7px'}} borderTopWidth={first ? '0' : '1px'} borderColor="hg.divider" data-testid={testId}>
         <chakra.dt fontSize="13px" color="fg.muted">{label}</chakra.dt>
         <chakra.dd m="0" fontSize="13px" lineHeight="1.5" color="fg" minW="0" overflowWrap="anywhere" textAlign={{base: 'end', md: 'start'}}>{children}</chakra.dd>
     </chakra.div>
@@ -57,7 +59,7 @@ const Row = ({label, first, testId, children}: {label: string; first: boolean; t
  * "Before you submit" (board F1's aside): who may propose, what it costs and what comes back, the wallet's
  * balance, the proposal slots and the send button; then where the last attempt stands.
  */
-export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, rows, requirements, balancesKnown, formatCoin, slots, stakeHref, onSubmit, onCheck, onAllowResubmit}: Props) => {
+export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, rows, requirements, balancesKnown, formatCoin, slots, stakeHref, stakeTicker, onSubmit, onCheck, onAllowResubmit}: Props) => {
     const working = state.phase === 'working';
     const locked = state.phase === 'unconfirmed' || state.phase === 'done';
 
@@ -77,7 +79,7 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, r
                     </chakra.a>
                 ) : undefined}
             >
-                {status.message}
+                {status.cause === 'no-stake' ? noStakeText(stakeTicker) : status.message}
             </NeutralNote>
         );
     }
@@ -105,7 +107,11 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, r
             {gate}
             <chakra.dl m="0" display="flex" flexDirection="column" data-testid="cost-list">
                 {rows.map((row, i) => (
-                    <Row key={row.label} label={row.label} first={i === 0} testId={{Deposit: 'cost-deposit', 'Back to you': 'cost-back', Cost: 'cost-cost'}[row.label]}>{row.text}</Row>
+                    <Row key={row.label} label={row.label} first={i === 0} testId={{Deposit: 'cost-deposit', 'Back to you': 'cost-back', Cost: 'cost-cost'}[row.label]}>
+                        {/* board I5: the phone shows the short values */}
+                        <chakra.span display={{base: 'none', md: 'inline'}} data-testid="cost-full">{row.text}</chakra.span>
+                        <chakra.span display={{base: 'inline', md: 'none'}} data-testid="cost-short">{row.short}</chakra.span>
+                    </Row>
                 ))}
                 {held.map((r) => (
                     <Row key={r.denom} label="You hold" first={false} testId="cost-balance">
@@ -116,8 +122,8 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, r
                     </Row>
                 ))}
             </chakra.dl>
-            {rows.some((r) => r.text !== 'None') && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint">Paid in their own token, never swapped. The network fee is paid on top.</chakra.span>}
-            {slots && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="proposal-slots">{slots}</chakra.span>}
+            {rows.some((r) => r.text !== 'None') && <chakra.span display={{base: 'none', md: 'inline'}} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="cost-note">Paid in their own token, never swapped. The network fee is paid on top.</chakra.span>}
+            {slots && <chakra.span display={{base: 'none', md: 'inline'}} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="proposal-slots">{slots}</chakra.span>}
             {!gate && (
                 <Flex direction="column" gap="8px">
                     <Button

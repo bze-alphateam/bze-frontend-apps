@@ -215,11 +215,12 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                     formatCoin={coins.exact}
                     slots={openProposals.ok ? slotsLine(openProposals.value.length, Number(params.max_open_proposals)) : null}
                     stakeHref={stakeHref}
+                    stakeTicker={firstSource ? coins.ticker(firstSource.stakingDenom) : null}
                     onSubmit={send}
                     onCheck={check}
                     onAllowResubmit={allowResubmit}
                 />
-                <chakra.section bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="16px" px="16px" py="14px" display="flex" flexDirection="column" gap="8px" data-testid="draft-card">
+                <chakra.section bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="16px" px="16px" py="14px" display={{base: notice ? 'flex' : 'none', md: 'flex'}} flexDirection="column" gap="8px" data-testid="draft-card">
                     {notice ? (
                         <Flex gap="4px 10px" align="center" wrap="wrap" fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="draft-restored">
                             <span>{opening.shortcut !== null ? 'Your unsent draft for this DAO was restored, so the shortcut you followed was not applied. Discard the draft to start from the shortcut.' : 'Your unsent draft for this DAO was restored.'}</span>

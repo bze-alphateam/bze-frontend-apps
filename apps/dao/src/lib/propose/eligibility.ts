@@ -32,6 +32,10 @@ export interface EligibilityInput {
     sources: Part<StakeSource[]>;
 }
 
+/** F4 "No stake": with the ticker of the first staking source when it is known. */
+export const noStakeText = (ticker: string | null): string =>
+    `Proposals here are for stakers. Stake ${ticker ? `${ticker} ` : ''}in one of its rewards on the DEX; you can propose from the next block on.`;
+
 const positive = (amount: string | undefined): boolean => !!amount && /[1-9]/.test(amount);
 
 /** What the DAO's voters hold, without the DAO's own stake: the chain's `votingDenominator`. */
@@ -70,5 +74,5 @@ export function proposerStatus(input: EligibilityInput): ProposerStatus {
     if (!power.ok || power.value === null) return {kind: 'unknown'};
     return positive(power.value.current)
         ? {kind: 'maybe', reason: 'You have stake in this DAO. It counts only if you joined or added to it before the block your proposal lands in; the chain checks that before anything is signed.'}
-        : {kind: 'not-a-voter', cause: 'no-stake', message: 'Proposals here are for stakers. Stake in one of its rewards on the DEX; you can propose from the next block on.'};
+        : {kind: 'not-a-voter', cause: 'no-stake', message: noStakeText(null)};
 }
