@@ -410,8 +410,11 @@ describe("accept a nomination", () => {
         const tick = screen.getByTestId("accept-understood");
         expect(tick).toHaveAttribute("role", "checkbox");
         expect(tick).toHaveAttribute("aria-checked", "false");
+        expect(tick).not.toHaveAttribute("data-checked");
         await userEvent.click(tick);
         expect(tick).toHaveAttribute("aria-checked", "true");
+        // ticked, the row's edge takes the accent at 45 % (board G2)
+        expect(tick).toHaveAttribute("data-checked");
         expect(submit).toBeEnabled();
         await userEvent.click(screen.getByTestId("accept-understood"));
         expect(submit).toBeDisabled();

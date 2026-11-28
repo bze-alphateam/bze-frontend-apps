@@ -354,7 +354,8 @@ const Tick = ({checked, onToggle, children}: {checked: boolean; onToggle: () => 
         borderRadius="12px"
         bg="hg.inset"
         borderWidth="1px"
-        borderColor={checked ? 'app.border' : 'hg.hairline'}
+        borderColor={checked ? accent(45) : 'hg.hairline'}
+        data-checked={checked ? '' : undefined}
         textAlign="start"
         cursor="pointer"
         fontSize="14px"
