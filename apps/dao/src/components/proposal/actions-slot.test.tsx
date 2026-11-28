@@ -39,19 +39,19 @@ const finished = dataOf({...RESPONSE, proposal: {...PROPOSAL, status: "REJECTED"
 const formatWeight = (a: string) => `${a} votes`;
 
 /** The page's three action parts on one flow, as the page wires them. */
-function Harness({input, onConnect}: {input: ProposalActionsInput; onConnect: () => void}) {
+function Harness({input, onConnect, effects}: {input: ProposalActionsInput; onConnect: () => void; effects: string[]}) {
     const actions = useProposalActions(input);
     const {model} = input.data;
     return (
         <>
-            <StateArea actions={actions} model={model} nowMs={input.nowMs} />
+            <StateArea actions={actions} model={model} nowMs={input.nowMs} formatCoin={(c) => `${c.amount} ${c.denom}`} />
             <YourVoteCard actions={actions} model={model} mine={input.mine} formatWeight={formatWeight} onConnect={onConnect} />
-            <ProposalDialogs actions={actions} model={model} mine={input.mine} formatWeight={formatWeight} formatCoin={(c) => `${c.amount} ${c.denom}`} />
+            <ProposalDialogs actions={actions} model={model} effects={effects} mine={input.mine} formatWeight={formatWeight} formatCoin={(c) => `${c.amount} ${c.denom}`} />
         </>
     );
 }
 
-function renderActions(data: ProposalPageData, over: {wallet?: string | null; ballot?: DaoBallot | null; weight?: string | null; refresh?: () => Promise<"ok" | "gone" | "failed">; getProposal?: () => Promise<unknown>} = {}) {
+function renderActions(data: ProposalPageData, over: {wallet?: string | null; ballot?: DaoBallot | null; weight?: string | null; refresh?: () => Promise<"ok" | "gone" | "failed">; getProposal?: () => Promise<unknown>; effects?: string[]} = {}) {
     const refresh = over.refresh ?? vi.fn(async () => "ok" as const);
     const onConnect = vi.fn();
     const deps = {chain: {getProposal: over.getProposal ?? (async () => RESPONSE)}} as unknown as ProposalDeps;
@@ -67,7 +67,7 @@ function renderActions(data: ProposalPageData, over: {wallet?: string | null; ba
     };
     render(
         <ChakraProvider value={defaultSystem}>
-            <Harness input={input} onConnect={onConnect} />
+            <Harness input={input} onConnect={onConnect} effects={over.effects ?? []} />
         </ChakraProvider>,
     );
     return {refresh, onConnect};
@@ -102,6 +102,19 @@ describe("the proposal's actions", () => {
         expect(screen.getByTestId("tx-hash")).toHaveTextContent("H1");
     });
 
+    it("phone width (I3): one 'Counts for' line and one Vote button that opens the sheet; the desktop options are the md-and-up part", async () => {
+        renderActions(voting);
+        const phone = screen.getByTestId("phone-weight");
+        expect(phone).toHaveAttribute("data-viewport", "phone");
+        expect(phone).toHaveTextContent("Counts for1 votes");
+        expect(screen.getByTestId("vote-option-yes").closest("[data-viewport]")).toHaveAttribute("data-viewport", "desktop");
+        await userEvent.click(screen.getByTestId("vote-open-phone"));
+        expect(screen.getByTestId("dialog-vote")).toHaveTextContent("Vote on this proposal");
+        // no option was picked on the card: the first one the wallet can choose is
+        expect(screen.getByTestId("dialog-option-yes")).toBeChecked();
+        expect(screen.getByTestId("vote-confirm")).toHaveTextContent("Vote yes");
+    });
+
     it("a revote: the ballot on the card, Change vote, the current option disabled in the dialog and the replacement said", async () => {
         renderActions(voting, {ballot: ballot("YES")});
         expect(screen.getByTestId("my-ballot-pill")).toHaveTextContent("Voted yes");
@@ -123,12 +136,12 @@ describe("the proposal's actions", () => {
     it("vote and settle: the bars as they will be with this yes, two messages in one transaction", async () => {
         txMock.mockResolvedValue(false);
         const expedited = dataOf({...RESPONSE, proposal: {...PROPOSAL, expedited: true, yes: "690", no: "0", abstain: "0"}});
-        renderActions(expedited, {weight: "11"});
+        renderActions(expedited, {weight: "11", effects: ["bze1r9…n4ex becomes a member"]});
         expect(screen.getByTestId("vote-and-settle")).toHaveTextContent("it meets the expedite bars, so this proposal can pass right now");
         await userEvent.click(screen.getByTestId("vote-and-settle-button"));
         const dialog = screen.getByTestId("vote-and-settle-dialog");
         expect(dialog).toHaveTextContent("With your yes: 701 of 1000 members");
-        expect(screen.getByTestId("vote-and-settle-note")).toHaveTextContent("One transaction does both: your vote (YES, counted at 11 votes), then the settle.");
+        expect(screen.getByTestId("vote-and-settle-note")).toHaveTextContent("One transaction does both: your vote (YES, counted at 11 votes), then the settle. The proposal passes and its action runs: bze1r9…n4ex becomes a member.");
         await userEvent.click(screen.getByTestId("vote-and-settle-confirm"));
         expect(txMock.mock.calls[0][0].map((m: {typeUrl: string}) => m.typeUrl)).toEqual(["/bze.dao.MsgVote", "/bze.dao.MsgSettleProposal"]);
     });

@@ -20,7 +20,10 @@ interface Ctx {
     formatCoin: (coin: DaoCoin) => string;
     nameOf: (address: string) => string | undefined;
     daoOf: (daoId: string) => DaoRef | undefined;
-    /** The DAO's members now, for "Members after"; null for a stake DAO or when unknown. */
+    /**
+     * The DAO's members now, for "Members after" (used only while the proposal votes: once it ran, the list
+     * already holds its changes); null for a stake DAO or when unknown.
+     */
     memberCount: number | null;
 }
 
@@ -64,12 +67,24 @@ function titleOf(action: MsgAction, ctx: Ctx): string {
     }
 }
 
+/** What an action does, in a few words for a sentence ("bze1r9…n4ex becomes a member", "2,000 BZE goes to bze1mm…d3sk"); its title otherwise. */
+function effectOf(action: MsgAction, ctx: Ctx): string {
+    const who = (a: string) => ctx.nameOf(a) ?? shortAddress(a);
+    if (action.type === 'send' && action.amount.length > 0) return `${action.amount.map(ctx.formatCoin).join(', ')} goes to ${who(action.to)}`;
+    if (action.type === 'update_members' && action.add.length === 1 && action.remove.length === 0) return `${who(action.add[0])} becomes a member`;
+    if (action.type === 'update_members' && action.remove.length === 1 && action.add.length === 0) return `${who(action.remove[0])} stops being a member`;
+    return titleOf(action, ctx);
+}
+
+/** The effect of every action, in order: what passing the proposal does, for the vote-and-settle dialog. */
+export const actionEffects = (actions: MsgAction[], ctx: Omit<Ctx, 'memberCount'>): string[] => actions.map((a) => effectOf(a, {...ctx, memberCount: null}));
+
 const Addresses = ({list, ctx}: {list: string[]; ctx: Ctx}) => (
     <Flex direction="column" gap="2px">{list.map((a) => <AddressLine key={a} address={a} name={ctx.nameOf(a)} />)}</Flex>
 );
 
 /** What the action does, under its title. */
-function Body({action, ctx}: {action: MsgAction; ctx: Ctx}) {
+function Body({action, ctx, after = null}: {action: MsgAction; ctx: Ctx; /** The members after this action (this DAO's own changes only). */ after?: number | null}) {
     switch (action.type) {
         case 'send':
             return (
@@ -105,7 +120,6 @@ function Body({action, ctx}: {action: MsgAction; ctx: Ctx}) {
                 </Flex>
             );
         case 'update_members': {
-            const after = ctx.memberCount === null ? null : ctx.memberCount + action.add.length - action.remove.length;
             return (
                 <Flex as="span" direction="column" gap="4px">
                     {action.add.length > 0 && <><span>{`Add ${action.add.length === 1 ? 'this account' : `${action.add.length} accounts`}:`}</span><Addresses list={action.add} ctx={ctx} /></>}
@@ -163,10 +177,24 @@ interface Props extends Ctx {
     actions: MsgAction[];
     /** The proposal's messages as the chain holds them, shown as one JSON list under the cards. */
     raw: readonly unknown[];
+    /** Still voting: only then does today's member list tell the members after it runs. */
+    voting: boolean;
 }
 
 /** E2 "What it does if it passes": one numbered card per message, in order, then every message as raw JSON. */
-export const WhatItDoes = ({actions, raw, ...ctx}: Props) => (
+/** The members after each action, in order: every members change of this DAO counts from the one before it. */
+function membersAfter(actions: MsgAction[], start: number | null): (number | null)[] {
+    let count = start;
+    return actions.map((a) => {
+        if (a.type !== 'update_members' || count === null) return null;
+        count = Math.max(0, count + a.add.length - a.remove.length);
+        return count;
+    });
+}
+
+export const WhatItDoes = ({actions, raw, voting, ...ctx}: Props) => {
+    const after = membersAfter(actions, voting ? ctx.memberCount : null);
+    return (
     <Card id="actions" title="What it does if it passes" aside={actions.length > 0 ? <Caption>Run as the DAO, in this order, in the settle transaction</Caption> : undefined} testId="actions-panel" gap="12px">
         {actions.length === 0 && <chakra.p m="0" fontSize="14px" color="hg.text.secondary" data-testid="text-only">{"This is a text-only proposal: it asks for no action. Passing it only records the DAO's decision."}</chakra.p>}
         {actions.map((action, i) => (
@@ -177,7 +205,7 @@ export const WhatItDoes = ({actions, raw, ...ctx}: Props) => (
                 </chakra.span>
                 <Flex direction="column" gap="4px" fontSize="14px" lineHeight="1.55" minW="0" flex="1" color="hg.text.secondary">
                     <chakra.strong fontSize="15px" color="fg" data-testid="action-title">{titleOf(action, ctx)}</chakra.strong>
-                    <Body action={action} ctx={ctx} />
+                    <Body action={action} ctx={ctx} after={after[i]} />
                 </Flex>
             </Flex>
         ))}
@@ -190,4 +218,5 @@ export const WhatItDoes = ({actions, raw, ...ctx}: Props) => (
             </details>
         )}
     </Card>
-);
+    );
+};

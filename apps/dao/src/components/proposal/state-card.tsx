@@ -3,7 +3,8 @@
 import type {ReactNode} from 'react';
 import {Button, chakra, Flex} from '@chakra-ui/react';
 import {LuTrash2} from 'react-icons/lu';
-import {hgVariant} from '@bze/bze-ui-kit';
+import {hgVariant, type DaoCoin} from '@bze/bze-ui-kit';
+import {depositSentence} from '@/lib/proposal-money';
 import type {ProposalModel} from '@/lib/proposal-model';
 import {tallyView} from '@/lib/proposal-tally';
 import {stateCard} from '@/lib/proposal-view';
@@ -34,6 +35,7 @@ interface Props {
     actions: ProposalActions | null;
     model: ProposalModel;
     nowMs: number;
+    formatCoin: (coin: DaoCoin) => string;
 }
 
 /**
@@ -41,9 +43,9 @@ interface Props {
  * note with its button, or how a finished proposal ended with the clean-up; and, while no dialog is open, the
  * transaction panel of the last action (it stays while the actions are locked).
  */
-export const StateArea = ({actions, model, nowMs}: Props) => {
+export const StateArea = ({actions, model, nowMs, formatCoin}: Props) => {
     const view = tallyView(model.config, model.tally, model.expedited);
-    const card = stateCard(model, view, nowMs, model.daoType === 'DAO_TYPE_STATIC_LIST');
+    const card = stateCard(model, view, nowMs, model.daoType === 'DAO_TYPE_STATIC_LIST', depositSentence(model, formatCoin));
     const settle = actions?.view.settle ?? null;
     const cleanup = actions?.view.cleanup ?? null;
     const locked = actions?.flow.locked ?? false;

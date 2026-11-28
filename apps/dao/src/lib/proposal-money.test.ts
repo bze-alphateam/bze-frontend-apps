@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DaoCoin, DaoDepositRefundPolicy, DaoProposalStatus} from "@bze/bze-ui-kit";
-import {depositRefunded, moneyRows, outcomeOfStatus} from "./proposal-money";
+import {depositRefunded, depositSentence, moneyRows, outcomeOfStatus} from "./proposal-money";
 import {CONFIG} from "@/test/proposal-fixtures";
 import type {PinnedConfig, ScanOutcome} from "./proposal-model";
 
@@ -81,5 +81,24 @@ describe("moneyRows", () => {
         expect(table(m)).toEqual([["Deposit", "9 BZE"], ["Proposal cost", "5 BZE. Never refunded."]]);
         expect(rows("VOTING", {kept_deposit_destination: null}).note?.testId).toBe("money-rules-unknown");
         expect(rows("VOTING", null).note?.testId).toBe("money-rules-unknown");
+    });
+});
+
+describe("depositSentence", () => {
+    const of = (status: DaoProposalStatus, config: Partial<PinnedConfig> = {}, outcome: Partial<ScanOutcome> | null = null) =>
+        depositSentence({status, config: {...CONFIG, ...config}, deposit: {denom: "ubze", amount: "9000000"}, outcome: outcome ? ({depositRefunded: null, depositDestination: null, ...outcome} as ScanOutcome) : null}, fmt);
+
+    it("where the deposit went, with the policy that sent it there", () => {
+        expect(of("EXECUTED")).toBe("The 9 BZE deposit went back to the proposer.");
+        expect(of("REJECTED", {kept_deposit_destination: "TREASURY"})).toBe("The 9 BZE deposit went to the treasury (only refunded if it passes).");
+        expect(of("REJECTED")).toBe("The 9 BZE deposit was burned (only refunded if it passes).");
+        expect(of("EXECUTED", {deposit_refund_policy: "NEVER"})).toBe("The 9 BZE deposit was burned (this DAO never refunds deposits).");
+    });
+
+    it("Scan's record first; a cancel adds that the cost is never refunded; nothing while it votes", () => {
+        expect(of("REJECTED", {}, {depositRefunded: true})).toBe("The 9 BZE deposit went back to the proposer.");
+        expect(of("CANCELLED", {kept_deposit_destination: "TREASURY"})).toBe("The 9 BZE deposit went to the treasury (only refunded if it passes). The cost is never refunded.");
+        expect(of("VOTING")).toBe("");
+        expect(of("REJECTED", {deposit_refund_policy: null})).toBe("");
     });
 });

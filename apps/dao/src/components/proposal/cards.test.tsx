@@ -9,7 +9,7 @@ import type {MsgAction} from "@/lib/proposal-describe";
 import {CONFIG, PROPOSAL, RESPONSE} from "@/test/proposal-fixtures";
 import {TallyPanel} from "./tally-panel";
 import {MoneyPanel, TimelinePanel} from "./timeline-money";
-import {WhatItDoes} from "./what-it-does";
+import {actionEffects, WhatItDoes} from "./what-it-does";
 
 const wrap = (ui: ReactNode) => render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
 // the fixture is submitted on 27 Oct 2026 and votes until 30 Oct
@@ -61,7 +61,7 @@ describe("WhatItDoes", () => {
             {type: "send", from: "bze1dao", to: "bze1desk", amount: [{denom: "BZE", amount: "2,000"}], fromDao: true, subDao: null},
             {type: "update_members", add: ["bze1newmember"], remove: []},
         ];
-        wrap(<WhatItDoes actions={actions} raw={[{"@type": "a"}, {"@type": "b"}]} memberCount={5} {...ctx} />);
+        wrap(<WhatItDoes actions={actions} raw={[{"@type": "a"}, {"@type": "b"}]} memberCount={5} voting {...ctx} />);
         const cards = screen.getAllByTestId("action");
         expect(cards.map((c) => within(c).getByTestId("action-title").textContent)).toEqual(["Pay from the treasury", "Change the members"]);
         expect(cards[0]).toHaveTextContent(/^1/);
@@ -71,8 +71,34 @@ describe("WhatItDoes", () => {
         expect(JSON.parse(screen.getByTestId("raw-messages-json").textContent ?? "null")).toHaveLength(2);
     });
 
+    it("names what each action does, for the vote-and-settle dialog", () => {
+        const effects = actionEffects([
+            {type: "send", from: "bze1dao", to: "bze1desk", amount: [{denom: "BZE", amount: "2,000"}], fromDao: true, subDao: null},
+            {type: "update_members", add: ["bze1newmember"], remove: []},
+            {type: "update_metadata", name: "Hive", description: ""},
+        ], ctx);
+        expect(effects).toEqual(["2,000 BZE goes to bze1desk", "bze1newmember becomes a member", "Rename the DAO or change its description"]);
+    });
+
+    it("two members changes chain: the second counts from the first", () => {
+        const actions: MsgAction[] = [
+            {type: "update_members", add: ["bze1a", "bze1b"], remove: []},
+            {type: "update_members", add: [], remove: ["bze1c"]},
+        ];
+        wrap(<WhatItDoes actions={actions} raw={[]} memberCount={5} voting {...ctx} />);
+        const cards = screen.getAllByTestId("action");
+        expect(cards[0]).toHaveTextContent("Members after: 7.");
+        expect(cards[1]).toHaveTextContent("Members after: 6.");
+    });
+
+    it("a finished proposal shows no members figure: today's list already holds its changes", () => {
+        wrap(<WhatItDoes actions={[{type: "update_members", add: ["bze1a"], remove: []}]} raw={[]} memberCount={6} voting={false} {...ctx} />);
+        expect(screen.getByTestId("action")).not.toHaveTextContent("Members after");
+        expect(screen.getByTestId("action")).toHaveTextContent("They can vote on proposals submitted after the block they're added in.");
+    });
+
     it("a text-only proposal says so, with no raw JSON", () => {
-        wrap(<WhatItDoes actions={[]} raw={[]} memberCount={null} {...ctx} />);
+        wrap(<WhatItDoes actions={[]} raw={[]} memberCount={null} voting {...ctx} />);
         expect(screen.getByTestId("text-only")).toBeInTheDocument();
         expect(screen.queryByTestId("raw-messages")).toBeNull();
     });

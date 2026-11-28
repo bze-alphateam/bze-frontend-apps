@@ -28,7 +28,7 @@ import {MoneyPanel, TimelinePanel} from './timeline-money';
 import {Card, Pill} from './ui';
 import {useWeightFormat} from './use-weight-format';
 import {VotesPanel} from './votes-panel';
-import {WhatItDoes} from './what-it-does';
+import {actionEffects, WhatItDoes} from './what-it-does';
 import {YourVoteCard} from './your-vote';
 
 /** Opens the wallet drawer of the header (its wallet button, `data-wallet-trigger`): the page has no wallet modal of its own. */
@@ -70,7 +70,11 @@ const Header = ({data, nowMs}: {data: ProposalPageData; nowMs: number}) => {
     const {model} = data;
     const pill = pagePill(model);
     const clock = headerClock(model, nowMs);
+    const phoneClock = headerClock(model, nowMs, true);
     const proposerName = data.scanDetail?.proposer_label?.name;
+    const proposer = proposerName
+        ? <chakra.span fontWeight="600" color="hg.text.secondary" title={model.proposer}>{proposerName}</chakra.span>
+        : <chakra.span fontFamily="mono" fontSize="13px" color="hg.text.secondary" title={model.proposer}>{shortAddress(model.proposer)}</chakra.span>;
     return (
         <Flex as="section" direction="column" gap={{base: '12px', md: '16px'}} data-testid="proposal-header">
             {model.daoId && <BackLink daoId={model.daoId} daoName={model.daoName} />}
@@ -81,7 +85,11 @@ const Header = ({data, nowMs}: {data: ProposalPageData; nowMs: number}) => {
                 {model.archived && <Pill tone="neutral" testId="proposal-archived">Archived</Pill>}
             </Flex>
             <chakra.h1 m="0" fontSize={{base: '28px', md: '36px'}} lineHeight="1.15" fontWeight="800" letterSpacing="-0.02em" overflowWrap="anywhere" data-testid="proposal-heading">{model.title}</chakra.h1>
-            <Flex gap={{base: '4px 12px', md: '6px 16px'}} align="center" wrap="wrap" fontSize={{base: '13px', md: '14px'}} color="fg.muted">
+            {/* phone (I3): one line, the clock and the proposer */}
+            <chakra.span display={{base: 'block', md: 'none'}} fontSize="13px" lineHeight="1.5" color="fg.muted" data-testid="proposal-meta-phone">
+                {phoneClock && `${phoneClock} · `}by {proposer}
+            </chakra.span>
+            <Flex display={{base: 'none', md: 'flex'}} gap="6px 16px" align="center" wrap="wrap" fontSize="14px" color="fg.muted" data-testid="proposal-meta">
                 {model.daoId && (
                     <span data-testid="proposal-dao">
                         {'In '}
@@ -90,12 +98,7 @@ const Header = ({data, nowMs}: {data: ProposalPageData; nowMs: number}) => {
                         </chakra.a>
                     </span>
                 )}
-                <span data-testid="proposal-proposer">
-                    {'by '}
-                    {proposerName
-                        ? <chakra.span fontWeight="600" color="hg.text.secondary" title={model.proposer}>{proposerName}</chakra.span>
-                        : <chakra.span fontFamily="mono" fontSize="13px" color="hg.text.secondary" title={model.proposer}>{shortAddress(model.proposer)}</chakra.span>}
-                </span>
+                <span data-testid="proposal-proposer">{'by '}{proposer}</span>
                 {clock && <chakra.span display="inline-flex" gap="6px" alignItems="center" data-testid="proposal-ends"><LuClock size={14} aria-hidden />{clock}</chakra.span>}
                 {model.daoId && <span data-testid="proposal-explorer"><AppLink app="explorer" href={`${getExplorerBaseURL()}/daos/${model.daoId}/proposals/${model.id}`}>Explorer</AppLink></span>}
             </Flex>
@@ -117,6 +120,7 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek, o
     const daoOf = (id: string) => (id === model.daoId ? {name: model.daoName ?? undefined, address: dao?.address} : refs.data?.[id]);
     const proposalActions = useProposalActions({deps, data, wallet, nowMs, mine, refresh, fingerprint: () => proposalFingerprint(peek()?.model)});
     const live: ProposalActions | null = DAO_FEATURES.proposalActions ? proposalActions : null;
+    const nameOf = (a: string) => (a === dao?.address ? dao.name : undefined);
     const memberCount = model.daoType === 'DAO_TYPE_STATIC_LIST' && dao ? dao.members.length : null;
 
     return (
@@ -130,7 +134,7 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek, o
             )}
             <Flex direction={{base: 'column', md: 'row'}} wrap={{md: 'wrap'}} gap={{base: '16px', md: '24px'}} align={{md: 'flex-start'}} data-testid="proposal-columns">
                 <Flex display={{base: 'contents', md: 'flex'}} direction="column" gap="20px" flex={{md: '999 1 560px'}} minW="0" data-testid="proposal-main">
-                    <Slot order={0}><StateArea actions={live} model={model} nowMs={nowMs} /></Slot>
+                    <Slot order={0}><StateArea actions={live} model={model} nowMs={nowMs} formatCoin={coins.format} /></Slot>
                     {model.summary && (
                         <Slot order={4}>
                             <Card id="summary" title="Summary" testId="summary-panel">
@@ -139,7 +143,7 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek, o
                         </Slot>
                     )}
                     <Slot order={3}>
-                        <WhatItDoes actions={actions} raw={model.msgs} formatCoin={coins.format} nameOf={(a) => (a === dao?.address ? dao.name : undefined)} daoOf={daoOf} memberCount={memberCount} />
+                        <WhatItDoes actions={actions} raw={model.msgs} voting={model.status === 'VOTING'} formatCoin={coins.format} nameOf={nameOf} daoOf={daoOf} memberCount={memberCount} />
                     </Slot>
                     <Slot order={2}><TallyPanel model={model} formatWeight={formatWeight} /></Slot>
                     <Slot order={7}><VotesPanel key={version} deps={deps} proposalId={model.id} daoType={model.daoType} formatWeight={formatWeight} /></Slot>
@@ -150,7 +154,7 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek, o
                     <Slot order={6}><MoneyPanel data={data} formatCoin={coins.format} /></Slot>
                 </Flex>
             </Flex>
-            {live && <ProposalDialogs actions={live} model={model} mine={mine} formatWeight={formatWeight} formatCoin={coins.format} />}
+            {live && <ProposalDialogs actions={live} model={model} effects={actionEffects(actions, {formatCoin: coins.format, nameOf, daoOf})} mine={mine} formatWeight={formatWeight} formatCoin={coins.format} />}
         </Flex>
     );
 };

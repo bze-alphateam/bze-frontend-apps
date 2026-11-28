@@ -112,3 +112,27 @@ export function moneyRows(p: Pick<ProposalModel, 'status' | 'config' | 'deposit'
     }
     return {rows, note: null};
 }
+
+const KEPT_SENTENCE: Record<DaoFundsDestination, string> = {TREASURY: 'went to the treasury', BURN: 'was burned'};
+
+/**
+ * Where the deposit of a decided proposal went, as one sentence for its summary ("The 1,000 HONEY deposit went
+ * to the treasury (only refunded if it passes)."): Scan's record first, else the pinned policy. A cancelled
+ * proposal adds that the cost is never refunded. Empty while it votes, without a deposit, or when it is not known.
+ */
+export function depositSentence(p: Pick<ProposalModel, 'status' | 'config' | 'deposit' | 'outcome'>, formatCoin: (coin: DaoCoin) => string): string {
+    const outcome = outcomeOfStatus(p.status);
+    if (outcome === 'pending') return '';
+    const config = p.config;
+    const cost = p.status === 'CANCELLED' && hasAmount(config?.proposal_cost) ? ' The cost is never refunded.' : '';
+    if (!hasAmount(p.deposit)) return cost.trim();
+    const the = `The ${formatCoin(p.deposit)} deposit`;
+    const policy = config?.deposit_refund_policy ?? null;
+    const kept = config?.kept_deposit_destination ?? null;
+    const why = policy === 'ONLY_PASSED' ? ' (only refunded if it passes)' : policy === 'NEVER' ? ' (this DAO never refunds deposits)' : '';
+
+    const refunded = p.outcome && p.outcome.depositRefunded !== null ? p.outcome.depositRefunded : policy ? depositRefunded(policy, outcome) : null;
+    if (refunded === null) return cost.trim();
+    if (refunded) return `${the} went back to the proposer.${cost}`;
+    return `${the} ${kept ? KEPT_SENTENCE[kept] : 'was kept'}${why}.${cost}`;
+}

@@ -210,13 +210,22 @@ export const YourVoteCard = ({actions, model, mine, formatWeight, onConnect}: Pr
 
     return (
         <Shell featured pill={<Pill tone="warning" testId="not-voted">Not voted</Pill>}>
-            <WeightBox weight={weight} />
+            {/* phone (I3): one line with the weight and one Vote button that opens the sheet */}
+            <Flex display={{base: 'flex', md: 'none'}} gap="16px" align="center" justify="space-between" wrap="wrap" data-testid="phone-weight" data-viewport="phone">
+                <chakra.span fontSize="13px" lineHeight="1.5" color="hg.text.faint">Counts for</chakra.span>
+                <strong>{weight}</strong>
+            </Flex>
+            <Button display={{base: 'inline-flex', md: 'none'}} variant={hgVariant('primary')} w="100%" h="44px" fontSize="15px" disabled={buttonsOff} onClick={() => actions.open({kind: 'vote', option: null})} data-testid="vote-open-phone" data-viewport="phone">Vote</Button>
+            {/* desktop (E2): the weight box and the three options */}
+            <Flex display={{base: 'none', md: 'flex'}} direction="column" gap="12px" data-viewport="desktop">
+                <WeightBox weight={weight} />
+                <SimpleGrid columns={3} gap="8px">
+                    {optionButton('YES', 'Yes')}
+                    {optionButton('NO', 'No')}
+                    {optionButton('ABSTAIN', 'Abstain')}
+                </SimpleGrid>
+            </Flex>
             {notCountedLines}
-            <SimpleGrid columns={3} gap="8px">
-                {optionButton('YES', 'Yes')}
-                {optionButton('NO', 'No')}
-                {optionButton('ABSTAIN', 'Abstain')}
-            </SimpleGrid>
             {blocked ? <Small testId="actions-blocked">{blocked}</Small> : <Small>You can change your vote until voting ends.</Small>}
             {cancel}
             {ledger}

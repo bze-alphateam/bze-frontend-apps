@@ -28,7 +28,7 @@ export type FlowState =
     /** The wallet is signing (or the transaction is on its way); `batches` counts the accepted clean-up batches. */
     | {phase: 'signing'; kind: ActionKind; batches: number; /** Ballots deleted so far by a clean-up; null when the chain's events did not say. */ processed: number | null}
     /** Refused or not signed: nothing was sent, the actions are open again. */
-    | {phase: 'failed'; kind: ActionKind; error: string; batches: number}
+    | {phase: 'failed'; kind: ActionKind; error: string; batches: number; /** Where it stopped (`sign`: the wallet declined; `prepare`: the simulation refused it, nothing signed); absent when no transaction said. */ stage?: 'prepare' | 'sign' | 'chain' | 'timeout'}
     /** Sent but not confirmed (or confirmed but the chain cannot be asked): locked until the proposal is re-read. */
     | {phase: 'unconfirmed'; kind: ActionKind; error: string; txHash?: string; batches: number; /** What the proposal looked like when it was sent, to tell later whether it changed. */ baseline: string; /** Why the last check could not settle it. */ note?: string}
     /** On chain. `reread: 'failed'` keeps the actions locked, since the page still shows the state before it. */
@@ -91,7 +91,7 @@ export function useActionFlow(deps: ActionFlowDeps, initial: FlowState = {phase:
             if (!out.ok) {
                 setState(out.unconfirmed
                     ? {phase: 'unconfirmed', kind, error: out.error, txHash: out.txHash, batches: 0, baseline: baselines.current}
-                    : {phase: 'failed', kind, error: out.error, batches: 0});
+                    : {phase: 'failed', kind, error: out.error, batches: 0, stage: out.stage});
                 return;
             }
             const reread = await latest.current.refresh();
@@ -119,7 +119,7 @@ export function useActionFlow(deps: ActionFlowDeps, initial: FlowState = {phase:
                 const out = result.outcome;
                 setState(out.unconfirmed
                     ? {phase: 'unconfirmed', kind: 'cleanup', error: out.error, txHash: out.txHash, batches: result.batches, baseline: baselines.current}
-                    : {phase: 'failed', kind: 'cleanup', error: out.error, batches: result.batches});
+                    : {phase: 'failed', kind: 'cleanup', error: out.error, batches: result.batches, stage: out.stage});
             } else if (result.reason === 'unreadable') {
                 setState({phase: 'unconfirmed', kind: 'cleanup', error: 'The last batch went through, but the chain could not be read to see whether the clean-up is finished.', batches: result.batches, baseline: baselines.current});
             } else {

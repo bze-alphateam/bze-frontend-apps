@@ -6,7 +6,7 @@ import type {TallyView} from './proposal-tally';
 // The words of the proposal page that only it shows: its pill, the clock in its header, the dates as the
 // page writes them, and the card at the top of the page that says what can happen next.
 
-export type PageTone = 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
+export type PageTone = 'accent' | 'info' | 'success' | 'warning' | 'danger' | 'neutral';
 
 export interface PagePill {
     /** The same keys as `describeStatus`, plus the two settle states of a proposal still in voting. */
@@ -90,11 +90,15 @@ export function countdown(iso: string | null | undefined, nowMs: number, short =
     return `in ${plural(minutes, 'minute', short)}`;
 }
 
-/** The clock in the header: "Voting ends in 3 days 4 hours · 22 Nov, 13:00 UTC", "Expedited · ends in 22 hours"; empty once voting is over. */
-export function headerClock(p: Pick<ProposalModel, 'status' | 'votingEnded' | 'votingEnd' | 'expedited'>, nowMs: number): string {
+/**
+ * The clock in the header: "Voting ends in 3 days 4 hours · 22 Nov, 13:00 UTC", "Expedited · ends in 22 hours";
+ * empty once voting is over. `phone` is the phone's short form (I3): "Voting ends in 3 days 4 h", no date.
+ */
+export function headerClock(p: Pick<ProposalModel, 'status' | 'votingEnded' | 'votingEnd' | 'expedited'>, nowMs: number, phone = false): string {
     if (p.status !== 'VOTING' || !p.votingEnd) return '';
     if (p.votingEnded) return `Voting ended · ${shortStampOf(p.votingEnd)}`;
-    const left = countdown(p.votingEnd, nowMs);
+    const left = countdown(p.votingEnd, nowMs, phone);
+    if (phone) return left ? `${p.expedited ? 'Expedited · ends' : 'Voting ends'} ${left}` : `${p.expedited ? 'Expedited · ends' : 'Voting ends'} ${shortStampOf(p.votingEnd)}`;
     if (p.expedited) return left ? `Expedited · ends ${left}` : `Expedited · ends ${shortStampOf(p.votingEnd)}`;
     return left ? `Voting ends ${left} · ${shortStampOf(p.votingEnd)}` : `Voting ends ${shortStampOf(p.votingEnd)}`;
 }
@@ -110,6 +114,10 @@ export interface StateCard {
     title: string;
     text: string;
 }
+
+const FINISHED_WORD: Record<ProposalModel['status'], string> = {
+    VOTING: 'voting', EXECUTED: 'executed', EXECUTION_FAILED: 'execution failed', REJECTED: 'rejected', EXPIRED: 'expired', CANCELLED: 'cancelled',
+};
 
 const actionsCount = (n: number) => `${n} ${n === 1 ? 'action' : 'actions'}`;
 
@@ -129,9 +137,15 @@ export function stateCard(
     view: TallyView | null,
     nowMs: number,
     memberList: boolean,
+    /** Where the deposit went, as a sentence (`depositSentence`); empty when there was none or it is not known. */
+    deposit = '',
 ): StateCard | null {
     if (p.archived) {
-        return {kind: 'archived', tone: 'neutral', title: '', text: "Cleaned up from the chain after it finished, so this page reads BZE Scan's record."};
+        const record = [
+            p.outcome?.settledHeight ? `${FINISHED_WORD[p.status]} at block ${p.outcome.settledHeight.toLocaleString('en-US')}` : FINISHED_WORD[p.status],
+            p.outcome ? `${p.outcome.votesCount.toLocaleString('en-US')} ${p.outcome.votesCount === 1 ? 'vote' : 'votes'}` : '',
+        ].filter(Boolean).join(', ');
+        return {kind: 'archived', tone: 'neutral', title: '', text: `Cleaned up from the chain after it finished, so this page reads BZE Scan's record: ${record}.`};
     }
     const kind = settleKind(p, nowMs);
     const n = p.msgs.length;
@@ -170,14 +184,27 @@ export function stateCard(
 
     const parts: string[] = [];
     const settled = p.outcome?.settledHeight;
-    const numbers = turnoutAndYes(view);
-    if (p.status !== 'CANCELLED' && (settled || numbers)) {
-        parts.push(`${[settled ? `Settled at block ${settled.toLocaleString('en-US')}` : '', numbers.replace(', ', ' · ')].filter(Boolean).join(' · ')}.`);
+    const at = settled ? `Settled at block ${settled.toLocaleString('en-US')}` : 'Settled';
+    const quorum = view?.bars.find((b) => b.id === 'quorum');
+    const yes = view?.bars.find((b) => b.id === 'threshold');
+    if (p.status === 'EXECUTED' || p.status === 'EXPIRED') {
+        const numbers = turnoutAndYes(view);
+        if (p.status === 'EXECUTED') parts.push(`${[at, numbers.replace(', ', ' · ')].filter(Boolean).join(' · ')}.`);
+        parts.push(p.status === 'EXPIRED'
+            ? `It passed, but ${n === 1 ? 'its action' : 'its actions'} kept failing until the retry deadline. Nothing ran.`
+            : n === 0 ? 'It passed; it had no actions to run.' : n === 1 ? 'Its action ran.' : 'Its actions ran.');
     }
-    if (p.status === 'EXECUTED') parts.push(n === 0 ? 'It passed; it had no actions to run.' : n === 1 ? 'Its action ran.' : 'Its actions ran.');
-    if (p.status === 'REJECTED') parts.push('Nothing ran.');
-    if (p.status === 'EXPIRED') parts.push('It passed, but its actions kept failing until the retry deadline. Nothing ran.');
-    if (p.status === 'CANCELLED') parts.push('Cancelled before the end of voting. Nothing ran.');
+    if (p.status === 'REJECTED') {
+        let why = '';
+        if (quorum && !quorum.met) why = `turnout ${spaced(quorum.achieved)}, below the ${spaced(quorum.required)} quorum`;
+        else if (yes && !yes.met) why = `${spaced(yes.achieved)} yes, not more than the ${spaced(yes.required)} it needed`;
+        parts.push(`${[at, why].filter(Boolean).join(' · ')}. Nothing ran.`);
+    }
+    if (p.status === 'CANCELLED') {
+        const block = p.outcome?.cancelledHeight;
+        parts.push(`Cancelled by its proposer${block ? ` at block ${block.toLocaleString('en-US')}` : ''}, before the end of voting. Nothing ran.`);
+    }
+    if (deposit) parts.push(deposit);
     return {kind: 'finished', tone: p.status === 'EXECUTED' ? 'success' : p.status === 'REJECTED' ? 'danger' : 'neutral', title: '', text: parts.join(' ')};
 }
 

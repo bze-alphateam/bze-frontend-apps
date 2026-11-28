@@ -64,6 +64,7 @@ test.describe("a static-list proposal in voting", () => {
     test("desktop: two columns, the aside right of the main column; phone: Your vote then Tally come first", async ({page}) => {
         await page.setViewportSize({width: 1280, height: 900});
         await page.goto("/proposal/8");
+        await expect(page.getByTestId("proposal-meta-phone")).toBeHidden();
         const main = await page.getByTestId("tally-panel").boundingBox();
         const aside = await page.getByTestId("your-vote").boundingBox();
         expect(main && aside && aside.x > main.x + main.width - 1).toBe(true);
@@ -72,6 +73,11 @@ test.describe("a static-list proposal in voting", () => {
         await expect(page.getByTestId("proposal-aside").getByTestId("money-panel")).toBeVisible();
 
         await page.setViewportSize({width: 390, height: 844});
+        // the phone header: one line, the clock and the proposer, no "In <DAO>" and no Explorer
+        await expect(page.getByTestId("proposal-meta-phone")).toBeVisible();
+        await expect(page.getByTestId("proposal-meta-phone")).toContainText(/Voting ends .* · by /);
+        await expect(page.getByTestId("proposal-dao")).toBeHidden();
+        await expect(page.getByTestId("proposal-explorer")).toBeHidden();
         const ys = async (id: string) => (await page.getByTestId(id).boundingBox())?.y ?? -1;
         const order = ["your-vote", "tally-panel", "actions-panel", "summary-panel", "timeline-panel", "money-panel", "votes-panel"];
         const tops: number[] = [];

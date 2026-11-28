@@ -37,6 +37,7 @@ export const Caption = ({children}: {children: ReactNode}) => <chakra.span fontS
 
 const PILL: Record<PageTone, {color: string; bg: string; border: string}> = {
     accent: {color: 'hg.link.hover', bg: 'hg.accent/14', border: 'hg.accent/40'},
+    info: {color: 'hg.info.text', bg: 'hg.info/12', border: 'hg.info/38'},
     success: {color: 'hg.success.text', bg: 'hg.success/12', border: 'hg.success/38'},
     warning: {color: 'hg.warning.text', bg: 'hg.warning/12', border: 'hg.warning/38'},
     danger: {color: 'hg.danger.text', bg: 'hg.danger/12', border: 'hg.danger/38'},
@@ -72,6 +73,7 @@ export const Pill = ({tone, live, testId, children}: {tone: PageTone; live?: boo
 
 const NOTE: Record<PageTone, {bg: string; border: string; icon: string}> = {
     accent: {bg: 'hg.accent/8', border: 'hg.accent/30', icon: 'hg.link.hover'},
+    info: {bg: 'hg.info/8', border: 'hg.info/30', icon: 'hg.info.text'},
     success: {bg: 'hg.success/8', border: 'hg.success/30', icon: 'hg.success.text'},
     warning: {bg: 'hg.warning/8', border: 'hg.warning/30', icon: 'hg.warning.text'},
     danger: {bg: 'hg.danger/8', border: 'hg.danger/30', icon: 'hg.danger.text'},
@@ -80,6 +82,7 @@ const NOTE: Record<PageTone, {bg: string; border: string; icon: string}> = {
 
 const NOTE_ICON: Record<PageTone, ReactNode> = {
     accent: <LuInfo size={16} />,
+    info: <LuInfo size={16} />,
     success: <LuCircleCheck size={16} />,
     warning: <LuTriangleAlert size={16} />,
     danger: <LuTriangleAlert size={16} />,

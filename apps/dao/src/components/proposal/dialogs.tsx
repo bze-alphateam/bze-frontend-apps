@@ -8,6 +8,7 @@ import type {AsyncValue} from '@/hooks/useAsync';
 import {cancelNotice, VOTE_CHOICES, type VoteChoice} from '@/lib/proposal-actions';
 import {optionLabel, type MyVote} from '@/lib/proposal-loader';
 import type {ProposalModel} from '@/lib/proposal-model';
+import {statusLabel} from '@/lib/proposal-status';
 import {tallyView} from '@/lib/proposal-tally';
 import {deadlineOf, dayOf, spaced, tallyWithYes} from '@/lib/proposal-view';
 import type {ProposalActions, ProposalDialog} from './actions-slot';
@@ -18,6 +19,8 @@ import {Note, Pill, Rows, Small, Swatch} from './ui';
 interface Props {
     actions: ProposalActions;
     model: ProposalModel;
+    /** What each action does if the proposal passes, in order (`actionEffects`). */
+    effects: string[];
     mine: AsyncValue<MyVote>;
     formatWeight: (amount: string) => string;
     formatCoin: (coin: DaoCoin) => string;
@@ -116,7 +119,7 @@ const VoteForm = ({actions, model, initial, formatWeight}: {actions: ProposalAct
 };
 
 /** E5 dialog 3: vote yes and settle in one transaction, the expedite bars as they will be with this yes. */
-const VoteSettleForm = ({actions, model, mine, formatWeight}: Omit<Props, 'formatCoin'>) => {
+const VoteSettleForm = ({actions, model, mine, formatWeight, effects}: Omit<Props, 'formatCoin'>) => {
     const vs = actions.view.voteAndSettle;
     if (!vs) return null;
     const memberList = model.daoType === 'DAO_TYPE_STATIC_LIST';
@@ -144,7 +147,9 @@ const VoteSettleForm = ({actions, model, mine, formatWeight}: Omit<Props, 'forma
             )}
             <P testId="vote-and-settle-note">
                 {`One transaction does both: your vote (YES, counted at ${formatWeight(vs.weight)}), then the settle. The proposal passes`}
-                {model.msgs.length > 0 ? ` and its ${actionsCount(model.msgs.length)} run there.` : '.'}
+                {effects.length === 0
+                    ? '.'
+                    : <>{` and ${effects.length === 1 ? 'its action runs' : `its ${actionsCount(effects.length)} run`}: `}<strong data-testid="vote-and-settle-effect">{effects.join('; ')}</strong>.</>}
             </P>
             <Button variant={hgVariant('primary')} w="100%" h="44px" disabled={!vs.enabled} onClick={actions.voteAndSettle} data-testid="vote-and-settle-confirm">
                 <LuCheck aria-hidden /> Vote yes and settle
@@ -172,7 +177,7 @@ const SettleForm = ({actions, model}: {actions: ProposalActions; model: Proposal
         const error = model.outcome?.executionError;
         return (
             <Flex direction="column" gap="16px">
-                {error && <Note tone="accent" testId="execution-error">Last time: <strong>{error}</strong>.</Note>}
+                {error && <Note tone="info" testId="execution-error">Last time: <strong>{error}</strong>.</Note>}
                 <P testId="settle-note">{`Same transaction as settling: it runs the actions again.${model.retryDeadline ? ` Retry is open until ${deadlineOf(model.retryDeadline)}.` : ''} If they fail again it stays failed; a payment that failed on an empty treasury succeeds once the funds are there.`}</P>
                 <Button variant={hgVariant('primary')} w="100%" h="44px" disabled={!s.enabled} onClick={actions.settle} data-testid="settle-confirm"><LuRotateCw aria-hidden /> Retry now</Button>
                 {reason}
@@ -238,7 +243,7 @@ function headOf(dialog: ProposalDialog, actions: ProposalActions, model: Proposa
         case 'vote': return {title: actions.view.vote?.current ? 'Change your vote' : 'Vote on this proposal', sub: named};
         case 'vote-settle': return {title: 'Vote yes and settle now?', sub: named};
         case 'cancel': return {title: 'Cancel your proposal?', sub: named};
-        case 'cleanup': return {title: `Clean up #${model.id}`, sub: `Finished · ${model.status === 'EXECUTED' ? 'executed' : model.status.toLowerCase()}`};
+        case 'cleanup': return {title: `Clean up #${model.id}`, sub: `Finished · ${statusLabel(model.status).toLowerCase()}`};
         case 'settle': {
             const kind = actions.view.settle?.kind;
             if (kind === 'retry') return {title: `Retry the actions of #${model.id}`, sub: model.title};
@@ -252,7 +257,7 @@ function headOf(dialog: ProposalDialog, actions: ProposalActions, model: Proposa
  * The one dialog of the page (E5, E6; a bottom sheet on a phone, I4). Once its transaction starts, the
  * transaction panel (E7) takes the form's place; answers are kept until it is confirmed.
  */
-export const ProposalDialogs = ({actions, model, mine, formatWeight, formatCoin}: Props) => {
+export const ProposalDialogs = ({actions, model, effects, mine, formatWeight, formatCoin}: Props) => {
     const {dialog} = actions;
     if (!dialog) return null;
     const moved = actions.flow.state !== actions.stateAtOpen || actions.flow.locked;
@@ -260,7 +265,7 @@ export const ProposalDialogs = ({actions, model, mine, formatWeight, formatCoin}
     const body = moved
         ? <TxPanel state={actions.flow.state} progress={actions.progress} status={model.status} onRecheck={() => void actions.flow.recheck()} />
         : dialog.kind === 'vote' ? <VoteForm actions={actions} model={model} initial={dialog.option} formatWeight={formatWeight} />
-            : dialog.kind === 'vote-settle' ? <VoteSettleForm actions={actions} model={model} mine={mine} formatWeight={formatWeight} />
+            : dialog.kind === 'vote-settle' ? <VoteSettleForm actions={actions} model={model} effects={effects} mine={mine} formatWeight={formatWeight} />
                 : dialog.kind === 'settle' ? <SettleForm actions={actions} model={model} />
                     : dialog.kind === 'cancel' ? <CancelForm actions={actions} model={model} formatCoin={formatCoin} />
                         : <CleanupForm actions={actions} />;

@@ -53,8 +53,8 @@ const LinkButton = ({onClick, children, testId}: {onClick: () => void; children:
     <chakra.button type="button" alignSelf="flex-start" color="hg.link" fontSize="14px" fontWeight="600" cursor="pointer" onClick={onClick} data-testid={testId}>{children}</chakra.button>
 );
 
-const Panel = ({tone, icon, eyebrow, title, testId, children}: {tone: Tone; icon: ReactNode; eyebrow: string; title: string; testId: string; children: ReactNode}) => (
-    <chakra.section bg="hg.card" borderWidth="1px" borderColor={TONE[tone].edge} borderRadius="16px" p="22px" display="flex" flexDirection="column" gap="12px" minW="0" data-testid={testId} aria-live="polite">
+const Panel = ({tone, icon, eyebrow, title, testId, kind, children}: {tone: Tone; icon: ReactNode; eyebrow: string; title: string; testId: string; kind?: string; children: ReactNode}) => (
+    <chakra.section bg="hg.card" borderWidth="1px" borderColor={TONE[tone].edge} borderRadius="16px" p="22px" display="flex" flexDirection="column" gap="12px" minW="0" data-testid={testId} data-kind={kind} aria-live="polite">
         <Flex gap="12px" align="center">
             <chakra.span boxSize="44px" flex="none" borderRadius="999px" bg={TONE[tone].disc} color={TONE[tone].icon} display="inline-flex" alignItems="center" justifyContent="center" aria-hidden>{icon}</chakra.span>
             <Flex direction="column" gap="2px" minW="0">
@@ -93,13 +93,31 @@ export const TxPanel = ({state, progress, status, onRecheck}: Props) => {
                     <chakra.span fontSize="13px" color="hg.text.faint" data-testid="action-progress">{progress || 'Waiting for the wallet…'}</chakra.span>
                 </Panel>
             );
-        case 'failed':
+        case 'failed': {
+            const stopped = state.kind === 'cleanup' && state.batches ? `The clean-up stopped after ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'}` : null;
+            if (state.stage === 'sign') {
+                return (
+                    <Panel tone="neutral" icon={<LuX size={22} />} eyebrow="Not sent" title={stopped ?? 'You declined in the wallet'} testId="action-error" kind="declined">
+                        <span>Nothing was sent. Your choices are still here.</span>
+                        <chakra.span fontSize="13px" color="hg.text.faint">{state.error}</chakra.span>
+                    </Panel>
+                );
+            }
+            if (state.stage === 'prepare') {
+                return (
+                    <Panel tone="danger" icon={<LuTriangleAlert size={22} />} eyebrow="Refused before signing" title={stopped ?? 'The chain would refuse it'} testId="action-error" kind="refused">
+                        <span>{state.error}</span>
+                        <chakra.span fontSize="13px" color="hg.text.faint">The simulation failed, so nothing was signed or paid. Your choices are still here.</chakra.span>
+                    </Panel>
+                );
+            }
             return (
-                <Panel tone="danger" icon={<LuTriangleAlert size={22} />} eyebrow="Not sent" title={state.kind === 'cleanup' && state.batches ? `The clean-up stopped after ${state.batches} ${state.batches === 1 ? 'batch' : 'batches'}` : 'Nothing was sent'} testId="action-error">
+                <Panel tone="danger" icon={<LuTriangleAlert size={22} />} eyebrow={state.stage === 'chain' ? 'Refused' : 'Not sent'} title={stopped ?? (state.stage === 'chain' ? 'The chain refused it' : 'Nothing was sent')} testId="action-error" kind={state.stage === 'chain' ? 'chain' : 'other'}>
                     <span>{state.error}</span>
                     <chakra.span fontSize="13px" color="hg.text.faint">Your choices are still here.</chakra.span>
                 </Panel>
             );
+        }
         case 'unconfirmed':
             return (
                 <Panel tone="warning" icon={<LuInfo size={22} />} eyebrow="Unknown" title="Taking longer than usual" testId="action-unconfirmed">

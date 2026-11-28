@@ -59,6 +59,29 @@ test.describe("vote and revote", () => {
         await expect(page.getByTestId("vote-confirm")).toHaveText("Change to No");
     });
 
+    test("phone: Your vote shows 'Counts for' and one Vote button that opens the sheet; desktop shows the three options", async ({page, network}) => {
+        // the wallet has not voted on proposal 8 here
+        network.use("lcd", {...fixture("dao.ballot.10.wallet.json"), path: "/bze/dao/ballot/8/" + WALLET});
+        fundWallet(network);
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/proposal/8");
+        // connect at desktop width (the phone header hides the button's label), then go to phone width
+        await connectWallet(page);
+        await page.setViewportSize({width: 390, height: 844});
+
+        await expect(page.getByTestId("phone-weight")).toBeVisible();
+        await expect(page.getByTestId("phone-weight")).toContainText("Counts for");
+        await expect(page.getByTestId("vote-option-yes")).toBeHidden();
+        await page.getByTestId("vote-open-phone").click();
+        await expect(page.getByTestId("dialog-vote")).toBeVisible();
+        await expect(page.getByTestId("dialog-option-yes")).toBeChecked();
+        await page.keyboard.press("Escape");
+
+        await page.setViewportSize({width: 1280, height: 900});
+        await expect(page.getByTestId("vote-option-yes")).toBeVisible();
+        await expect(page.getByTestId("vote-open-phone")).toBeHidden();
+    });
+
     test("a vote that cannot be signed here shows a failure, not a success, and sends nothing", async ({page, network}) => {
         fundWallet(network);
         await installFakeKeplr(page, WALLET);
