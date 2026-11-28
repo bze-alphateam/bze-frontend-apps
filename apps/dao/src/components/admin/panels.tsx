@@ -1,11 +1,12 @@
 'use client';
 
-import {useMemo, useState} from 'react';
+import {useMemo, useState, type ReactNode} from 'react';
+import NextLink from 'next/link';
 import {Button, Field, Input} from '@chakra-ui/react';
 import {chakra, Flex} from '@chakra-ui/react';
 import {
     buildAcceptAdminNominationMsg, buildAdminExecuteMsg, buildNominateAdminMsg, buildWithdrawAdminNominationMsg,
-    hgVariant, Notice, Shimmer,
+    HgCard, hgVariant, Notice, Shimmer,
 } from '@bze/bze-ui-kit';
 import type {EncodeObject} from '@bze/bzejs/types';
 import {useAsync} from '@/hooks/useAsync';
@@ -13,13 +14,13 @@ import type {ActionKind} from '@/hooks/useActionFlow';
 import {composeAdminActions} from '@/lib/actions/sub-dao';
 import {findAction} from '@/lib/actions/registry';
 import type {ActionDraft} from '@/lib/actions/types';
-import {checkNomination, STALE_NOMINATION_TEXT, type NominationChain} from '@/lib/admin/nomination';
+import {isNominationStale, type NominationChain} from '@/lib/admin/nomination';
 import {handOverBlocked, handOverConfirmed, nominateBlocked, withdrawBlocked} from '@/lib/admin/operations';
 import type {DaoView} from '@/lib/dao-view-loader';
+import {daoTabHref} from '@/lib/dao-tabs';
 import {describeAll} from '@/lib/propose/describe';
 import type {Relations} from '@/lib/propose/relations';
 import {AddressLine, Panel} from '@/components/dao/page/panel';
-import {RulesPanel, TreasuryPanel} from '@/components/dao/page/panels';
 import {useCoinFormat} from '@/components/dao/page/use-coin-format';
 import {ActionsPanel} from '@/components/proposal/actions-panel';
 import {ActionsList} from '@/components/propose/actions-list';
@@ -231,44 +232,82 @@ export const HandOverPanel = ({view, relations, wallet, locked, onSend}: OpProps
 
 // ---- the nominee ----
 
-/** What the nominee takes over, whether the nomination still holds, and the acceptance. */
+const pillTone = {
+    nominated: {color: 'hg.warning.text', bg: 'hg.warning/12', borderColor: 'hg.warning/38'},
+    stale: {color: 'fg.muted', bg: 'app.subtle', borderColor: 'app.border'},
+} as const;
+
+const Pill = ({tone, children, testId}: {tone: keyof typeof pillTone; children: string; testId: string}) => (
+    <chakra.span fontSize="12px" fontWeight="600" px="9px" py="3px" borderRadius="hg.pill" whiteSpace="nowrap" borderWidth="1px" {...pillTone[tone]} data-testid={testId}>
+        {children}
+    </chakra.span>
+);
+
+/** A card of the nominee's console. */
+const HgCardSection = ({testId, children}: {testId: string; children: ReactNode}) => (
+    <HgCard as="section" data-testid={testId}>
+        <Flex direction="column" gap="16px" p={{base: '16px', md: '24px'}}>{children}</Flex>
+    </HgCard>
+);
+
+const ViewDao = ({id}: {id: string}) => (
+    <Button asChild variant={hgVariant('secondary')}>
+        <NextLink href={daoTabHref(id)} data-testid="accept-view-dao">View DAO</NextLink>
+    </Button>
+);
+
+/** The tick's words: what taking over the DAO means for the nominee. */
+const acceptUnderstanding = (name: string): string =>
+    `I understand that becoming the admin of ${name} comes with responsibilities. I can act for the DAO and spend its treasury without a vote, so I'll keep this address secure for the DAO's sake: if it's lost or stolen, so is control of the DAO.`;
+
+/**
+ * The nominee's console: one card. Before anything is offered the nomination is checked the way the chain
+ * checks it (`isNominationStale`): stale, the card says who has to nominate again; otherwise, the accept card,
+ * whose button waits for the tick. A check the chain could not answer shows the accept card too: the chain's
+ * own refusal (1135) still covers a stale nomination then.
+ */
 export const AcceptPanel = ({view, wallet, locked, onSend, chain}: OpProps & {chain: NominationChain}) => {
     const {dao} = view;
     const coins = useCoinFormat();
-    const [retry, setRetry] = useState(0);
-    const check = useAsync(`${dao.id}:${dao.pending_admin_seq}:${dao.admin_seq}:${retry}`, () => checkNomination(chain, dao));
+    const [understood, setUnderstood] = useState(false);
+    const check = useAsync(`${dao.id}:${dao.pending_admin}:${dao.pending_admin_seq}:${dao.admin}`, () => isNominationStale(chain, dao));
     const msg = buildAcceptAdminNominationMsg({nominee: wallet, daoId: dao.id});
-    const result = check.data ?? (check.error ? {state: 'unreadable' as const, reason: 'The nomination could not be checked.'} : undefined);
+
+    if (check.loading) return <Shimmer h="180px" borderRadius="16px" data-testid="accept-checking" />;
+
+    const staleness = check.data;
+    if (staleness?.stale) {
+        const parent = staleness.parent.name;
+        return (
+            <HgCardSection testId="stale-card">
+                <Flex gap="10px" align="center" wrap="wrap">
+                    <chakra.h2 m="0" fontSize="17px" fontWeight="700">This nomination is out of date</chakra.h2>
+                    <Pill tone="stale" testId="stale-pill">Stale</Pill>
+                </Flex>
+                <chakra.p m="0" fontSize="14px" data-testid="stale-text">
+                    {`${parent}, the DAO that runs ${dao.name}, changed its admin after you were nominated, so this nomination can no longer be accepted. ${parent} has to nominate you again.`}
+                </chakra.p>
+                <Flex gap="8px" justify="flex-end" wrap="wrap"><ViewDao id={dao.id} /></Flex>
+            </HgCardSection>
+        );
+    }
 
     return (
-        <Flex direction="column" gap="16px" data-testid="accept-console">
-            <Panel id="accept" title="You are nominated as the admin" testId="accept-panel">
-                <chakra.p m="0" fontSize="14px">{`${dao.name} nominated your wallet to take it over. Until you accept, nothing changes.`}</chakra.p>
-                <Flex gap="6px" align="center" wrap="wrap" fontSize="14px"><span>Current admin:</span><AddressLine address={dao.admin} full /></Flex>
-                <chakra.p {...muted}>{`If you accept, you become its admin. ${POWER_NOTE}`}</chakra.p>
-            </Panel>
-            <TreasuryPanel treasury={view.treasury} />
-            <RulesPanel dao={dao} params={view.params} />
-            <Panel id="accept-check" title="Accept" testId="accept-check">
-                {check.loading && <Shimmer h="24px" borderRadius="8px" />}
-                {result?.state === 'stale' && (
-                    <Notice status="danger"><span data-testid="accept-stale">{STALE_NOMINATION_TEXT}</span></Notice>
-                )}
-                {result?.state === 'unreadable' && (
-                    <Flex direction="column" gap="6px" data-testid="accept-unreadable">
-                        <Notice status="warning">{`${result.reason} Whether the nomination is still valid is not known, so it cannot be accepted yet.`}</Notice>
-                        <chakra.button type="button" alignSelf="flex-start" color="hg.link" fontWeight="600" cursor="pointer" onClick={() => setRetry((n) => n + 1)} data-testid="accept-retry">Check again</chakra.button>
-                    </Flex>
-                )}
-                {result?.state === 'fresh' && (
-                    <>
-                        <SignReview msg={msg} view={view} wallet={wallet} title="What you sign" />
-                        <div>
-                            <Button variant={hgVariant('primary')} disabled={locked || unreadableOf(msg, view, coins.exact)} onClick={() => onSend('accept', [msg])} data-testid="accept-submit">Accept the nomination</Button>
-                        </div>
-                    </>
-                )}
-            </Panel>
-        </Flex>
+        <HgCardSection testId="accept-card">
+            <Flex gap="10px" align="center" wrap="wrap">
+                <chakra.h2 m="0" fontSize="17px" fontWeight="700" data-testid="accept-title">{`You're nominated to run ${dao.name}`}</chakra.h2>
+                <Pill tone="nominated" testId="nominated-pill">Nominated</Pill>
+            </Flex>
+            <chakra.label display="flex" gap="12px" alignItems="flex-start" fontSize="14px" cursor="pointer" p="14px 16px" borderRadius="12px" bg="app.subtle" borderWidth="1px" borderColor="app.border">
+                <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} style={{marginTop: '4px'}} data-testid="accept-understood" />
+                <span data-testid="accept-understood-text">{acceptUnderstanding(dao.name)}</span>
+            </chakra.label>
+            <Flex gap="8px" justify="flex-end" wrap="wrap">
+                <ViewDao id={dao.id} />
+                <Button variant={hgVariant('primary')} disabled={!understood || locked || unreadableOf(msg, view, coins.exact)} onClick={() => onSend('accept', [msg])} data-testid="accept-submit">
+                    Accept and become admin
+                </Button>
+            </Flex>
+        </HgCardSection>
     );
 };

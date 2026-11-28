@@ -97,6 +97,14 @@ describe("who gets the console", () => {
         // no nomination yet: nothing to withdraw
         expect(screen.queryByTestId("withdraw-panel")).toBeNull();
     });
+
+    it("the admin's cards take the whole width: there is no This DAO side panel", () => {
+        renderConsole(administered);
+        expect(screen.queryByText("This DAO")).toBeNull();
+        expect(screen.queryByTestId("this-dao-panel")).toBeNull();
+        expect(screen.queryByTestId("treasury-panel")).toBeNull();
+        expect(screen.queryByText(/^Pending/)).toBeNull();
+    });
 });
 
 describe("a wallet that disconnects", () => {
@@ -292,40 +300,85 @@ describe("nominate, withdraw, hand over", () => {
 
 describe("accept a nomination", () => {
     const nominated = full({admin: THIRD, pending_admin: WALLET, pending_admin_seq: "5", admin_seq: "5"});
+    const TICK = "I understand that becoming the admin of Founders comes with responsibilities. I can act for the DAO and spend its treasury without a vote, so I'll keep this address secure for the DAO's sake: if it's lost or stolen, so is control of the DAO.";
+    // Founders is run by the DAO "Parent", which changed its admin after the nomination
+    const runByParent = full({admin: "bze1parent", pending_admin: WALLET, pending_admin_seq: "5", admin_seq: "5"});
+    const parentChain = (adminSeq: string) => chainOf({
+        getController: vi.fn(async () => controller([DAO_ADDRESS, "bze1parent"])),
+        getDaoByAddress: vi.fn(async () => full({id: "9", name: "Parent", address: "bze1parent", admin_seq: adminSeq})),
+    });
 
-    it("fresh: shows what the wallet takes over, then signs the acceptance as the nominee", async () => {
+    it("one card: the title, the Nominated pill, the tick, View DAO and the button", async () => {
+        renderConsole(nominated);
+        const card = await screen.findByTestId("accept-card");
+        expect(screen.getByTestId("accept-title")).toHaveTextContent("You're nominated to run Founders");
+        expect(screen.getByTestId("nominated-pill")).toHaveTextContent("Nominated");
+        expect(screen.getByTestId("accept-understood-text")).toHaveTextContent(TICK);
+        expect(screen.getByTestId("accept-view-dao")).toHaveAttribute("href", "/dao/4");
+        expect(screen.getByTestId("accept-submit")).toHaveTextContent("Accept and become admin");
+        expect(card).not.toHaveTextContent("DAO #");
+        expect(screen.queryByTestId("stale-card")).toBeNull();
+        expect(screen.queryByTestId("execute-panel")).toBeNull();
+    });
+
+    it("has none of the old texts: who nominated, what the nominee takes over, the warning, Not now, the back link", async () => {
+        renderConsole(nominated);
+        await screen.findByTestId("accept-card");
+        expect(screen.queryByTestId("accept-panel")).toBeNull();
+        expect(screen.queryByTestId("treasury-panel")).toBeNull();
+        expect(screen.queryByTestId("rules-panel")).toBeNull();
+        expect(screen.queryByText(/nominated your wallet/)).toBeNull();
+        expect(screen.queryByText(/Current admin/)).toBeNull();
+        expect(screen.queryByText(/can no longer overrule/)).toBeNull();
+        expect(screen.queryByText("Not now")).toBeNull();
+        expect(screen.queryByText("← Founders")).toBeNull();
+        expect(screen.queryByText("What you sign")).toBeNull();
+    });
+
+    it("the button stays disabled until the box is ticked, then signs the acceptance as the nominee", async () => {
         landed();
         renderConsole(nominated);
-        expect(screen.getByTestId("accept-panel")).toHaveTextContent("Founders nominated your wallet");
-        expect(screen.getByTestId("treasury-panel")).toBeInTheDocument();
-        expect(screen.getByTestId("rules-panel")).toBeInTheDocument();
-        expect(screen.queryByTestId("execute-panel")).toBeNull();
+        const submit = await screen.findByTestId("accept-submit");
+        expect(submit).toBeDisabled();
+        await userEvent.click(submit);
+        expect(txMock).not.toHaveBeenCalled();
 
-        await userEvent.click(await screen.findByTestId("accept-submit"));
+        await userEvent.click(screen.getByTestId("accept-understood"));
+        expect(submit).toBeEnabled();
+        await userEvent.click(screen.getByTestId("accept-understood"));
+        expect(submit).toBeDisabled();
+        await userEvent.click(screen.getByTestId("accept-understood"));
+
+        await userEvent.click(submit);
         const [msgs] = txMock.mock.calls[0];
         expect(msgs[0].typeUrl).toBe("/bze.dao.MsgAcceptAdminNomination");
         expect(msgs[0].value).toMatchObject({nominee: WALLET, daoId: 4n});
         await waitFor(() => expect(push).toHaveBeenCalledWith("/dao/4"));
     });
 
-    it("stale: says so instead of offering the button", async () => {
-        const chain = chainOf({
-            getController: vi.fn(async () => controller([DAO_ADDRESS, "bze1parent"])),
-            getDaoByAddress: vi.fn(async () => full({id: "9", name: "Parent", address: "bze1parent", admin_seq: "6"})),
-        });
-        renderConsole(nominated, {chain});
-        expect(await screen.findByTestId("accept-stale")).toHaveTextContent("This nomination is out of date; the current admin must withdraw it and nominate again.");
+    it("stale: the stale card replaces the accept card, naming the DAO that has to nominate again", async () => {
+        renderConsole(runByParent, {chain: parentChain("6")});
+        expect(await screen.findByTestId("stale-card")).toHaveTextContent("This nomination is out of date");
+        expect(screen.getByTestId("stale-pill")).toHaveTextContent("Stale");
+        expect(screen.getByTestId("stale-text")).toHaveTextContent("Parent, the DAO that runs Founders, changed its admin after you were nominated, so this nomination can no longer be accepted. Parent has to nominate you again.");
+        expect(screen.getByTestId("accept-view-dao")).toHaveAttribute("href", "/dao/4");
+        expect(screen.queryByTestId("accept-card")).toBeNull();
         expect(screen.queryByTestId("accept-submit")).toBeNull();
+        // no error code and no sequence numbers
+        expect(screen.getByTestId("stale-card")).not.toHaveTextContent(/1135|seq/);
     });
 
-    it("unreadable: no button, a way to check again", async () => {
-        const getController = vi.fn(async () => { throw new Error("rest"); });
-        renderConsole(nominated, {chain: chainOf({getController})});
-        expect(await screen.findByTestId("accept-unreadable")).toBeInTheDocument();
-        expect(screen.queryByTestId("accept-submit")).toBeNull();
+    it("run by a DAO that has not changed its admin: the accept card", async () => {
+        renderConsole(runByParent, {chain: parentChain("5")});
+        expect(await screen.findByTestId("accept-card")).toBeInTheDocument();
+        expect(screen.queryByTestId("stale-card")).toBeNull();
+    });
 
-        getController.mockImplementation(async () => controller([DAO_ADDRESS]) as never);
-        await userEvent.click(screen.getByTestId("accept-retry"));
-        expect(await screen.findByTestId("accept-submit")).toBeInTheDocument();
+    it("a check the chain could not answer shows the accept card: the chain's own refusal covers it", async () => {
+        const getController = vi.fn(async () => { throw new Error("rest"); });
+        renderConsole(runByParent, {chain: chainOf({getController})});
+        expect(await screen.findByTestId("accept-card")).toBeInTheDocument();
+        expect(screen.queryByTestId("stale-card")).toBeNull();
+        expect(getController).toHaveBeenCalled();
     });
 });
