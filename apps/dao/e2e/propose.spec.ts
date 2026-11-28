@@ -35,7 +35,7 @@ test.describe("the entry point", () => {
         const back = page.getByTestId("propose-back");
         await expect(back).toHaveText("Founders · proposals");
         await expect(back).toHaveAttribute("href", "/dao/2?tab=proposals");
-        await expect(page.getByRole("heading", {level: 1})).toHaveText("New proposal");
+        await expect(page.getByTestId("propose-title")).toHaveText("New proposal");
         await expect(page.getByText("← Founders")).toHaveCount(0);
     });
 });

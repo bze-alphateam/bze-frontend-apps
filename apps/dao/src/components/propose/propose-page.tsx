@@ -18,6 +18,7 @@ import type {NominationChain} from '@/lib/admin/nomination';
 import {daoTabHref} from '@/lib/dao-tabs';
 import {loadDaoView, loadVotingPower, type DaoView, type DaoViewDeps, type Part} from '@/lib/dao-view-loader';
 import {availableActions, findAction} from '@/lib/actions/registry';
+import {MEMBERS_ID} from '@/lib/actions/members';
 import type {ActionDraft} from '@/lib/actions/types';
 import {composeProposal} from '@/lib/propose/compose';
 import {summarizeCost} from '@/lib/propose/cost';
@@ -124,6 +125,10 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
         setApplied(null);
     }, [storage, dao.id]);
 
+    // a restored draft that already holds the wallet's own members change gets no shortcut button (it would add a second one)
+    const ownMembersChange = !!wallet && drafts.some((d) => d.type === MEMBERS_ID
+        && [d.fields.add, d.fields.remove].some((v) => (v ?? '').toLowerCase().split(/[\s,]+/).includes(wallet.toLowerCase())));
+
     // a shortcut button: the wallet's own members change is added, and the title filled in when there is none yet
     const applyShortcut = useCallback((shortcut: Shortcut) => {
         const prefilled = shortcutDraft(shortcut, dao, wallet, newKey);
@@ -156,7 +161,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                     </Flex>
                 </Notice>
             )}
-            <ShortcutsBar dao={dao} wallet={wallet} applied={applied} onApply={applyShortcut} />
+            <ShortcutsBar dao={dao} wallet={wallet} applied={applied} onApply={applyShortcut} drafted={ownMembersChange} />
             <Basics
                 dao={dao} params={params} title={title} summary={summary} expedited={expedited}
                 onTitle={setTitle} onSummary={setSummary} onExpedited={setExpedited}
@@ -218,7 +223,7 @@ export const ProposePage = ({id, deps = liveDaoViewDeps, relationDeps = liveRela
                             <NextLink href={daoTabHref(dao.id, 'proposals')} data-testid="propose-back"><LuArrowLeft size={14} aria-hidden />{`${dao.name} · proposals`}</NextLink>
                         </chakra.a>
                     )}
-                    <chakra.h1 m="0" fontSize={{base: '28px', md: '36px'}} lineHeight="1.15" fontWeight="800" letterSpacing="-0.02em">New proposal</chakra.h1>
+                    <chakra.h1 m="0" fontSize={{base: '28px', md: '36px'}} lineHeight="1.15" fontWeight="800" letterSpacing="-0.02em" data-testid="propose-title">New proposal</chakra.h1>
                 </chakra.section>
                 {(result.loading || (dao !== null && relations.loading)) && (
                     <Flex direction="column" gap="16px" aria-hidden data-testid="propose-loading">

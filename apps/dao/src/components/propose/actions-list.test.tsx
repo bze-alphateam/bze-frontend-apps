@@ -17,7 +17,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 const formatCoin = (c: {denom: string; amount: string}) => `${c.amount} ${c.denom}`;
 
 /** The list as the composer drives it: the drafts live in state, and what they compose to is read back at the end. */
-const Harness = ({ctx, onDrafts}: {ctx: ActionContext; onDrafts: (drafts: ActionDraft[]) => void}) => {
+const Harness = ({ctx, onDrafts, stale}: {ctx: ActionContext; onDrafts: (drafts: ActionDraft[]) => void; stale?: StaleNomination[]}) => {
     const [drafts, setDrafts] = useState<ActionDraft[]>([]);
     return (
         <ChakraProvider value={defaultSystem}>
@@ -28,6 +28,7 @@ const Harness = ({ctx, onDrafts}: {ctx: ActionContext; onDrafts: (drafts: Action
                 maxActions={16}
                 formatCoin={formatCoin}
                 onChange={(next) => { setDrafts(next); onDrafts(next); }}
+                staleNominations={stale}
             />
         </ChakraProvider>
     );
@@ -100,11 +101,7 @@ describe("the actions list", () => {
 describe("the picker", () => {
     const pick = (ctx: ActionContext, stale: StaleNomination[] = []) => {
         let drafts: ActionDraft[] = [];
-        render(
-            <ChakraProvider value={defaultSystem}>
-                <ActionsList drafts={[]} ctx={ctx} maxActions={16} formatCoin={formatCoin} onChange={(d) => { drafts = d; }} staleNominations={stale} />
-            </ChakraProvider>,
-        );
+        render(<Harness ctx={ctx} stale={stale} onDrafts={(d) => { drafts = d; }} />);
         fireEvent.click(screen.getByTestId("add-action"));
         return () => drafts;
     };

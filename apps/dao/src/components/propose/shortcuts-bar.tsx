@@ -10,6 +10,8 @@ interface Props {
     /** The shortcut that filled the proposal (from a link or a button here), if any. */
     applied: Shortcut | null;
     onApply: (shortcut: Shortcut) => void;
+    /** The list already holds the wallet's own members change (a restored draft): no button that would add another. */
+    drafted?: boolean;
 }
 
 const SHORTCUTS: readonly Shortcut[] = ['join', 'leave'];
@@ -19,8 +21,8 @@ const SHORTCUTS: readonly Shortcut[] = ['join', 'leave'];
  * shown only when that proposal could be submitted (`shortcutApplies`), so the last member is never offered
  * Leave. Once one is applied it reads "Prefilled" instead of a button.
  */
-export const ShortcutsBar = ({dao, wallet, applied, onApply}: Props) => {
-    const offered = SHORTCUTS.filter((s) => shortcutApplies(s, dao, wallet));
+export const ShortcutsBar = ({dao, wallet, applied, onApply, drafted = false}: Props) => {
+    const offered = drafted ? [] : SHORTCUTS.filter((s) => shortcutApplies(s, dao, wallet));
     if (applied === null && offered.length === 0) return null;
 
     return (

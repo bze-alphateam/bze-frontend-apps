@@ -98,7 +98,7 @@ describe("the composer's top", () => {
         const back = await screen.findByTestId("propose-back");
         expect(back).toHaveAttribute("href", "/dao/4?tab=proposals");
         expect(back).toHaveTextContent("Founders · proposals");
-        expect(screen.getByRole("heading", {level: 1})).toHaveTextContent(/^New proposal$/);
+        expect(screen.getByTestId("propose-title")).toHaveTextContent(/^New proposal$/);
     });
 
     it("has no breadcrumb and no link to the Overview", async () => {
@@ -118,6 +118,13 @@ describe("the join / leave shortcuts", () => {
         expect((screen.getByTestId("proposal-title") as HTMLInputElement).value).toMatch(/^Remove bze1.* as a member$/);
         expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Leave Founders");
         expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Prefilled");
+        expect(screen.queryByTestId("shortcut-leave")).toBeNull();
+    });
+
+    it("a restored draft that already removes the wallet gets no Leave button", async () => {
+        window.localStorage.setItem("bze-dao:proposal-draft:4", JSON.stringify({v: 1, title: "Bye", summary: "", expedited: false, actions: [{type: "update-members", fields: {add: "", remove: WALLET}}]}));
+        renderPage(pageDao());
+        expect(await screen.findByTestId("draft-restored")).toBeTruthy();
         expect(screen.queryByTestId("shortcut-leave")).toBeNull();
     });
 
