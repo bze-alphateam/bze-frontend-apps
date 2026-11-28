@@ -306,9 +306,8 @@ test.describe("on a phone (board I5)", () => {
     });
 
     test("the short expedited line, the short cost values, and no footnotes or draft card", async ({page}) => {
-        await installFakeKeplr(page, WALLET);
+        // no wallet: a phone's header connects through its menu, and none of this needs one
         await page.goto("/dao/4/propose");
-        await connectWallet(page);
         await expect(page.getByTestId("expedite-explanation-phone")).toHaveText("1-day vote that can settle early.");
         await expect(page.getByTestId("expedite-explanation")).toBeHidden();
 
@@ -322,7 +321,7 @@ test.describe("on a phone (board I5)", () => {
         await expect(page.getByTestId("cost-note")).toBeHidden();
         await expect(page.getByTestId("proposal-slots")).toBeHidden();
         await expect(page.getByTestId("draft-card")).toBeHidden();
-        await expect(page.getByTestId("submit-proposal")).toBeVisible();
+        await expect(page.getByTestId("gate-wallet")).toBeVisible();
     });
 });
 
