@@ -18,7 +18,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 const formatCoin = (c: {denom: string; amount: string}) => `${c.amount} ${c.denom}`;
 
 /** The composer's list (`staged`): the drafts live in state, what they compose to is read back. */
-const Harness = ({ctx, onDrafts = () => {}, stale, start = []}: {ctx: ActionContext; onDrafts?: (drafts: ActionDraft[]) => void; stale?: StaleNomination[]; start?: ActionDraft[]}) => {
+const Harness = ({ctx, onDrafts = () => {}, stale, start = [], onEditing}: {ctx: ActionContext; onDrafts?: (drafts: ActionDraft[]) => void; stale?: StaleNomination[]; start?: ActionDraft[]; onEditing?: (open: boolean) => void}) => {
     const [drafts, setDrafts] = useState<ActionDraft[]>(start);
     return (
         <ChakraProvider value={defaultSystem}>
@@ -32,6 +32,7 @@ const Harness = ({ctx, onDrafts = () => {}, stale, start = []}: {ctx: ActionCont
                 formatCoin={formatCoin}
                 onChange={(next) => { setDrafts(next); onDrafts(next); }}
                 staleNominations={stale}
+                onEditing={onEditing}
             />
         </ChakraProvider>
     );
@@ -121,6 +122,28 @@ describe("the staged list: a form card first, the list only on Add to proposal",
         expect(ups[0]).toBeDisabled();
         fireEvent.click(ups[1]);
         expect(drafts.map((d) => d.key)).toEqual(["a2", "a1"]);
+    });
+
+    it("while a form card is open the other cards cannot move, open or go, and the page is told", async () => {
+        const onEditing = vi.fn();
+        const start: ActionDraft[] = [
+            {key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}},
+            {key: "a2", type: "pay", fields: {denom: "ubze", amount: "2", to: THIRD}},
+            {key: "a3", type: "pay", fields: {denom: "ubze", amount: "3", to: THIRD}},
+        ];
+        render(<Harness ctx={ctxWith()} start={start} onEditing={onEditing} />);
+        fireEvent.click(screen.getAllByTestId("action-edit")[1]);
+        expect(onEditing).toHaveBeenLastCalledWith(true);
+        const rows = screen.getAllByTestId("action-row");
+        expect(rows).toHaveLength(2);
+        for (const row of rows) {
+            expect(within(row).getByTestId("action-move-up")).toBeDisabled();
+            expect(within(row).getByTestId("action-edit")).toBeDisabled();
+            expect(within(row).getByTestId("action-remove")).toBeDisabled();
+        }
+        fireEvent.click(screen.getByTestId("action-cancel"));
+        expect(onEditing).toHaveBeenLastCalledWith(false);
+        expect(screen.getAllByTestId("action-edit")[0]).not.toBeDisabled();
     });
 
     it("a card whose action went invalid says why", () => {
@@ -222,6 +245,10 @@ describe("the picker dialog", () => {
         fireEvent.click(within(nested).getByTestId("add-action"));
         const picker = await screen.findByTestId("action-picker");
         fireEvent.click(within(picker).getByTestId("add-pay"));
+        // the Manage card waits while its inner form card is open
+        const outerCommit = () => screen.getAllByTestId("action-commit").at(-1)!;
+        expect(outerCommit()).toBeDisabled();
+        expect(screen.getByTestId("action-commit-blocked")).toHaveTextContent("Add or cancel the open action above first.");
         expect(screen.getByTestId("pay-held")).toHaveTextContent("Treasury holds 90 BZE.");
         type("pay-amount", "1.5");
         type("pay-to", OTHER);

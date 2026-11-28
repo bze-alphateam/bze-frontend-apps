@@ -10,7 +10,7 @@ const renderBasics = (over: {title?: string; summary?: string; allowExpedite?: b
             dao={{...DAO, config: {...CONFIG, allow_expedite: over.allowExpedite ?? true}}}
             params={PARAMS}
             title={over.title ?? "Fund the push"}
-            summary={over.summary ?? "Why: https://example.com"}
+            summary={over.summary ?? "Why: https://example.com/plan"}
             expedited={false}
             onTitle={() => {}}
             onSummary={() => {}}
@@ -40,7 +40,7 @@ describe("the composer's basics", () => {
         fireEvent.click(screen.getByTestId("summary-preview-toggle"));
         expect(screen.getByTestId("summary-preview-toggle")).toHaveAttribute("aria-pressed", "true");
         expect(screen.queryByTestId("proposal-summary-input")).toBeNull();
-        expect(screen.getByTestId("summary-preview").querySelector("a")).toHaveAttribute("href", "https://example.com");
+        expect(screen.getByTestId("summary-preview").querySelector("a")).toHaveAttribute("href", "https://example.com/plan");
         fireEvent.click(screen.getByTestId("summary-write"));
         expect(screen.getByTestId("proposal-summary-input")).toBeTruthy();
     });

@@ -74,6 +74,8 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
     const [expedited, setExpedited] = useState(opening.draft?.expedited ?? false);
     const [drafts, setDrafts] = useState<ActionDraft[]>(opening.draft?.actions ?? []);
     const [notice, setNotice] = useState(restored !== null);
+    // a form card the user has not added yet: its action is not in the proposal, so nothing is sent while it is open
+    const [formOpen, setFormOpen] = useState(false);
     const finished = useRef(false);
     const {state, submit, check, allowResubmit} = useProposalSubmit({sign, daoId: dao.id, storage, getTxLanding, fetchTxEvents: getTxEvents});
 
@@ -148,8 +150,9 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
 
     const {unreadable} = describeAll(composition.actions.flatMap((a) => (a.msg ? [a.msg] : [])), dao, coins.exact, ctx.subDaos);
     const problem = composition.contentError ?? composition.expeditedError ?? composition.actions.find((a) => a.error)?.error
-        ?? (unreadable > 0 ? 'Some actions could not be read back: their cards say which. A proposal is only sent when everything it signs can be shown.' : undefined);
-    const ready = composition.ready && unreadable === 0;
+        ?? (unreadable > 0 ? 'Some actions could not be read back: their cards say which. A proposal is only sent when everything it signs can be shown.' : undefined)
+        ?? (formOpen ? 'An action is still open: add it to the proposal or cancel it.' : undefined);
+    const ready = composition.ready && unreadable === 0 && !formOpen;
     const send = () => {
         if (!wallet || !ready) return;
         void submit(buildSubmitProposalMsg({proposer: wallet, daoId: dao.id, title: input.title, summary: input.summary, msgs: composition.msgs, expedited}));
@@ -190,6 +193,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                             formatCoin={coins.exact}
                             onChange={setDrafts}
                             staleNominations={stale}
+                            onEditing={setFormOpen}
                         />
                         {applied !== null && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="shortcut-note">{SHORTCUT_NOTE[applied]}</chakra.span>}
                         <SizeMeter size={composition.size} max={composition.maxBytes} count={drafts.length} maxActions={maxActions} />

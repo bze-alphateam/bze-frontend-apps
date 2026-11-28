@@ -113,13 +113,15 @@ interface CardProps {
     nested: boolean;
     formatCoin: (coin: DaoCoin) => string;
     text: CardTextContext;
+    /** A form card is open: the list does not change under it. */
+    locked: boolean;
     onMoveUp: () => void;
     onEdit: () => void;
     onRemove: () => void;
 }
 
 /** One numbered action of the list: icon, title, what the signed message does (read back), and Move up / Edit / Remove. */
-const ActionCard = ({index, draft, composed, ctx, nested, formatCoin, text, onMoveUp, onEdit, onRemove}: CardProps) => {
+const ActionCard = ({index, draft, composed, ctx, nested, formatCoin, text, locked, onMoveUp, onEdit, onRemove}: CardProps) => {
     const entry = findAction(draft.type);
     if (!entry) return null;
     const read = composed?.msg ? tryDescribe(composed.msg, ctx.dao, formatCoin, ctx.subDaos) : null;
@@ -155,9 +157,9 @@ const ActionCard = ({index, draft, composed, ctx, nested, formatCoin, text, onMo
                 </Flex>
             </Flex>
             <Flex gap="4px" flex="none" alignSelf={{base: 'flex-end', md: 'center'}}>
-                <chakra.button {...squareButton} disabled={index === 0} onClick={onMoveUp} aria-label={`Move action ${number} up`} data-testid="action-move-up"><LuArrowUp aria-hidden /></chakra.button>
-                <chakra.button {...squareButton} onClick={onEdit} aria-label={`Edit action ${number}`} data-testid="action-edit"><LuPencil aria-hidden /></chakra.button>
-                <chakra.button {...squareButton} onClick={onRemove} aria-label={`Remove action ${number}`} data-testid="action-remove"><LuTrash2 aria-hidden /></chakra.button>
+                <chakra.button {...squareButton} disabled={locked || index === 0} onClick={onMoveUp} aria-label={`Move action ${number} up`} data-testid="action-move-up"><LuArrowUp aria-hidden /></chakra.button>
+                <chakra.button {...squareButton} disabled={locked} onClick={onEdit} aria-label={`Edit action ${number}`} data-testid="action-edit"><LuPencil aria-hidden /></chakra.button>
+                <chakra.button {...squareButton} disabled={locked} onClick={onRemove} aria-label={`Remove action ${number}`} data-testid="action-remove"><LuTrash2 aria-hidden /></chakra.button>
             </Flex>
         </chakra.li>
     );
@@ -191,6 +193,8 @@ interface EditorProps {
 /** The form card of one action (board F2/F3): its header, its form, the problems, then Cancel / Add to proposal. */
 const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries, onChange, onCancel, onCommit}: EditorProps) => {
     const [tried, setTried] = useState(false);
+    // a SubDAO's inner list with its own form card open: this card waits for it
+    const [innerOpen, setInnerOpen] = useState(false);
     const entry = findAction(draft.type);
     const Form = ACTION_FORMS[draft.type];
     if (!entry || !Form) return null;
@@ -214,12 +218,13 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
         if (!sub || way === subWayOf(draft)) return;
         const type = way === 'execute' ? SUB_EXECUTE_ID : SUB_ADMIN_ID;
         const initial = findAction(type)?.initialFields(ctx) ?? {};
+        setInnerOpen(false);
         onChange({...draft, type, fields: way === 'execute' ? {...initial, daoId: sub.dao.id, inner: ''} : {...initial, daoId: sub.dao.id, mode: way}});
     };
 
     const commit = () => {
         setTried(true);
-        if (!composed.error) onCommit();
+        if (!composed.error && !innerOpen) onCommit();
     };
 
     return (
@@ -246,7 +251,7 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
                 error={dirty ? composed.error : undefined}
                 staged
                 renderActions={(inner) => (
-                    <StagedList drafts={inner.drafts} ctx={inner.ctx} maxActions={Number(inner.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={inner.onChange} nested staged wallet={wallet} />
+                    <StagedList drafts={inner.drafts} ctx={inner.ctx} maxActions={Number(inner.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={inner.onChange} nested staged wallet={wallet} onEditing={setInnerOpen} />
                 )}
             />
             {changes && (changes.length === 0
@@ -261,8 +266,9 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
                 </Notice>
             )}
             <Flex gap="8px" align="center" justify="flex-end" wrap="wrap">
+                {innerOpen && <chakra.span fontSize="12px" color="hg.text.faint" me="auto" data-testid="action-commit-blocked">Add or cancel the open action above first.</chakra.span>}
                 <Button variant="ghost" size="md" color="hg.link" onClick={onCancel} data-testid="action-cancel">Cancel</Button>
-                <Button variant={hgVariant('primary')} size="md" onClick={commit} data-testid="action-commit">
+                <Button variant={hgVariant('primary')} size="md" disabled={innerOpen} onClick={commit} data-testid="action-commit">
                     {editing ? 'Save changes' : nested ? 'Add to the list' : 'Add to proposal'}
                 </Button>
             </Flex>
@@ -390,9 +396,14 @@ const newKey = (): string => `a${Date.now().toString(36)}${Math.random().toStrin
  * message; adding or editing opens one form card, and only "Add to proposal" puts it in the list (Cancel
  * leaves the list as it was). A nested list (the actions run as a SubDAO) works the same inside its form.
  */
-export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, staleNominations = [], wallet = null}: ActionsListProps) => {
+export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, staleNominations = [], wallet = null, onEditing}: ActionsListProps) => {
     const [picking, setPicking] = useState(false);
-    const [editor, setEditor] = useState<{draft: ActionDraft; index: number | null} | null>(null);
+    const [editor, setEditorState] = useState<{draft: ActionDraft; index: number | null} | null>(null);
+    // the page is told whether a form card is open (an action not added yet must not be left out silently)
+    const setEditor = (next: {draft: ActionDraft; index: number | null} | null) => {
+        if ((next === null) !== (editor === null)) onEditing?.(next !== null);
+        setEditorState(next);
+    };
     const [textOnly, setTextOnly] = useState(false);
     const entries = availableActions(ctx.dao, ctx);
     const composed = given ?? drafts.map((draft) => composeAction(draft, ctx, findAction));
@@ -463,6 +474,7 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
                                 nested={nested}
                                 formatCoin={formatCoin}
                                 text={text}
+                                locked={editor !== null}
                                 onMoveUp={() => moveUp(i)}
                                 onEdit={() => setEditor({draft, index: i})}
                                 onRemove={() => { if (editor && editor.index !== null && editor.index > i) setEditor({...editor, index: editor.index - 1}); onChange(drafts.filter((x) => x.key !== draft.key)); }}

@@ -38,6 +38,8 @@ interface Props {
     staged?: boolean;
     /** The connected wallet, which a card names "(you)" (staged lists only). */
     wallet?: string | null;
+    /** Told when a form card opens or closes (staged lists only): its action is not in the list until it is added. */
+    onEditing?: (open: boolean) => void;
 }
 
 export type ActionsListProps = Props;

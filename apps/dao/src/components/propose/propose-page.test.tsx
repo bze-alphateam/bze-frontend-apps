@@ -256,6 +256,18 @@ describe("the composer's layout (board F1)", () => {
         expect(within(aside).getByTestId("draft-note")).toHaveTextContent("Draft saved on this device. It's cleared once the proposal is submitted.");
     });
 
+    it("an action whose form card is still open is never left out silently: Submit waits for it", async () => {
+        renderPage(pageDao());
+        fireEvent.change(await screen.findByTestId("proposal-title"), {target: {value: "Pay someone"}});
+        expect(screen.getByTestId("submit-proposal")).not.toBeDisabled();
+        const picker = await openPicker();
+        fireEvent.click(within(picker).getByTestId("add-pay"));
+        expect(screen.getByTestId("submit-proposal")).toBeDisabled();
+        expect(screen.getByTestId("submit-problem")).toHaveTextContent("An action is still open: add it to the proposal or cancel it.");
+        fireEvent.click(screen.getByTestId("action-cancel"));
+        expect(screen.getByTestId("submit-proposal")).not.toBeDisabled();
+    });
+
     it("counts the proposal slots in use from the open proposals", async () => {
         renderPage(pageDao(), {open: [{id: "1"}, {id: "2"}]});
         expect(await screen.findByTestId("proposal-slots")).toHaveTextContent("2 of 10 proposal slots are in use.");
