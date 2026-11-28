@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {describe, expect, it, vi} from "vitest";
-import {fireEvent, render, screen, within} from "@testing-library/react";
+import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {ChakraProvider, defaultSystem} from "@chakra-ui/react";
 import {ctxWith, DAO, OTHER, SUB_DAO, THIRD, WALLET} from "@/test/composer-fixtures";
 import type {ActionContext, ActionDraft} from "@/lib/actions/types";
@@ -42,9 +42,12 @@ const openPicker = async () => {
     fireEvent.click(screen.getByTestId("add-action"));
     return screen.findByTestId("action-picker");
 };
+/** The picker closes once an entry is picked; wait until its dialog is gone, so a later picker is not mistaken for it. */
+const pickerGone = () => waitFor(() => expect(screen.queryByTestId("action-picker")).toBeNull());
 const choose = async (testId: string) => {
     const picker = await openPicker();
     fireEvent.click(within(picker).getByTestId(testId));
+    await pickerGone();
 };
 const type = (testId: string, value: string) => fireEvent.change(screen.getByTestId(testId), {target: {value}});
 
