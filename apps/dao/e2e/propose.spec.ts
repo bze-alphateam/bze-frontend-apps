@@ -23,11 +23,11 @@ async function connectWallet(page: Page): Promise<void> {
 }
 
 test.describe("the entry point", () => {
-    test("the DAO page links to the composer for a connected wallet", async ({page}) => {
+    test("the DAO page's Proposals tab links to the composer for a connected wallet", async ({page}) => {
         await installFakeKeplr(page, WALLET);
-        await page.goto("/dao/2");
+        await page.goto("/dao/4?tab=proposals");
         await connectWallet(page);
-        await expect(page.getByRole("link", {name: "New proposal"})).toHaveAttribute("href", "/dao/2/propose");
+        await expect(page.getByRole("link", {name: "New proposal"})).toHaveAttribute("href", "/dao/4/propose");
     });
 });
 
@@ -178,7 +178,7 @@ test.describe("who may propose", () => {
 
         await expect(page.getByTestId("gate-not-a-voter")).toContainText("Only the members of this DAO can submit a proposal");
         await expect(page.getByTestId("how-to-vote")).toContainText("Ask a member to propose adding you.");
-        await expect(page.getByTestId("how-to-vote").getByRole("link")).toHaveAttribute("href", "/dao/2#join");
+        await expect(page.getByTestId("how-to-vote").getByRole("link")).toHaveCount(0);
         await expect(page.getByTestId("submit-proposal")).toHaveCount(0);
     });
 

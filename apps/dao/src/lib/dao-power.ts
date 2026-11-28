@@ -52,7 +52,7 @@ export function describeVotingPower(
                 proposalId: p.proposal_id,
                 counts: false,
                 text: stake
-                    ? `${label}: your stake joined after this proposal started, so it does not count on it`
+                    ? `${label}: your stake does not count on it, because you joined or added to it after this proposal started`
                     : `${label}: you were added after this proposal started, so you cannot vote on it`,
             };
         }

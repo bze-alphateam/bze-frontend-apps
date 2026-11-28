@@ -7,7 +7,7 @@ const SCAN_PROPOSALS = "/api/scan/daos/4/proposals";
 
 test("Active lists the voting and the failed-execution proposals, newest first; Finished the rest", async ({page}) => {
     await page.goto("/dao/4");
-    await page.getByRole("tab", {name: "Proposals"}).click();
+    await page.getByTestId("dao-tab-proposals").click();
 
     const rows = page.getByTestId("proposal-row");
     await expect(rows).toHaveCount(2);
@@ -33,7 +33,7 @@ test("with Scan down Active falls back to the chain and Finished offers a retry"
     network.use("scan", {path: SCAN_PROPOSALS, query: {limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
 
     await page.goto("/dao/4");
-    await page.getByRole("tab", {name: "Proposals"}).click();
+    await page.getByTestId("dao-tab-proposals").click();
 
     await expect(page.getByText("read from the chain")).toBeVisible();
     await expect(page.getByTestId("proposal-row")).toHaveCount(2);
@@ -47,7 +47,7 @@ test("with Scan down Active falls back to the chain and Finished offers a retry"
 test("a DAO with no finished proposals says so", async ({page, network}) => {
     network.use("scan", {path: SCAN_PROPOSALS, query: {limit: "20"}, status: 200, body: {items: [], next_cursor: null}});
     await page.goto("/dao/4");
-    await page.getByRole("tab", {name: "Proposals"}).click();
+    await page.getByTestId("dao-tab-proposals").click();
     await page.getByRole("tab", {name: "Finished"}).click();
 
     await expect(page.getByTestId("finished-empty")).toBeVisible();

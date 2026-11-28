@@ -17,7 +17,7 @@ export type ControlStep =
 
 export interface ControlState {
     kind: 'self-owned' | 'account' | 'dao' | 'unknown';
-    /** One line: who is in charge. */
+    /** One line: who is in charge ("No admin", "Admin is an account", "Admin is the DAO <name>"). */
     headline: string;
     /** Set when an outside party can spend the treasury. */
     warning: string | null;
@@ -45,14 +45,14 @@ export function describeControl(dao: Pick<Dao, 'address' | 'admin' | 'pending_ad
         : null;
 
     if (dao.admin === dao.address) {
-        return {kind: 'self-owned', headline: 'Governed by its voters', warning: null, steps: [], note: null, pending};
+        return {kind: 'self-owned', headline: 'No admin', warning: null, steps: [], note: null, pending};
     }
 
     // Neither the walk nor the by-address lookup answered: it is not known whether the admin is a person or a DAO.
     if (controller === null && !known.has(dao.admin) && unresolved.has(dao.admin)) {
         return {
             kind: 'unknown',
-            headline: `Admin ${dao.admin} (type could not be checked right now)`,
+            headline: 'Admin (could not check whether it is an account or a DAO)',
             warning: null,
             steps: [],
             note: null,
@@ -64,7 +64,7 @@ export function describeControl(dao: Pick<Dao, 'address' | 'admin' | 'pending_ad
     if (!adminIsDao) {
         return {
             kind: 'account',
-            headline: `Admin: ${dao.admin}`,
+            headline: 'Admin is an account',
             warning: EXTERNAL_ADMIN_WARNING,
             steps: [{kind: 'account', address: dao.admin}],
             note: null,
@@ -100,5 +100,5 @@ export function describeControl(dao: Pick<Dao, 'address' | 'admin' | 'pending_ad
             break;
     }
 
-    return {kind: 'dao', headline: `Administered by the DAO ${adminName}`, warning, steps, note, pending};
+    return {kind: 'dao', headline: `Admin is the DAO ${adminName}`, warning, steps, note, pending};
 }

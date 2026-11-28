@@ -9,8 +9,6 @@ export interface RuleRow {
 
 export interface RulesView {
     rows: RuleRow[];
-    /** The chain doc's warning, set when a proposal costs nothing to submit. */
-    freeProposalsWarning: string | null;
 }
 
 const isZero = (coin: DaoCoin | null | undefined): boolean => !coin || !/[1-9]/.test(coin.amount);
@@ -96,13 +94,5 @@ export function describeRules(
         rows.push({id: 'open-slots', label: 'Open proposals at once', value: `Up to ${params.max_open_proposals}`});
     }
 
-    // A deposit that is always returned costs nothing either (chain docs, "MsgCreateDao").
-    const free = !cost && (!deposit || config.deposit_refund_policy === 'ALWAYS');
-    const slots = params ? `all ${params.max_open_proposals} open-proposal slots` : 'all the open-proposal slots';
-    return {
-        rows,
-        freeProposalsWarning: free
-            ? `Proposals are free here: anyone who is allowed to propose can fill ${slots}, and keep them filled, so the DAO's own proposals may find no room.`
-            : null,
-    };
+    return {rows};
 }

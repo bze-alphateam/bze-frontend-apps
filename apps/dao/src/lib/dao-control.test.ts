@@ -8,22 +8,22 @@ const known = (entries: Record<string, KnownDao> = {}) => new Map<string, KnownD
 const walk = (end_reason: DaoControllerResponse["end_reason"], path: string[], controller: string): DaoControllerResponse => ({controller, end_reason, path});
 
 describe("describeControl", () => {
-    it("a self-owned DAO is governed by its voters", () => {
+    it("a self-owned DAO has no admin", () => {
         const state = describeControl(dao({admin: DAO}), walk("SELF_OWNED", [DAO], DAO), known());
-        expect(state).toMatchObject({kind: "self-owned", headline: "Governed by its voters", warning: null, steps: []});
+        expect(state).toMatchObject({kind: "self-owned", headline: "No admin", warning: null, steps: []});
     });
 
     it("an account admin gets the warning that it can spend the treasury", () => {
         const state = describeControl(dao(), walk("ACCOUNT", [DAO], "bze1person"), known());
         expect(state.kind).toBe("account");
-        expect(state.headline).toBe("Admin: bze1person");
+        expect(state.headline).toBe("Admin is an account");
         expect(state.warning).toMatch(/spending its treasury/);
     });
 
     it("an admin that is another DAO: the chain ends at its voters", () => {
         const state = describeControl(dao({admin: "bze1b"}), walk("SELF_OWNED", [DAO, "bze1b"], "bze1b"), known({bze1b: {id: "2", name: "B"}}));
         expect(state.kind).toBe("dao");
-        expect(state.headline).toBe("Administered by the DAO B");
+        expect(state.headline).toBe("Admin is the DAO B");
         expect(state.steps.map((s) => s.kind)).toEqual(["dao", "dao", "voters"]);
         expect(state.warning).toBeNull();
     });
@@ -66,7 +66,7 @@ describe("describeControl", () => {
 
     it("an admin whose type could not be checked is neither called an account nor warned about", () => {
         const state = describeControl(dao(), null, known(), new Set(["bze1person"]));
-        expect(state).toMatchObject({kind: "unknown", warning: null, headline: "Admin bze1person (type could not be checked right now)"});
+        expect(state).toMatchObject({kind: "unknown", warning: null, headline: "Admin (could not check whether it is an account or a DAO)"});
     });
 
     it("a controller answer settles the admin even when the by-address lookup failed", () => {

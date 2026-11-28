@@ -2,8 +2,8 @@
 
 import {useState} from 'react';
 import NextLink from 'next/link';
-import {chakra, Flex} from '@chakra-ui/react';
-import {HgCard, Notice, SegmentedTabs, Shimmer} from '@bze/bze-ui-kit';
+import {Button, chakra, Flex} from '@chakra-ui/react';
+import {HgCard, hgVariant, Notice, SegmentedTabs, Shimmer} from '@bze/bze-ui-kit';
 import {RowStatusPill} from '@/components/proposal/status-pill';
 import {useAsync} from '@/hooks/useAsync';
 import {useNow} from '@/hooks/useNow';
@@ -93,13 +93,23 @@ const FinishedPage = ({deps, daoId, cursor, first, nowMs, nameOf}: {deps: Propos
     );
 };
 
-/** A DAO's proposals: the active ones (voting, or passed with a failed execution) and the finished ones, newest first. */
-export const ProposalsTab = ({deps, daoId, nameOf}: {deps: ProposalDeps; daoId: string; nameOf: (address: string) => string | undefined}) => {
+/**
+ * A DAO's proposals: the active ones (voting, or passed with a failed execution) and the finished ones, newest
+ * first. `newProposal` shows the link to the composer (`actionsFor(...).newProposal`).
+ */
+export const ProposalsTab = ({deps, daoId, nameOf, newProposal = false}: {deps: ProposalDeps; daoId: string; nameOf: (address: string) => string | undefined; newProposal?: boolean}) => {
     const [kind, setKind] = useState<Kind>('active');
     const nowMs = useNow();
 
     return (
         <Flex direction="column" gap="12px" data-testid="proposals-tab">
+            {newProposal && (
+                <Flex justify="flex-end">
+                    <Button asChild variant={hgVariant('primary')} size="sm">
+                        <NextLink href={`/dao/${daoId}/propose`} data-testid="new-proposal">New proposal</NextLink>
+                    </Button>
+                </Flex>
+            )}
             <SegmentedTabs
                 aria-label="Proposals"
                 value={kind}
