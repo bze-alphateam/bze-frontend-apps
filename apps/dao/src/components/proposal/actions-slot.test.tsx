@@ -21,7 +21,7 @@ import {StateArea} from "./state-card";
 import {YourVoteCard} from "./your-vote";
 import {modelFromChain} from "@/lib/proposal-model";
 import type {ProposalDeps, ProposalPageData} from "@/lib/proposal-loader";
-import {PROPOSAL, RESPONSE} from "@/test/proposal-fixtures";
+import {PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
 
 const ME = "bze1me";
 const PARAMS = {min_expedite_delay: "86400s", cleanup_batch_size: "100"} as DaoParams;
@@ -158,6 +158,25 @@ describe("the proposal's actions", () => {
         expect(txMock.mock.calls[0][0][0].typeUrl).toBe("/bze.dao.MsgSettleProposal");
     });
 
+    it("retry: the last failure in the info tone, until the chain's retry deadline", async () => {
+        const failed: ProposalPageData = {
+            ...voting,
+            model: modelFromChain(
+                {...RESPONSE, retry_deadline: "1830000000", proposal: {...PROPOSAL, status: "EXECUTION_FAILED"}},
+                {...SCAN, status: "execution_failed", executed: false, execution_error: "message failed"},
+                "Club",
+                "DAO_TYPE_STATIC_LIST",
+            ),
+        };
+        renderActions(failed, {weight: "0"});
+        expect(screen.getByTestId("status-note")).toHaveTextContent("Passed · execution failed");
+        await userEvent.click(screen.getByTestId("settle-button"));
+        expect(screen.getByTestId("dialog-settle")).toHaveTextContent("Retry the actions of #7");
+        expect(screen.getByTestId("execution-error")).toHaveAttribute("data-tone", "info");
+        expect(screen.getByTestId("execution-error")).toHaveTextContent("Last time: message failed.");
+        expect(screen.getByTestId("settle-confirm")).toHaveTextContent("Retry now");
+    });
+
     it("shows the reason a failed simulation gave, and after the dialog closes the action is offered again", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onFailure("This expedited proposal can't settle early yet.", {stage: "prepare"}); return false; });
         renderActions(ended);
@@ -217,6 +236,9 @@ describe("the proposal's actions", () => {
         const {refresh} = renderActions(finished, {getProposal: async () => reads.shift(), refresh: vi.fn(async () => "gone" as const)});
         expect(screen.getByTestId("finished-note")).toHaveTextContent("Nothing ran.");
         await userEvent.click(screen.getByTestId("cleanup-button"));
+        // the status in words, not the chain's enum
+        expect(screen.getByTestId("dialog-cleanup")).toHaveTextContent("Finished · rejected");
+        expect(screen.getByTestId("dialog-cleanup")).not.toHaveTextContent("REJECTED");
         await userEvent.click(screen.getByTestId("cleanup-confirm"));
         await waitFor(() => expect(screen.getByTestId("action-sent")).toHaveTextContent("Cleaned up in 2 batches."));
         expect(txMock).toHaveBeenCalledTimes(2);
