@@ -1,6 +1,6 @@
 'use client';
 
-import {chakra, Flex, Switch} from '@chakra-ui/react';
+import {chakra, Flex} from '@chakra-ui/react';
 import {LuSearch} from 'react-icons/lu';
 import type {DaoKind} from '@/lib/dao-types';
 import {kindLabel} from '@/lib/home-list';
@@ -60,14 +60,14 @@ export const SearchBox = ({value, onChange}: {value: string; onChange: (value: s
     <chakra.label
         display="flex"
         alignItems="center"
-        gap="8px"
+        gap={{base: '10px', md: '8px'}}
         h={{base: '44px', md: '40px'}}
         px={{base: '14px', md: '12px'}}
         w={{base: '100%', md: '240px'}}
         borderRadius="12px"
         bg="hg.inset"
         borderWidth="1px"
-        borderColor="hg.hairline"
+        borderColor="hg.lineStrong"
         color="fg.muted"
         _focusWithin={{borderColor: 'app.border'}}
     >
@@ -90,26 +90,39 @@ export const SearchBox = ({value, onChange}: {value: string; onChange: (value: s
     </chakra.label>
 );
 
-/** My DAOs: the switch that narrows the table to the wallet's DAOs. */
+/**
+ * My DAOs: the switch that narrows the table to the wallet's DAOs. A button with the switch
+ * role (C1 board): a 32 x 18 track with a 14 px knob, the DAO gradient when on.
+ */
 export const MineSwitch = ({checked, onChange}: {checked: boolean; onChange: (checked: boolean) => void}) => (
-    <Switch.Root
-        checked={checked}
-        onCheckedChange={(details) => onChange(details.checked)}
+    <chakra.button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        display="inline-flex"
+        alignItems="center"
+        gap={{base: '8px', md: '10px'}}
         h="40px"
-        px="12px"
-        gap="10px"
+        ps={{base: '8px', md: '10px'}}
+        pe={{base: '12px', md: '14px'}}
         borderRadius="12px"
         borderWidth="1px"
-        borderColor={checked ? 'app.border' : 'hg.hairline'}
+        borderColor={checked ? 'app.border' : 'hg.lineStrong'}
         bg={checked ? 'app.subtle' : 'hg.inset'}
+        color={checked ? 'fg' : 'hg.text.secondary'}
+        fontSize="13px"
+        fontWeight="600"
+        whiteSpace="nowrap"
         cursor="pointer"
         flex="none"
+        focusVisibleRing="outside"
         data-testid="mine-switch"
+        data-state={checked ? 'checked' : 'unchecked'}
     >
-        <Switch.HiddenInput role="switch" />
-        <Switch.Control bg="hg.switchOff" _checked={{bgImage: 'appButton'}}>
-            <Switch.Thumb />
-        </Switch.Control>
-        <Switch.Label fontSize="13px" fontWeight="600" color={checked ? 'fg' : 'fg.muted'} whiteSpace="nowrap">My DAOs</Switch.Label>
-    </Switch.Root>
+        <chakra.span aria-hidden position="relative" w="32px" h="18px" flex="none" borderRadius="hg.pill" {...(checked ? {bgImage: 'app'} : {bg: 'hg.switchOff'})}>
+            <chakra.span position="absolute" top="2px" left={checked ? '16px' : '2px'} boxSize="14px" borderRadius="hg.pill" bg="white" transition="left 0.15s" />
+        </chakra.span>
+        My DAOs
+    </chakra.button>
 );

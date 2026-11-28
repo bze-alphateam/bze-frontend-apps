@@ -14,7 +14,7 @@ const BUTTON = {
     fontWeight: '600',
     fontVariantNumeric: 'tabular-nums',
     focusVisibleRing: 'outside' as const,
-    _disabled: {cursor: 'not-allowed', color: 'fg.subtle', borderColor: 'hg.divider'},
+    _disabled: {cursor: 'not-allowed', color: 'hg.text.disabled', borderColor: 'hg.divider', bg: 'transparent'},
 };
 
 const Arrow = ({direction, size, disabled, onClick}: {direction: 'prev' | 'next'; size: number; disabled: boolean; onClick: () => void}) => (
@@ -26,9 +26,9 @@ const Arrow = ({direction, size, disabled, onClick}: {direction: 'prev' | 'next'
         boxSize={`${size}px`}
         borderRadius={size > 36 ? '12px' : '10px'}
         borderWidth="1px"
-        borderColor="hg.hairline"
-        color="fg"
-        bg="transparent"
+        {...(size > 36
+            ? {borderColor: 'hg.lineStrong', color: 'fg', bg: 'hg.secondaryFill'}
+            : {borderColor: 'hg.hairline', color: 'hg.text.secondary', bg: 'transparent'})}
         _hover={disabled ? undefined : {borderColor: 'app.border', bg: 'hg.inset'}}
     >
         {direction === 'prev' ? <LuChevronLeft size={size > 36 ? 18 : 16} /> : <LuChevronRight size={size > 36 ? 18 : 16} />}
@@ -78,7 +78,7 @@ const Footer = ({count, hidePager, testId, children}: FooterProps) => (
             <Flex display={{base: 'flex', md: 'none'}} justify="center" data-testid="pager-phone">{children('phone')}</Flex>
         )}
         <Flex justify={{base: 'center', md: 'space-between'}} align="center" gap="12px" wrap="wrap">
-            <chakra.span fontSize="12px" lineHeight="1.5" color="fg.muted" data-testid="list-count">{count}</chakra.span>
+            <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="list-count">{count}</chakra.span>
             {!hidePager && (
                 <Flex display={{base: 'none', md: 'flex'}} data-testid="pager-desktop">{children('desktop')}</Flex>
             )}
@@ -105,9 +105,9 @@ export const Pagination = ({page, pages, onPage, count, busy}: PaginationProps) 
             const prevOff = busy || page <= 1;
             const nextOff = busy || page >= pages;
             return size === 'phone' ? (
-                <Flex as="nav" aria-label="Pages" align="center" justify="space-between" gap="8px" w="100%">
+                <Flex as="nav" aria-label="Pages" display="grid" gridTemplateColumns="44px 1fr 44px" alignItems="center" gap="8px" w="100%">
                     <Arrow direction="prev" size={px} disabled={prevOff} onClick={() => onPage(page - 1)} />
-                    <chakra.span fontSize="14px" fontWeight="600" color="fg.muted" fontVariantNumeric="tabular-nums">{`Page ${page} of ${pages}`}</chakra.span>
+                    <chakra.span textAlign="center" fontSize="14px" fontWeight="600" color="hg.text.secondary" fontVariantNumeric="tabular-nums">{`Page ${page} of ${pages}`}</chakra.span>
                     <Arrow direction="next" size={px} disabled={nextOff} onClick={() => onPage(page + 1)} />
                 </Flex>
             ) : (
@@ -129,7 +129,7 @@ export const Pagination = ({page, pages, onPage, count, busy}: PaginationProps) 
                             borderRadius="10px"
                             {...(item === page
                                 ? {bgImage: 'appButton', color: 'white', borderWidth: '0'}
-                                : {borderWidth: '1px', borderColor: 'hg.hairline', color: 'fg', bg: 'transparent', _hover: {borderColor: 'app.border', bg: 'hg.inset'}})}
+                                : {borderWidth: '1px', borderColor: 'hg.hairline', color: 'hg.text.secondary', bg: 'transparent', _hover: {borderColor: 'app.border', bg: 'hg.inset', color: 'fg'}})}
                         >
                             {item}
                         </chakra.button>
