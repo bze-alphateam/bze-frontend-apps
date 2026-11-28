@@ -89,17 +89,6 @@ export function reviewLine(actions: MsgAction[], ctx: ReviewContext): Segment[] 
     return parts;
 }
 
-/** The size line under the actions: "1,820 of 20,000 bytes · 2 of 16 actions"; `percent` fills the bar, capped at 100. */
-export function sizeLine(size: number, maxBytes: number, count: number, maxActions: number): {text: string; percent: number; over: boolean} {
-    const n = (value: number) => value.toLocaleString('en-US');
-    const percent = maxBytes > 0 ? Math.min(100, Math.round((size / maxBytes) * 100)) : 0;
-    return {
-        text: `${n(size)} of ${n(maxBytes)} bytes · ${n(count)} of ${n(maxActions)} actions`,
-        percent,
-        over: size > maxBytes || count > maxActions,
-    };
-}
-
 /** The run button's words: "Run the action now", "Run 2 actions now", "Run now" with none. */
 export const runLabel = (count: number): string =>
     (count === 0 ? 'Run now' : count === 1 ? 'Run the action now' : `Run ${count} actions now`);

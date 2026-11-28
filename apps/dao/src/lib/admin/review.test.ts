@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {actionPhrase, consoleAddress, handOverLine, heroLine, reviewLine, runLabel, sizeLine, votersPhrase, type ReviewContext} from "./review";
+import {actionPhrase, consoleAddress, handOverLine, heroLine, reviewLine, runLabel, votersPhrase, type ReviewContext} from "./review";
 import type {MsgAction} from "../proposal-describe";
 
 const ADDRESS = "bze1gr0000000000000000000000000000000a77k";
@@ -52,12 +52,6 @@ describe("actionPhrase", () => {
 });
 
 describe("the console's small words", () => {
-    it("sizeLine: bytes and actions, the bar capped", () => {
-        expect(sizeLine(1820, 20000, 2, 16)).toEqual({text: "1,820 of 20,000 bytes · 2 of 16 actions", percent: 9, over: false});
-        expect(sizeLine(30000, 20000, 2, 16)).toMatchObject({percent: 100, over: true});
-        expect(sizeLine(10, 20000, 17, 16).over).toBe(true);
-    });
-
     it("runLabel", () => {
         expect(runLabel(0)).toBe("Run now");
         expect(runLabel(1)).toBe("Run the action now");

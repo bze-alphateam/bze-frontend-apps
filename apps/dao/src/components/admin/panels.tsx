@@ -17,13 +17,14 @@ import {findAction} from '@/lib/actions/registry';
 import type {ActionDraft} from '@/lib/actions/types';
 import {isNominationStale, type NominationChain} from '@/lib/admin/nomination';
 import {handOverBlocked, handOverConfirmed, nominateBlocked, withdrawBlocked} from '@/lib/admin/operations';
-import {consoleAddress, handOverLine, heroLine, reviewLine, runLabel, sizeLine, type Segment} from '@/lib/admin/review';
+import {consoleAddress, handOverLine, heroLine, reviewLine, runLabel, type Segment} from '@/lib/admin/review';
 import type {DaoView} from '@/lib/dao-view-loader';
 import {daoTabHref} from '@/lib/dao-tabs';
 import {describeAll} from '@/lib/propose/describe';
 import type {Relations} from '@/lib/propose/relations';
 import {useCoinFormat} from '@/components/dao/page/use-coin-format';
 import {ActionsList} from '@/components/propose/actions-list';
+import {SizeMeter} from '@/components/propose/review';
 import {useActionContext} from '@/components/propose/use-action-context';
 
 interface OpProps {
@@ -131,6 +132,8 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
     const coins = useCoinFormat();
     const ctx = useActionContext(view, relations, true);
     const [drafts, setDrafts] = useState<ActionDraft[]>([]);
+    // a form card is open: its action is not in the list yet, so nothing runs until it is added or cancelled
+    const [editing, setEditing] = useState(false);
     const composition = useMemo(() => (ctx ? composeAdminActions(drafts, ctx, findAction, 0) : null), [drafts, ctx]);
 
     if (!ctx || !composition) {
@@ -142,7 +145,6 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
     const problem = composition.error ?? (read.unreadable > 0 ? 'Some actions could not be read back, so they are not sent: actions are only sent when everything that is signed can be shown.' : undefined);
     const message = ready ? buildAdminExecuteMsg({admin: wallet, daoId: dao.id, msgs: composition.msgs}) : null;
     const maxActions = Number(ctx.params.max_msgs_per_proposal);
-    const size = sizeLine(composition.size, composition.maxBytes, drafts.length, maxActions);
     const daoName = (id: string) => (id === dao.id ? dao.name : ctx.subDaos?.find((s) => s.dao.id === id)?.dao.name ?? ctx.incoming?.find((n) => n.id === id)?.name);
     const review = reviewLine(read.actions, {
         dao,
@@ -164,22 +166,18 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
                 maxActions={maxActions}
                 formatCoin={coins.exact}
                 onChange={setDrafts}
-                nested
+                staged
+                wallet={wallet}
+                onEditing={setEditing}
                 wording={{
-                    intro: 'Same list as proposals. Grants (authz / feegrant) and second signers are refused here.',
-                    empty: 'No actions yet: add what the DAO should do.',
+                    header: false,
+                    hint: 'Same list as proposals. Grants (authz / feegrant) and second signers are refused here.',
                     full: (max) => `At most ${max} actions can run at once.`,
+                    commit: 'Add to the list',
+                    textOnly: false,
                 }}
             />
-            {drafts.length > 0 && (
-                <Flex direction="column" gap="6px" minW="0" data-testid="size-meter">
-                    <chakra.div h="8px" borderRadius="999px" bg="hg.inset" overflow="hidden" role="meter" aria-label="Size of the actions" aria-valuemin={0} aria-valuemax={composition.maxBytes} aria-valuenow={composition.size}>
-                        <chakra.span display="block" h="100%" w={`${size.over ? 100 : size.percent}%`} bgImage={size.over ? undefined : 'app'} bg={size.over ? 'hg.danger' : undefined} />
-                    </chakra.div>
-                    <chakra.span fontSize="12px" lineHeight="1.5" color={size.over ? 'hg.danger.text' : 'hg.text.faint'} data-testid="size-text">{size.text}</chakra.span>
-                </Flex>
-            )}
-            {composition.warnings.map((w) => <chakra.p key={w} m="0" fontSize="13px" color="hg.warning.text" data-testid="execute-warning">{w}</chakra.p>)}
+            {drafts.length > 0 && <SizeMeter size={composition.size} max={composition.maxBytes} count={drafts.length} maxActions={maxActions} />}
             {drafts.length > 0 && (
                 <>
                     <chakra.div h="1px" bg="hg.divider" />
@@ -190,10 +188,11 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
                 </>
             )}
             <Flex gap="8px" align="center" justify="flex-end" wrap="wrap">
+                {editing && <chakra.span fontSize="12px" color="hg.text.faint" me="auto" data-testid="execute-editing">Add or cancel the open action first: it is not in the list yet.</chakra.span>}
                 <Button
                     variant={hgVariant('primary')}
                     size="lg"
-                    disabled={!message || locked}
+                    disabled={!message || locked || editing}
                     onClick={() => message && onSend('admin-execute', [message])}
                     data-testid="execute-submit"
                 >

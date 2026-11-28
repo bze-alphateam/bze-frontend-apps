@@ -127,6 +127,9 @@ test.describe("run actions as the DAO", () => {
         await expect(page.getByTestId("pay-held")).toContainText("TBZE");
         await page.getByTestId("pay-to").fill(STRANGER);
         await page.getByTestId("pay-amount").fill("12.5");
+        await expect(page.getByTestId("action-commit")).toHaveText("Add to the list");
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-card-title")).toHaveText("Pay from the treasury");
 
         const review = page.getByTestId("execute-review");
         await expect(review).toContainText("Founders will: 1. pay 12.5 TBZE to");
@@ -149,12 +152,18 @@ test.describe("run actions as the DAO", () => {
         await page.getByTestId("add-pay").click();
         await page.getByTestId("pay-to").fill(STRANGER);
         await page.getByTestId("pay-amount").fill("5000.000001");
-        await expect(page.getByTestId("execute-problem")).toContainText("holds less than this");
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-error")).toContainText("holds less than this");
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
         await expect(page.getByTestId("execute-submit")).toBeDisabled();
+        await page.getByTestId("action-cancel").click();
 
         await page.getByTestId("add-action").click();
+        await expect(page.getByTestId("add-text-only")).toHaveCount(0);
         await page.getByTestId("add-custom").click();
         await page.getByTestId("custom-json").fill(JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws", msgs: []}));
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-row")).toHaveCount(1);
         await expect(page.getByTestId("action-error").last()).toContainText("1133");
         await expect(page.getByTestId("execute-submit")).toBeDisabled();
     });

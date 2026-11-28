@@ -136,17 +136,40 @@ describe("a wallet that disconnects", () => {
     });
 });
 
+/** Opens the picker and picks an action, which opens its form card. */
+async function pick(id: string) {
+    fireEvent.click(screen.getByTestId("add-action"));
+    fireEvent.click(await screen.findByTestId(`add-${id}`));
+    await waitFor(() => expect(screen.queryByTestId("action-picker")).toBeNull());
+}
+
+/** A payment: picked, filled in its form card and added to the list. */
+async function addPay(amount: string) {
+    await pick("pay");
+    fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
+    fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: amount}});
+    fireEvent.click(screen.getByTestId("action-commit"));
+    await waitFor(() => expect(screen.queryByTestId("action-editor")).toBeNull());
+}
+
 describe("run actions as the DAO", () => {
-    it("pays from the treasury: reviewed in full, then one MsgAdminExecute signed by the wallet, and back to the DAO page", async () => {
+    it("pays from the treasury: a numbered card, the review read back, then one MsgAdminExecute signed by the wallet, and back to the DAO page", async () => {
         landed();
         const {refresh} = renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        expect(screen.getByTestId("execute-submit")).toBeDisabled();
-
+        // the staged list without the composer's words: no proposal header, no Text only, the board's hint
+        expect(screen.queryByText("What it does if it passes")).toBeNull();
+        expect(screen.getByTestId("text-only-hint")).toHaveTextContent("Same list as proposals. Grants (authz / feegrant) and second signers are refused here.");
+        fireEvent.click(screen.getByTestId("add-action"));
+        await screen.findByTestId("action-picker");
+        expect(screen.queryByTestId("add-text-only")).toBeNull();
+        fireEvent.click(screen.getByTestId("add-pay"));
+        await waitFor(() => expect(screen.queryByTestId("action-picker")).toBeNull());
+        expect(screen.getByTestId("action-commit")).toHaveTextContent(/^Add to the list$/);
         fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
         fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "12.5"}});
+        fireEvent.click(screen.getByTestId("action-commit"));
 
+        expect(await screen.findByTestId("action-card-title")).toHaveTextContent("Pay from the treasury");
         // the review is read back from the message that would be signed
         expect(screen.getByTestId("execute-review")).toHaveTextContent(/^Founders will: 1\. pay 12\.5 TBZE to bze1.{3}….{4}\. If it fails, nothing happens\.$/);
         expect(screen.getByTestId("size-text")).toHaveTextContent(/of 20,000 bytes · 1 of 16 actions$/);
@@ -171,61 +194,54 @@ describe("run actions as the DAO", () => {
         expect(screen.queryByText("Review")).toBeNull();
         expect(screen.queryByTestId("execute-review")).toBeNull();
         expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run now");
-        for (const amount of ["1", "2"]) {
-            await userEvent.click(screen.getByTestId("add-action"));
-            await userEvent.click(screen.getByTestId("add-pay"));
-            const to = screen.getAllByTestId("pay-to");
-            fireEvent.change(to[to.length - 1], {target: {value: OTHER}});
-            const amounts = screen.getAllByTestId("pay-amount");
-            fireEvent.change(amounts[amounts.length - 1], {target: {value: amount}});
-        }
+        await addPay("1");
+        await addPay("2");
+        expect(screen.getAllByTestId("action-row")).toHaveLength(2);
         expect(screen.getByTestId("execute-review")).toHaveTextContent(/^Founders will: 1\. pay 1 TBZE to .+, 2\. pay 2 TBZE to .+\. If one fails, nothing happens\.$/);
         expect(screen.getByTestId("size-text")).toHaveTextContent("2 of 16 actions");
         expect(screen.getByTestId("execute-submit")).toHaveTextContent("Run 2 actions now");
         expect(screen.getByTestId("execute-submit")).toBeEnabled();
     });
 
-    it("one finished and one unfinished action: no review sentence that would skip one, only the problem", async () => {
+    it("while a form card is open nothing runs: its action is not in the list yet", async () => {
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
-        expect(screen.getByTestId("execute-review")).toBeInTheDocument();
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        expect(screen.queryByTestId("execute-review")).toBeNull();
-        expect(screen.getByTestId("execute-problem")).toBeInTheDocument();
+        await addPay("1");
+        expect(screen.getByTestId("execute-submit")).toBeEnabled();
+        await pick("pay");
         expect(screen.getByTestId("execute-submit")).toBeDisabled();
+        expect(screen.getByTestId("execute-editing")).toHaveTextContent("Add or cancel the open action first");
+        fireEvent.click(screen.getByTestId("action-cancel"));
+        await waitFor(() => expect(screen.getByTestId("execute-submit")).toBeEnabled());
+        expect(screen.queryByTestId("execute-editing")).toBeNull();
     });
 
-    it("a payment above the treasury is refused before anything is signed", async () => {
+    it("a payment above the treasury is refused in its form card: it never joins the list", async () => {
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
+        await pick("pay");
         fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
         fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "251"}});
+        fireEvent.click(screen.getByTestId("action-commit"));
+        expect(screen.getByTestId("action-error")).toHaveTextContent("holds less than this");
+        expect(screen.getByTestId("action-editor")).toBeInTheDocument();
+        expect(screen.queryByTestId("action-row")).toBeNull();
         expect(screen.getByTestId("execute-submit")).toBeDisabled();
-        expect(screen.getByTestId("execute-problem")).toHaveTextContent("holds less than this");
         expect(txMock).not.toHaveBeenCalled();
     });
 
-    it("a custom message that only a proposal may carry is refused, and the grant types are not typable at all", async () => {
+    it("a custom message that only a proposal may carry is refused (1133), and nothing can run", async () => {
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-custom"));
-        fireEvent.change(screen.getByRole("textbox", {name: /json|message/i}), {target: {value: JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: []})}});
-        expect(screen.getByTestId("execute-problem")).toHaveTextContent("error 1133");
+        await pick("custom");
+        fireEvent.change(screen.getByTestId("custom-json"), {target: {value: JSON.stringify({"@type": "/cosmos.authz.v1beta1.MsgExec", grantee: DAO_ADDRESS, msgs: []})}});
+        fireEvent.click(screen.getByTestId("action-commit"));
+        await waitFor(() => expect(screen.getAllByTestId("action-error").some((e) => /1133/.test(e.textContent ?? ""))).toBe(true));
         expect(screen.getByTestId("execute-submit")).toBeDisabled();
+        expect(screen.queryByTestId("execute-review")).toBeNull();
     });
 
     it("a simulation the chain refuses shows the reason and signs nothing; the console stays open", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onFailure("Only this DAO's admin can do that. Connect the admin's wallet.", {stage: "prepare"}); return false; });
         renderConsole(administered);
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
 
         await waitFor(() => expect(screen.getByTestId("action-error")).toHaveTextContent("Only this DAO's admin"));
@@ -236,10 +252,7 @@ describe("run actions as the DAO", () => {
     it("a confirmation timeout locks every operation until the node has been asked", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onBroadcast("H9"); o.onFailure("slow", {stage: "timeout", txHash: "H9"}); return false; });
         renderConsole(administered, {lookupTx: async () => "landed"});
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
 
         await waitFor(() => expect(screen.getByTestId("action-unconfirmed")).toBeInTheDocument());
@@ -255,10 +268,7 @@ describe("run actions as the DAO", () => {
     it("a payment the node has not seen yet stays locked, with a way out only the user can take", async () => {
         txMock.mockImplementation(async (_msgs, o) => { o.onBroadcast("H9"); o.onFailure("slow", {stage: "timeout", txHash: "H9"}); return false; });
         renderConsole(administered, {lookupTx: async () => "notfound"});
-        await userEvent.click(screen.getByTestId("add-action"));
-        await userEvent.click(screen.getByTestId("add-pay"));
-        fireEvent.change(screen.getByTestId("pay-to"), {target: {value: OTHER}});
-        fireEvent.change(screen.getByTestId("pay-amount"), {target: {value: "1"}});
+        await addPay("1");
         await userEvent.click(screen.getByTestId("execute-submit"));
         await waitFor(() => expect(screen.getByTestId("action-unconfirmed")).toBeInTheDocument());
 
