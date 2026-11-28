@@ -215,7 +215,8 @@ test.describe("a stake proposal in voting", () => {
         network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {page: "1", limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
         await page.goto("/proposal/9");
 
-        await expect(page.getByTestId("proposal-status")).toHaveText("Voting");
+        // the chain's flags still say it is settleable early
+        await expect(page.getByTestId("proposal-status")).toHaveText("Can settle early");
         await expect(page.getByTestId("scan-retry")).toContainText("could not be loaded from BZE Scan");
         await expect(page.getByTestId("tally-yes")).toContainText("BZE");
         await expect(page.getByTestId("timeline-no-scan")).toBeVisible();
