@@ -61,7 +61,8 @@ test.describe("who gets the console", () => {
         await page.getByTestId("admin-console-link").click();
         await expect(page).toHaveURL(/\/dao\/2\/admin$/);
         await expect(page.getByTestId("admin-console")).toHaveAttribute("data-role", "admin");
-        await expect(page.getByTestId("admin-warning")).toContainText("spending the whole treasury");
+        await expect(page.getByTestId("admin-hero-title")).toHaveText("You are the admin of Founders");
+        await expect(page.getByTestId("admin-warning")).toContainText("You can run any action as the DAO without a vote");
     });
 
     test("the console sits in the DAO page's shell, with the Admin console tab active", async ({page, network}) => {
@@ -75,6 +76,10 @@ test.describe("who gets the console", () => {
         // no This DAO side panel: the console's cards use the whole width
         await expect(page.getByText("This DAO", {exact: true})).toHaveCount(0);
         await expect(page.getByTestId("treasury-panel")).toHaveCount(0);
+        // the board's three cards, full width
+        await expect(page.getByTestId("execute-panel")).toContainText("Run actions as the DAO");
+        await expect(page.getByTestId("hand-over-card")).toContainText("Hand over");
+        await expect(page.getByTestId("handover-panel")).toContainText("Hand the DAO to its voters");
 
         await page.getByTestId("dao-tab-history").click();
         await expect(page).toHaveURL(/\/dao\/2\?tab=history$/);
@@ -124,10 +129,10 @@ test.describe("run actions as the DAO", () => {
         await page.getByTestId("pay-amount").fill("12.5");
 
         const review = page.getByTestId("execute-review");
-        await expect(review).toContainText("Send 12.5 TBZE from the DAO");
-        await expect(review).toContainText("Every message is signed by the DAO account");
-        await expect(page.getByTestId("execute-outer")).toContainText("MsgAdminExecute");
-        await expect(page.getByTestId("execute-sign")).toContainText("Signed by your wallet");
+        await expect(review).toContainText("Founders will: 1. pay 12.5 TBZE to");
+        await expect(review).toContainText("If it fails, nothing happens.");
+        await expect(page.getByTestId("size-text")).toContainText("1 of 16 actions");
+        await expect(page.getByTestId("execute-submit")).toHaveText("Run the action now");
         await expect(page.getByTestId("execute-submit")).toBeEnabled();
 
         await page.getByTestId("execute-submit").click();
@@ -167,7 +172,8 @@ test.describe("the handover", () => {
         await expect(page.getByTestId("nominate-submit")).toBeDisabled();
 
         await page.getByTestId("nominee").fill(NOMINEE);
-        await expect(page.getByTestId("nominate-panel")).toContainText("Nominate a new admin for Founders (they have to accept)");
+        await expect(page.getByTestId("nominate-problem")).toHaveCount(0);
+        await expect(page.getByTestId("nominate-panel")).toContainText("A person or a DAO. You stay admin until they accept.");
         await page.getByTestId("nominate-submit").click();
         await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
     });
@@ -176,7 +182,7 @@ test.describe("the handover", () => {
         adminRun(network, {pending_admin: NOMINEE, pending_admin_seq: "1"});
         await openConsole(page, WALLET);
 
-        await expect(page.getByTestId("withdraw-nominee")).toContainText("bze1");
+        await expect(page.getByTestId("withdraw-nominee")).toContainText("was nominated. They haven't accepted yet.");
         await expect(page.getByTestId("nominate-pending")).toContainText("1112");
         await expect(page.getByTestId("handover-blocked")).toContainText("1112");
         await page.getByTestId("withdraw-submit").click();
@@ -187,8 +193,9 @@ test.describe("the handover", () => {
         adminRun(network);
         await openConsole(page, WALLET);
 
-        await expect(page.getByTestId("handover-panel")).toContainText("you cannot undo it");
-        await expect(page.getByTestId("handover-voters")).toContainText("2 members");
+        await expect(page.getByTestId("handover-pill")).toHaveText("Can't be undone");
+        await expect(page.getByTestId("handover-text")).toContainText("only proposals its 2 members vote on");
+        await expect(page.getByTestId("handover-voters")).toContainText("2 members ✓");
         await expect(page.getByTestId("handover-submit")).toBeDisabled();
         await page.getByTestId("handover-understood").check();
         await page.getByTestId("handover-confirm").fill("Founder");
