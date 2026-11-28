@@ -31,5 +31,11 @@ export function useCoinFormat() {
         return value.gt(0) ? `$${value.toFormat(2)}` : '';
     }, [denomUsdValue]);
 
-    return {format, exact, usd, amountOf, ticker: denomTicker};
+    /** The USD value of a coin as a number; null when the price is unknown. */
+    const usdValue = useCallback((coin: {denom: string; amount: string}): BigNumber | null => {
+        const value = denomUsdValue(coin.denom, new BigNumber(coin.amount));
+        return value.gt(0) ? value : null;
+    }, [denomUsdValue]);
+
+    return {format, exact, usd, usdValue, amountOf, ticker: denomTicker};
 }

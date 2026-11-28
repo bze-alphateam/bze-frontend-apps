@@ -105,15 +105,15 @@ export const Dl = ({rows, wide, size = '13px', pad = '6px', testId}: {
             <chakra.div
                 key={row.key}
                 display="grid"
-                gridTemplateColumns={wide ? {base: 'minmax(0, 1fr) auto', md: '190px minmax(0, 1fr)'} : 'minmax(0, 1fr) auto'}
-                gap="16px"
+                gridTemplateColumns={wide ? {base: 'minmax(0, 1fr)', md: '190px minmax(0, 1fr)'} : 'minmax(0, 1fr) auto'}
+                gap={wide ? {base: '2px', md: '16px'} : '16px'}
                 py={wide ? {base: '7px', md: '12px'} : pad}
                 borderTopWidth={i === 0 ? '0' : '1px'}
                 borderColor="hg.divider"
                 data-testid={row.testId}
             >
                 <chakra.dt fontSize={wide ? {base: '13px', md: '14px'} : size} color="fg.muted" minW="0">{row.label}</chakra.dt>
-                <chakra.dd m="0" fontSize={wide ? {base: '13px', md: '14px'} : size} lineHeight="1.5" color="fg" minW="0" overflowWrap="anywhere" textAlign={wide ? {base: 'end', md: 'start'} : 'end'}>
+                <chakra.dd m="0" fontSize={wide ? {base: '13px', md: '14px'} : size} lineHeight="1.5" color="fg" minW="0" overflowWrap="anywhere" textAlign={wide ? 'start' : 'end'}>
                     {row.value}
                 </chakra.dd>
             </chakra.div>

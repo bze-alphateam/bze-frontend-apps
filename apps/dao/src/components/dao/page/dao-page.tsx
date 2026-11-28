@@ -5,7 +5,7 @@ import NextLink from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {Box, chakra, Flex} from '@chakra-ui/react';
 import {useChain} from '@interchain-kit/react';
-import {getChainName, PageContainer, PageState, Shimmer} from '@bze/bze-ui-kit';
+import {getChainName, HeroGlow, PageContainer, PageState, Shimmer} from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {useDaoExtras} from '@/hooks/useDaoExtras';
 import {liveDaoViewDeps, liveProposalDeps, liveSubDaoDeps} from '@/lib/dao-chain';
@@ -61,22 +61,22 @@ const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoV
             {tab === 'overview' && (
                 <chakra.div
                     display="grid"
-                    gridTemplateColumns={{base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 380px'}}
-                    gap="16px"
+                    gridTemplateColumns={{base: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 360px'}}
+                    gap={{base: '16px', lg: '24px'}}
                     alignItems="start"
                     data-testid="overview-tab"
                 >
                     {/* desktop: two columns; on a phone the columns dissolve (display: contents) and the
                         cards follow the phone board's order: voting power, who controls it, treasury, who votes */}
-                    <Flex direction="column" gap="16px" minW="0" display={{base: 'contents', lg: 'flex'}}>
+                    <Flex direction="column" gap="20px" minW="0" display={{base: 'contents', lg: 'flex'}}>
                         <Box minW="0" order={{base: 2, lg: 0}}>
                             <ControlBox view={view} wallet={wallet} detail={detail} nameOf={nameOf} subDaoDeps={subDaoDeps} />
                         </Box>
                         <Box minW="0" order={{base: 4, lg: 0}}>
-                            <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} joinHref={joinHref} />
+                            <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} wallet={wallet} joinHref={joinHref} />
                         </Box>
                     </Flex>
-                    <Flex direction="column" gap="16px" minW="0" display={{base: 'contents', lg: 'flex'}}>
+                    <Flex direction="column" gap="20px" minW="0" display={{base: 'contents', lg: 'flex'}}>
                         {wallet && (
                             <Box minW="0" order={{base: 1, lg: 0}}>
                                 <MyPower deps={deps} dao={dao} wallet={wallet} sources={view.sources} openProposals={view.openProposals} />
@@ -108,7 +108,9 @@ const Page = ({id, deps, proposalDeps, subDaoDeps}: Deps & {id: string}) => {
     const data = result.data;
 
     return (
-        <PageContainer py={{base: '20px', md: '32px'}}>
+        <Box position="relative">
+        <HeroGlow strength="inner" h="420px" />
+        <PageContainer position="relative" pt={{base: '20px', md: '28px'}} pb={{base: '48px', md: '64px'}}>
             {result.loading && <Loading />}
             {!result.loading && !!result.error && (
                 <PageState
@@ -131,6 +133,7 @@ const Page = ({id, deps, proposalDeps, subDaoDeps}: Deps & {id: string}) => {
                 <Body deps={deps} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} view={data.view} wallet={address ?? null} />
             )}
         </PageContainer>
+        </Box>
     );
 };
 
@@ -139,7 +142,7 @@ const Page = ({id, deps, proposalDeps, subDaoDeps}: Deps & {id: string}) => {
  * Overview (who controls it, who votes, the wallet's power, the treasury), Proposals or History.
  */
 export const DaoPage = ({id, deps = liveDaoViewDeps, proposalDeps = liveProposalDeps, subDaoDeps = liveSubDaoDeps}: {id: string; deps?: DaoViewDeps; proposalDeps?: ProposalDeps; subDaoDeps?: SubDaoDeps}) => (
-    <Suspense fallback={<PageContainer py={{base: '20px', md: '32px'}}><Loading /></PageContainer>}>
+    <Suspense fallback={<PageContainer pt={{base: '20px', md: '28px'}} pb={{base: '48px', md: '64px'}}><Loading /></PageContainer>}>
         <Page id={id} deps={deps} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} />
     </Suspense>
 );

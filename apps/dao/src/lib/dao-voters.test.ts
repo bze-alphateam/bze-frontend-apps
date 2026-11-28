@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {dexSourceHref, stakingDenomFor, memberPreview, MEMBERS_PREVIEW, sourceName, sourceRowId, totalVotingPower, type StakeSource} from "./dao-voters";
+import {dexSourceHref, stakingDenomFor, memberPreview, MEMBERS_PREVIEW, sourceDetail, sourceName, sourceRowId, totalVotingPower, type StakeSource} from "./dao-voters";
 
 const sr: StakeSource = {kind: "sr", id: "000000000017", stakingDenom: "ubze", lockDays: 7, staked: "1000", own: "0"};
 const dr: StakeSource = {kind: "dr", stakingDenom: "ubze", lockDays: 5, staked: "250", own: "0"};
@@ -28,8 +28,10 @@ describe("stake sources", () => {
     });
 
     it("names", () => {
-        expect(sourceName(sr, "BZE")).toBe("Staking reward 17 (BZE)");
-        expect(sourceName(dr, "BZE")).toBe("Denom Reward of BZE");
+        expect(sourceName(sr)).toBe("Simple reward #17");
+        expect(sourceName(dr)).toBe("Compounded reward");
+        expect(sourceDetail(sr, "BZE")).toBe("BZE · 7-day unstaking lock");
+        expect(sourceDetail(dr, "HONEY")).toBe("HONEY · 5-day unstaking lock");
     });
 });
 
