@@ -4,9 +4,10 @@ import type {
 } from '@bze/bze-ui-kit';
 import {ScanUnavailableError} from './dao-scan';
 import type {DaoProposalScan} from './dao-proposal-scan';
+import {createPagingMemory, isLaterPage, readScanPage, type PagedPage, type PagePosition} from './paged-list';
 import {DaoModuleUnsupported, parseDaoId, type Part} from './dao-view-loader';
 import {modelFromChain, modelFromScan, type ProposalModel} from './proposal-model';
-import type {ScanProposalDetail} from './proposal-types';
+import type {ScanOptionCounts, ScanProposalDetail, ScanVoteList} from './proposal-types';
 
 /** What the proposal pages read from the chain, injected so tests need no network. */
 export interface ProposalChain {
@@ -20,6 +21,10 @@ export interface ProposalChain {
     getDaoProposals(daoId: string, statuses: DaoProposalStatus[], page: DaoPageRequest): Promise<DaoPage<DaoProposal>>;
     /** The staking denom the weights of a stake electorate are counted in; null when it cannot be told. */
     getStakingDenom(electorate: DaoStakeElectorate): Promise<string | null>;
+    /** The address's stake now in every x/rewards position it holds, keyed as x/dao sources (`sr/{reward_id}`, `dr/{staking_denom}`). */
+    getStakes(address: string): Promise<{source: string; amount: string}[]>;
+    /** The height the address joined (or last added to) a source at; null when the chain has no join record. */
+    getJoinHeight(source: string, address: string): Promise<string | null>;
 }
 
 export interface ProposalDeps {
@@ -153,6 +158,16 @@ async function mergeChainAnswer(deps: ProposalDeps, data: ProposalPageData, resp
     return {...data, scanDetail, scanFailed, model: modelFromChain(resp, scanDetail, dao?.name ?? null, dao?.type ?? data.model.daoType)};
 }
 
+/** The names of the DAOs a proposal's actions name by number, read from the chain; a DAO that is missing or fails to read is left out. */
+export async function loadDaoNames(deps: ProposalDeps, ids: readonly string[]): Promise<Record<string, string>> {
+    const reads = await Promise.all(ids.map((id) => settle(() => deps.chain.getDao(id))));
+    const names: Record<string, string> = {};
+    reads.forEach((read, i) => {
+        if (read.ok && read.value?.name) names[ids[i]] = read.value.name;
+    });
+    return names;
+}
+
 // ---- votes ----
 
 export type VoteFilter = 'YES' | 'NO' | 'ABSTAIN';
@@ -170,49 +185,30 @@ export interface VoteRow {
     txHash: string | null;
 }
 
-export interface VotesCursor {
-    source: 'scan' | 'chain';
-    key: string;
-}
-
-export interface VotesPage {
-    rows: VoteRow[];
-    next: VotesCursor | null;
-    source: 'scan' | 'chain';
-}
+/** One page of a proposal's votes, with Scan's ballots per option when it gave them (numbered pages only). */
+export type VotesPage = PagedPage<VoteRow, 'scan' | 'chain'> & {counts: ScanOptionCounts | null};
 
 export const VOTES_PAGE = 20;
 const MAX_CHAIN_PAGES = 5;
+
+// Scan clients whose votes answered a `page` request without a total (a Scan before numbered pages).
+const votesPaging = createPagingMemory();
 
 const voteOption = (o: string): VoteFilter | null => {
     const upper = o.toUpperCase().replace(/^VOTE_OPTION_/, '');
     return upper === 'YES' || upper === 'NO' || upper === 'ABSTAIN' ? upper : null;
 };
 
-/**
- * One page of a proposal's votes: Scan (heaviest effective weight first, with the option filter), and
- * with Scan down the chain's ballots (by voter, the filter applied to the page). A cursor keeps its source.
- */
-export async function loadVotes(deps: ProposalDeps, proposalId: string, filter: VoteFilter | null, cursor: VotesCursor | null): Promise<VotesPage> {
-    if (!cursor || cursor.source === 'scan') {
-        try {
-            const page = await deps.scan.votes(proposalId, filter ? filter.toLowerCase() : null, cursor?.key ?? null, VOTES_PAGE);
-            const rows: VoteRow[] = [];
-            for (const v of page?.items ?? []) {
-                const option = voteOption(v.option);
-                if (option) rows.push({voter: v.voter, name: v.voter_label?.name ?? null, option, weight: v.weight, effectiveWeight: v.effective_weight, time: v.time, txHash: v.tx_hash});
-            }
-            return {rows, next: page?.next_cursor ? {source: 'scan', key: page.next_cursor} : null, source: 'scan'};
-        } catch (e) {
-            if (!(e instanceof ScanUnavailableError) || cursor) throw e;
-        }
-    }
+/** Scan does not know the proposal (yet): an empty answer that says nothing about Scan's paging. */
+const UNKNOWN: ScanVoteList & {unknown: true} = {items: [], next_cursor: null, weight_denom: null, total: null, option_counts: null, unknown: true};
 
-    // the chain cannot filter: keep reading past pages the filter empties (a few requests at most)
+/** The chain's ballots by voter (key paged); it cannot filter, so it reads past pages the filter empties (a few requests at most). */
+async function chainVotes(deps: ProposalDeps, proposalId: string, filter: VoteFilter | null, key: string | null): Promise<VotesPage> {
     const rows: VoteRow[] = [];
-    let key: string | null = cursor?.key ?? null;
+    let returned = 0;
     for (let i = 0; i < MAX_CHAIN_PAGES; i++) {
         const page = await deps.chain.getBallots(proposalId, {key: key ?? undefined, limit: VOTES_PAGE});
+        returned += page.items.length;
         for (const b of page.items) {
             const option = voteOption(b.option);
             if (option && (!filter || option === filter)) rows.push({voter: b.voter, name: null, option, weight: b.weight, effectiveWeight: b.weight, time: null, txHash: null});
@@ -220,35 +216,132 @@ export async function loadVotes(deps: ProposalDeps, proposalId: string, filter: 
         key = page.nextKey;
         if (!key || rows.length > 0) break;
     }
-    return {rows, next: key ? {source: 'chain', key} : null, source: 'chain'};
+    return {state: 'ok', items: rows, returned, source: 'chain', mode: 'cursor', total: null, next: key, counts: null};
+}
+
+/**
+ * One page of a proposal's votes. Scan by page number (heaviest effective weight first, with the option
+ * filter, `total` and the ballots per option); an older Scan, which ignores `page` and answers without a
+ * total, by cursor (remembered per client). With Scan down the first page falls back to the chain's
+ * ballots (by voter, Prev / Next by key, no names); a later page never falls back, and a list that
+ * started on the chain stays there.
+ */
+export async function loadVotesPage(deps: ProposalDeps, proposalId: string, filter: VoteFilter | null, position: PagePosition<'scan' | 'chain'>): Promise<VotesPage> {
+    if (position.source === 'chain') return chainVotes(deps, proposalId, filter, position.cursor ?? null);
+    try {
+        const read = await readScanPage<ScanVoteList & {unknown?: true}>(
+            votesPaging,
+            deps.scan,
+            position,
+            async (at) => (await deps.scan.votes(proposalId, {option: filter ? filter.toLowerCase() : null, ...at, limit: VOTES_PAGE})) ?? UNKNOWN,
+            (answer) => !answer.unknown,
+        );
+        const rows: VoteRow[] = [];
+        for (const v of read.answer.items) {
+            const option = voteOption(v.option);
+            if (option) rows.push({voter: v.voter, name: v.voter_label?.name ?? null, option, weight: v.weight, effectiveWeight: v.effective_weight, time: v.time, txHash: v.tx_hash});
+        }
+        return {
+            state: 'ok',
+            items: rows,
+            returned: read.answer.items.length,
+            source: 'scan',
+            mode: read.mode,
+            total: read.total,
+            next: read.next,
+            counts: read.mode === 'pages' ? read.answer.option_counts ?? null : null,
+        };
+    } catch (e) {
+        if (!(e instanceof ScanUnavailableError) || isLaterPage(position)) throw e;
+        return chainVotes(deps, proposalId, filter, null);
+    }
 }
 
 // ---- the wallet's vote ----
+
+/** Stake of the wallet in one of the proposal's pinned sources that its vote does not count. */
+export interface NotCounted {
+    /** `sr/{reward_id}` or `dr/{staking_denom}`. */
+    source: string;
+    amount: string;
+}
 
 export interface MyVote {
     ballot: DaoBallot | null;
     /** The weight a vote would count now; null when it is not known (not voting, or the read failed). */
     eligibleWeight: string | null;
+    /**
+     * Stake DAOs while voting: the stake in a pinned source that does not count because the wallet joined or added
+     * to it at or after the proposal's submit block. Empty when there is none or it could not be read.
+     */
+    notCounted: NotCounted[];
+}
+
+const big = (v: string | undefined): bigint => (v && /^\d+$/.test(v) ? BigInt(v) : BigInt(0));
+
+const pinnedSources = (electorate: DaoStakeElectorate): string[] => [
+    ...electorate.sr_ids.map((id) => `sr/${id}`),
+    ...(electorate.dr_denom ? [`dr/${electorate.dr_denom}`] : []),
+];
+
+/**
+ * What the wallet holds in each pinned source minus what the chain counted for it (`shares`), where the join
+ * record says why: the chain leaves a source out when the wallet joined it, or added to it (a top-up moves the
+ * join height), at or after the submit block. Any read that fails leaves the list empty: it never claims a reason.
+ */
+async function notCountedOf(
+    deps: ProposalDeps,
+    model: Pick<ProposalModel, 'electorate' | 'submitHeight'>,
+    wallet: string,
+    shares: {source: string; amount: string}[],
+): Promise<NotCounted[]> {
+    const {electorate, submitHeight} = model;
+    if (!electorate || !submitHeight || !/^\d+$/.test(submitHeight)) return [];
+    try {
+        const stakes = await deps.chain.getStakes(wallet);
+        const left = pinnedSources(electorate).flatMap((source): NotCounted[] => {
+            const held = stakes.filter((s) => s.source === source).reduce((sum, s) => sum + big(s.amount), BigInt(0));
+            const counted = shares.filter((s) => s.source === source).reduce((sum, s) => sum + big(s.amount), BigInt(0));
+            return held > counted ? [{source, amount: (held - counted).toString()}] : [];
+        });
+        const joined = await Promise.all(left.map((n) => deps.chain.getJoinHeight(n.source, wallet)));
+        return left.filter((_, i) => {
+            const height = joined[i];
+            return height !== null && /^\d+$/.test(height) && BigInt(height) >= BigInt(submitHeight);
+        });
+    } catch {
+        return [];
+    }
 }
 
 /**
  * The wallet's ballot (null only when the chain says there is none: a failed read throws, so the page
- * never claims "not voted" on a failure) and, while the proposal is voting, the weight a vote of it counts.
+ * never claims "not voted" on a failure) and, while the proposal is voting, the weight a vote of it counts
+ * and, in a stake DAO, the stake it holds that does not count.
  */
-export async function loadMyVote(deps: ProposalDeps, model: Pick<ProposalModel, 'id' | 'daoId' | 'status'>, wallet: string): Promise<MyVote> {
+export async function loadMyVote(
+    deps: ProposalDeps,
+    model: Pick<ProposalModel, 'id' | 'daoId' | 'status' | 'daoType' | 'electorate' | 'submitHeight'>,
+    wallet: string,
+): Promise<MyVote> {
     const voting = model.status === 'VOTING' && model.daoId !== null;
     const [ballot, power] = await Promise.all([
         deps.chain.getBallot(model.id, wallet),
         voting ? settle(() => deps.chain.getVotingPower(model.daoId!, wallet)) : Promise.resolve<Part<DaoVotingPowerResponse | null>>({ok: false}),
     ]);
     const entry = power.ok ? power.value?.proposals.find((p) => p.proposal_id === model.id) : undefined;
-    return {ballot, eligibleWeight: entry ? entry.eligible_weight : null};
+    const notCounted = entry && model.daoType === 'DAO_TYPE_STAKE' ? await notCountedOf(deps, model, wallet, entry.shares) : [];
+    return {ballot, eligibleWeight: entry ? entry.eligible_weight : null, notCounted};
 }
+
+/** The line under My vote for stake that does not count on this proposal. */
+export const notCountedLine = (amount: string, source: string): string =>
+    `${amount} in ${source} doesn't count: you joined or added to it after this proposal started.`;
 
 /** Why a wallet cannot vote with weight 0, for the DAO's kind. */
 export const noWeightReason = (daoType: string | null): string =>
     daoType === 'DAO_TYPE_STAKE'
-        ? 'Your stake joined after this proposal started, or it is not in one of the DAO\'s staking sources, so it does not count here.'
+        ? 'You joined or added to your stake after this proposal started, or it is not in one of the DAO\'s staking sources, so it does not count here.'
         : 'You were not a member of the DAO when this proposal started, so you cannot vote on it.';
 
 export const optionLabel = (option: DaoVoteOption | VoteFilter): string =>

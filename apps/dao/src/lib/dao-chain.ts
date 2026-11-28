@@ -2,7 +2,7 @@ import {
     DaoModuleNotSupportedError,
     getAddressBalances, getDao, getDaoBallot, getDaoBallots, getDaoProposal, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
     getDaos, getDaosByAdmin, getDenomReward, getDenomRewardParticipations, getRestClient,
-    getDaoStakeSources, getStakingRewardParticipantByAddress, isDaoModuleSupported,
+    getDaoStakeSources, getStakingRewardParticipantByAddress, isDaoModuleSupported, getDaoJoinRecord, daoStakingRewardSource, daoDenomRewardSource,
 } from '@bze/bze-ui-kit';
 import {createDaoScanClient, browserScanGetter} from './dao-scan';
 import {createDaoPageScan} from './dao-page-scan';
@@ -100,6 +100,14 @@ export const liveProposalChain: ProposalChain = {
         const {staking_reward: reward} = await client.bze.rewards.stakingReward({rewardId});
         return reward.staking_denom;
     },
+    async getStakes(address) {
+        const [sr, dr] = await Promise.all([getStakingRewardParticipantByAddress(address), getDenomRewardParticipations(address)]);
+        return [
+            ...sr.list.map((p) => ({source: daoStakingRewardSource(p.reward_id), amount: String(p.amount)})),
+            ...dr.map((p) => ({source: daoDenomRewardSource(p.staking_denom), amount: String(p.amount)})),
+        ];
+    },
+    getJoinHeight: getDaoJoinRecord,
 };
 
 /** The app's real collaborators for the proposal pages. */

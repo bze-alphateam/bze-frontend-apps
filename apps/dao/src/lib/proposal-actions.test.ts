@@ -108,7 +108,7 @@ describe("reading failures are never 'no power'", () => {
 
     it("a wallet with weight 0 gets the reason of its DAO type", () => {
         expect(proposalActions(input({model: model(), myVote: mine("0")})).vote?.reason).toMatch(/not a member/);
-        expect(proposalActions(input({model: model({type: "DAO_TYPE_STAKE"}), myVote: mine("0")})).vote?.reason).toMatch(/stake joined after/);
+        expect(proposalActions(input({model: model({type: "DAO_TYPE_STAKE"}), myVote: mine("0")})).vote?.reason).toMatch(/you joined or added to your stake after/);
     });
 
     it("still loading is a reason, not a verdict", () => {
