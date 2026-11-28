@@ -13,8 +13,9 @@ test.describe("a static-list proposal in voting", () => {
         await page.goto("/proposal/8");
 
         await expect(page.getByTestId("proposal-status")).toHaveText("Voting");
-        await expect(page.getByTestId("proposal-dao")).toHaveText("Founders");
-        await expect(page.getByTestId("proposal-dao")).toHaveAttribute("href", "/dao/2");
+        await expect(page.getByTestId("proposal-back")).toHaveText("Founders · proposals");
+        await expect(page.getByTestId("proposal-back")).toHaveAttribute("href", "/dao/2?tab=proposals");
+        await expect(page.getByTestId("proposal-dao")).toHaveCount(0);
         await expect(page.getByTestId("proposal-expedited")).toHaveCount(0);
         await expect(page.getByTestId("settle-banner")).toHaveCount(0);
 
@@ -26,6 +27,7 @@ test.describe("a static-list proposal in voting", () => {
 
         await expect(page.getByTestId("text-only")).toBeVisible();
         await expect(page.getByTestId("action")).toHaveCount(0);
+        await expect(page.getByTestId("raw-messages")).toHaveCount(0);
 
         await expect(page.getByTestId("bar-quorum")).toContainText("50%, needs at least 40%");
         await expect(page.getByTestId("bar-quorum")).toHaveAttribute("data-met", "true");
@@ -34,9 +36,13 @@ test.describe("a static-list proposal in voting", () => {
         await expect(page.getByTestId("tally-verdict")).toHaveText("As it stands, it would pass when voting ends.");
         await expect(page.getByTestId("money-none")).toBeVisible();
 
+        // text only: nothing to retry, so no retry-until step
         await expect(page.getByTestId("timeline-item")).toHaveCount(2);
         await expect(page.getByTestId("vote-row")).toHaveCount(1);
         await expect(page.getByTestId("vote-option")).toHaveText("Yes");
+        // a member list whose votes fit on one page
+        await expect(page.getByTestId("votes-panel").getByTestId("list-count")).toHaveText("1 vote · one vote per member");
+        await expect(page.getByTestId("votes-panel").getByTestId("pager-desktop")).toHaveCount(0);
         await expect(page.getByTestId("my-vote-panel")).toHaveCount(0);
     });
 
@@ -67,9 +73,16 @@ test.describe("a stake proposal in voting", () => {
         await expect(actions.nth(1).getByTestId("config-change").first()).toContainText("quorum: 40% → 50%");
         await expect(actions.nth(1)).toContainText("voting period: 3 days → 2 days");
         await actions.nth(2).locator("summary").click();
-        await expect(actions.nth(2).getByTestId("action-title")).toContainText("Hand the DAO to its own voters");
+        await expect(actions.nth(2).getByTestId("action-title")).toContainText("Hand Stakers club to its own voters");
         await actions.nth(3).locator("summary").click();
         await expect(actions.nth(3).getByTestId("action-raw")).toContainText("/cosmos.staking.v1beta1.MsgDelegate");
+
+        // the raw JSON holds all four messages, in the order of the cards
+        await page.getByTestId("raw-messages").locator("summary").click();
+        const raw = JSON.parse((await page.getByTestId("raw-messages-json").textContent()) ?? "null") as {"@type": string}[];
+        expect(raw.map((m) => m["@type"])).toEqual([
+            "/cosmos.bank.v1beta1.MsgSend", "/bze.dao.MsgUpdateDaoConfig", "/bze.dao.MsgNominateAdmin", "/cosmos.staking.v1beta1.MsgDelegate",
+        ]);
 
         await expect(page.getByTestId("tally-yes")).toContainText("BZE");
         await expect(page.getByTestId("bar-quorum")).toContainText("80%, needs at least 40%");
@@ -82,19 +95,61 @@ test.describe("a stake proposal in voting", () => {
         await expect(page.getByTestId("money-cost")).toContainText("sent to the DAO's treasury");
         await expect(page.getByTestId("deposit-rule")).toContainText("refunded only if the proposal passes");
 
-        await expect(page.locator('[data-testid="timeline-item"]')).toHaveCount(3);
+        await expect(page.locator('[data-testid="timeline-item"]')).toHaveCount(4);
         await expect(page.locator('[data-kind="early"]')).toContainText("Earliest early settle");
+        // voting end + the module's 14-day execution window
+        await expect(page.locator('[data-kind="retry-until"]')).toContainText("If the actions fail, anyone can retry until then");
     });
 
-    test("the votes show the effective weight, and the option filter narrows them", async ({page}) => {
+    test("the votes show the effective weight, the count line, and the option filter with its counts narrows them", async ({page}) => {
         await page.goto("/proposal/9");
 
+        const panel = page.getByTestId("votes-panel");
         await expect(page.getByTestId("vote-row")).toHaveCount(2);
         await expect(page.getByTestId("vote-reduced").first()).toContainText("cast with");
+        await expect(panel.getByTestId("list-count")).toHaveText("2 votes");
+        await expect(panel.getByTestId("vote-filter-count")).toHaveText(["2", "1", "1", "0"]);
+        await expect(panel).not.toContainText("From BZE Scan");
 
-        await page.getByRole("tab", {name: "Yes"}).click();
+        await page.getByRole("tab", {name: /^Yes/}).click();
         await expect(page.getByTestId("vote-row")).toHaveCount(1);
         await expect(page.getByTestId("vote-option")).toHaveText("Yes");
+        await expect(panel.getByTestId("vote-filter-count")).toHaveText(["2", "1", "1", "0"]);
+    });
+
+    test("numbered vote pages: the count line and the pager, a page change reads that page", async ({page, network}) => {
+        const vote = (n: number) => ({
+            voter: `bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju${String(n).padStart(6, "0")}`, voter_label: null, option: "YES",
+            weight: "1000000", effective_weight: "1000000", height: 150, tx_hash: null, time: "2026-10-28T10:00:00Z",
+        });
+        const answer = (from: number, count: number) => ({
+            items: Array.from({length: count}, (_, i) => vote(from + i)), next_cursor: null, total: 45, option_counts: {yes: 45, no: 0, abstain: 0},
+            weight_denom: {denom: "ubze", symbol: "BZE", exponent: 6},
+        });
+        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {page: "1", limit: "20"}, status: 200, body: answer(0, 20)});
+        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {page: "2", limit: "20"}, status: 200, body: answer(20, 20)});
+        await page.goto("/proposal/9");
+
+        const panel = page.getByTestId("votes-panel");
+        await expect(panel.getByTestId("list-count")).toHaveText("1–20 of 45 votes");
+        await panel.getByTestId("pager-desktop").getByRole("button", {name: "Page 2"}).click();
+        await expect(panel.getByTestId("list-count")).toHaveText("21–40 of 45 votes");
+        await expect(panel.getByTestId("pager-desktop").getByRole("button", {name: "Page 2"})).toHaveAttribute("aria-current", "page");
+    });
+
+    test("an older Scan without a total: the votes page with Prev / Next", async ({page, network}) => {
+        const base = {weight_denom: {denom: "ubze", symbol: "BZE", exponent: 6}};
+        const vote = (voter: string) => ({voter, voter_label: null, option: "NO", weight: "1", effective_weight: "1", height: 150, tx_hash: null, time: "2026-10-28T10:00:00Z"});
+        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {page: "1", limit: "20"}, status: 200, body: {...base, items: [vote("bze1qqq3kg3fxqmnu32v2ddxz6r0we7cfzujuzps7g")], next_cursor: "c2"}});
+        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {cursor: "c2", limit: "20"}, status: 200, body: {...base, items: [vote("bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw")], next_cursor: null}});
+        await page.goto("/proposal/9");
+
+        const panel = page.getByTestId("votes-panel");
+        await expect(panel.getByTestId("list-count")).toHaveText("Page 1");
+        await expect(panel.getByTestId("vote-filter-count")).toHaveCount(0);
+        await panel.getByTestId("pager-desktop").getByRole("button", {name: "Next page"}).click();
+        await expect(panel.getByTestId("list-count")).toHaveText("Page 2");
+        await expect(page.getByTestId("vote-row")).toHaveCount(1);
     });
 
     test("a connected staker who has not voted is told why their stake does not count", async ({page}) => {
@@ -103,12 +158,14 @@ test.describe("a stake proposal in voting", () => {
         await connectWallet(page);
 
         await expect(page.getByTestId("not-voted")).toBeVisible();
-        await expect(page.getByTestId("eligible-none")).toContainText("Your stake joined after this proposal started");
+        await expect(page.getByTestId("eligible-none")).toContainText("You joined or added to your stake after this proposal started");
+        // 1 BZE in staking reward 17, none of it counted, joined at block 150 (the proposal started at 100)
+        await expect(page.getByTestId("not-counted")).toHaveText(/^1 T?BZE in Staking reward 17 doesn't count: you joined or added to it after this proposal started\.$/);
     });
 
     test("with Scan down it still renders from the chain: stake denom from the electorate, votes from the chain's ballots", async ({page, network}) => {
         network.use("scan", {path: "/api/scan/dao-proposals/9", status: 502, body: {error: "BZE Scan unavailable"}});
-        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
+        network.use("scan", {path: "/api/scan/dao-proposals/9/votes", query: {page: "1", limit: "20"}, status: 502, body: {error: "BZE Scan unavailable"}});
         await page.goto("/proposal/9");
 
         await expect(page.getByTestId("proposal-status")).toHaveText("Voting");
@@ -117,6 +174,7 @@ test.describe("a stake proposal in voting", () => {
         await expect(page.getByTestId("timeline-no-scan")).toBeVisible();
         await expect(page.getByTestId("vote-row")).toHaveCount(2);
         await expect(page.getByText("read from the chain")).toBeVisible();
+        await expect(page.getByTestId("votes-panel").getByTestId("pagination")).toHaveCount(0);
     });
 });
 
@@ -129,6 +187,8 @@ test.describe("a proposal whose actions failed", () => {
         await expect(page.getByTestId("settle-banner")).toHaveCount(0);
         await expect(page.locator('[data-kind="failed"]')).toContainText("a message failed");
         await expect(page.locator('[data-kind="retry"]')).toContainText("Retry deadline");
+        // failed: the chain's retry_deadline, not voting end + the window
+        await expect(page.locator('[data-kind="retry-until"]')).toHaveCount(0);
         await expect(page.getByTestId("tally-verdict")).toHaveText("The tally meets the regular bars.");
         // passed: the deposit counts as refunded under "only when it passes"
         await expect(page.getByTestId("deposit-rule")).toHaveText("It was refunded to the proposer.");

@@ -1,0 +1,14 @@
+{
+  "source": "hand-written (the chain's REST shape: testnet has no DAO yet)",
+  "recorded": "2026-11-28",
+  "method": "GET",
+  "path": "/bze/dao/join_record",
+  "query": {
+    "source": "sr/000000000017",
+    "address": "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw"
+  },
+  "status": 200,
+  "body": {
+    "height": "150"
+  }
+}
