@@ -133,7 +133,7 @@ const ActionCard = ({index, draft, composed, ctx, nested, formatCoin, text, lock
         <chakra.li listStyleType="none" display="flex" flexDirection={{base: 'column', md: 'row'}} gap={{base: '8px', md: '12px'}} alignItems={{base: 'stretch', md: 'center'}} data-testid="action-row">
             <Flex
                 flex="1" minW="0" gap="14px" p="16px" borderRadius="14px" bg="hg.inset" borderWidth="1px"
-                borderColor={error ? 'hg.danger/40' : 'app.border'} data-invalid={error ? '' : undefined}
+                borderColor={error ? 'hg.danger/40' : 'app.muted'} data-invalid={error ? '' : undefined}
             >
                 <chakra.span fontSize="12px" fontWeight="700" color="hg.text.faint" w="14px" pt="10px" flex="none">{number}</chakra.span>
                 <IconTile id={draft.type} />
