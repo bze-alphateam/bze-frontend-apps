@@ -2,18 +2,23 @@ import type {Dao} from '@bze/bze-ui-kit';
 import {secondsOf} from '../dao-rules';
 import {formatDuration, formatRatio} from '../format';
 
-/** The words of the expedited switch: what it changes for this DAO, in its own numbers. */
-export function expeditedExplanation(dao: Pick<Dao, 'type' | 'config'>, minExpediteDelay: string): string[] {
+/**
+ * The words under the expedited switch, in the DAO's own numbers: `full` on a desktop, `short` on a phone.
+ * A stakers' DAO cannot settle early during its first `min_expedite_delay`; a member list has no such delay.
+ */
+export function expeditedExplanation(dao: Pick<Dao, 'type' | 'config'>, minExpediteDelay: string): {full: string; short: string} {
     const c = dao.config;
-    const regular = secondsOf(c.voting_period);
-    const expedited = secondsOf(c.expedited_period);
-    const lines = [
-        `Voting ends after ${expedited === null ? 'the expedited period' : formatDuration(expedited)} instead of ${regular === null ? 'the usual voting period' : formatDuration(regular)}, and the proposal can be settled early once the votes already decide it.`,
-        `The bars are higher and count against all the voting power, not only the votes cast: at least ${formatRatio(c.expedite_quorum)} must take part and more than ${formatRatio(c.expedite_threshold)} must vote Yes.`,
-    ];
-    if (dao.type === 'DAO_TYPE_STAKE') {
-        const delay = secondsOf(minExpediteDelay);
-        lines.push(`In a stakers' DAO an expedited proposal cannot be settled early during its first ${delay === null ? 'minimum expedite delay' : formatDuration(delay)}.`);
-    }
-    return lines;
+    const seconds = secondsOf(c.expedited_period);
+    const period = seconds === null ? 'the expedited period' : formatDuration(seconds);
+    const stake = dao.type === 'DAO_TYPE_STAKE';
+    const delay = secondsOf(minExpediteDelay);
+    const earliest = stake ? `, at the earliest ${delay === null ? 'the minimum expedite delay' : formatDuration(delay)} after submission,` : '';
+    const power = stake ? 'all voting power' : 'all members';
+    const voted = stake ? 'has voted' : 'have voted';
+    return {
+        full: `Shorter vote (${period}) that can settle early${earliest} once ${formatRatio(c.expedite_quorum)} of ${power} ${voted} and yes is more than ${formatRatio(c.expedite_threshold)} of ALL ${stake ? 'voting power' : 'members'} (not just of the votes cast). Use it for urgent things.`,
+        short: seconds !== null && seconds > 0 && seconds % 86400 === 0 ? `${seconds / 86400}-day vote that can settle early.`
+            : seconds !== null && seconds > 0 && seconds % 3600 === 0 ? `${seconds / 3600}-hour vote that can settle early.`
+                : `Shorter vote (${period}) that can settle early.`,
+    };
 }

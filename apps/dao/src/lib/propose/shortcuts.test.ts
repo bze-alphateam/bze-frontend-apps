@@ -1,6 +1,21 @@
 import {describe, expect, it} from "vitest";
 import {DAO, DAO_ADDRESS, FOURTH, OTHER, WALLET} from "@/test/composer-fixtures";
-import {shortcutApplies, shortcutDraft, shortcutHref, shortcutInDraft, shortcutLabel, shortcutOf} from "./shortcuts";
+import {isLastMember, LAST_MEMBER_TEXT, shortcutApplies, shortcutDraft, shortcutHref, shortcutInDraft, shortcutLabel, shortcutOf} from "./shortcuts";
+
+describe("isLastMember", () => {
+    it("is the only member of a member list, unless nobody can propose now", () => {
+        expect(isLastMember({...DAO, members: [WALLET]}, WALLET)).toBe(true);
+        expect(isLastMember({...DAO, members: [WALLET]}, WALLET.toUpperCase())).toBe(true);
+        expect(isLastMember({...DAO, members: [WALLET]}, WALLET, {kind: "blocked"})).toBe(false);
+        expect(isLastMember({...DAO, members: [WALLET, OTHER]}, WALLET)).toBe(false);
+        expect(isLastMember({...DAO, members: [OTHER]}, WALLET)).toBe(false);
+        expect(isLastMember({...DAO, members: [WALLET]}, null)).toBe(false);
+        expect(isLastMember({...DAO, type: "DAO_TYPE_STAKE", members: [WALLET]}, WALLET)).toBe(false);
+    });
+    it("says why Leave is not offered", () => {
+        expect(LAST_MEMBER_TEXT).toBe("You're the last member. A DAO needs at least one, so Leave is offered again once someone else is added.");
+    });
+});
 
 const key = () => "k1";
 const dao = {type: DAO.type, members: [WALLET, OTHER], address: DAO_ADDRESS, config: {...DAO.config, open_submission: true}};

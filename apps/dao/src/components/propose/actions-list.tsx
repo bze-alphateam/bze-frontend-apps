@@ -14,6 +14,8 @@ import {staleNominationText, type StaleNomination} from '@/lib/propose/relations
 import {Described} from '@/components/proposal/actions-panel';
 import {Panel} from '@/components/dao/page/panel';
 import {ACTION_FORMS} from './action-forms';
+import {groupOf, PICKER_GROUPS, pickerTestId, STALE_NOTE, SUB_IDS} from './picker-groups';
+import {StagedList} from './staged-list';
 
 interface Props {
     drafts: ActionDraft[];
@@ -26,18 +28,43 @@ interface Props {
     /** The list inside another action (run as a sub-DAO): no panel of its own. */
     nested?: boolean;
     /** The wording of a list that is not a proposal's (the admin console's); the defaults are a proposal's. */
-    wording?: {title?: string; intro: string; empty: string; full?: (max: number) => string};
+    wording?: ListWording;
     /** Nominations of this DAO that went stale: listed in the picker greyed out, never added. */
     staleNominations?: StaleNomination[];
+    /**
+     * The composer's list (boards F1–F3): numbered summary cards, a picker dialog, and one form card at a time
+     * whose action joins the list only on "Add to proposal". Without it (the admin console) every form stays open.
+     */
+    staged?: boolean;
+    /** The connected wallet, which a card names "(you)" (staged lists only). */
+    wallet?: string | null;
+    /** Told when a form card opens or closes (staged lists only): its action is not in the list until it is added. */
+    onEditing?: (open: boolean) => void;
 }
 
-/** The picker's groups, by entry id; an entry in none of them goes to the first. */
-const PICKER_GROUPS: {title: string; ids: readonly string[]}[] = [
-    {title: 'Basics', ids: ['pay', 'custom']},
-    {title: 'This DAO', ids: ['update-metadata', 'update-rules', 'update-members', 'update-electorate', 'nominate-admin', 'withdraw-nomination']},
-    {title: 'Other DAOs', ids: [ACCEPT_ID, SUB_ADMIN_ID, SUB_EXECUTE_ID]},
-];
-const SUB_IDS: readonly string[] = [SUB_ADMIN_ID, SUB_EXECUTE_ID];
+export type ActionsListProps = Props;
+
+/**
+ * The words of a list that is not a proposal's (the admin console's). Every field is optional and falls back to
+ * the composer's own words. `intro`, `empty` and `title` are the inline list's; `header`, `hint`, `commit` and
+ * `textOnly` are the staged list's (top level).
+ */
+export interface ListWording {
+    title?: string;
+    intro?: string;
+    empty?: string;
+    /** The note once the list is full. */
+    full?: (max: number) => string;
+    /** Staged: false leaves out the "What it does if it passes" header. */
+    header?: boolean;
+    /** Staged: the hint next to "Add an action"; null leaves it out. */
+    hint?: string | null;
+    /** Staged: the button that adds a new action from its form card ("Add to proposal"). */
+    commit?: string;
+    /** Staged: false leaves "Text only" out of the picker. */
+    textOnly?: boolean;
+}
+
 
 const pickerButton = {
     type: 'button',
@@ -169,7 +196,10 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
 };
 
 /** The ordered list of actions: add from the registry, edit, move, remove. */
-export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, wording, staleNominations = []}: Props) => {
+export const ActionsList = (props: Props) => (props.staged ? <StagedList {...props} /> : <InlineList {...props} />);
+
+/** Every action's form open in the list (the admin console's). */
+const InlineList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, wording, staleNominations = []}: Props) => {
     const [picking, setPicking] = useState(false);
     const entries = availableActions(ctx.dao, ctx);
     const composed = given ?? drafts.map((draft) => composeAction(draft, ctx, findAction));
@@ -181,7 +211,6 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
         onChange([...drafts, {key: nested ? innerKey(1 + Math.max(-1, ...drafts.map((d) => Number(d.key.replace('inner', '')) || 0))) : newKey(), type, fields: {...entry.initialFields(ctx), ...preset}}]);
         setPicking(false);
     };
-    const groupOf = (id: string) => Math.max(0, PICKER_GROUPS.findIndex((g) => g.ids.includes(id)));
     // the SubDAO actions are offered per SubDAO when the list is known; unreadable, the entries stay generic (their form says so)
     const perSub = ctx.subDaos !== null && ctx.subDaos.length > 0;
     const groups = PICKER_GROUPS.map((group, i) => {
@@ -233,12 +262,10 @@ export const ActionsList = ({drafts, composed: given, ctx, maxActions, formatCoi
             {!full && picking && (
                 <Flex direction="column" gap="14px" data-testid="action-picker">
                     {groups.map((group) => (
-                        <Flex key={group.title} direction="column" gap="8px" data-testid={`picker-group-${group.title.toLowerCase().replace(/ /g, '-')}`}>
+                        <Flex key={group.title} direction="column" gap="8px" data-testid={pickerTestId(group.title)}>
                             <chakra.span fontSize="12px" fontWeight="700" textTransform="uppercase" letterSpacing="0.04em" color="hg.text.faint">{group.title}</chakra.span>
                             {group.nominations && (
-                                <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="picker-stale-note">
-                                    A nomination goes out of date when the DAO that runs the nominating DAO changes its admin: it can no longer be accepted, and that DAO has to nominate again.
-                                </chakra.p>
+                                <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="picker-stale-note">{STALE_NOTE}</chakra.p>
                             )}
                             {group.plain.map((entry) => <EntryItems key={entry.id} entry={entry} ctx={ctx} onAdd={add} />)}
                             {group.stale.map((stale) => <StaleItem key={stale.dao.id} stale={stale} nominee={ctx.dao.name} />)}

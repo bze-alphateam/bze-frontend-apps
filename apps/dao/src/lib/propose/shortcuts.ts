@@ -76,5 +76,16 @@ export function shortcutInDraft(actions: ActionDraft[], wallet: string | null): 
     return null;
 }
 
+/**
+ * The wallet is the only member of a member list that could otherwise take its Leave (not blocked): Leave is hidden,
+ * since a DAO needs at least one member, and the composer says why.
+ */
+export function isLastMember(dao: ShortcutDao, wallet: string | null, status?: Pick<ProposerStatus, 'kind'> | null): boolean {
+    if (!wallet || dao.type !== 'DAO_TYPE_STATIC_LIST' || status?.kind === 'blocked') return false;
+    return dao.members.length === 1 && dao.members[0].toLowerCase() === wallet.toLowerCase();
+}
+
+export const LAST_MEMBER_TEXT = "You're the last member. A DAO needs at least one, so Leave is offered again once someone else is added.";
+
 /** The button text of a shortcut, with the DAO's name. */
 export const shortcutLabel = (shortcut: Shortcut, daoName: string): string => (shortcut === 'join' ? `Request to join ${daoName}` : `Leave ${daoName}`);
