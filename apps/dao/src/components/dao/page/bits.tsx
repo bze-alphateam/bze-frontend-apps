@@ -3,7 +3,7 @@
 import {useState, type ReactNode} from 'react';
 import {chakra, Flex} from '@chakra-ui/react';
 import {LuCheck, LuCopy, LuExternalLink, LuInfo, LuTriangleAlert} from 'react-icons/lu';
-import {useToast} from '@bze/bze-ui-kit';
+import {AppIcon, appAccentColor, useToast} from '@bze/bze-ui-kit';
 
 // The DAO page's own building blocks, with the board's values (cards, pills, label/value lists, notes).
 // The `Panel` / `Tag` / `AddressLine` of ./panel stay as they are: other pages use them.
@@ -175,7 +175,7 @@ export const CopyAddress = ({address, label = 'Copy address'}: {address: string;
     );
 };
 
-/** A link out of the app (Explorer, Tx, Stake on DEX) in the explorer's cyan or the DEX's, with the arrow. */
+/** A link out of the app (Explorer, Tx, Stake on DEX): the app's 16 px icon, the label in its accent, the arrow. */
 export const OutLink = ({href, tone = 'explorer', testId, children}: {href: string; tone?: 'explorer' | 'dex'; testId?: string; children: ReactNode}) => (
     <chakra.a
         href={href}
@@ -190,10 +190,12 @@ export const OutLink = ({href, tone = 'explorer', testId, children}: {href: stri
         fontSize="14px"
         fontWeight="500"
         whiteSpace="nowrap"
-        color={tone === 'dex' ? {base: '#0E74AD', _dark: '#12C1E1'} : {base: '#0B74A8', _dark: '#22C4E2'}}
+        textDecoration="none"
+        color={appAccentColor(tone)}
         _hover={{textDecoration: 'underline'}}
         data-testid={testId}
     >
+        <AppIcon app={tone} size={16} />
         {children}
         <LuExternalLink size={12} aria-hidden />
     </chakra.a>

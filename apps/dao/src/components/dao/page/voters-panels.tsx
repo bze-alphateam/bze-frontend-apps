@@ -45,8 +45,8 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
                     </chakra.span>
                 </Head>
                 {n === 0 && (
-                    <Note tone="neutral" title="No voters yet" testId="no-voters">
-                        This member list is empty, so nobody can vote. Its admin adds the first members.
+                    <Note tone="neutral" title="Empty electorate" testId="no-voters">
+                        No voters yet. This member list is empty. Its admin adds the first members; nobody can vote until then.
                     </Note>
                 )}
                 {joinHref && (
@@ -96,8 +96,8 @@ export const VotersPanel = ({dao, sources, nameOf, wallet = null, joinHref = nul
             <Head pill="Stakers" />
             {!list && <Notice status="warning">The voting sources could not be read from the chain right now.</Notice>}
             {list?.length === 0 && (
-                <Note tone="neutral" title="No voters yet" testId="no-voters">
-                    This DAO has no staking rewards to count stake in, so nobody can vote until its admin sets them.
+                <Note tone="neutral" title="Empty electorate" testId="no-voters">
+                    No voters yet. This DAO has no staking rewards to count stake in. Its admin sets it up; nobody can vote until someone stakes.
                 </Note>
             )}
             {list && list.length > 0 && (

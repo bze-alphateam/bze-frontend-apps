@@ -28,7 +28,7 @@ describe("describeVotingPower", () => {
     });
 
     it("a member: the Member role, its vote on each open proposal (null: not voted, undefined: unknown)", () => {
-        const voted = (id: string) => ({"5": "YES", "6": null}[id]);
+        const voted = (id: string): string | null | undefined => (({"5": "YES", "6": null}) as Record<string, string | null>)[id];
         const view = describeVotingPower("DAO_TYPE_STATIC_LIST", {current: "1", proposals: [p("5", "1"), p("6", "1"), p("8", "1")]}, title, voted);
         expect(view.role).toEqual({label: "Member", active: true});
         expect(view.lines.map((l) => l.value)).toEqual([

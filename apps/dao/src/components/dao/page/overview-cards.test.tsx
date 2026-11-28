@@ -12,7 +12,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
     getDexApp: () => ({href: "https://dex.example"}),
     useAssets: () => ({
         getAsset: (denom: string) => (denom === "ubze" || denom === "uhoney" ? {denom, decimals: 6} : undefined),
-        denomTicker: (denom: string) => ({ubze: "BZE", uhoney: "HONEY"}[denom] ?? denom),
+        denomTicker: (denom: string) => (({ubze: "BZE", uhoney: "HONEY"}) as Record<string, string>)[denom] ?? denom,
     }),
     useAssetsValue: () => ({
         denomUsdValue: (denom: string, amount: BigNumber) => (denom === "ubze" ? amount.shiftedBy(-6).multipliedBy(0.04) : new BigNumber(0)),
@@ -75,10 +75,11 @@ describe("Who votes", () => {
         expect(other).toHaveTextContent("Ana · builder");
     });
 
-    it("an empty member list is the 'No voters yet' note", () => {
+    it("an empty member list is the 'Empty electorate' note", () => {
         wrap(<VotersPanel dao={pageDao({members: []})} sources={{ok: true, value: []}} nameOf={() => undefined} />);
         expect(screen.getByTestId("no-voters")).toHaveAttribute("role", "note");
-        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet");
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("Empty electorate");
+        expect(screen.getByTestId("no-voters")).toHaveTextContent("No voters yet.");
     });
 
     it("stakers: one row per source with its lock, its stake and Stake on DEX, then the total voting power", () => {
@@ -148,9 +149,9 @@ describe("Your voting power", () => {
         wrap(<MyPower
             deps={powerDeps({current: "1", proposals: [{proposal_id: "24", eligible_weight: "1", shares: []}]}, [], true)}
             dao={pageDao()} wallet={WALLET} sources={{ok: true, value: []}} openProposals={open} />);
+        expect(await screen.findByTestId("power-proposal")).toHaveTextContent("Can vote");
         expect(await screen.findByTestId("scan-retry")).toHaveTextContent("Your votes");
         expect(screen.queryByTestId("power-not-voted")).toBeNull();
-        expect(screen.getByTestId("power-proposal")).toHaveTextContent("Can vote");
     });
 
     it("not a member and no votes: the neutral pill, 'No vote' and the empty line", async () => {

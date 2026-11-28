@@ -51,7 +51,7 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("rules-list")).toHaveCount(0);
         await page.getByTestId("rules-toggle").click();
         const rules = page.getByTestId("control-panel").getByTestId("rules-list");
-        await expect(rules.getByTestId("rule-quorum")).toContainText("40% of all members must vote");
+        await expect(rules.getByTestId("rule-quorum")).toContainText("40 % of members must vote");
         await expect(rules.getByTestId("rule-cost")).toContainText("None");
         await expect(rules.getByTestId("rule-deposit")).toContainText("None");
         await expect(page.getByText("Proposals are free here")).toHaveCount(0);
@@ -195,8 +195,8 @@ test.describe("a stake DAO", () => {
 
         await page.getByTestId("rules-toggle").click();
         await expect(page.getByTestId("rule-cost")).toContainText("treasury");
-        await expect(page.getByTestId("rule-deposit")).toContainText("only when the proposal passes");
-        await expect(page.getByTestId("rule-expedited")).toContainText("not before 1 day");
+        await expect(page.getByTestId("rule-deposit")).toContainText("back only if the proposal passes");
+        await expect(page.getByTestId("rule-expedited")).toContainText("at the earliest 1 day after submission");
 
         await expect(page.getByTestId("voters-kind")).toHaveText("Stakers");
         await expect(page.getByTestId("source-row")).toContainText("Simple reward #17");
@@ -268,10 +268,11 @@ test("with Scan down the SubDAOs still list, without counts", async ({page, netw
 
 test("an unknown DAO is not found, and so is an id that is no number", async ({page}) => {
     await page.goto("/dao/9");
-    await expect(page.getByText("DAO not found")).toBeVisible();
+    await expect(page.getByTestId("dao-not-found")).toContainText("No DAO #9 on this network. It may be on mainnet or testnet only.");
+    await expect(page.getByTestId("dao-not-found").getByRole("link", {name: "All DAOs"})).toHaveAttribute("href", "/");
 
     await page.goto("/dao/abc");
-    await expect(page.getByText("DAO not found")).toBeVisible();
+    await expect(page.getByTestId("dao-not-found")).toContainText("Not found");
 });
 
 test("with Scan down the live parts render and the Scan parts offer a retry", async ({page, network}) => {

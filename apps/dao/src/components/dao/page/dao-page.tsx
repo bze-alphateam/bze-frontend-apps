@@ -24,6 +24,7 @@ import {MyPower} from './my-power';
 import {ProposalsTab} from './proposals-tab';
 import {TreasuryPanel} from './panels';
 import {VotersPanel} from './voters-panels';
+import {Note} from './bits';
 
 interface Deps {
     deps: DaoViewDeps;
@@ -122,12 +123,18 @@ const Page = ({id, deps, proposalDeps, subDaoDeps}: Deps & {id: string}) => {
             )}
             {data?.state === 'unsupported' && <Unsupported />}
             {data?.state === 'not-found' && (
-                <PageState
-                    kind="empty"
-                    title="DAO not found"
-                    description="There is no such DAO on this network."
-                    action={<chakra.a asChild color="hg.link" fontWeight="600"><NextLink href="/">All DAOs</NextLink></chakra.a>}
-                />
+                <Note
+                    tone="neutral"
+                    title="Not found"
+                    testId="dao-not-found"
+                    action={(
+                        <chakra.a asChild display="inline-flex" alignItems="center" h="32px" px="12px" borderRadius="12px" fontSize="13px" fontWeight="600" color="fg" textDecoration="none" bg="hg.secondaryFill" borderWidth="1px" borderColor="hg.lineStrong">
+                            <NextLink href="/">All DAOs</NextLink>
+                        </chakra.a>
+                    )}
+                >
+                    {/^\d+$/.test(id) ? `No DAO #${id} on this network. It may be on mainnet or testnet only.` : 'There is no such DAO on this network.'}
+                </Note>
             )}
             {data?.state === 'ok' && (
                 <Body deps={deps} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} view={data.view} wallet={address ?? null} />

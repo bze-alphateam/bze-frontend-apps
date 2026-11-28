@@ -122,7 +122,7 @@ export function turnoutShare(tally: ProposalTally | null): string {
 
 // ---- the row's words (the board's pills, the "Yes · turnout" column and the When line) ----
 
-/** A row's status pill: the board's label and tone; `live` adds the dot of the states still moving. */
+/** A row's status pill: the board's label and tone; `live` marks the states still moving (B1's dot; the E1 table draws none). */
 export interface RowStatus {
     key: 'settle' | 'voting' | 'failed' | 'executed' | 'rejected' | 'expired' | 'cancelled';
     label: string;

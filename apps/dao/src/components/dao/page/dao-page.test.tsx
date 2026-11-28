@@ -164,14 +164,16 @@ describe("the DAO page", () => {
 });
 
 describe("an unknown DAO", () => {
-    it("says not found and links back to the DAOs", async () => {
+    it("says not found in the board's note and links back to the DAOs", async () => {
         nav.search = "";
         render(
             <ChakraProvider value={defaultSystem}>
                 <DaoPage id="9" deps={deps(pageDao())} proposalDeps={proposalDeps} subDaoDeps={subDaoDeps} />
             </ChakraProvider>,
         );
-        expect(await screen.findByText("DAO not found")).toBeInTheDocument();
+        const note = await screen.findByTestId("dao-not-found");
+        expect(note).toHaveTextContent("Not found");
+        expect(note).toHaveTextContent("No DAO #9 on this network. It may be on mainnet or testnet only.");
         expect(screen.getByRole("link", {name: "All DAOs"})).toHaveAttribute("href", "/");
         expect(screen.queryByTestId("dao-shell")).toBeNull();
     });

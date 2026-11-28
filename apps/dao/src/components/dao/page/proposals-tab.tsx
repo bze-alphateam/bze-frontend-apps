@@ -111,7 +111,7 @@ const StatusCell = ({row, nowMs}: {row: ProposalRow; nowMs: number}) => {
     const status = rowStatus(row, nowMs);
     return (
         <Flex gap="6px" wrap="wrap">
-            <Pill tone={status.tone} dot={status.live}><span data-testid="row-status" data-status={status.key}>{status.label}</span></Pill>
+            <Pill tone={status.tone}><span data-testid="row-status" data-status={status.key}>{status.label}</span></Pill>
             {row.expedited && <Pill tone="neutral" testId="row-expedited">Expedited</Pill>}
         </Flex>
     );
@@ -170,7 +170,7 @@ const ProposalTable = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => {
                                     </Table.Cell>
                                     <Table.Cell {...cell}><StatusCell row={row} nowMs={nowMs} /></Table.Cell>
                                     <Table.Cell {...cell} textAlign="end" color="hg.text.secondary" whiteSpace="nowrap" data-testid="row-result">{resultLine(row.tally)}</Table.Cell>
-                                    <Table.Cell {...cell} pe="24px" fontSize="13px" whiteSpace="nowrap" color={isActiveRow(row) ? 'fg' : 'fg.muted'} data-testid="row-ends">{whenOf(row, nowMs)}</Table.Cell>
+                                    <Table.Cell {...cell} pe="24px" fontSize="13px" whiteSpace="nowrap" color={isActiveRow(row) ? 'fg' : 'hg.text.faint'} data-testid="row-ends">{whenOf(row, nowMs)}</Table.Cell>
                                 </Table.Row>
                             );
                         })}

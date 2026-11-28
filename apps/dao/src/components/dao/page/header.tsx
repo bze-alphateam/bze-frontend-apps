@@ -67,7 +67,7 @@ const Description = ({name, text}: {name: string; text: string}) => {
                 <Portal>
                     <Dialog.Backdrop />
                     <Dialog.Positioner>
-                        <Dialog.Content maxW={{base: '92vw', md: '640px'}} maxH="640px" bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="20px" boxShadow="0 40px 80px -30px rgba(0,0,0,0.9)" data-testid="dao-description-dialog">
+                        <Dialog.Content maxW={{base: '92vw', md: '640px'}} maxH="640px" bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="20px" boxShadow="hg.popover" data-testid="dao-description-dialog">
                             <Dialog.Header pt="24px" px="24px" pb="0" pr="64px">
                                 <Dialog.Title fontSize="19px" fontWeight="700" overflowWrap="anywhere">{`About ${name}`}</Dialog.Title>
                             </Dialog.Header>

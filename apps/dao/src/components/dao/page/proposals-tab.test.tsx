@@ -64,7 +64,7 @@ describe("the Proposals tab", () => {
         // one "Yes · turnout" column, not two
         expect(within(rows[0]).getByTestId("row-result")).toHaveTextContent("75 % · 50 %");
         expect(within(rows[0]).queryByTestId("row-yes")).toBeNull();
-        expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["#", "Proposal", "Status", "Yes · turnout", "When"]);
+        expect(within(table()).getAllByRole("columnheader", {hidden: true}).map((h) => h.textContent)).toEqual(["#", "Proposal", "Status", "Yes · turnout", "When"]);
         expect(within(rows[0]).getByTestId("row-ends")).toHaveTextContent(/^Ends in \d+ days$/);
         expect(screen.getAllByTestId("proposal-card")).toHaveLength(1);
         expect(screen.queryByText("Load more")).toBeNull();

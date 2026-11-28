@@ -243,7 +243,7 @@ describe("the governance rules", () => {
         expect(toggle).toHaveTextContent("Hide governance rules");
         const rules = screen.getByTestId("rules-list");
         expect(within(screen.getByTestId("control-panel")).getByTestId("rules-list")).toBe(rules);
-        expect(within(rules).getByTestId("rule-quorum")).toHaveTextContent("40% of all members must vote");
+        expect(within(rules).getByTestId("rule-quorum")).toHaveTextContent("40 % of members must vote");
         expect(within(rules).getByTestId("rule-deposit")).toHaveTextContent("None");
 
         fireEvent.click(toggle);
