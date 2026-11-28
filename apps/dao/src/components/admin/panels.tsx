@@ -278,6 +278,10 @@ export const AcceptPanel = ({view, wallet, locked, onSend, chain}: OpProps & {ch
     const staleness = check.data;
     if (staleness?.stale) {
         const parent = staleness.parent.name;
+        // the approved sentence when the parent itself changed its admin; a change further up names that DAO
+        const who = staleness.changed.id === staleness.parent.id
+            ? `${parent}, the DAO that runs ${dao.name}`
+            : `${staleness.changed.name}, which controls ${parent}`;
         return (
             <HgCardSection testId="stale-card">
                 <Flex gap="10px" align="center" wrap="wrap">
@@ -285,7 +289,7 @@ export const AcceptPanel = ({view, wallet, locked, onSend, chain}: OpProps & {ch
                     <Pill tone="stale" testId="stale-pill">Stale</Pill>
                 </Flex>
                 <chakra.p m="0" fontSize="14px" data-testid="stale-text">
-                    {`${parent}, the DAO that runs ${dao.name}, changed its admin after you were nominated, so this nomination can no longer be accepted. ${parent} has to nominate you again.`}
+                    {`${who}, changed its admin after you were nominated, so this nomination can no longer be accepted. ${parent} has to nominate you again.`}
                 </chakra.p>
                 <Flex gap="8px" justify="flex-end" wrap="wrap"><ViewDao id={dao.id} /></Flex>
             </HgCardSection>

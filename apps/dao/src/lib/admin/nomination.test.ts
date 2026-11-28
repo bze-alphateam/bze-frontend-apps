@@ -33,6 +33,28 @@ describe("isNominationStale", () => {
         expect(await isNominationStale(c, dao())).toEqual({stale: true, parent: {id: "9", name: "Dao 9"}, changed: {id: "12", name: "Dao 12"}});
     });
 
+    it("a cycle in the admin chain (DAO 9 is run by DAO 4): each DAO above is compared once", async () => {
+        const cycle = (adminSeq: string) => chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", adminSeq)}, {
+            getController: vi.fn(async (): Promise<DaoControllerResponse | null> => ({controller: "bze1dao4", end_reason: "CYCLE", path: ["bze1dao4", "bze1dao9"]})),
+        });
+        const fresh = cycle("3");
+        expect(await isNominationStale(fresh, dao())).toEqual(NOT_STALE);
+        expect(fresh.getDaoByAddress).toHaveBeenCalledTimes(1);
+        expect(await isNominationStale(cycle("8"), dao())).toEqual({stale: true, parent: {id: "9", name: "Dao 9"}, changed: {id: "9", name: "Dao 9"}});
+    });
+
+    it("the depth cap (16 DAOs on the path): every DAO the chain walked is compared, the last one included", async () => {
+        const path = Array.from({length: 16}, (_, i) => (i === 0 ? "bze1dao4" : `bze1dao${100 + i}`));
+        const links = Object.fromEntries(path.slice(1).map((address, i) => [address, link(String(101 + i), "1")]));
+        const capped = (lastSeq: string) => chain(path, {...links, bze1dao115: link("115", lastSeq)}, {
+            getController: vi.fn(async (): Promise<DaoControllerResponse | null> => ({controller: "bze1dao4", end_reason: "DEPTH_CAP", path})),
+        });
+        const fresh = capped("1");
+        expect(await isNominationStale(fresh, dao())).toEqual(NOT_STALE);
+        expect(fresh.getDaoByAddress).toHaveBeenCalledTimes(15);
+        expect(await isNominationStale(capped("6"), dao())).toEqual({stale: true, parent: {id: "101", name: "Dao 101"}, changed: {id: "115", name: "Dao 115"}});
+    });
+
     it("compares the sequences as numbers, not as text, beyond what a double holds", async () => {
         const one = (adminSeq: string, pendingSeq: string) => isNominationStale(chain(["bze1dao4", "bze1dao9"], {bze1dao9: link("9", adminSeq)}), dao({pending_admin_seq: pendingSeq}));
         expect(await one("10", "9")).toMatchObject({stale: true});

@@ -82,7 +82,7 @@ describe("the admin console page", () => {
         expect(screen.getByTestId("admin-console-link")).toHaveAttribute("aria-current", "page");
     });
 
-    it("a disconnect keeps the tab and the console together: both follow the wallet the console belongs to", async () => {
+    it("after a disconnect the tab stays and the console says Connect your wallet", async () => {
         nav.address = WALLET;
         const {rerender} = render(page(administered));
         await screen.findByTestId("admin-console");
@@ -90,8 +90,11 @@ describe("the admin console page", () => {
 
         nav.address = undefined;
         rerender(page(administered));
-        expect(screen.getByTestId("admin-console")).toBeInTheDocument();
+        // the tab stays (it follows the last connected wallet) and the console asks to reconnect
         expect(screen.getByTestId("admin-console-link")).toBeInTheDocument();
+        expect(screen.getByTestId("admin-console")).toBeInTheDocument();
+        expect(screen.getByTestId("admin-needs-wallet")).toBeInTheDocument();
+        expect(screen.queryByTestId("execute-panel")).toBeNull();
     });
 
     it("without any wallet, neither the tab nor the console shows", async () => {

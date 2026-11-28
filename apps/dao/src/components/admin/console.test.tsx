@@ -82,7 +82,7 @@ describe("who gets the console", () => {
         expect(screen.getByTestId("no-console")).toBeInTheDocument();
         expect(screen.queryByTestId("execute-panel")).toBeNull();
         expect(screen.queryByTestId("nominate-panel")).toBeNull();
-        expect(screen.queryByTestId("accept-console")).toBeNull();
+        for (const id of ["accept-checking", "accept-card", "stale-card", "accept-submit"]) expect(screen.queryByTestId(id)).toBeNull();
     });
 
     it("the voters of a self-owned DAO have none: it has no admin", () => {
@@ -324,7 +324,9 @@ describe("accept a nomination", () => {
     it("has none of the old texts: who nominated, what the nominee takes over, the warning, Not now, the back link", async () => {
         renderConsole(nominated);
         await screen.findByTestId("accept-card");
-        expect(screen.queryByTestId("accept-panel")).toBeNull();
+        // the admin's warning ("Everything you sign is shown before you sign it") is the admin's alone
+        expect(screen.queryByTestId("admin-warning")).toBeNull();
+        expect(screen.queryByText(/Everything you sign/)).toBeNull();
         expect(screen.queryByTestId("treasury-panel")).toBeNull();
         expect(screen.queryByTestId("rules-panel")).toBeNull();
         expect(screen.queryByText(/nominated your wallet/)).toBeNull();
@@ -366,6 +368,18 @@ describe("accept a nomination", () => {
         expect(screen.queryByTestId("accept-submit")).toBeNull();
         // no error code and no sequence numbers
         expect(screen.getByTestId("stale-card")).not.toHaveTextContent(/1135|seq/);
+    });
+
+    it("stale further up: names the DAO that changed its admin, and the parent as the one to nominate again", async () => {
+        const chain = chainOf({
+            getController: vi.fn(async () => controller([DAO_ADDRESS, "bze1parent", "bze1guild"])),
+            getDaoByAddress: vi.fn(async (address: string) => (address === "bze1parent"
+                ? full({id: "9", name: "Parent", address: "bze1parent", admin_seq: "2"})
+                : full({id: "12", name: "Guild", address: "bze1guild", admin_seq: "7"}))),
+        });
+        renderConsole(runByParent, {chain});
+        expect(await screen.findByTestId("stale-text")).toHaveTextContent("Guild, which controls Parent, changed its admin after you were nominated, so this nomination can no longer be accepted. Parent has to nominate you again.");
+        expect(screen.queryByTestId("accept-card")).toBeNull();
     });
 
     it("run by a DAO that has not changed its admin: the accept card", async () => {
