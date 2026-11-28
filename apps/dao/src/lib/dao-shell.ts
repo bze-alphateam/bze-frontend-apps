@@ -47,3 +47,8 @@ const DESCRIPTION_CLAMP_LINES = 3;
 export function descriptionOverflows(text: string): boolean {
     return text.split('\n').length > DESCRIPTION_CLAMP_LINES || text.length > DESCRIPTION_CLAMP_CHARS;
 }
+
+/** An address as the DAO page's boards write it: "bze1h0n…ey7q" (7 + 4); a short one stays whole. */
+export function boardAddress(address: string): string {
+    return address.length > 14 ? `${address.slice(0, 7)}…${address.slice(-4)}` : address;
+}

@@ -13,8 +13,13 @@ export const sourceRowId = (source: StakeSource): string =>
 export const dexSourceHref = (dexHref: string, source: StakeSource): string =>
     `${dexHref.replace(/\/$/, '')}/staking/details?id=${encodeURIComponent(sourceRowId(source))}`;
 
-export const sourceName = (source: StakeSource, ticker: string): string =>
-    source.kind === 'sr' ? `Staking reward ${Number(source.id) || source.id} (${ticker})` : `Denom Reward of ${ticker}`;
+/** A source as the board names it: a staking reward is a "Simple reward #n", a Denom Reward the "Compounded reward". */
+export const sourceName = (source: StakeSource): string =>
+    source.kind === 'sr' ? `Simple reward #${Number(source.id) || source.id}` : 'Compounded reward';
+
+/** The line under a source's name: its token and its unstaking lock ("HONEY · 7-day unstaking lock"). */
+export const sourceDetail = (source: StakeSource, ticker: string): string =>
+    `${ticker} · ${source.lockDays}-day unstaking lock`;
 
 /**
  * Total voting power: what is staked in the sources, less the DAO's own stake in them (a treasury

@@ -3,22 +3,22 @@
 import {useEffect} from 'react';
 import NextLink from 'next/link';
 import {Box, Button, chakra, Flex, Table} from '@chakra-ui/react';
-import {HgCard, hgVariant, Notice, PageState, Shimmer} from '@bze/bze-ui-kit';
+import {LuPlus} from 'react-icons/lu';
+import {HgCard, hgVariant, Notice, Shimmer} from '@bze/bze-ui-kit';
 import {Pagination, PrevNext} from '@/components/ui/pagination';
-import {RowStatusPill} from '@/components/proposal/status-pill';
 import {useProposalsUrl} from '@/hooks/useDaoTabUrl';
 import {useNow} from '@/hooks/useNow';
 import {usePagedList} from '@/hooks/usePagedList';
-import {formatDateTime, formatRelative, shortAddress} from '@/lib/format';
+import {boardAddress} from '@/lib/dao-shell';
+import {formatDay, formatRelative} from '@/lib/format';
 import {clampPage, cursorCount, rangeCount} from '@/lib/pagination';
 import {
-    activeRuleAfter, isActiveRow, loadProposalPage, PROPOSAL_FILTERS, PROPOSALS_PAGE, segmentCounts, turnoutShare, yesShare,
+    activeRuleAfter, isActiveRow, loadProposalPage, PROPOSAL_FILTERS, PROPOSALS_PAGE, resultLine, rowStatus, segmentCounts, whenLine,
     type ProposalFilter, type ProposalPage,
 } from '@/lib/proposal-list';
 import type {ProposalDeps} from '@/lib/proposal-loader';
 import type {ProposalRow} from '@/lib/proposal-model';
-import {votingLine} from '@/lib/proposal-status';
-import {Tag} from './panel';
+import {Pill} from './bits';
 
 type NameOf = (address: string) => string | undefined;
 
@@ -64,7 +64,7 @@ const StatusFilter = ({value, counts, onChange}: {value: ProposalFilter; counts:
                     cursor="pointer"
                     bg={on ? 'hg.raised' : 'transparent'}
                     color={on ? 'fg' : 'fg.muted'}
-                    boxShadow={on ? 'xs' : 'none'}
+                    boxShadow={on ? '0 1px 2px rgba(0,0,0,0.3)' : 'none'}
                     focusVisibleRing="outside"
                     _hover={on ? undefined : {color: 'fg'}}
                     data-testid={`status-${option.value}`}
@@ -84,15 +84,14 @@ const StatusFilter = ({value, counts, onChange}: {value: ProposalFilter; counts:
 interface RowsProps {
     rows: ProposalRow[];
     loading: boolean;
-    /** Tint the active rows and draw the rule after the last one (All, ordered active first). */
+    /** Draw the indigo rule after the last active row (All, ordered active first); active rows are always tinted. */
     grouped: boolean;
     nowMs: number;
     nameOf: NameOf;
 }
 
-const whenOf = (row: ProposalRow, nowMs: number) =>
-    row.votingEnd ? votingLine(row.status, row.votingEnd, nowMs, formatRelative(row.votingEnd, nowMs), formatDateTime(row.votingEnd)) : '';
-const byOf = (row: ProposalRow, nameOf: NameOf) => (row.proposer ? `by ${nameOf(row.proposer) ?? shortAddress(row.proposer)}` : '');
+const whenOf = (row: ProposalRow, nowMs: number) => whenLine(row, nowMs, formatRelative(row.votingEnd, nowMs), formatDay(row.votingEnd));
+const byOf = (row: ProposalRow, nameOf: NameOf) => (row.proposer ? `by ${nameOf(row.proposer) ?? boardAddress(row.proposer)}` : '');
 
 const HEAD = {
     fontSize: '12px',
@@ -109,12 +108,19 @@ const HEAD = {
 };
 const CELL = {py: '14px', ps: '12px', pe: '12px', borderBottomWidth: '1px', borderColor: 'hg.divider', bg: 'transparent'};
 
-const StatusCell = ({row}: {row: ProposalRow}) => (
-    <Flex gap="6px" wrap="wrap">
-        <RowStatusPill status={row.status} />
-        {row.expedited && <Tag testId="row-expedited">Expedited</Tag>}
-    </Flex>
-);
+const StatusCell = ({row, nowMs}: {row: ProposalRow; nowMs: number}) => {
+    const status = rowStatus(row, nowMs);
+    return (
+        <Flex gap="6px" wrap="wrap">
+            <Pill tone={status.tone}><span data-testid="row-status" data-status={status.key}>{status.label}</span></Pill>
+            {row.expedited && <Pill tone="neutral" testId="row-expedited">Expedited</Pill>}
+        </Flex>
+    );
+};
+
+// the board's tint of an active row and the indigo rule after the last one
+const ACTIVE_TINT = 'color-mix(in srgb, var(--chakra-colors-hg-accent) 3.5%, transparent)';
+const RULE = 'color-mix(in srgb, var(--chakra-colors-hg-accent) 35%, transparent)';
 
 /** The proposals as a table (md and up); it scrolls inside its card when narrow, never the page. */
 const ProposalTable = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => {
@@ -127,8 +133,7 @@ const ProposalTable = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => {
                         <Table.ColumnHeader {...HEAD} ps="24px" w="56px">#</Table.ColumnHeader>
                         <Table.ColumnHeader {...HEAD}>Proposal</Table.ColumnHeader>
                         <Table.ColumnHeader {...HEAD}>Status</Table.ColumnHeader>
-                        <Table.ColumnHeader {...HEAD} textAlign="end">Yes</Table.ColumnHeader>
-                        <Table.ColumnHeader {...HEAD} textAlign="end">Turnout</Table.ColumnHeader>
+                        <Table.ColumnHeader {...HEAD} textAlign="end">Yes · turnout</Table.ColumnHeader>
                         <Table.ColumnHeader {...HEAD} pe="24px">When</Table.ColumnHeader>
                     </Table.Row>
                 </Table.Header>
@@ -139,36 +144,34 @@ const ProposalTable = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => {
                                 <Table.Cell {...CELL} ps="24px"><Shimmer h="14px" w="24px" /></Table.Cell>
                                 <Table.Cell {...CELL}><Flex direction="column" gap="6px"><Shimmer h="14px" w="60%" /><Shimmer h="10px" w="25%" /></Flex></Table.Cell>
                                 <Table.Cell {...CELL}><Shimmer h="20px" w="80px" borderRadius="hg.pill" /></Table.Cell>
-                                <Table.Cell {...CELL}><Shimmer h="14px" w="40px" ms="auto" /></Table.Cell>
-                                <Table.Cell {...CELL}><Shimmer h="14px" w="40px" ms="auto" /></Table.Cell>
+                                <Table.Cell {...CELL}><Shimmer h="14px" w="90px" ms="auto" /></Table.Cell>
                                 <Table.Cell {...CELL} pe="24px"><Shimmer h="14px" w="100px" /></Table.Cell>
                             </Table.Row>
                         ))
                         : rows.map((row, i) => {
-                            const active = grouped && isActiveRow(row);
+                            const active = isActiveRow(row);
                             const ruled = rule === i;
-                            const cell = {...CELL, ...(ruled ? {borderColor: 'app.border'} : {})};
+                            const cell = {...CELL, ...(ruled ? {borderColor: RULE} : {})};
                             return (
                                 <Table.Row
                                     key={row.id}
-                                    bg={active ? 'app.subtle/40' : 'transparent'}
+                                    bg={active ? ACTIVE_TINT : 'transparent'}
                                     data-testid="proposal-row"
                                     data-active={active ? 'true' : undefined}
                                     data-rule={ruled ? 'after' : undefined}
                                 >
                                     <Table.Cell {...cell} ps="24px" color="hg.text.faint" fontWeight="600">{`#${row.id}`}</Table.Cell>
                                     <Table.Cell {...cell}>
-                                        <NextLink href={`/proposal/${row.id}`} data-testid="proposal-link">
+                                        <NextLink href={`/proposal/${row.id}`} data-testid="proposal-link" style={{textDecoration: 'none'}}>
                                             <Flex direction="column" gap="3px" minW="0">
                                                 <chakra.strong fontSize="15px" fontWeight="600" color="fg" lineClamp={2} data-testid="proposal-row-title">{row.title}</chakra.strong>
                                                 {row.proposer && <chakra.span fontSize="12px" color="hg.text.faint" data-testid="row-proposer">{byOf(row, nameOf)}</chakra.span>}
                                             </Flex>
                                         </NextLink>
                                     </Table.Cell>
-                                    <Table.Cell {...cell}><StatusCell row={row} /></Table.Cell>
-                                    <Table.Cell {...cell} textAlign="end" color="fg.muted" whiteSpace="nowrap" data-testid="row-yes">{yesShare(row.tally)}</Table.Cell>
-                                    <Table.Cell {...cell} textAlign="end" color="fg.muted" whiteSpace="nowrap" data-testid="row-turnout">{turnoutShare(row.tally)}</Table.Cell>
-                                    <Table.Cell {...cell} pe="24px" fontSize="13px" whiteSpace="nowrap" color={isActiveRow(row) ? 'fg' : 'fg.muted'} data-testid="row-ends">{whenOf(row, nowMs)}</Table.Cell>
+                                    <Table.Cell {...cell}><StatusCell row={row} nowMs={nowMs} /></Table.Cell>
+                                    <Table.Cell {...cell} textAlign="end" color="hg.text.secondary" whiteSpace="nowrap" data-testid="row-result">{resultLine(row.tally)}</Table.Cell>
+                                    <Table.Cell {...cell} pe="24px" fontSize="13px" whiteSpace="nowrap" color={isActiveRow(row) ? 'fg' : 'hg.text.faint'} data-testid="row-ends">{whenOf(row, nowMs)}</Table.Cell>
                                 </Table.Row>
                             );
                         })}
@@ -179,7 +182,7 @@ const ProposalTable = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => {
 };
 
 /** The proposals as cards (below md): the whole card links to the proposal. */
-const ProposalCards = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => (
+const ProposalCards = ({rows, loading, nowMs, nameOf}: Omit<RowsProps, 'grouped'>) => (
     <Flex direction="column" gap="10px" display={{base: 'flex', md: 'none'}} data-testid="proposal-cards">
         {loading
             ? Array.from({length: SKELETON_CARDS}, (_, i) => (
@@ -188,19 +191,19 @@ const ProposalCards = ({rows, loading, grouped, nowMs, nameOf}: RowsProps) => (
                 </HgCard>
             ))
             : rows.map((row) => {
-                const active = grouped && isActiveRow(row);
+                const active = isActiveRow(row);
                 const when = whenOf(row, nowMs);
                 return (
-                    <HgCard key={row.id} interactive asChild p="14px" borderRadius="14px" {...(active ? {borderColor: 'app.border'} : {})}>
+                    <HgCard key={row.id} interactive asChild p="14px" borderRadius="14px" {...(active ? {borderColor: RULE} : {})}>
                         <NextLink href={`/proposal/${row.id}`} data-testid="proposal-card" data-active={active ? 'true' : undefined}>
                             <Flex direction="column" gap="8px">
                                 <Flex direction="column" gap="2px" minW="0">
                                     <chakra.strong fontSize="15px" color="fg" lineClamp={2}>{row.title}</chakra.strong>
                                     <chakra.span fontSize="12px" color="hg.text.faint">{[`#${row.id}`, byOf(row, nameOf)].filter(Boolean).join(' · ')}</chakra.span>
                                 </Flex>
-                                <StatusCell row={row} />
+                                <StatusCell row={row} nowMs={nowMs} />
                                 <Flex gap="4px 14px" wrap="wrap" fontSize="13px" color="fg.muted">
-                                    {row.tally && <span data-testid="card-tally">{`Yes ${yesShare(row.tally)} · Turnout ${turnoutShare(row.tally)}`}</span>}
+                                    {row.tally && <span data-testid="card-tally">{`Yes · turnout ${resultLine(row.tally)}`}</span>}
                                     {when && <span>{when}</span>}
                                 </Flex>
                             </Flex>
@@ -267,8 +270,7 @@ export const ProposalsTab = ({deps, daoId, nameOf, newProposal = false}: {deps: 
             bg={{base: 'transparent', md: 'hg.card'}}
             borderWidth={{base: '0', md: '1px'}}
             borderColor="hg.hairline"
-            borderRadius="hg.lg"
-            boxShadow={{base: 'none', md: 'hg.card'}}
+            borderRadius="16px"
             p={{base: '0', md: '22px 24px'}}
             data-testid="proposals-tab"
         >
@@ -278,8 +280,8 @@ export const ProposalsTab = ({deps, daoId, nameOf, newProposal = false}: {deps: 
                         <StatusFilter value={filter} counts={counts} onChange={(value) => value !== filter && setFilter(value)} />
                     </Box>
                     {newProposal && (
-                        <Button asChild variant={hgVariant('primary')} size="sm">
-                            <NextLink href={`/dao/${daoId}/propose`} data-testid="new-proposal">New proposal</NextLink>
+                        <Button asChild variant={hgVariant('primary')} h="40px" px="18px" gap="8px" fontSize="14px" borderRadius="12px">
+                            <NextLink href={`/dao/${daoId}/propose`} data-testid="new-proposal"><LuPlus size={16} aria-hidden />New proposal</NextLink>
                         </Button>
                     )}
                 </Flex>
@@ -311,15 +313,16 @@ export const ProposalsTab = ({deps, daoId, nameOf, newProposal = false}: {deps: 
                 )}
 
                 {empty && (
-                    filter === 'all'
-                        ? <PageState kind="empty" title="No proposals yet" description="Proposals submitted to this DAO are listed here." />
-                        : <PageState kind="empty" title="No proposals with this status" description="Pick another status, or All." />
+                    <Flex direction="column" gap="6px" align="center" textAlign="center" py="36px" data-testid="proposals-empty">
+                        <chakra.strong fontSize="15px">{filter === 'all' ? 'No proposals yet' : 'No proposals with this status'}</chakra.strong>
+                        <chakra.span fontSize="14px" color="fg.muted">{filter === 'all' ? 'Proposals submitted to this DAO are listed here.' : 'Pick another status, or All.'}</chakra.span>
+                    </Flex>
                 )}
 
                 {!empty && !failed && !needsScan && (
                     <>
                         <ProposalTable rows={rows} loading={loading} grouped={grouped} nowMs={nowMs} nameOf={nameOf} />
-                        <ProposalCards rows={rows} loading={loading} grouped={grouped} nowMs={nowMs} nameOf={nameOf} />
+                        <ProposalCards rows={rows} loading={loading} nowMs={nowMs} nameOf={nameOf} />
                     </>
                 )}
 

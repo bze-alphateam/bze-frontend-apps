@@ -18,7 +18,8 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("dao-type")).toHaveText("Governed by a member list");
         await expect(page.getByTestId("dao-name")).toHaveText("Founders");
         await expect(page.getByTestId("dao-created")).toHaveText(/^Created on .*2026$/);
-        await expect(page.getByTestId("dao-address")).toContainText(DAO_TWO);
+        await expect(page.getByTestId("dao-address")).toHaveAttribute("data-address", DAO_TWO);
+        await expect(page.getByTestId("dao-address")).toContainText(`${DAO_TWO.slice(0, 7)}…${DAO_TWO.slice(-4)}`);
         await expect(page.getByTestId("dao-explorer")).toHaveAttribute("href", new RegExp(`/accounts/${DAO_TWO}$`));
         await expect(page.getByTestId("dao-header")).not.toContainText("DAO #");
         await expect(page.getByTestId("dao-creator")).toHaveCount(0);
@@ -30,8 +31,11 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("control-voters")).toContainText("2 members");
         await expect(page.getByTestId("subdaos")).toHaveCount(0);
         await expect(page.getByTestId("treasury-row")).toContainText("BZE");
+        await expect(page.getByTestId("treasury-row").getByTestId("treasury-badge")).toHaveText(/^[A-Z]$/);
         await expect(page.getByTestId("treasury-panel")).not.toContainText("held by the DAO module");
         await expect(page.getByTestId("member")).toHaveCount(2);
+        await expect(page.getByTestId("voters-kind")).toHaveText("Member list");
+        await expect(page.getByTestId("member-count")).toHaveText("2 members · one vote each");
 
         // removed from the page
         await expect(page.getByTestId("rules-panel")).toHaveCount(0);
@@ -47,7 +51,7 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("rules-list")).toHaveCount(0);
         await page.getByTestId("rules-toggle").click();
         const rules = page.getByTestId("control-panel").getByTestId("rules-list");
-        await expect(rules.getByTestId("rule-quorum")).toContainText("40% of all members must vote");
+        await expect(rules.getByTestId("rule-quorum")).toContainText("40 % of members must vote");
         await expect(rules.getByTestId("rule-cost")).toContainText("None");
         await expect(rules.getByTestId("rule-deposit")).toContainText("None");
         await expect(page.getByText("Proposals are free here")).toHaveCount(0);
@@ -79,11 +83,15 @@ test.describe("a static-list DAO", () => {
         await page.goto("/dao/2");
         await connectWallet(page);
 
-        await expect(page.getByTestId("power-headline")).toHaveText("You are a member: one member, one vote");
-        await expect(page.getByTestId("power-proposal")).toContainText("Rotate the keys: you can vote");
+        await expect(page.getByTestId("power-headline")).toHaveText("1 vote");
+        await expect(page.getByTestId("power-role")).toHaveText("Member");
+        await expect(page.getByTestId("power-proposal")).toContainText("Rotate the keys");
         await expect(page.getByTestId("power-panel")).not.toContainText("Member since");
         await expect(page.getByTestId("my-vote")).toHaveCount(1);
-        await expect(page.getByTestId("my-vote")).toContainText("Yes on Buy honey");
+        await expect(page.getByTestId("my-vote")).toContainText("Buy honey");
+        await expect(page.getByTestId("my-vote")).toContainText("Yes");
+        // the wallet's own row in Who votes
+        await expect(page.getByTestId("member-you")).toHaveCount(1);
         await expect(page.getByTestId("leave-dao")).toHaveCount(0);
         await expect(page.getByTestId("admin-console-link")).toHaveCount(0);
     });
@@ -98,19 +106,23 @@ test.describe("a static-list DAO", () => {
         await expect(tab).not.toContainText("From BZE Scan");
         const items = page.getByTestId("history-item");
         await expect(items).toHaveCount(2);
-        await expect(items.first()).toContainText("The member list was updated");
-        await expect(items.first()).toContainText("Added:");
+        await expect(items.first().getByTestId("history-title")).toHaveText("Members changed");
+        await expect(items.first()).toContainText("Added ");
+        await expect(items.first().getByTestId("history-link")).toHaveText("Tx");
         await expect(items.first().getByTestId("history-link")).toHaveAttribute("href", /\/txs\/CD34$/);
+        await expect(items.nth(1).getByTestId("history-title")).toHaveText("Rules changed");
         await expect(items.nth(1)).toContainText("Changed: quorum, voting period");
-        await expect(items.nth(1).getByTestId("history-link")).toHaveText("View block");
+        await expect(items.nth(1).getByTestId("history-link")).toHaveText("Block");
+        await expect(items.first().getByTestId("history-meta")).toHaveText("EventDaoMembersUpdated");
+        await expect(items.nth(1).getByTestId("history-meta")).toHaveText("EventDaoConfigUpdated · min_quorum, voting_period");
         await expect(page.getByTestId("history-more")).toHaveCount(0);
 
         await page.getByTestId("pager-desktop").getByRole("button", {name: "Page 2"}).click();
         await expect(page).toHaveURL(/\/dao\/2\?tab=history&page=2$/);
         await expect(items).toHaveCount(1);
-        await expect(items.first()).toContainText("The DAO was created");
-        await expect(items.first()).toContainText("Governed by a member list");
-        await expect(items.first()).toContainText("No admin");
+        await expect(items.first().getByTestId("history-title")).toContainText("DAO created");
+        await expect(items.first().getByTestId("history-details")).toHaveText("Member list · no admin");
+        await expect(items.first().getByTestId("history-meta")).toHaveText("EventDaoCreated");
         await expect(tab).not.toContainText("DAO #");
     });
 
@@ -123,7 +135,7 @@ test.describe("a static-list DAO", () => {
         await expect(page.getByTestId("history-item")).toHaveCount(1);
         await expect(page.getByTestId("prev-next")).toContainText("Page 1");
         await page.getByTestId("pager-desktop").getByRole("button", {name: "Next page"}).click();
-        await expect(page.getByTestId("history-item").first()).toContainText("The DAO was created");
+        await expect(page.getByTestId("history-item").first()).toContainText("DAO created");
         await expect(page.getByTestId("prev-next")).toContainText("Page 2");
     });
 });
@@ -144,6 +156,17 @@ test.describe("the tabs live in the URL", () => {
         // the switches replaced the entry: Back leaves the DAO page instead of walking through its tabs
         await page.goBack();
         await expect(page).not.toHaveURL(/\/dao\/4/);
+    });
+
+    test("the tab bar never shows a scrollbar, on any tab (no vertical overflow)", async ({page}) => {
+        for (const url of ["/dao/2", "/dao/4?tab=proposals", "/dao/2?tab=history"]) {
+            await page.goto(url);
+            const tabs = page.getByTestId("dao-tabs");
+            await expect(tabs.getByTestId("dao-tab-bar")).toHaveCount(1);
+            const box = await tabs.evaluate((el) => ({scroll: el.scrollHeight, client: el.clientHeight, overflowY: getComputedStyle(el).overflowY}));
+            expect(box.scroll).toBeLessThanOrEqual(box.client);
+            expect(box.overflowY).toBe("hidden");
+        }
     });
 
     test("an unknown tab is the Overview", async ({page}) => {
@@ -173,11 +196,15 @@ test.describe("a stake DAO", () => {
 
         await page.getByTestId("rules-toggle").click();
         await expect(page.getByTestId("rule-cost")).toContainText("treasury");
-        await expect(page.getByTestId("rule-deposit")).toContainText("only when the proposal passes");
-        await expect(page.getByTestId("rule-expedited")).toContainText("not before 1 day");
+        await expect(page.getByTestId("rule-deposit")).toContainText("back only if the proposal passes");
+        await expect(page.getByTestId("rule-expedited")).toContainText("at the earliest 1 day after submission");
 
-        await expect(page.getByTestId("source-row")).toContainText("Staking reward 17");
+        await expect(page.getByTestId("voters-kind")).toHaveText("Stakers");
+        await expect(page.getByTestId("source-row")).toContainText("Simple reward #17");
+        await expect(page.getByTestId("source-row")).toContainText("-day unstaking lock");
+        await expect(page.getByTestId("total-power")).toContainText("Total voting power");
         await expect(page.getByTestId("total-power")).toContainText("BZE");
+        await expect(page.getByTestId("total-power")).toContainText("the DAO's own stake never counts");
         await expect(page.getByTestId("source-link")).toHaveAttribute("href", /\/staking\/details\?id=simple%3A000000000017$/);
         await expect(page.getByTestId("join-rules")).toHaveCount(0);
     });
@@ -187,8 +214,11 @@ test.describe("a stake DAO", () => {
         await page.goto("/dao/4");
         await connectWallet(page);
 
-        await expect(page.getByTestId("power-headline")).toContainText("voting power");
-        await expect(page.getByTestId("power-proposal")).toContainText("you joined or added to it after this proposal started");
+        await expect(page.getByTestId("power-role")).toHaveText("Staker");
+        await expect(page.getByTestId("power-headline")).toContainText("BZE");
+        // D3's blue note: eligible weight 0 on a proposal that started before the wallet joined or added stake
+        await expect(page.getByTestId("power-zero-weight").first()).toContainText("Eligible weight 0");
+        await expect(page.getByTestId("power-zero-weight").first()).toContainText("You joined or added to your stake after this proposal started, so it doesn't count on it.");
     });
 });
 
@@ -241,10 +271,11 @@ test("with Scan down the SubDAOs still list, without counts", async ({page, netw
 
 test("an unknown DAO is not found, and so is an id that is no number", async ({page}) => {
     await page.goto("/dao/9");
-    await expect(page.getByText("DAO not found")).toBeVisible();
+    await expect(page.getByTestId("dao-not-found")).toContainText("No DAO #9 on this network. It may be on mainnet or testnet only.");
+    await expect(page.getByTestId("dao-not-found").getByRole("link", {name: "All DAOs"})).toHaveAttribute("href", "/");
 
     await page.goto("/dao/abc");
-    await expect(page.getByText("DAO not found")).toBeVisible();
+    await expect(page.getByTestId("dao-not-found")).toContainText("Not found");
 });
 
 test("with Scan down the live parts render and the Scan parts offer a retry", async ({page, network}) => {
@@ -254,7 +285,8 @@ test("with Scan down the live parts render and the Scan parts offer a retry", as
 
     await expect(page.getByTestId("control-headline")).toHaveText("No admin");
     await expect(page.getByTestId("treasury-row")).toContainText("BZE");
-    await expect(page.getByTestId("dao-header").getByTestId("scan-retry")).toContainText("could not be loaded from BZE Scan");
+    await expect(page.getByTestId("dao-header").getByTestId("scan-retry")).toContainText("Scan is down");
+    await expect(page.getByTestId("dao-header").getByTestId("scan-retry")).toContainText("We couldn't reach BZE Scan");
     // the counter falls back to the chain's open proposals
     await expect(page.getByTestId("proposals-counter")).toHaveText("1");
 

@@ -51,7 +51,11 @@ describe("the DAO header", () => {
         expect(screen.getByRole("heading", {level: 1})).toHaveTextContent("Founders");
         expect(screen.getByTestId("dao-created")).toHaveTextContent("Created on 26 Oct 2026");
         expect(screen.getByTestId("dao-meta")).toHaveTextContent(/DAO address/i);
-        expect(screen.getByTestId("dao-address")).toHaveTextContent(pageDao().address);
+        const address = pageDao().address;
+        // shortened on the page, the whole address in its title and on the copy button
+        expect(screen.getByTestId("dao-address")).toHaveTextContent(`${address.slice(0, 7)}…${address.slice(-4)}`);
+        expect(screen.getByTestId("dao-address")).toHaveAttribute("data-address", address);
+        expect(screen.getByTitle(address)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Copy the DAO address"})).toBeInTheDocument();
         expect(screen.getByTestId("dao-explorer")).toHaveAttribute("href", expect.stringContaining(`/accounts/${pageDao().address}`));
     });
@@ -81,9 +85,19 @@ describe("the DAO header", () => {
         expect(screen.queryByTestId("dao-created")).toBeNull();
     });
 
-    it("Scan down: a retry line, the rest from the chain", () => {
-        renderShell({failed: true});
-        expect(screen.getByTestId("scan-retry")).toHaveTextContent("could not be loaded from BZE Scan");
+    it("Scan down: the amber 'Scan is down' note with its Retry, the rest from the chain", () => {
+        const retry = vi.fn();
+        render(
+            <ChakraProvider value={defaultSystem}>
+                <DaoShell dao={pageDao()} active="overview" wallet={null} extras={extras(null, {failed: true, retry})} openProposals={{ok: true, value: []}}><p>content</p></DaoShell>
+            </ChakraProvider>,
+        );
+        const note = screen.getByTestId("scan-retry");
+        expect(note).toHaveAttribute("role", "note");
+        expect(note).toHaveTextContent("Scan is down");
+        expect(note).toHaveTextContent("We couldn't reach BZE Scan, so creation info, names, history and your past votes are missing.");
+        fireEvent.click(screen.getByRole("button", {name: "Retry"}));
+        expect(retry).toHaveBeenCalledTimes(1);
         expect(screen.getByTestId("dao-type")).toBeInTheDocument();
     });
 });
@@ -160,6 +174,13 @@ describe("the tabs", () => {
         fireEvent.click(screen.getByTestId("dao-tab-history"));
         expect(nav.replace).toHaveBeenLastCalledWith("/dao/4?tab=history", {scroll: false});
         expect(nav.push).not.toHaveBeenCalled();
+    });
+
+    it("only the current tab carries the indigo bar, drawn inside the tab so the bar never scrolls", () => {
+        renderShell({active: "proposals"});
+        const bars = screen.getAllByTestId("dao-tab-bar");
+        expect(bars).toHaveLength(1);
+        expect(screen.getByTestId("dao-tab-proposals")).toContainElement(bars[0]);
     });
 
     it("the current tab does nothing; a modified click is left to the browser", () => {

@@ -5,7 +5,7 @@ import {ScanRefusedError, type DaoProposalScan} from "./dao-proposal-scan";
 import type {ProposalChain, ProposalDeps} from "./proposal-loader";
 import type {ProposalRow} from "./proposal-model";
 import {
-    activeRuleAfter, loadProposalPage, parseProposalFilter, segmentCounts, turnoutShare, yesShare,
+    activeRuleAfter, loadProposalPage, parseProposalFilter, resultLine, rowStatus, segmentCounts, turnoutShare, whenLine, yesShare,
     type ProposalFilter,
 } from "./proposal-list";
 import type {ScanProposalPage, ScanProposalSummary} from "./proposal-types";
@@ -102,6 +102,45 @@ describe("the Yes and Turnout columns", () => {
         expect(yesShare({yes: "0", no: "0", abstain: "5", denominator: "10"})).toBe("—");
         expect(yesShare(null)).toBe("—");
         expect(turnoutShare(null)).toBe("—");
+    });
+});
+
+describe("the Yes · turnout column", () => {
+    it("one cell, the board's spacing, a dash without a tally", () => {
+        expect(resultLine({yes: "7500", no: "500", abstain: "0", denominator: "10000"})).toBe("93.75 % · 80 %");
+        expect(resultLine({yes: "0", no: "0", abstain: "5", denominator: "10"})).toBe("— · 50 %");
+        expect(resultLine(null)).toBe("—");
+    });
+});
+
+describe("rowStatus: the board's pills", () => {
+    const NOW = Date.parse("2026-11-28T12:00:00Z");
+    const past = "2026-11-28T10:00:00Z";
+    const future = "2026-12-01T12:00:00Z";
+    it("voting is indigo, and 'Ready to settle' in amber once past its end; both live", () => {
+        expect(rowStatus({status: "VOTING", votingEnd: future}, NOW)).toEqual({key: "voting", label: "Voting", tone: "indigo", live: true});
+        expect(rowStatus({status: "VOTING", votingEnd: past}, NOW)).toEqual({key: "settle", label: "Ready to settle", tone: "amber", live: true});
+        expect(rowStatus({status: "VOTING", votingEnd: null}, NOW).key).toBe("voting");
+    });
+    it("the finished ones: passed (executed or failed), and the neutral three", () => {
+        expect(rowStatus({status: "EXECUTION_FAILED", votingEnd: past}, NOW)).toEqual({key: "failed", label: "Passed · execution failed", tone: "red", live: true});
+        expect(rowStatus({status: "EXECUTED", votingEnd: past}, NOW)).toMatchObject({label: "Passed · executed", tone: "green", live: false});
+        expect(rowStatus({status: "REJECTED", votingEnd: past}, NOW)).toMatchObject({label: "Rejected", tone: "neutral"});
+        expect(rowStatus({status: "EXPIRED", votingEnd: past}, NOW)).toMatchObject({label: "Expired", tone: "neutral"});
+        expect(rowStatus({status: "CANCELLED", votingEnd: past}, NOW)).toMatchObject({label: "Cancelled", tone: "neutral"});
+    });
+});
+
+describe("whenLine", () => {
+    const NOW = Date.parse("2026-11-28T12:00:00Z");
+    it("voting: 'Ends in …', then 'Voting ended … ago'; finished: the day, or closed early", () => {
+        expect(whenLine({status: "VOTING", votingEnd: "2026-12-01T12:00:00Z"}, NOW, "in 3 days", "1 Dec 2026")).toBe("Ends in 3 days");
+        expect(whenLine({status: "VOTING", votingEnd: "2026-11-28T10:00:00Z"}, NOW, "2 hours ago", "28 Nov 2026")).toBe("Voting ended 2 hours ago");
+        expect(whenLine({status: "EXECUTED", votingEnd: "2026-11-12T10:00:00Z"}, NOW, "16 days ago", "12 Nov 2026")).toBe("Voting ended 12 Nov 2026");
+        expect(whenLine({status: "CANCELLED", votingEnd: "2026-12-01T12:00:00Z"}, NOW, "in 3 days", "1 Dec 2026")).toBe("Closed before its planned end");
+        expect(whenLine({status: "VOTING", votingEnd: null}, NOW, "", "")).toBe("");
+        // ending within 45 s still reads as ending
+        expect(whenLine({status: "VOTING", votingEnd: "2026-11-28T12:00:30Z"}, NOW, "just now", "28 Nov 2026")).toBe("Ends in under a minute");
     });
 });
 
