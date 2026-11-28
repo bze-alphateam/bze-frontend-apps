@@ -25,7 +25,7 @@ src/
   lib/
     actions/        # the action registry (BFE-375): types, registry, pay, custom (untrusted JSON message), signers (who signs a type), amount
     propose/        # composer logic: compose (limits, messages, size), eligibility (who may propose), cost (cost + deposit + balance), draft (versioned localStorage), describe (read built messages back through BFE-373's describers), expedite, submit-result (proposal id from the tx events)
-    scan-proxy.ts   # server side of /api/scan: only the DAO routes (`daos` takes `page`; there is no cross-DAO `dao-proposals` list), per-route query allowlist (repeated params kept), finished DAO proposals kept forever
+    scan-proxy.ts   # server side of /api/scan: only the DAO routes (`daos`, a DAO's history and proposals take `page`; there is no cross-DAO `dao-proposals` list), per-route query allowlist (repeated params kept), finished DAO proposals kept forever
     dao-scan.ts     # client of the proxy: listDaos (type, q, member, pendingAdmin, sources, cursor | page, limit; `total` null when the answer has none) / filtersSupported probe; getter injected
     dao-loader.ts   # the home page's reads with their fallbacks (loadDaoPage, loadMyDaos); Scan and chain injected as interfaces
     paged-list.ts   # paging against Scan, shared by every numbered list: `PagedPage`, `readScanPage` (page while a client answers totals, else cursor, remembered per client in a `createPagingMemory()`), `pastEndPage`
@@ -57,7 +57,7 @@ src/
 - **URL state** (`lib/home-query.ts`): `?page` (omitted for 1), `?type=static_list|stake`, `?q` (after the 300 ms debounce, never written at mount), `?mine=1` (counts only with a wallet). A page change pushes, a filter change replaces and drops `page`; invalid values are ignored.
 - **Paging modes** (`loadDaoPage` returns `mode`): **pages**: Scan with BFE-423 answers `page` + `total` (numbered pager, count line from the rows returned; a page past the end replaces the URL with the last page). **cursor**: a Scan that answers a `page` request without a numeric total (remembered per Scan client, like `filtersSupported()`) and the chain fallback: only Prev / Next over a trail of the visited cursors, "Page n", `?page` ignored. Never `page` together with `cursor` (Scan answers 400). **My DAOs on**: every row of `loadMyDaos` is filtered here (`matchesFilter`) and paged in the browser, 20 per page, count "n of your DAOs"; the all-DAOs list then only runs for page 1 so the node and Scan states still show.
 - **Roles** (the You column, the pills on a card) come from `loadMyDaos`, read once per address and matched by DAO id; empty while loading or if it failed.
-- **Proxy routes**: `daos` (with `page`), `daos/{id}`, `daos/{id}/history`, `daos/{id}/proposals`, `dao-proposals/{id}` (+ `/votes`), `dao-votes`. The cross-DAO `dao-proposals` list is gone.
+- **Proxy routes**: `daos` (with `page`), `daos/{id}`, `daos/{id}/history` (with `page`), `daos/{id}/proposals` (repeated `status`, `page`), `dao-proposals/{id}` (+ `/votes`), `dao-votes`. The cross-DAO `dao-proposals` list is gone.
 
 ## Tests
 

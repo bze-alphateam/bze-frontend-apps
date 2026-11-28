@@ -56,7 +56,7 @@ describe("the History tab", () => {
         await screen.findAllByTestId("history-item");
         expect(d.scan.history).toHaveBeenCalledWith("2", {page: 2}, 20);
         expect(screen.getByTestId("pagination")).toHaveTextContent("21–21 of 23 events");
-        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 1"}));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 1", hidden: true}));
         expect(nav.push).toHaveBeenCalledWith("/dao/2?tab=history", {scroll: false});
         expect(screen.queryByTestId("history-more")).toBeNull();
     });
@@ -72,7 +72,7 @@ describe("the History tab", () => {
         renderTab(deps(history));
         await screen.findAllByTestId("history-item");
         expect(screen.getByTestId("prev-next")).toHaveTextContent("Page 1");
-        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Next page"}));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Next page", hidden: true}));
         expect(await screen.findByText("The DAO was created")).toBeInTheDocument();
         expect(screen.getByText("No admin")).toBeInTheDocument();
         expect(screen.getByTestId("prev-next")).toHaveTextContent("Page 2");

@@ -113,7 +113,7 @@ describe("the Proposals tab", () => {
         renderTab(deps(numbered(Array.from({length: 20}, (_, i) => item(40 - i, "executed")), 45)));
         await within(table()).findAllByTestId("proposal-row");
         expect(screen.getByTestId("pagination")).toHaveTextContent("1–20 of 45 proposals");
-        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 3"}));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 3", hidden: true}));
         expect(nav.push).toHaveBeenCalledWith("/dao/4?tab=proposals&page=3", {scroll: false});
     });
 
@@ -125,7 +125,7 @@ describe("the Proposals tab", () => {
         await within(table()).findAllByTestId("proposal-row");
         expect(screen.queryByTestId("pagination")).toBeNull();
         expect(screen.getByTestId("prev-next")).toHaveTextContent("Page 1");
-        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Next page"}));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Next page", hidden: true}));
         await waitFor(() => expect(within(table()).getByTestId("proposal-row")).toHaveTextContent("#3"));
         expect(d.scan.listForDao).toHaveBeenLastCalledWith("4", {statuses: [], cursor: "c1", limit: 20});
         expect(nav.push).not.toHaveBeenCalled();
