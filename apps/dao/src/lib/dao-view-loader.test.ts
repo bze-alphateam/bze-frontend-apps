@@ -131,9 +131,24 @@ describe("loadMyVotes", () => {
 });
 
 describe("loadHistoryPage", () => {
-    it("passes the cursor and returns the next one", async () => {
-        const history = vi.fn(async () => ({items: [], next_cursor: "n"}));
-        expect(await loadHistoryPage(deps({}, {history}), "2", "c")).toEqual({items: [], next: "n"});
-        expect(history).toHaveBeenCalledWith("2", "c", 20);
+    const event = {height: 1, tx_index: 0, msg_index: 0, seq: 0, type: "EventDaoCreated", attrs: {}, tx_hash: null, time: "2026-11-01T00:00:00Z"};
+
+    it("asks for a numbered page and keeps Scan's total; next_cursor is not read", async () => {
+        const history = vi.fn(async () => ({items: [event], next_cursor: "ignored", total: 23}));
+        expect(await loadHistoryPage(deps({}, {history}), "2", {page: 2})).toEqual({state: "ok", items: [event], returned: 1, source: "scan", mode: "pages", total: 23, next: null});
+        expect(history).toHaveBeenCalledWith("2", {page: 2}, 20);
+    });
+
+    it("an older Scan, without a total, switches to cursor mode and stays there", async () => {
+        const history = vi.fn(async () => ({items: [event], next_cursor: "c1"}));
+        const d = deps({}, {history});
+        expect(await loadHistoryPage(d, "2", {page: 3})).toMatchObject({mode: "cursor", total: null, next: "c1"});
+        expect(await loadHistoryPage(d, "2", {page: 1, cursor: "c1"})).toMatchObject({mode: "cursor", next: "c1"});
+        expect(history).toHaveBeenLastCalledWith("2", {cursor: "c1"}, 20);
+    });
+
+    it("throws when Scan does not answer", async () => {
+        const history = vi.fn(async () => { throw new Error("down"); });
+        await expect(loadHistoryPage(deps({}, {history}), "2", {page: 1})).rejects.toThrow("down");
     });
 });

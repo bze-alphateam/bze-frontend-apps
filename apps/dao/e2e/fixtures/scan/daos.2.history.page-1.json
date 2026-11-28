@@ -1,9 +1,10 @@
 {
-  "source": "hand-written (DAO page, BFE-372: testnet has no DAO yet)",
-  "recorded": "2026-11-26",
+  "source": "hand-written (BZE Scan numbered-pages shape, not recorded)",
+  "recorded": "2026-11-28",
   "method": "GET",
   "path": "/api/scan/daos/2/history",
   "query": {
+    "page": "1",
     "limit": "20"
   },
   "status": 200,
@@ -42,6 +43,7 @@
         "time": "2026-11-08T09:00:00Z"
       }
     ],
-    "next_cursor": "c1"
+    "next_cursor": null,
+    "total": 21
   }
 }

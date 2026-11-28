@@ -5,11 +5,7 @@ import type {
 import {ScanUnavailableError} from './dao-scan';
 import type {DaoProposalScan} from './dao-proposal-scan';
 import {DaoModuleUnsupported, parseDaoId, type Part} from './dao-view-loader';
-import {
-    modelFromChain, modelFromScan, rowFromChain, rowFromScan, statusFromScan,
-    type ProposalModel, type ProposalRow,
-} from './proposal-model';
-import {isOpenStatus} from './proposal-status';
+import {modelFromChain, modelFromScan, type ProposalModel} from './proposal-model';
 import type {ScanProposalDetail} from './proposal-types';
 
 /** What the proposal pages read from the chain, injected so tests need no network. */
@@ -257,72 +253,3 @@ export const noWeightReason = (daoType: string | null): string =>
 
 export const optionLabel = (option: DaoVoteOption | VoteFilter): string =>
     ({YES: 'Yes', NO: 'No', ABSTAIN: 'Abstain', VOTE_OPTION_UNSPECIFIED: 'None'} as const)[option];
-
-// ---- a DAO's proposals ----
-
-export const PROPOSALS_PAGE = 20;
-const MAX_READS = 5;
-
-const byIdDesc = (a: ProposalRow, b: ProposalRow): number => Number(BigInt(b.id) - BigInt(a.id));
-
-export interface ActiveProposals {
-    rows: ProposalRow[];
-    source: 'scan' | 'chain';
-}
-
-/**
- * The proposals still moving: in voting, or passed with a failed execution. Scan lists one status per
- * request, so both are read and merged newest first; with Scan down the chain lists both at once.
- */
-export async function loadActiveProposals(deps: ProposalDeps, daoId: string): Promise<ActiveProposals> {
-    try {
-        const read = async (status: string): Promise<ProposalRow[]> => {
-            const rows: ProposalRow[] = [];
-            let cursor: string | null = null;
-            for (let i = 0; i < MAX_READS; i++) {
-                const page = await deps.scan.listForDao(daoId, status, cursor, 50);
-                for (const item of page.items) {
-                    const row = rowFromScan(item);
-                    if (row) rows.push(row);
-                }
-                if (!page.next_cursor) break;
-                cursor = page.next_cursor;
-            }
-            return rows;
-        };
-        const [voting, failed] = await Promise.all([read('voting'), read('execution_failed')]);
-        return {rows: [...voting, ...failed].sort(byIdDesc), source: 'scan'};
-    } catch (e) {
-        if (!(e instanceof ScanUnavailableError)) throw e;
-    }
-
-    const page = await deps.chain.getDaoProposals(daoId, ['VOTING', 'EXECUTION_FAILED'], {limit: 50, reverse: true});
-    return {rows: page.items.map(rowFromChain).sort(byIdDesc), source: 'chain'};
-}
-
-export interface FinishedProposals {
-    rows: ProposalRow[];
-    next: string | null;
-}
-
-/**
- * A page of the finished proposals (every status but voting and a failed execution), newest first. Scan
- * cannot filter "the rest", so it lists everything and the moving ones are left out here; a page that
- * filters down to little keeps reading (up to a few requests). Throws when Scan does not answer.
- */
-export async function loadFinishedProposals(deps: ProposalDeps, daoId: string, cursor: string | null): Promise<FinishedProposals> {
-    const rows: ProposalRow[] = [];
-    let next = cursor;
-    for (let i = 0; i < MAX_READS; i++) {
-        const page = await deps.scan.listForDao(daoId, null, next, PROPOSALS_PAGE);
-        for (const item of page.items) {
-            const status = statusFromScan(item.status);
-            if (!status || isOpenStatus(status)) continue;
-            const row = rowFromScan(item);
-            if (row) rows.push(row);
-        }
-        next = page.next_cursor;
-        if (!next || rows.length >= PROPOSALS_PAGE / 2) break;
-    }
-    return {rows, next};
-}

@@ -12,11 +12,18 @@ describe("createDaoPageScan", () => {
         await expect(createDaoPageScan(vi.fn(async () => { throw new Error("offline"); })).daoDetail("2")).rejects.toBeInstanceOf(ScanUnavailableError);
     });
 
-    it("history: reads the path, the paging and the next cursor", async () => {
+    it("history: reads the path, the cursor and the next cursor; no total by cursor", async () => {
         const get = getter(200, {items: [{type: "EventDaoCreated"}], next_cursor: "c2"});
-        const page = await createDaoPageScan(get).history("2", "c1", 20);
+        const page = await createDaoPageScan(get).history("2", {cursor: "c1"}, 20);
         expect(get).toHaveBeenCalledWith("daos/2/history", [["cursor", "c1"], ["limit", "20"]]);
-        expect(page).toEqual({items: [{type: "EventDaoCreated"}], next_cursor: "c2"});
+        expect(page).toEqual({items: [{type: "EventDaoCreated"}], next_cursor: "c2", total: null});
+    });
+
+    it("history: a numbered page (never with a cursor) and its total", async () => {
+        const get = getter(200, {items: [], next_cursor: null, total: 23});
+        const page = await createDaoPageScan(get).history("2", {page: 2, cursor: "ignored"}, 20);
+        expect(get).toHaveBeenCalledWith("daos/2/history", [["page", "2"], ["limit", "20"]]);
+        expect(page.total).toBe(23);
     });
 
     it("history: an error answer or a body without items is unavailable", async () => {

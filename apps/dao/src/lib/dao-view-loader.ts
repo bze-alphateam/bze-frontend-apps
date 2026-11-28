@@ -3,6 +3,7 @@ import type {
 } from '@bze/bze-ui-kit';
 import type {KnownDao} from './dao-control';
 import type {DaoPageScan} from './dao-page-scan';
+import {createPagingMemory, readScanPage, type PagedPage, type PagePosition} from './paged-list';
 import type {ScanDaoDetail, ScanDaoEvent, ScanVoterBallot} from './dao-types';
 import type {StakeSource} from './dao-voters';
 
@@ -116,14 +117,21 @@ export const loadDaoExtras = (deps: DaoViewDeps, id: string): Promise<ScanDaoDet
 
 export const HISTORY_PAGE = 20;
 
-export interface HistoryPage {
-    items: ScanDaoEvent[];
-    next: string | null;
-}
+/** A page of a DAO's history: numbered while Scan answers totals, else by cursor. Scan is its only source. */
+export type HistoryPage = PagedPage<ScanDaoEvent, 'scan'>;
 
-export async function loadHistoryPage(deps: DaoViewDeps, id: string, cursor: string | null): Promise<HistoryPage> {
-    const page = await deps.scan.history(id, cursor, HISTORY_PAGE);
-    return {items: page.items, next: page.next_cursor};
+// Scan clients whose history answered a `page` request without a total (a Scan before numbered pages).
+const historyPaging = createPagingMemory();
+
+/**
+ * One page of the DAO's history, newest first: by page number with Scan's `total`; an older Scan, which
+ * ignores `page` and answers without a total, is read by cursor from then on (Prev / Next). Throws when
+ * Scan does not answer (there is no chain fallback for the history).
+ */
+export async function loadHistoryPage(deps: DaoViewDeps, id: string, position: PagePosition<'scan'>): Promise<HistoryPage> {
+    const read = await readScanPage(historyPaging, deps.scan, position, (at) => deps.scan.history(id, at, HISTORY_PAGE));
+    const items = read.answer.items;
+    return {state: 'ok', items, returned: items.length, source: 'scan', mode: read.mode, total: read.total, next: read.next};
 }
 
 /** The wallet's voting power in the DAO (chain). */

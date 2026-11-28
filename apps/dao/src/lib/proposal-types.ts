@@ -78,7 +78,13 @@ export interface ScanVoteList {
     weight_denom: ScanWeightDenom | null;
 }
 
+/** Proposals per status (lower-case chain name), over the whole DAO: answered with `page` only. */
+export type ScanStatusCounts = Partial<Record<string, number>>;
+
 export interface ScanProposalPage {
     items: ScanProposalSummary[];
     next_cursor: string | null;
+    /** The proposals the filter matches; only a Scan with numbered pages answers it, and only with `page`. */
+    total?: number | null;
+    status_counts?: ScanStatusCounts | null;
 }

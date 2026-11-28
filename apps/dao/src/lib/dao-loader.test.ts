@@ -41,6 +41,16 @@ const FILTER = {kind: "" as const, search: ""};
 const FIRST = {page: 1};
 
 describe("loadDaoPage", () => {
+    it("an unsupported answer (no total) does not put the client on cursor paging", async () => {
+        const listDaos = vi.fn<DaoScanClient["listDaos"]>()
+            .mockResolvedValueOnce({items: [], next_cursor: null, supported: false, total: null})
+            .mockResolvedValue(list([scanDao(1)], {total: 1}));
+        const d = deps({listDaos});
+        expect(await loadDaoPage(d, FILTER, FIRST)).toEqual({state: "unsupported"});
+        expect(await loadDaoPage(d, FILTER, FIRST)).toMatchObject({state: "ok", mode: "pages", total: 1});
+        expect(listDaos).toHaveBeenLastCalledWith({page: 1, limit: 20});
+    });
+
     it("reads Scan's numbered page with the type filter and the search, and returns the total", async () => {
         const d = deps({listDaos: vi.fn(async () => list([scanDao(2, {proposals_open: 3})], {total: 24, next_cursor: "c2"}))});
         const result = await loadDaoPage(d, {kind: "stake", search: "club"}, {page: 2});
@@ -127,7 +137,7 @@ describe("loadDaoPage", () => {
                     nextKey: "k2",
                 })),
             });
-            const result = await loadDaoPage(d, {kind: "stake", search: "club"}, {page: 2});
+            const result = await loadDaoPage(d, {kind: "stake", search: "club"}, FIRST);
 
             expect(result).toMatchObject({state: "ok", source: "chain", mode: "cursor", total: null, next: "k2"});
             expect(result.state === "ok" && result.items.map((c) => [c.id, c.proposalsOpen])).toEqual([["1", null], ["2", null]]);
@@ -148,6 +158,12 @@ describe("loadDaoPage", () => {
             await loadDaoPage(d, FILTER, {page: 1, cursor: "k2", source: "chain"});
             expect(d.scan.listDaos).not.toHaveBeenCalled();
             expect(d.chain.getDaos).toHaveBeenCalledWith(expect.objectContaining({key: "k2"}));
+        });
+
+        it("a later numbered page throws instead of showing the chain's first page under ?page=2", async () => {
+            const d = deps(down());
+            await expect(loadDaoPage(d, FILTER, {page: 2})).rejects.toThrow("down");
+            expect(d.chain.getDaos).not.toHaveBeenCalled();
         });
 
         it("does not swap sources in the middle of a Scan list", async () => {

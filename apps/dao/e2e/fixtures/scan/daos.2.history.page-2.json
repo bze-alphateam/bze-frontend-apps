@@ -1,0 +1,32 @@
+{
+  "source": "hand-written (BZE Scan numbered-pages shape, not recorded)",
+  "recorded": "2026-11-28",
+  "method": "GET",
+  "path": "/api/scan/daos/2/history",
+  "query": {
+    "page": "2",
+    "limit": "20"
+  },
+  "status": 200,
+  "body": {
+    "items": [
+      {
+        "height": 100,
+        "tx_index": 0,
+        "msg_index": 0,
+        "seq": 0,
+        "type": "EventDaoCreated",
+        "attrs": {
+          "id": "2",
+          "address": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+          "admin": "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws",
+          "type": "DAO_TYPE_STATIC_LIST"
+        },
+        "tx_hash": "AB12",
+        "time": "2026-11-04T10:00:00Z"
+      }
+    ],
+    "next_cursor": null,
+    "total": 21
+  }
+}
