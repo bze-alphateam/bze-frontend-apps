@@ -70,6 +70,16 @@ const people = (addresses: string[], name: (a: string) => string): string => {
     return addresses.length > SHOWN_ADDRESSES ? `${shown} and ${addresses.length - SHOWN_ADDRESSES} more` : shown;
 };
 
+/**
+ * Who runs a DAO in the decided words: "No admin" (it is its own admin), the admin's name when there is one
+ * (another DAO, or a labelled account), else "Admin is an account" with its short address. Never "DAO #n".
+ */
+function adminLine(admin: string, self: boolean, context: HistoryContext): string {
+    if (self) return 'No admin';
+    const named = context.nameOf?.(admin);
+    return named ? `Admin: ${named}` : `Admin is an account (${shortAddress(admin)})`;
+}
+
 /** One history item in plain words. An event type this app does not know still gets a readable line. */
 export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const described = describe(event, context);
@@ -85,21 +95,19 @@ function describe(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryC
     switch (eventKind(event.type)) {
         case 'EventDaoCreated': {
             const admin = text(a.admin);
-            return {
-                title: 'The DAO was created',
-                details: admin ? [admin === context.daoAddress || admin === text(a.address) ? 'Governed by its voters' : `Admin: ${name(admin)}`] : [],
-            };
+            const type = text(a.type);
+            if (type === 'DAO_TYPE_STAKE') details.push('Governed by stakers');
+            else if (type === 'DAO_TYPE_STATIC_LIST') details.push('Governed by a member list');
+            if (admin) details.push(adminLine(admin, admin === context.daoAddress || admin === text(a.address), context));
+            return {title: 'The DAO was created', details};
         }
         case 'EventAdminNominated':
             return {title: `${who(text(a.admin))} nominated ${name(text(a.nominee))} as the new admin`, details};
         case 'EventAdminChanged': {
             const next = text(a.new_admin);
-            return {
-                title: next === context.daoAddress
-                    ? `The admin handed the DAO to its own voters`
-                    : `The admin changed from ${who(text(a.old_admin))} to ${who(next)}`,
-                details,
-            };
+            const before = text(a.old_admin);
+            if (next === context.daoAddress) return {title: 'The admin handed the DAO to its own voters', details: ['No admin']};
+            return {title: `New admin: ${who(next)}`, details: before ? [`Before: ${who(before)}`] : []};
         }
         case 'EventAdminNominationWithdrawn':
             return {title: `The nomination of ${who(text(a.nominee))} as admin was withdrawn`, details};

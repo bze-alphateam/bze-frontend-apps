@@ -1,39 +1,71 @@
 'use client';
 
-import {useState} from 'react';
+import {useEffect} from 'react';
 import {chakra, Flex} from '@chakra-ui/react';
 import {getExplorerBlockURL, getExplorerTxURL, HgCard, Shimmer} from '@bze/bze-ui-kit';
-import {useAsync} from '@/hooks/useAsync';
+import {Pagination, PrevNext} from '@/components/ui/pagination';
+import {useHistoryUrl} from '@/hooks/useDaoTabUrl';
+import {usePagedList} from '@/hooks/usePagedList';
 import {describeDaoEvent} from '@/lib/dao-history';
-import {loadHistoryPage, type DaoViewDeps} from '@/lib/dao-view-loader';
+import {HISTORY_PAGE, loadHistoryPage, type DaoViewDeps, type HistoryPage} from '@/lib/dao-view-loader';
 import {formatDateTime} from '@/lib/format';
+import {cursorCount} from '@/lib/home-list';
+import {clampPage, rangeCount} from '@/lib/pagination';
 import {ScanRetry} from './panel';
 
-interface PageProps {
+interface HistoryTabProps {
     deps: DaoViewDeps;
     daoId: string;
     daoAddress: string;
     nameOf: (address: string) => string | undefined;
-    cursor: string | null;
-    first: boolean;
 }
 
-/** One page of the history; "Load more" mounts the next page below it. */
-const HistoryPageView = ({deps, daoId, daoAddress, nameOf, cursor, first}: PageProps) => {
-    const [retry, setRetry] = useState(0);
-    const [more, setMore] = useState(false);
-    const page = useAsync(`${daoId}:${cursor ?? 'first'}:${retry}`, () => loadHistoryPage(deps, daoId, cursor));
+/**
+ * What happened to the DAO, newest first, each item linking to its transaction. The list starts right under
+ * the tabs (no heading, no source line). Numbered pages while Scan answers totals (`?tab=history&page=2`),
+ * Prev / Next with an older Scan; Scan is the only source, so a failure offers a retry.
+ */
+export const HistoryTab = ({deps, daoId, daoAddress, nameOf}: HistoryTabProps) => {
+    const {page, pushPage, replacePage} = useHistoryUrl(daoId);
+    const list = usePagedList<HistoryPage>(daoId, page, HISTORY_PAGE, (position) => loadHistoryPage(deps, daoId, position));
 
-    if (page.loading) return <Shimmer h="80px" borderRadius="16px" aria-hidden />;
-    if (page.error || !page.data) return <ScanRetry what="The history" onRetry={() => setRetry((n) => n + 1)} />;
+    const lastPage = list.pastEnd;
+    useEffect(() => {
+        if (lastPage !== null) replacePage(lastPage);
+    }, [lastPage, replacePage]);
 
-    const {items, next} = page.data;
+    const loading = list.loading || list.pastEnd !== null;
+    const failed = !!list.error;
+    const items = list.items;
+    const empty = !loading && !failed && items.length === 0;
+
+    const footer = () => {
+        if (empty || failed) return null;
+        const count = (text: string) => (list.loading ? ' ' : text);
+        if (list.mode === 'pages' && list.pages !== null) {
+            const shown = clampPage(page, list.pages);
+            return (
+                <Pagination
+                    page={shown}
+                    pages={list.pages}
+                    onPage={pushPage}
+                    busy={list.loading}
+                    count={count(rangeCount({page: shown, pageSize: HISTORY_PAGE, rows: items.length, total: list.total ?? 0, one: 'event', many: 'events'}))}
+                />
+            );
+        }
+        if (list.mode === 'cursor') {
+            return <PrevNext hasPrev={list.hasPrev} hasNext={list.hasNext} onPrev={list.goPrev} onNext={list.goNext} busy={list.loading} count={count(cursorCount(list.page))} />;
+        }
+        return null;
+    };
+
     return (
-        <>
-            {first && items.length === 0 && (
-                <chakra.p m="0" color="fg.muted" data-testid="history-empty">Nothing has been recorded for this DAO yet.</chakra.p>
-            )}
-            {items.map((event) => {
+        <Flex direction="column" gap="12px" data-testid="history-tab">
+            {loading && <Shimmer h="80px" borderRadius="16px" aria-hidden />}
+            {!loading && failed && <ScanRetry what="The history" onRetry={list.retry} />}
+            {empty && <chakra.p m="0" color="fg.muted" data-testid="history-empty">Nothing has been recorded for this DAO yet.</chakra.p>}
+            {!loading && items.map((event) => {
                 const described = describeDaoEvent(event, {daoAddress, nameOf});
                 const href = event.tx_hash ? getExplorerTxURL(event.tx_hash) : getExplorerBlockURL(event.height);
                 return (
@@ -51,19 +83,7 @@ const HistoryPageView = ({deps, daoId, daoAddress, nameOf, cursor, first}: PageP
                     </HgCard>
                 );
             })}
-            {next && !more && (
-                <chakra.button type="button" alignSelf="flex-start" color="hg.link" fontWeight="600" cursor="pointer" onClick={() => setMore(true)} data-testid="history-more">
-                    Load more
-                </chakra.button>
-            )}
-            {next && more && <HistoryPageView deps={deps} daoId={daoId} daoAddress={daoAddress} nameOf={nameOf} cursor={next} first={false} />}
-        </>
+            {footer()}
+        </Flex>
     );
 };
-
-/** What happened to the DAO, newest first, from BZE Scan, each item linking to its transaction. */
-export const HistoryTab = (props: Omit<PageProps, 'cursor' | 'first'>) => (
-    <Flex direction="column" gap="12px" data-testid="history-tab">
-        <HistoryPageView {...props} cursor={null} first />
-    </Flex>
-);
