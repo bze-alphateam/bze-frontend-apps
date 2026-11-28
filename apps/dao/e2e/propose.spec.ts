@@ -12,6 +12,12 @@ const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
 const DAO_2_ADDRESS = "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws";
 const [, , , STRANGER] = bzeWallets(4);
 
+/** Opens the picker dialog and picks an entry: its form card opens below the list. */
+async function pick(page: Page, id: string): Promise<void> {
+    await page.getByTestId("add-action").click();
+    await page.getByTestId("action-picker").getByTestId(`add-${id}`).click();
+}
+
 /** Connects the fake wallet and closes its sidebar (a click on the backdrop), or the backdrop swallows the clicks that follow. */
 async function connectWallet(page: Page): Promise<void> {
     await connect(page);
@@ -46,25 +52,49 @@ test.describe("a member of a free DAO", () => {
         await page.goto("/dao/2/propose");
         await connectWallet(page);
 
-        await expect(page.getByTestId("proposer-note")).toHaveText("You are a member of this DAO.");
-        await expect(page.getByTestId("no-actions")).toBeVisible();
+        await expect(page.getByTestId("proposer-note")).toHaveText("You can propose: you're a member of this DAO.");
+        await expect(page.getByTestId("text-only-hint")).toHaveText("No action = a text-only (signalling) proposal.");
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
         await expect(page.getByTestId("expedite-box")).toHaveCount(0);
+        await expect(page.getByTestId("expedite-not-allowed")).toContainText("doesn't allow expedited proposals");
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
         await expect(page.getByTestId("submit-problem")).toHaveText("Enter a title.");
 
         await page.getByTestId("proposal-title").fill("Plant a hive garden");
         await page.getByTestId("proposal-summary-input").fill("Flowers for everyone.\nSee https://getbze.com/garden <b>now</b>");
-        await expect(page.getByTestId("title-count")).toHaveText("19 / 140 bytes");
+        await expect(page.getByTestId("title-count")).toHaveText("19 of 140 bytes");
 
+        await expect(page.getByTestId("summary-write")).toHaveAttribute("aria-pressed", "true");
         await page.getByTestId("summary-preview-toggle").click();
+        await expect(page.getByTestId("summary-preview-toggle")).toHaveAttribute("aria-pressed", "true");
         const preview = page.getByTestId("summary-preview");
         await expect(preview).toContainText("<b>now</b>");
         await expect(preview.locator("b")).toHaveCount(0);
         await expect(preview.getByRole("link")).toHaveAttribute("href", "https://getbze.com/garden");
 
-        await expect(page.getByTestId("text-only")).toBeVisible();
-        await expect(page.getByTestId("cost-free")).toContainText("charges nothing");
+        await expect(page.getByTestId("cost-deposit")).toHaveText("DepositNone");
+        await expect(page.getByTestId("cost-cost")).toHaveText("CostNone");
+        await expect(page.getByTestId("cost-back")).toHaveCount(0);
+        await expect(page.getByTestId("draft-note")).toHaveText("Draft saved on this device. It's cleared once the proposal is submitted.");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
+    });
+
+    test("the layout is the board's: the main card and the Before you submit aside side by side", async ({page}) => {
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2/propose");
+        await connectWallet(page);
+        const card = await page.getByTestId("proposal-card").boundingBox();
+        const aside = await page.getByTestId("composer-aside").boundingBox();
+        expect(card && aside && aside.x > card.x + card.width - 1).toBe(true);
+        await expect(page.getByTestId("submit-panel")).toContainText("Before you submit");
+        await expect(page.getByTestId("size-text")).toHaveText(/^\d[\d,]* of 20,000 bytes · 0 of 16 actions$/);
+    });
+
+    test("Text only, from the picker: it explains itself and adds nothing", async ({page}) => {
+        await page.goto("/dao/2/propose");
+        await pick(page, "text-only");
+        await expect(page.getByTestId("text-only")).toContainText("Nothing runs if it passes.");
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
     });
 
     test("pays from the treasury: the review says what the DAO would do and warns past the balance", async ({page}) => {
@@ -73,59 +103,73 @@ test.describe("a member of a free DAO", () => {
         await connectWallet(page);
 
         await page.getByTestId("proposal-title").fill("Pay the gardener");
-        await page.getByTestId("add-action").click();
-        await page.getByTestId("add-pay").click();
+        await pick(page, "pay");
 
-        await expect(page.getByTestId("pay-held")).toHaveText("The treasury holds 5,000 TBZE.");
-        await expect(page.getByTestId("submit-proposal")).toBeDisabled();
+        const editor = page.getByTestId("action-editor");
+        await expect(editor).toContainText("cosmos.bank MsgSend from the DAO's address");
+        await expect(page.getByTestId("pay-held")).toHaveText("Treasury holds 5,000 TBZE.");
+
+        // an incomplete payment is not added
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-error")).toBeVisible();
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
 
         await page.getByTestId("pay-to").fill(STRANGER);
-        await page.getByTestId("pay-amount").fill("25.5");
-
-        const preview = page.getByTestId("action-preview");
-        await expect(preview).toContainText("Send 25.5 TBZE from the DAO");
-        await expect(page.getByTestId("action-warning")).toHaveCount(0);
-        await expect(page.getByTestId("size-text")).toContainText("of 20,000 bytes");
-        await expect(page.getByTestId("action").first()).toBeVisible();
-        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
-
-        await page.getByTestId("pay-amount").fill("9000");
-        await expect(page.getByTestId("action-warning")).toContainText("holds less than this today");
-        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
-
         await page.getByTestId("pay-amount").fill("0.0000001");
         await expect(page.getByTestId("action-error")).toContainText("at most 6 decimals");
-        await expect(page.getByTestId("submit-proposal")).toBeDisabled();
+        await page.getByTestId("pay-amount").fill("9000");
+        await expect(page.getByTestId("action-warning")).toContainText("holds less than this today");
+        await page.getByTestId("pay-amount").fill("25.5");
+        await expect(page.getByTestId("action-warning")).toHaveCount(0);
+        await page.getByTestId("action-commit").click();
 
-        await page.getByTestId("pay-amount").fill("1.123456");
-        await expect(page.getByTestId("action-preview")).toContainText("Send 1.123456 TBZE from the DAO");
+        const row = page.getByTestId("action-row");
+        await expect(row).toHaveCount(1);
+        await expect(row.getByTestId("action-card-title")).toHaveText("Pay from the treasury");
+        await expect(row.getByTestId("action-preview")).toContainText("25.5 TBZE to");
+        await expect(page.getByTestId("size-text")).toContainText("of 20,000 bytes · 1 of 16 actions");
+        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
+
+        // edit it past the treasury: still allowed, with the warning on the card
+        await row.getByTestId("action-edit").click();
+        await page.getByTestId("pay-amount").fill("9000");
+        await page.getByTestId("action-commit").click();
+        await expect(row.getByTestId("action-warning")).toContainText("holds less than this today");
+        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
+
+        // Cancel keeps the card as it was
+        await row.getByTestId("action-edit").click();
         await page.getByTestId("pay-to").fill("cosmos1notmine");
         await expect(page.getByTestId("action-error")).toContainText("not a valid BeeZee address");
+        await page.getByTestId("action-cancel").click();
+        await expect(row.getByTestId("action-preview")).toContainText(/9,?000 TBZE to/);
     });
 
     test("actions can be moved and removed", async ({page}) => {
         await page.goto("/dao/2/propose");
         for (const amount of ["1", "2"]) {
-            await page.getByTestId("add-action").click();
-            await page.getByTestId("add-pay").click();
-            await page.getByTestId("pay-amount").last().fill(amount);
+            await pick(page, "pay");
+            await page.getByTestId("pay-amount").fill(amount);
+            await page.getByTestId("pay-to").fill(STRANGER);
+            await page.getByTestId("action-commit").click();
         }
         await expect(page.getByTestId("action-row")).toHaveCount(2);
+        await expect(page.getByRole("button", {name: "Move action 1 up"})).toBeDisabled();
         await page.getByRole("button", {name: "Move action 2 up"}).click();
-        await expect(page.getByTestId("pay-amount").first()).toHaveValue("2");
+        await expect(page.getByTestId("action-preview").first()).toContainText("2 TBZE");
         await page.getByRole("button", {name: "Remove action 1"}).click();
         await expect(page.getByTestId("action-row")).toHaveCount(1);
-        await expect(page.getByTestId("pay-amount")).toHaveValue("1");
+        await expect(page.getByTestId("action-preview")).toContainText("1 TBZE");
     });
 
     test("a custom message must be signed by the DAO and shows what it decodes to", async ({page}) => {
         await page.goto("/dao/2/propose");
         await page.getByTestId("proposal-title").fill("Raw send");
-        await page.getByTestId("add-action").click();
-        await page.getByTestId("add-custom").click();
+        await pick(page, "custom");
 
         await expect(page.getByTestId("custom-json")).toHaveValue("");
-        await expect(page.getByTestId("action-row")).toHaveCount(1);
+        await expect(page.getByTestId("advanced-pill")).toHaveText("Advanced");
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
 
         const message = {
             "@type": "/cosmos.bank.v1beta1.MsgSend",
@@ -138,25 +182,32 @@ test.describe("a member of a free DAO", () => {
 
         await page.getByTestId("custom-json").fill(JSON.stringify(message));
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Send 1.5 TBZE from the DAO");
+        await expect(page.getByTestId("action-editor")).toContainText("Looks right");
+        await expect(page.getByTestId("action-decoded")).toContainText("Send 1.5 TBZE from the DAO");
 
         await page.getByTestId("custom-json").fill(JSON.stringify({...message, from_address: WALLET}));
         await expect(page.getByTestId("action-error")).toContainText(`"from_address" is ${WALLET}`);
         await page.getByTestId("custom-json").fill("{not json");
         await expect(page.getByTestId("action-error")).toContainText("not valid JSON");
+
+        await page.getByTestId("custom-json").fill(JSON.stringify(message));
+        await page.getByTestId("action-commit").click();
+        await expect(page.getByTestId("action-card-title")).toHaveText("Custom message (advanced)");
+        await expect(page.getByTestId("action-preview")).toContainText("1.5 TBZE to");
     });
 
     test("an unsent draft survives a reload and can be discarded", async ({page}) => {
         await page.goto("/dao/2/propose");
         await page.getByTestId("proposal-title").fill("Keep me");
-        await page.getByTestId("add-action").click();
-        await page.getByTestId("add-pay").click();
+        await pick(page, "pay");
         await page.getByTestId("pay-amount").fill("7");
+        await page.getByTestId("pay-to").fill(STRANGER);
+        await page.getByTestId("action-commit").click();
 
         await page.reload();
         await expect(page.getByTestId("draft-restored")).toBeVisible();
         await expect(page.getByTestId("proposal-title")).toHaveValue("Keep me");
-        await expect(page.getByTestId("pay-amount")).toHaveValue("7");
+        await expect(page.getByTestId("action-preview")).toContainText("7 TBZE to");
 
         await page.getByTestId("draft-discard").click();
         await expect(page.getByTestId("proposal-title")).toHaveValue("");
@@ -185,9 +236,9 @@ test.describe("who may propose", () => {
         await page.goto("/dao/2/propose");
         await connectWallet(page);
 
-        await expect(page.getByTestId("gate-not-a-voter")).toContainText("Only the members of this DAO can submit a proposal");
-        await expect(page.getByTestId("how-to-vote")).toContainText("Ask a member to propose adding you.");
-        await expect(page.getByTestId("how-to-vote").getByRole("link")).toHaveCount(0);
+        await expect(page.getByTestId("gate-not-a-voter")).toContainText("Not a member");
+        await expect(page.getByTestId("gate-not-a-voter")).toContainText("Proposals here are for members. Ask a member to propose adding you.");
+        await expect(page.getByTestId("gate-not-a-voter").getByRole("link")).toHaveCount(0);
         await expect(page.getByTestId("submit-proposal")).toHaveCount(0);
     });
 
@@ -212,17 +263,16 @@ test.describe("a stake DAO that charges for proposals", () => {
         await expect(page.getByTestId("proposer-note")).toContainText("You have stake in this DAO");
         await page.getByTestId("proposal-title").fill("Fund the festival");
 
-        await expect(page.getByTestId("cost-cost")).toContainText("5 TBZE is paid now and never refunded. It is sent to the DAO's treasury.");
-        await expect(page.getByTestId("cost-deposit")).toContainText("9 TBZE is put in escrow");
-        await expect(page.getByTestId("cost-deposit")).toContainText("refunded to you only if the proposal passes");
-        await expect(page.getByTestId("cost-balance")).toContainText("You need 14 TBZE and have 12 TBZE: not enough.");
+        await expect(page.getByTestId("cost-cost")).toContainText("5 TBZE, paid now and never refunded (to the treasury)");
+        await expect(page.getByTestId("cost-deposit")).toContainText("9 TBZE, held while voting");
+        await expect(page.getByTestId("cost-back")).toContainText("Only if it passes; otherwise");
+        await expect(page.getByTestId("cost-balance")).toContainText("12 TBZE · not enough, you need 14 TBZE");
         await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
-        await expect(page.getByTestId("expedite-box")).toContainText("after 1 day instead of 3 days");
-        await expect(page.getByTestId("expedite-box")).toContainText("more than 70% must vote Yes");
-        await expect(page.getByTestId("expedite-box")).toContainText("during its first 1 day");
+        await expect(page.getByTestId("expedite-explanation")).toContainText("Shorter vote (1 day) that can settle early, at the earliest 1 day after submission");
+        await expect(page.getByTestId("expedite-explanation")).toContainText("yes is more than 70% of ALL voting power");
         await page.getByTestId("expedited-switch").check();
-        await expect(page.getByTestId("review-expedited")).toBeVisible();
+        await expect(page.getByTestId("expedited-switch")).toBeChecked();
     });
 
     test("enough balance enables the button", async ({page, network}) => {
@@ -235,7 +285,7 @@ test.describe("a stake DAO that charges for proposals", () => {
         await page.goto("/dao/4/propose");
         await connectWallet(page);
         await page.getByTestId("proposal-title").fill("Fund the festival");
-        await expect(page.getByTestId("cost-balance")).toContainText("have 14 TBZE.");
+        await expect(page.getByTestId("cost-balance")).toHaveText("You hold14 TBZE ✓");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 });

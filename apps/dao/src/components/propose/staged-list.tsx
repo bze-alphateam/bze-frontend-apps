@@ -203,6 +203,8 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
     const title = sub ? `Manage ${sub.dao.name}` : copy?.form ?? entry.label;
     const tag = sub ? `${ctx.dao.name} is its admin` : copy?.tag;
     const read = draft.type === CUSTOM_ID && composed.msg && !composed.error ? tryDescribe(composed.msg, ctx.dao, formatCoin, ctx.subDaos) : null;
+    const rules = draft.type === RULES_ID && composed.msg ? tryDescribe(composed.msg, ctx.dao, formatCoin, ctx.subDaos) : null;
+    const changes = rules?.ok && rules.action.type === 'update_config' ? rules.action.changes : null;
 
     const ways: SubWay[] = sub ? [
         ...(entries.some((e) => e.id === SUB_EXECUTE_ID) ? ['execute' as const] : []),
@@ -247,6 +249,9 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
                     <StagedList drafts={inner.drafts} ctx={inner.ctx} maxActions={Number(inner.ctx.params.max_msgs_per_proposal)} formatCoin={formatCoin} onChange={inner.onChange} nested staged wallet={wallet} />
                 )}
             />
+            {changes && (changes.length === 0
+                ? <chakra.span fontSize="13px" color="hg.text.faint" data-testid="rules-diff-none">Nothing changes yet: these are today&apos;s rules.</chakra.span>
+                : <RulesDiff changes={changes} />)}
             {composed.warnings.map((w) => <Notice key={w} status="warning"><span data-testid="action-warning">{w}</span></Notice>)}
             {read && (
                 <Notice status={read.ok ? 'success' : 'danger'} title={read.ok ? 'Looks right' : 'This message could not be read back'}>
@@ -264,6 +269,24 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
         </chakra.section>
     );
 };
+
+const cell = {px: '12px', py: '9px', borderTopWidth: '1px', borderColor: 'hg.divider'} as const;
+
+/** Board F3's Setting / Now / After table: only the settings that change. */
+const RulesDiff = ({changes}: {changes: {field: string; label: string; before: string | null; after: string}[]}) => (
+    <chakra.div display="grid" gridTemplateColumns="1fr 1fr 1fr" fontSize="13px" borderRadius="12px" overflow="hidden" borderWidth="1px" borderColor="hg.hairline" data-testid="rules-diff">
+        <chakra.span px="12px" py="9px" bg="hg.inset" fontWeight="700" color="fg.muted">Setting</chakra.span>
+        <chakra.span px="12px" py="9px" bg="hg.inset" fontWeight="700" color="hg.text.secondary">Now</chakra.span>
+        <chakra.span px="12px" py="9px" bg="hg.inset" fontWeight="700" color="hg.text.secondary">After</chakra.span>
+        {changes.map((c) => (
+            <chakra.div key={c.field} display="contents" data-testid="config-change">
+                <chakra.span {...cell} color="fg.muted">{c.label}</chakra.span>
+                <chakra.span {...cell} color="hg.text.secondary">{c.before ?? '—'}</chakra.span>
+                <chakra.span {...cell} color="app.fg">{c.after}</chakra.span>
+            </chakra.div>
+        ))}
+    </chakra.div>
+);
 
 const PickerRow = ({id, title, hint, testId, hintTestId, onClick, disabled, pill}: {id: string; title: string; hint?: string; testId: string; hintTestId?: string; onClick?: () => void; disabled?: boolean; pill?: string}) => (
     <chakra.button
@@ -464,7 +487,7 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
                     <Button variant={hgVariant('secondary')} size="md" w={{base: nested ? 'auto' : '100%', md: 'auto'}} onClick={() => setPicking(true)} data-testid="add-action">
                         <LuPlus aria-hidden />Add an action
                     </Button>
-                    {!nested && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" display={{base: 'none', md: 'inline'}}>No action = a text-only (signalling) proposal.</chakra.span>}
+                    {!nested && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" display={{base: 'none', md: 'inline'}} data-testid="text-only-hint">No action = a text-only (signalling) proposal.</chakra.span>}
                 </Flex>
             )}
             {full && !editor && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="actions-full">{`A proposal can run at most ${maxActions} actions.`}</chakra.span>}
