@@ -291,7 +291,7 @@ describe("loadMyVote", () => {
     });
 
     it("the line says the wallet joined or added to the source", () => {
-        expect(notCountedLine("12,000 HONEY", "Staking reward 12")).toBe("12,000 HONEY in Staking reward 12 doesn't count: you joined or added to it after this proposal started.");
+        expect(notCountedLine("12,000 HONEY", "Staking reward 12")).toBe("Your 12,000 HONEY in Staking reward 12 doesn't count here: you joined or added to it after this proposal started.");
     });
 });
 

@@ -40,19 +40,23 @@ function fundWallet(network: MockNetwork) {
 }
 
 test.describe("vote and revote", () => {
-    test("a member with a Yes ballot sees it marked, cannot repeat it, and gets the confirmation before signing", async ({page, network}) => {
+    test("a member with a Yes ballot sees it on Your vote, cannot repeat it, and gets the confirmation before signing", async ({page, network}) => {
         fundWallet(network);
         await installFakeKeplr(page, WALLET);
         await page.goto("/proposal/8");
         await connectWallet(page);
 
-        await expect(page.getByTestId("action-vote")).toBeVisible();
-        await expect(page.getByTestId("vote-weight-note")).toContainText("Your vote counts");
-        await expect(page.getByTestId("vote-option-yes")).toBeDisabled();
-        await expect(page.getByTestId("vote-option-yes")).toContainText("(your vote)");
+        await expect(page.getByTestId("my-ballot-pill")).toHaveText("Voted yes");
+        await page.getByTestId("change-vote").click();
+        const dialog = page.getByTestId("dialog-vote");
+        await expect(dialog).toContainText("Change your vote");
+        await expect(dialog.getByTestId("dialog-weight")).toContainText("Your vote counts for");
+        await expect(page.getByTestId("dialog-option-yes")).toBeDisabled();
+        await expect(dialog).toContainText("Current");
+        await expect(page.getByTestId("revote-note")).toContainText("Your current vote is Yes");
 
-        await page.getByTestId("vote-option-no").click();
-        await expect(page.getByTestId("vote-confirm")).toHaveText("Change vote to No");
+        await page.getByTestId("dialog-option-no").check();
+        await expect(page.getByTestId("vote-confirm")).toHaveText("Change to No");
     });
 
     test("a vote that cannot be signed here shows a failure, not a success, and sends nothing", async ({page, network}) => {
@@ -61,7 +65,8 @@ test.describe("vote and revote", () => {
         await page.goto("/proposal/8");
         await connectWallet(page);
 
-        await page.getByTestId("vote-option-abstain").click();
+        await page.getByTestId("change-vote").click();
+        await page.getByTestId("dialog-option-abstain").check();
         await page.getByTestId("vote-confirm").click();
 
         await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
@@ -69,11 +74,14 @@ test.describe("vote and revote", () => {
         await expect(page.getByTestId("action-sent")).toHaveCount(0);
     });
 
-    test("without a wallet the proposal says to connect one and offers no enabled vote", async ({page}) => {
+    test("without a wallet Your vote says to connect one, its Connect opens the wallet list, and no vote is offered", async ({page}) => {
+        await installFakeKeplr(page, WALLET);
         await page.goto("/proposal/8");
 
         await expect(page.getByTestId("actions-blocked")).toContainText("Connect a wallet");
-        await expect(page.getByTestId("vote-option-no")).toBeDisabled();
+        await expect(page.getByTestId("vote-option-no")).toHaveCount(0);
+        await page.getByTestId("your-vote-connect").click();
+        await expect(page.getByRole("button", {name: "Connect Wallet"})).toBeVisible();
     });
 
     test("a wallet without a balance is told why it cannot act", async ({page}) => {
@@ -81,8 +89,9 @@ test.describe("vote and revote", () => {
         await page.goto("/proposal/8");
         await connectWallet(page);
 
+        // proposal 8: the wallet has voted, so its ballot stays, with Change vote disabled and the reason
         await expect(page.getByTestId("actions-blocked")).toContainText("no balance to pay the network fee");
-        await expect(page.getByTestId("vote-option-no")).toBeDisabled();
+        await expect(page.getByTestId("change-vote")).toBeDisabled();
     });
 });
 
@@ -93,11 +102,15 @@ test.describe("settle, retry and mark expired", () => {
         await page.goto("/proposal/9");
         await connectWallet(page);
 
+        await expect(page.getByTestId("settle-banner")).toContainText("Can settle early");
         await expect(page.getByTestId("settle-button")).toHaveText("Settle now");
-        await expect(page.getByTestId("settle-note")).toContainText("settles now as passed");
         await expect(page.getByTestId("settle-button")).toBeEnabled();
 
         await page.getByTestId("settle-button").click();
+        await expect(page.getByTestId("dialog-settle")).toContainText("Settle proposal #9");
+        await expect(page.getByTestId("settle-outcome")).toContainText("It passes");
+        await expect(page.getByTestId("settle-note")).toContainText("settles now as passed");
+        await page.getByTestId("settle-confirm").click();
         await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
     });
 
@@ -108,9 +121,13 @@ test.describe("settle, retry and mark expired", () => {
         await page.goto("/proposal/8");
         await connectWallet(page);
 
-        await expect(page.getByTestId("settle-button")).toHaveText("Settle");
+        await expect(page.getByTestId("proposal-status")).toHaveText("Ready to settle");
+        await expect(page.getByTestId("settle-banner")).toContainText("Waiting to be settled");
+        await expect(page.getByTestId("vote-option-yes")).toHaveCount(0);
+        await expect(page.getByTestId("change-vote")).toHaveCount(0);
+        await page.getByTestId("settle-button").click();
         await expect(page.getByTestId("settle-outcome")).toHaveAttribute("data-outcome", "pass");
-        await expect(page.getByTestId("action-vote")).toHaveCount(0);
+        await expect(page.getByTestId("settle-confirm")).toHaveText("Settle");
     });
 
     test("a failed execution past its retry deadline is marked expired, not retried", async ({page, network}) => {
@@ -119,8 +136,11 @@ test.describe("settle, retry and mark expired", () => {
         await page.goto("/proposal/10");
         await connectWallet(page);
 
+        await expect(page.getByTestId("status-note")).toContainText("Too late to retry");
         await expect(page.getByTestId("settle-button")).toHaveText("Mark expired");
-        await expect(page.getByTestId("settle-note")).toContainText("without running its actions");
+        await page.getByTestId("settle-button").click();
+        await expect(page.getByTestId("dialog-settle")).toContainText("Mark #10 expired");
+        await expect(page.getByTestId("settle-note")).toContainText("This settles it as expired: nothing runs.");
     });
 
     test("a failed execution inside its retry window is offered as Retry with the last error", async ({page, network}) => {
@@ -132,9 +152,13 @@ test.describe("settle, retry and mark expired", () => {
         await page.goto("/proposal/10");
         await connectWallet(page);
 
+        await expect(page.getByTestId("status-note")).toContainText("Passed · execution failed");
         await expect(page.getByTestId("settle-button")).toHaveText("Retry");
+        await page.getByTestId("settle-button").click();
+        await expect(page.getByTestId("dialog-settle")).toContainText("Retry the actions of #10");
         await expect(page.getByTestId("settle-note")).toContainText("empty treasury");
         await expect(page.getByTestId("execution-error")).toContainText("message failed");
+        await expect(page.getByTestId("settle-confirm")).toContainText("Retry now");
     });
 });
 
@@ -146,8 +170,11 @@ test.describe("cancel", () => {
         await connectWallet(page);
 
         await page.getByTestId("cancel-button").click();
+        await expect(page.getByTestId("dialog-cancel")).toContainText("Cancel your proposal?");
         await expect(page.getByTestId("cancel-notice")).toContainText("proposal cost is never refunded");
         await expect(page.getByTestId("cancel-confirm-button")).toBeVisible();
+        await page.getByTestId("cancel-keep").click();
+        await expect(page.getByTestId("dialog-cancel")).toHaveCount(0);
     });
 
     test("a wallet that did not propose has no cancel", async ({page, network}) => {
@@ -157,8 +184,8 @@ test.describe("cancel", () => {
         await page.goto("/proposal/8");
         await connectWallet(page);
 
-        await expect(page.getByTestId("action-vote")).toBeVisible();
-        await expect(page.getByTestId("action-cancel")).toHaveCount(0);
+        await expect(page.getByTestId("change-vote")).toBeVisible();
+        await expect(page.getByTestId("cancel-button")).toHaveCount(0);
     });
 });
 
@@ -170,9 +197,13 @@ test.describe("clean up", () => {
         await page.goto("/proposal/8");
         await connectWallet(page);
 
+        await expect(page.getByTestId("finished-note")).toContainText("Nothing ran.");
         await expect(page.getByTestId("cleanup-button")).toBeVisible();
-        await expect(page.getByTestId("action-vote")).toHaveCount(0);
-        await expect(page.getByTestId("action-settle")).toHaveCount(0);
+        await expect(page.getByTestId("vote-option-yes")).toHaveCount(0);
+        await expect(page.getByTestId("settle-button")).toHaveCount(0);
+        await page.getByTestId("cleanup-button").click();
+        await expect(page.getByTestId("dialog-cleanup")).toContainText("Clean up #8");
+        await expect(page.getByTestId("cleanup-confirm")).toBeEnabled();
     });
 
     test("an archived proposal has no actions at all", async ({page, network}) => {
@@ -183,6 +214,6 @@ test.describe("clean up", () => {
 
         await expect(page.getByTestId("proposal-archived")).toBeVisible();
         await expect(page.getByTestId("action-cleanup")).toHaveCount(0);
-        await expect(page.getByTestId("action-settle")).toHaveCount(0);
+        await expect(page.getByTestId("settle-button")).toHaveCount(0);
     });
 });

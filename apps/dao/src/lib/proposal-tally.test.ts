@@ -105,3 +105,21 @@ describe("tallySummary", () => {
         expect(tallySummary(null)).toBe("");
     });
 });
+
+describe("tallyView counts for the page", () => {
+    it("the stacked bar is split by the votes cast, not by all voting power", () => {
+        const view = tallyView(CONFIG, tally("1000", "300", "100", "100"), false)!;
+        expect(view.castShares).toEqual({yes: 6000, no: 2000, abstain: 2000});
+        expect(tallyView(CONFIG, tally("1000", "0", "0"), false)!.castShares).toEqual({yes: 0, no: 0, abstain: 0});
+    });
+
+    it("each bar says what it counts and the least part that meets it, exactly", () => {
+        const view = tallyView({...CONFIG, expedite_threshold: "0.500000000000000000"}, tally("5", "2", "0"), true)!;
+        // more than 50 % of 5 members is 3
+        expect(bar(view, "expedite-yes")).toMatchObject({part: "2", whole: "5", needed: "3"});
+        // more than 50 % of 2 decided votes is 2
+        expect(bar(view, "threshold")).toMatchObject({part: "2", whole: "2", needed: "2"});
+        // at least 40 % of 5 is 2
+        expect(bar(view, "quorum")).toMatchObject({part: "2", whole: "5", needed: "2"});
+    });
+});

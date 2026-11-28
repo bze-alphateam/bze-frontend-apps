@@ -105,6 +105,9 @@ describe("VotesPanel", () => {
         renderPanel(deps(async () => ({items: rows(0, 2), next_cursor: null, weight_denom: null, total: 2, option_counts: {yes: 2, no: 0, abstain: 0}})), "DAO_TYPE_STATIC_LIST");
         await waitFor(() => expect(count()).toBe("2 votes · one vote per member"));
         expect(screen.queryByTestId("pager-desktop")).toBeNull();
+        // a member's weight is one vote, its option a pill
+        expect(screen.getAllByTestId("vote-weight")[0]).toHaveTextContent(/^1 vote$/);
+        expect(screen.getAllByTestId("vote-option")[0].closest("[data-tone]")).toHaveAttribute("data-tone", "success");
     });
 
     it("a member list with more than one page keeps the pager; a stake DAO never says 'per member'", async () => {

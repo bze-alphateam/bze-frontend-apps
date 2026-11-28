@@ -338,15 +338,15 @@ export async function loadMyVote(
     return {ballot, eligibleWeight: entry ? entry.eligible_weight : null, notCounted};
 }
 
-/** The line under My vote for stake that does not count on this proposal. */
+/** The line in Your vote for stake that does not count on this proposal. */
 export const notCountedLine = (amount: string, source: string): string =>
-    `${amount} in ${source} doesn't count: you joined or added to it after this proposal started.`;
+    `Your ${amount} in ${source} doesn't count here: you joined or added to it after this proposal started.`;
 
-/** Why a wallet cannot vote with weight 0, for the DAO's kind. */
-export const noWeightReason = (daoType: string | null): string =>
+/** Why a wallet cannot vote with weight 0, for the DAO's kind (`daoName` names it on a member list). */
+export const noWeightReason = (daoType: string | null, daoName?: string | null): string =>
     daoType === 'DAO_TYPE_STAKE'
-        ? 'You joined or added to your stake after this proposal started, or it is not in one of the DAO\'s staking sources, so it does not count here.'
-        : 'You were not a member of the DAO when this proposal started, so you cannot vote on it.';
+        ? 'You joined or added to your stake after this proposal started, so it counts 0 here. It counts on every proposal submitted from now on.'
+        : `Only members of ${daoName || 'this DAO'} vote. Anyone can still settle a proposal when it's ready.`;
 
 export const optionLabel = (option: DaoVoteOption | VoteFilter): string =>
     ({YES: 'Yes', NO: 'No', ABSTAIN: 'Abstain', VOTE_OPTION_UNSPECIFIED: 'None'} as const)[option];

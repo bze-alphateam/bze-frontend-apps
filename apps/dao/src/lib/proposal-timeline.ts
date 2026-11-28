@@ -2,7 +2,7 @@ import type {DaoParams} from '@bze/bze-ui-kit';
 import type {ProposalModel} from './proposal-model';
 import {secondsOf} from './dao-rules';
 
-export type TimelineKind = 'submitted' | 'early' | 'voting-end' | 'retry-until' | 'settled' | 'executed' | 'failed' | 'retry' | 'cancelled' | 'cleaned';
+export type TimelineKind = 'submitted' | 'early' | 'settle-next' | 'voting-end' | 'retry-until' | 'settled' | 'executed' | 'failed' | 'retry' | 'cancelled' | 'cleaned';
 
 export interface TimelineItem {
     kind: TimelineKind;
@@ -66,7 +66,14 @@ export function buildTimeline(
 
     items.push({kind: 'submitted', label: 'Submitted', time: p.submitTime, height: heightOf(p.submitHeight), detail: '', upcoming: false});
 
-    // Early settle: stake DAOs only, after the delay; a static list's members are fixed, so it has none.
+    // Early settle: a static list's members are fixed, so it can settle any time once it meets the bars.
+    if (p.expedited && p.status === 'VOTING' && p.daoType === 'DAO_TYPE_STATIC_LIST') {
+        items.push({
+            kind: 'early', label: 'Can settle early: member lists have no waiting time', time: null, height: null,
+            detail: 'Any time, once the expedite bars are met', upcoming: true,
+        });
+    }
+    // A stake DAO's expedited proposal waits the module's delay first.
     if (p.expedited && p.daoType === 'DAO_TYPE_STAKE' && p.submitTime && params) {
         const delay = secondsOf(params.min_expedite_delay);
         if (delay !== null && delay > 0) {
@@ -89,6 +96,11 @@ export function buildTimeline(
         detail: closedEarly ? (p.status === 'CANCELLED' ? 'It was cancelled before then.' : 'It was settled early, once it met the expedite bars.') : '',
         upcoming: p.status === 'VOTING' && !ended,
     });
+
+    // still to come while it votes (an expedited one says when it can settle early instead): the settle, by anyone
+    if (p.status === 'VOTING' && !p.expedited) {
+        items.push({kind: 'settle-next', label: 'Settled: counted, and if it passed its actions run', time: p.votingEnd, height: null, detail: '', upcoming: true});
+    }
 
     const until = retryUntil(p, params);
     if (until) {

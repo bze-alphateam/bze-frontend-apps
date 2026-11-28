@@ -61,6 +61,11 @@ export interface TallyBar {
     widthHundredths: number;
     /** The required share in hundredths of a percent, for the marker. */
     markerHundredths: number;
+    /** What the share is of, in weight units: the part counted and the whole it is counted against. */
+    part: string;
+    whole: string;
+    /** The least part that meets the bar (exact, from the same ratio): "so 3 of 5" on a member list. */
+    needed: string;
 }
 
 export interface TallyView {
@@ -71,8 +76,17 @@ export interface TallyView {
     passesExpedite: boolean | null;
     /** Weight that has not voted yet. */
     remaining: string;
-    /** Shares of the whole denominator, rounded down, for the stacked bar. */
+    /** Shares of the whole denominator, rounded down. */
     shares: {yes: number; no: number; abstain: number};
+    /** Shares of the votes cast (yes + no + abstain), for the stacked bar; all 0 before the first vote. */
+    castShares: {yes: number; no: number; abstain: number};
+}
+
+/** The least part of `whole` that meets a bar of `ratio`: at least → ceil(r·w), more than → floor(r·w) + 1. */
+function neededPart(ratio: string, whole: bigint, comparison: TallyBar['comparison']): string {
+    const scaled = ratioAtomics(ratio) * whole;
+    if (comparison === 'more than') return (scaled / ONE + BigInt(1)).toString();
+    return ((scaled + ONE - BigInt(1)) / ONE).toString();
 }
 
 const hundredthsNumber = (part: bigint, whole: bigint, up: boolean): number => {
@@ -100,11 +114,13 @@ export function tallyView(config: Pick<DaoConfig, 'min_quorum' | 'threshold' | '
                 id: 'quorum', label: 'Turnout', comparison: 'at least', met: regular.quorumMet,
                 achieved: percentDown(turnout.toString(), tally.denominator), required: ratioPercentUp(config.min_quorum),
                 widthHundredths: hundredthsNumber(turnout, den, false), markerHundredths: hundredthsNumber(ratioAtomics(config.min_quorum), ONE, true),
+                part: turnout.toString(), whole: tally.denominator, needed: neededPart(config.min_quorum, den, 'at least'),
             },
             {
                 id: 'threshold', label: 'Yes of yes and no', comparison: 'more than', met: regular.thresholdMet,
                 achieved: percentDown(tally.yes, decided.toString()), required: ratioPercentUp(config.threshold),
                 widthHundredths: hundredthsNumber(yes, decided, false), markerHundredths: hundredthsNumber(ratioAtomics(config.threshold), ONE, true),
+                part: tally.yes, whole: decided.toString(), needed: neededPart(config.threshold, decided, 'more than'),
             },
         ];
 
@@ -117,11 +133,13 @@ export function tallyView(config: Pick<DaoConfig, 'min_quorum' | 'threshold' | '
                     id: 'expedite-quorum', label: 'Turnout to settle early', comparison: 'at least', met: fast.quorumMet,
                     achieved: percentDown(turnout.toString(), tally.denominator), required: ratioPercentUp(config.expedite_quorum),
                     widthHundredths: hundredthsNumber(turnout, den, false), markerHundredths: hundredthsNumber(ratioAtomics(config.expedite_quorum), ONE, true),
+                    part: turnout.toString(), whole: tally.denominator, needed: neededPart(config.expedite_quorum, den, 'at least'),
                 },
                 {
                     id: 'expedite-yes', label: 'Yes of everyone to settle early', comparison: 'more than', met: fast.yesMet,
                     achieved: percentDown(tally.yes, tally.denominator), required: ratioPercentUp(config.expedite_threshold),
                     widthHundredths: hundredthsNumber(yes, den, false), markerHundredths: hundredthsNumber(ratioAtomics(config.expedite_threshold), ONE, true),
+                    part: tally.yes, whole: tally.denominator, needed: neededPart(config.expedite_threshold, den, 'more than'),
                 },
             );
         }
@@ -135,6 +153,11 @@ export function tallyView(config: Pick<DaoConfig, 'min_quorum' | 'threshold' | '
                 yes: hundredthsNumber(yes, den, false),
                 no: hundredthsNumber(no, den, false),
                 abstain: hundredthsNumber(abstain, den, false),
+            },
+            castShares: {
+                yes: hundredthsNumber(yes, turnout, false),
+                no: hundredthsNumber(no, turnout, false),
+                abstain: hundredthsNumber(abstain, turnout, false),
             },
         };
     } catch {
