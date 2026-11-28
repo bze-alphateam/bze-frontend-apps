@@ -53,9 +53,11 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
     }, [deps, id, key]);
     const fingerprint = useCallback(() => (latest.current ? controlFingerprint(latest.current.dao) : ''), []);
 
-    // the wallet the console's flow belongs to: the last one connected, so a disconnect (a failed signing can cause one) keeps what the flow shows
+    // the wallet the console's flow belongs to: the last one connected, so a disconnect (a failed signing can cause one) keeps what the flow shows.
+    // The shell's tabs follow the same wallet, so the Admin console tab never disappears while its console is still on the page.
     const [flowWallet, setFlowWallet] = useState('');
     if (address && address !== flowWallet) setFlowWallet(address);
+    const shellWallet = flowWallet === '' ? null : flowWallet;
 
     const data = result.data;
     const extras = useDaoExtras(deps, loaded ? loaded.dao.id : null);
@@ -87,7 +89,7 @@ export const AdminPage = ({id, deps = liveDaoViewDeps, relationDeps = liveRelati
                     />
                 )}
                 {view && !relations.loading && (
-                    <DaoShell dao={view.dao} active="admin" wallet={address ?? null} extras={extras} openProposals={view.openProposals}>
+                    <DaoShell dao={view.dao} active="admin" wallet={shellWallet} extras={extras} openProposals={view.openProposals}>
                         {flowWallet === '' && (
                             <div data-testid="admin-needs-wallet">
                                 <PageState kind="empty" title="Connect your wallet" description="The admin console is for the admin of this DAO and for the account nominated to take it over." />
