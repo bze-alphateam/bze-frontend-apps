@@ -27,6 +27,7 @@ vi.mock("@/lib/dao-chain", () => ({liveDaoViewDeps: {}, liveRelationDeps: {}, li
 import {DAO_ADDRESS, FOURTH, OTHER, PARAMS, SUB_ADDRESS, WALLET} from "@/test/composer-fixtures";
 import {pageDao} from "@/test/dao-page-fixtures";
 import type {NominationChain} from "@/lib/admin/nomination";
+import {shortAddress} from "@/lib/format";
 import type {DaoViewDeps} from "@/lib/dao-view-loader";
 import type {RelationDeps} from "@/lib/propose/relations";
 import {ProposePage} from "./propose-page";
@@ -82,7 +83,7 @@ const renderPage = (dao: Dao, over: {nominating?: Dao[]; meadowSeq?: string | nu
 
 const openPicker = async () => {
     fireEvent.click(await screen.findByTestId("add-action"));
-    return screen.getByTestId("action-picker");
+    return screen.findByTestId("action-picker");
 };
 
 beforeEach(() => {
@@ -114,11 +115,12 @@ describe("the join / leave shortcuts", () => {
     it("Leave: offered to a member who is not the last one, and fills in the wallet's removal", async () => {
         renderPage(pageDao());
         fireEvent.click(await screen.findByTestId("shortcut-leave"));
-        expect(screen.getByTestId("members-remove")).toHaveValue(WALLET);
+        expect(screen.getByTestId("action-preview")).toHaveTextContent(`Remove ${shortAddress(WALLET)} (you)`);
         expect((screen.getByTestId("proposal-title") as HTMLInputElement).value).toMatch(/^Remove bze1.* as a member$/);
         expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Leave Founders");
         expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Prefilled");
         expect(screen.queryByTestId("shortcut-leave")).toBeNull();
+        expect(screen.getByTestId("shortcut-note")).toHaveTextContent("you're not the last member");
     });
 
     it("a restored draft that already removes the wallet gets no Leave button", async () => {
@@ -169,7 +171,8 @@ describe("the join / leave shortcuts", () => {
         nav.address = FOURTH;
         renderPage(pageDao({config: {...pageDao().config, open_submission: true}}));
         fireEvent.click(await screen.findByTestId("shortcut-join"));
-        expect(screen.getByTestId("members-add")).toHaveValue(FOURTH);
+        expect(screen.getByTestId("action-preview")).toHaveTextContent(`Add ${shortAddress(FOURTH)} (you)`);
+        expect(screen.getByTestId("shortcut-applied")).toHaveTextContent("Request to join Founders");
         expect(screen.queryByTestId("shortcut-leave")).toBeNull();
     });
 
@@ -220,7 +223,9 @@ describe("accepting a nomination", () => {
         expect(accept).not.toBeDisabled();
         expect(within(picker).queryByTestId("stale-nomination-9")).toBeNull();
         fireEvent.click(accept);
-        expect(screen.getByTestId("accept-dao")).toHaveValue("9");
+        // the row chose the DAO: the form card names it instead of asking again
+        expect(screen.queryByTestId("accept-dao")).toBeNull();
+        expect(screen.getByTestId("accept-text")).toHaveTextContent("Pollen Fund nominated Founders as its admin. If this passes, Founders runs Pollen Fund through its own proposals.");
     });
 
     it("a restored draft whose accept went stale loses that action, and the DAO cannot be picked", async () => {
@@ -236,5 +241,33 @@ describe("accepting a nomination", () => {
         renderPage(pageDao(), {nominating: [pollen], meadowSeq: null});
         const picker = await openPicker();
         expect(within(picker).getByTestId("add-accept-nomination-9")).not.toBeDisabled();
+    });
+});
+
+describe("the composer's layout (board F1)", () => {
+    it("is a main card (basics, actions, size bar) next to the Before you submit aside and the draft card", async () => {
+        renderPage(pageDao());
+        const card = await screen.findByTestId("proposal-card");
+        expect(within(card).getByTestId("proposal-title")).toBeTruthy();
+        expect(within(card).getByTestId("actions-editor")).toHaveTextContent("What it does if it passes");
+        expect(within(card).getByTestId("size-text")).toHaveTextContent("of 20,000 bytes · 0 of 16 actions");
+        const aside = screen.getByTestId("composer-aside");
+        expect(within(aside).getByTestId("submit-panel")).toHaveTextContent("Before you submit");
+        expect(within(aside).getByTestId("draft-note")).toHaveTextContent("Draft saved on this device. It's cleared once the proposal is submitted.");
+    });
+
+    it("counts the proposal slots in use from the open proposals", async () => {
+        renderPage(pageDao(), {open: [{id: "1"}, {id: "2"}]});
+        expect(await screen.findByTestId("proposal-slots")).toHaveTextContent("2 of 10 proposal slots are in use.");
+    });
+
+    it("a restored draft says so in the draft card, with Discard", async () => {
+        window.localStorage.setItem("bze-dao:proposal-draft:4", JSON.stringify({v: 1, title: "Hello", summary: "", expedited: false, actions: []}));
+        renderPage(pageDao());
+        const restored = await screen.findByTestId("draft-restored");
+        expect(within(screen.getByTestId("draft-card")).getByTestId("draft-restored")).toBe(restored);
+        fireEvent.click(screen.getByTestId("draft-discard"));
+        expect(screen.getByTestId("proposal-title")).toHaveValue("");
+        expect(screen.getByTestId("draft-note")).toBeTruthy();
     });
 });
