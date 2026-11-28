@@ -32,7 +32,7 @@ describe("proposerStatus", () => {
         const stake = (over: Partial<EligibilityInput> = {}) => base({dao: STAKE_DAO, sources: {ok: true, value: [source("1000")]}, ...over});
 
         it("stake now is only a maybe: the join rule is the chain's to check", () => {
-            expect(proposerStatus(stake({power: power("500")}))).toMatchObject({kind: "maybe", reason: expect.stringContaining("joined before")});
+            expect(proposerStatus(stake({power: power("500")}))).toMatchObject({kind: "maybe", reason: expect.stringContaining("joined or added to it before")});
         });
         it("no stake at all is clearly not a voter", () => {
             expect(proposerStatus(stake({power: power("0")}))).toMatchObject({kind: "not-a-voter", message: expect.stringContaining("stakers")});

@@ -6,6 +6,7 @@ import {chakra, Flex} from '@chakra-ui/react';
 import {getExplorerTxURL, hgVariant, Notice} from '@bze/bze-ui-kit';
 import type {Dao} from '@bze/bze-ui-kit';
 import {staticJoinText} from '@/lib/dao-actions';
+import {daoTabHref} from '@/lib/dao-tabs';
 import type {ProposerStatus} from '@/lib/propose/eligibility';
 import type {SubmitState} from '@/hooks/useProposalSubmit';
 import {Panel} from '@/components/dao/page/panel';
@@ -35,7 +36,7 @@ const HowToVote = ({dao}: {dao: Props['dao']}) => (
     <Flex direction="column" gap="6px" fontSize="14px" data-testid="how-to-vote">
         {dao.type === 'DAO_TYPE_STATIC_LIST'
             ? staticJoinText(dao, false).map((line) => <chakra.p key={line} m="0">{line}</chakra.p>)
-            : <chakra.p m="0">Stake in one of the sources this DAO votes with, then come back in a block or two: stake counts once it has joined.</chakra.p>}
+            : <chakra.p m="0">Stake in one of the sources this DAO votes with, then come back in a block or two: stake you joined or added to counts from the next block on.</chakra.p>}
     </Flex>
 );
 
@@ -103,7 +104,7 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, o
                     {state.note && <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="submit-note">{state.note}</chakra.p>}
                     <Flex gap="16px" wrap="wrap" align="center">
                         {state.hash && <chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={onCheck} data-testid="submit-check">Ask the node about it</chakra.button>}
-                        <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}`}>Check the DAO&apos;s proposals</NextLink></chakra.a>
+                        <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={daoTabHref(dao.id, 'proposals')}>Check the DAO&apos;s proposals</NextLink></chakra.a>
                     </Flex>
                     <chakra.button type="button" alignSelf="flex-start" color="fg.muted" fontSize="13px" textDecoration="underline" cursor="pointer" onClick={onAllowResubmit} data-testid="submit-again">
                         I checked: it did not land, let me submit again
@@ -115,7 +116,7 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, o
                     <span data-testid="submit-done">
                         {state.proposalId ? `Proposal #${state.proposalId} was created. Opening it…` : 'The proposal was created.'}
                     </span>
-                    {!state.proposalId && <> <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={`/dao/${dao.id}`}>Find it in the DAO&apos;s proposals</NextLink></chakra.a></>}
+                    {!state.proposalId && <> <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={daoTabHref(dao.id, 'proposals')}>Find it in the DAO&apos;s proposals</NextLink></chakra.a></>}
                 </Notice>
             )}
         </Panel>

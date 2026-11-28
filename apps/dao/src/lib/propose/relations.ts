@@ -1,6 +1,7 @@
 import type {Dao, DaoCoin} from '@bze/bze-ui-kit';
 import {ScanUnavailableError, type ScanGetter} from '../dao-scan';
 import type {ElectorateOption, IncomingNomination, SubDao} from '../actions/types';
+import {isNominationStale, type NominationChain, type NominationDaoRef} from '../admin/nomination';
 
 /** The chain reads that tell the composer how this DAO relates to others. Injected, so the loader needs no network. */
 export interface RelationChain {
@@ -24,9 +25,18 @@ export interface RelationDeps {
     scan: RelationScan;
 }
 
+/**
+ * A DAO that nominated this DAO, and whether accepting would be refused as stale (error 1135): `stale` is set
+ * only when the check was asked for and found it stale. A check that could not be done leaves it unset, so the
+ * acceptance stays offered and the chain's own refusal covers it.
+ */
+export interface CheckedNomination extends IncomingNomination {
+    stale?: {parent: NominationDaoRef; changed: NominationDaoRef};
+}
+
 export interface Relations {
     subDaos: SubDao[] | null;
-    incoming: IncomingNomination[] | null;
+    incoming: CheckedNomination[] | null;
     sources: ElectorateOption[] | null;
 }
 
@@ -60,7 +70,7 @@ async function loadSubDaos(chain: RelationChain, dao: Pick<Dao, 'address'>): Pro
 }
 
 /** Scan finds the candidates; the chain's own `pending_admin` decides, so a Scan that ignores the filter cannot offer a wrong one. */
-async function loadIncoming(deps: RelationDeps, dao: Pick<Dao, 'address'>): Promise<IncomingNomination[] | null> {
+async function loadIncoming(deps: RelationDeps, dao: Pick<Dao, 'address'>, nominations?: NominationChain): Promise<CheckedNomination[] | null> {
     let candidates: {id: string}[];
     try {
         candidates = await deps.scan.daosNominating(dao.address);
@@ -71,18 +81,26 @@ async function loadIncoming(deps: RelationDeps, dao: Pick<Dao, 'address'>): Prom
     // a full answer may be cut: an incomplete list is not offered as the whole one
     if (candidates.length >= NOMINATION_LIMIT) return null;
     const read = await Promise.all(candidates.map((c) => deps.chain.getDao(c.id)));
-    return read.flatMap((d) => (d && d.pending_admin === dao.address ? [{id: d.id, name: d.name, address: d.address}] : []));
+    const confirmed = read.flatMap((d) => (d && d.pending_admin === dao.address ? [d] : []));
+    return Promise.all(confirmed.map(async (d): Promise<CheckedNomination> => {
+        const item: CheckedNomination = {id: d.id, name: d.name, address: d.address};
+        if (!nominations) return item;
+        // never throws: a check that cannot be done is "not stale", and the entry stays offered
+        const staleness = await isNominationStale(nominations, d);
+        return staleness.stale ? {...item, stale: {parent: staleness.parent, changed: staleness.changed}} : item;
+    }));
 }
 
 /**
  * What the composer knows about this DAO's relations, each part read on its own: one that fails is
  * `null` (unreadable, never "none"), and the actions that need it say so. The nominations are the only
- * part that may be skipped when BZE Scan is down.
+ * part that may be skipped when BZE Scan is down. With `nominations`, each nomination is also checked for
+ * staleness (`isNominationStale`) before the composer offers to accept it.
  */
-export async function loadRelations(deps: RelationDeps, dao: Pick<Dao, 'address' | 'type'>): Promise<Relations> {
+export async function loadRelations(deps: RelationDeps, dao: Pick<Dao, 'address' | 'type'>, nominations?: NominationChain): Promise<Relations> {
     const [subDaos, incoming] = await Promise.all([
         attempt(() => loadSubDaos(deps.chain, dao)),
-        attempt(() => loadIncoming(deps, dao)),
+        attempt(() => loadIncoming(deps, dao, nominations)),
     ]);
     // the sources are for this DAO's electorate form; a stake sub-DAO carries its own
     const sources = dao.type === 'DAO_TYPE_STAKE' ? await attempt(() => deps.chain.getStakeOptions(dao.address)) : [];
@@ -107,4 +125,33 @@ export function createRelationScan(get: ScanGetter): RelationScan {
             return answer.body.items.flatMap((item): {id: string}[] => (isObject(item) && (typeof item.id === 'number' || typeof item.id === 'string') ? [{id: String(item.id)}] : []));
         },
     };
+}
+
+/** A nomination that can no longer be accepted: who nominated, and the DAOs the stale text names. */
+export interface StaleNomination {
+    dao: IncomingNomination;
+    parent: NominationDaoRef;
+    changed: NominationDaoRef;
+}
+
+/**
+ * The relations the actions work with, without the stale nominations (so neither the picker, the accept
+ * form nor a restored draft can pick one), and the stale ones apart, for the picker to show greyed out.
+ */
+export function splitStaleNominations(relations: Relations): {relations: Relations; stale: StaleNomination[]} {
+    if (relations.incoming === null) return {relations, stale: []};
+    const stale = relations.incoming.flatMap((n): StaleNomination[] => (n.stale ? [{dao: {id: n.id, name: n.name, address: n.address}, ...n.stale}] : []));
+    if (stale.length === 0) return {relations, stale};
+    return {relations: {...relations, incoming: relations.incoming.filter((n) => !n.stale)}, stale};
+}
+
+/**
+ * Why a nomination is out of date, in the words of the nominee's stale card: the DAO whose admin changed (the
+ * parent that runs the nominating DAO, or one above it) and the parent, which has to nominate again.
+ */
+export function staleNominationText(stale: StaleNomination, nominee: string): string {
+    const who = stale.changed.id === stale.parent.id
+        ? `${stale.parent.name}, the DAO that runs ${stale.dao.name},`
+        : `${stale.changed.name}, which controls ${stale.parent.name},`;
+    return `Out of date: ${who} changed its admin after ${nominee} was nominated. ${stale.parent.name} has to nominate it again.`;
 }

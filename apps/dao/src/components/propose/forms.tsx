@@ -33,7 +33,8 @@ const Note = ({children, testId}: {children: ReactNode; testId?: string}) => (
 
 const label = {fontSize: '14px', fontWeight: '600'} as const;
 
-const daoLabel = (d: {id: string; name: string}): string => `${d.name} (DAO ${d.id})`;
+/** A DAO in a list is named, never numbered. */
+const daoLabel = (d: {id: string; name: string}): string => d.name;
 
 export const MetadataForm = ({fields, onChange, error}: ActionFormProps) => (
     <Flex direction="column" gap="12px">
@@ -189,9 +190,9 @@ export const AcceptForm = ({fields, onChange, ctx, error}: ActionFormProps) => (
 
 const SubDaoSelect = ({fields, onPick, ctx, testId}: {fields: ActionFields; onPick: (id: string) => void; ctx: ActionContext; testId: string}) => (
     <Field.Root>
-        <Field.Label {...label}>DAO this DAO administers</Field.Label>
+        <Field.Label {...label}>SubDAO</Field.Label>
         <NativeSelect.Root>
-            <NativeSelect.Field value={fields.daoId ?? ''} onChange={(e) => onPick(e.target.value)} data-testid={testId} aria-label="DAO this DAO administers">
+            <NativeSelect.Field value={fields.daoId ?? ''} onChange={(e) => onPick(e.target.value)} data-testid={testId} aria-label="SubDAO">
                 {(ctx.subDaos ?? []).map((s) => <option key={s.dao.id} value={s.dao.id}>{daoLabel(s.dao)}</option>)}
             </NativeSelect.Field>
             <NativeSelect.Indicator />
@@ -206,7 +207,7 @@ const MODE_TEXT: Record<SubAdminMode, string> = {
 };
 
 export const SubAdminForm = ({fields, onChange, ctx, error}: ActionFormProps) => {
-    if (ctx.subDaos === null) return <Note>The DAOs this DAO administers could not be read right now. Reload the page to try again.</Note>;
+    if (ctx.subDaos === null) return <Note>The SubDAOs could not be read right now. Reload the page to try again.</Note>;
     return (
         <Flex direction="column" gap="12px">
             <SubDaoSelect fields={fields} ctx={ctx} testId="sub-admin-dao" onPick={(daoId) => onChange({...fields, daoId})} />
@@ -232,7 +233,7 @@ export const SubAdminForm = ({fields, onChange, ctx, error}: ActionFormProps) =>
 };
 
 export const SubExecuteForm = ({fields, onChange, ctx, error, renderActions}: ActionFormProps) => {
-    if (ctx.subDaos === null) return <Note>The DAOs this DAO administers could not be read right now. Reload the page to try again.</Note>;
+    if (ctx.subDaos === null) return <Note>The SubDAOs could not be read right now. Reload the page to try again.</Note>;
     const sub = ctx.subDaos.find((s) => s.dao.id === fields.daoId);
     return (
         <Flex direction="column" gap="12px">
