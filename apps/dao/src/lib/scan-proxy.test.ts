@@ -116,6 +116,12 @@ describe("DAO scan proxy", () => {
         expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/dao-proposals/7/votes?option=yes&cursor=abc&limit=20`, expect.anything());
     });
 
+    it("forwards a numbered page of a proposal's votes", async () => {
+        fetcher.mockImplementation(async () => ok({items: [], total: 0}));
+        await call("dao-proposals/7/votes", "?option=no&page=3&limit=20");
+        expect(fetcher).toHaveBeenCalledWith(`${BASE}/api/v1/dao-proposals/7/votes?option=no&page=3&limit=20`, expect.anything());
+    });
+
     it("never keeps a list, even one of finished proposals", async () => {
         fetcher.mockImplementation(async () => ok({items: [{id: 7, status: "executed"}]}));
         await call("daos/4/proposals", "?status=executed&cursor=abc");

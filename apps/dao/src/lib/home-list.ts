@@ -20,8 +20,5 @@ export const roleTone = (reason: Reason): 'amber' | 'indigo' => (reason === 'Nom
 export const numberedCount = (args: {page: number; pageSize: number; rows: number; total: number}): string =>
     rangeCount({...args, one: 'DAO', many: 'DAOs'});
 
-/** The count line of a list without a total (an older Scan, the chain). */
-export const cursorCount = (page: number): string => `Page ${page}`;
-
 /** The count line of My DAOs. */
 export const mineCount = (n: number): string => (n === 1 ? '1 of your DAOs' : `${n.toLocaleString('en-US')} of your DAOs`);

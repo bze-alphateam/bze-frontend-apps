@@ -164,7 +164,7 @@ function voteView(input: ActionInput, blocked: string): VoteView | null {
         if (myVote.state === 'loading') reason = 'Reading your voting power.';
         else if (myVote.state === 'failed' || weight === null) reason = 'Your voting power could not be read from the chain, so a vote is not offered. Reload to try again.';
         else if (BigInt(weight) === ZERO) reason = model.daoType === 'DAO_TYPE_STAKE'
-            ? 'Your vote would count 0: your stake joined after this proposal started, or it is not in one of the DAO\'s staking sources.'
+            ? 'Your vote would count 0: you joined or added to your stake after this proposal started, or it is not in one of the DAO\'s staking sources.'
             : 'Your vote would count 0: you were not a member of the DAO when this proposal started.';
     }
     const enabled = !reason;

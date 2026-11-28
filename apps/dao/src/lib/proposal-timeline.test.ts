@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {buildTimeline, describeExecutionError} from "./proposal-timeline";
+import {buildTimeline, describeExecutionError, retryUntil} from "./proposal-timeline";
 import type {ScanOutcome} from "./proposal-model";
 
 const NOW = Date.parse("2026-11-01T00:00:00Z");
@@ -13,6 +13,32 @@ const outcome = (over: Partial<ScanOutcome>): ScanOutcome => ({
     depositDestination: null, cancelledHeight: null, cleanedHeight: null, votesCount: 0, weightDenom: null, submitTxHash: null, ...over,
 });
 const kinds = (items: ReturnType<typeof buildTimeline>) => items.map((i) => i.kind);
+
+describe("retry until", () => {
+    const voting = {...base, msgs: [{"@type": "/cosmos.bank.v1beta1.MsgSend"}]};
+    const withWindow = {...params, execution_window: "1209600s"};
+
+    it("while voting: voting_end + the execution window, as the last upcoming step", () => {
+        const items = buildTimeline(voting, withWindow, NOW);
+        expect(kinds(items)).toEqual(["submitted", "voting-end", "retry-until"]);
+        expect(items.at(-1)).toMatchObject({label: "If the actions fail, anyone can retry until then", time: "2026-11-16T10:00:00.000Z", upcoming: true});
+        expect(retryUntil(voting, withWindow)).toBe("2026-11-16T10:00:00.000Z");
+    });
+
+    it("left out for a text-only proposal and without the module params", () => {
+        expect(kinds(buildTimeline({...voting, msgs: []}, withWindow, NOW))).not.toContain("retry-until");
+        expect(kinds(buildTimeline(voting, params, NOW))).not.toContain("retry-until");
+        expect(kinds(buildTimeline(voting, null, NOW))).not.toContain("retry-until");
+    });
+
+    it("once the execution failed the chain's retry_deadline is used instead", () => {
+        const failed = {...voting, status: "EXECUTION_FAILED" as const, votingEnd: "2026-10-31T10:00:00.000Z", retryDeadline: "2026-11-20T00:00:00.000Z"};
+        const items = buildTimeline(failed, withWindow, NOW);
+        expect(kinds(items)).not.toContain("retry-until");
+        expect(items.find((i) => i.kind === "retry")).toMatchObject({time: "2026-11-20T00:00:00.000Z"});
+        expect(retryUntil(failed, withWindow)).toBeNull();
+    });
+});
 
 describe("buildTimeline", () => {
     it("a voting proposal: submitted with its block, voting ends in the future", () => {

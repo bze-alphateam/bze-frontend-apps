@@ -2,8 +2,10 @@ import {
     DaoModuleNotSupportedError,
     getAddressBalances, getDao, getDaoBallot, getDaoBallots, getDaoProposal, getDaoByAddress, getDaoController, getDaoParams, getDaoProposals, getDaoVotingPower,
     getDaos, getDaosByAdmin, getDenomReward, getDenomRewardParticipations, getRestClient,
-    getDaoStakeSources, getStakingRewardParticipantByAddress, isDaoModuleSupported,
+    getDaoStakeSources, getStakingRewardParticipantByAddress, isDaoModuleSupported, getDaoJoinRecord, daoStakingRewardSource, daoDenomRewardSource,
 } from '@bze/bze-ui-kit';
+import {bze} from '@bze/bzejs';
+import {PageRequest} from '@bze/bzejs/cosmos/base/query/v1beta1/pagination';
 import {createDaoScanClient, browserScanGetter} from './dao-scan';
 import {createDaoPageScan} from './dao-page-scan';
 import {createDaoProposalScan} from './dao-proposal-scan';
@@ -100,6 +102,20 @@ export const liveProposalChain: ProposalChain = {
         const {staking_reward: reward} = await client.bze.rewards.stakingReward({rewardId});
         return reward.staking_denom;
     },
+    async getStakes(address) {
+        const client = await getRestClient();
+        // Read here (not through ui-kit's list helper, which can answer an empty list on a failure), so a failed
+        // read fails the whole answer: the "does not count" lines are then all left out, never only some of them.
+        const [sr, dr] = await Promise.all([
+            client.bze.rewards.stakingRewardParticipant(bze.rewards.QueryStakingRewardParticipantRequest.fromPartial({address, pagination: PageRequest.fromPartial({limit: BigInt(500)})})),
+            getDenomRewardParticipations(address),
+        ]);
+        return [
+            ...sr.list.map((p) => ({source: daoStakingRewardSource(p.reward_id), amount: String(p.amount)})),
+            ...dr.map((p) => ({source: daoDenomRewardSource(p.staking_denom), amount: String(p.amount)})),
+        ];
+    },
+    getJoinHeight: getDaoJoinRecord,
 };
 
 /** The app's real collaborators for the proposal pages. */

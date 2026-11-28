@@ -43,7 +43,7 @@ function renderSlot(data: ProposalPageData, over: {wallet?: string | null; ballo
                 data={data}
                 wallet={over.wallet === undefined ? ME : over.wallet}
                 nowMs={Date.parse("2026-11-26T12:00:00Z")}
-                mine={{data: {ballot: over.ballot ?? null, eligibleWeight: over.weight === undefined ? "1" : over.weight}, error: undefined, loading: false}}
+                mine={{data: {ballot: over.ballot ?? null, eligibleWeight: over.weight === undefined ? "1" : over.weight, notCounted: []}, error: undefined, loading: false}}
                 formatWeight={(a) => `${a} votes`}
                 formatCoin={(c) => `${c.amount} ${c.denom}`}
                 refresh={refresh}

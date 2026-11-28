@@ -2,6 +2,7 @@
 
 import NextLink from 'next/link';
 import {chakra, Flex, SimpleGrid} from '@chakra-ui/react';
+import {LuArrowLeft} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import {getChainName, HgCard, Notice, PageContainer, PageState, Shimmer} from '@bze/bze-ui-kit';
 import {InnerHero} from '@/components/ui/layout-hero';
@@ -14,9 +15,10 @@ import {useNow} from '@/hooks/useNow';
 import {useProposalPage} from '@/hooks/useProposalPage';
 import {liveProposalDeps} from '@/lib/dao-chain';
 import {DAO_FEATURES} from '@/lib/dao-actions';
+import {daoTabHref} from '@/lib/dao-tabs';
 import {formatDateTime, formatRelative} from '@/lib/format';
-import {describeMessages} from '@/lib/proposal-describe';
-import {loadMyVote, type ProposalDeps, type ProposalPageData} from '@/lib/proposal-loader';
+import {daoIdsOf, describeMessages} from '@/lib/proposal-describe';
+import {loadDaoRefs, loadMyVote, type ProposalDeps, type ProposalPageData} from '@/lib/proposal-loader';
 import {proposalFingerprint} from '@/lib/proposal-actions';
 import {canSettleNow, describeStatus} from '@/lib/proposal-status';
 import {ActionsPanel} from './actions-panel';
@@ -40,6 +42,16 @@ interface BodyProps {
     peek: () => ProposalPageData | null;
 }
 
+/** "← <DAO name> · proposals", back to the DAO's Proposals tab. */
+const BackLink = ({daoId, daoName}: {daoId: string; daoName: string | null}) => (
+    <chakra.a asChild alignSelf="flex-start" display="inline-flex" alignItems="center" gap="6px" fontSize="14px" fontWeight="500" color="fg.muted" _hover={{color: 'fg'}} data-testid="proposal-back">
+        <NextLink href={daoTabHref(daoId, 'proposals')}>
+            <LuArrowLeft size={14} aria-hidden />
+            {`${daoName ?? 'The DAO'} · proposals`}
+        </NextLink>
+    </chakra.a>
+);
+
 const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek}: BodyProps) => {
     const {model} = data;
     const coins = useCoinFormat();
@@ -49,12 +61,17 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek}: 
     const mine = useAsync(wallet ? `${model.id}:${wallet}:${model.status}:${version}` : null, () => loadMyVote(deps, model, wallet as string));
     const dao = data.dao.ok ? data.dao.value : null;
     const actions = describeMessages(model.msgs, {daoAddress: dao?.address ?? null, before: model.config, formatCoin: coins.format});
+    // the DAOs the actions name by number (a SubDAO, a nominating DAO) are named from the chain; the DAO itself is already known
+    const otherIds = daoIdsOf(actions).filter((id) => id !== model.daoId);
+    const refs = useAsync(otherIds.length > 0 ? `${model.id}:${otherIds.join(',')}` : null, () => loadDaoRefs(deps, otherIds));
+    const daoOf = (id: string) => (id === model.daoId ? {name: model.daoName ?? undefined, address: dao?.address} : refs.data?.[id]);
     const proposerName = data.scanDetail?.proposer_label?.name;
     const stake = model.daoType === 'DAO_TYPE_STAKE';
     const ends = formatRelative(model.votingEnd, nowMs);
 
     return (
         <Flex direction="column" gap="18px">
+            {model.daoId && <BackLink daoId={model.daoId} daoName={model.daoName} />}
             <HgCard data-testid="proposal-header">
                 <Flex direction="column" gap="12px" p={{base: '16px', md: '22px'}}>
                     <Flex gap="10px" align="center" wrap="wrap">
@@ -65,11 +82,6 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek}: 
                     </Flex>
                     {status.note && <chakra.p m="0" fontSize="14px" color="fg.muted" data-testid="status-note">{status.note}</chakra.p>}
                     <Flex gap="8px 18px" wrap="wrap" fontSize="14px" align="center" color="fg.muted">
-                        {model.daoId && (
-                            <chakra.a asChild color="hg.link" fontWeight="600" data-testid="proposal-dao">
-                                <NextLink href={`/dao/${model.daoId}`}>{model.daoName ?? `DAO ${model.daoId}`}</NextLink>
-                            </chakra.a>
-                        )}
                         <Flex gap="6px" align="center" data-testid="proposal-proposer"><span>by</span><AddressLine address={model.proposer} name={proposerName} /></Flex>
                         {model.status === 'VOTING' && model.votingEnd && <span data-testid="proposal-ends">{`Voting ends ${formatDateTime(model.votingEnd)}${ends ? ` (${ends})` : ''}`}</span>}
                     </Flex>
@@ -104,14 +116,14 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek}: 
                     <PlainText text={model.summary} testId="proposal-summary" />
                 </Panel>
             )}
-            <ActionsPanel actions={actions} formatCoin={coins.format} nameOf={(a) => (a === dao?.address ? dao.name : undefined)} />
+            <ActionsPanel actions={actions} formatCoin={coins.format} nameOf={(a) => (a === dao?.address ? dao.name : undefined)} daoOf={daoOf} raw={model.msgs} />
             <TallyPanel model={model} formatWeight={formatWeight} unit={stake ? '' : 'members'} />
             <SimpleGrid columns={{base: 1, lg: 2}} gap="16px" alignItems="start">
                 <TimelinePanel data={data} nowMs={nowMs} />
                 <MoneyPanel data={data} formatCoin={coins.format} />
             </SimpleGrid>
             {wallet && <MyVotePanel model={model} mine={mine} formatWeight={formatWeight} />}
-            <VotesPanel key={version} deps={deps} proposalId={model.id} formatWeight={formatWeight} />
+            <VotesPanel key={version} deps={deps} proposalId={model.id} daoType={model.daoType} formatWeight={formatWeight} />
         </Flex>
     );
 };

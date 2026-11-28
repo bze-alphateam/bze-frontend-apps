@@ -179,6 +179,7 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
                 expedited={expedited}
                 signer={dao.address}
                 signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address}
+                daoOf={(id) => (id === dao.id ? dao : ctx.subDaos?.find((s) => s.dao.id === id)?.dao)}
                 balancesKnown={!balancesLoading && !!wallet}
             />
             <SubmitArea

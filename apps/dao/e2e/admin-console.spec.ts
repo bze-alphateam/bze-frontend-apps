@@ -167,7 +167,7 @@ test.describe("the handover", () => {
         await expect(page.getByTestId("nominate-submit")).toBeDisabled();
 
         await page.getByTestId("nominee").fill(NOMINEE);
-        await expect(page.getByTestId("nominate-panel")).toContainText("Nominate a new admin for DAO 2 (they have to accept)");
+        await expect(page.getByTestId("nominate-panel")).toContainText("Nominate a new admin for Founders (they have to accept)");
         await page.getByTestId("nominate-submit").click();
         await expect(page.getByTestId("action-error")).toBeVisible({timeout: 20_000});
     });

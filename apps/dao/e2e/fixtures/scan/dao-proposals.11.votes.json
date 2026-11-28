@@ -1,9 +1,10 @@
 {
-  "source": "hand-written (BFE-354 shape, not recorded)",
+  "source": "hand-written (BFE-354 shape + numbered pages, not recorded)",
   "recorded": "2026-11-26",
   "method": "GET",
   "path": "/api/scan/dao-proposals/11/votes",
   "query": {
+    "page": "1",
     "limit": "20"
   },
   "status": 200,
@@ -38,6 +39,12 @@
       "denom": "ubze",
       "symbol": "BZE",
       "exponent": 6
+    },
+    "total": 2,
+    "option_counts": {
+      "yes": 1,
+      "no": 1,
+      "abstain": 0
     }
   }
 }

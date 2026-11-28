@@ -1,9 +1,10 @@
 {
-  "source": "hand-written (BFE-354 shape, not recorded)",
+  "source": "hand-written (BFE-354 shape + numbered pages, not recorded)",
   "recorded": "2026-11-26",
   "method": "GET",
   "path": "/api/scan/dao-proposals/8/votes",
   "query": {
+    "page": "1",
     "limit": "20"
   },
   "status": 200,
@@ -21,6 +22,12 @@
       }
     ],
     "next_cursor": null,
-    "weight_denom": null
+    "weight_denom": null,
+    "total": 1,
+    "option_counts": {
+      "yes": 1,
+      "no": 0,
+      "abstain": 0
+    }
   }
 }

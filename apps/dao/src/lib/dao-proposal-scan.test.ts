@@ -51,14 +51,26 @@ describe("detail", () => {
 });
 
 describe("votes", () => {
-    it("filters by option and pages", async () => {
+    it("filters by option and pages by cursor, without a total or counts then", async () => {
         const {get, scan} = scanWith({status: 200, body: {items: [{voter: "bze1"}], next_cursor: "n", weight_denom: {denom: "ubze", symbol: "BZE", exponent: 6}}});
-        const page = await scan.votes("7", "yes", null, 20);
-        expect(page).toMatchObject({items: [{voter: "bze1"}], next_cursor: "n", weight_denom: {denom: "ubze"}});
-        expect(get).toHaveBeenCalledWith("dao-proposals/7/votes", [["option", "yes"], ["limit", "20"]]);
+        const page = await scan.votes("7", {option: "yes", cursor: "c1", limit: 20});
+        expect(page).toMatchObject({items: [{voter: "bze1"}], next_cursor: "n", weight_denom: {denom: "ubze"}, total: null, option_counts: null});
+        expect(get).toHaveBeenCalledWith("dao-proposals/7/votes", [["option", "yes"], ["cursor", "c1"], ["limit", "20"]]);
+    });
+
+    it("asks for a numbered page (never with a cursor) and reads the total and the counts per option", async () => {
+        const {get, scan} = scanWith({status: 200, body: {items: [], next_cursor: null, weight_denom: null, total: 214, option_counts: {yes: 150, no: 50, abstain: 14}}});
+        const page = await scan.votes("7", {option: null, page: 3, cursor: "ignored", limit: 20});
+        expect(page).toMatchObject({total: 214, option_counts: {yes: 150, no: 50, abstain: 14}});
+        expect(get).toHaveBeenCalledWith("dao-proposals/7/votes", [["page", "3"], ["limit", "20"]]);
+    });
+
+    it("drops counts that are not whole numbers for every option", async () => {
+        const {scan} = scanWith({status: 200, body: {items: [], next_cursor: null, total: 2, option_counts: {yes: 2, no: "x"}}});
+        expect((await scan.votes("7", {option: null, page: 1, limit: 20}))?.option_counts).toBeNull();
     });
 
     it("null for a proposal Scan does not know", async () => {
-        expect(await scanWith({status: 404, body: {}}).scan.votes("7", null, null, 20)).toBeNull();
+        expect(await scanWith({status: 404, body: {}}).scan.votes("7", {option: null, page: 1, limit: 20})).toBeNull();
     });
 });

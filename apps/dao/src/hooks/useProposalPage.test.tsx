@@ -14,6 +14,8 @@ const depsWith = (getProposal: ProposalChain["getProposal"]): ProposalDeps => ({
         getVotingPower: async () => null,
         getDaoProposals: async () => ({items: [], nextKey: null}),
         getStakingDenom: async () => "ubze",
+        getStakes: async () => [],
+        getJoinHeight: async () => null,
     },
     scan: {listForDao: async () => ({items: [], next_cursor: null}), detail: async () => SCAN, votes: async () => null},
 });

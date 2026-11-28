@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import type {DaoCoin, DaoProposalMessage} from "@bze/bze-ui-kit";
-import {configValueText, describeMessage, describeMessages, MAX_NESTING, titleOfType, type DescribeContext} from "./proposal-describe";
+import {daoIdsOf, type MsgAction, configValueText, describeMessage, describeMessages, MAX_NESTING, titleOfType, type DescribeContext} from "./proposal-describe";
 import {CONFIG} from "@/test/proposal-fixtures";
 
 const fmt = (c: DaoCoin) => `${Number(c.amount) / 1e6} ${c.denom === "ubze" ? "BZE" : c.denom}`;
@@ -129,5 +129,21 @@ describe("titleOfType", () => {
     it("turns a type URL into words", () => {
         expect(titleOfType("/cosmos.bank.v1beta1.MsgMultiSend")).toBe("Multi send");
         expect(titleOfType("")).toBe("Unknown action");
+    });
+});
+
+describe("daoIdsOf", () => {
+    it("every DAO the actions name by number, nested admin executes included, once each and in order", () => {
+        const actions: MsgAction[] = [
+            {type: "send", from: "bze1dao", to: "bze1x", amount: [], fromDao: true, subDao: null},
+            {type: "nominate_admin", daoId: "4", nominee: "", toVoters: true},
+            {type: "admin_execute", daoId: "12", actions: [
+                {type: "send", from: "bze1sub", to: "bze1x", amount: [], fromDao: false, subDao: "12"},
+                {type: "admin_execute", daoId: "13", actions: [{type: "withdraw_nomination", daoId: "14"}]},
+            ]},
+            {type: "accept_admin", daoId: "4", nominee: ""},
+        ];
+        expect(daoIdsOf(actions)).toEqual(["4", "12", "13", "14"]);
+        expect(daoIdsOf([])).toEqual([]);
     });
 });

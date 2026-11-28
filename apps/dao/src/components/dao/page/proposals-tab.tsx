@@ -10,8 +10,7 @@ import {useProposalsUrl} from '@/hooks/useDaoTabUrl';
 import {useNow} from '@/hooks/useNow';
 import {usePagedList} from '@/hooks/usePagedList';
 import {formatDateTime, formatRelative, shortAddress} from '@/lib/format';
-import {cursorCount} from '@/lib/home-list';
-import {clampPage, rangeCount} from '@/lib/pagination';
+import {clampPage, cursorCount, rangeCount} from '@/lib/pagination';
 import {
     activeRuleAfter, isActiveRow, loadProposalPage, PROPOSAL_FILTERS, PROPOSALS_PAGE, segmentCounts, turnoutShare, yesShare,
     type ProposalFilter, type ProposalPage,
