@@ -89,7 +89,8 @@ function adminLine(admin: string, self: boolean, context: HistoryContext): strin
 /** One history item in plain words. An event type this app does not know still gets a readable line. */
 export function describeDaoEvent(event: Pick<ScanDaoEvent, 'type' | 'attrs'>, context: HistoryContext): DescribedEvent {
     const described = describe(event, context);
-    return {...described, title: described.title.charAt(0).toUpperCase() + described.title.slice(1)};
+    const capital = (line: string) => line.charAt(0).toUpperCase() + line.slice(1);
+    return {...described, title: capital(described.title), details: described.details.map(capital)};
 }
 
 const sourcesLine = (rewards: string[], denom: string): string =>

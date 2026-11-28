@@ -51,19 +51,36 @@ beforeEach(() => {
 });
 
 describe("the Proposals tab", () => {
-    it("is one table (and phone cards) with #, the proposal and who proposed it, the status, Yes, Turnout and When", async () => {
-        renderTab(deps(numbered([item(9, "voting", {expedited: true})], 1)));
+    it("is one table (and phone cards) with #, the proposal and who proposed it, the status, Yes · turnout and When", async () => {
+        renderTab(deps(numbered([item(9, "voting", {expedited: true, voting_end: "2099-01-01T00:00:00Z"})], 1)));
         const rows = await within(table()).findAllByTestId("proposal-row");
         expect(rows).toHaveLength(1);
         expect(rows[0]).toHaveTextContent("#9");
         expect(within(rows[0]).getByTestId("proposal-link")).toHaveAttribute("href", "/proposal/9");
         expect(within(rows[0]).getByTestId("row-proposer")).toHaveTextContent("by Alice");
-        expect(within(rows[0]).getByTestId("row-status")).toHaveTextContent("Voting");
-        expect(within(rows[0]).getByTestId("row-expedited")).toBeInTheDocument();
-        expect(within(rows[0]).getByTestId("row-yes")).toHaveTextContent("75%");
-        expect(within(rows[0]).getByTestId("row-turnout")).toHaveTextContent("50%");
+        expect(within(rows[0]).getByTestId("row-status")).toHaveTextContent(/^Voting$/);
+        expect(within(rows[0]).getByTestId("row-status")).toHaveAttribute("data-status", "voting");
+        expect(within(rows[0]).getByTestId("row-expedited")).toHaveTextContent("Expedited");
+        // one "Yes · turnout" column, not two
+        expect(within(rows[0]).getByTestId("row-result")).toHaveTextContent("75 % · 50 %");
+        expect(within(rows[0]).queryByTestId("row-yes")).toBeNull();
+        expect(within(table()).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["#", "Proposal", "Status", "Yes · turnout", "When"]);
+        expect(within(rows[0]).getByTestId("row-ends")).toHaveTextContent(/^Ends in \d+ days$/);
         expect(screen.getAllByTestId("proposal-card")).toHaveLength(1);
         expect(screen.queryByText("Load more")).toBeNull();
+    });
+
+    it("the status pills use the board's words: ready to settle, passed (executed or failed), and the finished ones", async () => {
+        renderTab(deps(numbered([
+            item(1, "voting", {voting_end: "2020-01-01T00:00:00Z"}), item(2, "execution_failed"), item(3, "executed"),
+            item(4, "rejected"), item(5, "expired"), item(6, "cancelled"),
+        ], 6)));
+        const rows = await within(table()).findAllByTestId("proposal-row");
+        expect(rows.map((r) => within(r).getByTestId("row-status").textContent)).toEqual([
+            "Ready to settle", "Passed · execution failed", "Passed · executed", "Rejected", "Expired", "Cancelled",
+        ]);
+        expect(within(rows[0]).getByTestId("row-ends")).toHaveTextContent(/^Voting ended /);
+        expect(within(rows[2]).getByTestId("row-ends")).toHaveTextContent("Voting ended 1 Nov 2026");
     });
 
     it("the status segments carry Scan's counts: Active = voting + execution failed, All the sum", async () => {
@@ -103,10 +120,11 @@ describe("the Proposals tab", () => {
         expect(rows.map((r) => r.getAttribute("data-rule"))).toEqual([null, "after", null, null]);
     });
 
-    it("no rule nor tint under another status", async () => {
+    it("under another status the active rows keep their tint, with no rule", async () => {
         renderTab(deps(numbered([item(9, "voting"), item(10, "execution_failed")], 2)), {search: "tab=proposals&status=active"});
         const rows = await within(table()).findAllByTestId("proposal-row");
-        expect(rows.every((r) => r.getAttribute("data-active") === null && r.getAttribute("data-rule") === null)).toBe(true);
+        expect(rows.map((r) => r.getAttribute("data-active"))).toEqual(["true", "true"]);
+        expect(rows.every((r) => r.getAttribute("data-rule") === null)).toBe(true);
     });
 
     it("numbered pages with a total: the count line and a pushed page", async () => {
@@ -157,6 +175,7 @@ describe("the Proposals tab", () => {
     it("an empty status says so", async () => {
         renderTab(deps(numbered([], 0)), {search: "tab=proposals&status=expired"});
         expect(await screen.findByText("No proposals with this status")).toBeInTheDocument();
+        expect(screen.getByTestId("proposals-empty")).toHaveTextContent("Pick another status, or All.");
     });
 
     it("New proposal sits next to the filter, only when offered", async () => {

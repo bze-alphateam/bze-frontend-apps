@@ -12,12 +12,13 @@ test("All lists the active proposals first, tinted and ruled off, with the count
     const rows = page.getByTestId("proposal-row");
     await expect(rows).toHaveCount(4);
     await expect(rows.nth(0)).toContainText("Fund the hive festival");
-    await expect(rows.nth(0).getByTestId("row-status")).toHaveText("Voting");
+    // 9 is still in voting on the chain but past its end (30 Oct): ready to settle
+    await expect(rows.nth(0).getByTestId("row-status")).toHaveText("Ready to settle");
     await expect(rows.nth(0).getByTestId("row-expedited")).toBeVisible();
-    await expect(rows.nth(0).getByTestId("row-yes")).toHaveText("93.75%");
-    await expect(rows.nth(0).getByTestId("row-turnout")).toHaveText("80%");
+    await expect(rows.nth(0).getByTestId("row-result")).toHaveText("93.75 % · 80 %");
+    await expect(page.getByTestId("proposal-table").getByRole("columnheader")).toHaveText(["#", "Proposal", "Status", "Yes · turnout", "When"]);
     await expect(rows.nth(0).getByTestId("proposal-link")).toHaveAttribute("href", "/proposal/9");
-    await expect(rows.nth(1).getByTestId("row-status")).toHaveText("Execution failed");
+    await expect(rows.nth(1).getByTestId("row-status")).toHaveText("Passed · execution failed");
     await expect(rows.nth(1)).toHaveAttribute("data-rule", "after");
     await expect(rows.nth(2)).toContainText("Old honey budget");
     await expect(rows.nth(2)).not.toHaveAttribute("data-active", "true");
