@@ -29,6 +29,15 @@ test.describe("the entry point", () => {
         await connectWallet(page);
         await expect(page.getByRole("link", {name: "New proposal"})).toHaveAttribute("href", "/dao/4/propose");
     });
+
+    test("the composer's top is the proposal page's: back to the DAO's Proposals tab, then the title, no breadcrumb", async ({page}) => {
+        await page.goto("/dao/2/propose");
+        const back = page.getByTestId("propose-back");
+        await expect(back).toHaveText("Founders · proposals");
+        await expect(back).toHaveAttribute("href", "/dao/2?tab=proposals");
+        await expect(page.getByRole("heading", {level: 1})).toHaveText("New proposal");
+        await expect(page.getByText("← Founders")).toHaveCount(0);
+    });
 });
 
 test.describe("a member of a free DAO", () => {

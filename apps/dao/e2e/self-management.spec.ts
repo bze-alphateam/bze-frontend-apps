@@ -1,16 +1,17 @@
-import {expect, test} from "./support/mock-network";
+import {expect, test, type MockNetwork} from "./support/mock-network";
 import {connectWallet as connect, installFakeKeplr} from "./support/fake-keplr";
 import type {Page} from "@playwright/test";
 import {bzeWallets} from "./support/wallets";
 import daoTwo from "./fixtures/lcd/dao.dao.2.json";
 import adminedByDaoTwo from "./fixtures/lcd/dao.daos_by_admin.dao2.json";
+import daoFour from "./fixtures/lcd/dao.dao.4.json";
 
 // The DAO's self-management actions in the composer (BFE-376) against hand-written chain and Scan answers (see
 // fixtures/README.md). DAO 2 "Founders" is a self-owned member list the e2e wallet belongs to. Every spec stops
 // before signing: the fake wallet refuses to sign.
 const WALLET = "bze1qqqpkg3fxqmnu32v2ddxz6r0we7cfzuju395lw";
 const DAO_2_ADDRESS = "bze1qpnpkg3fxqmnu32v2ddxz6r0we7cfzuju9qjws";
-const [, , , STRANGER, SUB_ADDRESS] = bzeWallets(5);
+const [, , , STRANGER, SUB_ADDRESS, MEADOW_ADDRESS] = bzeWallets(6);
 
 const config = {
     ...daoTwo.body.dao.config,
@@ -157,13 +158,15 @@ test.describe("the DAOs this DAO administers", () => {
         });
         await openComposer(page);
 
-        await add(page, "sub-dao-admin");
+        await page.getByTestId("add-action").click();
+        await expect(page.getByTestId("manage-sub-dao-12")).toContainText("Manage Garden club (SubDAO)");
+        await page.getByTestId("add-sub-dao-admin-12").click();
         await page.getByTestId("sub-admin-mode").selectOption("voters");
         await expect(page.getByTestId("action-error")).toHaveCount(0);
         await expect(page.getByTestId("action-preview")).toContainText("Hand the DAO to its own voters (DAO 12)");
         await expect(page.getByTestId("action-warning")).toContainText("becomes self-owned");
 
-        await add(page, "sub-dao-execute");
+        await add(page, "sub-dao-execute-12");
         const nested = page.getByTestId("nested-actions");
         await nested.getByTestId("add-action").click();
         await nested.getByTestId("add-pay").click();
@@ -177,9 +180,46 @@ test.describe("the DAOs this DAO administers", () => {
     test("without a sub-DAO the actions are not offered", async ({page}) => {
         await openComposer(page);
         await page.getByTestId("add-action").click();
-        await expect(page.getByTestId("add-sub-dao-admin")).toHaveCount(0);
-        await expect(page.getByTestId("add-sub-dao-execute")).toHaveCount(0);
-        await expect(page.getByTestId("add-accept-nomination")).toHaveCount(0);
+        await expect(page.getByTestId("add-update-members")).toBeVisible();
+        await expect(page.locator('[data-testid^="add-sub-dao-"]')).toHaveCount(0);
+        await expect(page.locator('[data-testid^="manage-sub-dao-"]')).toHaveCount(0);
+        await expect(page.locator('[data-testid^="add-accept-nomination"]')).toHaveCount(0);
+        await expect(page.getByTestId("picker-group-other-daos")).toHaveCount(0);
+    });
+});
+
+test.describe("accepting a nomination as this DAO", () => {
+    // DAO 4 "Stakers club" nominated Founders; it is run by "Meadow DAO", which changed its admin (sequence 3) after
+    // the nomination was made (sequence 2): the chain would refuse the acceptance (1135)
+    const nominatedBy = (network: MockNetwork, meadowSeq: string) => {
+        network.use("scan", {path: "/api/scan/daos", query: {pending_admin: DAO_2_ADDRESS, limit: "20"}, status: 200, body: {items: [{id: 4}], next_cursor: null, supported: true}});
+        network.use("lcd", {path: "/bze/dao/dao/4", status: 200, body: {dao: {...daoFour.body.dao, admin: MEADOW_ADDRESS, pending_admin: DAO_2_ADDRESS, pending_admin_seq: "2"}}});
+        network.use("lcd", {path: "/bze/dao/dao_controller/4", status: 200, body: {controller: MEADOW_ADDRESS, end_reason: "SELF_OWNED", path: [daoFour.body.dao.address, MEADOW_ADDRESS]}});
+        network.use("lcd", {path: `/bze/dao/dao_by_address/${MEADOW_ADDRESS}`, status: 200, body: {dao: {...daoTwo.body.dao, id: "12", name: "Meadow DAO", address: MEADOW_ADDRESS, admin: MEADOW_ADDRESS, admin_seq: meadowSeq}}});
+    };
+
+    test("a stale nomination is listed greyed out and disabled, with why", async ({page, network}) => {
+        nominatedBy(network, "3");
+        await openComposer(page);
+        await page.getByTestId("add-action").click();
+        const stale = page.getByTestId("stale-nomination-4");
+        await expect(stale).toBeVisible();
+        await expect(stale).toBeDisabled();
+        await expect(stale).toContainText("Accept: become the admin of Stakers club");
+        await expect(stale.getByTestId("stale-pill")).toHaveText("Stale");
+        await expect(stale).toContainText("Out of date: Meadow DAO, the DAO that runs Stakers club, changed its admin after Founders was nominated. Meadow DAO has to nominate it again.");
+        await expect(page.getByTestId("add-accept-nomination-4")).toHaveCount(0);
+    });
+
+    test("a nomination that is still valid is offered and picks that DAO", async ({page, network}) => {
+        nominatedBy(network, "2");
+        await openComposer(page);
+        await page.getByTestId("add-action").click();
+        await expect(page.getByTestId("add-accept-nomination-4")).toContainText("Accept: become the admin of Stakers club");
+        await expect(page.getByTestId("stale-nomination-4")).toHaveCount(0);
+        await page.getByTestId("add-accept-nomination-4").click();
+        await expect(page.getByTestId("accept-dao")).toHaveValue("4");
+        await expect(page.getByTestId("accept-dao")).not.toContainText("(DAO");
     });
 });
 
@@ -193,6 +233,27 @@ test.describe("the join / leave shortcuts", () => {
         await expect(page.getByTestId("leave-dao")).toHaveCount(0);
         await expect(page.getByTestId("request-to-join")).toHaveCount(0);
         await expect(page.getByTestId("leave-blocked")).toHaveCount(0);
+    });
+
+    test("the composer offers Leave to a member, and filling it in shows it prefilled", async ({page}) => {
+        await openComposer(page);
+        await page.getByTestId("shortcut-leave").click();
+        await expect(page.getByTestId("members-remove")).toHaveValue(WALLET);
+        await expect(page.getByTestId("shortcut-applied")).toContainText("Leave Founders");
+        await expect(page.getByTestId("shortcut-applied")).toContainText("Prefilled");
+        await expect(page.getByTestId("shortcut-join")).toHaveCount(0);
+    });
+
+    test("the only member is not offered Leave, and the leave link fills nothing in", async ({page, network}) => {
+        network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [WALLET]})});
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2/propose?shortcut=leave");
+        await connectWallet(page);
+        await expect(page.getByTestId("proposal-title")).toBeVisible();
+        await expect(page.getByTestId("proposal-title")).toHaveValue("");
+        await expect(page.getByTestId("no-actions")).toBeVisible();
+        await expect(page.getByTestId("shortcut-leave")).toHaveCount(0);
+        await expect(page.getByTestId("shortcuts")).toHaveCount(0);
     });
 
     test("Leave opens the composer with the wallet's removal, and the draft survives a reload", async ({page}) => {
@@ -220,6 +281,16 @@ test.describe("the join / leave shortcuts", () => {
         await expect(page.getByTestId("proposal-title")).toHaveValue(/^Add bze1.* as a member$/);
         await expect(page.getByTestId("members-add")).toHaveValue(WALLET);
         await expect(page.getByTestId("action-preview")).toContainText("Add 1");
+        await expect(page.getByTestId("shortcut-applied")).toContainText("Request to join Founders");
+    });
+
+    test("Request to join is not offered when only members can submit", async ({page, network}) => {
+        network.use("lcd", {path: "/bze/dao/dao/2", status: 200, body: founders({members: [STRANGER]})});
+        await installFakeKeplr(page, WALLET);
+        await page.goto("/dao/2/propose");
+        await connectWallet(page);
+        await expect(page.getByTestId("gate-not-a-voter")).toBeVisible();
+        await expect(page.getByTestId("shortcut-join")).toHaveCount(0);
     });
 
     test("an unsent draft wins over the shortcut, and says so", async ({page}) => {
