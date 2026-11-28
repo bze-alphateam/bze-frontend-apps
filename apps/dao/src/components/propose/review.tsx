@@ -9,7 +9,7 @@ import {sizeLine} from '@/lib/propose/composer-text';
  */
 export const SizeMeter = ({size, max, count, maxActions}: {size: number; max: number; count?: number; maxActions?: number}) => {
     const counted = count !== undefined && maxActions !== undefined;
-    const line = counted ? sizeLine(size, max, count, maxActions) : sizeLine(size, max, 0, 1);
+    const line = sizeLine(size, max, count ?? 0, maxActions ?? 1);
     const text = counted || line.over ? line.text : `${size.toLocaleString('en-US')} of ${max.toLocaleString('en-US')} bytes`;
     return (
         <Flex direction="column" gap="6px" minW="0" data-testid="size-meter" data-over={line.over ? '' : undefined}>
