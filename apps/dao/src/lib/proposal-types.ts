@@ -72,10 +72,20 @@ export interface ScanVote {
     time: string;
 }
 
+/** Ballots per option (`yes`, `no`, `abstain`) over the whole proposal, whatever the option filter: answered with `page` only. */
+export interface ScanOptionCounts {
+    yes: number;
+    no: number;
+    abstain: number;
+}
+
 export interface ScanVoteList {
     items: ScanVote[];
     next_cursor: string | null;
     weight_denom: ScanWeightDenom | null;
+    /** The ballots the option filter matches; only a Scan with numbered pages answers it, and only with `page`. */
+    total?: number | null;
+    option_counts?: ScanOptionCounts | null;
 }
 
 /** Proposals per status (lower-case chain name), over the whole DAO: answered with `page` only. */

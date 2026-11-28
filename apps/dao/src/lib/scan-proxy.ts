@@ -34,7 +34,7 @@ const ROUTES: Route[] = [
     {pattern: /^daos\/\d+\/history$/, params: ["page", ...PAGE]},
     {pattern: /^daos\/\d+\/proposals$/, params: ["status", "page", ...PAGE]},
     {pattern: /^dao-proposals\/\d+$/, params: []},
-    {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
+    {pattern: /^dao-proposals\/\d+\/votes$/, params: ["option", "page", ...PAGE], allowed: {option: ["yes", "no", "abstain"]}},
     {pattern: /^dao-votes$/, params: ["voter", ...PAGE]},
 ];
 

@@ -1,5 +1,5 @@
 import {ScanUnavailableError, type Query, type ScanGetter} from './dao-scan';
-import type {ScanProposalDetail, ScanProposalPage, ScanStatusCounts, ScanVoteList} from './proposal-types';
+import type {ScanOptionCounts, ScanProposalDetail, ScanProposalPage, ScanStatusCounts, ScanVoteList} from './proposal-types';
 
 /** Scan refused the request with a 400 (an older Scan that does not know a status, such as the `active` alias). */
 export class ScanRefusedError extends Error {
@@ -19,6 +19,16 @@ export interface ProposalListRequest {
     limit: number;
 }
 
+/** One request for a proposal's votes: a numbered page or a cursor, never both. */
+export interface VoteListRequest {
+    /** yes | no | abstain; null = every option. */
+    option: string | null;
+    /** 1-based numbered page: the answer carries `total` and `option_counts`. */
+    page?: number;
+    cursor?: string | null;
+    limit: number;
+}
+
 /** The reads of the proposal pages that BZE Scan answers. */
 export interface DaoProposalScan {
     /**
@@ -28,8 +38,11 @@ export interface DaoProposalScan {
     listForDao(daoId: string, request: ProposalListRequest): Promise<ScanProposalPage>;
     /** One proposal as Scan indexed it; null when Scan does not know it. */
     detail(id: string): Promise<ScanProposalDetail | null>;
-    /** A proposal's ballots, heaviest first, optionally of one option (yes|no|abstain); null when Scan does not know the proposal. */
-    votes(id: string, option: string | null, cursor: string | null, limit: number): Promise<ScanVoteList | null>;
+    /**
+     * A proposal's ballots, heaviest first, optionally of one option. With `page`: `total` and `option_counts` (null
+     * from an older Scan, which ignores `page`). Null when Scan does not know the proposal.
+     */
+    votes(id: string, request: VoteListRequest): Promise<ScanVoteList | null>;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -41,13 +54,6 @@ export function createDaoProposalScan(get: ScanGetter): DaoProposalScan {
         } catch (e) {
             throw new ScanUnavailableError(e instanceof Error ? e.message : 'BZE Scan is unreachable');
         }
-    };
-
-    const paging = (cursor: string | null, limit: number): Query => {
-        const query: Query = [];
-        if (cursor) query.push(['cursor', cursor]);
-        query.push(['limit', String(limit)]);
-        return query;
     };
 
     const cursorOf = (body: Record<string, unknown>): string | null =>
@@ -63,6 +69,12 @@ export function createDaoProposalScan(get: ScanGetter): DaoProposalScan {
             if (c !== null) counts[status] = c;
         }
         return counts;
+    };
+
+    const optionCountsOf = (v: unknown): ScanOptionCounts | null => {
+        if (!isObject(v)) return null;
+        const yes = count(v.yes), no = count(v.no), abstain = count(v.abstain);
+        return yes === null || no === null || abstain === null ? null : {yes, no, abstain};
     };
 
     return {
@@ -91,8 +103,11 @@ export function createDaoProposalScan(get: ScanGetter): DaoProposalScan {
             return answer.body as unknown as ScanProposalDetail;
         },
 
-        async votes(id, option, cursor, limit) {
-            const query: Query = option ? [['option', option], ...paging(cursor, limit)] : paging(cursor, limit);
+        async votes(id, request) {
+            const query: Query = request.option ? [['option', request.option]] : [];
+            if (request.page) query.push(['page', String(request.page)]);
+            else if (request.cursor) query.push(['cursor', request.cursor]);
+            query.push(['limit', String(request.limit)]);
             const answer = await read(`dao-proposals/${encodeURIComponent(id)}/votes`, query);
             if (answer.status === 404) return null;
             if (answer.status !== 200 || !isObject(answer.body) || !Array.isArray(answer.body.items)) {
@@ -102,6 +117,8 @@ export function createDaoProposalScan(get: ScanGetter): DaoProposalScan {
                 items: answer.body.items as ScanVoteList['items'],
                 next_cursor: cursorOf(answer.body),
                 weight_denom: (isObject(answer.body.weight_denom) ? answer.body.weight_denom : null) as ScanVoteList['weight_denom'],
+                total: count(answer.body.total),
+                option_counts: optionCountsOf(answer.body.option_counts),
             };
         },
     };
