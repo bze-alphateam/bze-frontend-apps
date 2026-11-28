@@ -79,11 +79,14 @@ describe("ProposalPage", () => {
         expect(screen.getByTestId("proposal-status")).toHaveTextContent("Voting");
         expect(screen.getByRole("heading", {level: 1})).toHaveTextContent("Fund the festival");
         expect(screen.getByTestId("proposal-dao")).toHaveTextContent("In Stakers club");
-        expect(within(screen.getByTestId("proposal-dao")).getByRole("link")).toHaveAttribute("href", "/dao/4?tab=proposals");
+        // the desktop meta line is hidden below md, which is jsdom's width
+        expect(within(screen.getByTestId("proposal-dao")).getByRole("link", {hidden: true})).toHaveAttribute("href", "/dao/4?tab=proposals");
         expect(screen.getByTestId("proposal-proposer")).toHaveTextContent("by");
         expect(screen.getByTestId("proposal-ends")).toHaveTextContent(/^Voting ends/);
-        expect(within(screen.getByTestId("proposal-explorer")).getByRole("link")).toHaveAttribute("href", expect.stringMatching(/\/daos\/4\/proposals\/7$/));
+        expect(within(screen.getByTestId("proposal-explorer")).getByRole("link", {hidden: true})).toHaveAttribute("href", expect.stringMatching(/\/daos\/4\/proposals\/7$/));
         expect(screen.queryByTestId("page-hero")).toBeNull();
+        // the phone line: the clock and the proposer only
+        expect(screen.getByTestId("proposal-meta-phone")).toHaveTextContent(/^Voting ends .* · by /);
     });
 
     it("two columns: summary, actions, tally and votes in the main one; Your vote, timeline and money in the aside; no 'What you can do' card", async () => {
