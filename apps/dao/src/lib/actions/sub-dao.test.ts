@@ -39,7 +39,7 @@ describe("the admin of a sub-DAO", () => {
     });
 
     it.each([
-        [{daoId: "99"}, /Choose one of the DAOs/],
+        [{daoId: "99"}, /Choose one of the SubDAOs/],
         [{mode: "dance"}, /Choose what to do/],
         [{nominee: ""}, /Enter the address/],
         [{nominee: "nope"}, /not a valid BeeZee address/],
