@@ -1,4 +1,5 @@
 import type {DaoKind} from './dao-types';
+import {parsePageParam} from './pagination';
 
 /** The home page's view as the URL carries it. */
 export interface HomeQuery {
@@ -10,9 +11,6 @@ export interface HomeQuery {
     /** My DAOs on; only ever true with a wallet connected. */
     mine: boolean;
 }
-
-/** Scan refuses a page above this (its offset must not overflow). */
-const MAX_PAGE = 2 ** 31;
 
 const KINDS: DaoKind[] = ['static_list', 'stake'];
 
@@ -32,8 +30,7 @@ export const searchTerm = (q: string): string => {
 export function parseHomeQuery(search: string | URLSearchParams, wallet: boolean): HomeQuery {
     const params = typeof search === 'string' ? new URLSearchParams(search) : search;
 
-    const rawPage = params.get('page') ?? '';
-    const page = /^[1-9]\d*$/.test(rawPage) && Number(rawPage) <= MAX_PAGE ? Number(rawPage) : 1;
+    const page = parsePageParam(params.get('page'));
     const rawKind = params.get('type') ?? '';
     const kind = (KINDS as string[]).includes(rawKind) ? (rawKind as DaoKind) : '';
 

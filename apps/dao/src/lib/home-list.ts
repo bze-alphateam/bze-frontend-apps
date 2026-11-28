@@ -1,4 +1,5 @@
 import type {DaoKind, Reason} from './dao-types';
+import {rangeCount} from './pagination';
 
 /** "A member list" / "Stakers": who decides in a DAO, as the Governed by column says it. */
 export const governedBy = (kind: DaoKind): string => (kind === 'stake' ? 'Stakers' : 'A member list');
@@ -12,18 +13,12 @@ export const kindLabel = (kind: DaoKind): string => (kind === 'stake' ? 'Stakers
 /** Nominated is the one role that is still to be accepted: amber; the others are indigo. */
 export const roleTone = (reason: Reason): 'amber' | 'indigo' => (reason === 'Nominated' ? 'amber' : 'indigo');
 
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
-
 /**
  * The count line under a numbered list: "1–20 of 24 DAOs", or "1 DAO" / "4 DAOs" when it all
  * fits on one page. The range comes from the rows the page really holds.
  */
-export function numberedCount(args: {page: number; pageSize: number; rows: number; total: number}): string {
-    const {page, pageSize, rows, total} = args;
-    if (total <= pageSize) return plural(total, 'DAO', 'DAOs');
-    const from = (page - 1) * pageSize + 1;
-    return `${from}–${from + Math.max(rows, 1) - 1} of ${total.toLocaleString('en-US')} DAOs`;
-}
+export const numberedCount = (args: {page: number; pageSize: number; rows: number; total: number}): string =>
+    rangeCount({...args, one: 'DAO', many: 'DAOs'});
 
 /** The count line of a list without a total (an older Scan, the chain). */
 export const cursorCount = (page: number): string => `Page ${page}`;

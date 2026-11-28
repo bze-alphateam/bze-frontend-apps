@@ -32,3 +32,25 @@ export function slicePage<T>(rows: T[], page: number, size: number): T[] {
 
 /** The page a view has to show: the asked one, held within 1..pages. */
 export const clampPage = (page: number, pages: number): number => Math.min(Math.max(page, 1), Math.max(pages, 1));
+
+/** Scan refuses a page above this (its offset must not overflow). */
+export const MAX_PAGE = 2 ** 31;
+
+/** A `?page=` value as a page: a positive integer up to `MAX_PAGE`, else 1. */
+export function parsePageParam(raw: string | null | undefined): number {
+    const text = raw ?? '';
+    return /^[1-9]\d*$/.test(text) && Number(text) <= MAX_PAGE ? Number(text) : 1;
+}
+
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+
+/**
+ * The count line under a numbered list: "1–20 of 24 proposals", or "1 proposal" / "4 proposals"
+ * when it all fits on one page. The range comes from the rows the page really holds.
+ */
+export function rangeCount(args: {page: number; pageSize: number; rows: number; total: number; one: string; many: string}): string {
+    const {page, pageSize, rows, total, one, many} = args;
+    if (total <= pageSize) return plural(total, one, many);
+    const from = (page - 1) * pageSize + 1;
+    return `${from}–${from + Math.max(rows, 1) - 1} of ${total.toLocaleString('en-US')} ${many}`;
+}

@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {clampPage, pageCount, pageItems, slicePage} from "./pagination";
+import {clampPage, pageCount, pageItems, parsePageParam, rangeCount, slicePage} from "./pagination";
 
 describe("pageCount", () => {
     it("rounds up, and is 0 for nothing", () => {
@@ -40,5 +40,19 @@ describe("slicePage", () => {
 describe("clampPage", () => {
     it("holds a page within the pages there are", () => {
         expect([clampPage(0, 4), clampPage(9, 4), clampPage(3, 4), clampPage(5, 0)]).toEqual([1, 4, 3, 1]);
+    });
+});
+
+describe("parsePageParam", () => {
+    it("is a positive integer up to 2^31, else 1", () => {
+        expect(["3", "1", null, "", "0", "-2", "1.5", "abc", String(2 ** 31 + 1)].map(parsePageParam)).toEqual([3, 1, 1, 1, 1, 1, 1, 1, 1]);
+    });
+});
+
+describe("rangeCount", () => {
+    it("names its own rows: the range on a numbered page, the plain count when it fits on one", () => {
+        expect(rangeCount({page: 2, pageSize: 20, rows: 3, total: 23, one: "proposal", many: "proposals"})).toBe("21–23 of 23 proposals");
+        expect(rangeCount({page: 1, pageSize: 20, rows: 1, total: 1, one: "event", many: "events"})).toBe("1 event");
+        expect(rangeCount({page: 1, pageSize: 20, rows: 18, total: 18, one: "proposal", many: "proposals"})).toBe("18 proposals");
     });
 });

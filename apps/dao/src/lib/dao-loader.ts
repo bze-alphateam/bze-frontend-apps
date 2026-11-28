@@ -4,6 +4,7 @@ import {SOURCES_PER_REQUEST, type DaoScanClient} from './dao-scan';
 import type {DaoCard, DaoKind, MyDaoRow} from './dao-types';
 import {searchTerm} from './home-query';
 import {buildMyDaos} from './my-daos';
+import {createPagingMemory, readScanPage, type PagedPage, type PagePosition} from './paged-list';
 import {stakerSources, type DenomRewardParticipation, type StakingRewardParticipation} from './staker-sources';
 
 /** What the loaders read besides Scan: the chain's x/dao and x/rewards queries, injected so tests need no network. */
@@ -34,35 +35,16 @@ export interface DaoFilter {
 }
 
 /** Where a page is read from: a numbered page (Scan with BFE-423), or the cursor / key after the page before it. */
-export interface DaoPagePosition {
-    /** 1-based; used while Scan answers numbered pages. */
-    page: number;
-    /** The cursor (Scan) or key (chain) of the page after the one before; null for the first. */
-    cursor?: string | null;
-    /** Where the list started, once it has: a later page never switches source. */
-    source?: 'scan' | 'chain';
-}
+export type DaoPagePosition = PagePosition<'scan' | 'chain'>;
 
 export type DaoListResult =
     | {state: 'unsupported'}
-    | {
-        state: 'ok';
-        items: DaoCard[];
-        /** How many rows the source returned, before the search ran on the page (an older Scan): 0 on a page past the end. */
-        returned: number;
-        /** Where the page came from: the chain fallback has no filters on its side and no open counts. */
-        source: 'scan' | 'chain';
-        /** `pages`: numbered, `total` known. `cursor`: only the page after this one (an older Scan, the chain). */
-        mode: 'pages' | 'cursor';
-        /** The DAOs the filters match across every page; set in `pages` mode only. */
-        total: number | null;
-        /** Pass back as the cursor to read the page after this one; null on the last (`cursor` mode). */
-        next: string | null;
-    };
+    // the chain fallback has no filters on its side and no open counts; `returned` counts the rows before the search that runs on the page (an older Scan)
+    | PagedPage<DaoCard, 'scan' | 'chain'>;
 
 // Scan clients that answered a `page` request without a total (a Scan before BFE-423): their lists are
 // read by cursor from then on, without asking again. Kept per client, like the filters probe.
-const withoutTotals = new WeakSet<DaoScanClient>();
+const daoPaging = createPagingMemory();
 
 /**
  * One page of the All DAOs list. Scan first, by page number, with its total. A Scan that answers a
@@ -79,21 +61,17 @@ export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, position: Da
     try {
         const withFilters = (await deps.scan.filtersSupported()) === 'yes';
         const q = withFilters ? searchTerm(filter.search) : '';
-        const numbered = !withoutTotals.has(deps.scan);
-        const list = await deps.scan.listDaos({
+        const read = await readScanPage(daoPaging, deps.scan, position, (at) => deps.scan.listDaos({
             type: filter.kind || undefined,
             q: q || undefined,
-            ...(numbered ? {page: position.page} : {cursor}),
+            ...at,
             limit: PAGE_SIZE,
-        });
+        }));
+        const list = read.answer;
         if (!list.supported) return {state: 'unsupported'};
         // A Scan without BFE-368 ignores `q`: the search runs on the page here.
         const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', searchTerm(filter.search)));
-        if (numbered && list.total !== null) {
-            return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'pages', total: list.total, next: null};
-        }
-        if (numbered) withoutTotals.add(deps.scan);
-        return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: 'cursor', total: null, next: list.next_cursor};
+        return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: read.mode, total: read.total, next: read.next};
     } catch (scanError) {
         if (cursor) throw scanError; // a later page never switches source mid-list
         return loadChainPage(deps, null);
