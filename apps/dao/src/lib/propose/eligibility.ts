@@ -11,9 +11,14 @@ export type ProposerStatus =
     /** The power could not be read: the chain decides at the simulation. */
     | {kind: 'unknown'}
     /** The wallet is not a voter and the DAO is not open: how to become one is explained instead of a submit button. */
-    | {kind: 'not-a-voter'; message: string}
+    | {kind: 'not-a-voter'; cause: NotAVoterCause; message: string}
     /** Nobody can propose right now (chain errors 1119 and 1120). */
-    | {kind: 'blocked'; message: string};
+    | {kind: 'blocked'; cause: BlockedCause; message: string};
+
+/** Why a wallet is not a voter: not on a member list, or no stake in a stakers' DAO. */
+export type NotAVoterCause = 'not-member' | 'no-stake';
+/** Why nobody can propose: no voters (1119), or every proposal slot in use (1120). */
+export type BlockedCause = 'no-voters' | 'full';
 
 export interface EligibilityInput {
     dao: Pick<Dao, 'type' | 'members' | 'config' | 'electorate' | 'address'>;
@@ -46,24 +51,24 @@ export function proposerStatus(input: EligibilityInput): ProposerStatus {
     const {dao, params, wallet, power, openCount, sources} = input;
 
     if (dao.type === 'DAO_TYPE_STATIC_LIST' ? dao.members.length === 0 : !dao.electorate || (sources.ok && !voterStake(sources.value).gt(0))) {
-        return {kind: 'blocked', message: 'This DAO has no voters yet, so a proposal could not be decided. It needs at least one member, or some stake in its sources.'};
+        return {kind: 'blocked', cause: 'no-voters', message: "This DAO has nobody who can vote yet (1119), so it can't take proposals. Its admin has to set up its voters first."};
     }
 
     const max = Number(params.max_open_proposals);
     if (openCount !== null && openCount >= max) {
-        return {kind: 'blocked', message: `This DAO already has ${openCount} proposals in voting, the most it allows (${max}). Try again when one of them has been settled.`};
+        return {kind: 'blocked', cause: 'full', message: `${openCount} of ${max} proposal slots are in use. Wait for one to be settled (1120).`};
     }
 
-    if (dao.config.open_submission) return {kind: 'allowed', reason: 'This DAO is open: anyone can submit a proposal.'};
+    if (dao.config.open_submission) return {kind: 'allowed', reason: 'You can propose: anyone can submit proposals to this DAO.'};
 
     if (dao.type === 'DAO_TYPE_STATIC_LIST') {
         return dao.members.some((m) => m.toLowerCase() === wallet.toLowerCase())
-            ? {kind: 'allowed', reason: 'You are a member of this DAO.'}
-            : {kind: 'not-a-voter', message: 'Only the members of this DAO can submit a proposal, and your wallet is not one of them.'};
+            ? {kind: 'allowed', reason: "You can propose: you're a member of this DAO."}
+            : {kind: 'not-a-voter', cause: 'not-member', message: 'Proposals here are for members. Ask a member to propose adding you.'};
     }
 
     if (!power.ok || power.value === null) return {kind: 'unknown'};
     return positive(power.value.current)
         ? {kind: 'maybe', reason: 'You have stake in this DAO. It counts only if you joined or added to it before the block your proposal lands in; the chain checks that before anything is signed.'}
-        : {kind: 'not-a-voter', message: 'Only stakers of this DAO can submit a proposal, and your wallet has no stake in its sources.'};
+        : {kind: 'not-a-voter', cause: 'no-stake', message: 'Proposals here are for stakers. Stake in one of its rewards on the DEX; you can propose from the next block on.'};
 }

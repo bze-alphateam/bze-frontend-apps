@@ -16,15 +16,15 @@ const base = (over: Partial<EligibilityInput> = {}): EligibilityInput => ({
 describe("proposerStatus", () => {
     describe("a member-list DAO", () => {
         it("a member may propose", () => {
-            expect(proposerStatus(base())).toMatchObject({kind: "allowed"});
+            expect(proposerStatus(base())).toMatchObject({kind: "allowed", reason: "You can propose: you're a member of this DAO."});
             expect(proposerStatus(base({wallet: WALLET.toUpperCase()}))).toMatchObject({kind: "allowed"});
         });
         it("someone else may not, unless the DAO is open", () => {
-            expect(proposerStatus(base({wallet: THIRD}))).toMatchObject({kind: "not-a-voter", message: expect.stringContaining("members")});
-            expect(proposerStatus(base({dao: open(DAO, true), wallet: THIRD}))).toMatchObject({kind: "allowed", reason: expect.stringContaining("anyone")});
+            expect(proposerStatus(base({wallet: THIRD}))).toMatchObject({kind: "not-a-voter", cause: "not-member", message: "Proposals here are for members. Ask a member to propose adding you."});
+            expect(proposerStatus(base({dao: open(DAO, true), wallet: THIRD}))).toMatchObject({kind: "allowed", reason: "You can propose: anyone can submit proposals to this DAO."});
         });
         it("a DAO without members has no voters", () => {
-            expect(proposerStatus(base({dao: {...DAO, members: []}}))).toMatchObject({kind: "blocked", message: expect.stringContaining("no voters")});
+            expect(proposerStatus(base({dao: {...DAO, members: []}}))).toMatchObject({kind: "blocked", cause: "no-voters", message: expect.stringContaining("nobody who can vote yet (1119)")});
         });
     });
 
@@ -35,7 +35,7 @@ describe("proposerStatus", () => {
             expect(proposerStatus(stake({power: power("500")}))).toMatchObject({kind: "maybe", reason: expect.stringContaining("joined or added to it before")});
         });
         it("no stake at all is clearly not a voter", () => {
-            expect(proposerStatus(stake({power: power("0")}))).toMatchObject({kind: "not-a-voter", message: expect.stringContaining("stakers")});
+            expect(proposerStatus(stake({power: power("0")}))).toMatchObject({kind: "not-a-voter", cause: "no-stake", message: expect.stringContaining("Proposals here are for stakers.")});
         });
         it("an open stake DAO takes anyone", () => {
             expect(proposerStatus(stake({dao: open(STAKE_DAO, true), power: power("0")}))).toMatchObject({kind: "allowed"});
@@ -60,7 +60,7 @@ describe("proposerStatus", () => {
     describe("open proposals", () => {
         it("blocks everyone at the limit and shows the count", () => {
             const status = proposerStatus(base({openCount: 10}));
-            expect(status).toMatchObject({kind: "blocked", message: expect.stringContaining("10 proposals in voting")});
+            expect(status).toMatchObject({kind: "blocked", cause: "full", message: "10 of 10 proposal slots are in use. Wait for one to be settled (1120)."});
             expect(proposerStatus(base({openCount: 10, dao: open(DAO, true)}))).toMatchObject({kind: "blocked"});
         });
         it("one below the limit is fine; an unknown count does not block", () => {

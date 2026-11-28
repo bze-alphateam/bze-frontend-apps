@@ -8,7 +8,7 @@ import {LuArrowLeft} from 'react-icons/lu';
 import {useChain} from '@interchain-kit/react';
 import type {DaoVotingPowerResponse} from '@bze/bze-ui-kit';
 import {
-    buildSubmitProposalMsg, getChainName, getTxEvents, getTxLanding, Notice, PageContainer, PageState, Shimmer, useBalances, useBZETx,
+    buildSubmitProposalMsg, getChainName, getDexApp, getTxEvents, getTxLanding, PageContainer, PageState, Shimmer, useBalances, useBZETx,
 } from '@bze/bze-ui-kit';
 import {useAsync} from '@/hooks/useAsync';
 import {useProposalRedirect} from '@/hooks/useProposalRedirect';
@@ -20,7 +20,9 @@ import {loadDaoView, loadVotingPower, type DaoView, type DaoViewDeps, type Part}
 import {availableActions, findAction} from '@/lib/actions/registry';
 import type {ActionDraft} from '@/lib/actions/types';
 import {composeProposal} from '@/lib/propose/compose';
-import {summarizeCost} from '@/lib/propose/cost';
+import {costRows, summarizeCost} from '@/lib/propose/cost';
+import {slotsLine} from '@/lib/propose/composer-text';
+import {dexSourceHref} from '@/lib/dao-voters';
 import {describeAll} from '@/lib/propose/describe';
 import {browserStorage, clearDraft, loadDraft, saveDraft} from '@/lib/propose/draft';
 import {proposerStatus} from '@/lib/propose/eligibility';
@@ -31,8 +33,8 @@ import {Unsupported} from '@/components/dao/unsupported';
 import {ActionsList} from './actions-list';
 import {useActionContext} from './use-action-context';
 import {Basics} from './basics';
-import {Review} from './review';
-import {ShortcutsBar} from './shortcuts-bar';
+import {SizeMeter} from './review';
+import {SHORTCUT_NOTE, ShortcutsBar} from './shortcuts-bar';
 import {SubmitArea} from './submit-area';
 
 const newKey = (): string => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -144,56 +146,86 @@ const Composer = ({deps, view, relations, wallet, sign}: {deps: DaoViewDeps; vie
         return <PageState kind="error" title="The rules of the chain did not load" description="The proposal limits could not be read, so a proposal cannot be checked." />;
     }
 
-    const {actions: described, unreadable} = describeAll(composition.actions.flatMap((a) => (a.msg ? [a.msg] : [])), dao, coins.exact, ctx.subDaos);
+    const {unreadable} = describeAll(composition.actions.flatMap((a) => (a.msg ? [a.msg] : [])), dao, coins.exact, ctx.subDaos);
     const problem = composition.contentError ?? composition.expeditedError ?? composition.actions.find((a) => a.error)?.error
-        ?? (unreadable > 0 ? 'Some actions could not be read back, so they are shown below as raw JSON. A proposal is only sent when everything it signs can be shown.' : undefined);
+        ?? (unreadable > 0 ? 'Some actions could not be read back: their cards say which. A proposal is only sent when everything it signs can be shown.' : undefined);
     const ready = composition.ready && unreadable === 0;
     const send = () => {
         if (!wallet || !ready) return;
         void submit(buildSubmitProposalMsg({proposer: wallet, daoId: dao.id, title: input.title, summary: input.summary, msgs: composition.msgs, expedited}));
     };
+    const firstSource = sources.ok ? sources.value[0] : undefined;
+    const stakeHref = firstSource ? dexSourceHref(getDexApp().href, firstSource) : null;
 
     return (
-        <Flex direction="column" gap="18px">
-            {notice && (
-                <Notice status="info">
-                    <Flex gap="10px" align="center" wrap="wrap" data-testid="draft-restored">
-                        <span>{opening.shortcut !== null ? 'Your unsent draft for this DAO was restored, so the shortcut you followed was not applied. Discard the draft to start from the shortcut.' : 'Your unsent draft for this DAO was restored.'}</span>
-                        <chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={discard} data-testid="draft-discard">Discard it</chakra.button>
+        <Flex wrap="wrap" gap="24px" align="flex-start" data-testid="composer">
+            <Flex flex="999 1 560px" minW="0" direction="column" gap="20px">
+                <chakra.section
+                    aria-label="The proposal"
+                    bg="hg.card"
+                    borderWidth="1px"
+                    borderColor="hg.hairline"
+                    borderRadius="20px"
+                    boxShadow="hg.card"
+                    p={{base: '16px', md: '28px'}}
+                    display="flex"
+                    flexDirection="column"
+                    gap="22px"
+                    minW="0"
+                    data-testid="proposal-card"
+                >
+                    <ShortcutsBar dao={dao} wallet={wallet} status={status} applied={applied} full={full} onApply={applyShortcut} />
+                    <Basics
+                        dao={dao} params={params} title={title} summary={summary} expedited={expedited}
+                        onTitle={setTitle} onSummary={setSummary} onExpedited={setExpedited}
+                    />
+                    <Flex direction="column" gap="12px" minW="0">
+                        <ActionsList
+                            staged
+                            wallet={wallet}
+                            drafts={drafts}
+                            composed={composition.actions}
+                            ctx={ctx}
+                            maxActions={maxActions}
+                            formatCoin={coins.exact}
+                            onChange={setDrafts}
+                            staleNominations={stale}
+                        />
+                        {applied !== null && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="shortcut-note">{SHORTCUT_NOTE[applied]}</chakra.span>}
+                        <SizeMeter size={composition.size} max={composition.maxBytes} count={drafts.length} maxActions={maxActions} />
                     </Flex>
-                </Notice>
-            )}
-            <ShortcutsBar dao={dao} wallet={wallet} status={status} applied={applied} full={full} onApply={applyShortcut} />
-            <Basics
-                dao={dao} params={params} title={title} summary={summary} expedited={expedited}
-                onTitle={setTitle} onSummary={setSummary} onExpedited={setExpedited}
-            />
-            <ActionsList drafts={drafts} composed={composition.actions} ctx={ctx} maxActions={Number(params.max_msgs_per_proposal)} formatCoin={coins.exact} onChange={setDrafts} staleNominations={stale} />
-            <Review
-                dao={dao}
-                composition={composition}
-                actions={described}
-                cost={cost}
-                formatCoin={coins.exact}
-                nameOf={(a) => (a === dao.address ? dao.name : undefined)}
-                expedited={expedited}
-                signer={dao.address}
-                signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address}
-                daoOf={(id) => (id === dao.id ? dao : ctx.subDaos?.find((s) => s.dao.id === id)?.dao)}
-                balancesKnown={!balancesLoading && !!wallet}
-            />
-            <SubmitArea
-                dao={dao}
-                wallet={wallet}
-                status={status}
-                ready={ready}
-                short={cost.short}
-                problem={problem}
-                state={state}
-                onSubmit={send}
-                onCheck={check}
-                onAllowResubmit={allowResubmit}
-            />
+                </chakra.section>
+            </Flex>
+            <Flex as="aside" flex="1 1 340px" minW="0" direction="column" gap="20px" data-testid="composer-aside">
+                <SubmitArea
+                    dao={dao}
+                    wallet={wallet}
+                    status={status}
+                    ready={ready}
+                    short={cost.short}
+                    problem={problem}
+                    state={state}
+                    rows={costRows(dao.config, coins.exact)}
+                    requirements={cost.requirements}
+                    balancesKnown={!balancesLoading && !!wallet}
+                    formatCoin={coins.exact}
+                    slots={openProposals.ok ? slotsLine(openProposals.value.length, Number(params.max_open_proposals)) : null}
+                    stakeHref={stakeHref}
+                    onSubmit={send}
+                    onCheck={check}
+                    onAllowResubmit={allowResubmit}
+                />
+                <chakra.section bg="hg.card" borderWidth="1px" borderColor="hg.hairline" borderRadius="16px" px="16px" py="14px" display="flex" flexDirection="column" gap="8px" data-testid="draft-card">
+                    {notice ? (
+                        <Flex gap="4px 10px" align="center" wrap="wrap" fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="draft-restored">
+                            <span>{opening.shortcut !== null ? 'Your unsent draft for this DAO was restored, so the shortcut you followed was not applied. Discard the draft to start from the shortcut.' : 'Your unsent draft for this DAO was restored.'}</span>
+                            <chakra.button type="button" color="hg.link" fontWeight="600" cursor="pointer" onClick={discard} data-testid="draft-discard">Discard it</chakra.button>
+                        </Flex>
+                    ) : (
+                        <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="draft-note">Draft saved on this device. It&apos;s cleared once the proposal is submitted.</chakra.span>
+                    )}
+                </chakra.section>
+            </Flex>
         </Flex>
     );
 };
@@ -229,9 +261,9 @@ export const ProposePage = ({id, deps = liveDaoViewDeps, relationDeps = liveRela
                     <chakra.h1 m="0" fontSize={{base: '28px', md: '36px'}} lineHeight="1.15" fontWeight="800" letterSpacing="-0.02em" data-testid="propose-title">New proposal</chakra.h1>
                 </chakra.section>
                 {(result.loading || (dao !== null && relations.loading)) && (
-                    <Flex direction="column" gap="16px" aria-hidden data-testid="propose-loading">
-                        <Shimmer h="240px" borderRadius="16px" />
-                        <Shimmer h="180px" borderRadius="16px" />
+                    <Flex wrap="wrap" gap="24px" align="flex-start" aria-hidden data-testid="propose-loading">
+                        <Shimmer flex="999 1 560px" minW="0" h="520px" borderRadius="20px" />
+                        <Shimmer flex="1 1 340px" minW="0" h="360px" borderRadius="20px" />
                     </Flex>
                 )}
                 {!result.loading && !!result.error && (

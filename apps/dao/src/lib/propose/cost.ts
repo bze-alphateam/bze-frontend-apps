@@ -69,3 +69,42 @@ export function summarizeCost(
 
     return {lines, requirements, short: requirements.some((r) => r.short)};
 }
+
+export interface CostRow {
+    label: 'Deposit' | 'Back to you' | 'Cost';
+    text: string;
+}
+
+const KEPT: Record<DaoFundsDestination, string> = {BURN: 'it is burned', TREASURY: 'it goes to the treasury'};
+
+/**
+ * The "Before you submit" list: Deposit, Back to you (only with a deposit) and Cost, in a few words each.
+ * The same rules as `summarizeCost`: the deposit is held while voting and comes back by the DAO's own
+ * `deposit_refund_policy`; the cost is paid now. Each in its own token, never swapped.
+ */
+export function costRows(
+    config: Pick<DaoConfig, 'proposal_cost' | 'proposal_deposit' | 'deposit_refund_policy' | 'cost_destination' | 'kept_deposit_destination'>,
+    formatCoin: (coin: DaoCoin) => string,
+): CostRow[] {
+    const {proposal_cost: cost, proposal_deposit: deposit} = config;
+    const rows: CostRow[] = [];
+    if (positive(deposit)) {
+        rows.push({label: 'Deposit', text: `${formatCoin(deposit)}, held while voting`});
+        const kept = KEPT[config.kept_deposit_destination];
+        rows.push({
+            label: 'Back to you',
+            text: {
+                ALWAYS: 'Always, whatever the result',
+                ONLY_PASSED: `Only if it passes; otherwise ${kept}`,
+                NEVER: `Never; ${kept}`,
+            }[config.deposit_refund_policy],
+        });
+    } else {
+        rows.push({label: 'Deposit', text: 'None'});
+    }
+    rows.push({
+        label: 'Cost',
+        text: positive(cost) ? `${formatCoin(cost)}, paid now and never refunded (${config.cost_destination === 'BURN' ? 'burned' : 'to the treasury'})` : 'None',
+    });
+    return rows;
+}
