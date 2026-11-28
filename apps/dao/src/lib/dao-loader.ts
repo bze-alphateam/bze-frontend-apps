@@ -4,7 +4,7 @@ import {SOURCES_PER_REQUEST, type DaoScanClient} from './dao-scan';
 import type {DaoCard, DaoKind, MyDaoRow} from './dao-types';
 import {searchTerm} from './home-query';
 import {buildMyDaos} from './my-daos';
-import {createPagingMemory, readScanPage, type PagedPage, type PagePosition} from './paged-list';
+import {createPagingMemory, isLaterPage, readScanPage, type PagedPage, type PagePosition} from './paged-list';
 import {stakerSources, type DenomRewardParticipation, type StakingRewardParticipation} from './staker-sources';
 
 /** What the loaders read besides Scan: the chain's x/dao and x/rewards queries, injected so tests need no network. */
@@ -66,14 +66,14 @@ export async function loadDaoPage(deps: DaoDeps, filter: DaoFilter, position: Da
             q: q || undefined,
             ...at,
             limit: PAGE_SIZE,
-        }));
+        }), (answer) => answer.supported);
         const list = read.answer;
         if (!list.supported) return {state: 'unsupported'};
         // A Scan without BFE-368 ignores `q`: the search runs on the page here.
         const items = list.items.map(cardFromScan).filter((c) => withFilters || matchesFilter(c, '', searchTerm(filter.search)));
         return {state: 'ok', items, returned: list.items.length, source: 'scan', mode: read.mode, total: read.total, next: read.next};
     } catch (scanError) {
-        if (cursor) throw scanError; // a later page never switches source mid-list
+        if (isLaterPage(position)) throw scanError; // a later page never switches source mid-list
         return loadChainPage(deps, null);
     }
 }

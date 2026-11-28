@@ -68,20 +68,26 @@ export function createPagingMemory(): PagingMemory {
  * Reads one page of a Scan list: by page number while `client` answers totals, else by cursor. An
  * answer to a `page` request without a total is Scan's first cursor page: the client is remembered as
  * one without totals and the answer is read as cursor mode. In `pages` mode `next_cursor` is never read.
+ * `tellsPaging` says whether an answer can judge the client at all: one that says nothing about paging
+ * (a node without x/dao, which Scan answers without a total) leaves the client numbered.
  */
 export async function readScanPage<A extends ScanPagedAnswer>(
     memory: PagingMemory,
     client: object,
     position: Pick<PagePosition, 'page' | 'cursor'>,
     read: (at: ScanPageAt) => Promise<A>,
+    tellsPaging: (answer: A) => boolean = () => true,
 ): Promise<{answer: A; mode: PageMode; total: number | null; next: string | null}> {
     const numbered = memory.numbered(client);
     const answer = await read(numbered ? {page: position.page} : {cursor: position.cursor ?? null});
     const total = answer.total ?? null;
     if (numbered && total !== null) return {answer, mode: 'pages', total, next: null};
-    if (numbered) memory.withoutTotals(client);
+    if (numbered && tellsPaging(answer)) memory.withoutTotals(client);
     return {answer, mode: 'cursor', total: null, next: answer.next_cursor};
 }
+
+/** Only the first page of a list may fall back to another source: a later page (by number or by cursor) never does. */
+export const isLaterPage = (position: Pick<PagePosition, 'page' | 'cursor'>): boolean => !!position.cursor || position.page > 1;
 
 /** A numbered list asked for a page past its end (no rows, but a total): the last page to go to; else null. */
 export function pastEndPage(result: Pick<PagedPage<unknown>, 'mode' | 'returned' | 'total'> | null, page: number, pageSize: number): number | null {

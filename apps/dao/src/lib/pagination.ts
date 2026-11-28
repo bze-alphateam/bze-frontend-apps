@@ -34,7 +34,7 @@ export function slicePage<T>(rows: T[], page: number, size: number): T[] {
 export const clampPage = (page: number, pages: number): number => Math.min(Math.max(page, 1), Math.max(pages, 1));
 
 /** Scan refuses a page above this (its offset must not overflow). */
-export const MAX_PAGE = 2 ** 31;
+const MAX_PAGE = 2 ** 31;
 
 /** A `?page=` value as a page: a positive integer up to `MAX_PAGE`, else 1. */
 export function parsePageParam(raw: string | null | undefined): number {

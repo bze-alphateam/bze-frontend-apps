@@ -1,5 +1,5 @@
 {
-  "source": "hand-written (BZE Scan numbered pages shape, DAO UI review 1, not recorded)",
+  "source": "hand-written (BZE Scan numbered-pages shape, not recorded)",
   "recorded": "2026-11-28",
   "method": "GET",
   "path": "/api/scan/daos/4/proposals",

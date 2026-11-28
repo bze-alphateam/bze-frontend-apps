@@ -31,6 +31,17 @@ describe("usePagedList", () => {
         expect(result.current.items).toEqual(["b"]);
     });
 
+    it("never shows the latest answer of another group (another DAO's counts)", async () => {
+        let calls = 0;
+        const load = vi.fn((): Promise<Page> => (++calls === 1 ? Promise.resolve(page(["a"], {counts: 18})) : new Promise<Page>(() => {})));
+        const {result, rerender} = renderHook(({dao}) => usePagedList<Page>(`${dao}|all`, 1, 20, load, dao), {initialProps: {dao: "4"}});
+        await waitFor(() => expect(result.current.latest?.counts).toBe(18));
+
+        rerender({dao: "5"});
+        expect(result.current.loading).toBe(true);
+        expect(result.current.latest).toBeNull();
+    });
+
     it("walks a cursor trail and passes the source back", async () => {
         const load = vi.fn(async (position: PagePosition<"scan">) =>
             page([position.cursor ?? "first"], {mode: "cursor", total: null, next: position.cursor ? null : "c1"}));

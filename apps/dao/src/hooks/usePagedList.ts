@@ -16,7 +16,7 @@ export interface PagedListView<P extends PagedPage<unknown, string>, R extends {
     current: P | null;
     /** The page shown: the current one, else the last of the same scope (kept while the next loads). */
     shown: P | null;
-    /** The last page answered in any scope (a filter change keeps it): for what a filter does not change, such as counts. */
+    /** The last page answered in any scope of the same `group` (a filter change keeps it): for what a filter does not change, such as counts. */
     latest: P | null;
     items: P['items'];
     loading: boolean;
@@ -52,13 +52,15 @@ const isPage = <P extends PagedPage<unknown, string>>(value: unknown): value is 
  * later pages stay on that answer's source (`position.source`); Retry starts a new scope.
  *
  * `load` answers a page (`state: 'ok'`, see `PagedPage`, with any extra fields) or another state of
- * its own (`R`, e.g. "unsupported"), or throws.
+ * its own (`R`, e.g. "unsupported"), or throws. `group` is what the scopes share (a DAO, for its filters):
+ * `latest` never carries an answer of another group.
  */
 export function usePagedList<P extends PagedPage<unknown, string>, R extends {state: string} = never>(
     scope: string,
     page: number,
     pageSize: number,
     load: (position: PagePosition<P['source']>) => Promise<P | R>,
+    group = '',
 ): PagedListView<P, R> {
     const [retries, setRetries] = useState(0);
     const scopeKey = `${scope}|${retries}`;
@@ -67,7 +69,7 @@ export function usePagedList<P extends PagedPage<unknown, string>, R extends {st
     const cursors = trail.scope === scopeKey ? trail.cursors : [null];
     const cursor = cursors[cursors.length - 1];
 
-    const [kept, setKept] = useState<{scope: string; result: P} | null>(null);
+    const [kept, setKept] = useState<{scope: string; group: string; result: P} | null>(null);
     const last = kept?.scope === scopeKey ? kept.result : null;
 
     const key = `${scopeKey}|${page}|${cursor ?? ''}`;
@@ -79,7 +81,7 @@ export function usePagedList<P extends PagedPage<unknown, string>, R extends {st
 
     const answer = useAsync<P | R>(key, async () => {
         const result = await load({page, cursor, source: last?.source});
-        if (isPage<P>(result) && currentKey.current === key) setKept({scope: scopeKey, result});
+        if (isPage<P>(result) && currentKey.current === key) setKept({scope: scopeKey, group, result});
         return result;
     });
 
@@ -101,7 +103,7 @@ export function usePagedList<P extends PagedPage<unknown, string>, R extends {st
         result: answer.data,
         current,
         shown,
-        latest: current ?? kept?.result ?? null,
+        latest: current ?? (kept?.group === group ? kept.result : null),
         items: (current?.items ?? []) as P['items'],
         loading: answer.loading,
         error: answer.error,

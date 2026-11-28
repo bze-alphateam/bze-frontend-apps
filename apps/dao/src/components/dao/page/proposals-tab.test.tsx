@@ -117,6 +117,12 @@ describe("the Proposals tab", () => {
         expect(nav.push).toHaveBeenCalledWith("/dao/4?tab=proposals&page=3", {scroll: false});
     });
 
+    it("a page past the end goes to the last page, keeping the status", async () => {
+        renderTab(deps(numbered([], 23)), {search: "tab=proposals&status=passed&page=9"});
+        await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/dao/4?tab=proposals&status=passed&page=2", {scroll: false}));
+        expect(screen.queryByText("No proposals with this status")).toBeNull();
+    });
+
     it("without a total (an older Scan): Prev / Next over next_cursor only", async () => {
         const listForDao = vi.fn(async (_id: string, request: ProposalListRequest): Promise<ScanProposalPage> =>
             request.cursor ? {items: [item(3, "rejected")], next_cursor: null} : {items: [item(9, "executed")], next_cursor: "c1"});

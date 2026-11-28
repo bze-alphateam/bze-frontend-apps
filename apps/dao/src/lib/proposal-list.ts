@@ -1,6 +1,7 @@
 import {ScanUnavailableError} from './dao-scan';
 import {ScanRefusedError} from './dao-proposal-scan';
-import {createPagingMemory, readScanPage, type PagedPage, type PagePosition} from './paged-list';
+import {createPagingMemory, isLaterPage, readScanPage, type PagedPage, type PagePosition} from './paged-list';
+import {slicePage} from './pagination';
 import type {ProposalDeps} from './proposal-loader';
 import {rowFromChain, rowFromScan, type ProposalRow, type ProposalTally} from './proposal-model';
 import {isOpenStatus} from './proposal-status';
@@ -25,7 +26,11 @@ export const PROPOSALS_PAGE = 20;
 
 /** The chain's page when Scan is down (open proposals are capped by the DAO's rules: one page, as a rule). */
 const CHAIN_PAGE_LIMIT = 50;
-/** The older Scan's Active list: each status read by cursor, a few pages at most. */
+/**
+ * The older Scan's Active list: each status read by cursor, at most 5 pages of 50 (250 per status). Open
+ * proposals are capped by each DAO's `max_open_proposals`, so the cap is never reached in practice; past
+ * it the oldest of a status would be left out rather than reading without end.
+ */
 const LEGACY_LIMIT = 50;
 const LEGACY_READS = 5;
 
@@ -38,7 +43,7 @@ export function parseProposalFilter(value: string | null | undefined): ProposalF
  * The `status` values Scan is asked for: Active is the alias `active` (voting + execution_failed),
  * Passed is `executed`, All is none.
  */
-export function filterStatuses(filter: ProposalFilter): string[] {
+function filterStatuses(filter: ProposalFilter): string[] {
     switch (filter) {
         case 'all': return [];
         case 'active': return ['active'];
@@ -77,7 +82,7 @@ const endOf = (row: ProposalRow): number => {
  * first by the soonest end (so the ones ready to settle, past their end, lead), then failed executions,
  * then the finished ones, both newest first.
  */
-export function activeFirst(rows: ProposalRow[]): ProposalRow[] {
+function activeFirst(rows: ProposalRow[]): ProposalRow[] {
     return [...rows].sort((a, b) => {
         const byRank = rank(a) - rank(b);
         if (byRank !== 0) return byRank;
@@ -132,22 +137,26 @@ const rowsOf = (items: Parameters<typeof rowFromScan>[0][]): ProposalRow[] =>
         return row ? [row] : [];
     });
 
-/** An older Scan refuses `status=active`: the two statuses are read one by one and merged. */
-async function legacyActive(deps: ProposalDeps, daoId: string): Promise<ProposalPage> {
+/**
+ * An older Scan refuses `status=active`: the two statuses are read one by one, merged active first and
+ * paged here, so the page in the URL and the pager agree (numbered, `total` = the merged rows; no counts).
+ */
+async function legacyActive(deps: ProposalDeps, daoId: string, page: number): Promise<ProposalPage> {
     const read = async (status: string): Promise<ProposalRow[]> => {
         const rows: ProposalRow[] = [];
         let cursor: string | null = null;
         for (let i = 0; i < LEGACY_READS; i++) {
-            const page = await deps.scan.listForDao(daoId, {statuses: [status], cursor, limit: LEGACY_LIMIT});
-            rows.push(...rowsOf(page.items));
-            if (!page.next_cursor) break;
-            cursor = page.next_cursor;
+            const answer = await deps.scan.listForDao(daoId, {statuses: [status], cursor, limit: LEGACY_LIMIT});
+            rows.push(...rowsOf(answer.items));
+            if (!answer.next_cursor) break;
+            cursor = answer.next_cursor;
         }
         return rows;
     };
     const [voting, failed] = await Promise.all([read('voting'), read('execution_failed')]);
-    const items = activeFirst([...voting, ...failed]);
-    return {state: 'ok', items, returned: items.length, source: 'scan', mode: 'cursor', total: null, next: null, counts: null};
+    const all = activeFirst([...voting, ...failed]);
+    const items = slicePage(all, page, PROPOSALS_PAGE);
+    return {state: 'ok', items, returned: items.length, source: 'scan', mode: 'pages', total: all.length, next: null, counts: null};
 }
 
 /** Scan down: the chain's live proposals (voting + execution failed), paged by key. */
@@ -160,9 +169,9 @@ async function chainActive(deps: ProposalDeps, daoId: string, key: string | null
 /**
  * One page of a DAO's proposals for a filter. Scan by page number (active first, with `total` and
  * `status_counts`); an older Scan, which ignores `page` and answers without a total, by cursor (newest
- * first, remembered) and, for Active, which it refuses (400), the two statuses merged. With Scan down
+ * first, remembered) and, for Active, which it refuses (400), the two statuses merged and paged here. With Scan down
  * only Active can be listed, from the chain's live proposals (Prev / Next by key); the other filters are
- * `needs-scan`. A later page never switches source.
+ * `needs-scan`. Only the first page may fall back: a later page (by number or cursor) throws.
  */
 export async function loadProposalPage(deps: ProposalDeps, daoId: string, filter: ProposalFilter, position: PagePosition<'scan' | 'chain'>): Promise<ProposalListResult> {
     const cursor = position.cursor ?? null;
@@ -183,11 +192,12 @@ export async function loadProposalPage(deps: ProposalDeps, daoId: string, filter
                 counts: read.mode === 'pages' ? read.answer.status_counts ?? null : null,
             };
         } catch (e) {
-            if (e instanceof ScanRefusedError && filter === 'active' && !cursor) return await legacyActive(deps, daoId);
+            if (e instanceof ScanRefusedError && filter === 'active' && !cursor) return await legacyActive(deps, daoId, position.page);
             throw e;
         }
     } catch (e) {
-        if (!(e instanceof ScanUnavailableError) || cursor) throw e;
+        // only the first page may fall back: a Scan failing on page 2 must not show the chain's first page under ?page=2
+        if (!(e instanceof ScanUnavailableError) || isLaterPage(position)) throw e;
         if (filter !== 'active') return {state: 'needs-scan'};
         return chainActive(deps, daoId, null);
     }

@@ -5,7 +5,7 @@ import {ScanRefusedError, type DaoProposalScan} from "./dao-proposal-scan";
 import type {ProposalChain, ProposalDeps} from "./proposal-loader";
 import type {ProposalRow} from "./proposal-model";
 import {
-    activeFirst, activeRuleAfter, filterStatuses, loadProposalPage, parseProposalFilter, segmentCounts, turnoutShare, yesShare,
+    activeRuleAfter, loadProposalPage, parseProposalFilter, segmentCounts, turnoutShare, yesShare,
     type ProposalFilter,
 } from "./proposal-list";
 import type {ScanProposalPage, ScanProposalSummary} from "./proposal-types";
@@ -29,9 +29,15 @@ const DOWN = async (): Promise<ScanProposalPage> => { throw new ScanUnavailableE
 const REFUSED = async (): Promise<ScanProposalPage> => { throw new ScanRefusedError("400"); };
 
 describe("the status filter", () => {
-    it("maps each segment to Scan's status values", () => {
+    it("maps each segment to Scan's status values", async () => {
         const all: ProposalFilter[] = ["all", "active", "passed", "rejected", "expired", "cancelled"];
-        expect(all.map(filterStatuses)).toEqual([[], ["active"], ["executed"], ["rejected"], ["expired"], ["cancelled"]]);
+        const asked: string[][] = [];
+        for (const filter of all) {
+            const listForDao = vi.fn<DaoProposalScan["listForDao"]>(async () => ({items: [], next_cursor: null, total: 0, status_counts: {}}));
+            await loadProposalPage(deps(listForDao), "4", filter, {page: 1});
+            asked.push(listForDao.mock.calls[0][1].statuses ?? []);
+        }
+        expect(asked).toEqual([[], ["active"], ["executed"], ["rejected"], ["expired"], ["cancelled"]]);
     });
 
     it("reads ?status=, anything unknown is All", () => {
@@ -59,12 +65,20 @@ describe("segmentCounts", () => {
 });
 
 describe("active first and the rule", () => {
-    it("orders ready to settle and voting by the soonest end, then failed executions, then finished newest first", () => {
-        const rows = [
-            row("3", "REJECTED"), row("8", "VOTING", "2026-12-05T00:00:00Z"), row("6", "EXECUTION_FAILED"),
-            row("9", "VOTING", "2026-11-01T00:00:00Z"), row("5", "EXECUTED"), row("7", "EXECUTION_FAILED"),
-        ];
-        expect(activeFirst(rows).map((r) => r.id)).toEqual(["9", "8", "7", "6", "5", "3"]);
+    it("orders the lists it builds itself: voting by the soonest end (ready to settle first), then failed executions newest first", async () => {
+        // the chain's live proposals with Scan down, newest first by id as the chain lists them
+        const getDaoProposals = vi.fn(async () => ({
+            items: [
+                {...PROPOSAL, id: "9", voting_end: "1793000000"},
+                {...PROPOSAL, id: "8", voting_end: "1795000000"},
+                {...PROPOSAL, id: "7", status: "EXECUTION_FAILED" as const},
+                {...PROPOSAL, id: "6", status: "EXECUTION_FAILED" as const},
+                {...PROPOSAL, id: "5", voting_end: "1793000000"},
+            ],
+            nextKey: null,
+        }));
+        const page = await loadProposalPage(deps(DOWN, {getDaoProposals}), "4", "active", {page: 1});
+        expect(page.state === "ok" && page.items.map((r) => r.id)).toEqual(["5", "9", "8", "7", "6"]);
     });
 
     it("draws the rule after the last active row when finished ones follow", () => {
@@ -127,10 +141,21 @@ describe("loadProposalPage", () => {
                 : {items: [item(7, "execution_failed")], next_cursor: null};
         });
         const page = await loadProposalPage(deps(listForDao), "4", "active", {page: 1});
-        expect(page).toMatchObject({state: "ok", source: "scan", mode: "cursor", next: null});
+        expect(page).toMatchObject({state: "ok", source: "scan", mode: "pages", total: 3, next: null, counts: null});
         if (page.state === "ok") expect(page.items.map((r) => r.id)).toEqual(["9", "5", "7"]);
         expect(listForDao).toHaveBeenCalledWith("4", {statuses: ["voting"], cursor: null, limit: 50});
         expect(listForDao).toHaveBeenCalledWith("4", {statuses: ["execution_failed"], cursor: null, limit: 50});
+    });
+
+    it("the merged Active list of an older Scan is paged here, so ?page=2 is page 2", async () => {
+        const voting = Array.from({length: 25}, (_, i) => item(100 - i, "voting", {voting_end: `2026-11-${String(i + 1).padStart(2, "0")}T00:00:00Z`}));
+        const listForDao = vi.fn(async (_dao: string, request: {statuses?: string[]}) => {
+            if (request.statuses?.[0] === "active") throw new ScanRefusedError("400");
+            return {items: request.statuses?.[0] === "voting" ? voting : [], next_cursor: null};
+        });
+        const page = await loadProposalPage(deps(listForDao), "4", "active", {page: 2});
+        expect(page).toMatchObject({mode: "pages", total: 25, returned: 5});
+        if (page.state === "ok") expect(page.items.map((r) => r.id)).toEqual(["80", "79", "78", "77", "76"]);
     });
 
     it("a 400 on another filter is an error, not Scan down", async () => {
@@ -158,5 +183,12 @@ describe("loadProposalPage", () => {
 
     it("Scan failing on a later page throws instead of switching source", async () => {
         await expect(loadProposalPage(deps(DOWN), "4", "active", {page: 1, cursor: "c1", source: "scan"})).rejects.toBeInstanceOf(ScanUnavailableError);
+    });
+
+    it("Scan failing on numbered page 2 throws instead of showing the chain's first page (or needs-scan)", async () => {
+        const d = deps(DOWN);
+        await expect(loadProposalPage(d, "4", "active", {page: 2})).rejects.toBeInstanceOf(ScanUnavailableError);
+        await expect(loadProposalPage(d, "4", "passed", {page: 2})).rejects.toBeInstanceOf(ScanUnavailableError);
+        expect(d.chain.getDaoProposals).not.toHaveBeenCalled();
     });
 });

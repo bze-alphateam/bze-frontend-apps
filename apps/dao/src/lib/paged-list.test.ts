@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {createPagingMemory, pastEndPage, readScanPage} from "./paged-list";
+import {createPagingMemory, isLaterPage, pastEndPage, readScanPage} from "./paged-list";
 
 describe("readScanPage", () => {
     it("asks by page while the client answers totals, and never reads next_cursor then", async () => {
@@ -19,6 +19,15 @@ describe("readScanPage", () => {
         expect(read).toHaveBeenLastCalledWith({cursor: "c1"});
         await readScanPage(memory, client, {page: 1}, read);
         expect(read).toHaveBeenLastCalledWith({cursor: null});
+    });
+
+    it("an answer that says nothing about paging (tellsPaging false) leaves the client numbered", async () => {
+        const memory = createPagingMemory();
+        const client = {};
+        const read = vi.fn(async () => ({total: null, next_cursor: null, supported: false}));
+        expect(await readScanPage(memory, client, {page: 1}, read, (a) => a.supported)).toMatchObject({mode: "cursor"});
+        await readScanPage(memory, client, {page: 2}, read, (a) => a.supported);
+        expect(read).toHaveBeenLastCalledWith({page: 2});
     });
 
     it("remembers per client and per memory", async () => {
@@ -43,5 +52,11 @@ describe("pastEndPage", () => {
         expect(pastEndPage({mode: "pages", returned: 0, total: 23}, 1, 20)).toBeNull();
         expect(pastEndPage({mode: "cursor", returned: 0, total: null}, 3, 20)).toBeNull();
         expect(pastEndPage(null, 3, 20)).toBeNull();
+    });
+});
+
+describe("isLaterPage", () => {
+    it("is any page after the first, by number or by cursor", () => {
+        expect([{page: 1}, {page: 2}, {page: 1, cursor: "c"}, {page: 1, cursor: null}].map(isLaterPage)).toEqual([false, true, true, false]);
     });
 });

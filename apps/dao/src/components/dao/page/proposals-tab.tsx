@@ -224,7 +224,7 @@ export const ProposalsTab = ({deps, daoId, nameOf, newProposal = false}: {deps: 
     const {query, pushPage, replacePage, setFilter} = useProposalsUrl(daoId);
     const {filter} = query;
     const list = usePagedList<ProposalPage, {state: 'needs-scan'}>(`${daoId}|${filter}`, query.page, PROPOSALS_PAGE, (position) =>
-        loadProposalPage(deps, daoId, filter, position));
+        loadProposalPage(deps, daoId, filter, position), daoId);
 
     const lastPage = list.pastEnd;
     useEffect(() => {
