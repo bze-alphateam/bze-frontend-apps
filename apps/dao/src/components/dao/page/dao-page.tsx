@@ -14,6 +14,8 @@ import type {SubDaoDeps} from '@/lib/dao-subdaos';
 import {parseDaoTab} from '@/lib/dao-tabs';
 import {loadDaoView, type DaoView, type DaoViewDeps} from '@/lib/dao-view-loader';
 import type {ProposalDeps} from '@/lib/proposal-loader';
+import {proposerStatus} from '@/lib/propose/eligibility';
+import {shortcutApplies, shortcutHref} from '@/lib/propose/shortcuts';
 import {Unsupported} from '../unsupported';
 import {ControlBox} from './control-box';
 import {DaoShell} from './dao-shell';
@@ -47,6 +49,12 @@ const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoV
     const nameOf = (address: string) => labels.get(address);
 
     const actions = actionsFor(DAO_FEATURES, dao, wallet);
+    // "Request to join" follows the composer's rule: a member list open to anyone, a wallet not on it, a DAO that can take a proposal now
+    const params = view.params.ok ? view.params.value : null;
+    const status = wallet && params
+        ? proposerStatus({dao, params, wallet, power: {ok: false}, openCount: view.openProposals.ok ? view.openProposals.value.length : null, sources: view.sources})
+        : null;
+    const joinHref = DAO_FEATURES.memberComposer && shortcutApplies('join', dao, wallet, status) ? shortcutHref(dao.id, 'join') : null;
 
     return (
         <DaoShell dao={dao} active={tab} wallet={wallet} extras={extras} openProposals={view.openProposals}>
@@ -65,7 +73,7 @@ const Body = ({deps, proposalDeps, subDaoDeps, view, wallet}: Deps & {view: DaoV
                             <ControlBox view={view} wallet={wallet} detail={detail} nameOf={nameOf} subDaoDeps={subDaoDeps} />
                         </Box>
                         <Box minW="0" order={{base: 4, lg: 0}}>
-                            <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} />
+                            <VotersPanel dao={dao} sources={view.sources} nameOf={nameOf} joinHref={joinHref} />
                         </Box>
                     </Flex>
                     <Flex direction="column" gap="16px" minW="0" display={{base: 'contents', lg: 'flex'}}>

@@ -23,7 +23,7 @@ vi.mock("@bze/bze-ui-kit", async (importActual) => ({
 }));
 vi.mock("@/lib/dao-chain", () => ({liveDaoViewDeps: {}, liveProposalDeps: {}, liveSubDaoDeps: {}}));
 
-import {PARAMS, THIRD, WALLET} from "@/test/composer-fixtures";
+import {FOURTH, PARAMS, THIRD, WALLET} from "@/test/composer-fixtures";
 import {pageDao} from "@/test/dao-page-fixtures";
 import type {SubDaoDeps} from "@/lib/dao-subdaos";
 import type {ScanDaoDetail} from "@/lib/dao-types";
@@ -74,6 +74,40 @@ beforeEach(() => {
 });
 
 describe("the DAO page", () => {
+    describe("Request to join, in Who votes", () => {
+        const open = (over: Partial<Dao> = {}) => pageDao({config: {...pageDao().config, open_submission: true}, ...over});
+
+        it("is offered to a wallet that is not a member of a DAO open to anyone, and opens the composer with the join shortcut", async () => {
+            renderPage(open(), {address: FOURTH});
+            const link = await screen.findByTestId("request-to-join");
+            expect(link).toHaveAttribute("href", "/dao/4/propose?shortcut=join");
+            expect(link).toHaveTextContent("Request to join");
+            expect(screen.getByTestId("join-note")).toHaveTextContent("You're not a member. Proposals here are open to anyone: ask to join with a proposal that adds you.");
+        });
+
+        it("is not offered to a member, to a DAO only its members can submit to, nor without a wallet", async () => {
+            const member = renderPage(open(), {address: WALLET});
+            await screen.findByTestId("voters-panel");
+            expect(screen.queryByTestId("request-to-join")).toBeNull();
+            member.unmount();
+
+            const closed = renderPage(pageDao(), {address: FOURTH});
+            await screen.findByTestId("voters-panel");
+            expect(screen.queryByTestId("request-to-join")).toBeNull();
+            closed.unmount();
+
+            renderPage(open());
+            await screen.findByTestId("voters-panel");
+            expect(screen.queryByTestId("request-to-join")).toBeNull();
+        });
+
+        it("is not offered when the DAO cannot take a proposal now (no voters)", async () => {
+            renderPage(open({members: []}), {address: FOURTH});
+            await screen.findByTestId("no-voters");
+            expect(screen.queryByTestId("request-to-join")).toBeNull();
+        });
+    });
+
     it("opens on the Overview: Who controls it, Who votes, Treasury and the wallet's power", async () => {
         renderPage(pageDao(), {address: WALLET});
         expect(await screen.findByTestId("overview-tab")).toBeInTheDocument();

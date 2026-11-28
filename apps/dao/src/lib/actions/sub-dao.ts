@@ -37,9 +37,9 @@ const subOf = (fields: ActionFields, ctx: ActionContext): SubDao | undefined => 
 
 /** `null`: the sub-DAOs could not be read; a sentence: this DAO cannot manage that one; else the sub-DAO. */
 const resolveSub = (fields: ActionFields, ctx: ActionContext): SubDao | string => {
-    if (ctx.subDaos === null) return 'The DAOs this DAO administers could not be read right now. Try again in a moment.';
+    if (ctx.subDaos === null) return 'The SubDAOs could not be read right now. Try again in a moment.';
     const sub = subOf(fields, ctx);
-    if (!sub) return 'Choose one of the DAOs this DAO administers.';
+    if (!sub) return 'Choose one of the SubDAOs.';
     if (sub.dao.admin !== ctx.dao.address) return `${sub.dao.name} is no longer administered by this DAO.`;
     return sub;
 };
@@ -70,8 +70,8 @@ const subAdminCheck = (fields: ActionFields, ctx: ActionContext): string | undef
 /** The admin of a DAO this DAO administers: nominate another, withdraw a nomination, or hand it to its voters. */
 export const subAdminEntry: ActionEntry = {
     id: SUB_ADMIN_ID,
-    label: 'Change the admin of a DAO this DAO administers',
-    description: 'Nominate a new admin for a sub-DAO, withdraw its nomination, or hand it to its own voters.',
+    label: 'Change the admin of a SubDAO',
+    description: 'Nominate a new admin for a SubDAO, withdraw its nomination, or hand it to its own voters.',
     available: hasSubDaos,
     initialFields: (ctx) => ({daoId: ctx.subDaos?.[0]?.dao.id ?? '', mode: 'nominate', nominee: ''}),
     validate: subAdminCheck,
@@ -253,8 +253,8 @@ function composeInner(fields: ActionFields, ctx: ActionContext, find: FindAction
 export function createSubExecuteEntry(find: FindAction): ActionEntry {
     return {
         id: SUB_EXECUTE_ID,
-        label: 'Run actions as a DAO this DAO administers',
-        description: "Pay from a sub-DAO's treasury, change its rules or members: it signs, this DAO is its admin.",
+        label: 'Run actions as a SubDAO',
+        description: "Pay from a SubDAO's treasury, change its rules or members: it signs, this DAO is its admin.",
         available: hasSubDaos,
         initialFields: (ctx) => ({daoId: ctx.subDaos?.[0]?.dao.id ?? '', inner: ''}),
         validate(fields, ctx) {

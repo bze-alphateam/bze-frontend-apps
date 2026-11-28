@@ -64,6 +64,6 @@ export function proposerStatus(input: EligibilityInput): ProposerStatus {
 
     if (!power.ok || power.value === null) return {kind: 'unknown'};
     return positive(power.value.current)
-        ? {kind: 'maybe', reason: 'You have stake in this DAO. It counts only if it joined before the block your proposal lands in; the chain checks that before anything is signed.'}
+        ? {kind: 'maybe', reason: 'You have stake in this DAO. It counts only if you joined or added to it before the block your proposal lands in; the chain checks that before anything is signed.'}
         : {kind: 'not-a-voter', message: 'Only stakers of this DAO can submit a proposal, and your wallet has no stake in its sources.'};
 }
