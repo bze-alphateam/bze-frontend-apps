@@ -1,12 +1,14 @@
 'use client';
 
 import {useState} from 'react';
-import {chakra, Field, Flex, Input, Textarea} from '@chakra-ui/react';
+import {chakra, Flex} from '@chakra-ui/react';
 import type {Dao, DaoParams} from '@bze/bze-ui-kit';
 import {utf8Length} from '@bze/bze-ui-kit';
+import {bytesLine, summaryLine} from '@/lib/propose/composer-text';
 import {expeditedExplanation} from '@/lib/propose/expedite';
 import {PlainText} from '@/components/ui/plain-text';
-import {Panel} from '@/components/dao/page/panel';
+import {NeutralNote} from './neutral-note';
+import {Segmented} from './segmented';
 
 interface Props {
     dao: Pick<Dao, 'type' | 'config'>;
@@ -19,73 +21,115 @@ interface Props {
     onExpedited: (value: boolean) => void;
 }
 
-const Counter = ({used, max, testId}: {used: number; max: number; testId: string}) => (
-    <chakra.span fontSize="12px" color={used > max ? 'red.500' : 'hg.text.faint'} data-testid={testId}>
-        {`${used.toLocaleString('en-US')} / ${max.toLocaleString('en-US')} bytes`}
+/** The boards' field: a 12 px inset box with a strong hairline; red while the text is over its limit. */
+const field = (over: boolean) => ({
+    display: 'flex',
+    gap: '10px',
+    px: '14px',
+    borderRadius: '12px',
+    bg: 'hg.inset',
+    borderWidth: '1px',
+    borderColor: over ? 'hg.danger/60' : 'hg.lineStrong',
+    _focusWithin: {borderColor: over ? 'hg.danger' : 'app.focusRing'},
+}) as const;
+
+const control = {flex: '1', minW: '0', bg: 'transparent', border: '0', outline: 'none', color: 'fg', fontSize: '15px', fontWeight: '500'} as const;
+
+const Count = ({line, testId}: {line: {text: string; over: boolean}; testId: string}) => (
+    <chakra.span fontSize="12px" fontWeight={line.over ? '500' : '400'} color={line.over ? 'hg.danger.text' : 'hg.text.faint'} data-testid={testId} aria-live="polite">
+        {line.text}
     </chakra.span>
 );
 
-/** Title, summary (with a plain-text preview) and the expedited switch. */
+/** Title, summary (Write / Preview) and the expedited switch: the top of the composer's main card (board F1). */
 export const Basics = ({dao, params, title, summary, expedited, onTitle, onSummary, onExpedited}: Props) => {
-    const [preview, setPreview] = useState(false);
-    const maxTitle = Number(params.max_title_len);
+    const [view, setView] = useState<'write' | 'preview'>('write');
+    const titleLine = bytesLine(utf8Length(title), Number(params.max_title_len));
     const maxSummary = Number(params.max_summary_len);
+    const summaryCount = summaryLine(utf8Length(summary), maxSummary);
+    const explanation = expeditedExplanation(dao, params.min_expedite_delay);
 
     return (
-        <Panel id="basics" title="The proposal" testId="basics-panel">
-            <Field.Root>
-                <Field.Label fontSize="14px" fontWeight="600">Title</Field.Label>
-                <Input
-                    value={title}
-                    onChange={(e) => onTitle(e.target.value)}
-                    placeholder="What are you proposing?"
-                    h="46px"
-                    borderRadius="12px"
-                    fontSize="16px"
-                    bg="bg.panel"
-                    data-testid="proposal-title"
-                />
-                <Counter used={utf8Length(title)} max={maxTitle} testId="title-count" />
-            </Field.Root>
+        <Flex direction="column" gap="22px" minW="0" data-testid="basics-panel">
+            <chakra.label display="flex" flexDirection="column" gap="8px" fontSize="14px" fontWeight="600" minW="0">
+                Title
+                <chakra.span {...field(titleLine.over)} alignItems="center" h="48px">
+                    <chakra.input {...control} value={title} onChange={(e) => onTitle(e.target.value)} placeholder="What are you proposing?" aria-invalid={titleLine.over || undefined} data-testid="proposal-title" />
+                </chakra.span>
+                <Count line={titleLine} testId="title-count" />
+            </chakra.label>
 
             {maxSummary > 0 && (
-                <Field.Root>
-                    <Flex justify="space-between" align="center" w="100%">
-                        <Field.Label fontSize="14px" fontWeight="600">Summary</Field.Label>
-                        <chakra.button type="button" color="hg.link" fontSize="13px" fontWeight="600" cursor="pointer" onClick={() => setPreview((p) => !p)} data-testid="summary-preview-toggle">
-                            {preview ? 'Edit' : 'Preview'}
-                        </chakra.button>
+                <Flex direction="column" gap="8px" minW="0">
+                    <Flex gap="16px" align="center" justify="space-between" wrap="wrap">
+                        <chakra.span id="summary-label" fontSize="14px" fontWeight="600">Summary</chakra.span>
+                        {/* a phone has no Preview (board I5): the counter line says how it is shown */}
+                        <chakra.div display={{base: 'none', md: 'block'}} data-testid="summary-view-wrap">
+                            <Segmented
+                            label="Summary"
+                            value={view}
+                            onChange={setView}
+                            options={[{value: 'write', label: 'Write', testId: 'summary-write'}, {value: 'preview', label: 'Preview', testId: 'summary-preview-toggle'}]}
+                            testId="summary-view"
+                            />
+                        </chakra.div>
                     </Flex>
-                    {preview ? (
-                        <chakra.div w="100%" minH="120px" p="12px" borderWidth="1px" borderColor="app.border" borderRadius="12px" data-testid="summary-preview">
+                    {view === 'preview' && (
+                        <chakra.div {...field(summaryCount.over)} display={{base: 'none', md: 'block'}} minH="168px" py="12px" fontSize="15px" lineHeight="1.5" overflowWrap="anywhere" data-testid="summary-preview">
                             {summary.trim() === '' ? <chakra.span color="fg.muted">Nothing to preview yet.</chakra.span> : <PlainText text={summary} />}
                         </chakra.div>
-                    ) : (
-                        <Textarea
+                    )}
+                    {/* a phone has no Preview: its textarea stays, even when Preview was picked on a wider screen */}
+                    <chakra.span {...field(summaryCount.over)} alignItems="flex-start" display={view === 'preview' ? {base: 'flex', md: 'none'} : 'flex'} data-testid="summary-write-box" data-view={view}>
+                        <chakra.textarea
+                            {...control}
+                            rows={6}
+                            h={{base: '114px', md: 'auto'}}
+                            resize="vertical"
+                            lineHeight="1.5"
+                            py="12px"
                             value={summary}
                             onChange={(e) => onSummary(e.target.value)}
-                            placeholder="Why, and what happens next. Shown as plain text: line breaks are kept and web links become links."
-                            rows={6}
-                            bg="bg.panel"
-                            borderRadius="12px"
+                            placeholder="Why, and what happens next."
+                            aria-labelledby="summary-label"
+                            aria-invalid={summaryCount.over || undefined}
                             data-testid="proposal-summary-input"
                         />
-                    )}
-                    <Counter used={utf8Length(summary)} max={maxSummary} testId="summary-count" />
-                </Field.Root>
-            )}
-
-            {dao.config.allow_expedite && (
-                <Flex direction="column" gap="6px" data-testid="expedite-box">
-                    <chakra.label display="flex" alignItems="center" gap="10px" fontWeight="600" fontSize="15px" cursor="pointer">
-                        <input type="checkbox" checked={expedited} onChange={(e) => onExpedited(e.target.checked)} data-testid="expedited-switch" />
-                        Expedited
-                    </chakra.label>
-                    <chakra.ul m="0" ps="20px" display="flex" flexDirection="column" gap="2px" fontSize="13px" color="fg.muted">
-                        {expeditedExplanation(dao, params.min_expedite_delay).map((line) => <li key={line}>{line}</li>)}
-                    </chakra.ul>
+                    </chakra.span>
+                    <chakra.span display={{base: 'none', md: 'inline'}}><Count line={summaryCount} testId="summary-count" /></chakra.span>
+                    <chakra.span display={{base: 'inline', md: 'none'}}><Count line={{text: summaryCount.short, over: summaryCount.over}} testId="summary-count-phone" /></chakra.span>
                 </Flex>
             )}
-        </Panel>
+
+            {dao.config.allow_expedite ? (
+                <chakra.section bg="hg.inset" borderWidth="1px" borderColor="hg.hairline" borderRadius="16px" p={{base: '14px', md: '16px'}} data-testid="expedite-box">
+                    <chakra.label display="flex" alignItems="flex-start" gap="12px" cursor="pointer">
+                        <chakra.span position="relative" flex="none" w="44px" h="25px" borderRadius="999px" mt="1px" bg={expedited ? 'app.solid' : 'hg.switchOff'} transition="background 120ms">
+                            <chakra.input
+                            type="checkbox"
+                            role="switch"
+                            aria-label="Expedited"
+                            checked={expedited}
+                            onChange={(e) => onExpedited(e.target.checked)}
+                            position="absolute"
+                            inset="0"
+                            opacity={0}
+                            m="0"
+                            cursor="pointer"
+                            data-testid="expedited-switch"
+                            />
+                            <chakra.span position="absolute" top="3px" left={expedited ? '22px' : '3px'} boxSize="19px" borderRadius="999px" bg="white" transition="left 120ms" pointerEvents="none" />
+                        </chakra.span>
+                        <Flex as="span" direction="column" gap="2px" fontSize="14px" fontWeight="600">
+                            Expedited
+                            <chakra.span fontSize="13px" fontWeight="400" color="hg.text.faint" display={{base: 'none', md: 'inline'}} data-testid="expedite-explanation">{explanation.full}</chakra.span>
+                            <chakra.span fontSize="13px" fontWeight="400" color="hg.text.faint" display={{base: 'inline', md: 'none'}} data-testid="expedite-explanation-phone">{explanation.short}</chakra.span>
+                        </Flex>
+                    </chakra.label>
+                </chakra.section>
+            ) : (
+                <NeutralNote testId="expedite-not-allowed">This DAO doesn&apos;t allow expedited proposals, so the switch isn&apos;t shown.</NeutralNote>
+            )}
+        </Flex>
     );
 };

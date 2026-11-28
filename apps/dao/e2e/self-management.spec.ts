@@ -40,10 +40,14 @@ async function openComposer(page: Page): Promise<void> {
     await page.getByTestId("proposal-title").fill("A change");
 }
 
+/** Opens the picker dialog and picks an entry: its form card opens. */
 const add = async (page: Page, id: string) => {
     await page.getByTestId("add-action").click();
-    await page.getByTestId(`add-${id}`).click();
+    await page.getByTestId("action-picker").getByTestId(`add-${id}`).click();
 };
+
+/** "Add to proposal": the open form card joins the list as a card. */
+const commit = (page: Page) => page.getByTestId("action-commit").last().click();
 
 test.describe("members", () => {
     test("propose adding a member: checked, read back, ready to submit", async ({page, network}) => {
@@ -51,23 +55,25 @@ test.describe("members", () => {
         await openComposer(page);
         await add(page, "update-members");
 
-        await expect(page.getByTestId("submit-proposal")).toBeDisabled();
-        await page.getByTestId("members-add").fill(STRANGER);
-        await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Change the members");
-        await expect(page.getByTestId("action-preview")).toContainText("Add 1");
-        await expect(page.getByTestId("action-warning")).toContainText("only on proposals submitted after");
-        await expect(page.getByTestId("signed-by")).toContainText("Every message is signed by the DAO account");
-        await expect(page.getByTestId("signed-by").locator("[title]")).toHaveAttribute("title", DAO_2_ADDRESS);
-        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
-
+        await expect(page.getByTestId("action-editor")).toContainText("MsgUpdateMembers · member lists only");
         await page.getByTestId("members-add").fill(WALLET);
         await expect(page.getByTestId("action-error")).toContainText("is already a member");
-        await expect(page.getByTestId("submit-proposal")).toBeDisabled();
 
         await page.getByTestId("members-add").fill(STRANGER);
         await page.getByTestId("members-remove").fill(STRANGER);
         await expect(page.getByTestId("action-error")).toContainText("both added and removed");
+
+        await page.getByTestId("members-remove").fill("");
+        await expect(page.getByTestId("action-error")).toHaveCount(0);
+        await expect(page.getByTestId("members-result")).toContainText("Result: 3 members (1 to 128).");
+        await expect(page.getByTestId("action-warning")).toContainText("only on proposals submitted after");
+        await commit(page);
+
+        const row = page.getByTestId("action-row");
+        await expect(row.getByTestId("action-card-title")).toHaveText("Add or remove members");
+        await expect(row.getByTestId("action-preview")).toContainText("Add bze1");
+        await expect(page.getByTestId("actions-editor")).toContainText("Run as Founders, in this order");
+        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 
     test("removing every member is refused", async ({page}) => {
@@ -84,14 +90,17 @@ test.describe("rename and rules", () => {
         await add(page, "update-metadata");
 
         await expect(page.getByTestId("meta-name")).toHaveValue("Founders");
-        await page.getByTestId("meta-name").fill("Founders of the hive");
-        await expect(page.getByTestId("action-preview")).toContainText("Name: Founders of the hive");
-        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
-
         await page.getByTestId("meta-name").fill("");
         await expect(page.getByTestId("action-error")).toContainText("Enter a name.");
         await page.getByTestId("meta-name").fill("x".repeat(65));
         await expect(page.getByTestId("action-error")).toContainText("at most 64 bytes");
+        await expect(page.getByTestId("meta-name-count")).toContainText("65 of 64 bytes: shorten it.");
+
+        await page.getByTestId("meta-name").fill("Founders of the hive");
+        await expect(page.getByTestId("meta-name-count")).toHaveText("20 of 64 bytes");
+        await commit(page);
+        await expect(page.getByTestId("action-preview")).toContainText("Name: Founders of the hive");
+        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 
     test("rules: what changes is shown before and after, and open proposals keep theirs", async ({page, network}) => {
@@ -99,16 +108,18 @@ test.describe("rename and rules", () => {
         await openComposer(page);
         await add(page, "update-rules");
 
-        await expect(page.getByTestId("rules-note")).toContainText("open now keep the rules they started with");
-        await page.getByTestId("rules-form").locator("input[inputmode=decimal]").first().fill("45");
-
-        const change = page.getByTestId("action-preview").getByTestId("config-change");
-        await expect(change).toHaveCount(1);
-        await expect(change).toContainText("quorum: 40% → 45%");
-        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
-
+        await expect(page.getByTestId("rules-note")).toContainText("Prefilled with today's rules");
+        await expect(page.getByTestId("action-editor")).toContainText("Proposals already open keep the rules they started with.");
         await page.getByTestId("rules-form").locator("input[inputmode=decimal]").first().fill("0");
         await expect(page.getByTestId("action-error")).toContainText("quorum must be above 0%");
+
+        await page.getByTestId("rules-form").locator("input[inputmode=decimal]").first().fill("45");
+        const change = page.getByTestId("rules-diff").getByTestId("config-change");
+        await expect(change).toHaveCount(1);
+        await expect(change).toContainText(/quorum40%45%/i);
+        await commit(page);
+        await expect(page.getByTestId("action-preview")).toContainText("1 setting change");
+        await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 });
 
@@ -124,8 +135,11 @@ test.describe("the admin", () => {
 
         await page.getByTestId("nominee").fill(STRANGER);
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Nominate a new admin for Founders (they have to accept)");
+        await expect(page.getByTestId("action-editor")).toContainText("Hand over this DAO");
+        await expect(page.getByTestId("action-editor")).toContainText("they become a superuser");
         await expect(page.getByTestId("action-warning")).toContainText("spending the whole treasury");
+        await commit(page);
+        await expect(page.getByTestId("action-preview")).toContainText("Nominate bze1");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 
@@ -135,8 +149,10 @@ test.describe("the admin", () => {
         await openComposer(page);
         await page.getByTestId("add-action").click();
         await expect(page.getByTestId("add-update-members")).toBeVisible();
+        await expect(page.getByTestId("picker-subtitle")).toHaveText("Founders · Member list · has an admin");
         await expect(page.getByTestId("add-nominate-admin")).toHaveCount(0);
         await expect(page.getByTestId("add-withdraw-nomination")).toHaveCount(0);
+        await expect(page.getByTestId("withdraw-nothing-pending")).toHaveCount(0);
     });
 });
 
@@ -159,21 +175,34 @@ test.describe("the DAOs this DAO administers", () => {
         await openComposer(page);
 
         await page.getByTestId("add-action").click();
-        await expect(page.getByTestId("manage-sub-dao-12")).toContainText("Manage Garden club (SubDAO)");
-        await page.getByTestId("add-sub-dao-admin-12").click();
-        await page.getByTestId("sub-admin-mode").selectOption("voters");
+        const manage = page.getByTestId("manage-sub-dao-12");
+        await expect(manage).toContainText("Manage Garden club (SubDAO)");
+        await expect(manage).toContainText("Hand over, or run actions as it.");
+        await manage.click();
+        await expect(page.getByTestId("action-editor")).toContainText("Manage Garden club");
+        await expect(page.getByTestId("action-editor")).toContainText("Founders is its admin");
+        await page.getByTestId("sub-way-voters").click();
+        await expect(page.getByTestId("sub-way-voters")).toHaveAttribute("aria-pressed", "true");
         await expect(page.getByTestId("action-error")).toHaveCount(0);
-        await expect(page.getByTestId("action-preview")).toContainText("Hand Garden club to its own voters");
         await expect(page.getByTestId("action-warning")).toContainText("becomes self-owned");
+        await commit(page);
+        await expect(page.getByTestId("action-preview")).toContainText("Hand it to its own voters");
 
-        await add(page, "sub-dao-execute-12");
+        await page.getByTestId("add-action").click();
+        await page.getByTestId("manage-sub-dao-12").click();
+        await expect(page.getByTestId("sub-way-execute")).toHaveAttribute("aria-pressed", "true");
         const nested = page.getByTestId("nested-actions");
         await nested.getByTestId("add-action").click();
-        await nested.getByTestId("add-pay").click();
-        await expect(nested.getByTestId("pay-held")).toHaveText("The treasury holds 90 TBZE.");
+        await page.getByTestId("action-picker").getByTestId("add-pay").click();
+        await expect(nested.getByTestId("pay-held")).toHaveText("Treasury holds 90 TBZE.");
         await nested.getByTestId("pay-amount").fill("12.5");
         await nested.getByTestId("pay-to").fill(STRANGER);
-        await expect(page.getByTestId("action-preview").last()).toContainText("Send 12.5 TBZE from the SubDAO Garden club");
+        await nested.getByTestId("action-commit").click();
+        await expect(nested.getByTestId("action-card-title")).toHaveText("As Garden club: pay from its treasury");
+        await expect(nested.getByTestId("action-preview")).toContainText("12.5 TBZE to");
+        await commit(page);
+        await expect(page.getByTestId("action-row")).toHaveCount(2);
+        await expect(page.getByTestId("action-preview").last()).toContainText("1 action as Garden club");
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
     });
 
@@ -218,8 +247,11 @@ test.describe("accepting a nomination as this DAO", () => {
         await expect(page.getByTestId("add-accept-nomination-4")).toContainText("Accept: become the admin of Stakers club");
         await expect(page.getByTestId("stale-nomination-4")).toHaveCount(0);
         await page.getByTestId("add-accept-nomination-4").click();
-        await expect(page.getByTestId("accept-dao")).toHaveValue("4");
-        await expect(page.getByTestId("accept-dao")).not.toContainText("(DAO");
+        await expect(page.getByTestId("accept-dao")).toHaveCount(0);
+        await expect(page.getByTestId("accept-text")).toContainText("Stakers club nominated Founders as its admin.");
+        await commit(page);
+        await expect(page.getByTestId("action-card-title")).toHaveText("Accept: become the admin of Stakers club");
+        await expect(page.getByTestId("action-row")).not.toContainText("DAO 4");
     });
 });
 
@@ -257,7 +289,8 @@ test.describe("the join / leave shortcuts", () => {
     test("the composer offers Leave to a member, and filling it in shows it prefilled", async ({page}) => {
         await openComposer(page);
         await page.getByTestId("shortcut-leave").click();
-        await expect(page.getByTestId("members-remove")).toHaveValue(WALLET);
+        await expect(page.getByTestId("action-preview")).toContainText("Remove bze1");
+        await expect(page.getByTestId("action-preview")).toContainText("(you)");
         await expect(page.getByTestId("shortcut-applied")).toContainText("Leave Founders");
         await expect(page.getByTestId("shortcut-applied")).toContainText("Prefilled");
         await expect(page.getByTestId("shortcut-join")).toHaveCount(0);
@@ -270,7 +303,7 @@ test.describe("the join / leave shortcuts", () => {
         await connectWallet(page);
         await expect(page.getByTestId("proposal-title")).toBeVisible();
         await expect(page.getByTestId("proposal-title")).toHaveValue("");
-        await expect(page.getByTestId("no-actions")).toBeVisible();
+        await expect(page.getByTestId("action-row")).toHaveCount(0);
         await expect(page.getByTestId("shortcut-leave")).toHaveCount(0);
         await expect(page.getByTestId("shortcuts")).toHaveCount(0);
     });
@@ -281,14 +314,14 @@ test.describe("the join / leave shortcuts", () => {
         await connectWallet(page);
 
         await expect(page.getByTestId("proposal-title")).toHaveValue(/^Remove bze1.* as a member$/);
-        await expect(page.getByTestId("members-remove")).toHaveValue(WALLET);
-        await expect(page.getByTestId("members-add")).toHaveValue("");
+        await expect(page.getByTestId("action-preview")).toContainText("Remove bze1");
+        await expect(page.getByTestId("action-preview")).not.toContainText("Add");
         await expect(page).toHaveURL(/\/dao\/2\/propose$/);
         await expect(page.getByTestId("submit-proposal")).toBeEnabled();
 
         await page.reload();
         await expect(page.getByTestId("draft-restored")).toBeVisible();
-        await expect(page.getByTestId("members-remove")).toHaveValue(WALLET);
+        await expect(page.getByTestId("action-preview")).toContainText("Remove bze1");
     });
 
     test("Request to join is for a wallet that is not a member of an open DAO", async ({page, network}) => {
@@ -298,9 +331,10 @@ test.describe("the join / leave shortcuts", () => {
         await connectWallet(page);
 
         await expect(page.getByTestId("proposal-title")).toHaveValue(/^Add bze1.* as a member$/);
-        await expect(page.getByTestId("members-add")).toHaveValue(WALLET);
-        await expect(page.getByTestId("action-preview")).toContainText("Add 1");
+        await expect(page.getByTestId("action-preview")).toContainText("Add bze1");
+        await expect(page.getByTestId("action-preview")).toContainText("(you)");
         await expect(page.getByTestId("shortcut-applied")).toContainText("Request to join Founders");
+        await expect(page.getByTestId("shortcut-note")).toContainText("anyone can submit proposals");
     });
 
     test("Request to join is not offered when only members can submit", async ({page, network}) => {

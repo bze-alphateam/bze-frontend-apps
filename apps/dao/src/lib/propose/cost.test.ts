@@ -2,7 +2,7 @@ import BigNumber from "bignumber.js";
 import {describe, expect, it} from "vitest";
 import type {DaoConfig} from "@bze/bze-ui-kit";
 import {CONFIG} from "@/test/composer-fixtures";
-import {summarizeCost} from "./cost";
+import {costRows, summarizeCost} from "./cost";
 
 const fmt = (c: {denom: string; amount: string}) => `${new BigNumber(c.amount).shiftedBy(-6).toFormat()} ${c.denom === "ubze" ? "BZE" : c.denom}`;
 const balance = (n: string) => () => new BigNumber(n);
@@ -68,5 +68,27 @@ describe("summarizeCost", () => {
         const s = summarizeCost(CONFIG, fmt, () => null);
         expect(s.requirements[0]).toMatchObject({balance: null, short: false});
         expect(s.short).toBe(false);
+    });
+});
+
+describe("costRows", () => {
+    it("a free DAO: no deposit and no cost, and no Back to you row", () => {
+        expect(costRows(config({proposal_cost: null, proposal_deposit: null}), fmt)).toEqual([
+            {label: "Deposit", text: "None", short: "None"},
+            {label: "Cost", text: "None", short: "None"},
+        ]);
+    });
+
+    it("a deposit held while voting, back by the DAO's refund policy, and a cost paid now", () => {
+        const rows = (policy: DaoConfig["deposit_refund_policy"], kept: DaoConfig["kept_deposit_destination"]) =>
+            costRows(config({deposit_refund_policy: policy, kept_deposit_destination: kept, cost_destination: "BURN"}), fmt);
+        expect(rows("ONLY_PASSED", "TREASURY")).toEqual([
+            {label: "Deposit", text: "9 BZE, held while voting", short: "9 BZE"},
+            {label: "Back to you", text: "Only if it passes; otherwise it goes to the treasury", short: "Only if it passes"},
+            {label: "Cost", text: "5 BZE, paid now and never refunded (burned)", short: "5 BZE"},
+        ]);
+        expect(rows("ALWAYS", "BURN")[1]).toMatchObject({text: "Always, whatever the result", short: "Always"});
+        expect(rows("NEVER", "BURN")[1]).toMatchObject({text: "Never; it is burned", short: "Never"});
+        expect(costRows(config({cost_destination: "TREASURY"}), fmt)[2].text).toBe("5 BZE, paid now and never refunded (to the treasury)");
     });
 });

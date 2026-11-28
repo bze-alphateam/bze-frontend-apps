@@ -1,15 +1,16 @@
 'use client';
 
+import type {ReactNode} from 'react';
 import NextLink from 'next/link';
-import {Button} from '@chakra-ui/react';
-import {chakra, Flex} from '@chakra-ui/react';
+import {Button, chakra, Flex} from '@chakra-ui/react';
+import {LuExternalLink} from 'react-icons/lu';
 import {getExplorerTxURL, hgVariant, Notice} from '@bze/bze-ui-kit';
-import type {Dao} from '@bze/bze-ui-kit';
-import {staticJoinText} from '@/lib/dao-actions';
+import type {Dao, DaoCoin} from '@bze/bze-ui-kit';
 import {daoTabHref} from '@/lib/dao-tabs';
-import type {ProposerStatus} from '@/lib/propose/eligibility';
+import type {CostRow, Requirement} from '@/lib/propose/cost';
+import {noStakeText, type ProposerStatus} from '@/lib/propose/eligibility';
 import type {SubmitState} from '@/hooks/useProposalSubmit';
-import {Panel} from '@/components/dao/page/panel';
+import {NeutralNote} from './neutral-note';
 
 interface Props {
     dao: Pick<Dao, 'id' | 'name' | 'type' | 'config'>;
@@ -20,6 +21,19 @@ interface Props {
     /** What still keeps the proposal from being sent, in one sentence (the first problem of the form). */
     problem: string | undefined;
     state: SubmitState;
+    /** Deposit, Back to you and Cost (`costRows`). */
+    rows: CostRow[];
+    /** What the wallet needs of each token, with its balance (`summarizeCost`). */
+    requirements: Requirement[];
+    /** Whether the wallet's balances are known (the "You hold" rows). */
+    balancesKnown: boolean;
+    formatCoin: (coin: DaoCoin) => string;
+    /** "n of N proposal slots are in use.", when the open proposals were read. */
+    slots: string | null;
+    /** Where a wallet without stake goes to stake (a stakers' DAO), when known. */
+    stakeHref: string | null;
+    /** The ticker of the first staking source, named in "No stake", when known. */
+    stakeTicker: string | null;
     onSubmit: () => void;
     onCheck: () => void;
     onAllowResubmit: () => void;
@@ -31,57 +45,104 @@ const HashLink = ({hash}: {hash: string}) => (
     </chakra.a>
 );
 
-/** How to become a voter, when the wallet is not one. */
-const HowToVote = ({dao}: {dao: Props['dao']}) => (
-    <Flex direction="column" gap="6px" fontSize="14px" data-testid="how-to-vote">
-        {dao.type === 'DAO_TYPE_STATIC_LIST'
-            ? staticJoinText(dao, false).map((line) => <chakra.p key={line} m="0">{line}</chakra.p>)
-            : <chakra.p m="0">Stake in one of the sources this DAO votes with, then come back in a block or two: stake you joined or added to counts from the next block on.</chakra.p>}
-    </Flex>
+const NOT_A_VOTER_TITLE = {'not-member': 'Not a member', 'no-stake': 'No stake'} as const;
+const BLOCKED_TITLE = {'no-voters': 'No voters', full: 'Full'} as const;
+
+const Row = ({label, first, testId, children}: {label: string; first: boolean; testId?: string; children: ReactNode}) => (
+    <chakra.div display="grid" gridTemplateColumns={{base: '1fr auto', md: '110px 1fr'}} gap="16px" py={{base: '6px', md: '7px'}} borderTopWidth={first ? '0' : '1px'} borderColor="hg.divider" data-testid={testId}>
+        <chakra.dt fontSize="13px" color="fg.muted">{label}</chakra.dt>
+        <chakra.dd m="0" fontSize="13px" lineHeight="1.5" color="fg" minW="0" overflowWrap="anywhere" textAlign={{base: 'end', md: 'start'}}>{children}</chakra.dd>
+    </chakra.div>
 );
 
-/** The send button, or the reason there is none, and where the last attempt stands. */
-export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, onSubmit, onCheck, onAllowResubmit}: Props) => {
+/**
+ * "Before you submit" (board F1's aside): who may propose, what it costs and what comes back, the wallet's
+ * balance, the proposal slots and the send button; then where the last attempt stands.
+ */
+export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, rows, requirements, balancesKnown, formatCoin, slots, stakeHref, stakeTicker, onSubmit, onCheck, onAllowResubmit}: Props) => {
     const working = state.phase === 'working';
     const locked = state.phase === 'unconfirmed' || state.phase === 'done';
 
-    let gate: React.ReactNode = null;
+    let gate: ReactNode = null;
     if (!wallet) {
-        gate = <Notice status="info"><span data-testid="gate-wallet">Connect your wallet to submit this proposal.</span></Notice>;
+        gate = <NeutralNote testId="gate-wallet">Connect your wallet to submit this proposal.</NeutralNote>;
     } else if (status?.kind === 'blocked') {
-        gate = <Notice status="warning"><span data-testid="gate-blocked">{status.message}</span></Notice>;
+        gate = <div data-testid="gate-blocked" data-cause={status.cause}><Notice status="warning" title={BLOCKED_TITLE[status.cause]}>{status.message}</Notice></div>;
     } else if (status?.kind === 'not-a-voter') {
         gate = (
-            <Flex direction="column" gap="10px" data-testid="gate-not-a-voter">
-                <Notice status="warning">{status.message}</Notice>
-                <HowToVote dao={dao} />
-            </Flex>
+            <NeutralNote
+                testId="gate-not-a-voter"
+                title={NOT_A_VOTER_TITLE[status.cause]}
+                aside={status.cause === 'no-stake' && stakeHref ? (
+                    <chakra.a href={stakeHref} target="_blank" rel="noopener noreferrer" display="inline-flex" alignItems="center" gap="6px" fontSize="14px" fontWeight="500" color="hg.link" whiteSpace="nowrap" data-testid="stake-on-dex">
+                        Stake on DEX<LuExternalLink size={14} aria-hidden />
+                    </chakra.a>
+                ) : undefined}
+            >
+                {status.cause === 'no-stake' ? noStakeText(stakeTicker) : status.message}
+            </NeutralNote>
         );
     }
+    const held = balancesKnown && wallet ? requirements.filter((r) => r.balance !== null) : [];
 
     return (
-        <Panel id="submit" title="Submit" testId="submit-panel">
-            {status && (status.kind === 'allowed' || status.kind === 'maybe') && <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="proposer-note">{status.reason}</chakra.p>}
+        <chakra.section
+            aria-labelledby="submit-title"
+            bg="hg.card"
+            bgImage="linear-gradient(160deg, var(--chakra-colors-app-subtle), var(--chakra-colors-hg-card) 55%)"
+            borderWidth="1px"
+            borderColor="app.border"
+            borderRadius="20px"
+            boxShadow="hg.featured"
+            p={{base: '16px', md: '24px'}}
+            display="flex"
+            flexDirection="column"
+            gap={{base: '10px', md: '14px'}}
+            minW="0"
+            data-testid="submit-panel"
+        >
+            <chakra.h2 id="submit-title" m="0" fontSize="17px" fontWeight="700">Before you submit</chakra.h2>
+            {/* board I5: a phone shows no eligibility note (the chain still checks before signing) */}
+            {status?.kind === 'allowed' && <chakra.div display={{base: 'none', md: 'block'}} data-testid="proposer-note-wrap"><Notice status="success"><span data-testid="proposer-note">{status.reason}</span></Notice></chakra.div>}
+            {status?.kind === 'maybe' && <chakra.div display={{base: 'none', md: 'block'}} data-testid="proposer-note-wrap"><NeutralNote testId="proposer-note">{status.reason}</NeutralNote></chakra.div>}
             {gate}
+            <chakra.dl m="0" display="flex" flexDirection="column" data-testid="cost-list">
+                {rows.map((row, i) => (
+                    <Row key={row.label} label={row.label} first={i === 0} testId={{Deposit: 'cost-deposit', 'Back to you': 'cost-back', Cost: 'cost-cost'}[row.label]}>
+                        {/* board I5: the phone shows the short values */}
+                        <chakra.span display={{base: 'none', md: 'inline'}} data-testid="cost-full">{row.text}</chakra.span>
+                        <chakra.span display={{base: 'inline', md: 'none'}} data-testid="cost-short">{row.short}</chakra.span>
+                    </Row>
+                ))}
+                {held.map((r) => (
+                    <Row key={r.denom} label="You hold" first={false} testId="cost-balance">
+                        {formatCoin({denom: r.denom, amount: r.balance ?? '0'})}
+                        {r.short
+                            ? <chakra.span color="hg.danger.text">{` · not enough, you need ${formatCoin({denom: r.denom, amount: r.needed})}`}</chakra.span>
+                            : <chakra.span color="hg.success.text" aria-label="enough">{' ✓'}</chakra.span>}
+                    </Row>
+                ))}
+            </chakra.dl>
+            {rows.some((r) => r.text !== 'None') && <chakra.span display={{base: 'none', md: 'inline'}} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="cost-note">Paid in their own token, never swapped. The network fee is paid on top.</chakra.span>}
+            {slots && <chakra.span display={{base: 'none', md: 'inline'}} fontSize="12px" lineHeight="1.5" color="hg.text.faint" data-testid="proposal-slots">{slots}</chakra.span>}
             {!gate && (
                 <Flex direction="column" gap="8px">
                     <Button
                         variant={hgVariant('primary')}
-                        size="lg"
+                        w="100%"
+                        h={{base: '44px', md: '48px'}}
+                        fontSize="15px"
                         disabled={!ready || short || working || locked}
                         loading={working}
                         loadingText="Confirm in your wallet"
                         onClick={onSubmit}
                         whiteSpace="normal"
-                        h="auto"
-                        minH="46px"
-                        py="8px"
                         data-testid="submit-proposal"
                     >
                         Submit proposal
                     </Button>
                     {!ready && problem && <chakra.p m="0" fontSize="13px" color="fg.muted" data-testid="submit-problem">{problem}</chakra.p>}
-                    {ready && short && <chakra.p m="0" fontSize="13px" color="red.500">Your balance does not cover the cost and the deposit.</chakra.p>}
+                    {ready && short && <chakra.p m="0" fontSize="13px" color="hg.danger.text">Your balance does not cover the cost and the deposit.</chakra.p>}
                     <chakra.p m="0" fontSize="12px" color="hg.text.faint">
                         Before anything is signed, the chain checks the proposal: if it would be refused, you see why and nothing is sent. This wallet signs with the direct mode, which Ledger devices do not support for these transactions.
                     </chakra.p>
@@ -119,6 +180,6 @@ export const SubmitArea = ({dao, wallet, status, ready, short, problem, state, o
                     {!state.proposalId && <> <chakra.a asChild color="hg.link" fontWeight="600"><NextLink href={daoTabHref(dao.id, 'proposals')}>Find it in the DAO&apos;s proposals</NextLink></chakra.a></>}
                 </Notice>
             )}
-        </Panel>
+        </chakra.section>
     );
 };

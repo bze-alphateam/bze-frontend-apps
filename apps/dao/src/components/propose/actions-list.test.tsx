@@ -61,7 +61,7 @@ describe("the actions list", () => {
         fireEvent.click(within(nested).getByTestId("add-action"));
         fireEvent.click(within(nested).getByTestId("add-pay"));
         // the nested pay form holds the sub-DAO's treasury, not the DAO's
-        expect(within(nested).getByTestId("pay-held").textContent).toBe("The treasury holds 90 BZE.");
+        expect(within(nested).getByTestId("pay-held").textContent).toBe("Treasury holds 90 BZE.");
         type("pay-amount", "1.5");
         type("pay-to", OTHER);
 
