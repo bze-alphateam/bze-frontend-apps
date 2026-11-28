@@ -178,6 +178,8 @@ const SUB_WAY_TEXT: Record<SubWay, string> = {
 const subWayOf = (draft: ActionDraft): SubWay => (draft.type === SUB_EXECUTE_ID ? 'execute' : ((draft.fields.mode as SubAdminMode | undefined) ?? 'nominate'));
 
 interface EditorProps {
+    /** The label of the button that adds a new action at the top level. */
+    commitLabel: string;
     draft: ActionDraft;
     ctx: ActionContext;
     nested: boolean;
@@ -191,7 +193,7 @@ interface EditorProps {
 }
 
 /** The form card of one action (board F2/F3): its header, its form, the problems, then Cancel / Add to proposal. */
-const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries, onChange, onCancel, onCommit}: EditorProps) => {
+const ActionEditor = ({commitLabel, draft, ctx, nested, editing, formatCoin, wallet, entries, onChange, onCancel, onCommit}: EditorProps) => {
     const [tried, setTried] = useState(false);
     // a SubDAO's inner list with its own form card open: this card waits for it
     const [innerOpen, setInnerOpen] = useState(false);
@@ -269,7 +271,7 @@ const ActionEditor = ({draft, ctx, nested, editing, formatCoin, wallet, entries,
                 {innerOpen && <chakra.span fontSize="12px" color="hg.text.faint" me="auto" data-testid="action-commit-blocked">Add or cancel the open action above first.</chakra.span>}
                 <Button variant="ghost" size="md" color="hg.link" onClick={onCancel} data-testid="action-cancel">Cancel</Button>
                 <Button variant={hgVariant('primary')} size="md" disabled={innerOpen} onClick={commit} data-testid="action-commit">
-                    {editing ? 'Save changes' : nested ? 'Add to the list' : 'Add to proposal'}
+                    {editing ? 'Save changes' : nested ? 'Add to the list' : commitLabel}
                 </Button>
             </Flex>
         </chakra.section>
@@ -396,7 +398,8 @@ const newKey = (): string => `a${Date.now().toString(36)}${Math.random().toStrin
  * message; adding or editing opens one form card, and only "Add to proposal" puts it in the list (Cancel
  * leaves the list as it was). A nested list (the actions run as a SubDAO) works the same inside its form.
  */
-export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, staleNominations = [], wallet = null, onEditing}: ActionsListProps) => {
+export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin, onChange, nested = false, staleNominations = [], wallet = null, onEditing, wording}: ActionsListProps) => {
+    const hint = wording?.hint === undefined ? 'No action = a text-only (signalling) proposal.' : wording.hint;
     const [picking, setPicking] = useState(false);
     const [editor, setEditorState] = useState<{draft: ActionDraft; index: number | null} | null>(null);
     // the page is told whether a form card is open (an action not added yet must not be left out silently)
@@ -441,6 +444,7 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
             draft={editor.draft}
             ctx={ctx}
             nested={nested}
+            commitLabel={wording?.commit ?? 'Add to proposal'}
             editing={editor.index !== null}
             formatCoin={formatCoin}
             wallet={wallet}
@@ -453,8 +457,8 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
 
     return (
         <Flex direction="column" gap="12px" minW="0" data-testid={nested ? 'nested-actions' : 'actions-editor'}>
-            {!nested && (
-                <Flex gap="4px 16px" align="center" justify="space-between" wrap="wrap">
+            {!nested && wording?.header !== false && (
+                <Flex gap="4px 16px" align="center" justify="space-between" wrap="wrap" data-testid="actions-header">
                     <chakra.span fontSize="14px" fontWeight="600">What it does if it passes</chakra.span>
                     <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint">{`Run as ${ctx.dao.name}, in this order`}</chakra.span>
                 </Flex>
@@ -499,17 +503,17 @@ export const StagedList = ({drafts, composed: given, ctx, maxActions, formatCoin
                     <Button variant={hgVariant('secondary')} size="md" w={{base: nested ? 'auto' : '100%', md: 'auto'}} onClick={() => setPicking(true)} data-testid="add-action">
                         <LuPlus aria-hidden />Add an action
                     </Button>
-                    {!nested && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" display={{base: 'none', md: 'inline'}} data-testid="text-only-hint">No action = a text-only (signalling) proposal.</chakra.span>}
+                    {!nested && hint && <chakra.span fontSize="12px" lineHeight="1.5" color="hg.text.faint" display={{base: 'none', md: 'inline'}} data-testid="text-only-hint">{hint}</chakra.span>}
                 </Flex>
             )}
-            {full && !editor && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="actions-full">{`A proposal can run at most ${maxActions} actions.`}</chakra.span>}
+            {full && !editor && <chakra.span fontSize="13px" color="hg.text.faint" data-testid="actions-full">{wording?.full?.(maxActions) ?? `A proposal can run at most ${maxActions} actions.`}</chakra.span>}
             <Picker
                 open={picking}
                 onClose={() => setPicking(false)}
                 ctx={ctx}
                 entries={entries}
                 stale={staleNominations}
-                textOnly={!nested && drafts.length === 0}
+                textOnly={!nested && wording?.textOnly !== false && drafts.length === 0}
                 onText={() => { setPicking(false); setTextOnly(true); }}
                 onPick={pick}
             />

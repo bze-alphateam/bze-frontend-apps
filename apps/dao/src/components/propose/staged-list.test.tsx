@@ -8,7 +8,7 @@ import {composeAction} from "@/lib/actions/compose-action";
 import {findAction} from "@/lib/actions/registry";
 import {shortAddress} from "@/lib/format";
 import type {StaleNomination} from "@/lib/propose/relations";
-import {ActionsList} from "./actions-list";
+import {ActionsList, type ListWording} from "./actions-list";
 
 vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@bze/bze-ui-kit")>()),
@@ -18,7 +18,7 @@ vi.mock("@bze/bze-ui-kit", async (importOriginal) => ({
 const formatCoin = (c: {denom: string; amount: string}) => `${c.amount} ${c.denom}`;
 
 /** The composer's list (`staged`): the drafts live in state, what they compose to is read back. */
-const Harness = ({ctx, onDrafts = () => {}, stale, start = [], onEditing}: {ctx: ActionContext; onDrafts?: (drafts: ActionDraft[]) => void; stale?: StaleNomination[]; start?: ActionDraft[]; onEditing?: (open: boolean) => void}) => {
+const Harness = ({ctx, onDrafts = () => {}, stale, start = [], onEditing, wording, maxActions = 16}: {ctx: ActionContext; onDrafts?: (drafts: ActionDraft[]) => void; stale?: StaleNomination[]; start?: ActionDraft[]; onEditing?: (open: boolean) => void; wording?: ListWording; maxActions?: number}) => {
     const [drafts, setDrafts] = useState<ActionDraft[]>(start);
     return (
         <ChakraProvider value={defaultSystem}>
@@ -28,7 +28,8 @@ const Harness = ({ctx, onDrafts = () => {}, stale, start = [], onEditing}: {ctx:
                 drafts={drafts}
                 composed={drafts.map((d) => composeAction(d, ctx, findAction))}
                 ctx={ctx}
-                maxActions={16}
+                maxActions={maxActions}
+                wording={wording}
                 formatCoin={formatCoin}
                 onChange={(next) => { setDrafts(next); onDrafts(next); }}
                 staleNominations={stale}
@@ -182,6 +183,36 @@ describe("the staged list: a form card first, the list only on Add to proposal",
         render(<Harness ctx={ctxWith()} />);
         expect(screen.getByTestId("actions-editor")).toHaveTextContent("What it does if it passes");
         expect(screen.getByTestId("actions-editor")).toHaveTextContent("Run as Founders, in this order");
+    });
+});
+
+describe("the staged list's wording", () => {
+    const wording: ListWording = {header: false, hint: "Runs the moment you sign.", full: (max) => `At most ${max} at once.`, commit: "Add to the batch", textOnly: false};
+
+    it("the composer's words by default", async () => {
+        render(<Harness ctx={ctxWith()} maxActions={1} start={[{key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}}]} />);
+        expect(screen.getByTestId("actions-header")).toHaveTextContent("What it does if it passes");
+        expect(screen.getByTestId("actions-full")).toHaveTextContent("A proposal can run at most 1 actions.");
+    });
+
+    it("a custom wording replaces the header, hint, full note and commit label, and drops Text only", async () => {
+        const one = render(<Harness ctx={ctxWith()} wording={wording} />);
+        expect(screen.queryByTestId("actions-header")).toBeNull();
+        expect(screen.getByTestId("text-only-hint")).toHaveTextContent(/^Runs the moment you sign\.$/);
+        const picker = await openPicker();
+        expect(within(picker).queryByTestId("add-text-only")).toBeNull();
+        fireEvent.click(within(picker).getByTestId("add-pay"));
+        expect(screen.getByTestId("action-commit")).toHaveTextContent(/^Add to the batch$/);
+        one.unmount();
+
+        render(<Harness ctx={ctxWith()} wording={wording} maxActions={1} start={[{key: "a1", type: "pay", fields: {denom: "ubze", amount: "1", to: OTHER}}]} />);
+        expect(screen.getByTestId("actions-full")).toHaveTextContent(/^At most 1 at once\.$/);
+    });
+
+    it("hint null leaves the hint out", () => {
+        render(<Harness ctx={ctxWith()} wording={{hint: null}} />);
+        expect(screen.queryByTestId("text-only-hint")).toBeNull();
+        expect(screen.getByTestId("actions-header")).toBeTruthy();
     });
 });
 

@@ -28,7 +28,7 @@ interface Props {
     /** The list inside another action (run as a sub-DAO): no panel of its own. */
     nested?: boolean;
     /** The wording of a list that is not a proposal's (the admin console's); the defaults are a proposal's. */
-    wording?: {title?: string; intro: string; empty: string; full?: (max: number) => string};
+    wording?: ListWording;
     /** Nominations of this DAO that went stale: listed in the picker greyed out, never added. */
     staleNominations?: StaleNomination[];
     /**
@@ -43,6 +43,27 @@ interface Props {
 }
 
 export type ActionsListProps = Props;
+
+/**
+ * The words of a list that is not a proposal's (the admin console's). Every field is optional and falls back to
+ * the composer's own words. `intro`, `empty` and `title` are the inline list's; `header`, `hint`, `commit` and
+ * `textOnly` are the staged list's (top level).
+ */
+export interface ListWording {
+    title?: string;
+    intro?: string;
+    empty?: string;
+    /** The note once the list is full. */
+    full?: (max: number) => string;
+    /** Staged: false leaves out the "What it does if it passes" header. */
+    header?: boolean;
+    /** Staged: the hint next to "Add an action"; null leaves it out. */
+    hint?: string | null;
+    /** Staged: the button that adds a new action from its form card ("Add to proposal"). */
+    commit?: string;
+    /** Staged: false leaves "Text only" out of the picker. */
+    textOnly?: boolean;
+}
 
 
 const pickerButton = {
