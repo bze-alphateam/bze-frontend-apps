@@ -49,7 +49,7 @@ const SignReview = ({msg, view, wallet, title}: {msg: EncodeObject; view: DaoVie
                 actions={actions}
                 formatCoin={coins.exact}
                 nameOf={(a) => (a === dao.address ? dao.name : a === wallet ? 'you' : undefined)}
-                daoOf={(id) => (id === dao.id ? dao.name : undefined)}
+                daoOf={(id) => (id === dao.id ? {name: dao.name, address: dao.address} : undefined)}
                 signer={wallet}
                 wording={{title, runs: null, signedBy: 'Signed by your wallet', empty: ''}}
                 expanded
@@ -105,7 +105,7 @@ export const ExecutePanel = ({view, relations, wallet, locked, onSend}: OpProps 
                         nameOf={(a) => (a === dao.address ? dao.name : undefined)}
                         signer={dao.address}
                         signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address}
-                        daoOf={(id) => (id === dao.id ? dao.name : ctx.subDaos?.find((s) => s.dao.id === id)?.dao.name)}
+                        daoOf={(id) => (id === dao.id ? dao : ctx.subDaos?.find((s) => s.dao.id === id)?.dao)}
                         wording={{title: 'What the DAO will do', runs: 'These run as the DAO the moment the transaction lands, all or nothing.', signedBy: 'Every message is signed by the DAO account', empty: ''}}
                         expanded
                     />

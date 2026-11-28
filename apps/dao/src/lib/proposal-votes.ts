@@ -18,11 +18,12 @@ export function filterCounts(counts: ScanOptionCounts | null): Record<VotesFilte
 }
 
 /**
- * The count line under the votes: "1–20 of 214 votes", or "4 votes" when they fit on one page; a member
- * list then adds "· one vote per member", since each of its votes weighs 1.
+ * The count line under the votes: "1–20 of 214 votes", or "4 votes" when they fit on one page. A member
+ * list whose every vote fits on one page adds "· one vote per member", judged on `allVotes`, the votes of
+ * every option (not the filtered `total`); null when it is not known, and then nothing is added.
  */
-export function votesCount(args: {page: number; pageSize: number; rows: number; total: number; memberList: boolean}): string {
-    const {memberList, ...range} = args;
+export function votesCount(args: {page: number; pageSize: number; rows: number; total: number; memberList: boolean; allVotes: number | null}): string {
+    const {memberList, allVotes, ...range} = args;
     const text = rangeCount({...range, one: 'vote', many: 'votes'});
-    return memberList && range.total <= range.pageSize ? `${text} · one vote per member` : text;
+    return memberList && allVotes !== null && allVotes <= range.pageSize ? `${text} · one vote per member` : text;
 }

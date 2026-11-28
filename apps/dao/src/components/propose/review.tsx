@@ -6,7 +6,7 @@ import type {MsgAction} from '@/lib/proposal-describe';
 import type {Composition} from '@/lib/propose/compose';
 import type {CostSummary} from '@/lib/propose/cost';
 import {Panel} from '@/components/dao/page/panel';
-import {ActionsPanel} from '@/components/proposal/actions-panel';
+import {ActionsPanel, type DaoRef} from '@/components/proposal/actions-panel';
 
 /** The packed size of the actions against the DAO's limit. */
 export const SizeMeter = ({size, max}: {size: number; max: number}) => {
@@ -37,8 +37,8 @@ interface Props {
     /** The account every message is signed by. */
     signer?: string;
     signerOf?: (daoId: string) => string | undefined;
-    /** The name of a DAO a message names by id. */
-    daoOf?: (daoId: string) => string | undefined;
+    /** What is known of a DAO a message names by id (its name, its account). */
+    daoOf?: (daoId: string) => DaoRef | undefined;
 }
 
 /** What is signed and paid: the actions, their size, the cost and the deposit with the wallet's balance. */

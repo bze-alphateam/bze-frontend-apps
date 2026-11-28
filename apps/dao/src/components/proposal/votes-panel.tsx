@@ -7,8 +7,7 @@ import {AddressLine, Panel} from '@/components/dao/page/panel';
 import {Pagination, PrevNext} from '@/components/ui/pagination';
 import {usePagedList} from '@/hooks/usePagedList';
 import {formatDateTime} from '@/lib/format';
-import {cursorCount} from '@/lib/home-list';
-import {clampPage} from '@/lib/pagination';
+import {clampPage, cursorCount} from '@/lib/pagination';
 import {loadVotesPage, optionLabel, VOTES_PAGE, type ProposalDeps, type VoteFilter, type VotesPage} from '@/lib/proposal-loader';
 import {filterCounts, votesCount, type VotesFilter} from '@/lib/proposal-votes';
 
@@ -34,15 +33,19 @@ const FILTERS: {value: VotesFilter; label: string}[] = [
  * change starts again at page 1.
  */
 export const VotesPanel = ({deps, proposalId, daoType, formatWeight}: Props) => {
-    const [filter, setFilter] = useState<VotesFilter>('all');
-    const scope = `${proposalId}|${filter}`;
-    const [paging, setPaging] = useState<{scope: string; page: number}>({scope, page: 1});
-    const page = paging.scope === scope ? paging.page : 1;
+    // `seq` counts the filter changes: each one is a new list (page 1, no cursor trail), so going back to a filter never lands on its old page
+    const [view, setView] = useState<{filter: VotesFilter; seq: number; page: number}>({filter: 'all', seq: 0, page: 1});
+    const {filter, page} = view;
+    const scope = `${proposalId}|${filter}|${view.seq}`;
     const option: VoteFilter | null = filter === 'all' ? null : filter;
+    const pickFilter = (next: VotesFilter) => {
+        if (next !== filter) setView((v) => ({filter: next, seq: v.seq + 1, page: 1}));
+    };
+    const goPage = (next: number) => setView((v) => ({...v, page: next}));
 
     const list = usePagedList<VotesPage>(scope, page, VOTES_PAGE, (position) => loadVotesPage(deps, proposalId, option, position), proposalId);
     // a numbered list asked past its end (the votes got fewer): show its last page instead
-    if (list.pastEnd !== null && list.pastEnd !== page) setPaging({scope, page: list.pastEnd});
+    if (list.pastEnd !== null && list.pastEnd !== page) goPage(list.pastEnd);
 
     const counts = filterCounts(list.latest?.counts ?? null);
     const loading = list.loading || list.pastEnd !== null;
@@ -50,6 +53,9 @@ export const VotesPanel = ({deps, proposalId, daoType, formatWeight}: Props) => 
     const rows = list.items;
     const empty = !loading && !failed && rows.length === 0 && !list.hasPrev && !list.hasNext;
     const memberList = daoType === 'DAO_TYPE_STATIC_LIST';
+    const single = list.mode === 'cursor' && !list.hasPrev && !list.hasNext;
+    // every option's votes: Scan's counts, else under All the list's own total (or, on a single cursor page, its rows)
+    const allVotes = counts.all ?? (filter !== 'all' ? null : list.mode === 'pages' ? list.total : single ? rows.length : null);
 
     const footer = () => {
         if (empty || failed) return null;
@@ -60,16 +66,15 @@ export const VotesPanel = ({deps, proposalId, daoType, formatWeight}: Props) => 
                 <Pagination
                     page={shown}
                     pages={list.pages}
-                    onPage={(next) => setPaging({scope, page: next})}
+                    onPage={goPage}
                     busy={list.loading}
-                    count={count(votesCount({page: shown, pageSize: VOTES_PAGE, rows: rows.length, total: list.total ?? 0, memberList}))}
+                    count={count(votesCount({page: shown, pageSize: VOTES_PAGE, rows: rows.length, total: list.total ?? 0, memberList, allVotes}))}
                 />
             );
         }
         if (list.mode === 'cursor') {
             // nowhere to go: every vote is on this page, so its rows are the count
-            const single = !list.hasPrev && !list.hasNext;
-            const text = single ? votesCount({page: 1, pageSize: VOTES_PAGE, rows: rows.length, total: rows.length, memberList}) : cursorCount(list.page);
+            const text = single ? votesCount({page: 1, pageSize: VOTES_PAGE, rows: rows.length, total: rows.length, memberList, allVotes}) : cursorCount(list.page);
             return <PrevNext hasPrev={list.hasPrev} hasNext={list.hasNext} onPrev={list.goPrev} onNext={list.goNext} busy={list.loading} count={count(text)} />;
         }
         return null;
@@ -80,7 +85,7 @@ export const VotesPanel = ({deps, proposalId, daoType, formatWeight}: Props) => 
             <SegmentedTabs
                 aria-label="Filter the votes"
                 value={filter}
-                onChange={setFilter}
+                onChange={pickFilter}
                 options={FILTERS.map(({value, label}) => ({
                     value,
                     label: counts[value] === null ? label : (

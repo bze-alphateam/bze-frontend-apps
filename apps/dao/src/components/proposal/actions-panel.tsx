@@ -15,14 +15,20 @@ interface Props {
     signer?: string;
     /** The account of a DAO an admin execute runs actions as (the composer knows its SubDAOs). */
     signerOf?: (daoId: string) => string | undefined;
-    /** The name of a DAO a message names by id (the DAO itself, a SubDAO); without one its account, then its number, is shown. */
-    daoOf?: (daoId: string) => string | undefined;
+    /** What is known of a DAO a message names by id (the DAO itself, a SubDAO): its name, else its account; without either its number is shown. */
+    daoOf?: (daoId: string) => DaoRef | undefined;
     /** The proposal's messages as the chain holds them: shown as one raw JSON list, in order, under the actions. */
     raw?: readonly unknown[];
     /** The wording around the actions; the defaults are a proposal's. The admin console words them for what it signs. */
     wording?: Partial<PanelWording>;
     /** Every action shown open (what is about to be signed is read, not folded away). */
     expanded?: boolean;
+}
+
+/** A DAO as a preview names it. */
+export interface DaoRef {
+    name?: string;
+    address?: string;
 }
 
 export interface PanelWording {
@@ -62,10 +68,10 @@ const ChangeLine = ({change}: {change: ConfigChange}) => (
  * A DAO a message names by its number, in words: its name, else its account (named or short), else, when
  * nothing about it is known here, its number, so a voter can still tell which DAO it is.
  */
-export const daoLabel = (daoId: string, {daoOf, signerOf, nameOf}: Pick<Props, 'daoOf' | 'signerOf' | 'nameOf'>): string => {
-    const name = daoOf?.(daoId);
-    if (name) return name;
-    const address = signerOf?.(daoId);
+const daoLabel = (daoId: string, {daoOf, signerOf, nameOf}: Pick<Props, 'daoOf' | 'signerOf' | 'nameOf'>): string => {
+    const ref = daoOf?.(daoId);
+    if (ref?.name) return ref.name;
+    const address = ref?.address ?? signerOf?.(daoId);
     if (address) return nameOf(address) ?? shortAddress(address);
     return `DAO ${daoId}`;
 };

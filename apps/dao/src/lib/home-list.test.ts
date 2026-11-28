@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {cursorCount, governedBy, governedByLine, mineCount, numberedCount, roleTone} from "./home-list";
+import {governedBy, governedByLine, mineCount, numberedCount, roleTone} from "./home-list";
 
 describe("numberedCount", () => {
     it("says how many there are when they all fit on one page", () => {
@@ -17,8 +17,7 @@ describe("numberedCount", () => {
 });
 
 describe("the other lines", () => {
-    it("counts a list without a total by its page, and My DAOs by its size", () => {
-        expect(cursorCount(2)).toBe("Page 2");
+    it("counts My DAOs by its size", () => {
         expect(mineCount(1)).toBe("1 of your DAOs");
         expect(mineCount(4)).toBe("4 of your DAOs");
     });

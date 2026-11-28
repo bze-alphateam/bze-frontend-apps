@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {clampPage, pageCount, pageItems, parsePageParam, rangeCount, slicePage} from "./pagination";
+import {clampPage, cursorCount, pageCount, pageItems, parsePageParam, rangeCount, slicePage} from "./pagination";
 
 describe("pageCount", () => {
     it("rounds up, and is 0 for nothing", () => {
@@ -54,5 +54,11 @@ describe("rangeCount", () => {
         expect(rangeCount({page: 2, pageSize: 20, rows: 3, total: 23, one: "proposal", many: "proposals"})).toBe("21–23 of 23 proposals");
         expect(rangeCount({page: 1, pageSize: 20, rows: 1, total: 1, one: "event", many: "events"})).toBe("1 event");
         expect(rangeCount({page: 1, pageSize: 20, rows: 18, total: 18, one: "proposal", many: "proposals"})).toBe("18 proposals");
+    });
+});
+
+describe("cursorCount", () => {
+    it("counts a list without a total by its page", () => {
+        expect(cursorCount(2)).toBe("Page 2");
     });
 });

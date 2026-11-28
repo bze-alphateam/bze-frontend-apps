@@ -54,3 +54,6 @@ export function rangeCount(args: {page: number; pageSize: number; rows: number; 
     const from = (page - 1) * pageSize + 1;
     return `${from}–${from + Math.max(rows, 1) - 1} of ${total.toLocaleString('en-US')} ${many}`;
 }
+
+/** The count line of a list without a total (an older Scan, the chain). */
+export const cursorCount = (page: number): string => `Page ${page}`;

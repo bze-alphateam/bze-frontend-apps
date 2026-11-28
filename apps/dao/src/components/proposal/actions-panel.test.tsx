@@ -48,7 +48,7 @@ describe("ActionsPanel", () => {
             {type: "admin_execute", daoId: "12", actions: [{type: "send", from: SUB, to: DESK, amount: [{denom: "ubze", amount: "1"}], fromDao: false, subDao: "12"}]},
         ];
         const names: Record<string, string> = {"4": "HONEY Holders", "12": "Garden club"};
-        renderPanel(actions, {daoOf: (id) => names[id], expanded: true});
+        renderPanel(actions, {daoOf: (id) => (names[id] ? {name: names[id]} : undefined), expanded: true});
         const titles = screen.getAllByTestId("action-title").map((t) => t.textContent);
         expect(titles).toEqual([
             "Nominate a new admin for HONEY Holders (they have to accept)",
@@ -60,15 +60,22 @@ describe("ActionsPanel", () => {
         expect(screen.getAllByText(/Run actions as a SubDAO/)).toHaveLength(1);
     });
 
-    it("without a name it shows the DAO's account, and its number only when nothing else is known", () => {
+    it("without a name it shows the DAO's account (from daoOf or signerOf), and its number only when nothing else is known", () => {
         const actions: MsgAction[] = [
             {type: "withdraw_nomination", daoId: "12"},
+            {type: "withdraw_nomination", daoId: "14"},
             {type: "accept_admin", daoId: "13", nominee: ""},
         ];
-        renderPanel(actions, {signerOf: (id) => (id === "12" ? SUB : undefined), expanded: true});
+        renderPanel(actions, {
+            signerOf: (id) => (id === "12" ? SUB : undefined),
+            daoOf: (id) => (id === "14" ? {address: DESK} : undefined),
+            nameOf: (a) => (a === DESK ? "The desk" : undefined),
+            expanded: true,
+        });
         const titles = screen.getAllByTestId("action-title").map((t) => t.textContent);
         expect(titles).toEqual([
             "Withdraw the pending admin nomination of bze1garden…xxx9gc",
+            "Withdraw the pending admin nomination of The desk",
             "Accept the admin nomination of DAO 13: the nominee becomes its admin",
         ]);
     });

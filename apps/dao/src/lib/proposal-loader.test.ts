@@ -4,7 +4,7 @@ import {ScanUnavailableError} from "./dao-scan";
 import type {DaoProposalScan} from "./dao-proposal-scan";
 import {DaoModuleUnsupported} from "./dao-view-loader";
 import {
-    loadMyVote, loadProposal, loadVotesPage, notCountedLine, refreshProposal,
+    loadDaoRefs, loadMyVote, loadProposal, loadVotesPage, notCountedLine, refreshProposal,
     type ProposalChain, type ProposalDeps,
 } from "./proposal-loader";
 import {CONFIG, PROPOSAL, RESPONSE, SCAN} from "@/test/proposal-fixtures";
@@ -132,6 +132,23 @@ describe("refreshProposal", () => {
         const d = deps();
         expect(await refreshProposal(d, archived)).toBe(archived);
         expect(d.chain.getProposal).not.toHaveBeenCalled();
+    });
+});
+
+describe("loadDaoRefs", () => {
+    it("the name and account of each DAO the actions name; a DAO the chain lacks or fails to read is left out", async () => {
+        const getDao = vi.fn(async (id: string) => {
+            if (id === "12") return {...DAO, id: "12", name: "Garden club", address: "bze1garden"} as Dao;
+            if (id === "13") throw new Error("down");
+            return null;
+        });
+        expect(await loadDaoRefs(deps({getDao}), ["12", "13", "14"])).toEqual({"12": {name: "Garden club", address: "bze1garden"}});
+        expect(getDao).toHaveBeenCalledTimes(3);
+    });
+
+    it("a DAO without a name keeps its account", async () => {
+        const d = deps({getDao: async () => ({...DAO, name: "", address: "bze1garden"}) as Dao});
+        expect(await loadDaoRefs(d, ["12"])).toEqual({"12": {name: undefined, address: "bze1garden"}});
     });
 });
 

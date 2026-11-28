@@ -115,4 +115,66 @@ describe("VotesPanel", () => {
         renderPanel(deps(async () => ({items: rows(0, 2), next_cursor: null, weight_denom: null, total: 2})));
         await waitFor(() => expect(count()).toBe("2 votes"));
     });
+
+    it("a member list under a filter judges 'one vote per member' on every option's votes, not the filtered total", async () => {
+        const votes = vi.fn(async (_id: string, request: {option: string | null}): Promise<ScanVoteList> => ({
+            items: rows(0, request.option === "yes" ? 5 : 20), next_cursor: null, weight_denom: null,
+            total: request.option === "yes" ? 5 : 45, option_counts: {yes: 5, no: 40, abstain: 0},
+        }));
+        renderPanel(deps(votes), "DAO_TYPE_STATIC_LIST");
+        await waitFor(() => expect(count()).toBe("1–20 of 45 votes"));
+        fireEvent.click(screen.getByRole("tab", {name: /^Yes/}));
+        await waitFor(() => expect(count()).toBe("5 votes"));
+    });
+
+    it("a filter change starts at page 1, also when going back to a filter seen before", async () => {
+        const votes = vi.fn(async (): Promise<ScanVoteList> => ({items: rows(0, 20), next_cursor: null, weight_denom: null, total: 60, option_counts: {yes: 60, no: 0, abstain: 0}}));
+        renderPanel(deps(votes));
+        await waitFor(() => expect(count()).toBe("1–20 of 60 votes"));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 2", hidden: true}));
+        await waitFor(() => expect(count()).toBe("21–40 of 60 votes"));
+
+        fireEvent.click(screen.getByRole("tab", {name: /^Yes/}));
+        await waitFor(() => expect(votes).toHaveBeenLastCalledWith("7", {option: "yes", page: 1, limit: 20}));
+        fireEvent.click(screen.getByRole("tab", {name: /^All/}));
+        await waitFor(() => expect(votes).toHaveBeenLastCalledWith("7", {option: null, page: 1, limit: 20}));
+        await waitFor(() => expect(count()).toBe("1–20 of 60 votes"));
+    });
+
+    it("a late answer of the filter left behind never replaces the rows of the one picked", async () => {
+        let releaseAll: (list: ScanVoteList) => void = () => {};
+        const votes = vi.fn((_id: string, request: {option: string | null}): Promise<ScanVoteList> =>
+            request.option === null
+                ? new Promise((resolve) => { releaseAll = resolve; })
+                : Promise.resolve({items: [vote(900, "no")], next_cursor: null, weight_denom: null, total: 1, option_counts: {yes: 3, no: 1, abstain: 0}}));
+        renderPanel(deps(votes));
+        await waitFor(() => expect(votes).toHaveBeenCalledTimes(1));
+
+        fireEvent.click(screen.getByRole("tab", {name: /^No/}));
+        await waitFor(() => expect(screen.getAllByTestId("vote-row")).toHaveLength(1));
+        releaseAll({items: rows(0, 4), next_cursor: null, weight_denom: null, total: 4, option_counts: {yes: 3, no: 1, abstain: 0}});
+        await new Promise((r) => setTimeout(r, 20));
+        expect(screen.getAllByTestId("vote-row")).toHaveLength(1);
+        expect(screen.getByTestId("vote-option")).toHaveTextContent("No");
+        expect(count()).toBe("1 vote");
+    });
+
+    it("a page past the end (the votes got fewer) goes to the last page", async () => {
+        const votes = vi.fn(async (_id: string, request: {page?: number}): Promise<ScanVoteList> =>
+            request.page === 3
+                ? {items: [], next_cursor: null, weight_denom: null, total: 30}
+                : {items: rows(((request.page ?? 1) - 1) * 20, request.page === 2 ? 10 : 20), next_cursor: null, weight_denom: null, total: request.page === 2 ? 30 : 50});
+        renderPanel(deps(votes));
+        await waitFor(() => expect(count()).toBe("1–20 of 50 votes"));
+        fireEvent.click(within(screen.getByTestId("pager-desktop")).getByRole("button", {name: "Page 3", hidden: true}));
+        await waitFor(() => expect(votes).toHaveBeenLastCalledWith("7", {option: null, page: 2, limit: 20}));
+        await waitFor(() => expect(count()).toBe("21–30 of 30 votes"));
+    });
+
+    it("a member list read from the chain (Scan down) on one page still says one vote per member", async () => {
+        const getBallots = vi.fn(async () => ({items: [{proposal_id: "7", voter: "bze1a", option: "YES", weight: "1", shares: []} as DaoBallot], nextKey: null}));
+        renderPanel(deps(async () => { throw new ScanUnavailableError("down"); }, {getBallots}), "DAO_TYPE_STATIC_LIST");
+        await waitFor(() => expect(count()).toBe("1 vote · one vote per member"));
+        expect(screen.getByText(/read from the chain/)).toBeTruthy();
+    });
 });

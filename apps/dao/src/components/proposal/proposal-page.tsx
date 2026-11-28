@@ -18,7 +18,7 @@ import {DAO_FEATURES} from '@/lib/dao-actions';
 import {daoTabHref} from '@/lib/dao-tabs';
 import {formatDateTime, formatRelative} from '@/lib/format';
 import {daoIdsOf, describeMessages} from '@/lib/proposal-describe';
-import {loadDaoNames, loadMyVote, type ProposalDeps, type ProposalPageData} from '@/lib/proposal-loader';
+import {loadDaoRefs, loadMyVote, type ProposalDeps, type ProposalPageData} from '@/lib/proposal-loader';
 import {proposalFingerprint} from '@/lib/proposal-actions';
 import {canSettleNow, describeStatus} from '@/lib/proposal-status';
 import {ActionsPanel} from './actions-panel';
@@ -63,8 +63,8 @@ const Body = ({deps, data, wallet, nowMs, onRetryScan, refresh, version, peek}: 
     const actions = describeMessages(model.msgs, {daoAddress: dao?.address ?? null, before: model.config, formatCoin: coins.format});
     // the DAOs the actions name by number (a SubDAO, a nominating DAO) are named from the chain; the DAO itself is already known
     const otherIds = daoIdsOf(actions).filter((id) => id !== model.daoId);
-    const names = useAsync(otherIds.length > 0 ? `${model.id}:${otherIds.join(',')}` : null, () => loadDaoNames(deps, otherIds));
-    const daoOf = (id: string) => (id === model.daoId ? model.daoName ?? undefined : names.data?.[id]);
+    const refs = useAsync(otherIds.length > 0 ? `${model.id}:${otherIds.join(',')}` : null, () => loadDaoRefs(deps, otherIds));
+    const daoOf = (id: string) => (id === model.daoId ? {name: model.daoName ?? undefined, address: dao?.address} : refs.data?.[id]);
     const proposerName = data.scanDetail?.proposer_label?.name;
     const stake = model.daoType === 'DAO_TYPE_STAKE';
     const ends = formatRelative(model.votingEnd, nowMs);

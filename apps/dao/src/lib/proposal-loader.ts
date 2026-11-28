@@ -158,14 +158,18 @@ async function mergeChainAnswer(deps: ProposalDeps, data: ProposalPageData, resp
     return {...data, scanDetail, scanFailed, model: modelFromChain(resp, scanDetail, dao?.name ?? null, dao?.type ?? data.model.daoType)};
 }
 
-/** The names of the DAOs a proposal's actions name by number, read from the chain; a DAO that is missing or fails to read is left out. */
-export async function loadDaoNames(deps: ProposalDeps, ids: readonly string[]): Promise<Record<string, string>> {
+/**
+ * What the chain says of the DAOs a proposal's actions name by number: name and account. A DAO the chain does
+ * not have, or that fails to read, is left out (the preview then shows its number).
+ */
+export async function loadDaoRefs(deps: ProposalDeps, ids: readonly string[]): Promise<Record<string, {name?: string; address?: string}>> {
     const reads = await Promise.all(ids.map((id) => settle(() => deps.chain.getDao(id))));
-    const names: Record<string, string> = {};
+    const refs: Record<string, {name?: string; address?: string}> = {};
     reads.forEach((read, i) => {
-        if (read.ok && read.value?.name) names[ids[i]] = read.value.name;
+        const dao = read.ok ? read.value : null;
+        if (dao && (dao.name || dao.address)) refs[ids[i]] = {name: dao.name || undefined, address: dao.address || undefined};
     });
-    return names;
+    return refs;
 }
 
 // ---- votes ----

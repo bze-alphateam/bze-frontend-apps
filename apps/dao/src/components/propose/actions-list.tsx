@@ -159,7 +159,7 @@ const ActionRow = ({index, count, draft, composed, ctx, formatCoin, onChange, on
                     <Flex direction="column" gap="6px" p="12px" bg="hg.inset" borderRadius="10px" data-testid="action-preview">
                         <chakra.span fontSize="12px" color="hg.text.faint">What the DAO would do</chakra.span>
                         {read.ok
-                            ? <Described action={read.action} formatCoin={formatCoin} nameOf={(a) => (a === ctx.dao.address ? 'The DAO' : undefined)} signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address} daoOf={(id) => (id === ctx.dao.id ? ctx.dao.name : ctx.subDaos?.find((s) => s.dao.id === id)?.dao.name)} />
+                            ? <Described action={read.action} formatCoin={formatCoin} nameOf={(a) => (a === ctx.dao.address ? 'The DAO' : undefined)} signerOf={(id) => ctx.subDaos?.find((s) => s.dao.id === id)?.dao.address} daoOf={(id) => (id === ctx.dao.id ? ctx.dao : ctx.subDaos?.find((s) => s.dao.id === id)?.dao)} />
                             : <chakra.p m="0" fontSize="13px" color="red.500" role="alert">{`This message could not be read back: ${read.error}`}</chakra.p>}
                     </Flex>
                 )}

@@ -9,8 +9,7 @@ import {usePagedList} from '@/hooks/usePagedList';
 import {describeDaoEvent} from '@/lib/dao-history';
 import {HISTORY_PAGE, loadHistoryPage, type DaoViewDeps, type HistoryPage} from '@/lib/dao-view-loader';
 import {formatDateTime} from '@/lib/format';
-import {cursorCount} from '@/lib/home-list';
-import {clampPage, rangeCount} from '@/lib/pagination';
+import {clampPage, cursorCount, rangeCount} from '@/lib/pagination';
 import {ScanRetry} from './panel';
 
 interface HistoryTabProps {
