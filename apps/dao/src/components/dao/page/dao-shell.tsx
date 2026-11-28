@@ -24,18 +24,19 @@ const CounterPill = ({counter}: {counter: ProposalCounter}) => (
         display="inline-flex"
         alignItems="baseline"
         px="8px"
-        py="1px"
-        borderRadius="hg.pill"
-        bg="app.subtle"
+        py="2px"
+        borderRadius="999px"
+        bg="color-mix(in srgb, var(--chakra-colors-hg-accent) 14%, transparent)"
         borderWidth="1px"
-        borderColor="app.border"
+        borderColor="color-mix(in srgb, var(--chakra-colors-hg-accent) 40%, transparent)"
         fontSize="12px"
         fontWeight="700"
+        lineHeight="1.4"
         fontVariantNumeric="tabular-nums"
         title={counter.title}
         data-testid="proposals-counter"
     >
-        <chakra.span color="hg.link">{String(counter.open)}</chakra.span>
+        <chakra.span color="hg.link.hover">{String(counter.open)}</chakra.span>
         {counter.total !== null && <chakra.span color="hg.text.faint">{`/${counter.total}`}</chakra.span>}
     </chakra.span>
 );
@@ -71,7 +72,19 @@ export const DaoTabs = ({dao, active, wallet, counter}: DaoTabsProps) => {
     };
 
     return (
-        <chakra.nav aria-label="DAO sections" display="flex" gap="4px" borderBottomWidth="1px" borderColor="hg.divider" overflowX="auto" maxW="100%" data-testid="dao-tabs">
+        // The hairline is an inset shadow and the active tab's bar sits inside the tab: nothing pokes out of the
+        // scroll box, so overflow-y never turns into a scrollbar (overflow-x: auto alone makes it auto too).
+        <chakra.nav
+            aria-label="DAO sections"
+            display="flex"
+            gap="4px"
+            overflowX="auto"
+            overflowY="hidden"
+            maxW="100%"
+            boxShadow="inset 0 -1px 0 var(--chakra-colors-hg-divider)"
+            css={{scrollbarWidth: 'none', '&::-webkit-scrollbar': {display: 'none'}}}
+            data-testid="dao-tabs"
+        >
             {tabs.map(({tab, label, testId}) => {
                 const current = tab === active;
                 return (
@@ -85,19 +98,17 @@ export const DaoTabs = ({dao, active, wallet, counter}: DaoTabsProps) => {
                         alignItems="center"
                         flex="none"
                         whiteSpace="nowrap"
-                        px="12px"
-                        py="12px"
+                        p="12px"
                         fontSize="15px"
                         fontWeight={current ? '600' : '500'}
                         color={current ? 'fg' : 'fg.muted'}
+                        textDecoration="none"
                         _hover={{color: 'fg'}}
-                        borderBottomWidth="2px"
-                        borderColor={current ? 'hg.link' : 'transparent'}
-                        mb="-1px"
                         data-testid={testId}
                     >
                         {label}
                         {tab === 'proposals' && counter && <CounterPill counter={counter} />}
+                        {current && <chakra.span aria-hidden position="absolute" left="12px" right="12px" bottom="0" h="2px" borderRadius="2px" bgImage="app" data-testid="dao-tab-bar" />}
                     </chakra.a>
                 );
             })}
@@ -120,9 +131,9 @@ export interface DaoShellProps {
 
 /** The frame of every DAO page (`/dao/<id>` and `/dao/<id>/admin`): the header, the tabs, then the tab's content. */
 export const DaoShell = ({dao, active, wallet, extras, openProposals, children}: DaoShellProps) => (
-    <Flex direction="column" gap="18px" minW="0" data-testid="dao-shell">
+    <Flex direction="column" gap="24px" minW="0" data-testid="dao-shell">
         <DaoHeader dao={dao} extras={extras} />
         <DaoTabs dao={dao} active={active} wallet={wallet} counter={proposalCounter(extras.data, openProposals)} />
-        <Flex direction="column" gap="16px" minW="0" data-testid={`dao-tab-${active}-content`}>{children}</Flex>
+        <Flex direction="column" gap="20px" minW="0" data-testid={`dao-tab-${active}-content`}>{children}</Flex>
     </Flex>
 );
