@@ -170,7 +170,7 @@ describe("run actions as a sub-DAO", () => {
 
     it("refuses a sub-DAO that owns itself, and one that is not in the list", () => {
         expect(execute.validate(fields(inner(pay())), ctx({subDaos: [withSub({admin: SUB_ADDRESS})]}))).toMatch(/no longer administered|owns itself/);
-        expect(execute.validate(fields(inner(pay()), "99"), ctx())).toMatch(/Choose one of the DAOs/);
+        expect(execute.validate(fields(inner(pay()), "99"), ctx())).toMatch(/Choose one of the SubDAOs/);
     });
 
     it("offers inside only what the sub-DAO can do: no handover, no sub-DAOs of its own", () => {
