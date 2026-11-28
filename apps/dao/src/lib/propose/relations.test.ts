@@ -1,8 +1,12 @@
 import {describe, expect, it, vi} from "vitest";
-import type {Dao} from "@bze/bze-ui-kit";
+import type {Dao, DaoControllerResponse} from "@bze/bze-ui-kit";
+import type {NominationChain} from "../admin/nomination";
 import {ScanUnavailableError} from "../dao-scan";
 import {CONFIG, DAO_ADDRESS, OTHER, SUB_ADDRESS, THIRD} from "@/test/composer-fixtures";
-import {createRelationScan, loadRelations, NOMINATION_LIMIT, type RelationChain, type RelationDeps, type RelationScan} from "./relations";
+import {
+    createRelationScan, loadRelations, NOMINATION_LIMIT, splitStaleNominations, staleNominationText,
+    type RelationChain, type RelationDeps, type Relations, type RelationScan,
+} from "./relations";
 
 const dao = (over: Partial<Dao> = {}): Dao => ({
     id: "7", address: SUB_ADDRESS, admin: DAO_ADDRESS, pending_admin: "", type: "DAO_TYPE_STATIC_LIST", name: "Garden club", description: "",
@@ -73,6 +77,50 @@ describe("the nominations", () => {
         expect(down.incoming).toBeNull();
         const broken = await loadRelations(deps({getDao: async () => { throw new Error("HTTP 500"); }}, {daosNominating: async () => [{id: "9"}]}), me);
         expect(broken.incoming).toBeNull();
+    });
+});
+
+describe("stale nominations", () => {
+    // DAO 9 "Hive" nominated this DAO; Hive is run by DAO 12 "Meadow" (path: Hive, Meadow); the nomination was made at 5
+    const MEADOW = "bze1qyqszqgpqyqszqgpqyqszqgpqyqszqgp0hd4lt";
+    const hive = dao({id: "9", address: OTHER, admin: MEADOW, pending_admin: DAO_ADDRESS, pending_admin_seq: "5", name: "Hive"});
+    const fromScan = (d: Dao) => deps({getDao: async (id: string) => (id === d.id ? d : null)}, {daosNominating: async () => [{id: d.id}]});
+    const nominations = (meadowSeq: string, over: Partial<NominationChain> = {}): NominationChain => ({
+        getController: vi.fn(async (): Promise<DaoControllerResponse | null> => ({controller: "bze1person", end_reason: "ACCOUNT", path: [OTHER, MEADOW]})),
+        getDaoByAddress: vi.fn(async (address: string) => (address === MEADOW ? dao({id: "12", address: MEADOW, name: "Meadow", admin_seq: meadowSeq}) : null)),
+        ...over,
+    });
+
+    it("marks a nomination stale when the DAO that runs the nominating DAO changed its admin after it", async () => {
+        const result = await loadRelations(fromScan(hive), me, nominations("6"));
+        expect(result.incoming).toEqual([{id: "9", name: "Hive", address: OTHER, stale: {parent: {id: "12", name: "Meadow"}, changed: {id: "12", name: "Meadow"}}}]);
+    });
+
+    it("leaves a nomination that is still valid, or that could not be checked, unmarked (offered)", async () => {
+        expect((await loadRelations(fromScan(hive), me, nominations("5"))).incoming).toEqual([{id: "9", name: "Hive", address: OTHER}]);
+        const down = nominations("6", {getController: async () => { throw new Error("HTTP 500"); }});
+        expect((await loadRelations(fromScan(hive), me, down)).incoming).toEqual([{id: "9", name: "Hive", address: OTHER}]);
+    });
+
+    it("checks nothing without a nomination chain (the admin console's relations)", async () => {
+        expect((await loadRelations(fromScan(hive), me)).incoming).toEqual([{id: "9", name: "Hive", address: OTHER}]);
+    });
+
+    it("splits the stale ones off, so the actions only see nominations that can be accepted", () => {
+        const stale = {parent: {id: "12", name: "Meadow"}, changed: {id: "12", name: "Meadow"}};
+        const relations: Relations = {subDaos: [], sources: [], incoming: [{id: "9", name: "Hive", address: OTHER, stale}, {id: "10", name: "Bee Art", address: THIRD}]};
+        const split = splitStaleNominations(relations);
+        expect(split.relations.incoming).toEqual([{id: "10", name: "Bee Art", address: THIRD}]);
+        expect(split.stale).toEqual([{dao: {id: "9", name: "Hive", address: OTHER}, ...stale}]);
+        const unknown: Relations = {subDaos: [], sources: [], incoming: null};
+        expect(splitStaleNominations(unknown)).toEqual({relations: unknown, stale: []});
+    });
+
+    it("says who changed its admin and who has to nominate again", () => {
+        const byParent = {dao: {id: "9", name: "Pollen Fund", address: OTHER}, parent: {id: "12", name: "Meadow DAO"}, changed: {id: "12", name: "Meadow DAO"}};
+        expect(staleNominationText(byParent, "Hive Council")).toBe("Out of date: Meadow DAO, the DAO that runs Pollen Fund, changed its admin after Hive Council was nominated. Meadow DAO has to nominate it again.");
+        const above = {...byParent, changed: {id: "15", name: "Guild"}};
+        expect(staleNominationText(above, "Hive Council")).toBe("Out of date: Guild, which controls Meadow DAO, changed its admin after Hive Council was nominated. Meadow DAO has to nominate it again.");
     });
 });
 
